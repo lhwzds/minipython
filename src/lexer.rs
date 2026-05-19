@@ -3,6 +3,7 @@ pub enum Token {
     Print,
     LeftParen,
     RightParen,
+    Plus,
     Number(i64),
     Eof,
 }
@@ -25,6 +26,10 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
             }
             ')' => {
                 tokens.push(Token::RightParen);
+                current += 1;
+            }
+            '+' => {
+                tokens.push(Token::Plus);
                 current += 1;
             }
             '0'..='9' => {
@@ -89,6 +94,22 @@ mod tests {
                 Token::Print,
                 Token::LeftParen,
                 Token::Number(123),
+                Token::RightParen,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_plus() {
+        assert_eq!(
+            lex("print(1 + 2)"),
+            Ok(vec![
+                Token::Print,
+                Token::LeftParen,
+                Token::Number(1),
+                Token::Plus,
+                Token::Number(2),
                 Token::RightParen,
                 Token::Eof,
             ])
