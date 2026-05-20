@@ -32,6 +32,43 @@ fn skips_blank_lines_between_statements() {
 }
 
 #[test]
+fn assigns_and_reads_variable() {
+    assert_eq!(run_source("x = 1 + 2\nprint(x)"), Ok(vec!["3".to_string()]));
+}
+
+#[test]
+fn reassigns_variable() {
+    assert_eq!(
+        run_source("x = 1\nx = x + 2\nprint(x)"),
+        Ok(vec!["3".to_string()])
+    );
+}
+
+#[test]
+fn prints_string_literal() {
+    assert_eq!(
+        run_source("print(\"hello\")"),
+        Ok(vec!["hello".to_string()])
+    );
+}
+
+#[test]
+fn assigns_and_reads_string() {
+    assert_eq!(
+        run_source("name = \"minipython\"\nprint(\"hello\", name)"),
+        Ok(vec!["hello minipython".to_string()])
+    );
+}
+
+#[test]
+fn concatenates_strings() {
+    assert_eq!(
+        run_source("name = \"mini\" + \"python\"\nprint(name)"),
+        Ok(vec!["minipython".to_string()])
+    );
+}
+
+#[test]
 fn reports_unknown_name() {
     assert_eq!(
         run_source("unknown(1)"),

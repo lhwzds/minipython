@@ -1,7 +1,7 @@
 use minipython::run_source;
 
 fn main() {
-    let source = "print(1 + 2, 3)";
+    let source = "name = \"minipython\"\nprint(\"hello\", name)";
 
     match run_source(source) {
         Ok(output) => {

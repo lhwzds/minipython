@@ -1,10 +1,12 @@
 use crate::bytecode::{Instruction, Register};
 use crate::value::Value;
+use std::collections::HashMap;
 
 pub struct Vm {
     instructions: Vec<Instruction>,
     ip: usize,
     registers: Vec<Option<Value>>,
+    globals: HashMap<String, Value>,
     output: Vec<String>,
 }
 
@@ -14,6 +16,7 @@ impl Vm {
             instructions,
             ip: 0,
             registers: Vec::new(),
+            globals: HashMap::new(),
             output: Vec::new(),
         }
     }
@@ -34,6 +37,10 @@ impl Vm {
                 Instruction::LoadName { dst, name } => {
                     let value = self.load_name(&name)?;
                     self.write_register(dst, value);
+                }
+                Instruction::StoreName { name, src } => {
+                    let value = self.read_register(src)?.clone();
+                    self.globals.insert(name, value);
                 }
                 Instruction::Add { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -74,9 +81,13 @@ impl Vm {
     }
 
     fn load_name(&self, name: &str) -> Result<Value, String> {
-        match name {
-            "print" => Ok(Value::Builtin(name.to_string())),
-            _ => Err(format!("unknown name: {name}")),
+        if let Some(value) = self.globals.get(name).cloned() {
+            Ok(value)
+        } else {
+            match name {
+                "print" => Ok(Value::Builtin(name.to_string())),
+                _ => Err(format!("unknown name: {name}")),
+            }
         }
     }
 
@@ -100,6 +111,7 @@ impl Vm {
 fn add_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),
+        (Value::String(left), Value::String(right)) => Ok(Value::String(left + &right)),
         (left, right) => Err(format!("cannot add {left} and {right}")),
     }
 }
@@ -196,6 +208,98 @@ mod tests {
         let mut vm = Vm::new(instructions);
 
         assert_eq!(vm.run(), Ok(vec!["1 2".to_string()]));
+    }
+
+    #[test]
+    fn stores_and_loads_global_name() {
+        let instructions = vec![
+            Instruction::LoadConst {
+                dst: 0,
+                value: Value::Number(3),
+            },
+            Instruction::StoreName {
+                name: "x".to_string(),
+                src: 0,
+            },
+            Instruction::LoadName {
+                dst: 1,
+                name: "print".to_string(),
+            },
+            Instruction::LoadName {
+                dst: 2,
+                name: "x".to_string(),
+            },
+            Instruction::Call {
+                dst: 3,
+                callee: 1,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["3".to_string()]));
+    }
+
+    #[test]
+    fn prints_string_value() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::String("hello".to_string()),
+            },
+            Instruction::Call {
+                dst: 2,
+                callee: 0,
+                args: vec![1],
+            },
+            Instruction::Pop { src: 2 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["hello".to_string()]));
+    }
+
+    #[test]
+    fn adds_string_values() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::String("hello ".to_string()),
+            },
+            Instruction::LoadConst {
+                dst: 2,
+                value: Value::String("mini".to_string()),
+            },
+            Instruction::Add {
+                dst: 3,
+                left: 1,
+                right: 2,
+            },
+            Instruction::Call {
+                dst: 4,
+                callee: 0,
+                args: vec![3],
+            },
+            Instruction::Pop { src: 4 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["hello mini".to_string()]));
     }
 
     #[test]

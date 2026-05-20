@@ -6,7 +6,9 @@ pub enum Token {
     Comma,
     Newline,
     Plus,
+    Equal,
     Number(i64),
+    String(String),
     Eof,
 }
 
@@ -47,6 +49,29 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
             }
             '+' => {
                 tokens.push(Token::Plus);
+                current += 1;
+            }
+            '=' => {
+                tokens.push(Token::Equal);
+                current += 1;
+            }
+            '"' => {
+                current += 1;
+                let start = current;
+
+                while current < chars.len() && chars[current] != '"' {
+                    if chars[current] == '\n' || chars[current] == '\r' {
+                        return Err("unterminated string".to_string());
+                    }
+                    current += 1;
+                }
+
+                if current >= chars.len() {
+                    return Err("unterminated string".to_string());
+                }
+
+                let value: String = chars[start..current].iter().collect();
+                tokens.push(Token::String(value));
                 current += 1;
             }
             '0'..='9' => {
@@ -128,6 +153,38 @@ mod tests {
                 Token::Eof,
             ])
         );
+    }
+
+    #[test]
+    fn lexes_equal() {
+        assert_eq!(
+            lex("x = 1"),
+            Ok(vec![
+                Token::Identifier("x".to_string()),
+                Token::Equal,
+                Token::Number(1),
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_string() {
+        assert_eq!(
+            lex("print(\"hello\")"),
+            Ok(vec![
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("hello".to_string()),
+                Token::RightParen,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn rejects_unterminated_string() {
+        assert_eq!(lex("\"hello"), Err("unterminated string".to_string()));
     }
 
     #[test]

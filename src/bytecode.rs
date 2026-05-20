@@ -12,6 +12,10 @@ pub enum Instruction {
         dst: Register,
         name: String,
     },
+    StoreName {
+        name: String,
+        src: Register,
+    },
     Add {
         dst: Register,
         left: Register,

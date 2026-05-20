@@ -29,6 +29,14 @@ impl Compiler {
                 self.instructions.push(Instruction::Pop { src });
                 Ok(())
             }
+            Stmt::Assign { name, value } => {
+                let src = self.compile_expr(value)?;
+                self.instructions.push(Instruction::StoreName {
+                    name: name.clone(),
+                    src,
+                });
+                Ok(())
+            }
         }
     }
 
@@ -39,6 +47,14 @@ impl Compiler {
                 self.instructions.push(Instruction::LoadConst {
                     dst,
                     value: Value::Number(*value),
+                });
+                Ok(dst)
+            }
+            Expr::String(value) => {
+                let dst = self.alloc_register();
+                self.instructions.push(Instruction::LoadConst {
+                    dst,
+                    value: Value::String(value.clone()),
                 });
                 Ok(dst)
             }
@@ -222,6 +238,75 @@ mod tests {
                 Instruction::LoadConst {
                     dst: 1,
                     value: Value::Number(1)
+                },
+                Instruction::Call {
+                    dst: 2,
+                    callee: 0,
+                    args: vec![1]
+                },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_assignment_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Assign {
+                name: "x".to_string(),
+                value: Expr::Binary {
+                    left: Box::new(Expr::Number(1)),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Number(2)),
+                },
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Number(1)
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(2)
+                },
+                Instruction::Add {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::StoreName {
+                    name: "x".to_string(),
+                    src: 2
+                },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_string_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::String("hello".to_string())],
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::String("hello".to_string())
                 },
                 Instruction::Call {
                     dst: 2,

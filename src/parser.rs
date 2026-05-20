@@ -34,6 +34,16 @@ impl Parser<'_> {
     }
 
     fn parse_statement(&mut self) -> Result<Stmt, String> {
+        if let (Some(Token::Identifier(name)), Some(Token::Equal)) = (self.peek(), self.peek_next())
+        {
+            let name = name.clone();
+            self.advance();
+            self.advance();
+            let value = self.parse_expression()?;
+
+            return Ok(Stmt::Assign { name, value });
+        }
+
         let expr = self.parse_expression()?;
         Ok(Stmt::Expr(expr))
     }
@@ -98,6 +108,7 @@ impl Parser<'_> {
     fn parse_primary(&mut self) -> Result<Expr, String> {
         match self.advance() {
             Some(Token::Number(value)) => Ok(Expr::Number(*value)),
+            Some(Token::String(value)) => Ok(Expr::String(value.clone())),
             Some(Token::Identifier(name)) => Ok(Expr::Name(name.clone())),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
@@ -128,6 +139,10 @@ impl Parser<'_> {
 
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.current)
+    }
+
+    fn peek_next(&self) -> Option<&Token> {
+        self.tokens.get(self.current + 1)
     }
 
     fn skip_newlines(&mut self) {
@@ -209,6 +224,53 @@ mod tests {
                 statements: vec![Stmt::Expr(Expr::Call {
                     callee: Box::new(Expr::Name("print".to_string())),
                     args: vec![Expr::Number(1), Expr::Number(2)],
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_assignment_statement() {
+        let tokens = vec![
+            Token::Identifier("x".to_string()),
+            Token::Equal,
+            Token::Number(1),
+            Token::Plus,
+            Token::Number(2),
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Assign {
+                    name: "x".to_string(),
+                    value: Expr::Binary {
+                        left: Box::new(Expr::Number(1)),
+                        op: BinaryOp::Add,
+                        right: Box::new(Expr::Number(2)),
+                    },
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_string_expression() {
+        let tokens = vec![
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::String("hello".to_string()),
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::String("hello".to_string())],
                 })],
             })
         );

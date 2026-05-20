@@ -6,11 +6,13 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     Expr(Expr),
+    Assign { name: String, value: Expr },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Number(i64),
+    String(String),
     Name(String),
     Binary {
         left: Box<Expr>,
