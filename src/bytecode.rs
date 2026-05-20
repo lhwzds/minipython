@@ -8,12 +8,21 @@ pub enum Instruction {
         dst: Register,
         value: Value,
     },
+    LoadName {
+        dst: Register,
+        name: String,
+    },
     Add {
         dst: Register,
         left: Register,
         right: Register,
     },
-    Print {
+    Call {
+        dst: Register,
+        callee: Register,
+        args: Vec<Register>,
+    },
+    Pop {
         src: Register,
     },
     Halt,

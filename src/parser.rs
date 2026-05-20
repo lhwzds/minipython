@@ -15,12 +15,8 @@ struct Parser<'a> {
 
 impl Parser<'_> {
     fn parse_statement(&mut self) -> Result<Stmt, String> {
-        self.expect_print()?;
-        self.expect_left_paren()?;
         let expr = self.parse_expression()?;
-        self.expect_right_paren()?;
-
-        Ok(Stmt::Print(expr))
+        Ok(Stmt::Expr(expr))
     }
 
     fn parse_expression(&mut self) -> Result<Expr, String> {
@@ -28,11 +24,11 @@ impl Parser<'_> {
     }
 
     fn parse_addition(&mut self) -> Result<Expr, String> {
-        let mut expr = self.parse_primary()?;
+        let mut expr = self.parse_call()?;
 
         while matches!(self.peek(), Some(Token::Plus)) {
             self.advance();
-            let right = self.parse_primary()?;
+            let right = self.parse_call()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 op: BinaryOp::Add,
@@ -43,27 +39,33 @@ impl Parser<'_> {
         Ok(expr)
     }
 
+    fn parse_call(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_primary()?;
+
+        while matches!(self.peek(), Some(Token::LeftParen)) {
+            self.advance();
+            let args = if matches!(self.peek(), Some(Token::RightParen)) {
+                Vec::new()
+            } else {
+                vec![self.parse_expression()?]
+            };
+            self.expect_right_paren()?;
+
+            expr = Expr::Call {
+                callee: Box::new(expr),
+                args,
+            };
+        }
+
+        Ok(expr)
+    }
+
     fn parse_primary(&mut self) -> Result<Expr, String> {
         match self.advance() {
             Some(Token::Number(value)) => Ok(Expr::Number(*value)),
+            Some(Token::Identifier(name)) => Ok(Expr::Name(name.clone())),
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
-        }
-    }
-
-    fn expect_print(&mut self) -> Result<(), String> {
-        match self.advance() {
-            Some(Token::Print) => Ok(()),
-            Some(token) => Err(format!("expected print, found {token:?}")),
-            None => Err("expected print, found end of input".to_string()),
-        }
-    }
-
-    fn expect_left_paren(&mut self) -> Result<(), String> {
-        match self.advance() {
-            Some(Token::LeftParen) => Ok(()),
-            Some(token) => Err(format!("expected '(', found {token:?}")),
-            None => Err("expected '(', found end of input".to_string()),
         }
     }
 
@@ -103,20 +105,26 @@ mod tests {
     #[test]
     fn parses_print_number_statement() {
         let tokens = vec![
-            Token::Print,
+            Token::Identifier("print".to_string()),
             Token::LeftParen,
             Token::Number(123),
             Token::RightParen,
             Token::Eof,
         ];
 
-        assert_eq!(parse(&tokens), Ok(Stmt::Print(Expr::Number(123))));
+        assert_eq!(
+            parse(&tokens),
+            Ok(Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Number(123)],
+            }))
+        );
     }
 
     #[test]
     fn parses_addition_expression() {
         let tokens = vec![
-            Token::Print,
+            Token::Identifier("print".to_string()),
             Token::LeftParen,
             Token::Number(1),
             Token::Plus,
@@ -127,10 +135,13 @@ mod tests {
 
         assert_eq!(
             parse(&tokens),
-            Ok(Stmt::Print(Expr::Binary {
-                left: Box::new(Expr::Number(1)),
-                op: BinaryOp::Add,
-                right: Box::new(Expr::Number(2)),
+            Ok(Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Binary {
+                    left: Box::new(Expr::Number(1)),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Number(2)),
+                }],
             }))
         );
     }
@@ -138,7 +149,7 @@ mod tests {
     #[test]
     fn rejects_missing_right_paren() {
         let tokens = vec![
-            Token::Print,
+            Token::Identifier("print".to_string()),
             Token::LeftParen,
             Token::Number(123),
             Token::Eof,
@@ -148,9 +159,9 @@ mod tests {
     }
 
     #[test]
-    fn rejects_missing_left_paren() {
+    fn rejects_extra_tokens_after_name() {
         let tokens = vec![
-            Token::Print,
+            Token::Identifier("print".to_string()),
             Token::Number(123),
             Token::RightParen,
             Token::Eof,
@@ -158,7 +169,7 @@ mod tests {
 
         assert_eq!(
             parse(&tokens),
-            Err("expected '(', found Number(123)".to_string())
+            Err("expected end of input, found Number(123)".to_string())
         );
     }
 }

@@ -1,15 +1,20 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
-    Print(Expr),
+    Expr(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Expr {
     Number(i64),
+    Name(String),
     Binary {
         left: Box<Expr>,
         op: BinaryOp,
         right: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        args: Vec<Expr>,
     },
 }
 

@@ -16,19 +16,21 @@ fn main() {
 
     match lex(source) {
         Ok(tokens) => match parse(&tokens) {
-            Ok(stmt) => {
-                let instructions = compile(&stmt);
-                let mut vm = Vm::new(instructions);
+            Ok(stmt) => match compile(&stmt) {
+                Ok(instructions) => {
+                    let mut vm = Vm::new(instructions);
 
-                match vm.run() {
-                    Ok(output) => {
-                        for line in output {
-                            println!("{line}");
+                    match vm.run() {
+                        Ok(output) => {
+                            for line in output {
+                                println!("{line}");
+                            }
                         }
+                        Err(message) => eprintln!("runtime error: {message}"),
                     }
-                    Err(message) => eprintln!("runtime error: {message}"),
                 }
-            }
+                Err(message) => eprintln!("compile error: {message}"),
+            },
             Err(message) => eprintln!("parse error: {message}"),
         },
         Err(message) => eprintln!("{message}"),

@@ -1,6 +1,6 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
-    Print,
+    Identifier(String),
     LeftParen,
     RightParen,
     Plus,
@@ -55,10 +55,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 }
 
                 let word: String = chars[start..current].iter().collect();
-                match word.as_str() {
-                    "print" => tokens.push(Token::Print),
-                    _ => return Err(format!("unexpected word: {word}")),
-                }
+                tokens.push(Token::Identifier(word));
             }
             _ => return Err(format!("unexpected character: {ch}")),
         }
@@ -77,7 +74,7 @@ mod tests {
         assert_eq!(
             lex("print(123)"),
             Ok(vec![
-                Token::Print,
+                Token::Identifier("print".to_string()),
                 Token::LeftParen,
                 Token::Number(123),
                 Token::RightParen,
@@ -91,7 +88,7 @@ mod tests {
         assert_eq!(
             lex("print( 123 )"),
             Ok(vec![
-                Token::Print,
+                Token::Identifier("print".to_string()),
                 Token::LeftParen,
                 Token::Number(123),
                 Token::RightParen,
@@ -105,7 +102,7 @@ mod tests {
         assert_eq!(
             lex("print(1 + 2)"),
             Ok(vec![
-                Token::Print,
+                Token::Identifier("print".to_string()),
                 Token::LeftParen,
                 Token::Number(1),
                 Token::Plus,

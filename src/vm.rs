@@ -31,15 +31,27 @@ impl Vm {
                 Instruction::LoadConst { dst, value } => {
                     self.write_register(dst, value);
                 }
+                Instruction::LoadName { dst, name } => {
+                    let value = self.load_name(&name)?;
+                    self.write_register(dst, value);
+                }
                 Instruction::Add { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = add_values(left, right);
+                    let value = add_values(left, right)?;
                     self.write_register(dst, value);
                 }
-                Instruction::Print { src } => {
-                    let value = self.read_register(src)?;
-                    self.output.push(value.to_string());
+                Instruction::Call { dst, callee, args } => {
+                    let callee = self.read_register(callee)?.clone();
+                    let args = args
+                        .iter()
+                        .map(|arg| self.read_register(*arg).cloned())
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let value = self.call_value(callee, args)?;
+                    self.write_register(dst, value);
+                }
+                Instruction::Pop { src } => {
+                    self.read_register(src)?;
                 }
                 Instruction::Halt => return Ok(std::mem::take(&mut self.output)),
             }
@@ -60,11 +72,35 @@ impl Vm {
             .and_then(Option::as_ref)
             .ok_or_else(|| format!("register r{register} is not initialized"))
     }
+
+    fn load_name(&self, name: &str) -> Result<Value, String> {
+        match name {
+            "print" => Ok(Value::Builtin(name.to_string())),
+            _ => Err(format!("unknown name: {name}")),
+        }
+    }
+
+    fn call_value(&mut self, callee: Value, args: Vec<Value>) -> Result<Value, String> {
+        match callee {
+            Value::Builtin(name) if name == "print" => {
+                let line = args
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                self.output.push(line);
+                Ok(Value::None)
+            }
+            Value::Builtin(name) => Err(format!("unknown builtin: {name}")),
+            value => Err(format!("{value} is not callable")),
+        }
+    }
 }
 
-fn add_values(left: Value, right: Value) -> Value {
+fn add_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
-        (Value::Number(left), Value::Number(right)) => Value::Number(left + right),
+        (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),
+        (left, right) => Err(format!("cannot add {left} and {right}")),
     }
 }
 
@@ -77,11 +113,20 @@ mod tests {
     #[test]
     fn runs_print_number_program() {
         let instructions = vec![
-            Instruction::LoadConst {
+            Instruction::LoadName {
                 dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
                 value: Value::Number(123),
             },
-            Instruction::Print { src: 0 },
+            Instruction::Call {
+                dst: 2,
+                callee: 0,
+                args: vec![1],
+            },
+            Instruction::Pop { src: 2 },
             Instruction::Halt,
         ];
 
@@ -93,20 +138,29 @@ mod tests {
     #[test]
     fn runs_addition_program() {
         let instructions = vec![
-            Instruction::LoadConst {
+            Instruction::LoadName {
                 dst: 0,
-                value: Value::Number(1),
+                name: "print".to_string(),
             },
             Instruction::LoadConst {
                 dst: 1,
+                value: Value::Number(1),
+            },
+            Instruction::LoadConst {
+                dst: 2,
                 value: Value::Number(2),
             },
             Instruction::Add {
-                dst: 2,
-                left: 0,
-                right: 1,
+                dst: 3,
+                left: 1,
+                right: 2,
             },
-            Instruction::Print { src: 2 },
+            Instruction::Call {
+                dst: 4,
+                callee: 0,
+                args: vec![3],
+            },
+            Instruction::Pop { src: 4 },
             Instruction::Halt,
         ];
 
@@ -117,10 +171,43 @@ mod tests {
 
     #[test]
     fn rejects_uninitialized_register() {
-        let instructions = vec![Instruction::Print { src: 0 }, Instruction::Halt];
+        let instructions = vec![Instruction::Pop { src: 0 }, Instruction::Halt];
         let mut vm = Vm::new(instructions);
 
         assert_eq!(vm.run(), Err("register r0 is not initialized".to_string()));
+    }
+
+    #[test]
+    fn rejects_unknown_name() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "unknown".to_string(),
+            },
+            Instruction::Halt,
+        ];
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Err("unknown name: unknown".to_string()));
+    }
+
+    #[test]
+    fn rejects_non_callable_value() {
+        let instructions = vec![
+            Instruction::LoadConst {
+                dst: 0,
+                value: Value::Number(1),
+            },
+            Instruction::Call {
+                dst: 1,
+                callee: 0,
+                args: Vec::new(),
+            },
+            Instruction::Halt,
+        ];
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Err("1 is not callable".to_string()));
     }
 
     #[test]
