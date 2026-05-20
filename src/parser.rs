@@ -110,6 +110,11 @@ impl Parser<'_> {
             Some(Token::Number(value)) => Ok(Expr::Number(*value)),
             Some(Token::String(value)) => Ok(Expr::String(value.clone())),
             Some(Token::Identifier(name)) => Ok(Expr::Name(name.clone())),
+            Some(Token::LeftParen) => {
+                let expr = self.parse_expression()?;
+                self.expect_right_paren()?;
+                Ok(expr)
+            }
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
         }
@@ -271,6 +276,41 @@ mod tests {
                 statements: vec![Stmt::Expr(Expr::Call {
                     callee: Box::new(Expr::Name("print".to_string())),
                     args: vec![Expr::String("hello".to_string())],
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_grouped_expression() {
+        let tokens = vec![
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::Number(1),
+            Token::Plus,
+            Token::LeftParen,
+            Token::Number(2),
+            Token::Plus,
+            Token::Number(3),
+            Token::RightParen,
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::Binary {
+                        left: Box::new(Expr::Number(1)),
+                        op: BinaryOp::Add,
+                        right: Box::new(Expr::Binary {
+                            left: Box::new(Expr::Number(2)),
+                            op: BinaryOp::Add,
+                            right: Box::new(Expr::Number(3)),
+                        }),
+                    }],
                 })],
             })
         );

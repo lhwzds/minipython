@@ -11,6 +11,11 @@ fn prints_addition() {
 }
 
 #[test]
+fn prints_grouped_addition() {
+    assert_eq!(run_source("print(1 + (2 + 3))"), Ok(vec!["6".to_string()]));
+}
+
+#[test]
 fn prints_multiple_arguments() {
     assert_eq!(run_source("print(1 + 2, 3)"), Ok(vec!["3 3".to_string()]));
 }
