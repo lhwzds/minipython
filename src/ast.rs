@@ -1,4 +1,9 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Program {
+    pub statements: Vec<Stmt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     Expr(Expr),
 }

@@ -1,14 +1,16 @@
-use crate::ast::{BinaryOp, Expr, Stmt};
+use crate::ast::{BinaryOp, Expr, Program, Stmt};
 use crate::bytecode::{Instruction, Register};
 use crate::value::Value;
 
-pub fn compile(stmt: &Stmt) -> Result<Vec<Instruction>, String> {
+pub fn compile(program: &Program) -> Result<Vec<Instruction>, String> {
     let mut compiler = Compiler {
         instructions: Vec::new(),
         next_register: 0,
     };
 
-    compiler.compile_stmt(stmt)?;
+    for stmt in &program.statements {
+        compiler.compile_stmt(stmt)?;
+    }
     compiler.instructions.push(Instruction::Halt);
 
     Ok(compiler.instructions)
@@ -87,19 +89,21 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::compile;
-    use crate::ast::{BinaryOp, Expr, Stmt};
+    use crate::ast::{BinaryOp, Expr, Program, Stmt};
     use crate::bytecode::Instruction;
     use crate::value::Value;
 
     #[test]
     fn compiles_print_number_to_bytecode() {
-        let stmt = Stmt::Expr(Expr::Call {
-            callee: Box::new(Expr::Name("print".to_string())),
-            args: vec![Expr::Number(123)],
-        });
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Number(123)],
+            })],
+        };
 
         assert_eq!(
-            compile(&stmt),
+            compile(&program),
             Ok(vec![
                 Instruction::LoadName {
                     dst: 0,
@@ -122,17 +126,19 @@ mod tests {
 
     #[test]
     fn compiles_addition_to_bytecode() {
-        let stmt = Stmt::Expr(Expr::Call {
-            callee: Box::new(Expr::Name("print".to_string())),
-            args: vec![Expr::Binary {
-                left: Box::new(Expr::Number(1)),
-                op: BinaryOp::Add,
-                right: Box::new(Expr::Number(2)),
-            }],
-        });
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Binary {
+                    left: Box::new(Expr::Number(1)),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Number(2)),
+                }],
+            })],
+        };
 
         assert_eq!(
-            compile(&stmt),
+            compile(&program),
             Ok(vec![
                 Instruction::LoadName {
                     dst: 0,
@@ -163,14 +169,51 @@ mod tests {
     }
 
     #[test]
-    fn compiles_unknown_callable_to_runtime_lookup() {
-        let stmt = Stmt::Expr(Expr::Call {
-            callee: Box::new(Expr::Name("unknown".to_string())),
-            args: vec![Expr::Number(1)],
-        });
+    fn compiles_multiple_call_arguments() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Number(1), Expr::Number(2)],
+            })],
+        };
 
         assert_eq!(
-            compile(&stmt),
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(1)
+                },
+                Instruction::LoadConst {
+                    dst: 2,
+                    value: Value::Number(2)
+                },
+                Instruction::Call {
+                    dst: 3,
+                    callee: 0,
+                    args: vec![1, 2]
+                },
+                Instruction::Pop { src: 3 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_unknown_callable_to_runtime_lookup() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("unknown".to_string())),
+                args: vec![Expr::Number(1)],
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
             Ok(vec![
                 Instruction::LoadName {
                     dst: 0,
@@ -186,6 +229,57 @@ mod tests {
                     args: vec![1]
                 },
                 Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_multiple_statements() {
+        let program = Program {
+            statements: vec![
+                Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::Number(1)],
+                }),
+                Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::Number(2)],
+                }),
+            ],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(1)
+                },
+                Instruction::Call {
+                    dst: 2,
+                    callee: 0,
+                    args: vec![1]
+                },
+                Instruction::Pop { src: 2 },
+                Instruction::LoadName {
+                    dst: 3,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 4,
+                    value: Value::Number(2)
+                },
+                Instruction::Call {
+                    dst: 5,
+                    callee: 3,
+                    args: vec![4]
+                },
+                Instruction::Pop { src: 5 },
                 Instruction::Halt,
             ])
         );

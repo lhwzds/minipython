@@ -3,6 +3,8 @@ pub enum Token {
     Identifier(String),
     LeftParen,
     RightParen,
+    Comma,
+    Newline,
     Plus,
     Number(i64),
     Eof,
@@ -17,8 +19,19 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
         let ch = chars[current];
 
         match ch {
-            ' ' | '\t' | '\n' | '\r' => {
+            ' ' | '\t' => {
                 current += 1;
+            }
+            '\n' => {
+                tokens.push(Token::Newline);
+                current += 1;
+            }
+            '\r' => {
+                tokens.push(Token::Newline);
+                current += 1;
+                if current < chars.len() && chars[current] == '\n' {
+                    current += 1;
+                }
             }
             '(' => {
                 tokens.push(Token::LeftParen);
@@ -26,6 +39,10 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
             }
             ')' => {
                 tokens.push(Token::RightParen);
+                current += 1;
+            }
+            ',' => {
+                tokens.push(Token::Comma);
                 current += 1;
             }
             '+' => {
@@ -106,6 +123,41 @@ mod tests {
                 Token::LeftParen,
                 Token::Number(1),
                 Token::Plus,
+                Token::Number(2),
+                Token::RightParen,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_comma() {
+        assert_eq!(
+            lex("print(1, 2)"),
+            Ok(vec![
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(1),
+                Token::Comma,
+                Token::Number(2),
+                Token::RightParen,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_newline() {
+        assert_eq!(
+            lex("print(1)\nprint(2)"),
+            Ok(vec![
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(1),
+                Token::RightParen,
+                Token::Newline,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
                 Token::Number(2),
                 Token::RightParen,
                 Token::Eof,

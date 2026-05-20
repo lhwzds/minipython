@@ -1,38 +1,14 @@
-mod ast;
-mod bytecode;
-mod compiler;
-mod lexer;
-mod parser;
-mod value;
-mod vm;
-
-use compiler::compile;
-use lexer::lex;
-use parser::parse;
-use vm::Vm;
+use minipython::run_source;
 
 fn main() {
-    let source = "print(1 + 2)";
+    let source = "print(1 + 2, 3)";
 
-    match lex(source) {
-        Ok(tokens) => match parse(&tokens) {
-            Ok(stmt) => match compile(&stmt) {
-                Ok(instructions) => {
-                    let mut vm = Vm::new(instructions);
-
-                    match vm.run() {
-                        Ok(output) => {
-                            for line in output {
-                                println!("{line}");
-                            }
-                        }
-                        Err(message) => eprintln!("runtime error: {message}"),
-                    }
-                }
-                Err(message) => eprintln!("compile error: {message}"),
-            },
-            Err(message) => eprintln!("parse error: {message}"),
-        },
+    match run_source(source) {
+        Ok(output) => {
+            for line in output {
+                println!("{line}");
+            }
+        }
         Err(message) => eprintln!("{message}"),
     }
 }

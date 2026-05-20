@@ -170,6 +170,35 @@ mod tests {
     }
 
     #[test]
+    fn runs_print_with_multiple_arguments() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Number(1),
+            },
+            Instruction::LoadConst {
+                dst: 2,
+                value: Value::Number(2),
+            },
+            Instruction::Call {
+                dst: 3,
+                callee: 0,
+                args: vec![1, 2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["1 2".to_string()]));
+    }
+
+    #[test]
     fn rejects_uninitialized_register() {
         let instructions = vec![Instruction::Pop { src: 0 }, Instruction::Halt];
         let mut vm = Vm::new(instructions);
