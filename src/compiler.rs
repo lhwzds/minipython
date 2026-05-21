@@ -218,9 +218,7 @@ impl Compiler {
 
         let right = self.compile_expr(right)?;
         self.instructions
-            .push(Instruction::AssertBool { src: right });
-        self.instructions
-            .push(Instruction::Move { dst, src: right });
+            .push(Instruction::ToBool { dst, src: right });
 
         let jump_to_end = self.instructions.len();
         self.instructions
@@ -263,9 +261,7 @@ impl Compiler {
 
         let right = self.compile_expr(right)?;
         self.instructions
-            .push(Instruction::AssertBool { src: right });
-        self.instructions
-            .push(Instruction::Move { dst, src: right });
+            .push(Instruction::ToBool { dst, src: right });
 
         let end_target = self.instructions.len();
         self.patch_jump_target(jump_to_end, end_target)?;
@@ -656,15 +652,14 @@ mod tests {
                 },
                 Instruction::JumpIfFalse {
                     condition: 0,
-                    target: 6
+                    target: 5
                 },
                 Instruction::LoadConst {
                     dst: 2,
                     value: Value::Bool(false)
                 },
-                Instruction::AssertBool { src: 2 },
-                Instruction::Move { dst: 1, src: 2 },
-                Instruction::Jump { target: 7 },
+                Instruction::ToBool { dst: 1, src: 2 },
+                Instruction::Jump { target: 6 },
                 Instruction::LoadConst {
                     dst: 1,
                     value: Value::Bool(false)

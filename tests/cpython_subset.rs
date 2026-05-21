@@ -106,8 +106,8 @@ fn cpython_grammar_ordering_comparison_subset() {
 }
 
 // Adapted from CPython grammar boolean test coverage in
-// Lib/test/test_grammar.py. MiniPython currently keeps these bool-only instead
-// of using Python's full numeric truthiness.
+// Lib/test/test_grammar.py. MiniPython returns Bool for `and`/`or` in this
+// phase, but it now uses Python-style truthiness for operands.
 #[test]
 fn cpython_grammar_boolean_operations_subset() {
     assert_output(
@@ -122,7 +122,17 @@ fn cpython_grammar_boolean_operations_subset() {
     assert_output("if True and True:\n    print(\"and\")", &["and"]);
     assert_output("if False or True:\n    print(\"or\")", &["or"]);
     assert_output(
-        "if True and False or True and True and True or not False and True:\n    print(\"complex\")",
+        "if not 1:\n    print(\"no\")\nelse:\n    print(\"not one false\")",
+        &["not one false"],
+    );
+    assert_output("if 1 and 1:\n    print(\"numeric and\")", &["numeric and"]);
+    assert_output("if 0 or 1:\n    print(\"numeric or\")", &["numeric or"]);
+    assert_output(
+        "if not not not 1:\n    print(\"no\")\nelse:\n    print(\"nested not false\")",
+        &["nested not false"],
+    );
+    assert_output(
+        "if 1 and 0 or 1 and 1 and 1 or not 0 and 1:\n    print(\"complex\")",
         &["complex"],
     );
 }

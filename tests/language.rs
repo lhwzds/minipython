@@ -93,10 +93,18 @@ fn short_circuits_boolean_operators() {
 }
 
 #[test]
-fn rejects_non_bool_logical_operand() {
+fn converts_logical_operands_with_truthiness() {
     assert_eq!(
-        run_source("print(True and 1)"),
-        Err("runtime error: expected bool condition, found 1".to_string())
+        run_source("print(True and 1, False or \"fallback\")"),
+        Ok(vec!["True True".to_string()])
+    );
+}
+
+#[test]
+fn runs_not_with_truthy_values() {
+    assert_eq!(
+        run_source("print(not 1, not 0, not \"\", not \"x\")"),
+        Ok(vec!["False True True False".to_string()])
     );
 }
 
@@ -257,9 +265,21 @@ fn runs_if_condition_from_comparison() {
 }
 
 #[test]
-fn rejects_non_bool_if_condition() {
+fn runs_truthy_if_conditions() {
     assert_eq!(
-        run_source("if 1:\n    print(\"yes\")"),
-        Err("runtime error: expected bool condition, found 1".to_string())
+        run_source(
+            "if 1:\n    print(\"one\")\nif 0:\n    print(\"zero\")\nelse:\n    print(\"zero false\")"
+        ),
+        Ok(vec!["one".to_string(), "zero false".to_string()])
+    );
+}
+
+#[test]
+fn runs_string_truthy_if_conditions() {
+    assert_eq!(
+        run_source(
+            "if \"x\":\n    print(\"nonempty\")\nif \"\":\n    print(\"empty\")\nelse:\n    print(\"empty false\")"
+        ),
+        Ok(vec!["nonempty".to_string(), "empty false".to_string()])
     );
 }

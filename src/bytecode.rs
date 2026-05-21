@@ -8,10 +8,6 @@ pub enum Instruction {
         dst: Register,
         value: Value,
     },
-    Move {
-        dst: Register,
-        src: Register,
-    },
     LoadName {
         dst: Register,
         name: String,
@@ -59,7 +55,8 @@ pub enum Instruction {
         dst: Register,
         src: Register,
     },
-    AssertBool {
+    ToBool {
+        dst: Register,
         src: Register,
     },
     JumpIfFalse {

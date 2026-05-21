@@ -35,10 +35,6 @@ impl Vm {
                 Instruction::LoadConst { dst, value } => {
                     self.write_register(dst, value);
                 }
-                Instruction::Move { dst, src } => {
-                    let value = self.read_register(src)?.clone();
-                    self.write_register(dst, value);
-                }
                 Instruction::LoadName { dst, name } => {
                     let value = self.load_name(&name)?;
                     self.write_register(dst, value);
@@ -89,8 +85,9 @@ impl Vm {
                     let value = is_truthy(self.read_register(src)?)?;
                     self.write_register(dst, Value::Bool(!value));
                 }
-                Instruction::AssertBool { src } => {
-                    is_truthy(self.read_register(src)?)?;
+                Instruction::ToBool { dst, src } => {
+                    let value = is_truthy(self.read_register(src)?)?;
+                    self.write_register(dst, Value::Bool(value));
                 }
                 Instruction::JumpIfFalse { condition, target } => {
                     let condition = self.read_register(condition)?;
@@ -189,7 +186,10 @@ fn compare_values(left: Value, right: Value) -> Result<Ordering, String> {
 fn is_truthy(value: &Value) -> Result<bool, String> {
     match value {
         Value::Bool(value) => Ok(*value),
-        value => Err(format!("expected bool condition, found {value}")),
+        Value::Number(value) => Ok(*value != 0),
+        Value::String(value) => Ok(!value.is_empty()),
+        Value::None => Ok(false),
+        value => Err(format!("cannot use {value} as a condition")),
     }
 }
 
@@ -382,33 +382,6 @@ mod tests {
     }
 
     #[test]
-    fn moves_register_value() {
-        let instructions = vec![
-            Instruction::LoadName {
-                dst: 0,
-                name: "print".to_string(),
-            },
-            Instruction::LoadConst {
-                dst: 1,
-                value: Value::Bool(true),
-            },
-            Instruction::AssertBool { src: 1 },
-            Instruction::Move { dst: 2, src: 1 },
-            Instruction::Call {
-                dst: 3,
-                callee: 0,
-                args: vec![2],
-            },
-            Instruction::Pop { src: 3 },
-            Instruction::Halt,
-        ];
-
-        let mut vm = Vm::new(instructions);
-
-        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
-    }
-
-    #[test]
     fn runs_jump_if_false_program() {
         let instructions = vec![
             Instruction::LoadConst {
@@ -482,11 +455,37 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_bool_jump_condition() {
+    fn converts_value_to_bool() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Number(1),
+            },
+            Instruction::ToBool { dst: 2, src: 1 },
+            Instruction::Call {
+                dst: 3,
+                callee: 0,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
+    }
+
+    #[test]
+    fn uses_number_truthiness_for_jump_condition() {
         let instructions = vec![
             Instruction::LoadConst {
                 dst: 0,
-                value: Value::Number(1),
+                value: Value::Number(0),
             },
             Instruction::JumpIfFalse {
                 condition: 0,
@@ -497,10 +496,7 @@ mod tests {
 
         let mut vm = Vm::new(instructions);
 
-        assert_eq!(
-            vm.run(),
-            Err("expected bool condition, found 1".to_string())
-        );
+        assert_eq!(vm.run(), Ok(Vec::new()));
     }
 
     #[test]
