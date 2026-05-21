@@ -106,8 +106,8 @@ fn cpython_grammar_ordering_comparison_subset() {
 }
 
 // Adapted from CPython grammar boolean test coverage in
-// Lib/test/test_grammar.py. MiniPython returns Bool for `and`/`or` in this
-// phase, but it now uses Python-style truthiness for operands.
+// Lib/test/test_grammar.py. MiniPython now uses Python-style truthiness and
+// returns the selected operand for `and`/`or`.
 #[test]
 fn cpython_grammar_boolean_operations_subset() {
     assert_output(
@@ -117,6 +117,10 @@ fn cpython_grammar_boolean_operations_subset() {
     assert_output(
         "print(True and False, True and True, False or True, False or False)",
         &["False True True False"],
+    );
+    assert_output(
+        "print(1 and \"x\", 0 or \"fallback\", \"x\" or 2)",
+        &["x fallback x"],
     );
     assert_output("if not False:\n    print(\"not\")", &["not"]);
     assert_output("if True and True:\n    print(\"and\")", &["and"]);

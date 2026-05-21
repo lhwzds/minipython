@@ -35,6 +35,10 @@ impl Vm {
                 Instruction::LoadConst { dst, value } => {
                     self.write_register(dst, value);
                 }
+                Instruction::Move { dst, src } => {
+                    let value = self.read_register(src)?.clone();
+                    self.write_register(dst, value);
+                }
                 Instruction::LoadName { dst, name } => {
                     let value = self.load_name(&name)?;
                     self.write_register(dst, value);
@@ -84,10 +88,6 @@ impl Vm {
                 Instruction::Not { dst, src } => {
                     let value = is_truthy(self.read_register(src)?)?;
                     self.write_register(dst, Value::Bool(!value));
-                }
-                Instruction::ToBool { dst, src } => {
-                    let value = is_truthy(self.read_register(src)?)?;
-                    self.write_register(dst, Value::Bool(value));
                 }
                 Instruction::JumpIfFalse { condition, target } => {
                     let condition = self.read_register(condition)?;
@@ -382,6 +382,32 @@ mod tests {
     }
 
     #[test]
+    fn moves_register_value() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::String("value".to_string()),
+            },
+            Instruction::Move { dst: 2, src: 1 },
+            Instruction::Call {
+                dst: 3,
+                callee: 0,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["value".to_string()]));
+    }
+
+    #[test]
     fn runs_jump_if_false_program() {
         let instructions = vec![
             Instruction::LoadConst {
@@ -452,32 +478,6 @@ mod tests {
         let mut vm = Vm::new(instructions);
 
         assert_eq!(vm.run(), Ok(Vec::new()));
-    }
-
-    #[test]
-    fn converts_value_to_bool() {
-        let instructions = vec![
-            Instruction::LoadName {
-                dst: 0,
-                name: "print".to_string(),
-            },
-            Instruction::LoadConst {
-                dst: 1,
-                value: Value::Number(1),
-            },
-            Instruction::ToBool { dst: 2, src: 1 },
-            Instruction::Call {
-                dst: 3,
-                callee: 0,
-                args: vec![2],
-            },
-            Instruction::Pop { src: 3 },
-            Instruction::Halt,
-        ];
-
-        let mut vm = Vm::new(instructions);
-
-        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
     }
 
     #[test]

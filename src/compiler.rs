@@ -218,7 +218,7 @@ impl Compiler {
 
         let right = self.compile_expr(right)?;
         self.instructions
-            .push(Instruction::ToBool { dst, src: right });
+            .push(Instruction::Move { dst, src: right });
 
         let jump_to_end = self.instructions.len();
         self.instructions
@@ -226,10 +226,7 @@ impl Compiler {
 
         let false_target = self.instructions.len();
         self.patch_jump_target(jump_to_false, false_target)?;
-        self.instructions.push(Instruction::LoadConst {
-            dst,
-            value: Value::Bool(false),
-        });
+        self.instructions.push(Instruction::Move { dst, src: left });
 
         let end_target = self.instructions.len();
         self.patch_jump_target(jump_to_end, end_target)?;
@@ -247,10 +244,7 @@ impl Compiler {
             target: usize::MAX,
         });
 
-        self.instructions.push(Instruction::LoadConst {
-            dst,
-            value: Value::Bool(true),
-        });
+        self.instructions.push(Instruction::Move { dst, src: left });
 
         let jump_to_end = self.instructions.len();
         self.instructions
@@ -261,7 +255,7 @@ impl Compiler {
 
         let right = self.compile_expr(right)?;
         self.instructions
-            .push(Instruction::ToBool { dst, src: right });
+            .push(Instruction::Move { dst, src: right });
 
         let end_target = self.instructions.len();
         self.patch_jump_target(jump_to_end, end_target)?;
@@ -658,12 +652,9 @@ mod tests {
                     dst: 2,
                     value: Value::Bool(false)
                 },
-                Instruction::ToBool { dst: 1, src: 2 },
+                Instruction::Move { dst: 1, src: 2 },
                 Instruction::Jump { target: 6 },
-                Instruction::LoadConst {
-                    dst: 1,
-                    value: Value::Bool(false)
-                },
+                Instruction::Move { dst: 1, src: 0 },
                 Instruction::Pop { src: 1 },
                 Instruction::Halt,
             ])

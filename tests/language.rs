@@ -87,16 +87,25 @@ fn runs_boolean_operators_in_if_condition() {
 #[test]
 fn short_circuits_boolean_operators() {
     assert_eq!(
-        run_source("print(False and unknown)\nprint(True or unknown)"),
-        Ok(vec!["False".to_string(), "True".to_string()])
+        run_source(
+            "print(False and unknown)\nprint(True or unknown)\nprint(0 and unknown)\nprint(\"x\" or unknown)"
+        ),
+        Ok(vec![
+            "False".to_string(),
+            "True".to_string(),
+            "0".to_string(),
+            "x".to_string(),
+        ])
     );
 }
 
 #[test]
-fn converts_logical_operands_with_truthiness() {
+fn returns_logical_operands_with_truthiness() {
     assert_eq!(
-        run_source("print(True and 1, False or \"fallback\")"),
-        Ok(vec!["True True".to_string()])
+        run_source(
+            "print(True and 1, False or \"fallback\")\nprint(0 or \"fallback\", \"x\" and \"y\", \"x\" or 2)"
+        ),
+        Ok(vec!["1 fallback".to_string(), "fallback y x".to_string(),])
     );
 }
 
