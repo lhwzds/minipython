@@ -1,5 +1,6 @@
 use crate::bytecode::{Instruction, Register};
 use crate::value::Value;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub struct Vm {
@@ -34,6 +35,10 @@ impl Vm {
                 Instruction::LoadConst { dst, value } => {
                     self.write_register(dst, value);
                 }
+                Instruction::Move { dst, src } => {
+                    let value = self.read_register(src)?.clone();
+                    self.write_register(dst, value);
+                }
                 Instruction::LoadName { dst, name } => {
                     let value = self.load_name(&name)?;
                     self.write_register(dst, value);
@@ -52,6 +57,40 @@ impl Vm {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
                     self.write_register(dst, Value::Bool(left == right));
+                }
+                Instruction::NotEqual { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    self.write_register(dst, Value::Bool(left != right));
+                }
+                Instruction::Less { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    self.write_register(dst, Value::Bool(compare_values(left, right)?.is_lt()));
+                }
+                Instruction::LessEqual { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let ordering = compare_values(left, right)?;
+                    self.write_register(dst, Value::Bool(ordering.is_lt() || ordering.is_eq()));
+                }
+                Instruction::Greater { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    self.write_register(dst, Value::Bool(compare_values(left, right)?.is_gt()));
+                }
+                Instruction::GreaterEqual { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let ordering = compare_values(left, right)?;
+                    self.write_register(dst, Value::Bool(ordering.is_gt() || ordering.is_eq()));
+                }
+                Instruction::Not { dst, src } => {
+                    let value = is_truthy(self.read_register(src)?)?;
+                    self.write_register(dst, Value::Bool(!value));
+                }
+                Instruction::AssertBool { src } => {
+                    is_truthy(self.read_register(src)?)?;
                 }
                 Instruction::JumpIfFalse { condition, target } => {
                     let condition = self.read_register(condition)?;
@@ -136,6 +175,14 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),
         (Value::String(left), Value::String(right)) => Ok(Value::String(left + &right)),
         (left, right) => Err(format!("cannot add {left} and {right}")),
+    }
+}
+
+fn compare_values(left: Value, right: Value) -> Result<Ordering, String> {
+    match (&left, &right) {
+        (Value::Number(left), Value::Number(right)) => Ok(left.cmp(right)),
+        (Value::String(left), Value::String(right)) => Ok(left.cmp(right)),
+        _ => Err(format!("cannot compare {left} and {right}")),
     }
 }
 
@@ -266,6 +313,93 @@ mod tests {
                 args: vec![3],
             },
             Instruction::Pop { src: 4 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
+    }
+
+    #[test]
+    fn runs_ordering_comparison_program() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Number(1),
+            },
+            Instruction::LoadConst {
+                dst: 2,
+                value: Value::Number(2),
+            },
+            Instruction::Less {
+                dst: 3,
+                left: 1,
+                right: 2,
+            },
+            Instruction::Call {
+                dst: 4,
+                callee: 0,
+                args: vec![3],
+            },
+            Instruction::Pop { src: 4 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
+    }
+
+    #[test]
+    fn runs_not_program() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Bool(true),
+            },
+            Instruction::Not { dst: 2, src: 1 },
+            Instruction::Call {
+                dst: 3,
+                callee: 0,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["False".to_string()]));
+    }
+
+    #[test]
+    fn moves_register_value() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Bool(true),
+            },
+            Instruction::AssertBool { src: 1 },
+            Instruction::Move { dst: 2, src: 1 },
+            Instruction::Call {
+                dst: 3,
+                callee: 0,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
             Instruction::Halt,
         ];
 

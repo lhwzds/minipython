@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
+use crate::ast::{BinaryOp, ComparisonOp, Expr, LogicalOp, Program, Stmt, UnaryOp};
 use crate::lexer::Token;
 
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {
@@ -109,24 +109,83 @@ impl Parser<'_> {
     }
 
     fn parse_expression(&mut self) -> Result<Expr, String> {
+        self.parse_or()
+    }
+
+    fn parse_or(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_and()?;
+
+        while matches!(self.peek(), Some(Token::Or)) {
+            self.advance();
+            let right = self.parse_and()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op: LogicalOp::Or,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_and(&mut self) -> Result<Expr, String> {
+        let mut expr = self.parse_not()?;
+
+        while matches!(self.peek(), Some(Token::And)) {
+            self.advance();
+            let right = self.parse_not()?;
+            expr = Expr::Logical {
+                left: Box::new(expr),
+                op: LogicalOp::And,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(expr)
+    }
+
+    fn parse_not(&mut self) -> Result<Expr, String> {
+        if matches!(self.peek(), Some(Token::Not)) {
+            self.advance();
+            let operand = self.parse_not()?;
+            return Ok(Expr::Unary {
+                op: UnaryOp::Not,
+                operand: Box::new(operand),
+            });
+        }
+
         self.parse_comparison()
     }
 
     fn parse_comparison(&mut self) -> Result<Expr, String> {
         let left = self.parse_addition()?;
 
-        if matches!(self.peek(), Some(Token::EqualEqual)) {
-            self.advance();
+        if let Some(op) = self.match_comparison_operator() {
             let right = self.parse_addition()?;
 
             Ok(Expr::Comparison {
                 left: Box::new(left),
-                op: ComparisonOp::Equal,
+                op,
                 right: Box::new(right),
             })
         } else {
             Ok(left)
         }
+    }
+
+    fn match_comparison_operator(&mut self) -> Option<ComparisonOp> {
+        let op = match self.peek()? {
+            Token::EqualEqual => ComparisonOp::Equal,
+            Token::BangEqual => ComparisonOp::NotEqual,
+            Token::Less => ComparisonOp::Less,
+            Token::LessEqual => ComparisonOp::LessEqual,
+            Token::Greater => ComparisonOp::Greater,
+            Token::GreaterEqual => ComparisonOp::GreaterEqual,
+            _ => return None,
+        };
+
+        self.advance();
+        Some(op)
     }
 
     fn parse_addition(&mut self) -> Result<Expr, String> {
@@ -283,7 +342,7 @@ fn statement_has_own_boundary(statement: &Stmt) -> bool {
 #[cfg(test)]
 mod tests {
     use super::parse;
-    use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
+    use crate::ast::{BinaryOp, ComparisonOp, Expr, LogicalOp, Program, Stmt, UnaryOp};
     use crate::lexer::{Token, lex};
 
     #[test]
@@ -455,6 +514,64 @@ mod tests {
                         op: ComparisonOp::Equal,
                         right: Box::new(Expr::Number(3)),
                     }],
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_ordering_comparison() {
+        let tokens = vec![Token::Number(1), Token::Less, Token::Number(2), Token::Eof];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Comparison {
+                    left: Box::new(Expr::Number(1)),
+                    op: ComparisonOp::Less,
+                    right: Box::new(Expr::Number(2)),
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_not_expression() {
+        let tokens = vec![Token::Not, Token::True, Token::Eof];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Unary {
+                    op: UnaryOp::Not,
+                    operand: Box::new(Expr::Bool(true)),
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_and_before_or_expression() {
+        let tokens = vec![
+            Token::True,
+            Token::Or,
+            Token::False,
+            Token::And,
+            Token::True,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Logical {
+                    left: Box::new(Expr::Bool(true)),
+                    op: LogicalOp::Or,
+                    right: Box::new(Expr::Logical {
+                        left: Box::new(Expr::Bool(false)),
+                        op: LogicalOp::And,
+                        right: Box::new(Expr::Bool(true)),
+                    }),
                 })],
             })
         );

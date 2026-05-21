@@ -8,6 +8,10 @@ pub enum Instruction {
         dst: Register,
         value: Value,
     },
+    Move {
+        dst: Register,
+        src: Register,
+    },
     LoadName {
         dst: Register,
         name: String,
@@ -25,6 +29,38 @@ pub enum Instruction {
         dst: Register,
         left: Register,
         right: Register,
+    },
+    NotEqual {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
+    Less {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
+    LessEqual {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
+    Greater {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
+    GreaterEqual {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
+    Not {
+        dst: Register,
+        src: Register,
+    },
+    AssertBool {
+        src: Register,
     },
     JumpIfFalse {
         condition: Register,

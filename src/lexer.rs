@@ -4,6 +4,9 @@ pub enum Token {
     If,
     Else,
     Pass,
+    And,
+    Or,
+    Not,
     LeftParen,
     RightParen,
     Comma,
@@ -14,6 +17,11 @@ pub enum Token {
     Plus,
     Equal,
     EqualEqual,
+    BangEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
     Number(i64),
     String(String),
     True,
@@ -99,6 +107,33 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                     tokens.push(Token::Equal);
                 }
             }
+            '!' => {
+                current += 1;
+                if current < chars.len() && chars[current] == '=' {
+                    tokens.push(Token::BangEqual);
+                    current += 1;
+                } else {
+                    return Err("unexpected character: !".to_string());
+                }
+            }
+            '<' => {
+                current += 1;
+                if current < chars.len() && chars[current] == '=' {
+                    tokens.push(Token::LessEqual);
+                    current += 1;
+                } else {
+                    tokens.push(Token::Less);
+                }
+            }
+            '>' => {
+                current += 1;
+                if current < chars.len() && chars[current] == '=' {
+                    tokens.push(Token::GreaterEqual);
+                    current += 1;
+                } else {
+                    tokens.push(Token::Greater);
+                }
+            }
             '#' => {
                 current += 1;
                 while current < chars.len() && chars[current] != '\n' && chars[current] != '\r' {
@@ -151,6 +186,9 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                     "if" => tokens.push(Token::If),
                     "else" => tokens.push(Token::Else),
                     "pass" => tokens.push(Token::Pass),
+                    "and" => tokens.push(Token::And),
+                    "or" => tokens.push(Token::Or),
+                    "not" => tokens.push(Token::Not),
                     "True" => tokens.push(Token::True),
                     "False" => tokens.push(Token::False),
                     _ => tokens.push(Token::Identifier(word)),
@@ -279,10 +317,47 @@ mod tests {
     }
 
     #[test]
+    fn lexes_comparison_operators() {
+        assert_eq!(
+            lex("1 != 2 < 3 > 0 <= 4 >= 4"),
+            Ok(vec![
+                Token::Number(1),
+                Token::BangEqual,
+                Token::Number(2),
+                Token::Less,
+                Token::Number(3),
+                Token::Greater,
+                Token::Number(0),
+                Token::LessEqual,
+                Token::Number(4),
+                Token::GreaterEqual,
+                Token::Number(4),
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
     fn lexes_boolean_literals() {
         assert_eq!(
             lex("True False"),
             Ok(vec![Token::True, Token::False, Token::Eof])
+        );
+    }
+
+    #[test]
+    fn lexes_boolean_operators() {
+        assert_eq!(
+            lex("True and not False or True"),
+            Ok(vec![
+                Token::True,
+                Token::And,
+                Token::Not,
+                Token::False,
+                Token::Or,
+                Token::True,
+                Token::Eof,
+            ])
         );
     }
 

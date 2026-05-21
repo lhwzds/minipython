@@ -45,6 +45,14 @@ fn compares_numbers() {
 }
 
 #[test]
+fn compares_numbers_with_ordering_operators() {
+    assert_eq!(
+        run_source("print(1 != 2, 1 < 2, 2 > 1, 1 <= 1, 2 >= 2)"),
+        Ok(vec!["True True True True True".to_string()])
+    );
+}
+
+#[test]
 fn compares_strings() {
     assert_eq!(
         run_source("print(\"mini\" + \"python\" == \"minipython\")"),
@@ -57,6 +65,38 @@ fn compares_booleans() {
     assert_eq!(
         run_source("print(True == True, True == False)"),
         Ok(vec!["True False".to_string()])
+    );
+}
+
+#[test]
+fn runs_boolean_operators() {
+    assert_eq!(
+        run_source("print(not True, not False)\nprint(True and False, True or False)"),
+        Ok(vec!["False True".to_string(), "False True".to_string(),])
+    );
+}
+
+#[test]
+fn runs_boolean_operators_in_if_condition() {
+    assert_eq!(
+        run_source("if True and not False:\n    print(\"yes\")"),
+        Ok(vec!["yes".to_string()])
+    );
+}
+
+#[test]
+fn short_circuits_boolean_operators() {
+    assert_eq!(
+        run_source("print(False and unknown)\nprint(True or unknown)"),
+        Ok(vec!["False".to_string(), "True".to_string()])
+    );
+}
+
+#[test]
+fn rejects_non_bool_logical_operand() {
+    assert_eq!(
+        run_source("print(True and 1)"),
+        Err("runtime error: expected bool condition, found 1".to_string())
     );
 }
 

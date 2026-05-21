@@ -78,8 +78,7 @@ fn cpython_string_literal_and_concat_subset() {
 }
 
 // Adapted from CPython grammar comparison smoke tests in
-// Lib/test/test_grammar.py. MiniPython currently supports only `==`, so this
-// keeps the equal-comparison cases and checks both expression and if contexts.
+// Lib/test/test_grammar.py. This checks `==` in expression and if contexts.
 #[test]
 fn cpython_grammar_equal_comparison_subset() {
     assert_output("x = 1 == 1\nprint(x)", &["True"]);
@@ -88,6 +87,44 @@ fn cpython_grammar_equal_comparison_subset() {
     assert_output("print(\"x\" == \"x\", True == False)", &["True False"]);
     assert_output("if 1 == 1:\n    print(\"equal\")", &["equal"]);
     assert_output("x = 1\nif x == 1:\n    print(x)", &["1"]);
+}
+
+// Adapted from CPython grammar comparison smoke tests in
+// Lib/test/test_grammar.py for `!=`, `<`, `>`, `<=`, and `>=`.
+#[test]
+fn cpython_grammar_ordering_comparison_subset() {
+    assert_output(
+        "print(1 != 1, 1 != 2)\nprint(1 < 2, 2 < 1)\nprint(2 > 1, 1 > 2)",
+        &["False True", "True False", "True False"],
+    );
+    assert_output(
+        "print(1 <= 1, 1 <= 2, 2 <= 1)\nprint(2 >= 2, 2 >= 1, 1 >= 2)",
+        &["True True False", "True True False"],
+    );
+    assert_output("if 1 < 2:\n    print(\"less\")", &["less"]);
+    assert_output("x = 2\nif x >= 2:\n    print(x)", &["2"]);
+}
+
+// Adapted from CPython grammar boolean test coverage in
+// Lib/test/test_grammar.py. MiniPython currently keeps these bool-only instead
+// of using Python's full numeric truthiness.
+#[test]
+fn cpython_grammar_boolean_operations_subset() {
+    assert_output(
+        "print(not True, not False, not not not True)",
+        &["False True False"],
+    );
+    assert_output(
+        "print(True and False, True and True, False or True, False or False)",
+        &["False True True False"],
+    );
+    assert_output("if not False:\n    print(\"not\")", &["not"]);
+    assert_output("if True and True:\n    print(\"and\")", &["and"]);
+    assert_output("if False or True:\n    print(\"or\")", &["or"]);
+    assert_output(
+        "if True and False or True and True and True or not False and True:\n    print(\"complex\")",
+        &["complex"],
+    );
 }
 
 // Adapted from CPython grammar `if_stmt` coverage in

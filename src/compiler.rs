@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
+use crate::ast::{BinaryOp, ComparisonOp, Expr, LogicalOp, Program, Stmt, UnaryOp};
 use crate::bytecode::{Instruction, Register};
 use crate::value::Value;
 
@@ -136,10 +136,34 @@ impl Compiler {
                         self.instructions
                             .push(Instruction::Equal { dst, left, right });
                     }
+                    ComparisonOp::NotEqual => {
+                        self.instructions
+                            .push(Instruction::NotEqual { dst, left, right });
+                    }
+                    ComparisonOp::Less => {
+                        self.instructions
+                            .push(Instruction::Less { dst, left, right });
+                    }
+                    ComparisonOp::LessEqual => {
+                        self.instructions
+                            .push(Instruction::LessEqual { dst, left, right });
+                    }
+                    ComparisonOp::Greater => {
+                        self.instructions
+                            .push(Instruction::Greater { dst, left, right });
+                    }
+                    ComparisonOp::GreaterEqual => {
+                        self.instructions
+                            .push(Instruction::GreaterEqual { dst, left, right });
+                    }
                 }
 
                 Ok(dst)
             }
+            Expr::Unary { op, operand } => match op {
+                UnaryOp::Not => self.compile_not_expr(operand),
+            },
+            Expr::Logical { left, op, right } => self.compile_logical_expr(left, op, right),
             Expr::Name(name) => {
                 let dst = self.alloc_register();
                 self.instructions.push(Instruction::LoadName {
@@ -161,6 +185,92 @@ impl Compiler {
                 Ok(dst)
             }
         }
+    }
+
+    fn compile_not_expr(&mut self, operand: &Expr) -> Result<Register, String> {
+        let src = self.compile_expr(operand)?;
+        let dst = self.alloc_register();
+        self.instructions.push(Instruction::Not { dst, src });
+        Ok(dst)
+    }
+
+    fn compile_logical_expr(
+        &mut self,
+        left: &Expr,
+        op: &LogicalOp,
+        right: &Expr,
+    ) -> Result<Register, String> {
+        match op {
+            LogicalOp::And => self.compile_and_expr(left, right),
+            LogicalOp::Or => self.compile_or_expr(left, right),
+        }
+    }
+
+    fn compile_and_expr(&mut self, left: &Expr, right: &Expr) -> Result<Register, String> {
+        let left = self.compile_expr(left)?;
+        let dst = self.alloc_register();
+
+        let jump_to_false = self.instructions.len();
+        self.instructions.push(Instruction::JumpIfFalse {
+            condition: left,
+            target: usize::MAX,
+        });
+
+        let right = self.compile_expr(right)?;
+        self.instructions
+            .push(Instruction::AssertBool { src: right });
+        self.instructions
+            .push(Instruction::Move { dst, src: right });
+
+        let jump_to_end = self.instructions.len();
+        self.instructions
+            .push(Instruction::Jump { target: usize::MAX });
+
+        let false_target = self.instructions.len();
+        self.patch_jump_target(jump_to_false, false_target)?;
+        self.instructions.push(Instruction::LoadConst {
+            dst,
+            value: Value::Bool(false),
+        });
+
+        let end_target = self.instructions.len();
+        self.patch_jump_target(jump_to_end, end_target)?;
+
+        Ok(dst)
+    }
+
+    fn compile_or_expr(&mut self, left: &Expr, right: &Expr) -> Result<Register, String> {
+        let left = self.compile_expr(left)?;
+        let dst = self.alloc_register();
+
+        let jump_to_right = self.instructions.len();
+        self.instructions.push(Instruction::JumpIfFalse {
+            condition: left,
+            target: usize::MAX,
+        });
+
+        self.instructions.push(Instruction::LoadConst {
+            dst,
+            value: Value::Bool(true),
+        });
+
+        let jump_to_end = self.instructions.len();
+        self.instructions
+            .push(Instruction::Jump { target: usize::MAX });
+
+        let right_target = self.instructions.len();
+        self.patch_jump_target(jump_to_right, right_target)?;
+
+        let right = self.compile_expr(right)?;
+        self.instructions
+            .push(Instruction::AssertBool { src: right });
+        self.instructions
+            .push(Instruction::Move { dst, src: right });
+
+        let end_target = self.instructions.len();
+        self.patch_jump_target(jump_to_end, end_target)?;
+
+        Ok(dst)
     }
 
     fn alloc_register(&mut self) -> Register {
@@ -195,7 +305,7 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::compile;
-    use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
+    use crate::ast::{BinaryOp, ComparisonOp, Expr, LogicalOp, Program, Stmt, UnaryOp};
     use crate::bytecode::Instruction;
     use crate::value::Value;
 
@@ -467,6 +577,99 @@ mod tests {
                     right: 1
                 },
                 Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_ordering_comparison_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Comparison {
+                left: Box::new(Expr::Number(1)),
+                op: ComparisonOp::Less,
+                right: Box::new(Expr::Number(2)),
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Number(1)
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(2)
+                },
+                Instruction::Less {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_not_expression_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Unary {
+                op: UnaryOp::Not,
+                operand: Box::new(Expr::Bool(true)),
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Bool(true)
+                },
+                Instruction::Not { dst: 1, src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_and_expression_to_short_circuit_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Logical {
+                left: Box::new(Expr::Bool(true)),
+                op: LogicalOp::And,
+                right: Box::new(Expr::Bool(false)),
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Bool(true)
+                },
+                Instruction::JumpIfFalse {
+                    condition: 0,
+                    target: 6
+                },
+                Instruction::LoadConst {
+                    dst: 2,
+                    value: Value::Bool(false)
+                },
+                Instruction::AssertBool { src: 2 },
+                Instruction::Move { dst: 1, src: 2 },
+                Instruction::Jump { target: 7 },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Bool(false)
+                },
+                Instruction::Pop { src: 1 },
                 Instruction::Halt,
             ])
         );

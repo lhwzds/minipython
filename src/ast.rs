@@ -34,6 +34,15 @@ pub enum Expr {
         op: ComparisonOp,
         right: Box<Expr>,
     },
+    Unary {
+        op: UnaryOp,
+        operand: Box<Expr>,
+    },
+    Logical {
+        left: Box<Expr>,
+        op: LogicalOp,
+        right: Box<Expr>,
+    },
     Call {
         callee: Box<Expr>,
         args: Vec<Expr>,
@@ -48,4 +57,20 @@ pub enum BinaryOp {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ComparisonOp {
     Equal,
+    NotEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UnaryOp {
+    Not,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LogicalOp {
+    And,
+    Or,
 }
