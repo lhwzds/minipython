@@ -7,8 +7,11 @@ pub enum Token {
     Newline,
     Plus,
     Equal,
+    EqualEqual,
     Number(i64),
     String(String),
+    True,
+    False,
     Eof,
 }
 
@@ -52,8 +55,13 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 current += 1;
             }
             '=' => {
-                tokens.push(Token::Equal);
                 current += 1;
+                if current < chars.len() && chars[current] == '=' {
+                    tokens.push(Token::EqualEqual);
+                    current += 1;
+                } else {
+                    tokens.push(Token::Equal);
+                }
             }
             '"' => {
                 current += 1;
@@ -97,7 +105,11 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 }
 
                 let word: String = chars[start..current].iter().collect();
-                tokens.push(Token::Identifier(word));
+                match word.as_str() {
+                    "True" => tokens.push(Token::True),
+                    "False" => tokens.push(Token::False),
+                    _ => tokens.push(Token::Identifier(word)),
+                }
             }
             _ => return Err(format!("unexpected character: {ch}")),
         }
@@ -165,6 +177,27 @@ mod tests {
                 Token::Number(1),
                 Token::Eof,
             ])
+        );
+    }
+
+    #[test]
+    fn lexes_equal_equal() {
+        assert_eq!(
+            lex("x == 1"),
+            Ok(vec![
+                Token::Identifier("x".to_string()),
+                Token::EqualEqual,
+                Token::Number(1),
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_boolean_literals() {
+        assert_eq!(
+            lex("True False"),
+            Ok(vec![Token::True, Token::False, Token::Eof])
         );
     }
 

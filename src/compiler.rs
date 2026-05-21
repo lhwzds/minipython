@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Expr, Program, Stmt};
+use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
 use crate::bytecode::{Instruction, Register};
 use crate::value::Value;
 
@@ -58,6 +58,14 @@ impl Compiler {
                 });
                 Ok(dst)
             }
+            Expr::Bool(value) => {
+                let dst = self.alloc_register();
+                self.instructions.push(Instruction::LoadConst {
+                    dst,
+                    value: Value::Bool(*value),
+                });
+                Ok(dst)
+            }
             Expr::Binary { left, op, right } => {
                 let left = self.compile_expr(left)?;
                 let right = self.compile_expr(right)?;
@@ -67,6 +75,20 @@ impl Compiler {
                     BinaryOp::Add => {
                         self.instructions
                             .push(Instruction::Add { dst, left, right });
+                    }
+                }
+
+                Ok(dst)
+            }
+            Expr::Comparison { left, op, right } => {
+                let left = self.compile_expr(left)?;
+                let right = self.compile_expr(right)?;
+                let dst = self.alloc_register();
+
+                match op {
+                    ComparisonOp::Equal => {
+                        self.instructions
+                            .push(Instruction::Equal { dst, left, right });
                     }
                 }
 
@@ -105,7 +127,7 @@ impl Compiler {
 #[cfg(test)]
 mod tests {
     use super::compile;
-    use crate::ast::{BinaryOp, Expr, Program, Stmt};
+    use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
     use crate::bytecode::Instruction;
     use crate::value::Value;
 
@@ -312,6 +334,69 @@ mod tests {
                     dst: 2,
                     callee: 0,
                     args: vec![1]
+                },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_boolean_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Call {
+                callee: Box::new(Expr::Name("print".to_string())),
+                args: vec![Expr::Bool(true)],
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Bool(true)
+                },
+                Instruction::Call {
+                    dst: 2,
+                    callee: 0,
+                    args: vec![1]
+                },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_equality_comparison_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Comparison {
+                left: Box::new(Expr::Number(1)),
+                op: ComparisonOp::Equal,
+                right: Box::new(Expr::Number(2)),
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Number(1)
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(2)
+                },
+                Instruction::Equal {
+                    dst: 2,
+                    left: 0,
+                    right: 1
                 },
                 Instruction::Pop { src: 2 },
                 Instruction::Halt,

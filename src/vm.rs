@@ -48,6 +48,11 @@ impl Vm {
                     let value = add_values(left, right)?;
                     self.write_register(dst, value);
                 }
+                Instruction::Equal { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    self.write_register(dst, Value::Bool(left == right));
+                }
                 Instruction::Call { dst, callee, args } => {
                     let callee = self.read_register(callee)?.clone();
                     let args = args
@@ -208,6 +213,40 @@ mod tests {
         let mut vm = Vm::new(instructions);
 
         assert_eq!(vm.run(), Ok(vec!["1 2".to_string()]));
+    }
+
+    #[test]
+    fn runs_equality_program() {
+        let instructions = vec![
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::Number(1),
+            },
+            Instruction::LoadConst {
+                dst: 2,
+                value: Value::Number(1),
+            },
+            Instruction::Equal {
+                dst: 3,
+                left: 1,
+                right: 2,
+            },
+            Instruction::Call {
+                dst: 4,
+                callee: 0,
+                args: vec![3],
+            },
+            Instruction::Pop { src: 4 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
     }
 
     #[test]

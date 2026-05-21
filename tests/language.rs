@@ -16,6 +16,51 @@ fn prints_grouped_addition() {
 }
 
 #[test]
+fn prints_boolean_literals() {
+    assert_eq!(
+        run_source("print(True, False)"),
+        Ok(vec!["True False".to_string()])
+    );
+}
+
+#[test]
+fn compares_numbers() {
+    assert_eq!(
+        run_source("print(1 + 2 == 3)\nprint(1 == 2)"),
+        Ok(vec!["True".to_string(), "False".to_string()])
+    );
+}
+
+#[test]
+fn compares_strings() {
+    assert_eq!(
+        run_source("print(\"mini\" + \"python\" == \"minipython\")"),
+        Ok(vec!["True".to_string()])
+    );
+}
+
+#[test]
+fn compares_booleans() {
+    assert_eq!(
+        run_source("print(True == True, True == False)"),
+        Ok(vec!["True False".to_string()])
+    );
+}
+
+#[test]
+fn compares_different_value_types_as_false() {
+    assert_eq!(
+        run_source("print(1 == \"1\")"),
+        Ok(vec!["False".to_string()])
+    );
+}
+
+#[test]
+fn prints_nested_grouped_expression() {
+    assert_eq!(run_source("print(((1)))"), Ok(vec!["1".to_string()]));
+}
+
+#[test]
 fn prints_multiple_arguments() {
     assert_eq!(run_source("print(1 + 2, 3)"), Ok(vec!["3 3".to_string()]));
 }
@@ -39,6 +84,14 @@ fn skips_blank_lines_between_statements() {
 #[test]
 fn assigns_and_reads_variable() {
     assert_eq!(run_source("x = 1 + 2\nprint(x)"), Ok(vec!["3".to_string()]));
+}
+
+#[test]
+fn assigns_and_reads_boolean() {
+    assert_eq!(
+        run_source("ok = 1 + 2 == 3\nprint(ok)"),
+        Ok(vec!["True".to_string()])
+    );
 }
 
 #[test]
@@ -86,5 +139,21 @@ fn reports_non_callable_value() {
     assert_eq!(
         run_source("1(2)"),
         Err("runtime error: 1 is not callable".to_string())
+    );
+}
+
+#[test]
+fn reports_empty_grouped_expression() {
+    assert_eq!(
+        run_source("print(())"),
+        Err("parse error: expected expression, found RightParen".to_string())
+    );
+}
+
+#[test]
+fn reports_unclosed_grouped_expression() {
+    assert_eq!(
+        run_source("print((1 + 2"),
+        Err("parse error: expected ')', found Eof".to_string())
     );
 }

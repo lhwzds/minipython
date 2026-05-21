@@ -1,4 +1,4 @@
-use crate::ast::{BinaryOp, Expr, Program, Stmt};
+use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
 use crate::lexer::Token;
 
 pub fn parse(tokens: &[Token]) -> Result<Program, String> {
@@ -49,7 +49,24 @@ impl Parser<'_> {
     }
 
     fn parse_expression(&mut self) -> Result<Expr, String> {
-        self.parse_addition()
+        self.parse_comparison()
+    }
+
+    fn parse_comparison(&mut self) -> Result<Expr, String> {
+        let left = self.parse_addition()?;
+
+        if matches!(self.peek(), Some(Token::EqualEqual)) {
+            self.advance();
+            let right = self.parse_addition()?;
+
+            Ok(Expr::Comparison {
+                left: Box::new(left),
+                op: ComparisonOp::Equal,
+                right: Box::new(right),
+            })
+        } else {
+            Ok(left)
+        }
     }
 
     fn parse_addition(&mut self) -> Result<Expr, String> {
@@ -109,6 +126,8 @@ impl Parser<'_> {
         match self.advance() {
             Some(Token::Number(value)) => Ok(Expr::Number(*value)),
             Some(Token::String(value)) => Ok(Expr::String(value.clone())),
+            Some(Token::True) => Ok(Expr::Bool(true)),
+            Some(Token::False) => Ok(Expr::Bool(false)),
             Some(Token::Identifier(name)) => Ok(Expr::Name(name.clone())),
             Some(Token::LeftParen) => {
                 let expr = self.parse_expression()?;
@@ -160,7 +179,7 @@ impl Parser<'_> {
 #[cfg(test)]
 mod tests {
     use super::parse;
-    use crate::ast::{BinaryOp, Expr, Program, Stmt};
+    use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
     use crate::lexer::Token;
 
     #[test]
@@ -282,6 +301,62 @@ mod tests {
     }
 
     #[test]
+    fn parses_boolean_expression() {
+        let tokens = vec![
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::True,
+            Token::Comma,
+            Token::False,
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::Bool(true), Expr::Bool(false)],
+                })],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_equality_comparison_after_addition() {
+        let tokens = vec![
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::Number(1),
+            Token::Plus,
+            Token::Number(2),
+            Token::EqualEqual,
+            Token::Number(3),
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::Comparison {
+                        left: Box::new(Expr::Binary {
+                            left: Box::new(Expr::Number(1)),
+                            op: BinaryOp::Add,
+                            right: Box::new(Expr::Number(2)),
+                        }),
+                        op: ComparisonOp::Equal,
+                        right: Box::new(Expr::Number(3)),
+                    }],
+                })],
+            })
+        );
+    }
+
+    #[test]
     fn parses_grouped_expression() {
         let tokens = vec![
             Token::Identifier("print".to_string()),
@@ -314,6 +389,48 @@ mod tests {
                 })],
             })
         );
+    }
+
+    #[test]
+    fn parses_nested_grouped_expression_without_ast_wrapper() {
+        let tokens = vec![
+            Token::LeftParen,
+            Token::LeftParen,
+            Token::Number(1),
+            Token::RightParen,
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::Number(1))],
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_empty_grouped_expression() {
+        let tokens = vec![Token::LeftParen, Token::RightParen, Token::Eof];
+
+        assert_eq!(
+            parse(&tokens),
+            Err("expected expression, found RightParen".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_unclosed_grouped_expression() {
+        let tokens = vec![
+            Token::LeftParen,
+            Token::Number(1),
+            Token::Plus,
+            Token::Number(2),
+            Token::Eof,
+        ];
+
+        assert_eq!(parse(&tokens), Err("expected ')', found Eof".to_string()));
     }
 
     #[test]

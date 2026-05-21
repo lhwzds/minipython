@@ -21,6 +21,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    Equal {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     Call {
         dst: Register,
         callee: Register,
