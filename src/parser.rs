@@ -19,11 +19,14 @@ impl Parser<'_> {
 
         self.skip_newlines();
         while !matches!(self.peek(), Some(Token::Eof) | None) {
-            statements.push(self.parse_statement()?);
+            let statement = self.parse_statement()?;
+            let has_own_boundary = statement_has_own_boundary(&statement);
+            statements.push(statement);
 
             match self.peek() {
                 Some(Token::Newline) => self.skip_newlines(),
                 Some(Token::Eof) | None => {}
+                Some(_) if has_own_boundary => {}
                 Some(token) => {
                     return Err(format!("expected newline or end of input, found {token:?}"));
                 }
@@ -36,6 +39,11 @@ impl Parser<'_> {
     fn parse_statement(&mut self) -> Result<Stmt, String> {
         if matches!(self.peek(), Some(Token::If)) {
             return self.parse_if_statement();
+        }
+
+        if matches!(self.peek(), Some(Token::Pass)) {
+            self.advance();
+            return Ok(Stmt::Pass);
         }
 
         if let (Some(Token::Identifier(name)), Some(Token::Equal)) = (self.peek(), self.peek_next())
@@ -76,16 +84,20 @@ impl Parser<'_> {
     }
 
     fn parse_block(&mut self) -> Result<Vec<Stmt>, String> {
+        self.skip_newlines();
         self.expect_indent()?;
         let mut statements = Vec::new();
 
         self.skip_newlines();
         while !matches!(self.peek(), Some(Token::Dedent) | Some(Token::Eof) | None) {
-            statements.push(self.parse_statement()?);
+            let statement = self.parse_statement()?;
+            let has_own_boundary = statement_has_own_boundary(&statement);
+            statements.push(statement);
 
             match self.peek() {
                 Some(Token::Newline) => self.skip_newlines(),
                 Some(Token::Dedent) | Some(Token::Eof) | None => {}
+                Some(_) if has_own_boundary => {}
                 Some(token) => {
                     return Err(format!("expected newline or dedent, found {token:?}"));
                 }
@@ -264,11 +276,15 @@ impl Parser<'_> {
     }
 }
 
+fn statement_has_own_boundary(statement: &Stmt) -> bool {
+    matches!(statement, Stmt::If { .. })
+}
+
 #[cfg(test)]
 mod tests {
     use super::parse;
     use crate::ast::{BinaryOp, ComparisonOp, Expr, Program, Stmt};
-    use crate::lexer::Token;
+    use crate::lexer::{Token, lex};
 
     #[test]
     fn parses_print_number_statement() {
@@ -517,6 +533,44 @@ mod tests {
                 }],
             })
         );
+    }
+
+    #[test]
+    fn parses_pass_statement() {
+        let tokens = vec![Token::Pass, Token::Eof];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::Pass],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_statement_after_dedent() {
+        let tokens = lex("if True:\n    print(\"inside\")\nprint(\"after\")").unwrap();
+        let program = parse(&tokens).unwrap();
+
+        match &program.statements[..] {
+            [Stmt::If { then_body, .. }, Stmt::Expr(_)] => assert_eq!(then_body.len(), 1),
+            statements => panic!("unexpected statements: {statements:?}"),
+        }
+    }
+
+    #[test]
+    fn parses_nested_if_followed_by_statement_in_same_block() {
+        let tokens =
+            lex("if True:\n    if False:\n        print(\"skip\")\n    print(\"after\")").unwrap();
+        let program = parse(&tokens).unwrap();
+
+        match &program.statements[..] {
+            [Stmt::If { then_body, .. }] => match &then_body[..] {
+                [Stmt::If { .. }, Stmt::Expr(_)] => {}
+                statements => panic!("unexpected then body: {statements:?}"),
+            },
+            statements => panic!("unexpected statements: {statements:?}"),
+        }
     }
 
     #[test]

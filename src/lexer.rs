@@ -3,6 +3,7 @@ pub enum Token {
     Identifier(String),
     If,
     Else,
+    Pass,
     LeftParen,
     RightParen,
     Comma,
@@ -44,7 +45,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 break;
             }
 
-            if chars[current] != '\n' && chars[current] != '\r' {
+            if chars[current] != '\n' && chars[current] != '\r' && chars[current] != '#' {
                 update_indentation(indent, &mut indent_stack, &mut tokens)?;
                 at_line_start = false;
             }
@@ -98,6 +99,12 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                     tokens.push(Token::Equal);
                 }
             }
+            '#' => {
+                current += 1;
+                while current < chars.len() && chars[current] != '\n' && chars[current] != '\r' {
+                    current += 1;
+                }
+            }
             '"' => {
                 current += 1;
                 let start = current;
@@ -143,6 +150,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 match word.as_str() {
                     "if" => tokens.push(Token::If),
                     "else" => tokens.push(Token::Else),
+                    "pass" => tokens.push(Token::Pass),
                     "True" => tokens.push(Token::True),
                     "False" => tokens.push(Token::False),
                     _ => tokens.push(Token::Identifier(word)),
@@ -376,6 +384,48 @@ mod tests {
                 Token::LeftParen,
                 Token::String("yes".to_string()),
                 Token::RightParen,
+                Token::Dedent,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_pass_keyword() {
+        assert_eq!(lex("pass"), Ok(vec![Token::Pass, Token::Eof]));
+    }
+
+    #[test]
+    fn skips_inline_comments() {
+        assert_eq!(
+            lex("print(1) # one\nprint(2)"),
+            Ok(vec![
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(1),
+                Token::RightParen,
+                Token::Newline,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(2),
+                Token::RightParen,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn skips_comment_only_lines_without_indentation() {
+        assert_eq!(
+            lex("if True:\n    # comment\n    pass"),
+            Ok(vec![
+                Token::If,
+                Token::True,
+                Token::Colon,
+                Token::Newline,
+                Token::Newline,
+                Token::Indent,
+                Token::Pass,
                 Token::Dedent,
                 Token::Eof,
             ])

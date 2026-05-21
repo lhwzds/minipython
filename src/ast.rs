@@ -5,6 +5,7 @@ pub struct Program {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
+    Pass,
     Expr(Expr),
     Assign {
         name: String,

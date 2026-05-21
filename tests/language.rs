@@ -24,6 +24,19 @@ fn prints_boolean_literals() {
 }
 
 #[test]
+fn runs_pass_statement() {
+    assert_eq!(run_source("pass\nprint(1)"), Ok(vec!["1".to_string()]));
+}
+
+#[test]
+fn skips_comments() {
+    assert_eq!(
+        run_source("# leading\nprint(1) # inline\n# trailing"),
+        Ok(vec!["1".to_string()])
+    );
+}
+
+#[test]
 fn compares_numbers() {
     assert_eq!(
         run_source("print(1 + 2 == 3)\nprint(1 == 2)"),
@@ -162,6 +175,22 @@ fn reports_unclosed_grouped_expression() {
 fn runs_if_then_branch() {
     assert_eq!(
         run_source("if True:\n    print(\"yes\")"),
+        Ok(vec!["yes".to_string()])
+    );
+}
+
+#[test]
+fn runs_pass_inside_if_branch() {
+    assert_eq!(
+        run_source("if True:\n    pass\nprint(\"after\")"),
+        Ok(vec!["after".to_string()])
+    );
+}
+
+#[test]
+fn skips_comment_only_lines_inside_block() {
+    assert_eq!(
+        run_source("if True:\n    # comment\n    print(\"yes\")"),
         Ok(vec!["yes".to_string()])
     );
 }

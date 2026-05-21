@@ -24,6 +24,7 @@ struct Compiler {
 impl Compiler {
     fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), String> {
         match stmt {
+            Stmt::Pass => Ok(()),
             Stmt::Expr(expr) => {
                 let src = self.compile_expr(expr)?;
                 self.instructions.push(Instruction::Pop { src });
@@ -573,6 +574,15 @@ mod tests {
                 Instruction::Halt,
             ])
         );
+    }
+
+    #[test]
+    fn compiles_pass_to_no_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Pass],
+        };
+
+        assert_eq!(compile(&program), Ok(vec![Instruction::Halt]));
     }
 
     #[test]
