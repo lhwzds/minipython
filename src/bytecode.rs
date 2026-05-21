@@ -26,6 +26,13 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    JumpIfFalse {
+        condition: Register,
+        target: usize,
+    },
+    Jump {
+        target: usize,
+    },
     Call {
         dst: Register,
         callee: Register,

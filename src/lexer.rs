@@ -1,10 +1,15 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     Identifier(String),
+    If,
+    Else,
     LeftParen,
     RightParen,
     Comma,
+    Colon,
     Newline,
+    Indent,
+    Dedent,
     Plus,
     Equal,
     EqualEqual,
@@ -19,8 +24,32 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
     let chars: Vec<char> = source.chars().collect();
     let mut tokens = Vec::new();
     let mut current = 0;
+    let mut at_line_start = true;
+    let mut indent_stack = vec![0];
 
     while current < chars.len() {
+        if at_line_start {
+            let mut indent = 0;
+
+            while current < chars.len() && chars[current] == ' ' {
+                indent += 1;
+                current += 1;
+            }
+
+            if current < chars.len() && chars[current] == '\t' {
+                return Err("tabs in indentation are not supported".to_string());
+            }
+
+            if current >= chars.len() {
+                break;
+            }
+
+            if chars[current] != '\n' && chars[current] != '\r' {
+                update_indentation(indent, &mut indent_stack, &mut tokens)?;
+                at_line_start = false;
+            }
+        }
+
         let ch = chars[current];
 
         match ch {
@@ -30,6 +59,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
             '\n' => {
                 tokens.push(Token::Newline);
                 current += 1;
+                at_line_start = true;
             }
             '\r' => {
                 tokens.push(Token::Newline);
@@ -37,6 +67,7 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
                 if current < chars.len() && chars[current] == '\n' {
                     current += 1;
                 }
+                at_line_start = true;
             }
             '(' => {
                 tokens.push(Token::LeftParen);
@@ -48,6 +79,10 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
             }
             ',' => {
                 tokens.push(Token::Comma);
+                current += 1;
+            }
+            ':' => {
+                tokens.push(Token::Colon);
                 current += 1;
             }
             '+' => {
@@ -106,6 +141,8 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
 
                 let word: String = chars[start..current].iter().collect();
                 match word.as_str() {
+                    "if" => tokens.push(Token::If),
+                    "else" => tokens.push(Token::Else),
                     "True" => tokens.push(Token::True),
                     "False" => tokens.push(Token::False),
                     _ => tokens.push(Token::Identifier(word)),
@@ -115,8 +152,48 @@ pub fn lex(source: &str) -> Result<Vec<Token>, String> {
         }
     }
 
+    while indent_stack.len() > 1 {
+        indent_stack.pop();
+        tokens.push(Token::Dedent);
+    }
+
     tokens.push(Token::Eof);
     Ok(tokens)
+}
+
+fn update_indentation(
+    indent: usize,
+    indent_stack: &mut Vec<usize>,
+    tokens: &mut Vec<Token>,
+) -> Result<(), String> {
+    let current_indent = *indent_stack
+        .last()
+        .expect("indent stack always contains the base indent");
+
+    if indent > current_indent {
+        indent_stack.push(indent);
+        tokens.push(Token::Indent);
+        return Ok(());
+    }
+
+    while indent
+        < *indent_stack
+            .last()
+            .expect("indent stack always contains the base indent")
+    {
+        indent_stack.pop();
+        tokens.push(Token::Dedent);
+    }
+
+    if indent
+        != *indent_stack
+            .last()
+            .expect("indent stack always contains the base indent")
+    {
+        return Err("unmatched indentation".to_string());
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -252,6 +329,129 @@ mod tests {
                 Token::RightParen,
                 Token::Eof,
             ])
+        );
+    }
+
+    #[test]
+    fn lexes_if_block_indentation() {
+        assert_eq!(
+            lex("if True:\n    print(\"yes\")"),
+            Ok(vec![
+                Token::If,
+                Token::True,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("yes".to_string()),
+                Token::RightParen,
+                Token::Dedent,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_if_else_blocks() {
+        assert_eq!(
+            lex("if False:\n    print(\"no\")\nelse:\n    print(\"yes\")"),
+            Ok(vec![
+                Token::If,
+                Token::False,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("no".to_string()),
+                Token::RightParen,
+                Token::Newline,
+                Token::Dedent,
+                Token::Else,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("yes".to_string()),
+                Token::RightParen,
+                Token::Dedent,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn lexes_nested_indentation() {
+        assert_eq!(
+            lex("if True:\n    if False:\n        print(\"nested\")\n    print(\"done\")"),
+            Ok(vec![
+                Token::If,
+                Token::True,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::If,
+                Token::False,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("nested".to_string()),
+                Token::RightParen,
+                Token::Newline,
+                Token::Dedent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::String("done".to_string()),
+                Token::RightParen,
+                Token::Dedent,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn ignores_blank_lines_for_indentation() {
+        assert_eq!(
+            lex("if True:\n    print(1)\n\n    print(2)"),
+            Ok(vec![
+                Token::If,
+                Token::True,
+                Token::Colon,
+                Token::Newline,
+                Token::Indent,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(1),
+                Token::RightParen,
+                Token::Newline,
+                Token::Newline,
+                Token::Identifier("print".to_string()),
+                Token::LeftParen,
+                Token::Number(2),
+                Token::RightParen,
+                Token::Dedent,
+                Token::Eof,
+            ])
+        );
+    }
+
+    #[test]
+    fn rejects_unmatched_indentation() {
+        assert_eq!(
+            lex("if True:\n    print(1)\n  print(2)"),
+            Err("unmatched indentation".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_tabs_in_indentation() {
+        assert_eq!(
+            lex("\tprint(1)"),
+            Err("tabs in indentation are not supported".to_string())
         );
     }
 

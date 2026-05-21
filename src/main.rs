@@ -1,7 +1,7 @@
 use minipython::run_source;
 
 fn main() {
-    let source = "x = 1 + 2\nprint(x == 3)";
+    let source = "x = 1 + 2\nif x == 3:\n    print(\"yes\")";
 
     match run_source(source) {
         Ok(output) => {

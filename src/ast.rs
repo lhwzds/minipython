@@ -6,7 +6,15 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Stmt {
     Expr(Expr),
-    Assign { name: String, value: Expr },
+    Assign {
+        name: String,
+        value: Expr,
+    },
+    If {
+        condition: Expr,
+        then_body: Vec<Stmt>,
+        else_body: Vec<Stmt>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

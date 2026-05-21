@@ -34,6 +34,10 @@ impl Parser<'_> {
     }
 
     fn parse_statement(&mut self) -> Result<Stmt, String> {
+        if matches!(self.peek(), Some(Token::If)) {
+            return self.parse_if_statement();
+        }
+
         if let (Some(Token::Identifier(name)), Some(Token::Equal)) = (self.peek(), self.peek_next())
         {
             let name = name.clone();
@@ -46,6 +50,50 @@ impl Parser<'_> {
 
         let expr = self.parse_expression()?;
         Ok(Stmt::Expr(expr))
+    }
+
+    fn parse_if_statement(&mut self) -> Result<Stmt, String> {
+        self.expect_if()?;
+        let condition = self.parse_expression()?;
+        self.expect_colon()?;
+        self.expect_newline()?;
+        let then_body = self.parse_block()?;
+
+        let else_body = if matches!(self.peek(), Some(Token::Else)) {
+            self.advance();
+            self.expect_colon()?;
+            self.expect_newline()?;
+            self.parse_block()?
+        } else {
+            Vec::new()
+        };
+
+        Ok(Stmt::If {
+            condition,
+            then_body,
+            else_body,
+        })
+    }
+
+    fn parse_block(&mut self) -> Result<Vec<Stmt>, String> {
+        self.expect_indent()?;
+        let mut statements = Vec::new();
+
+        self.skip_newlines();
+        while !matches!(self.peek(), Some(Token::Dedent) | Some(Token::Eof) | None) {
+            statements.push(self.parse_statement()?);
+
+            match self.peek() {
+                Some(Token::Newline) => self.skip_newlines(),
+                Some(Token::Dedent) | Some(Token::Eof) | None => {}
+                Some(token) => {
+                    return Err(format!("expected newline or dedent, found {token:?}"));
+                }
+            }
+        }
+
+        self.expect_dedent()?;
+        Ok(statements)
     }
 
     fn parse_expression(&mut self) -> Result<Expr, String> {
@@ -136,6 +184,46 @@ impl Parser<'_> {
             }
             Some(token) => Err(format!("expected expression, found {token:?}")),
             None => Err("expected expression, found end of input".to_string()),
+        }
+    }
+
+    fn expect_if(&mut self) -> Result<(), String> {
+        match self.advance() {
+            Some(Token::If) => Ok(()),
+            Some(token) => Err(format!("expected 'if', found {token:?}")),
+            None => Err("expected 'if', found end of input".to_string()),
+        }
+    }
+
+    fn expect_colon(&mut self) -> Result<(), String> {
+        match self.advance() {
+            Some(Token::Colon) => Ok(()),
+            Some(token) => Err(format!("expected ':', found {token:?}")),
+            None => Err("expected ':', found end of input".to_string()),
+        }
+    }
+
+    fn expect_newline(&mut self) -> Result<(), String> {
+        match self.advance() {
+            Some(Token::Newline) => Ok(()),
+            Some(token) => Err(format!("expected newline, found {token:?}")),
+            None => Err("expected newline, found end of input".to_string()),
+        }
+    }
+
+    fn expect_indent(&mut self) -> Result<(), String> {
+        match self.advance() {
+            Some(Token::Indent) => Ok(()),
+            Some(token) => Err(format!("expected indent, found {token:?}")),
+            None => Err("expected indent, found end of input".to_string()),
+        }
+    }
+
+    fn expect_dedent(&mut self) -> Result<(), String> {
+        match self.advance() {
+            Some(Token::Dedent) => Ok(()),
+            Some(token) => Err(format!("expected dedent, found {token:?}")),
+            None => Err("expected dedent, found end of input".to_string()),
         }
     }
 
@@ -353,6 +441,111 @@ mod tests {
                     }],
                 })],
             })
+        );
+    }
+
+    #[test]
+    fn parses_if_statement() {
+        let tokens = vec![
+            Token::If,
+            Token::True,
+            Token::Colon,
+            Token::Newline,
+            Token::Indent,
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::String("yes".to_string()),
+            Token::RightParen,
+            Token::Dedent,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::If {
+                    condition: Expr::Bool(true),
+                    then_body: vec![Stmt::Expr(Expr::Call {
+                        callee: Box::new(Expr::Name("print".to_string())),
+                        args: vec![Expr::String("yes".to_string())],
+                    })],
+                    else_body: Vec::new(),
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_if_else_statement() {
+        let tokens = vec![
+            Token::If,
+            Token::False,
+            Token::Colon,
+            Token::Newline,
+            Token::Indent,
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::String("no".to_string()),
+            Token::RightParen,
+            Token::Newline,
+            Token::Dedent,
+            Token::Else,
+            Token::Colon,
+            Token::Newline,
+            Token::Indent,
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::String("yes".to_string()),
+            Token::RightParen,
+            Token::Dedent,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Ok(Program {
+                statements: vec![Stmt::If {
+                    condition: Expr::Bool(false),
+                    then_body: vec![Stmt::Expr(Expr::Call {
+                        callee: Box::new(Expr::Name("print".to_string())),
+                        args: vec![Expr::String("no".to_string())],
+                    })],
+                    else_body: vec![Stmt::Expr(Expr::Call {
+                        callee: Box::new(Expr::Name("print".to_string())),
+                        args: vec![Expr::String("yes".to_string())],
+                    })],
+                }],
+            })
+        );
+    }
+
+    #[test]
+    fn rejects_if_missing_colon() {
+        let tokens = vec![Token::If, Token::True, Token::Newline, Token::Eof];
+
+        assert_eq!(
+            parse(&tokens),
+            Err("expected ':', found Newline".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_if_missing_indent() {
+        let tokens = vec![
+            Token::If,
+            Token::True,
+            Token::Colon,
+            Token::Newline,
+            Token::Identifier("print".to_string()),
+            Token::LeftParen,
+            Token::String("yes".to_string()),
+            Token::RightParen,
+            Token::Eof,
+        ];
+
+        assert_eq!(
+            parse(&tokens),
+            Err("expected indent, found Identifier(\"print\")".to_string())
         );
     }
 

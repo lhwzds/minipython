@@ -37,7 +37,52 @@ impl Compiler {
                 });
                 Ok(())
             }
+            Stmt::If {
+                condition,
+                then_body,
+                else_body,
+            } => self.compile_if_stmt(condition, then_body, else_body),
         }
+    }
+
+    fn compile_if_stmt(
+        &mut self,
+        condition: &Expr,
+        then_body: &[Stmt],
+        else_body: &[Stmt],
+    ) -> Result<(), String> {
+        let condition = self.compile_expr(condition)?;
+        let jump_if_false = self.instructions.len();
+        self.instructions.push(Instruction::JumpIfFalse {
+            condition,
+            target: usize::MAX,
+        });
+
+        for stmt in then_body {
+            self.compile_stmt(stmt)?;
+        }
+
+        if else_body.is_empty() {
+            let end_target = self.instructions.len();
+            self.patch_jump_target(jump_if_false, end_target)?;
+            return Ok(());
+        }
+
+        let jump_over_else = self.instructions.len();
+        self.instructions
+            .push(Instruction::Jump { target: usize::MAX });
+
+        let else_target = self.instructions.len();
+        self.patch_jump_target(jump_if_false, else_target)?;
+
+        for stmt in else_body {
+            self.compile_stmt(stmt)?;
+        }
+
+        let end_target = self.instructions.len();
+        self.patch_jump_target(jump_over_else, end_target)?;
+
+        Ok(())
     }
 
     fn compile_expr(&mut self, expr: &Expr) -> Result<Register, String> {
@@ -121,6 +166,28 @@ impl Compiler {
         let register = self.next_register;
         self.next_register += 1;
         register
+    }
+
+    fn patch_jump_target(&mut self, instruction_index: usize, target: usize) -> Result<(), String> {
+        match self.instructions.get_mut(instruction_index) {
+            Some(Instruction::JumpIfFalse {
+                target: jump_target,
+                ..
+            }) => {
+                *jump_target = target;
+                Ok(())
+            }
+            Some(Instruction::Jump {
+                target: jump_target,
+            }) => {
+                *jump_target = target;
+                Ok(())
+            }
+            Some(instruction) => Err(format!("cannot patch jump target on {instruction:?}")),
+            None => Err(format!(
+                "cannot patch missing instruction at index {instruction_index}"
+            )),
+        }
     }
 }
 
@@ -399,6 +466,110 @@ mod tests {
                     right: 1
                 },
                 Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_if_statement_to_jump_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::If {
+                condition: Expr::Bool(true),
+                then_body: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::String("yes".to_string())],
+                })],
+                else_body: Vec::new(),
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Bool(true)
+                },
+                Instruction::JumpIfFalse {
+                    condition: 0,
+                    target: 6
+                },
+                Instruction::LoadName {
+                    dst: 1,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 2,
+                    value: Value::String("yes".to_string())
+                },
+                Instruction::Call {
+                    dst: 3,
+                    callee: 1,
+                    args: vec![2]
+                },
+                Instruction::Pop { src: 3 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_if_else_statement_to_jump_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::If {
+                condition: Expr::Bool(false),
+                then_body: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::String("yes".to_string())],
+                })],
+                else_body: vec![Stmt::Expr(Expr::Call {
+                    callee: Box::new(Expr::Name("print".to_string())),
+                    args: vec![Expr::String("no".to_string())],
+                })],
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Bool(false)
+                },
+                Instruction::JumpIfFalse {
+                    condition: 0,
+                    target: 7
+                },
+                Instruction::LoadName {
+                    dst: 1,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 2,
+                    value: Value::String("yes".to_string())
+                },
+                Instruction::Call {
+                    dst: 3,
+                    callee: 1,
+                    args: vec![2]
+                },
+                Instruction::Pop { src: 3 },
+                Instruction::Jump { target: 11 },
+                Instruction::LoadName {
+                    dst: 4,
+                    name: "print".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 5,
+                    value: Value::String("no".to_string())
+                },
+                Instruction::Call {
+                    dst: 6,
+                    callee: 4,
+                    args: vec![5]
+                },
+                Instruction::Pop { src: 6 },
                 Instruction::Halt,
             ])
         );

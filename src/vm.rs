@@ -53,6 +53,15 @@ impl Vm {
                     let right = self.read_register(right)?.clone();
                     self.write_register(dst, Value::Bool(left == right));
                 }
+                Instruction::JumpIfFalse { condition, target } => {
+                    let condition = self.read_register(condition)?;
+                    if !is_truthy(condition)? {
+                        self.jump_to(target)?;
+                    }
+                }
+                Instruction::Jump { target } => {
+                    self.jump_to(target)?;
+                }
                 Instruction::Call { dst, callee, args } => {
                     let callee = self.read_register(callee)?.clone();
                     let args = args
@@ -83,6 +92,15 @@ impl Vm {
             .get(register)
             .and_then(Option::as_ref)
             .ok_or_else(|| format!("register r{register} is not initialized"))
+    }
+
+    fn jump_to(&mut self, target: usize) -> Result<(), String> {
+        if target > self.instructions.len() {
+            return Err(format!("jump target {target} is out of bounds"));
+        }
+
+        self.ip = target;
+        Ok(())
     }
 
     fn load_name(&self, name: &str) -> Result<Value, String> {
@@ -118,6 +136,13 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::Number(left), Value::Number(right)) => Ok(Value::Number(left + right)),
         (Value::String(left), Value::String(right)) => Ok(Value::String(left + &right)),
         (left, right) => Err(format!("cannot add {left} and {right}")),
+    }
+}
+
+fn is_truthy(value: &Value) -> Result<bool, String> {
+    match value {
+        Value::Bool(value) => Ok(*value),
+        value => Err(format!("expected bool condition, found {value}")),
     }
 }
 
@@ -247,6 +272,101 @@ mod tests {
         let mut vm = Vm::new(instructions);
 
         assert_eq!(vm.run(), Ok(vec!["True".to_string()]));
+    }
+
+    #[test]
+    fn runs_jump_if_false_program() {
+        let instructions = vec![
+            Instruction::LoadConst {
+                dst: 0,
+                value: Value::Bool(false),
+            },
+            Instruction::JumpIfFalse {
+                condition: 0,
+                target: 6,
+            },
+            Instruction::LoadName {
+                dst: 1,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 2,
+                value: Value::String("then".to_string()),
+            },
+            Instruction::Call {
+                dst: 3,
+                callee: 1,
+                args: vec![2],
+            },
+            Instruction::Pop { src: 3 },
+            Instruction::LoadName {
+                dst: 4,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 5,
+                value: Value::String("after".to_string()),
+            },
+            Instruction::Call {
+                dst: 6,
+                callee: 4,
+                args: vec![5],
+            },
+            Instruction::Pop { src: 6 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(vec!["after".to_string()]));
+    }
+
+    #[test]
+    fn runs_jump_program() {
+        let instructions = vec![
+            Instruction::Jump { target: 5 },
+            Instruction::LoadName {
+                dst: 0,
+                name: "print".to_string(),
+            },
+            Instruction::LoadConst {
+                dst: 1,
+                value: Value::String("skip".to_string()),
+            },
+            Instruction::Call {
+                dst: 2,
+                callee: 0,
+                args: vec![1],
+            },
+            Instruction::Pop { src: 2 },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(vm.run(), Ok(Vec::new()));
+    }
+
+    #[test]
+    fn rejects_non_bool_jump_condition() {
+        let instructions = vec![
+            Instruction::LoadConst {
+                dst: 0,
+                value: Value::Number(1),
+            },
+            Instruction::JumpIfFalse {
+                condition: 0,
+                target: 2,
+            },
+            Instruction::Halt,
+        ];
+
+        let mut vm = Vm::new(instructions);
+
+        assert_eq!(
+            vm.run(),
+            Err("expected bool condition, found 1".to_string())
+        );
     }
 
     #[test]

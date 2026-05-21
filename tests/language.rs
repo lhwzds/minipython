@@ -157,3 +157,40 @@ fn reports_unclosed_grouped_expression() {
         Err("parse error: expected ')', found Eof".to_string())
     );
 }
+
+#[test]
+fn runs_if_then_branch() {
+    assert_eq!(
+        run_source("if True:\n    print(\"yes\")"),
+        Ok(vec!["yes".to_string()])
+    );
+}
+
+#[test]
+fn skips_if_then_branch_when_false() {
+    assert_eq!(run_source("if False:\n    print(\"yes\")"), Ok(Vec::new()));
+}
+
+#[test]
+fn runs_if_else_branch() {
+    assert_eq!(
+        run_source("if False:\n    print(\"yes\")\nelse:\n    print(\"no\")"),
+        Ok(vec!["no".to_string()])
+    );
+}
+
+#[test]
+fn runs_if_condition_from_comparison() {
+    assert_eq!(
+        run_source("x = 3\nif x == 3:\n    print(\"match\")"),
+        Ok(vec!["match".to_string()])
+    );
+}
+
+#[test]
+fn rejects_non_bool_if_condition() {
+    assert_eq!(
+        run_source("if 1:\n    print(\"yes\")"),
+        Err("runtime error: expected bool condition, found 1".to_string())
+    );
+}
