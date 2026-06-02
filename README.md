@@ -4,7 +4,7 @@ A Python interpreter written in Rust.
 
 ## Goal
 
-实现一个可维护、安全的 Rust Python：完整覆盖 Python 语法前端，逐步实现核心运行时和标准库子集，并按语义迁移 CPython 测试；对 CPython 内部实现测试做分类标记，而不是为了通过它们去复制 CPython。
+Build a maintainable, safe Rust Python: fully cover the Python syntax frontend, incrementally implement the core runtime and standard library subset, and migrate CPython tests by semantics; classify and tag CPython internal implementation tests rather than replicating CPython to pass them.
 
 ## Install
 
