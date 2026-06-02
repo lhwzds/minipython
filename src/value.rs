@@ -1,23 +1,1832 @@
+use std::cell::RefCell;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
+use std::rc::Rc;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+use num_bigint::BigInt;
+use num_traits::ToPrimitive;
+
+use crate::bytecode::Register;
+use crate::bytecode::{ExceptHandler, Instruction};
+
+pub type Scope = Rc<RefCell<HashMap<String, Value>>>;
+pub type ListRef = Rc<RefCell<Vec<Value>>>;
+pub type TupleRef = Rc<Vec<Value>>;
+pub type SetRef = Rc<RefCell<Vec<Value>>>;
+pub type FrozenSetRef = Rc<Vec<Value>>;
+pub type DictRef = Rc<RefCell<DictStorage>>;
+
+#[derive(Debug)]
+pub struct DictStorage {
+    pub entries: Vec<(Value, Value)>,
+    pub version: usize,
+}
+
+impl DictStorage {
+    pub fn new(entries: Vec<(Value, Value)>) -> Self {
+        Self {
+            entries,
+            version: 0,
+        }
+    }
+}
+
+impl std::ops::Deref for DictStorage {
+    type Target = Vec<(Value, Value)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.entries
+    }
+}
+
+impl std::ops::DerefMut for DictStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.entries
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DictViewKind {
+    Keys,
+    Values,
+    Items,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CodeMode {
+    Exec,
+    Eval,
+    Single,
+}
+
+pub fn list_value(items: Vec<Value>) -> Value {
+    Value::List(Rc::new(RefCell::new(items)))
+}
+
+pub fn tuple_value(items: Vec<Value>) -> Value {
+    Value::Tuple(Rc::new(items))
+}
+
+pub fn set_value(items: Vec<Value>) -> Value {
+    Value::Set(Rc::new(RefCell::new(items)))
+}
+
+thread_local! {
+    static EMPTY_FROZEN_SET: FrozenSetRef = Rc::new(Vec::new());
+}
+
+pub fn frozen_set_value(items: Vec<Value>) -> Value {
+    if items.is_empty() {
+        return EMPTY_FROZEN_SET.with(|items| Value::FrozenSet(items.clone()));
+    }
+
+    Value::FrozenSet(Rc::new(items))
+}
+
+pub fn dict_value(entries: Vec<(Value, Value)>) -> Value {
+    Value::Dict(Rc::new(RefCell::new(DictStorage::new(entries))))
+}
+
+pub fn dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
+    Value::DictView { kind, entries }
+}
+
+pub fn mapping_view_value(kind: DictViewKind, mapping: Value) -> Value {
+    Value::MappingView {
+        kind,
+        mapping: Box::new(mapping),
+    }
+}
+
+pub fn mapping_proxy_value(entries: DictRef) -> Value {
+    Value::MappingProxy { entries }
+}
+
+pub fn dict_view_values(kind: DictViewKind, entries: &DictRef) -> Vec<Value> {
+    entries
+        .borrow()
+        .iter()
+        .map(|(key, value)| match kind {
+            DictViewKind::Keys => key.clone(),
+            DictViewKind::Values => value.clone(),
+            DictViewKind::Items => tuple_value(vec![key.clone(), value.clone()]),
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone)]
+pub struct GeneratorState {
+    pub name: String,
+    pub instructions: Vec<Instruction>,
+    pub ip: usize,
+    pub registers: Vec<Option<Value>>,
+    pub globals: Scope,
+    pub locals: Scope,
+    pub closure: Vec<Scope>,
+    pub current_class: Option<Value>,
+    pub first_arg_name: Option<String>,
+    pub exception_handlers: Vec<Vec<ExceptHandler>>,
+    pub current_exception: Option<Value>,
+    pub pending_exception_after_clear: Option<Value>,
+    pub resume_dst: Option<Register>,
+    pub done: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct CoroutineState {
+    pub name: String,
+    pub instructions: Vec<Instruction>,
+    pub ip: usize,
+    pub registers: Vec<Option<Value>>,
+    pub globals: Scope,
+    pub locals: Scope,
+    pub closure: Vec<Scope>,
+    pub current_class: Option<Value>,
+    pub first_arg_name: Option<String>,
+    pub exception_handlers: Vec<Vec<ExceptHandler>>,
+    pub current_exception: Option<Value>,
+    pub pending_exception_after_clear: Option<Value>,
+    pub done: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TemplateInterpolation {
+    pub value: Box<Value>,
+    pub expression: String,
+    pub conversion: Option<String>,
+    pub format_spec: String,
+}
+
+#[derive(Debug, Clone)]
 pub enum Value {
     Number(i64),
+    BigInt(BigInt),
+    Float(f64),
+    Complex {
+        real: f64,
+        imag: f64,
+    },
     String(String),
+    Bytes(Vec<u8>),
+    ByteArray(Vec<u8>),
     Bool(bool),
+    List(ListRef),
+    Tuple(TupleRef),
+    Set(SetRef),
+    FrozenSet(FrozenSetRef),
+    Dict(DictRef),
+    ScopeDict(Scope),
+    DictView {
+        kind: DictViewKind,
+        entries: DictRef,
+    },
+    MappingView {
+        kind: DictViewKind,
+        mapping: Box<Value>,
+    },
+    MappingProxy {
+        entries: DictRef,
+    },
+    MappingProxyObject {
+        mapping: Box<Value>,
+    },
+    ChainMap {
+        maps: Vec<Value>,
+    },
+    UserDict {
+        data: DictRef,
+    },
+    SimpleNamespace {
+        fields: DictRef,
+    },
+    PicklePayload(Box<Value>),
+    AstNode {
+        kind: String,
+        fields: Vec<String>,
+        attrs: DictRef,
+        identity: Rc<()>,
+    },
+    CodeObject {
+        mode: CodeMode,
+        filename: String,
+        instructions: Vec<Instruction>,
+        identity: Rc<()>,
+    },
+    Slice {
+        start: Option<Box<Value>>,
+        stop: Option<Box<Value>>,
+        step: Option<Box<Value>>,
+    },
+    Range {
+        start: i64,
+        stop: i64,
+        step: i64,
+    },
+    RangeIterator {
+        current: i64,
+        stop: i64,
+        step: i64,
+    },
+    ListIterator {
+        items: Vec<Value>,
+        index: usize,
+    },
+    TupleIterator {
+        items: Vec<Value>,
+        index: usize,
+    },
+    TemplateIterator {
+        items: Vec<Value>,
+        index: usize,
+    },
+    StringIterator {
+        chars: Vec<String>,
+        index: usize,
+    },
+    BytesIterator {
+        bytes: Vec<u8>,
+        index: usize,
+    },
+    SetIterator {
+        items: Vec<Value>,
+        index: usize,
+        source: Option<SetRef>,
+        expected_len: usize,
+    },
+    DictIterator {
+        kind: DictViewKind,
+        entries: DictRef,
+        index: usize,
+        expected_len: usize,
+        expected_version: usize,
+    },
+    ReverseIterator {
+        items: Vec<Value>,
+        index: usize,
+    },
+    DictReverseIterator {
+        kind: DictViewKind,
+        entries: DictRef,
+        keys: Vec<Value>,
+        index: usize,
+        expected_len: usize,
+        expected_version: usize,
+    },
+    EnumerateIterator {
+        iterator: Box<Value>,
+        index: BigInt,
+    },
+    ZipIterator {
+        iterators: Vec<Value>,
+        strict: bool,
+    },
+    MapIterator {
+        function: Box<Value>,
+        iterators: Vec<Value>,
+        strict: bool,
+    },
+    FilterIterator {
+        function: Box<Value>,
+        iterator: Box<Value>,
+    },
+    CallIterator {
+        callable: Box<Value>,
+        sentinel: Box<Value>,
+        done: bool,
+    },
+    SequenceIterator {
+        object: Box<Value>,
+        index: i64,
+    },
+    SequenceReverseIterator {
+        object: Box<Value>,
+        index: i64,
+    },
+    Iterator(Rc<RefCell<Value>>),
+    Function {
+        name: String,
+        type_params: Vec<Value>,
+        globals: Scope,
+        positional_only: Vec<String>,
+        params: Vec<String>,
+        defaults: Vec<(String, Value)>,
+        vararg: Option<String>,
+        keyword_only: Vec<String>,
+        keyword_defaults: Vec<(String, Value)>,
+        kwarg: Option<String>,
+        annotations: Vec<(String, Value)>,
+        attrs: Scope,
+        closure: Vec<Scope>,
+        body: Vec<Instruction>,
+        is_generator: bool,
+        is_async: bool,
+        identity: Rc<()>,
+        owner_class: Option<Box<Value>>,
+    },
+    Generator(Rc<RefCell<GeneratorState>>),
+    Coroutine(Rc<RefCell<CoroutineState>>),
+    CoroutineAwait(Rc<RefCell<CoroutineState>>),
+    AwaitIterator(Box<Value>),
+    AsyncGenerator(Rc<RefCell<GeneratorState>>),
+    AsyncGeneratorNext {
+        state: Rc<RefCell<GeneratorState>>,
+        send: Box<Value>,
+        default: Option<Box<Value>>,
+    },
+    AsyncGeneratorThrow {
+        state: Rc<RefCell<GeneratorState>>,
+        exception: Box<Value>,
+    },
+    AsyncGeneratorClose(Rc<RefCell<GeneratorState>>),
+    AnextDefault {
+        awaitable: Box<Value>,
+        default: Box<Value>,
+    },
+    Class {
+        name: String,
+        type_params: Vec<Value>,
+        bases: Vec<Value>,
+        attrs: Scope,
+    },
+    TypeParam {
+        kind: String,
+        name: String,
+        bound: Option<Box<Value>>,
+        default: Option<Box<Value>>,
+    },
+    TypeAlias {
+        name: String,
+        type_params: Vec<Value>,
+        value: Box<Value>,
+    },
+    GenericAlias {
+        origin: Box<Value>,
+        args: Vec<Value>,
+    },
+    Unpack(Box<Value>),
+    Template {
+        strings: Vec<String>,
+        interpolations: Vec<TemplateInterpolation>,
+    },
+    TemplateInterpolation(TemplateInterpolation),
+    Instance {
+        class_name: String,
+        fields: Scope,
+        class_attrs: Scope,
+        class_bases: Vec<Value>,
+    },
+    Property {
+        fget: Option<Box<Value>>,
+        fset: Option<Box<Value>>,
+        fdel: Option<Box<Value>>,
+        doc: Option<Box<Value>>,
+    },
+    MemberDescriptor {
+        name: String,
+        owner_name: String,
+    },
+    StaticMethod {
+        function: Box<Value>,
+    },
+    ClassMethod {
+        function: Box<Value>,
+    },
+    Super {
+        class: Box<Value>,
+        object: Box<Value>,
+        identity: Rc<()>,
+    },
+    BoundMethod {
+        function: Box<Value>,
+        receiver: Box<Value>,
+        identity: Rc<()>,
+    },
+    Module {
+        name: String,
+        attrs: Scope,
+    },
+    Exception {
+        type_name: String,
+        type_hierarchy: Vec<String>,
+        type_object: Option<Box<Value>>,
+        message: Option<String>,
+        args: Vec<Value>,
+        attrs: Vec<(String, Value)>,
+        exceptions: Option<Vec<Value>>,
+        cause: Option<Box<Value>>,
+        context: Option<Box<Value>>,
+        suppress_context: bool,
+    },
     Builtin(String),
     None,
+    NotImplemented,
+    Ellipsis,
 }
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Value::Number(value) => write!(f, "{value}"),
+            Value::BigInt(value) => write!(f, "{value}"),
+            Value::Float(value) => write!(f, "{value:?}"),
+            Value::Complex { real, imag } => write!(f, "{}", format_complex(*real, *imag)),
             Value::String(value) => write!(f, "{value}"),
+            Value::Bytes(value) => write!(f, "{}", repr_bytes(value)),
+            Value::ByteArray(value) => write!(f, "bytearray({})", repr_bytes(value)),
             Value::Bool(true) => write!(f, "True"),
             Value::Bool(false) => write!(f, "False"),
+            Value::List(items) => {
+                let items = items.borrow();
+                write!(f, "[{}]", format_list_items(&items))
+            }
+            Value::Tuple(items) => write!(f, "{}", format_tuple(items)),
+            Value::Set(items) => write!(f, "{}", format_set(&items.borrow())),
+            Value::FrozenSet(items) => write!(f, "{}", format_frozen_set(items)),
+            Value::Dict(entries) => write!(f, "{{{}}}", format_dict(&entries.borrow())),
+            Value::ScopeDict(scope) => write!(f, "{{{}}}", format_scope_dict(scope)),
+            Value::DictView { kind, entries } => write!(
+                f,
+                "{}({})",
+                dict_view_type_name(*kind),
+                format_dict_view_payload(*kind, entries)
+            ),
+            Value::MappingView { kind, mapping } => {
+                write!(f, "{}({mapping})", dict_view_type_name(*kind))
+            }
+            Value::MappingProxy { entries } => {
+                write!(f, "mappingproxy({{{}}})", format_dict(&entries.borrow()))
+            }
+            Value::MappingProxyObject { mapping } => write!(f, "mappingproxy({mapping})"),
+            Value::ChainMap { maps } => {
+                let rendered = maps
+                    .iter()
+                    .map(|map| map.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                write!(f, "ChainMap({rendered})")
+            }
+            Value::UserDict { data } => write!(f, "UserDict({{{}}})", format_dict(&data.borrow())),
+            Value::SimpleNamespace { fields } => write!(f, "{}", format_simple_namespace(fields)),
+            Value::PicklePayload(_) => write!(f, "<pickle payload>"),
+            Value::AstNode { kind, .. } => write!(f, "<ast.{kind} object>"),
+            Value::CodeObject { filename, .. } => {
+                write!(f, "<code object <module>, file \"{filename}\", line 1>")
+            }
+            Value::Range { start, stop, step } if *step == 1 => {
+                write!(f, "range({start}, {stop})")
+            }
+            Value::Range { start, stop, step } => write!(f, "range({start}, {stop}, {step})"),
+            Value::Slice { start, stop, step } => write!(
+                f,
+                "slice({}, {}, {})",
+                format_slice_part(start),
+                format_slice_part(stop),
+                format_slice_part(step)
+            ),
+            Value::RangeIterator { .. } => write!(f, "<range_iterator>"),
+            Value::ListIterator { .. } => write!(f, "<list_iterator>"),
+            Value::TupleIterator { .. } => write!(f, "<tuple_iterator>"),
+            Value::TemplateIterator { .. } => {
+                write!(f, "<string.templatelib.TemplateIter object>")
+            }
+            Value::StringIterator { .. } => write!(f, "<str_iterator>"),
+            Value::BytesIterator { .. } => write!(f, "<bytes_iterator>"),
+            Value::SetIterator { .. } => write!(f, "<set_iterator>"),
+            Value::DictIterator { .. } => write!(f, "<dict_keyiterator>"),
+            Value::ReverseIterator { .. } => write!(f, "<reversed object>"),
+            Value::DictReverseIterator { .. } => write!(f, "<dict_reversekeyiterator>"),
+            Value::EnumerateIterator { .. } => write!(f, "<enumerate object>"),
+            Value::ZipIterator { .. } => write!(f, "<zip object>"),
+            Value::MapIterator { .. } => write!(f, "<map object>"),
+            Value::FilterIterator { .. } => write!(f, "<filter object>"),
+            Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
+            Value::SequenceIterator { .. } => write!(f, "<iterator>"),
+            Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
+            Value::Iterator(_) => write!(f, "<iterator>"),
+            Value::Function { name, .. } => write!(f, "<function {name}>"),
+            Value::Generator(state) => write!(f, "<generator object {}>", state.borrow().name),
+            Value::Coroutine(state) => write!(f, "<coroutine object {}>", state.borrow().name),
+            Value::CoroutineAwait(_) => write!(f, "<coroutine_wrapper object>"),
+            Value::AwaitIterator(_) => write!(f, "<await_iterator object>"),
+            Value::AsyncGenerator(state) => {
+                write!(f, "<async_generator object {}>", state.borrow().name)
+            }
+            Value::AsyncGeneratorNext { .. } | Value::AsyncGeneratorThrow { .. } => {
+                write!(f, "<async_generator_asend object>")
+            }
+            Value::AsyncGeneratorClose(_) => write!(f, "<async_generator_athrow object>"),
+            Value::AnextDefault { .. } => write!(f, "<anext_awaitable object>"),
+            Value::Class { name, .. } => write!(f, "<class {name}>"),
+            Value::TypeParam { name, .. } => write!(f, "{name}"),
+            Value::TypeAlias { name, .. } => write!(f, "<type alias {name}>"),
+            Value::GenericAlias { origin, args } => write!(
+                f,
+                "{}[{}]",
+                format_generic_origin(origin),
+                args.iter()
+                    .map(format_value_repr)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Value::Unpack(value) => write!(f, "*{}", format_value_repr(value)),
+            Value::Template {
+                strings,
+                interpolations,
+            } => write!(
+                f,
+                "Template(strings={}, interpolations={})",
+                format_string_tuple(strings),
+                format_interpolation_tuple(interpolations)
+            ),
+            Value::TemplateInterpolation(interpolation) => {
+                write!(f, "{}", format_template_interpolation(interpolation))
+            }
+            Value::Instance { class_name, .. } => write!(f, "<{class_name} object>"),
+            Value::Property { .. } => write!(f, "<property object>"),
+            Value::MemberDescriptor { name, owner_name } => {
+                write!(f, "<member '{name}' of '{owner_name}' objects>")
+            }
+            Value::StaticMethod { .. } => write!(f, "<staticmethod object>"),
+            Value::ClassMethod { .. } => write!(f, "<classmethod object>"),
+            Value::Super { .. } => write!(f, "<super object>"),
+            Value::BoundMethod {
+                function, receiver, ..
+            } => {
+                write!(f, "{}", format_bound_method(function, receiver))
+            }
+            Value::Module { name, .. } => write!(f, "<module {name}>"),
+            Value::Exception {
+                message: Some(message),
+                exceptions: Some(exceptions),
+                ..
+            } => write!(
+                f,
+                "{} ({})",
+                message,
+                format_subexception_count(exceptions.len())
+            ),
+            Value::Exception {
+                type_name,
+                type_hierarchy,
+                args,
+                message,
+                attrs,
+                exceptions: None,
+                ..
+            } => write!(
+                f,
+                "{}",
+                format_exception_display(
+                    type_name,
+                    type_hierarchy,
+                    message.as_deref(),
+                    args,
+                    attrs
+                )
+            ),
+            Value::Exception {
+                message: None,
+                exceptions: Some(exceptions),
+                ..
+            } => write!(f, "({})", format_subexception_count(exceptions.len())),
             Value::Builtin(name) => write!(f, "<builtin {name}>"),
             Value::None => write!(f, "None"),
+            Value::NotImplemented => write!(f, "NotImplemented"),
+            Value::Ellipsis => write!(f, "Ellipsis"),
         }
     }
+}
+
+fn format_list_items(items: &[Value]) -> String {
+    items
+        .iter()
+        .map(format_value_repr)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn format_subexception_count(count: usize) -> String {
+    if count == 1 {
+        "1 sub-exception".to_string()
+    } else {
+        format!("{count} sub-exceptions")
+    }
+}
+
+fn format_exception_display(
+    type_name: &str,
+    type_hierarchy: &[String],
+    message: Option<&str>,
+    args: &[Value],
+    attrs: &[(String, Value)],
+) -> String {
+    if type_name == "OSError" || type_hierarchy.iter().any(|name| name == "OSError") {
+        return format_os_error_display(args, attrs);
+    }
+
+    if type_name == "KeyError" || type_hierarchy.iter().any(|name| name == "KeyError") {
+        if let ([value], Some(message)) = (args, message) {
+            let rendered = format_value_repr(value);
+            if rendered == message {
+                return rendered;
+            }
+        }
+    }
+
+    match args {
+        [] => message.unwrap_or_default().to_string(),
+        [value] => value.to_string(),
+        values => format_tuple(values),
+    }
+}
+
+fn format_os_error_display(args: &[Value], attrs: &[(String, Value)]) -> String {
+    if args.len() < 2 {
+        return match args {
+            [] => String::new(),
+            [value] => value.to_string(),
+            _ => unreachable!("args.len() is checked above"),
+        };
+    }
+
+    let errno = exception_attr(attrs, "errno").unwrap_or(&args[0]);
+    let strerror = exception_attr(attrs, "strerror").unwrap_or(&args[1]);
+    let mut display = format!("[Errno {errno}] {strerror}");
+
+    if let Some(filename) =
+        exception_attr(attrs, "filename").filter(|value| !matches!(value, Value::None))
+    {
+        display.push_str(": ");
+        display.push_str(&format_value_repr(filename));
+
+        if let Some(filename2) =
+            exception_attr(attrs, "filename2").filter(|value| !matches!(value, Value::None))
+        {
+            display.push_str(" -> ");
+            display.push_str(&format_value_repr(filename2));
+        }
+    }
+
+    display
+}
+
+fn exception_attr<'a>(attrs: &'a [(String, Value)], name: &str) -> Option<&'a Value> {
+    attrs
+        .iter()
+        .find_map(|(attr_name, value)| (attr_name == name).then_some(value))
+}
+
+fn format_exception_args_repr(args: &[Value]) -> String {
+    match args {
+        [] => "()".to_string(),
+        [value] => format!("({})", format_value_repr(value)),
+        values => {
+            let rendered = values
+                .iter()
+                .map(format_value_repr)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("({rendered})")
+        }
+    }
+}
+
+fn format_bound_method(function: &Value, receiver: &Value) -> String {
+    format!(
+        "<bound method {} of {}>",
+        bound_method_display_name(function),
+        format_value_repr(receiver)
+    )
+}
+
+fn bound_method_display_name(function: &Value) -> String {
+    match function {
+        Value::Function {
+            name,
+            owner_class: Some(owner_class),
+            ..
+        } => match owner_class.as_ref() {
+            Value::Class {
+                name: owner_name, ..
+            } => format!("{owner_name}.{name}"),
+            _ => name.clone(),
+        },
+        Value::Function { name, .. } => name.clone(),
+        Value::Builtin(name) => name.clone(),
+        _ => "?".to_string(),
+    }
+}
+
+fn format_value_repr(value: &Value) -> String {
+    match value {
+        Value::String(value) => repr_string(value),
+        Value::Bytes(value) => repr_bytes(value),
+        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(value)),
+        Value::List(items) => {
+            let items = items.borrow();
+            format!("[{}]", format_list_items(&items))
+        }
+        Value::Tuple(items) => format_tuple(items),
+        Value::Set(items) => format_set(&items.borrow()),
+        Value::FrozenSet(items) => format_frozen_set(items),
+        Value::Dict(entries) => format!("{{{}}}", format_dict(&entries.borrow())),
+        Value::ScopeDict(scope) => format!("{{{}}}", format_scope_dict(scope)),
+        Value::DictView { kind, entries } => {
+            format!(
+                "{}({})",
+                dict_view_type_name(*kind),
+                format_dict_view_payload(*kind, entries)
+            )
+        }
+        Value::MappingView { kind, mapping } => {
+            format!("{}({mapping})", dict_view_type_name(*kind))
+        }
+        Value::MappingProxy { entries } => {
+            format!("mappingproxy({{{}}})", format_dict(&entries.borrow()))
+        }
+        Value::MappingProxyObject { mapping } => format!("mappingproxy({mapping})"),
+        Value::ChainMap { maps } => {
+            let rendered = maps
+                .iter()
+                .map(format_value_repr)
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("ChainMap({rendered})")
+        }
+        Value::UserDict { data } => format!("UserDict({{{}}})", format_dict(&data.borrow())),
+        Value::SimpleNamespace { fields } => format_simple_namespace(fields),
+        Value::PicklePayload(_) => "<pickle payload>".to_string(),
+        Value::AstNode { kind, .. } => format!("<ast.{kind} object>"),
+        Value::CodeObject { filename, .. } => {
+            format!("<code object <module>, file \"{filename}\", line 1>")
+        }
+        Value::Function { name, .. } => format!("<function {name}>"),
+        Value::Generator(state) => format!("<generator object {}>", state.borrow().name),
+        Value::Coroutine(state) => format!("<coroutine object {}>", state.borrow().name),
+        Value::CoroutineAwait(_) => "<coroutine_wrapper object>".to_string(),
+        Value::AwaitIterator(_) => "<await_iterator object>".to_string(),
+        Value::AsyncGenerator(state) => format!("<async_generator object {}>", state.borrow().name),
+        Value::AsyncGeneratorNext { .. } | Value::AsyncGeneratorThrow { .. } => {
+            "<async_generator_asend object>".to_string()
+        }
+        Value::AsyncGeneratorClose(_) => "<async_generator_athrow object>".to_string(),
+        Value::AnextDefault { .. } => "<anext_awaitable object>".to_string(),
+        Value::Class { name, .. } => format!("<class {name}>"),
+        Value::TypeParam { name, .. } => name.clone(),
+        Value::TypeAlias { name, .. } => format!("<type alias {name}>"),
+        Value::GenericAlias { origin, args } => format!(
+            "{}[{}]",
+            format_generic_origin(origin),
+            args.iter()
+                .map(format_value_repr)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Unpack(value) => format!("*{}", format_value_repr(value)),
+        Value::Template {
+            strings,
+            interpolations,
+        } => format!(
+            "Template(strings={}, interpolations={})",
+            format_string_tuple(strings),
+            format_interpolation_tuple(interpolations)
+        ),
+        Value::TemplateInterpolation(interpolation) => format_template_interpolation(interpolation),
+        Value::Instance { class_name, .. } => format!("<{class_name} object>"),
+        Value::Property { .. } => "<property object>".to_string(),
+        Value::MemberDescriptor { name, owner_name } => {
+            format!("<member '{name}' of '{owner_name}' objects>")
+        }
+        Value::StaticMethod { .. } => "<staticmethod object>".to_string(),
+        Value::ClassMethod { .. } => "<classmethod object>".to_string(),
+        Value::Super { .. } => "<super object>".to_string(),
+        Value::BoundMethod {
+            function, receiver, ..
+        } => format_bound_method(function, receiver),
+        Value::Module { name, .. } => format!("<module {name}>"),
+        Value::Exception {
+            type_name,
+            message,
+            exceptions: Some(exceptions),
+            ..
+        } => format!(
+            "{type_name}({:?}, [{}])",
+            message.clone().unwrap_or_default(),
+            exceptions
+                .iter()
+                .map(format_value_repr)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Exception {
+            type_name, args, ..
+        } => format!("{type_name}{}", format_exception_args_repr(args)),
+        value => value.to_string(),
+    }
+}
+
+fn format_value_repr_with_namespace_seen(value: &Value, active: &mut HashSet<usize>) -> String {
+    match value {
+        Value::SimpleNamespace { fields } => format_simple_namespace_inner(fields, active),
+        _ => format_value_repr(value),
+    }
+}
+
+fn format_complex(real: f64, imag: f64) -> String {
+    if real == 0.0 && !real.is_sign_negative() {
+        return format!("{}j", format_complex_part(imag));
+    }
+
+    let (sign, imag_abs) = if imag.is_sign_negative() {
+        ('-', -imag)
+    } else {
+        ('+', imag)
+    };
+
+    format!(
+        "({}{}{}j)",
+        format_complex_part(real),
+        sign,
+        format_complex_part(imag_abs)
+    )
+}
+
+fn format_complex_part(value: f64) -> String {
+    if value == 0.0 && value.is_sign_negative() {
+        return "-0".to_string();
+    }
+
+    if value.is_finite() && value.fract() == 0.0 {
+        if value >= i64::MIN as f64 && value <= i64::MAX as f64 {
+            return format!("{}", value as i64);
+        }
+    }
+
+    format!("{value:?}")
+}
+
+fn format_slice_part(value: &Option<Box<Value>>) -> String {
+    value
+        .as_deref()
+        .map(format_value_repr)
+        .unwrap_or_else(|| "None".to_string())
+}
+
+fn format_generic_origin(origin: &Value) -> String {
+    match origin {
+        Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
+            name.clone()
+        }
+        Value::TypeAlias { name, .. } => name.clone(),
+        value => format_value_repr(value),
+    }
+}
+
+fn bool_as_i64(value: bool) -> i64 {
+    if value { 1 } else { 0 }
+}
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Value::Number(left), Value::Number(right)) => left == right,
+            (Value::BigInt(left), Value::BigInt(right)) => left == right,
+            (Value::Number(left), Value::BigInt(right))
+            | (Value::BigInt(right), Value::Number(left)) => BigInt::from(*left) == *right,
+            (Value::Float(left), Value::Float(right)) => left == right,
+            (
+                Value::Complex {
+                    real: left_real,
+                    imag: left_imag,
+                },
+                Value::Complex {
+                    real: right_real,
+                    imag: right_imag,
+                },
+            ) => left_real == right_real && left_imag == right_imag,
+            (Value::Number(left), Value::Float(right)) => (*left as f64) == *right,
+            (Value::Float(left), Value::Number(right)) => *left == (*right as f64),
+            (Value::BigInt(left), Value::Float(right)) => {
+                left.to_f64().is_some_and(|left| left == *right)
+            }
+            (Value::Float(left), Value::BigInt(right)) => {
+                right.to_f64().is_some_and(|right| *left == right)
+            }
+            (Value::Number(left), Value::Complex { real, imag })
+            | (Value::Complex { real, imag }, Value::Number(left)) => {
+                (*left as f64) == *real && *imag == 0.0
+            }
+            (Value::BigInt(left), Value::Complex { real, imag })
+            | (Value::Complex { real, imag }, Value::BigInt(left)) => {
+                left.to_f64().is_some_and(|left| left == *real) && *imag == 0.0
+            }
+            (Value::Float(left), Value::Complex { real, imag })
+            | (Value::Complex { real, imag }, Value::Float(left)) => *left == *real && *imag == 0.0,
+            (Value::Bool(left), Value::Number(right))
+            | (Value::Number(right), Value::Bool(left)) => bool_as_i64(*left) == *right,
+            (Value::Bool(left), Value::BigInt(right))
+            | (Value::BigInt(right), Value::Bool(left)) => {
+                BigInt::from(bool_as_i64(*left)) == *right
+            }
+            (Value::Bool(left), Value::Float(right)) | (Value::Float(right), Value::Bool(left)) => {
+                bool_as_i64(*left) as f64 == *right
+            }
+            (Value::Bool(left), Value::Complex { real, imag })
+            | (Value::Complex { real, imag }, Value::Bool(left)) => {
+                bool_as_i64(*left) as f64 == *real && *imag == 0.0
+            }
+            (Value::String(left), Value::String(right)) => left == right,
+            (Value::Bytes(left), Value::Bytes(right)) => left == right,
+            (Value::ByteArray(left), Value::ByteArray(right)) => left == right,
+            (Value::Bytes(left), Value::ByteArray(right))
+            | (Value::ByteArray(right), Value::Bytes(left)) => left == right,
+            (Value::Bool(left), Value::Bool(right)) => left == right,
+            (Value::List(left), Value::List(right)) => *left.borrow() == *right.borrow(),
+            (Value::Tuple(left), Value::Tuple(right)) => left.as_ref() == right.as_ref(),
+            (Value::Set(left), Value::Set(right)) => sets_equal(&left.borrow(), &right.borrow()),
+            (Value::FrozenSet(left), Value::FrozenSet(right)) => {
+                sets_equal(left.as_ref(), right.as_ref())
+            }
+            (Value::Set(left), Value::FrozenSet(right))
+            | (Value::FrozenSet(right), Value::Set(left)) => {
+                sets_equal(&left.borrow(), right.as_ref())
+            }
+            (Value::Dict(left), Value::Dict(right)) => {
+                left.borrow().entries == right.borrow().entries
+            }
+            (Value::UserDict { data: left }, Value::UserDict { data: right }) => {
+                left.borrow().entries == right.borrow().entries
+            }
+            (Value::SimpleNamespace { fields: left }, Value::SimpleNamespace { fields: right }) => {
+                left.borrow().entries == right.borrow().entries
+            }
+            (Value::PicklePayload(left), Value::PicklePayload(right)) => left == right,
+            (
+                Value::CodeObject {
+                    mode: left_mode,
+                    filename: left_filename,
+                    instructions: left_instructions,
+                    ..
+                },
+                Value::CodeObject {
+                    mode: right_mode,
+                    filename: right_filename,
+                    instructions: right_instructions,
+                    ..
+                },
+            ) => {
+                left_mode == right_mode
+                    && left_filename == right_filename
+                    && left_instructions == right_instructions
+            }
+            (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
+            (
+                Value::DictView {
+                    kind: left_kind,
+                    entries: left_entries,
+                },
+                Value::DictView {
+                    kind: right_kind,
+                    entries: right_entries,
+                },
+            ) if dict_view_is_set_like(*left_kind) && dict_view_is_set_like(*right_kind) => {
+                sets_equal(
+                    &dict_view_values(*left_kind, left_entries),
+                    &dict_view_values(*right_kind, right_entries),
+                )
+            }
+            (
+                Value::DictView {
+                    kind: left_kind,
+                    entries: left_entries,
+                },
+                Value::Set(right),
+            )
+            | (
+                Value::Set(right),
+                Value::DictView {
+                    kind: left_kind,
+                    entries: left_entries,
+                },
+            ) if dict_view_is_set_like(*left_kind) => {
+                sets_equal(&dict_view_values(*left_kind, left_entries), &right.borrow())
+            }
+            (
+                Value::DictView {
+                    kind: left_kind,
+                    entries: left_entries,
+                },
+                Value::FrozenSet(right),
+            )
+            | (
+                Value::FrozenSet(right),
+                Value::DictView {
+                    kind: left_kind,
+                    entries: left_entries,
+                },
+            ) if dict_view_is_set_like(*left_kind) => {
+                sets_equal(&dict_view_values(*left_kind, left_entries), right.as_ref())
+            }
+            (
+                Value::MappingView {
+                    kind: left_kind,
+                    mapping: left_mapping,
+                },
+                Value::MappingView {
+                    kind: right_kind,
+                    mapping: right_mapping,
+                },
+            ) => left_kind == right_kind && left_mapping == right_mapping,
+            (
+                Value::MappingProxy {
+                    entries: left_entries,
+                },
+                Value::MappingProxy {
+                    entries: right_entries,
+                },
+            ) => left_entries.borrow().entries == right_entries.borrow().entries,
+            (Value::MappingProxy { entries: left }, Value::Dict(right))
+            | (Value::Dict(right), Value::MappingProxy { entries: left }) => {
+                left.borrow().entries == right.borrow().entries
+            }
+            (
+                Value::MappingProxyObject {
+                    mapping: left_mapping,
+                },
+                Value::MappingProxyObject {
+                    mapping: right_mapping,
+                },
+            ) => left_mapping == right_mapping,
+            (Value::ChainMap { maps: left_maps }, Value::ChainMap { maps: right_maps }) => {
+                left_maps == right_maps
+            }
+            (
+                Value::Slice {
+                    start: left_start,
+                    stop: left_stop,
+                    step: left_step,
+                },
+                Value::Slice {
+                    start: right_start,
+                    stop: right_stop,
+                    step: right_step,
+                },
+            ) => left_start == right_start && left_stop == right_stop && left_step == right_step,
+            (
+                Value::Range {
+                    start: left_start,
+                    stop: left_stop,
+                    step: left_step,
+                },
+                Value::Range {
+                    start: right_start,
+                    stop: right_stop,
+                    step: right_step,
+                },
+            ) => left_start == right_start && left_stop == right_stop && left_step == right_step,
+            (
+                Value::RangeIterator {
+                    current: left_current,
+                    stop: left_stop,
+                    step: left_step,
+                },
+                Value::RangeIterator {
+                    current: right_current,
+                    stop: right_stop,
+                    step: right_step,
+                },
+            ) => {
+                left_current == right_current && left_stop == right_stop && left_step == right_step
+            }
+            (
+                Value::ListIterator {
+                    items: left_items,
+                    index: left_index,
+                },
+                Value::ListIterator {
+                    items: right_items,
+                    index: right_index,
+                },
+            )
+            | (
+                Value::TupleIterator {
+                    items: left_items,
+                    index: left_index,
+                },
+                Value::TupleIterator {
+                    items: right_items,
+                    index: right_index,
+                },
+            )
+            | (
+                Value::TemplateIterator {
+                    items: left_items,
+                    index: left_index,
+                },
+                Value::TemplateIterator {
+                    items: right_items,
+                    index: right_index,
+                },
+            ) => left_items == right_items && left_index == right_index,
+            (
+                Value::StringIterator {
+                    chars: left_chars,
+                    index: left_index,
+                },
+                Value::StringIterator {
+                    chars: right_chars,
+                    index: right_index,
+                },
+            ) => left_chars == right_chars && left_index == right_index,
+            (
+                Value::BytesIterator {
+                    bytes: left_bytes,
+                    index: left_index,
+                },
+                Value::BytesIterator {
+                    bytes: right_bytes,
+                    index: right_index,
+                },
+            ) => left_bytes == right_bytes && left_index == right_index,
+            (
+                Value::SetIterator {
+                    items: left_items,
+                    index: left_index,
+                    expected_len: left_expected_len,
+                    ..
+                },
+                Value::SetIterator {
+                    items: right_items,
+                    index: right_index,
+                    expected_len: right_expected_len,
+                    ..
+                },
+            ) => {
+                left_items == right_items
+                    && left_index == right_index
+                    && left_expected_len == right_expected_len
+            }
+            (
+                Value::DictIterator {
+                    kind: left_kind,
+                    entries: left_entries,
+                    index: left_index,
+                    expected_len: left_expected_len,
+                    expected_version: left_expected_version,
+                },
+                Value::DictIterator {
+                    kind: right_kind,
+                    entries: right_entries,
+                    index: right_index,
+                    expected_len: right_expected_len,
+                    expected_version: right_expected_version,
+                },
+            ) => {
+                left_kind == right_kind
+                    && Rc::ptr_eq(left_entries, right_entries)
+                    && left_index == right_index
+                    && left_expected_len == right_expected_len
+                    && left_expected_version == right_expected_version
+            }
+            (
+                Value::ReverseIterator {
+                    items: left_items,
+                    index: left_index,
+                },
+                Value::ReverseIterator {
+                    items: right_items,
+                    index: right_index,
+                },
+            ) => left_items == right_items && left_index == right_index,
+            (
+                Value::DictReverseIterator {
+                    kind: left_kind,
+                    entries: left_entries,
+                    keys: left_keys,
+                    index: left_index,
+                    expected_len: left_expected_len,
+                    expected_version: left_expected_version,
+                },
+                Value::DictReverseIterator {
+                    kind: right_kind,
+                    entries: right_entries,
+                    keys: right_keys,
+                    index: right_index,
+                    expected_len: right_expected_len,
+                    expected_version: right_expected_version,
+                },
+            ) => {
+                left_kind == right_kind
+                    && Rc::ptr_eq(left_entries, right_entries)
+                    && left_keys == right_keys
+                    && left_index == right_index
+                    && left_expected_len == right_expected_len
+                    && left_expected_version == right_expected_version
+            }
+            (
+                Value::EnumerateIterator {
+                    iterator: left_iterator,
+                    index: left_index,
+                },
+                Value::EnumerateIterator {
+                    iterator: right_iterator,
+                    index: right_index,
+                },
+            ) => left_iterator == right_iterator && left_index == right_index,
+            (
+                Value::ZipIterator {
+                    iterators: left_iterators,
+                    strict: left_strict,
+                },
+                Value::ZipIterator {
+                    iterators: right_iterators,
+                    strict: right_strict,
+                },
+            ) => left_iterators == right_iterators && left_strict == right_strict,
+            (
+                Value::MapIterator {
+                    function: left_function,
+                    iterators: left_iterators,
+                    strict: left_strict,
+                },
+                Value::MapIterator {
+                    function: right_function,
+                    iterators: right_iterators,
+                    strict: right_strict,
+                },
+            ) => {
+                left_function == right_function
+                    && left_iterators == right_iterators
+                    && left_strict == right_strict
+            }
+            (
+                Value::FilterIterator {
+                    function: left_function,
+                    iterator: left_iterator,
+                },
+                Value::FilterIterator {
+                    function: right_function,
+                    iterator: right_iterator,
+                },
+            ) => left_function == right_function && left_iterator == right_iterator,
+            (
+                Value::CallIterator {
+                    callable: left_callable,
+                    sentinel: left_sentinel,
+                    done: left_done,
+                },
+                Value::CallIterator {
+                    callable: right_callable,
+                    sentinel: right_sentinel,
+                    done: right_done,
+                },
+            ) => {
+                left_callable == right_callable
+                    && left_sentinel == right_sentinel
+                    && left_done == right_done
+            }
+            (
+                Value::SequenceIterator {
+                    object: left_object,
+                    index: left_index,
+                },
+                Value::SequenceIterator {
+                    object: right_object,
+                    index: right_index,
+                },
+            ) => left_object == right_object && left_index == right_index,
+            (
+                Value::SequenceReverseIterator {
+                    object: left_object,
+                    index: left_index,
+                },
+                Value::SequenceReverseIterator {
+                    object: right_object,
+                    index: right_index,
+                },
+            ) => left_object == right_object && left_index == right_index,
+            (Value::Iterator(left), Value::Iterator(right)) => Rc::ptr_eq(left, right),
+            (
+                Value::Function {
+                    name: left_name,
+                    type_params: left_type_params,
+                    globals: _,
+                    positional_only: left_positional_only,
+                    params: left_params,
+                    defaults: left_defaults,
+                    vararg: left_vararg,
+                    keyword_only: left_keyword_only,
+                    keyword_defaults: left_keyword_defaults,
+                    kwarg: left_kwarg,
+                    annotations: left_annotations,
+                    attrs: _,
+                    closure: left_closure,
+                    body: left_body,
+                    is_generator: left_is_generator,
+                    is_async: left_is_async,
+                    identity: left_identity,
+                    owner_class: _,
+                },
+                Value::Function {
+                    name: right_name,
+                    type_params: right_type_params,
+                    globals: _,
+                    positional_only: right_positional_only,
+                    params: right_params,
+                    defaults: right_defaults,
+                    vararg: right_vararg,
+                    keyword_only: right_keyword_only,
+                    keyword_defaults: right_keyword_defaults,
+                    kwarg: right_kwarg,
+                    annotations: right_annotations,
+                    attrs: _,
+                    closure: right_closure,
+                    body: right_body,
+                    is_generator: right_is_generator,
+                    is_async: right_is_async,
+                    identity: right_identity,
+                    owner_class: _,
+                },
+            ) => {
+                Rc::ptr_eq(left_identity, right_identity)
+                    && left_name == right_name
+                    && left_type_params == right_type_params
+                    && left_positional_only == right_positional_only
+                    && left_params == right_params
+                    && left_defaults == right_defaults
+                    && left_vararg == right_vararg
+                    && left_keyword_only == right_keyword_only
+                    && left_keyword_defaults == right_keyword_defaults
+                    && left_kwarg == right_kwarg
+                    && left_annotations == right_annotations
+                    && left_closure == right_closure
+                    && left_body == right_body
+                    && left_is_generator == right_is_generator
+                    && left_is_async == right_is_async
+            }
+            (Value::Generator(left), Value::Generator(right)) => Rc::ptr_eq(left, right),
+            (Value::Coroutine(left), Value::Coroutine(right)) => Rc::ptr_eq(left, right),
+            (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
+            (Value::AwaitIterator(left), Value::AwaitIterator(right)) => left == right,
+            (Value::AsyncGenerator(left), Value::AsyncGenerator(right)) => Rc::ptr_eq(left, right),
+            (
+                Value::AsyncGeneratorNext {
+                    state: left_state,
+                    send: left_send,
+                    default: left_default,
+                },
+                Value::AsyncGeneratorNext {
+                    state: right_state,
+                    send: right_send,
+                    default: right_default,
+                },
+            ) => {
+                Rc::ptr_eq(left_state, right_state)
+                    && left_send == right_send
+                    && left_default == right_default
+            }
+            (
+                Value::AsyncGeneratorThrow {
+                    state: left_state,
+                    exception: left_exception,
+                },
+                Value::AsyncGeneratorThrow {
+                    state: right_state,
+                    exception: right_exception,
+                },
+            ) => Rc::ptr_eq(left_state, right_state) && left_exception == right_exception,
+            (Value::AsyncGeneratorClose(left), Value::AsyncGeneratorClose(right)) => {
+                Rc::ptr_eq(left, right)
+            }
+            (
+                Value::AnextDefault {
+                    awaitable: left_awaitable,
+                    default: left_default,
+                },
+                Value::AnextDefault {
+                    awaitable: right_awaitable,
+                    default: right_default,
+                },
+            ) => left_awaitable == right_awaitable && left_default == right_default,
+            (
+                Value::Class {
+                    name: left_name,
+                    type_params: left_type_params,
+                    bases: left_bases,
+                    attrs: left_attrs,
+                },
+                Value::Class {
+                    name: right_name,
+                    type_params: right_type_params,
+                    bases: right_bases,
+                    attrs: right_attrs,
+                },
+            ) => {
+                left_name == right_name
+                    && left_type_params == right_type_params
+                    && left_bases == right_bases
+                    && left_attrs == right_attrs
+            }
+            (
+                Value::TypeParam {
+                    kind: left_kind,
+                    name: left_name,
+                    bound: left_bound,
+                    default: left_default,
+                },
+                Value::TypeParam {
+                    kind: right_kind,
+                    name: right_name,
+                    bound: right_bound,
+                    default: right_default,
+                },
+            ) => {
+                left_kind == right_kind
+                    && left_name == right_name
+                    && left_bound == right_bound
+                    && left_default == right_default
+            }
+            (
+                Value::TypeAlias {
+                    name: left_name,
+                    type_params: left_type_params,
+                    value: left_value,
+                },
+                Value::TypeAlias {
+                    name: right_name,
+                    type_params: right_type_params,
+                    value: right_value,
+                },
+            ) => {
+                left_name == right_name
+                    && left_type_params == right_type_params
+                    && left_value == right_value
+            }
+            (
+                Value::GenericAlias {
+                    origin: left_origin,
+                    args: left_args,
+                },
+                Value::GenericAlias {
+                    origin: right_origin,
+                    args: right_args,
+                },
+            ) => left_origin == right_origin && left_args == right_args,
+            (Value::Unpack(left), Value::Unpack(right)) => left == right,
+            (
+                Value::Template {
+                    strings: left_strings,
+                    interpolations: left_interpolations,
+                },
+                Value::Template {
+                    strings: right_strings,
+                    interpolations: right_interpolations,
+                },
+            ) => left_strings == right_strings && left_interpolations == right_interpolations,
+            (Value::TemplateInterpolation(left), Value::TemplateInterpolation(right)) => {
+                left == right
+            }
+            (
+                Value::Instance {
+                    class_name: left_class_name,
+                    fields: left_fields,
+                    class_attrs: left_class_attrs,
+                    class_bases: left_class_bases,
+                },
+                Value::Instance {
+                    class_name: right_class_name,
+                    fields: right_fields,
+                    class_attrs: right_class_attrs,
+                    class_bases: right_class_bases,
+                },
+            ) => {
+                left_class_name == right_class_name
+                    && left_fields == right_fields
+                    && left_class_attrs == right_class_attrs
+                    && left_class_bases == right_class_bases
+            }
+            (
+                Value::Property {
+                    fget: left_fget,
+                    fset: left_fset,
+                    fdel: left_fdel,
+                    doc: left_doc,
+                },
+                Value::Property {
+                    fget: right_fget,
+                    fset: right_fset,
+                    fdel: right_fdel,
+                    doc: right_doc,
+                },
+            ) => {
+                left_fget == right_fget
+                    && left_fset == right_fset
+                    && left_fdel == right_fdel
+                    && left_doc == right_doc
+            }
+            (
+                Value::MemberDescriptor {
+                    name: left_name,
+                    owner_name: left_owner_name,
+                },
+                Value::MemberDescriptor {
+                    name: right_name,
+                    owner_name: right_owner_name,
+                },
+            ) => left_name == right_name && left_owner_name == right_owner_name,
+            (
+                Value::StaticMethod {
+                    function: left_function,
+                },
+                Value::StaticMethod {
+                    function: right_function,
+                },
+            )
+            | (
+                Value::ClassMethod {
+                    function: left_function,
+                },
+                Value::ClassMethod {
+                    function: right_function,
+                },
+            ) => left_function == right_function,
+            (
+                Value::Super {
+                    class: left_class,
+                    object: left_object,
+                    identity: left_identity,
+                },
+                Value::Super {
+                    class: right_class,
+                    object: right_object,
+                    identity: right_identity,
+                },
+            ) => {
+                Rc::ptr_eq(left_identity, right_identity)
+                    && left_class == right_class
+                    && left_object == right_object
+            }
+            (
+                Value::BoundMethod {
+                    function: left_function,
+                    receiver: left_receiver,
+                    ..
+                },
+                Value::BoundMethod {
+                    function: right_function,
+                    receiver: right_receiver,
+                    ..
+                },
+            ) => left_function == right_function && left_receiver == right_receiver,
+            (
+                Value::AstNode {
+                    identity: left_identity,
+                    ..
+                },
+                Value::AstNode {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::Module {
+                    name: left_name,
+                    attrs: left_attrs,
+                },
+                Value::Module {
+                    name: right_name,
+                    attrs: right_attrs,
+                },
+            ) => left_name == right_name && left_attrs == right_attrs,
+            (
+                Value::Exception {
+                    type_name: left_type_name,
+                    type_hierarchy: left_type_hierarchy,
+                    type_object: left_type_object,
+                    message: left_message,
+                    args: left_args,
+                    attrs: left_attrs,
+                    exceptions: left_exceptions,
+                    cause: left_cause,
+                    context: left_context,
+                    suppress_context: left_suppress_context,
+                },
+                Value::Exception {
+                    type_name: right_type_name,
+                    type_hierarchy: right_type_hierarchy,
+                    type_object: right_type_object,
+                    message: right_message,
+                    args: right_args,
+                    attrs: right_attrs,
+                    exceptions: right_exceptions,
+                    cause: right_cause,
+                    context: right_context,
+                    suppress_context: right_suppress_context,
+                },
+            ) => {
+                left_type_name == right_type_name
+                    && left_type_hierarchy == right_type_hierarchy
+                    && left_type_object == right_type_object
+                    && left_message == right_message
+                    && left_args == right_args
+                    && left_attrs == right_attrs
+                    && left_exceptions == right_exceptions
+                    && left_cause == right_cause
+                    && left_context == right_context
+                    && left_suppress_context == right_suppress_context
+            }
+            (Value::Builtin(left), Value::Builtin(right)) => left == right,
+            (Value::None, Value::None) => true,
+            (Value::NotImplemented, Value::NotImplemented) => true,
+            (Value::Ellipsis, Value::Ellipsis) => true,
+            _ => false,
+        }
+    }
+}
+
+fn format_tuple(items: &[Value]) -> String {
+    match items {
+        [] => "()".to_string(),
+        [item] => format!("({},)", format_value_repr(item)),
+        _ => format!("({})", format_list_items(items)),
+    }
+}
+
+fn format_string_tuple(items: &[String]) -> String {
+    match items {
+        [] => "()".to_string(),
+        [item] => format!("({},)", repr_string(item)),
+        _ => format!(
+            "({})",
+            items
+                .iter()
+                .map(|item| repr_string(item))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
+}
+
+fn format_interpolation_tuple(items: &[TemplateInterpolation]) -> String {
+    match items {
+        [] => "()".to_string(),
+        [item] => format!("({},)", format_template_interpolation(item)),
+        _ => format!(
+            "({})",
+            items
+                .iter()
+                .map(format_template_interpolation)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+    }
+}
+
+fn format_template_interpolation(interpolation: &TemplateInterpolation) -> String {
+    let conversion = interpolation
+        .conversion
+        .as_ref()
+        .map(|value| repr_string(value))
+        .unwrap_or_else(|| "None".to_string());
+
+    format!(
+        "Interpolation({}, {}, {}, {})",
+        format_template_interpolation_value(&interpolation.value),
+        repr_string(&interpolation.expression),
+        conversion,
+        repr_string(&interpolation.format_spec)
+    )
+}
+
+fn format_template_interpolation_value(value: &Value) -> String {
+    match value {
+        Value::String(value) => repr_string(value),
+        value => format_value_repr(value),
+    }
+}
+
+fn repr_bytes(value: &[u8]) -> String {
+    let mut result = String::from("b'");
+    for byte in value {
+        match *byte {
+            b'\\' => result.push_str("\\\\"),
+            b'\'' => result.push_str("\\'"),
+            b'\n' => result.push_str("\\n"),
+            b'\r' => result.push_str("\\r"),
+            b'\t' => result.push_str("\\t"),
+            0x20..=0x7e => result.push(*byte as char),
+            byte => result.push_str(&format!("\\x{byte:02x}")),
+        }
+    }
+    result.push('\'');
+    result
+}
+
+fn repr_string(value: &str) -> String {
+    let quote = if value.contains('\'') && !value.contains('"') {
+        '"'
+    } else {
+        '\''
+    };
+    let mut result = String::new();
+    result.push(quote);
+    for ch in value.chars() {
+        match ch {
+            '\\' => result.push_str("\\\\"),
+            '\n' => result.push_str("\\n"),
+            '\r' => result.push_str("\\r"),
+            '\t' => result.push_str("\\t"),
+            ch if ch == quote => {
+                result.push('\\');
+                result.push(ch);
+            }
+            ch => result.push(ch),
+        }
+    }
+    result.push(quote);
+    result
+}
+
+fn format_set(items: &[Value]) -> String {
+    if items.is_empty() {
+        "set()".to_string()
+    } else {
+        format!("{{{}}}", format_list_items(items))
+    }
+}
+
+fn format_frozen_set(items: &[Value]) -> String {
+    if items.is_empty() {
+        "frozenset()".to_string()
+    } else {
+        format!("frozenset({})", format_set(items))
+    }
+}
+
+fn format_dict_view_payload(kind: DictViewKind, entries: &DictRef) -> String {
+    let values = dict_view_values(kind, entries);
+    format!("[{}]", format_list_items(&values))
+}
+
+fn dict_view_type_name(kind: DictViewKind) -> &'static str {
+    match kind {
+        DictViewKind::Keys => "dict_keys",
+        DictViewKind::Values => "dict_values",
+        DictViewKind::Items => "dict_items",
+    }
+}
+
+fn dict_view_is_set_like(kind: DictViewKind) -> bool {
+    matches!(kind, DictViewKind::Keys | DictViewKind::Items)
+}
+
+fn format_dict(entries: &[(Value, Value)]) -> String {
+    entries
+        .iter()
+        .map(|(key, value)| format!("{}: {}", format_value_repr(key), format_value_repr(value)))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn format_scope_dict(scope: &Scope) -> String {
+    let entries = scope
+        .borrow()
+        .iter()
+        .map(|(key, value)| (Value::String(key.clone()), value.clone()))
+        .collect::<Vec<_>>();
+    format_dict(&entries)
+}
+
+fn format_simple_namespace(fields: &DictRef) -> String {
+    let mut active = HashSet::new();
+    format_simple_namespace_inner(fields, &mut active)
+}
+
+fn format_simple_namespace_inner(fields: &DictRef, active: &mut HashSet<usize>) -> String {
+    let ptr = Rc::as_ptr(fields) as usize;
+    if !active.insert(ptr) {
+        return "namespace(...)".to_string();
+    }
+
+    let fields = fields.borrow();
+    let rendered = fields
+        .iter()
+        .filter_map(|(key, value)| match key {
+            Value::String(name) => Some(format!(
+                "{name}={}",
+                format_value_repr_with_namespace_seen(value, active)
+            )),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    active.remove(&ptr);
+    format!("namespace({rendered})")
+}
+
+fn sets_equal(left: &[Value], right: &[Value]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .all(|item| right.iter().any(|other| other == item))
 }
