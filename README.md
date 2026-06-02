@@ -2,6 +2,10 @@
 
 A Python interpreter written in Rust.
 
+## Goal
+
+实现一个可维护、安全的 Rust Python：完整覆盖 Python 语法前端，逐步实现核心运行时和标准库子集，并按语义迁移 CPython 测试；对 CPython 内部实现测试做分类标记，而不是为了通过它们去复制 CPython。
+
 ## Install
 
 ```bash
@@ -23,7 +27,7 @@ echo "print(1)" | mnpy  # pipe input
 Source → Lexer → Parser → AST → Compiler → Bytecode → VM → Output
 ```
 
-A register-based VM with 80+ instructions, 60+ value types, and built-in support for most Python 3.10+ syntax including match-case, async/await, f-strings, type parameters, and more.
+A register-based VM with 80+ instructions and 60+ value types.
 
 ## License
 
