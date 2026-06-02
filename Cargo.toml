@@ -3,4 +3,17 @@ name = "minipython"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "mnpy"
+path = "src/main.rs"
+
 [dependencies]
+encoding_rs = "0.8"
+num-bigint = "0.4"
+num-integer = "0.1"
+num-traits = "0.2"
+unic-ucd-name_aliases = "0.9"
+unicode-ident = "1.0"
+unicode-general-category = "1.1"
+unicode-normalization = "0.1"
+unicode_names2 = "2.0"
