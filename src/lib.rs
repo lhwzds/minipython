@@ -3,13 +3,24 @@ mod bytecode;
 mod compiler;
 mod lexer;
 mod parser;
+mod stdlib;
 mod value;
 mod vm;
 
-use compiler::{compile, compile_eval, compile_interactive};
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::{Path, PathBuf},
+    rc::Rc,
+};
+
+use compiler::{
+    CompileOptions, compile, compile_eval, compile_interactive_with_options, compile_with_options,
+};
 use lexer::{
-    decode_source_for_parse, lex_for_parse, lex_with_diagnostics, lex_with_spans_for_parse,
-    lex_with_warnings_for_parse,
+    decode_source_for_parse, function_definition_line_sequences, function_definition_start_lines,
+    generator_expression_line_sequences, lex_for_parse, lex_with_diagnostics,
+    lex_with_spans_for_parse, lex_with_warnings_for_parse,
 };
 use parser::{parse, parse_eval, parse_func_type, parse_interactive, parse_with_diagnostic};
 use vm::Vm;
@@ -36,15 +47,163 @@ pub struct ParseError {
     pub end_column: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct VirtualModule {
+    name: String,
+    source: String,
+    is_package: bool,
+}
+
+impl VirtualModule {
+    pub fn module(name: impl Into<String>, source: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            source: source.into(),
+            is_package: false,
+        }
+    }
+
+    pub fn package(name: impl Into<String>, source: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            source: source.into(),
+            is_package: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SandboxPolicy {
+    allowed_stdlib_modules: Option<HashSet<String>>,
+}
+
+impl SandboxPolicy {
+    pub fn allow_all_stdlib() -> Self {
+        Self {
+            allowed_stdlib_modules: None,
+        }
+    }
+
+    pub fn deny_stdlib() -> Self {
+        Self {
+            allowed_stdlib_modules: Some(HashSet::new()),
+        }
+    }
+
+    pub fn allow_stdlib_modules<I, S>(modules: I) -> Result<Self, String>
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        let mut allowed = HashSet::new();
+        for module in modules {
+            let module = module.into();
+            if !is_python_module_name(&module) {
+                return Err(format!(
+                    "sandbox error: invalid stdlib module name '{module}'"
+                ));
+            }
+            allowed.insert(module);
+        }
+        Ok(Self {
+            allowed_stdlib_modules: Some(allowed),
+        })
+    }
+}
+
+impl Default for SandboxPolicy {
+    fn default() -> Self {
+        Self::allow_all_stdlib()
+    }
+}
+
 pub fn run_source(source: &str) -> Result<Vec<String>, String> {
     reject_too_complex_source(source)?;
-    let tokens = lex_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
+    let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("lex error: {}", error.message))?;
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
     let stmt = parse(&tokens).map_err(|message| format!("parse error: {message}"))?;
-    let instructions = compile(&stmt).map_err(|message| format!("compile error: {message}"))?;
+    let instructions =
+        compile_with_options(&stmt, compile_options_for_spanned_tokens(&spanned_tokens))
+            .map_err(|message| format!("compile error: {message}"))?;
     let mut vm = Vm::new(instructions);
 
     vm.run()
         .map_err(|message| format!("runtime error: {message}"))
+}
+
+pub fn run_source_with_virtual_modules(
+    source: &str,
+    modules: impl IntoIterator<Item = VirtualModule>,
+) -> Result<Vec<String>, String> {
+    run_source_with_virtual_modules_and_policy(source, modules, SandboxPolicy::default())
+}
+
+pub fn run_source_with_virtual_modules_and_policy(
+    source: &str,
+    modules: impl IntoIterator<Item = VirtualModule>,
+    policy: SandboxPolicy,
+) -> Result<Vec<String>, String> {
+    reject_too_complex_source(source)?;
+    let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("lex error: {}", error.message))?;
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
+    let stmt = parse(&tokens).map_err(|message| format!("parse error: {message}"))?;
+    let instructions =
+        compile_with_options(&stmt, compile_options_for_spanned_tokens(&spanned_tokens))
+            .map_err(|message| format!("compile error: {message}"))?;
+    let module_sources = modules
+        .into_iter()
+        .map(|module| {
+            (
+                module.name,
+                vm::SourceModule {
+                    source: module.source,
+                    is_package: module.is_package,
+                },
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let mut vm = Vm::new(instructions)
+        .with_source_modules(Rc::new(module_sources))
+        .with_stdlib_import_policy(vm_stdlib_import_policy(policy));
+
+    vm.run()
+        .map_err(|message| format!("runtime error: {message}"))
+}
+
+pub fn run_source_with_sandbox_dir(
+    source: &str,
+    root: impl AsRef<Path>,
+) -> Result<Vec<String>, String> {
+    run_source_with_sandbox_dir_and_policy(source, root, SandboxPolicy::default())
+}
+
+pub fn run_source_with_sandbox_dir_and_policy(
+    source: &str,
+    root: impl AsRef<Path>,
+    policy: SandboxPolicy,
+) -> Result<Vec<String>, String> {
+    let modules = virtual_modules_from_sandbox_dir(root)?;
+    run_source_with_virtual_modules_and_policy(source, modules, policy)
+}
+
+pub fn virtual_modules_from_sandbox_dir(
+    root: impl AsRef<Path>,
+) -> Result<Vec<VirtualModule>, String> {
+    let root = root.as_ref();
+    let root = canonicalize_sandbox_root(root)?;
+    let mut modules = Vec::new();
+    collect_sandbox_modules(&root, &root, None, &mut modules)?;
+    reject_duplicate_sandbox_modules(&modules)?;
+    modules.sort_by(|left, right| left.name.cmp(&right.name));
+    Ok(modules)
 }
 
 pub fn run_source_bytes(source: &[u8]) -> Result<Vec<String>, String> {
@@ -55,18 +214,24 @@ pub fn run_source_bytes(source: &[u8]) -> Result<Vec<String>, String> {
 
 pub fn run_source_with_warnings_as_errors(source: &str) -> Result<Vec<String>, String> {
     reject_too_complex_source(source)?;
-    let (tokens, warnings) =
-        lex_with_warnings_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
+    let (spanned_tokens, warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("lex error: {}", error.message))?;
     if let Some(warning) = warnings.first() {
         return Err(format!("lex error: {}", warning.message));
     }
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
 
     let stmt = parse(&tokens).map_err(|message| format!("parse error: {message}"))?;
     let static_warnings = static_syntax_warnings(&stmt);
     if let Some(warning) = static_warnings.first() {
         return Err(format!("lex error: {}", warning.message));
     }
-    let instructions = compile(&stmt).map_err(|message| format!("compile error: {message}"))?;
+    let instructions =
+        compile_with_options(&stmt, compile_options_for_spanned_tokens(&spanned_tokens))
+            .map_err(|message| format!("compile error: {message}"))?;
     let mut vm = Vm::new(instructions);
 
     vm.run()
@@ -131,23 +296,304 @@ pub fn ast_dump_interactive_source(source: &str) -> Result<String, String> {
 
 pub fn compile_source(source: &str) -> Result<(), String> {
     reject_too_complex_source(source)?;
-    let tokens = lex_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
+    let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("lex error: {}", error.message))?;
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
     let program = parse(&tokens).map_err(|message| format!("parse error: {message}"))?;
-    compile(&program).map_err(|message| format!("compile error: {message}"))?;
+    compile_with_options(
+        &program,
+        compile_options_for_spanned_tokens(&spanned_tokens),
+    )
+    .map_err(|message| format!("compile error: {message}"))?;
     Ok(())
 }
 
 pub fn run_interactive_source(source: &str) -> Result<Vec<String>, String> {
     reject_too_complex_source(source)?;
-    let tokens = lex_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
+    let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("lex error: {}", error.message))?;
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
     let program =
         parse_interactive(&tokens).map_err(|message| format!("parse error: {message}"))?;
-    let instructions =
-        compile_interactive(&program).map_err(|message| format!("compile error: {message}"))?;
+    let instructions = compile_interactive_with_options(
+        &program,
+        compile_options_for_spanned_tokens(&spanned_tokens),
+    )
+    .map_err(|message| format!("compile error: {message}"))?;
     let mut vm = Vm::new(instructions);
 
     vm.run()
         .map_err(|message| format!("runtime error: {message}"))
+}
+
+fn compile_options_for_spanned_tokens(tokens: &[SpannedToken]) -> CompileOptions {
+    CompileOptions::default()
+        .with_function_first_lines(function_definition_start_lines(tokens))
+        .with_function_line_sequences(function_definition_line_sequences(tokens))
+        .with_generator_expression_line_sequences(generator_expression_line_sequences(tokens))
+}
+
+fn vm_stdlib_import_policy(policy: SandboxPolicy) -> vm::StdlibImportPolicy {
+    match policy.allowed_stdlib_modules {
+        Some(modules) => vm::StdlibImportPolicy::allow_only(modules),
+        None => vm::StdlibImportPolicy::allow_all(),
+    }
+}
+
+fn canonicalize_sandbox_root(root: &Path) -> Result<PathBuf, String> {
+    let root = fs::canonicalize(root)
+        .map_err(|error| sandbox_io_error("cannot open module root", root, error))?;
+    let metadata = fs::metadata(&root)
+        .map_err(|error| sandbox_io_error("cannot stat module root", &root, error))?;
+    if !metadata.is_dir() {
+        return Err(format!(
+            "sandbox error: module root is not a directory: {}",
+            root.display()
+        ));
+    }
+    Ok(root)
+}
+
+fn collect_sandbox_modules(
+    root: &Path,
+    dir: &Path,
+    package_name: Option<String>,
+    modules: &mut Vec<VirtualModule>,
+) -> Result<(), String> {
+    for entry in sandbox_dir_entries(dir)? {
+        let name = sandbox_entry_name(&entry)?;
+        if should_skip_sandbox_entry(&name) {
+            continue;
+        }
+
+        let path = entry.path();
+        let canonical_path = canonicalize_sandbox_child(root, &path)?;
+        let metadata = fs::metadata(&canonical_path)
+            .map_err(|error| sandbox_io_error("cannot stat module path", &canonical_path, error))?;
+
+        if metadata.is_dir() {
+            collect_sandbox_package_dir(
+                root,
+                &canonical_path,
+                &name,
+                package_name.as_deref(),
+                modules,
+            )?;
+        } else if metadata.is_file() {
+            collect_sandbox_module_file(
+                root,
+                &canonical_path,
+                &name,
+                package_name.as_deref(),
+                modules,
+            )?;
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_sandbox_package_dir(
+    root: &Path,
+    dir: &Path,
+    dir_name: &str,
+    parent_package: Option<&str>,
+    modules: &mut Vec<VirtualModule>,
+) -> Result<(), String> {
+    let Some(init_path) = sandbox_package_init_path(root, dir)? else {
+        return Ok(());
+    };
+    validate_sandbox_module_component(dir_name, dir)?;
+    let module_name = join_sandbox_module_name(parent_package, dir_name);
+    let source = read_sandbox_source_file(root, &init_path)?;
+    modules.push(VirtualModule::package(module_name.clone(), source));
+    collect_sandbox_modules(root, dir, Some(module_name), modules)
+}
+
+fn collect_sandbox_module_file(
+    root: &Path,
+    path: &Path,
+    file_name: &str,
+    package_name: Option<&str>,
+    modules: &mut Vec<VirtualModule>,
+) -> Result<(), String> {
+    if file_name == "__init__.py" {
+        return Ok(());
+    }
+    if path.extension().and_then(|extension| extension.to_str()) != Some("py") {
+        return Ok(());
+    }
+    let Some(stem) = path.file_stem().and_then(|stem| stem.to_str()) else {
+        return Err(format!(
+            "sandbox error: non-UTF-8 module filename: {}",
+            path.display()
+        ));
+    };
+    validate_sandbox_module_component(stem, path)?;
+    let module_name = join_sandbox_module_name(package_name, stem);
+    let source = read_sandbox_source_file(root, path)?;
+    modules.push(VirtualModule::module(module_name, source));
+    Ok(())
+}
+
+fn sandbox_dir_entries(dir: &Path) -> Result<Vec<fs::DirEntry>, String> {
+    let mut entries = fs::read_dir(dir)
+        .map_err(|error| sandbox_io_error("cannot read module directory", dir, error))?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|error| sandbox_io_error("cannot read module directory entry", dir, error))?;
+    entries.sort_by_key(|entry| entry.file_name());
+    Ok(entries)
+}
+
+fn sandbox_entry_name(entry: &fs::DirEntry) -> Result<String, String> {
+    entry.file_name().into_string().map_err(|_| {
+        format!(
+            "sandbox error: non-UTF-8 module path component: {}",
+            entry.path().display()
+        )
+    })
+}
+
+fn should_skip_sandbox_entry(name: &str) -> bool {
+    name.starts_with('.') || name == "__pycache__"
+}
+
+fn sandbox_package_init_path(root: &Path, dir: &Path) -> Result<Option<PathBuf>, String> {
+    let init_path = dir.join("__init__.py");
+    match fs::symlink_metadata(&init_path) {
+        Ok(metadata) if metadata.file_type().is_file() || metadata.file_type().is_symlink() => {
+            Ok(Some(canonicalize_sandbox_child(root, &init_path)?))
+        }
+        Ok(_) => Err(format!(
+            "sandbox error: package initializer is not a file: {}",
+            init_path.display()
+        )),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(sandbox_io_error(
+            "cannot stat package initializer",
+            &init_path,
+            error,
+        )),
+    }
+}
+
+fn read_sandbox_source_file(root: &Path, path: &Path) -> Result<String, String> {
+    let path = canonicalize_sandbox_child(root, path)?;
+    fs::read_to_string(&path)
+        .map_err(|error| sandbox_io_error("cannot read module source", &path, error))
+}
+
+fn canonicalize_sandbox_child(root: &Path, path: &Path) -> Result<PathBuf, String> {
+    let canonical = fs::canonicalize(path)
+        .map_err(|error| sandbox_io_error("cannot open module path", path, error))?;
+    if !canonical.starts_with(root) {
+        return Err(format!(
+            "sandbox error: module path escapes sandbox root: {}",
+            path.display()
+        ));
+    }
+    Ok(canonical)
+}
+
+fn validate_sandbox_module_component(component: &str, path: &Path) -> Result<(), String> {
+    if is_python_module_component(component) {
+        Ok(())
+    } else {
+        Err(format!(
+            "sandbox error: invalid module path component '{component}' in {}",
+            path.display()
+        ))
+    }
+}
+
+fn is_python_module_name(name: &str) -> bool {
+    !name.is_empty() && name.split('.').all(is_python_module_component)
+}
+
+fn is_python_module_component(component: &str) -> bool {
+    is_python_identifier(component) && !is_python_keyword(component)
+}
+
+fn join_sandbox_module_name(parent: Option<&str>, component: &str) -> String {
+    match parent {
+        Some(parent) => format!("{parent}.{component}"),
+        None => component.to_string(),
+    }
+}
+
+fn reject_duplicate_sandbox_modules(modules: &[VirtualModule]) -> Result<(), String> {
+    let mut seen = HashSet::new();
+    for module in modules {
+        if !seen.insert(module.name.clone()) {
+            return Err(format!(
+                "sandbox error: duplicate module name '{}'",
+                module.name
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn sandbox_io_error(action: &str, path: &Path, error: std::io::Error) -> String {
+    format!("sandbox error: {action}: {}: {error}", path.display())
+}
+
+fn is_python_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if first != '_' && !unicode_ident::is_xid_start(first) {
+        return false;
+    }
+    chars.all(|ch| ch == '_' || unicode_ident::is_xid_continue(ch))
+}
+
+fn is_python_keyword(name: &str) -> bool {
+    matches!(
+        name,
+        "False"
+            | "None"
+            | "True"
+            | "and"
+            | "as"
+            | "assert"
+            | "async"
+            | "await"
+            | "break"
+            | "class"
+            | "continue"
+            | "def"
+            | "del"
+            | "elif"
+            | "else"
+            | "except"
+            | "finally"
+            | "for"
+            | "from"
+            | "global"
+            | "if"
+            | "import"
+            | "in"
+            | "is"
+            | "lambda"
+            | "nonlocal"
+            | "not"
+            | "or"
+            | "pass"
+            | "raise"
+            | "return"
+            | "try"
+            | "while"
+            | "with"
+            | "yield"
+    )
 }
 
 fn reject_too_complex_source(source: &str) -> Result<(), String> {
@@ -225,7 +671,7 @@ pub fn source_warning_as_error_diagnostic(source: &str) -> Result<Option<LexErro
     }))
 }
 
-fn static_syntax_warnings(program: &Program) -> Vec<LexWarning> {
+pub(crate) fn static_syntax_warnings(program: &Program) -> Vec<LexWarning> {
     let mut warnings = Vec::new();
     collect_finally_control_flow_warnings(&program.statements, false, 0, &mut warnings);
     collect_assert_tuple_warnings(&program.statements, &mut warnings);
@@ -474,7 +920,7 @@ fn collect_identity_literal_warnings(statements: &[Stmt], warnings: &mut Vec<Lex
 fn collect_identity_literal_warnings_stmt(statement: &Stmt, warnings: &mut Vec<LexWarning>) {
     match statement {
         Stmt::Expr(expr) => collect_identity_literal_warnings_expr(expr, warnings),
-        Stmt::Assign { targets, value } => {
+        Stmt::Assign { targets, value, .. } => {
             collect_identity_literal_warnings_targets(targets, warnings);
             collect_identity_literal_warnings_expr(value, warnings);
         }
@@ -604,7 +1050,7 @@ fn collect_identity_literal_warnings_stmt(statement: &Stmt, warnings: &mut Vec<L
             collect_identity_literal_warnings(else_body, warnings);
             collect_identity_literal_warnings(finally_body, warnings);
         }
-        Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+        Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
             for item in items {
                 collect_identity_literal_warnings_expr(&item.context_expr, warnings);
                 if let Some(target) = &item.optional_vars {
@@ -627,12 +1073,14 @@ fn collect_identity_literal_warnings_stmt(statement: &Stmt, warnings: &mut Vec<L
             iter,
             body,
             else_body,
+            ..
         }
         | Stmt::AsyncFor {
             target,
             iter,
             body,
             else_body,
+            ..
         } => {
             collect_identity_literal_warnings_target(target, warnings);
             collect_identity_literal_warnings_expr(iter, warnings);

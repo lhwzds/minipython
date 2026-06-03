@@ -1,4 +1,62 @@
-use minipython::{eval_source, parse_func_type_source, run_interactive_source, run_source};
+use minipython::{
+    SandboxPolicy, VirtualModule, eval_source, parse_func_type_source, run_interactive_source,
+    run_source, run_source_with_sandbox_dir, run_source_with_sandbox_dir_and_policy,
+    run_source_with_virtual_modules, run_source_with_virtual_modules_and_policy,
+};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+struct TestSandboxDir {
+    path: PathBuf,
+}
+
+impl TestSandboxDir {
+    fn new(label: &str) -> Self {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system time before unix epoch")
+            .as_nanos();
+        let path =
+            std::env::temp_dir().join(format!("minipython-{label}-{}-{nanos}", std::process::id()));
+        fs::create_dir_all(&path).expect("failed to create test sandbox directory");
+        Self { path }
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn write(&self, relative_path: &str, contents: &str) {
+        let path = self.path.join(relative_path);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).expect("failed to create test module parent directory");
+        }
+        fs::write(path, contents).expect("failed to write test module");
+    }
+}
+
+impl Drop for TestSandboxDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
+
+fn run_source_with_stack(source: &str, stack_size: usize) -> Result<Vec<String>, String> {
+    let source = source.to_string();
+    std::thread::Builder::new()
+        .stack_size(stack_size)
+        .spawn(move || run_source(&source))
+        .expect("failed to spawn MiniPython test thread")
+        .join()
+        .expect("MiniPython test thread panicked")
+}
+
+fn output_lines(lines: &[&str]) -> Vec<String> {
+    lines.iter().map(|line| line.to_string()).collect()
+}
 
 #[test]
 fn prints_number() {
@@ -22,6 +80,7 @@ fn prints_addition() {
 fn evaluates_eval_input_expression() {
     assert_eq!(eval_source("1 + 2\n"), Ok("3".to_string()));
     assert_eq!(eval_source("1, 2,"), Ok("(1, 2)".to_string()));
+    assert_eq!(eval_source("# comment\n1"), Ok("1".to_string()));
     assert_eq!(
         eval_source("\"mini\" + \"python\""),
         Ok("minipython".to_string())
@@ -123,8 +182,13 @@ fn runs_sequence_repetition_and_basic_len_list_builtins() {
 #[test]
 fn runs_unary_arithmetic() {
     assert_eq!(
-        run_source("print(-2 ** 2)\nprint((-2) ** 2)\nprint(+1)"),
-        Ok(vec!["-4".to_string(), "4".to_string(), "1".to_string()])
+        run_source("print(-2 ** 2)\nprint((-2) ** 2)\nprint(+1)\nprint(+True)"),
+        Ok(vec![
+            "-4".to_string(),
+            "4".to_string(),
+            "1".to_string(),
+            "1".to_string()
+        ])
     );
 }
 
@@ -698,6 +762,69 @@ fn runs_import_statement() {
 }
 
 #[test]
+fn caches_imported_modules_in_sys_modules() {
+    assert_eq!(
+        run_source(
+            "import sys\nprint('math' in sys.modules)\nimport math\nprint('math' in sys.modules, sys.modules['math'] is math)\nagain = __import__('math')\nprint(again is math)\nimport os.path\nprint(sys.modules['os'].path is sys.modules['os.path'])"
+        ),
+        Ok(vec![
+            "False".to_string(),
+            "True True".to_string(),
+            "True".to_string(),
+            "True".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn binds_dotted_imports_to_parent_modules() {
+    assert_eq!(
+        run_source(
+            "import sys\nsub = __import__('os.path', fromlist=['sep'])\nprint(sub.__name__, 'os' in sys.modules, sys.modules['os'].path is sub)\nabc = __import__('collections.abc', fromlist=['Hashable'])\nprint(abc.__name__, 'collections' in sys.modules, sys.modules['collections'].abc is abc)"
+        ),
+        Ok(vec![
+            "os.path True True".to_string(),
+            "collections.abc True True".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn uses_fromlist_truthiness_in_import_builtin() {
+    assert_eq!(
+        run_source(
+            "print(__import__('os.path', fromlist='').__name__)\nprint(__import__('os.path', fromlist=0).__name__)\nprint(__import__('os.path', fromlist=False).__name__)\nprint(__import__('os.path', fromlist={}).__name__)\nprint(__import__('os.path', fromlist=set()).__name__)\nprint(__import__('os.path', fromlist='x').__name__)\nprint(__import__('os.path', fromlist=1).__name__)\nprint(__import__('os.path', fromlist=True).__name__)\nclass FalseBool:\n    def __bool__(self):\n        return False\nclass FalseLen:\n    def __len__(self):\n        return 0\nclass TrueLen:\n    def __len__(self):\n        return 1\nclass BadBool:\n    def __bool__(self):\n        return 1\nprint(__import__('os.path', fromlist=FalseBool()).__name__)\nprint(__import__('os.path', fromlist=FalseLen()).__name__)\nprint(__import__('os.path', fromlist=TrueLen()).__name__)\ntry:\n    __import__('os.path', fromlist=BadBool())\nexcept TypeError as error:\n    print(error)"
+        ),
+        Ok(vec![
+            "os".to_string(),
+            "os".to_string(),
+            "os".to_string(),
+            "os".to_string(),
+            "os".to_string(),
+            "os.path".to_string(),
+            "os.path".to_string(),
+            "os.path".to_string(),
+            "os".to_string(),
+            "os".to_string(),
+            "os.path".to_string(),
+            "__bool__ should return bool, returned int".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn isolates_sys_modules_between_runs() {
+    assert_eq!(
+        run_source("import sys\nsys.modules['math'] = 'changed'\nimport math\nprint(math)"),
+        Ok(vec!["changed".to_string()])
+    );
+    assert_eq!(
+        run_source("import math\nprint(math.__name__)"),
+        Ok(vec!["math".to_string()])
+    );
+}
+
+#[test]
 fn runs_from_import_statement() {
     assert_eq!(
         run_source(
@@ -736,26 +863,295 @@ fn runs_lazy_import_syntax() {
 }
 
 #[test]
+fn imports_virtual_source_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules(
+            "import tools\nfrom tools import VALUE\nprint(tools.__name__, VALUE, tools.inc(2))\nimport tools\nprint('done')",
+            vec![VirtualModule::module(
+                "tools",
+                "print('loading tools')\nVALUE = 41\ndef inc(value):\n    return value + 1",
+            )],
+        ),
+        Ok(output_lines(&["loading tools", "tools 41 3", "done"]))
+    );
+}
+
+#[test]
+fn imports_virtual_packages_with_relative_imports() {
+    assert_eq!(
+        run_source_with_virtual_modules(
+            "import pkg\nprint(pkg.__name__, pkg.__package__, pkg.VALUE)\nfrom pkg import util\nprint(pkg.util is util, util.VALUE)",
+            vec![
+                VirtualModule::package("pkg", "from . import util\nVALUE = util.VALUE + 1",),
+                VirtualModule::module("pkg.util", "VALUE = 2"),
+            ],
+        ),
+        Ok(output_lines(&["pkg pkg 3", "True 2"]))
+    );
+}
+
+#[test]
+fn imports_sandbox_directory_modules() {
+    let sandbox = TestSandboxDir::new("imports");
+    sandbox.write(
+        "tools.py",
+        "print('loading tools')\nVALUE = 41\ndef inc(value):\n    return value + 1",
+    );
+    sandbox.write(
+        "pkg/__init__.py",
+        "from . import util\nVALUE = util.VALUE + 1",
+    );
+    sandbox.write("pkg/util.py", "VALUE = 2");
+
+    assert_eq!(
+        run_source_with_sandbox_dir(
+            "import tools\nfrom tools import VALUE\nprint(tools.__file__)\nprint(tools.__name__, VALUE, tools.inc(2))\nimport pkg\nfrom pkg import util\nprint(pkg.__name__, pkg.__package__, pkg.VALUE)\nprint(pkg.util is util, util.VALUE)",
+            sandbox.path(),
+        ),
+        Ok(output_lines(&[
+            "loading tools",
+            "<virtual>/tools.py",
+            "tools 41 3",
+            "pkg pkg 3",
+            "True 2",
+        ]))
+    );
+}
+
+#[test]
+fn ignores_non_package_sandbox_directories() {
+    let sandbox = TestSandboxDir::new("non-package");
+    sandbox.write("loose/util.py", "VALUE = 9");
+
+    let error = run_source_with_sandbox_dir("import loose.util", sandbox.path()).unwrap_err();
+    assert!(
+        error.contains("ModuleNotFoundError"),
+        "unexpected error: {error}"
+    );
+}
+
+#[test]
+fn rejects_invalid_sandbox_module_names() {
+    let sandbox = TestSandboxDir::new("invalid-module");
+    sandbox.write("bad-name.py", "print('bad')");
+
+    let error = run_source_with_sandbox_dir("print('safe')", sandbox.path()).unwrap_err();
+    assert!(
+        error.contains("sandbox error: invalid module path component 'bad-name'"),
+        "unexpected error: {error}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn rejects_sandbox_directory_symlink_escape() {
+    let sandbox = TestSandboxDir::new("symlink-root");
+    let outside = TestSandboxDir::new("symlink-outside");
+    outside.write("escape.py", "print('escaped')");
+    std::os::unix::fs::symlink(
+        outside.path().join("escape.py"),
+        sandbox.path().join("escape.py"),
+    )
+    .expect("failed to create test symlink");
+
+    let error = run_source_with_sandbox_dir("print('safe')", sandbox.path()).unwrap_err();
+    assert!(
+        error.contains("sandbox error: module path escapes sandbox root"),
+        "unexpected error: {error}"
+    );
+}
+
+#[test]
+fn sandbox_policy_denies_stdlib_imports() {
+    let sandbox = TestSandboxDir::new("deny-stdlib");
+    sandbox.write("tools.py", "VALUE = 3");
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import tools\nprint(tools.VALUE)",
+            sandbox.path(),
+            SandboxPolicy::deny_stdlib(),
+        ),
+        Ok(output_lines(&["3"]))
+    );
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import math",
+            sandbox.path(),
+            SandboxPolicy::deny_stdlib(),
+        ),
+        Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
+    );
+}
+
+#[test]
+fn sandbox_policy_allows_selected_stdlib_imports() {
+    let sandbox = TestSandboxDir::new("allow-stdlib");
+    let policy = SandboxPolicy::allow_stdlib_modules(["math"]).unwrap();
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import math\nprint(math.sqrt(9))",
+            sandbox.path(),
+            policy.clone(),
+        ),
+        Ok(output_lines(&["3.0"]))
+    );
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy("import sys", sandbox.path(), policy),
+        Err("runtime error: ModuleNotFoundError: No module named 'sys'".to_string())
+    );
+}
+
+#[test]
+fn sandbox_policy_propagates_into_virtual_modules() {
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import tools\nprint(tools.VALUE)",
+            vec![VirtualModule::module("tools", "VALUE = 5")],
+            SandboxPolicy::deny_stdlib(),
+        ),
+        Ok(output_lines(&["5"]))
+    );
+
+    assert_eq!(
+        run_source_with_virtual_modules_and_policy(
+            "import tools",
+            vec![VirtualModule::module("tools", "import math")],
+            SandboxPolicy::deny_stdlib(),
+        ),
+        Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
+    );
+}
+
+#[test]
+fn sandbox_policy_checks_sys_modules_cache() {
+    let sandbox = TestSandboxDir::new("sys-modules-policy");
+    let policy = SandboxPolicy::allow_stdlib_modules(["sys"]).unwrap();
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import sys\nsys.modules['math'] = 'fake'\nimport math",
+            sandbox.path(),
+            policy,
+        ),
+        Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
+    );
+}
+
+#[test]
+fn rejects_invalid_sandbox_policy_module_names() {
+    assert_eq!(
+        SandboxPolicy::allow_stdlib_modules(["bad-name"]).unwrap_err(),
+        "sandbox error: invalid stdlib module name 'bad-name'".to_string()
+    );
+}
+
+#[test]
 fn reports_import_errors() {
     assert_eq!(
         run_source("import missing"),
         Err("runtime error: ModuleNotFoundError: No module named 'missing'".to_string())
     );
     assert_eq!(
+        run_source(
+            "try:\n    import missing\nexcept ModuleNotFoundError as error:\n    print(error.__class__.__name__, error)"
+        ),
+        Ok(output_lines(&[
+            "ModuleNotFoundError No module named 'missing'"
+        ]))
+    );
+    assert_eq!(
         run_source("from sys import missing"),
         Err("runtime error: ImportError: cannot import name 'missing' from 'sys'".to_string())
     );
     assert_eq!(
+        run_source(
+            "try:\n    from sys import missing\nexcept ImportError as error:\n    print(error.__class__.__name__, error)"
+        ),
+        Ok(output_lines(&[
+            "ImportError cannot import name 'missing' from 'sys'"
+        ]))
+    );
+    assert_eq!(
+        run_source("import sys\nsys.modules['math'] = None\nimport math"),
+        Err(
+            "runtime error: ModuleNotFoundError: import of math halted; None in sys.modules"
+                .to_string()
+        )
+    );
+    assert_eq!(
+        run_source("import sys\nsys.modules['os.path'] = None\nimport os.path"),
+        Err(
+            "runtime error: ModuleNotFoundError: import of os.path halted; None in sys.modules"
+                .to_string()
+        )
+    );
+    assert_eq!(
+        run_source("import sys\nsys.modules['os'] = 'changed'\nimport os.path"),
+        Err(
+            "runtime error: ModuleNotFoundError: No module named 'os.path'; 'os' is not a package"
+                .to_string()
+        )
+    );
+    assert_eq!(
+        run_source("import sys\nsys.modules['os'] = sys\n__import__('os.path', fromlist=['sep'])"),
+        Err(
+            "runtime error: ModuleNotFoundError: No module named 'os.path'; 'os' is not a package"
+                .to_string()
+        )
+    );
+    assert_eq!(
+        run_source("__import__('math', level=-1)"),
+        Err("runtime error: ValueError: level must be >= 0".to_string())
+    );
+    assert_eq!(
+        run_source("__import__('math', level=1.2)"),
+        Err("runtime error: TypeError: integer argument expected, got float".to_string())
+    );
+    assert_eq!(
+        run_source("__import__('math', level='1')"),
+        Err("runtime error: TypeError: an integer is required (got type str)".to_string())
+    );
+    assert_eq!(
+        run_source("print(__import__('math', level=False).__name__)"),
+        Ok(vec!["math".to_string()])
+    );
+    assert_eq!(
         run_source("from . import path"),
-        Err("runtime error: ImportError: relative imports are not supported".to_string())
+        Err(
+            "runtime error: ImportError: attempted relative import with no known parent package"
+                .to_string()
+        )
     );
     assert_eq!(
-        run_source("from ...pkg import name"),
-        Err("runtime error: ImportError: relative imports are not supported".to_string())
+        run_source(
+            "ns = {'__name__': 'test.typinganndata.runner', '__package__': 'test.typinganndata'}\nexec('from . import ann_module\\nprint(ann_module.__name__)', ns)"
+        ),
+        Ok(vec!["test.typinganndata.ann_module".to_string()])
     );
     assert_eq!(
-        run_source("from .... import value"),
-        Err("runtime error: ImportError: relative imports are not supported".to_string())
+        run_source(
+            "ns = {'__name__': 'test.typinganndata.runner', '__package__': 'test.typinganndata'}\nexec('from .ann_module import M\\nprint(M.__name__)', ns)"
+        ),
+        Ok(vec!["M".to_string()])
+    );
+    assert_eq!(
+        run_source(
+            "ns = {'__name__': 'test.typinganndata.runner', '__package__': 'test.typinganndata'}\nexec(\"print(__import__('ann_module', globals(), locals(), ['*'], 1).__name__)\", ns)"
+        ),
+        Ok(vec!["test.typinganndata.ann_module".to_string()])
+    );
+    assert_eq!(
+        run_source(
+            "ns = {'__name__': 'test.typinganndata.runner', '__package__': 'test.typinganndata'}\nexec('from ...pkg import name', ns)"
+        ),
+        Err(
+            "runtime error: ImportError: attempted relative import beyond top-level package"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source("def f():\n    lazy import sys"),
@@ -802,6 +1198,20 @@ fn runs_generator_yield_with_next() {
             "def g():\n    yield 1\n    yield 2\ngen = g()\nprint(next(gen))\nprint(next(gen))"
         ),
         Ok(vec!["1".to_string(), "2".to_string()])
+    );
+}
+
+#[test]
+fn lambda_with_yield_is_generator() {
+    assert_eq!(
+        run_source(
+            "g = (lambda: (yield))()\nprint(next(g))\ntry:\n    g.send(42)\nexcept StopIteration as done:\n    print(done)\nprint(list((lambda: (yield))()))"
+        ),
+        Ok(vec![
+            "None".to_string(),
+            "42".to_string(),
+            "[None]".to_string(),
+        ])
     );
 }
 
@@ -1069,6 +1479,67 @@ fn runs_coroutine_throw_and_close_methods() {
         Ok(vec![
             "None".to_string(),
             "cannot reuse already awaited coroutine".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn runs_collections_abc_coroutine_mixins() {
+    assert_eq!(
+        run_source(
+            "from collections.abc import Coroutine\nclass DefaultCoro(Coroutine):\n    def __await__(self):\n        yield\n    def send(self, value):\n        return super().send(value)\n    def throw(self, typ, val=None, tb=None):\n        return super().throw(typ, val, tb)\ncoro = DefaultCoro()\ntry:\n    coro.send(None)\nexcept StopIteration:\n    print('send-stopped')\ntry:\n    coro.throw(ValueError('bad'))\nexcept ValueError as error:\n    print(error)\nprint(coro.close())\nclass IgnoreExit(Coroutine):\n    def __await__(self):\n        yield\n    def send(self, value):\n        return value\n    def throw(self, typ, val=None, tb=None):\n        return 'ignored'\ntry:\n    IgnoreExit().close()\nexcept RuntimeError as error:\n    print(error)"
+        ),
+        Ok(vec![
+            "send-stopped".to_string(),
+            "bad".to_string(),
+            "None".to_string(),
+            "coroutine ignored GeneratorExit".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn runs_collections_abc_async_iterator_mixin() {
+    assert_eq!(
+        run_source(
+            "from collections.abc import AsyncIterable, AsyncIterator\nclass AI(AsyncIterator):\n    async def __anext__(self):\n        raise StopAsyncIteration\nai = AI()\nprint(isinstance(ai, AsyncIterable), isinstance(ai, AsyncIterator))\nprint(ai.__aiter__() is ai)\nprint(AsyncIterator.__aiter__(ai) is ai)"
+        ),
+        Ok(vec![
+            "True True".to_string(),
+            "True".to_string(),
+            "True".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn runs_collections_abc_async_generator_core_mixins() {
+    assert_eq!(
+        run_source(
+            "from collections.abc import AsyncGenerator, AsyncIterator\nclass AGen(AsyncGenerator):\n    async def asend(self, value):\n        return value\n    async def athrow(self, typ, val=None, tb=None):\n        pass\nasync def main():\n    agen = AGen()\n    print(isinstance(agen, AsyncIterator), isinstance(agen, AsyncGenerator))\n    print(agen.__aiter__() is agen)\n    print(await agen.__anext__())\n    print(await agen.asend(2))\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration:\n    pass"
+        ),
+        Ok(vec![
+            "True True".to_string(),
+            "True".to_string(),
+            "None".to_string(),
+            "2".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn runs_collections_abc_async_generator_throw_and_close_mixins() {
+    assert_eq!(
+        run_source(
+            "from collections.abc import AsyncGenerator\nclass MinimalAGen(AsyncGenerator):\n    async def asend(self, value):\n        return value\n    async def athrow(self, typ, val=None, tb=None):\n        await super().athrow(typ, val, tb)\nclass FailOnClose(AsyncGenerator):\n    async def asend(self, value):\n        return value\n    async def athrow(self, *args):\n        raise ValueError('bad close')\nclass IgnoreGeneratorExit(AsyncGenerator):\n    async def asend(self, value):\n        return value\n    async def athrow(self, *args):\n        pass\nasync def main():\n    mgen = MinimalAGen()\n    print(await mgen.aclose())\n    try:\n        await mgen.athrow(ValueError)\n    except ValueError:\n        print('athrow ValueError')\n    try:\n        await mgen.athrow(ValueError, ValueError('explicit'), None)\n    except ValueError as error:\n        print('athrow explicit', error)\n    try:\n        await mgen.athrow(ValueError, None, 5)\n    except TypeError as error:\n        print('athrow traceback', error)\n    try:\n        await FailOnClose().aclose()\n    except ValueError as error:\n        print('close-error', error)\n    try:\n        await IgnoreGeneratorExit().aclose()\n    except RuntimeError as error:\n        print('close-runtime', error)\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration:\n    pass"
+        ),
+        Ok(vec![
+            "None".to_string(),
+            "athrow ValueError".to_string(),
+            "athrow explicit explicit".to_string(),
+            "athrow traceback __traceback__ must be a traceback or None".to_string(),
+            "close-error bad close".to_string(),
+            "close-runtime asynchronous generator ignored GeneratorExit".to_string(),
         ])
     );
 }
@@ -1721,6 +2192,70 @@ fn compares_numbers_with_ordering_operators() {
     assert_eq!(
         run_source("print(1 != 2, 1 < 2, 2 > 1, 1 <= 1, 2 >= 2)"),
         Ok(vec!["True True True True True".to_string()])
+    );
+}
+
+#[test]
+fn compares_sequences_with_rich_ordering_items() {
+    assert_eq!(
+        run_source(concat!(
+            "class Box:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "    def __lt__(self, other):\n",
+            "        return self.value < other.value\n",
+            "    def __le__(self, other):\n",
+            "        return self.value <= other.value\n",
+            "    def __gt__(self, other):\n",
+            "        return self.value > other.value\n",
+            "    def __ge__(self, other):\n",
+            "        return self.value >= other.value\n",
+            "print([Box(1)] < [Box(2)], [Box(1)] <= [Box(1)])\n",
+            "print([Box(2)] > [Box(1)], [Box(1)] >= [Box(1)])\n",
+            "print([Box(1), Box(3)] > [Box(1), Box(2)])\n",
+            "print((Box(1), Box(2)) < (Box(1), Box(3)))",
+        )),
+        Ok(vec![
+            "True True".to_string(),
+            "True True".to_string(),
+            "True".to_string(),
+            "True".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn compares_sequence_like_values_with_rich_ordering_items() {
+    assert_eq!(
+        run_source(concat!(
+            "from collections import UserList, namedtuple\n",
+            "class Box:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "    def __lt__(self, other):\n",
+            "        return self.value < other.value\n",
+            "    def __le__(self, other):\n",
+            "        return self.value <= other.value\n",
+            "    def __gt__(self, other):\n",
+            "        return self.value > other.value\n",
+            "    def __ge__(self, other):\n",
+            "        return self.value >= other.value\n",
+            "Pair = namedtuple('Pair', 'left right')\n",
+            "print(UserList([Box(1)]) < [Box(2)], [Box(2)] > UserList([Box(1)]))\n",
+            "print(UserList([Box(1), Box(3)]) > UserList([Box(1), Box(2)]))\n",
+            "print(Pair(Box(1), Box(2)) < (Box(1), Box(3)))\n",
+            "print((Box(1), Box(3)) > Pair(Box(1), Box(2)))",
+        )),
+        Ok(vec![
+            "True True".to_string(),
+            "True".to_string(),
+            "True".to_string(),
+            "True".to_string(),
+        ])
     );
 }
 
@@ -2901,18 +3436,18 @@ fn runs_abs_min_sum_builtins() {
 #[test]
 fn runs_numeric_aggregate_builtins() {
     assert_eq!(
-        run_source(
-            "print(min([3, 1, 2]), max([3, 1, 2]))\n\
-             print(min('cab'), max('cab'))\n\
-             print(min(3, 1, 2), max(3, 1, 2))\n\
-             print(sum([1, 2, 3]))\n\
-             print(sum([True, False, 2]))\n\
-             print(sum([1, 2], 10))\n\
-             print(sum([[1], [2]], []))\n\
-             print(sum([(1,)], ()))\n\
-             print(abs(-3), abs(3), abs(False), abs(True))\n\
-             print(abs(3 + 4j))"
-        ),
+        run_source(concat!(
+            "print(min([3, 1, 2]), max([3, 1, 2]))\n",
+            "print(min('cab'), max('cab'))\n",
+            "print(min(3, 1, 2), max(3, 1, 2))\n",
+            "print(sum([1, 2, 3]))\n",
+            "print(sum([True, False, 2]))\n",
+            "print(sum([1, 2], 10))\n",
+            "print(sum([[1], [2]], []))\n",
+            "print(sum([(1,)], ()))\n",
+            "print(abs(-3), abs(3), abs(False), abs(True))\n",
+            "print(abs(3 + 4j))",
+        )),
         Ok(vec![
             "1 3".to_string(),
             "a c".to_string(),
@@ -2924,6 +3459,30 @@ fn runs_numeric_aggregate_builtins() {
             "(1,)".to_string(),
             "3 3 0 1".to_string(),
             "5.0".to_string(),
+        ])
+    );
+
+    assert_eq!(
+        run_source(
+            "class AddBox:\n    def __init__(self, value):\n        self.value = value\n    def __radd__(self, other):\n        return other + self.value\nprint(sum([AddBox(2), AddBox(3)]))"
+        ),
+        Ok(vec!["5".to_string()])
+    );
+
+    assert_eq!(
+        run_source(concat!(
+            "events = []\n",
+            "def values():\n",
+            "    for value in [2, 1]:\n",
+            "        events.append('yield ' + str(value))\n",
+            "        yield value\n",
+            "def key(value):\n",
+            "    events.append('key ' + str(value))\n",
+            "    return value\n",
+            "print(min(values(), key=key), events)",
+        )),
+        Ok(vec![
+            "1 ['yield 2', 'key 2', 'yield 1', 'key 1']".to_string()
         ])
     );
 }
@@ -2940,6 +3499,39 @@ fn rejects_invalid_numeric_aggregate_builtin_calls() {
     assert!(run_source("sum([b'a'], b'')").is_err());
     assert!(run_source("abs()").is_err());
     assert!(run_source("abs(1, 2)").is_err());
+}
+
+#[test]
+fn runs_rich_comparison_for_aggregate_and_sort_keys() {
+    assert_eq!(
+        run_source(concat!(
+            "class Rank:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __lt__(self, other):\n",
+            "        return self.value < other.value\n",
+            "    def __gt__(self, other):\n",
+            "        return self.value > other.value\n",
+            "class Item:\n",
+            "    def __init__(self, label, rank):\n",
+            "        self.label = label\n",
+            "        self.rank = Rank(rank)\n",
+            "def rank(item):\n",
+            "    return item.rank\n",
+            "items = [Item('c', 3), Item('a', 1), Item('b', 2), Item('a2', 1)]\n",
+            "print(min(items, key=rank).label, max(items, key=rank).label)\n",
+            "print([item.label for item in sorted(items, key=rank)])\n",
+            "items.sort(key=rank)\n",
+            "print([item.label for item in items])\n",
+            "print([item.label for item in sorted(items, key=rank, reverse=True)])",
+        )),
+        Ok(vec![
+            "a c".to_string(),
+            "['a', 'a2', 'b', 'c']".to_string(),
+            "['a', 'a2', 'b', 'c']".to_string(),
+            "['c', 'b', 'a', 'a2']".to_string(),
+        ])
+    );
 }
 
 #[test]
@@ -3140,19 +3732,23 @@ fn runs_immutable_sequence_dunder_methods() {
             "t = (10, 11)\n\
              print(t.__getitem__(0), t.__getitem__(1), t.__getitem__(-2), t.__getitem__(-1), t.__getitem__(slice(0, 2)))\n\
              print(t.__len__(), t.__contains__(10), t.__contains__(99))\n\
+             print(t.count(10), t.count(99), t.index(11))\n\
              s = 'abc'\n\
              print(s.__getitem__(0), s.__getitem__(-1), s.__getitem__(slice(0, 2)), s.__contains__('b'), s.__contains__('z'), s.__len__())\n\
              b = b'abc'\n\
              print(b.__getitem__(0), b.__getitem__(-1), b.__getitem__(slice(0, 2)), b.__contains__(98), b.__contains__(120), b.__len__())\n\
              r = range(1, 6, 2)\n\
-             print(r.__getitem__(0), r.__getitem__(-1), list(r.__getitem__(slice(0, 2))), r.__contains__(3), r.__contains__(4), r.__len__())"
+             print(r.__getitem__(0), r.__getitem__(-1), list(r.__getitem__(slice(0, 2))), r.__contains__(3), r.__contains__(4), r.__len__())\n\
+             print(r.count(3), r.count(4), r.index(5))"
         ),
         Ok(vec![
             "10 11 10 11 (10, 11)".to_string(),
             "2 True False".to_string(),
+            "1 0 1".to_string(),
             "a c ab True False 3".to_string(),
             "97 99 b'ab' True False 3".to_string(),
             "1 5 [1, 3] True False 3".to_string(),
+            "1 0 2".to_string(),
         ])
     );
 }
@@ -3170,6 +3766,10 @@ fn rejects_invalid_immutable_sequence_dunder_method_calls() {
     assert!(run_source("s = 'abc'\ns.__getitem__()").is_err());
     assert!(run_source("b = b'abc'\nb.__contains__()").is_err());
     assert!(run_source("r = range(3)\nr.__getitem__(0, 1)").is_err());
+    assert!(run_source("t = (1, 2)\nt.count()").is_err());
+    assert!(run_source("t = (1, 2)\nt.index()").is_err());
+    assert!(run_source("t = (1, 2)\nt.index(3)").is_err());
+    assert!(run_source("r = range(3)\nr.index(3)").is_err());
 }
 
 #[test]
@@ -3275,6 +3875,20 @@ fn runs_user_defined_iterators_and_sequence_fallback() {
             "[0, 1, 4, 9]".to_string(),
             "[(0, 0), (1, 1), (2, 4)]".to_string(),
             "[(0, 0), (1, 1), (4, 2)]".to_string(),
+        ])
+    );
+}
+
+#[test]
+fn runs_collections_abc_iterable_iterator_mixins() {
+    assert_eq!(
+        run_source(
+            "from collections.abc import Iterable, Iterator\nclass I(Iterable):\n    def __iter__(self):\n        return super().__iter__()\nprint(list(I()))\nclass N(Iterator):\n    def __next__(self):\n        return super().__next__()\nn = N()\nprint(iter(n) is n)\ntry:\n    next(n)\nexcept StopIteration:\n    print('stopped')"
+        ),
+        Ok(vec![
+            "[]".to_string(),
+            "True".to_string(),
+            "stopped".to_string(),
         ])
     );
 }
@@ -3453,11 +4067,13 @@ fn reports_slice_assignment_errors() {
     );
     assert_eq!(
         run_source("items = (0, 1, 2)\nitems[0:1] = [9]"),
-        Err("runtime error: 'tuple' object does not support item assignment".to_string())
+        Err(
+            "runtime error: TypeError: 'tuple' object does not support item assignment".to_string()
+        )
     );
     assert_eq!(
         run_source("items = (0, 1, 2)\ndel items[0:1]"),
-        Err("runtime error: 'tuple' object does not support item deletion".to_string())
+        Err("runtime error: TypeError: 'tuple' object does not support item deletion".to_string())
     );
 }
 
@@ -4100,6 +4716,75 @@ fn returns_none_from_function_without_explicit_return() {
 }
 
 #[test]
+fn tracks_runtime_frame_line_after_skipped_if_body() {
+    assert_eq!(
+        run_source(
+            r#"import sys
+frame = None
+
+def capture():
+    global frame
+    frame = sys._getframe(1)
+
+def f():
+    capture()
+    if False:
+        pass
+
+f()
+print(frame.f_lineno - frame.f_code.co_firstlineno)"#
+        ),
+        Ok(vec!["2".to_string()])
+    );
+}
+
+#[test]
+fn reads_runtime_frame_depths() {
+    assert_eq!(
+        run_source(
+            r#"import sys
+
+def outer():
+    def inner():
+        print(sys._getframe(0).f_code.co_firstlineno)
+        print(sys._getframe(1).f_code.co_firstlineno)
+    inner()
+
+outer()"#
+        ),
+        Ok(vec!["4".to_string(), "3".to_string()])
+    );
+}
+
+#[test]
+fn reports_runtime_frame_argument_errors() {
+    assert_eq!(
+        run_source(
+            r#"import sys
+
+for expr in [
+    lambda: sys._getframe(-1),
+    lambda: sys._getframe(999),
+    lambda: sys._getframe("bad"),
+    lambda: sys._getframe(x=0),
+    lambda: sys._getframe(0, 1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error)"#
+        ),
+        Ok(output_lines(&[
+            "call stack is not deep enough",
+            "call stack is not deep enough",
+            "'str' object cannot be interpreted as an integer",
+            "_getframe() does not accept keyword arguments",
+            "_getframe() expected at most 1 argument, got 2",
+        ]))
+    );
+}
+
+#[test]
 fn returns_none_from_bare_return() {
     assert_eq!(
         run_source("def f():\n    return\nprint(f())"),
@@ -4118,8 +4803,9 @@ fn keeps_function_assignments_local() {
 #[test]
 fn runs_recursive_function() {
     assert_eq!(
-        run_source(
-            "def fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\nprint(fact(5))"
+        run_source_with_stack(
+            "def fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\nprint(fact(5))",
+            8 * 1024 * 1024,
         ),
         Ok(vec!["120".to_string()])
     );
@@ -4673,6 +5359,12 @@ fn runs_generic_alias_type_subscripts() {
     );
     assert_eq!(
         run_source(
+            "class Meta(type):\n    pass\nclass Box[T](metaclass=Meta):\n    pass\nprint(type(Box) is Meta, Box.__class__ is Meta, Box.__type_params__[0].__name__)"
+        ),
+        Ok(vec!["True True T".to_string()])
+    );
+    assert_eq!(
+        run_source(
             "type Alias[T] = list[T]\nprint(Alias.__value__.__origin__.__name__, Alias.__value__.__args__[0].__name__)"
         ),
         Ok(vec!["list T".to_string()])
@@ -5167,7 +5859,7 @@ print(c.value)"#
 #[test]
 fn runs_c3_mro_for_multiple_inheritance() {
     assert_eq!(
-        run_source(
+        run_source_with_stack(
             r#"class A:
     def f(self):
         return 'A'
@@ -5180,13 +5872,26 @@ class C(A):
 class D(B, C):
     def f(self):
         return 'D' + super().f()
-print(D().f())"#
+print(D().f())"#,
+            8 * 1024 * 1024,
         ),
         Ok(vec!["DBCA".to_string()])
     );
 
-    assert!(run_source("class A:\n    pass\nclass B(A):\n    pass\nclass C(A):\n    pass\nclass D(B, C):\n    pass\nclass E(C, B):\n    pass\nclass F(D, E):\n    pass").is_err());
-    assert!(run_source("class A:\n    pass\nclass B(A, A):\n    pass").is_err());
+    assert!(
+        run_source_with_stack(
+            "class A:\n    pass\nclass B(A):\n    pass\nclass C(A):\n    pass\nclass D(B, C):\n    pass\nclass E(C, B):\n    pass\nclass F(D, E):\n    pass",
+            8 * 1024 * 1024,
+        )
+        .is_err()
+    );
+    assert!(
+        run_source_with_stack(
+            "class A:\n    pass\nclass B(A, A):\n    pass",
+            8 * 1024 * 1024
+        )
+        .is_err()
+    );
 }
 
 #[test]

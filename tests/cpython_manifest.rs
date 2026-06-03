@@ -1,11 +1,19 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 const MANIFEST: &str = include_str!("cpython_test_manifest.md");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
+const CPYTHON_TEST_BUILTIN_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_builtin.py";
+const CPYTHON_TEST_COLLECTIONS_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_collections.py";
 const CPYTHON_TEST_COMPILE_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_compile.py";
+const CPYTHON_TEST_TYPE_COMMENTS_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_comments.py";
+const CPYTHON_TEST_TYPE_PARAMS_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_params.py";
 
 #[derive(Debug)]
 struct ManifestGroup<'a> {
@@ -60,6 +68,10 @@ fn cpython_test_manifest_source_totals_match_extracted_baseline() {
     assert_source_total(&groups, "Lib/test/test_grammar.py", 75);
     assert_source_total(&groups, "Lib/test/test_syntax.py", 55);
     assert_source_total(&groups, "Lib/test/test_compile.py", 186);
+    assert_source_total(&groups, "Lib/test/test_builtin.py", 133);
+    assert_source_total(&groups, "Lib/test/test_collections.py", 103);
+    assert_source_total(&groups, "Lib/test/test_type_comments.py", 17);
+    assert_source_total(&groups, "Lib/test/test_type_params.py", 107);
     assert_source_total(&groups, "Lib/test/test_ast/test_ast.py", 216);
     assert_source_total(&groups, "Lib/test/test_ast/snippets.py", 0);
 }
@@ -85,6 +97,260 @@ fn cpython_test_manifest_compile_group_counts_match_current_source() {
             .copied()
             .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_COMPILE_SOURCE}"));
         assert_manifest_group_count(&groups, "Lib/test/test_compile.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_compile_specifics_method_audit_matches_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "TestSpecifics");
+    let methods = method_audit_methods("## `Lib/test/test_compile.py::TestSpecifics` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TestSpecifics method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| {
+            matches!(
+                method.status,
+                "ported"
+                    | "partial"
+                    | "blocked_by_runtime"
+                    | "blocked_by_ast_module"
+                    | "blocked_by_cpython_internal"
+                    | "not_started"
+            )
+        }),
+        "TestSpecifics method audit contains an unknown status"
+    );
+
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let missing = expected.difference(&actual).collect::<Vec<_>>();
+    let extra = actual.difference(&expected).collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "TestSpecifics method audit drifted; missing={missing:?}; extra={extra:?}"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_type_comments_group_count_matches_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_COMMENTS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_COMMENTS_SOURCE}: {error}")
+    });
+    let class_counts = python_test_class_method_counts(&source);
+    let expected = class_counts
+        .get("TypeCommentTests")
+        .copied()
+        .unwrap_or_else(|| {
+            panic!("missing class `TypeCommentTests` in {CPYTHON_TEST_TYPE_COMMENTS_SOURCE}")
+        });
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_type_comments.py",
+        "TypeCommentTests",
+        expected,
+    );
+}
+
+#[test]
+fn cpython_test_manifest_type_comments_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_COMMENTS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_COMMENTS_SOURCE}: {error}")
+    });
+    let expected = python_test_class_method_names(&source, "TypeCommentTests");
+    let methods =
+        method_audit_methods("## `Lib/test/test_type_comments.py::TypeCommentTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypeCommentTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "TypeCommentTests methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "TypeCommentTests method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_type_params_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
+    });
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    for group in [
+        "TypeParamsInvalidTest",
+        "TypeParamsNonlocalTest",
+        "TypeParamsAccessTest",
+        "GlobalGenericClass",
+        "TypeParamsLazyEvaluationTest",
+        "TypeParamsClassScopeTest",
+        "DynamicClassTest",
+        "TypeParamsManglingTest",
+        "TypeParamsComplexCallsTest",
+        "TypeParamsTraditionalTypeVarsTest",
+        "TypeParamsTypeVarTest",
+        "TypeParamsTypeVarTupleTest",
+        "TypeParamsTypeVarParamSpecTest",
+        "TypeParamsTypeParamsDunder",
+        "Class1",
+        "Class2",
+        "Class3",
+        "Class4",
+        "TypeParamsPickleTest",
+        "TypeParamsWeakRefTest",
+        "TypeParamsRuntimeTest",
+        "DefaultsTest",
+        "TestEvaluateFunctions",
+    ] {
+        let expected = class_counts.get(group).copied().unwrap_or_else(|| {
+            panic!("missing class `{group}` in {CPYTHON_TEST_TYPE_PARAMS_SOURCE}")
+        });
+        assert_manifest_group_count(&groups, "Lib/test/test_type_params.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_type_params_invalid_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
+    });
+    let expected = python_test_class_method_names(&source, "TypeParamsInvalidTest");
+    let methods = method_audit_methods(
+        "## `Lib/test/test_type_params.py::TypeParamsInvalidTest` Method Audit",
+    );
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypeParamsInvalidTest method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "TypeParamsInvalidTest methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "TypeParamsInvalidTest method audit drifted"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_type_params_nonlocal_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
+    });
+    let expected = python_test_class_method_names(&source, "TypeParamsNonlocalTest");
+    let methods = method_audit_methods(
+        "## `Lib/test/test_type_params.py::TypeParamsNonlocalTest` Method Audit",
+    );
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypeParamsNonlocalTest method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "TypeParamsNonlocalTest methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "TypeParamsNonlocalTest method audit drifted"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_type_params_dunder_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
+    });
+    let expected = python_test_class_method_names(&source, "TypeParamsTypeParamsDunder");
+    let methods = method_audit_methods(
+        "## `Lib/test/test_type_params.py::TypeParamsTypeParamsDunder` Method Audit",
+    );
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypeParamsTypeParamsDunder method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "TypeParamsTypeParamsDunder methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "TypeParamsTypeParamsDunder method audit drifted"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_builtin_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_builtin.py",
+        "module-level `test_*` functions",
+        module_level_test_function_count(&source),
+    );
+
+    for group in [
+        "BuiltinTest",
+        "TestBreakpoint",
+        "PtyTests",
+        "TestSorted",
+        "ShutdownTest",
+        "ImmortalTests",
+        "TestType",
+    ] {
+        let expected = class_counts
+            .get(group)
+            .copied()
+            .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_BUILTIN_SOURCE}"));
+        assert_manifest_group_count(&groups, "Lib/test/test_builtin.py", group, expected);
     }
 }
 
@@ -122,6 +388,48 @@ fn cpython_test_manifest_ast_group_counts_match_current_source() {
             .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_AST_SOURCE}"));
         assert_manifest_group_count(&groups, "Lib/test/test_ast/test_ast.py", group, expected);
     }
+}
+
+#[test]
+fn cpython_test_manifest_ast_tests_method_audit_matches_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "AST_Tests");
+    let methods =
+        method_audit_methods("## `Lib/test/test_ast/test_ast.py::AST_Tests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "AST_Tests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| {
+            matches!(
+                method.status,
+                "ported"
+                    | "partial"
+                    | "blocked_by_runtime"
+                    | "blocked_by_ast_module"
+                    | "blocked_by_cpython_internal"
+                    | "not_started"
+            )
+        }),
+        "AST_Tests method audit contains an unknown status"
+    );
+
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let missing = expected.difference(&actual).collect::<Vec<_>>();
+    let extra = actual.difference(&expected).collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "AST_Tests method audit drifted; missing={missing:?}; extra={extra:?}"
+    );
 }
 
 #[test]
@@ -315,6 +623,389 @@ fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     }
 }
 
+#[test]
+fn cpython_test_manifest_collections_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_COLLECTIONS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_COLLECTIONS_SOURCE}: {error}")
+    });
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_collections.py",
+        "module-level `test_*` functions",
+        module_level_test_function_count(&source),
+    );
+
+    for group in [
+        "TestUserObjects",
+        "TestChainMap",
+        "TestNamedTuple",
+        "ABCTestCase",
+        "TestOneTrickPonyABCs",
+        "WithSet",
+        "TestCollectionABCs",
+        "CounterSubclassWithSetItem",
+        "CounterSubclassWithGet",
+        "TestCounter",
+    ] {
+        let expected = class_counts.get(group).copied().unwrap_or_else(|| {
+            panic!("missing class `{group}` in {CPYTHON_TEST_COLLECTIONS_SOURCE}")
+        });
+        assert_manifest_group_count(&groups, "Lib/test/test_collections.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_builtin_sorted_method_audit_is_complete() {
+    let methods = method_audit_methods("## `Lib/test/test_builtin.py::TestSorted` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        4,
+        "TestSorted method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "all TestSorted methods should be ported"
+    );
+
+    for expected in [
+        "test_basic",
+        "test_bad_arguments",
+        "test_inputtypes",
+        "test_baddecorator",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestSorted method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_collections_chainmap_method_audit_is_complete() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_collections.py::TestChainMap` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        10,
+        "TestChainMap method audit row count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "partial" | "not_started")),
+        "TestChainMap method statuses should be ported, partial, or not_started"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        10,
+        "ported TestChainMap method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial TestChainMap method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "not_started")
+            .count(),
+        0,
+        "not_started TestChainMap method count drifted"
+    );
+
+    for expected in [
+        "test_basics",
+        "test_ordering",
+        "test_constructor",
+        "test_bool",
+        "test_missing",
+        "test_order_preservation",
+        "test_iter_not_calling_getitem_on_maps",
+        "test_dict_coercion",
+        "test_new_child",
+        "test_union_operators",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestChainMap method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_collections_namedtuple_method_audit_is_complete() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_collections.py::TestNamedTuple` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        23,
+        "TestNamedTuple method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| matches!(
+            method.status,
+            "ported" | "partial" | "not_started" | "blocked_by_cpython_internal"
+        )),
+        "TestNamedTuple method statuses should be ported, partial, not_started, or blocked_by_cpython_internal"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        20,
+        "ported TestNamedTuple method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial TestNamedTuple method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "not_started")
+            .count(),
+        0,
+        "not_started TestNamedTuple method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_cpython_internal")
+            .count(),
+        3,
+        "blocked_by_cpython_internal TestNamedTuple method count drifted"
+    );
+
+    for expected in [
+        "test_factory",
+        "test_defaults",
+        "test_readonly",
+        "test_factory_doc_attr",
+        "test_field_doc",
+        "test_field_doc_reuse",
+        "test_field_repr",
+        "test_name_fixer",
+        "test_module_parameter",
+        "test_instance",
+        "test_tupleness",
+        "test_odd_sizes",
+        "test_large_size",
+        "test_pickle",
+        "test_copy",
+        "test_name_conflicts",
+        "test_repr",
+        "test_keyword_only_arguments",
+        "test_namedtuple_subclass_issue_24931",
+        "test_field_descriptor",
+        "test_new_builtins_issue_43102",
+        "test_match_args",
+        "test_non_generic_subscript",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestNamedTuple method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_collections_user_objects_method_audit_is_complete() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_collections.py::TestUserObjects` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        6,
+        "TestUserObjects method audit row count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "not_started")),
+        "TestUserObjects method statuses should be ported or not_started"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        6,
+        "ported TestUserObjects method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "not_started")
+            .count(),
+        0,
+        "not_started TestUserObjects method count drifted"
+    );
+
+    for expected in [
+        "test_str_protocol",
+        "test_list_protocol",
+        "test_dict_protocol",
+        "test_list_copy",
+        "test_dict_copy",
+        "test_dict_missing",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestUserObjects method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_collections_one_trick_pony_method_audit_is_complete() {
+    let methods = method_audit_methods(
+        "## `Lib/test/test_collections.py::TestOneTrickPonyABCs` Method Audit",
+    );
+
+    assert_eq!(
+        methods.len(),
+        16,
+        "TestOneTrickPonyABCs method audit row count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "partial")),
+        "TestOneTrickPonyABCs method statuses should be ported or partial"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        1,
+        "partial TestOneTrickPonyABCs method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        15,
+        "ported TestOneTrickPonyABCs method count drifted"
+    );
+
+    for expected in [
+        "test_Awaitable",
+        "test_Coroutine",
+        "test_Hashable",
+        "test_AsyncIterable",
+        "test_AsyncIterator",
+        "test_Iterable",
+        "test_Reversible",
+        "test_Collection",
+        "test_Iterator",
+        "test_Generator",
+        "test_AsyncGenerator",
+        "test_Sized",
+        "test_Container",
+        "test_Callable",
+        "test_direct_subclassing",
+        "test_registration",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestOneTrickPonyABCs method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_collections_counter_method_audit_is_complete() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_collections.py::TestCounter` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        23,
+        "TestCounter method audit row count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "partial" | "not_started")),
+        "TestCounter method statuses should be ported, partial, or not_started"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        23,
+        "ported TestCounter method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial TestCounter method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "not_started")
+            .count(),
+        0,
+        "not_started TestCounter method count drifted"
+    );
+
+    for expected in [
+        "test_basics",
+        "test_update_reentrant_add_clears_counter",
+        "test_init",
+        "test_total",
+        "test_order_preservation",
+        "test_update",
+        "test_copying",
+        "test_copy_subclass",
+        "test_conversions",
+        "test_invariant_for_the_in_operator",
+        "test_multiset_operations",
+        "test_inplace_operations",
+        "test_subtract",
+        "test_unary",
+        "test_repr_nonsortable",
+        "test_helper_function",
+        "test_multiset_operations_equivalent_to_set_operations",
+        "test_eq",
+        "test_le",
+        "test_lt",
+        "test_ge",
+        "test_gt",
+        "test_symmetric_difference",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing TestCounter method audit row for `{expected}`"
+        );
+    }
+}
+
 fn assert_source_total(groups: &[ManifestGroup<'_>], source: &str, expected: usize) {
     let actual = groups
         .iter()
@@ -437,7 +1128,7 @@ fn python_test_class_method_counts(source: &str) -> BTreeMap<String, usize> {
     for (index, line) in lines.iter().enumerate() {
         if let Some(rest) = line.strip_prefix("class ") {
             let name = rest
-                .split(['(', ':'])
+                .split(['(', '[', ':'])
                 .next()
                 .expect("split always yields a first item");
             classes.push((index, name.to_string()));
@@ -457,6 +1148,39 @@ fn python_test_class_method_counts(source: &str) -> BTreeMap<String, usize> {
         counts.insert(name.clone(), methods);
     }
     counts
+}
+
+fn python_test_class_method_names(source: &str, class_name: &str) -> Vec<String> {
+    let lines = source.lines().collect::<Vec<_>>();
+    let class_start = lines
+        .iter()
+        .position(|line| {
+            line.strip_prefix("class ")
+                .and_then(|rest| rest.split(['(', '[', ':']).next())
+                == Some(class_name)
+        })
+        .unwrap_or_else(|| panic!("missing class `{class_name}`"));
+    let class_end = lines[class_start + 1..]
+        .iter()
+        .position(|line| line.starts_with("class "))
+        .map(|offset| class_start + 1 + offset)
+        .unwrap_or(lines.len());
+
+    lines[class_start + 1..class_end]
+        .iter()
+        .filter_map(|line| {
+            let rest = line.strip_prefix("    def ")?;
+            if !rest.starts_with("test_") {
+                return None;
+            }
+            Some(
+                rest.split('(')
+                    .next()
+                    .expect("split always yields a first item")
+                    .to_string(),
+            )
+        })
+        .collect()
 }
 
 fn module_level_test_function_count(source: &str) -> usize {

@@ -10,6 +10,7 @@ pub enum Stmt {
     Assign {
         targets: Vec<Target>,
         value: Expr,
+        type_comment: Option<String>,
     },
     AnnAssign {
         target: Target,
@@ -37,6 +38,7 @@ pub enum Stmt {
         body: Vec<Stmt>,
         decorators: Vec<Expr>,
         returns: Option<Expr>,
+        type_comment: Option<String>,
     },
     AsyncFunctionDef {
         name: String,
@@ -45,6 +47,7 @@ pub enum Stmt {
         body: Vec<Stmt>,
         decorators: Vec<Expr>,
         returns: Option<Expr>,
+        type_comment: Option<String>,
     },
     ClassDef {
         name: String,
@@ -99,10 +102,12 @@ pub enum Stmt {
     With {
         items: Vec<WithItem>,
         body: Vec<Stmt>,
+        type_comment: Option<String>,
     },
     AsyncWith {
         items: Vec<WithItem>,
         body: Vec<Stmt>,
+        type_comment: Option<String>,
     },
     While {
         condition: Expr,
@@ -114,12 +119,14 @@ pub enum Stmt {
         iter: Expr,
         body: Vec<Stmt>,
         else_body: Vec<Stmt>,
+        type_comment: Option<String>,
     },
     AsyncFor {
         target: Target,
         iter: Expr,
         body: Vec<Stmt>,
         else_body: Vec<Stmt>,
+        type_comment: Option<String>,
     },
     Break,
     Continue,
@@ -383,6 +390,7 @@ pub struct Param {
     pub name: String,
     pub annotation: Option<Expr>,
     pub default: Option<Expr>,
+    pub type_comment: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -391,9 +399,11 @@ pub struct FunctionParams {
     pub positional: Vec<Param>,
     pub vararg: Option<String>,
     pub vararg_annotation: Option<Box<Expr>>,
+    pub vararg_type_comment: Option<String>,
     pub keyword_only: Vec<Param>,
     pub kwarg: Option<String>,
     pub kwarg_annotation: Option<Box<Expr>>,
+    pub kwarg_type_comment: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

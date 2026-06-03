@@ -4,24 +4,44 @@ use crate::bytecode::{
     CallArgRegister, CallKeywordRegister, ExceptHandler as BytecodeExceptHandler, FormatConversion,
     Instruction, Register, TemplatePartRegister,
 };
-use crate::compiler::{compile, compile_eval, compile_interactive};
+use crate::compiler::{
+    CompileOptions, compile_eval_with_options, compile_interactive_with_options,
+    compile_with_options,
+};
 use crate::lexer::{
-    LexWarning, LexWarningCategory, SpannedToken, Token, TokenFStringPart, decode_source_for_parse,
-    get_int_max_str_digits, lex_for_parse, lex_with_spans_for_parse, set_int_max_str_digits,
-    tokenize_cpython_with_spans,
+    LexError, LexWarning, LexWarningCategory, SpannedToken, Token, TokenFStringPart,
+    decode_source_for_parse, function_definition_line_sequences, function_definition_start_lines,
+    generator_expression_line_sequences, get_int_max_str_digits, lex_for_parse,
+    lex_with_spans_for_parse, tokenize_cpython_with_spans,
 };
 use crate::parser::{parse, parse_eval, parse_func_type, parse_interactive};
+use crate::stdlib::{
+    AST_MODULE_TYPE_NAMES, DEFAULT_BUILTIN_ENTRY_NAMES, PICKLE_HIGHEST_PROTOCOL, PYCF_ONLY_AST,
+    StdlibContext, StdlibIteratorAdvance, StdlibMethodCallResult, call_abs_builtin,
+    call_all_builtin, call_any_builtin, call_ascii, call_bool_builtin, call_callable, call_chr,
+    call_classmethod_constructor, call_code_lines, call_code_positions,
+    call_collections_count_elements, call_dis_get_instructions, call_divmod_builtin,
+    call_hash_builtin, call_hashable_hash, call_id, call_import_builtin, call_int_base_builtin,
+    call_len_builtin, call_max_builtin, call_min_builtin, call_ord, call_property_constructor,
+    call_repr_builtin, call_staticmethod_constructor, call_sum_builtin,
+    call_sys_get_int_max_str_digits, call_sys_set_int_max_str_digits, call_types_coroutine,
+    create_module, import_from,
+};
 use crate::value::{
-    CodeMode, CoroutineState, DictRef, DictStorage, DictViewKind, FrozenSetRef, GeneratorState,
-    ListRef, Scope, SetRef, TemplateInterpolation, Value, dict_value, dict_view_value,
+    ByteArrayRef, CodeLineSpan, CodeMode, ConstEvaluatorKind, CoroutineState,
+    DeferredTypeParamExpr, DictRef, DictStorage, DictViewKind, EXCEPTION_TRACEBACK_ATTR,
+    FrozenSetRef, GeneratorState, ListRef, MemoryViewRef, NAMED_TUPLE_SUBCLASS_STORAGE_FIELD,
+    NamedTupleType, NamedTupleTypeRef, Scope, SetRef, TemplateInterpolation, Value,
+    byte_array_value, code_metadata_namespace_entries_equal, dict_value, dict_view_value,
     dict_view_values, frozen_set_value, list_value, mapping_proxy_value, mapping_view_value,
-    set_value, tuple_value,
+    memory_view_from_byte_array, memory_view_from_parts_with_format, memory_view_value, set_value,
+    tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::{Signed, ToPrimitive, Zero};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, hash_map::DefaultHasher};
 use std::hash::{Hash, Hasher};
@@ -29,14 +49,27 @@ use std::rc::Rc;
 use unicode_general_category::{GeneralCategory, get_general_category};
 
 const DICT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_dict_storage";
+const COUNTER_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_counter_storage";
 const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
 const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
+const USER_DICT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_user_dict_storage";
+const CHAIN_MAP_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_chain_map_storage";
+const BYTES_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_bytes_storage";
+const BYTEARRAY_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_bytearray_storage";
 const SCOPE_MAPPING_SOURCE_FIELD: &str = "\0minipython_mapping_source";
+const SCOPE_LOCALS_MAPPING_SOURCE_FIELD: &str = "\0minipython_locals_mapping_source";
+const TYPING_NO_DEFAULT_NAME: &str = "typing.NoDefault";
 const WARNINGS_STACK_GLOBAL: &str = "\0minipython_warnings_stack";
+const WARNINGS_FILTERS_GLOBAL: &str = "\0minipython_warnings_filters";
 const SIMPLE_NAMESPACE_TYPE_NAME: &str = "types.SimpleNamespace";
-const PYCF_ONLY_AST: i64 = 1024;
-const PICKLE_HIGHEST_PROTOCOL: i64 = 5;
-const DIS_LOAD_CONST_OPCODE: i64 = 100;
+const AST_FUNCTION_FIRST_LINE_ATTR: &str = "\0minipython_function_first_line";
+const AST_FUNCTION_LINE_SEQUENCE_ATTR: &str = "\0minipython_function_line_sequence";
+const AST_GENERATOR_EXPRESSION_FIRST_LINE_ATTR: &str = "\0minipython_genexpr_first_line";
+const AST_GENERATOR_EXPRESSION_LINE_SEQUENCE_ATTR: &str = "\0minipython_genexpr_line_sequence";
+const ANNOTATION_FORMAT_VALUE: i64 = 1;
+const ANNOTATION_FORMAT_FORWARDREF: i64 = 2;
+const ANNOTATION_FORMAT_STRING: i64 = 3;
+const CONST_EVALUATOR_TYPE_NAME: &str = "_typing._ConstEvaluator";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct AstFeatureVersion {
@@ -48,6 +81,143 @@ thread_local! {
     static AST_COMPILE_ACTIVE_NODES: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
     static AST_BUILTIN_CLASS_ATTR_OVERRIDES: RefCell<HashMap<(String, String), Option<Value>>> =
         RefCell::new(HashMap::new());
+    static ITERABLE_COROUTINE_FUNCTIONS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+}
+
+fn namedtuple_set_option(slot: &mut Option<Value>, name: &str, value: Value) -> Result<(), String> {
+    if slot.is_some() {
+        Err(format!(
+            "TypeError: namedtuple() got multiple values for argument '{name}'"
+        ))
+    } else {
+        *slot = Some(value);
+        Ok(())
+    }
+}
+
+fn namedtuple_validate_type_name(name: &str) -> Result<(), String> {
+    if !string_isidentifier(name) || namedtuple_is_python_keyword(name) {
+        Err(format!(
+            "ValueError: Type names and field names must be valid identifiers: '{name}'"
+        ))
+    } else {
+        Ok(())
+    }
+}
+
+fn namedtuple_normalize_fields(fields: Vec<String>, rename: bool) -> Result<Vec<String>, String> {
+    let mut normalized = Vec::with_capacity(fields.len());
+    let mut seen = HashSet::new();
+
+    for (index, field) in fields.into_iter().enumerate() {
+        let invalid = !string_isidentifier(&field) || namedtuple_is_python_keyword(&field);
+        let private = field.starts_with('_');
+        let duplicate = seen.contains(&field);
+
+        let field = if rename && (invalid || private || duplicate) {
+            format!("_{index}")
+        } else {
+            if invalid {
+                return Err(format!(
+                    "ValueError: Type names and field names must be valid identifiers: '{field}'"
+                ));
+            }
+            if private {
+                return Err(format!(
+                    "ValueError: Field names cannot start with an underscore: '{field}'"
+                ));
+            }
+            if duplicate {
+                return Err(format!(
+                    "ValueError: Encountered duplicate field name: '{field}'"
+                ));
+            }
+            field
+        };
+
+        seen.insert(field.clone());
+        normalized.push(field);
+    }
+
+    Ok(normalized)
+}
+
+fn namedtuple_is_python_keyword(name: &str) -> bool {
+    matches!(
+        name,
+        "False"
+            | "None"
+            | "True"
+            | "and"
+            | "as"
+            | "assert"
+            | "async"
+            | "await"
+            | "break"
+            | "class"
+            | "continue"
+            | "def"
+            | "del"
+            | "elif"
+            | "else"
+            | "except"
+            | "finally"
+            | "for"
+            | "from"
+            | "global"
+            | "if"
+            | "import"
+            | "in"
+            | "is"
+            | "lambda"
+            | "nonlocal"
+            | "not"
+            | "or"
+            | "pass"
+            | "raise"
+            | "return"
+            | "try"
+            | "while"
+            | "with"
+            | "yield"
+    )
+}
+
+fn namedtuple_doc_text(typename: &str, fields: &[String]) -> String {
+    format!("{}({})", typename, fields.join(", "))
+}
+
+fn namedtuple_field_doc_text(index: usize) -> String {
+    format!("Alias for field number {index}")
+}
+
+fn namedtuple_dict_entries(typ: &NamedTupleType, values: &[Value]) -> Vec<(Value, Value)> {
+    typ.fields
+        .iter()
+        .cloned()
+        .zip(values.iter().cloned())
+        .map(|(field, value)| (Value::String(field), value))
+        .collect()
+}
+
+fn namedtuple_new_method_value(typ: &NamedTupleType) -> Result<Value, String> {
+    let defaults = typ
+        .new_defaults
+        .as_ref()
+        .map(|values| tuple_value(values.clone()))
+        .unwrap_or(Value::None);
+    let builtins = build_dict(Vec::new())?;
+    let globals = build_dict(vec![(
+        Value::String("__builtins__".to_string()),
+        builtins.clone(),
+    )])?;
+    Ok(Value::SimpleNamespace {
+        fields: dict_ref_from_entries(vec![
+            (Value::String("__defaults__".to_string()), defaults),
+            (Value::String("__globals__".to_string()), globals),
+            (Value::String("__builtins__".to_string()), builtins),
+        ])?,
+    })
 }
 
 pub struct Vm {
@@ -58,6 +228,7 @@ pub struct Vm {
     locals: Scope,
     closure: Vec<Scope>,
     is_module: bool,
+    is_class_body: bool,
     captures_locals: bool,
     output: Vec<String>,
     exception_handlers: Vec<ExceptionHandlerFrame>,
@@ -65,8 +236,204 @@ pub struct Vm {
     pending_exception_after_clear: Option<MiniException>,
     current_class: Option<Value>,
     first_arg_name: Option<String>,
+    qualname_prefix: Option<String>,
     resume_value: Option<Value>,
     resume_exception: Option<MiniException>,
+    abc_registry: AbcRegistry,
+    module_cache: ModuleCache,
+    source_modules: SourceModuleTable,
+    stdlib_import_policy: StdlibImportPolicy,
+    frame_stack: FrameStack,
+    frame_line_spans: Vec<CodeLineSpan>,
+}
+
+type AbcRegistry = Rc<RefCell<HashMap<String, Vec<Value>>>>;
+type ModuleCache = DictRef;
+type FrameStack = Rc<RefCell<Vec<RuntimeFrame>>>;
+pub(crate) type SourceModuleTable = Rc<HashMap<String, SourceModule>>;
+
+#[derive(Debug, Clone)]
+struct RuntimeFrame {
+    fields: DictRef,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SourceModule {
+    pub source: String,
+    pub is_package: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct StdlibImportPolicy {
+    allowed_modules: Option<HashSet<String>>,
+}
+
+impl StdlibImportPolicy {
+    pub(crate) fn allow_all() -> Self {
+        Self {
+            allowed_modules: None,
+        }
+    }
+
+    pub(crate) fn allow_only(modules: HashSet<String>) -> Self {
+        Self {
+            allowed_modules: Some(modules),
+        }
+    }
+
+    fn allows(&self, name: &str) -> bool {
+        let Some(modules) = &self.allowed_modules else {
+            return true;
+        };
+
+        modules.iter().any(|allowed| {
+            name == allowed
+                || name
+                    .strip_prefix(allowed)
+                    .is_some_and(|suffix| suffix.starts_with('.'))
+                || allowed
+                    .strip_prefix(name)
+                    .is_some_and(|suffix| suffix.starts_with('.'))
+        })
+    }
+}
+
+impl StdlibContext for Vm {
+    fn stdlib_abs_value(&mut self, value: Value) -> Result<Value, String> {
+        self.abs_value(value)
+    }
+
+    fn stdlib_add_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        self.add_values(left, right)
+    }
+
+    fn stdlib_advance_iterator(
+        &mut self,
+        iterator: &mut Value,
+    ) -> Result<StdlibIteratorAdvance, String> {
+        match self.advance_owned_iterator(iterator)? {
+            IteratorAdvance::Yield(value) => Ok(StdlibIteratorAdvance::Yield(value)),
+            IteratorAdvance::Complete(_) => Ok(StdlibIteratorAdvance::Complete),
+            IteratorAdvance::Raised => Ok(StdlibIteratorAdvance::Raised),
+        }
+    }
+
+    fn stdlib_call_hash_method(
+        &mut self,
+        value: &Value,
+    ) -> Result<Option<StdlibMethodCallResult>, String> {
+        let Some(method) = instance_hash_method(value)? else {
+            return Ok(None);
+        };
+        match self.call_value_catching(method, Vec::new())? {
+            Ok(value) => Ok(Some(StdlibMethodCallResult::Returned(value))),
+            Err(exception) => self
+                .raise_runtime_exception_value(exception)
+                .map(|value| Some(StdlibMethodCallResult::Raised(value))),
+        }
+    }
+
+    fn stdlib_call_repr_method(&mut self, value: &Value) -> Result<Option<Value>, String> {
+        let Some(method) = instance_special_method(value, "__repr__") else {
+            return Ok(None);
+        };
+        match self.call_value_catching(method, Vec::new())? {
+            Ok(value) => Ok(Some(value)),
+            Err(exception) => Err(format_exception_error(&exception)),
+        }
+    }
+
+    fn stdlib_call_value(&mut self, callee: Value, args: Vec<Value>) -> Result<Value, String> {
+        match self.call_value_catching(callee, args)? {
+            Ok(value) => Ok(value),
+            Err(exception) => Err(format_exception_error(&exception)),
+        }
+    }
+
+    fn stdlib_ascii_repr_value(&self, value: &Value) -> Result<String, String> {
+        ascii_repr_value_checked(value)
+    }
+
+    fn stdlib_greater_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        self.greater_values(left, right)
+    }
+
+    fn stdlib_less_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        self.less_values(left, right)
+    }
+
+    fn stdlib_divmod_values(
+        &mut self,
+        left: Value,
+        right: Value,
+    ) -> Result<(Value, Value), String> {
+        let quotient = floor_divide_values(left.clone(), right.clone())
+            .map_err(|message| divmod_error_message(&message, left.clone(), right.clone()))?;
+        let remainder = modulo_values(left.clone(), right.clone())
+            .map_err(|message| divmod_error_message(&message, left, right))?;
+        Ok((quotient, remainder))
+    }
+
+    fn stdlib_hash_value(&self, value: &Value) -> Result<Value, String> {
+        hash_value(value)
+    }
+
+    fn stdlib_identity_value(&self, value: &Value) -> Value {
+        identity_value(value)
+    }
+
+    fn stdlib_index_integer_value(&mut self, value: Value) -> Result<Value, String> {
+        self.index_integer_value(value)
+    }
+
+    fn stdlib_is_callable(&self, value: &Value) -> bool {
+        is_callable_value(value)
+    }
+
+    fn stdlib_iter_value(&mut self, value: Value) -> Result<Value, String> {
+        self.get_iter(value)
+    }
+
+    fn stdlib_len_value(&mut self, value: Value) -> Result<usize, String> {
+        self.len_value(value)
+    }
+
+    fn stdlib_repr_value(&self, value: &Value) -> Result<String, String> {
+        repr_value_checked(value)
+    }
+
+    fn stdlib_truth_value(&mut self, value: Value) -> Result<bool, String> {
+        self.truth_value(value)
+    }
+
+    fn stdlib_resolve_import_name_from_globals_value(
+        &self,
+        name: &str,
+        level: usize,
+        globals: Option<&Value>,
+    ) -> Result<String, String> {
+        self.resolve_import_name_from_globals_value(name, level, globals)
+    }
+
+    fn stdlib_load_imported_module_value(
+        &mut self,
+        name: &str,
+        return_root: bool,
+    ) -> Result<Value, String> {
+        self.load_imported_module_value(name, return_root)
+    }
+
+    fn stdlib_mark_iterable_coroutine_function(&mut self, identity: &Rc<()>) {
+        mark_iterable_coroutine_function(identity);
+    }
+
+    fn stdlib_count_elements_into_mapping(
+        &mut self,
+        mapping: Value,
+        iterable: Value,
+    ) -> Result<(), String> {
+        self.count_elements_into_mapping(mapping, iterable)
+    }
 }
 
 enum ExecutionExit {
@@ -82,6 +449,304 @@ enum IteratorAdvance {
     Yield(Value),
     Complete(Value),
     Raised,
+}
+
+enum BufferConversion {
+    Bytes(Vec<u8>),
+    NotBuffer,
+    Raised,
+}
+
+fn released_memoryview_error() -> String {
+    "ValueError: operation forbidden on released memoryview object".to_string()
+}
+
+fn bytearray_resize_export_error() -> String {
+    "BufferError: Existing exports of data: object cannot be re-sized".to_string()
+}
+
+fn bytearray_bytes(value: &ByteArrayRef) -> Vec<u8> {
+    value.borrow().bytes().to_vec()
+}
+
+fn ensure_bytearray_resizable(value: &ByteArrayRef) -> Result<(), String> {
+    if value.borrow().has_active_exports() {
+        Err(bytearray_resize_export_error())
+    } else {
+        Ok(())
+    }
+}
+
+struct ByteArrayExportGuard {
+    bytes: ByteArrayRef,
+}
+
+impl ByteArrayExportGuard {
+    fn new(bytes: &ByteArrayRef) -> Self {
+        bytes.borrow_mut().retain_export();
+        Self {
+            bytes: bytes.clone(),
+        }
+    }
+}
+
+impl Drop for ByteArrayExportGuard {
+    fn drop(&mut self) {
+        self.bytes.borrow_mut().release_export();
+    }
+}
+
+fn bytearray_export_guard(value: &Value) -> Option<ByteArrayExportGuard> {
+    match value {
+        Value::ByteArray(bytes) => Some(ByteArrayExportGuard::new(bytes)),
+        value => bytearray_subclass_storage(value).map(|bytes| ByteArrayExportGuard::new(&bytes)),
+    }
+}
+
+const MAX_BYTEARRAY_RESIZE_LEN: usize = 64 * 1024 * 1024;
+
+fn memoryview_physical_index(
+    state: &crate::value::MemoryViewState,
+    logical_index: usize,
+) -> Result<usize, String> {
+    memoryview_physical_index_from_parts(state.offset, state.stride, logical_index)
+}
+
+fn memoryview_physical_index_from_parts(
+    offset: usize,
+    stride: isize,
+    logical_index: usize,
+) -> Result<usize, String> {
+    let offset =
+        isize::try_from(offset).map_err(|_| "memoryview index out of range".to_string())?;
+    let logical_index =
+        isize::try_from(logical_index).map_err(|_| "memoryview index out of range".to_string())?;
+    let physical_index = offset
+        .checked_add(
+            logical_index
+                .checked_mul(stride)
+                .ok_or_else(|| "memoryview index out of range".to_string())?,
+        )
+        .ok_or_else(|| "memoryview index out of range".to_string())?;
+    usize::try_from(physical_index).map_err(|_| "memoryview index out of range".to_string())
+}
+
+fn memoryview_state_bytes(state: &crate::value::MemoryViewState) -> Result<Vec<u8>, String> {
+    if state.released {
+        return Err(released_memoryview_error());
+    }
+    let bytes = state.bytes.borrow();
+    let mut view = Vec::with_capacity(state.len);
+    for logical_index in 0..state.len {
+        let physical_index = memoryview_physical_index(state, logical_index)?;
+        view.push(
+            *bytes
+                .get(physical_index)
+                .ok_or_else(|| "memoryview index out of range".to_string())?,
+        );
+    }
+    Ok(view)
+}
+
+fn memoryview_snapshot(view: &MemoryViewRef) -> Result<(Vec<u8>, bool), String> {
+    let view = view.borrow();
+    let readonly = view.readonly;
+    Ok((memoryview_state_bytes(&view)?, readonly))
+}
+
+fn memoryview_bytes(view: &MemoryViewRef) -> Result<Vec<u8>, String> {
+    memoryview_snapshot(view).map(|(bytes, _)| bytes)
+}
+
+fn memoryview_hash_bytes(view: &MemoryViewRef) -> Result<Vec<u8>, String> {
+    {
+        let state = view.borrow();
+        if let Some(bytes) = &state.hash_cache {
+            return Ok(bytes.clone());
+        }
+        if state.released {
+            return Err(released_memoryview_error());
+        }
+    }
+
+    let (bytes, readonly) = memoryview_snapshot(view)?;
+    if !readonly {
+        return Err("ValueError: cannot hash writable memoryview object".to_string());
+    }
+    view.borrow_mut().hash_cache = Some(bytes.clone());
+    Ok(bytes)
+}
+
+fn memoryview_len(view: &MemoryViewRef) -> Result<usize, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.len)
+}
+
+fn memoryview_readonly(view: &MemoryViewRef) -> Result<bool, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.readonly)
+}
+
+fn memoryview_format(view: &MemoryViewRef) -> Result<String, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.format.clone())
+}
+
+fn memoryview_stride(view: &MemoryViewRef) -> Result<isize, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.stride)
+}
+
+fn memoryview_exporter(view: &MemoryViewRef) -> Result<Value, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.obj.clone())
+}
+
+fn memoryview_is_contiguous(view: &MemoryViewRef) -> Result<bool, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.stride == 1 || view.len == 1)
+}
+
+fn release_memoryview(view: &MemoryViewRef) {
+    let mut view = view.borrow_mut();
+    if view.released {
+        return;
+    }
+    if let Some(bytes) = &view.exported_bytearray {
+        bytes.borrow_mut().release_export();
+    }
+    view.released = true;
+}
+
+fn byte_assignment_value(value: Value, type_error: &str) -> Result<u8, String> {
+    let value = numeric_bool_value(value);
+    let number = match value {
+        Value::Number(value) => value,
+        Value::BigInt(value) => value.to_i64().unwrap_or(if value.is_negative() {
+            i64::MIN
+        } else {
+            i64::MAX
+        }),
+        _ => return Err(type_error.to_string()),
+    };
+    u8::try_from(number).map_err(|_| "ValueError: byte must be in range(0, 256)".to_string())
+}
+
+fn bytearray_assignment_byte(value: Value) -> Result<u8, String> {
+    byte_assignment_value(
+        value,
+        "TypeError: bytearray item assignment requires an integer",
+    )
+}
+
+fn memoryview_assignment_byte(value: Value) -> Result<u8, String> {
+    byte_assignment_value(value, "TypeError: memoryview: invalid type for format 'B'")
+}
+
+fn memoryview_c_assignment_byte(value: Value) -> Result<u8, String> {
+    match value {
+        Value::Bytes(bytes) if bytes.len() == 1 => Ok(bytes[0]),
+        _ => Err("TypeError: memoryview: invalid type for format 'c'".to_string()),
+    }
+}
+
+fn memoryview_slice_assignment_value(
+    view: &MemoryViewRef,
+    value: Value,
+) -> Result<Vec<u8>, String> {
+    if memoryview_format(view)? == "c" {
+        return match value {
+            Value::MemoryView(value) if memoryview_format(&value)? == "c" => {
+                memoryview_bytes(&value)
+            }
+            Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => Err(
+                "ValueError: memoryview assignment: lvalue and rvalue have different structures"
+                    .to_string(),
+            ),
+            value => Err(format!(
+                "TypeError: memoryview slice must be assigned a bytes-like object, not {}",
+                type_name(&value)
+            )),
+        };
+    }
+    bytes_like_assignment_value(value, "memoryview slice")
+}
+
+fn memoryview_item_from_byte(format: &str, byte: u8) -> Value {
+    match format {
+        "c" => Value::Bytes(vec![byte]),
+        _ => Value::Number(i64::from(byte)),
+    }
+}
+
+fn memoryview_values(view: &MemoryViewRef) -> Result<Vec<Value>, String> {
+    let format = memoryview_format(view)?;
+    let bytes = memoryview_bytes(view)?;
+    Ok(bytes
+        .into_iter()
+        .map(|byte| memoryview_item_from_byte(&format, byte))
+        .collect())
+}
+
+fn memoryview_list_value(view: &MemoryViewRef) -> Result<Value, String> {
+    Ok(list_value(memoryview_values(view)?))
+}
+
+fn memoryview_item_value(view: &MemoryViewRef, index: Value) -> Result<Value, String> {
+    let state = view.borrow();
+    if state.released {
+        return Err(released_memoryview_error());
+    }
+    let index = normalized_index(index, state.len, "memoryview")?;
+    let physical_index = memoryview_physical_index(&state, index)?;
+    let byte = *state
+        .bytes
+        .borrow()
+        .get(physical_index)
+        .ok_or_else(|| "memoryview index out of range".to_string())?;
+    Ok(memoryview_item_from_byte(&state.format, byte))
+}
+
+fn bytes_like_assignment_value(value: Value, context: &str) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value),
+        Value::ByteArray(value) => Ok(bytearray_bytes(&value)),
+        Value::MemoryView(view) => memoryview_bytes(&view),
+        value => Err(format!(
+            "TypeError: {context} must be assigned a bytes-like object, not {}",
+            type_name(&value)
+        )),
+    }
+}
+
+fn bytearray_slice_assignment_value(value: Value) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value),
+        Value::ByteArray(value) => Ok(bytearray_bytes(&value)),
+        Value::MemoryView(view) => memoryview_bytes(&view),
+        value => sequence_values(value)?
+            .into_iter()
+            .map(bytearray_assignment_byte)
+            .collect(),
+    }
 }
 
 enum AwaitAdvance {
@@ -158,6 +823,13 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
     match value {
         Value::String(value) => Ok(value.clone()),
         Value::BigInt(value) => repr_big_int_checked(value),
+        value
+            if bytes_subclass_bytes(value).is_some()
+                || bytearray_subclass_storage(value).is_some()
+                || namedtuple_subclass_storage(value).is_some() =>
+        {
+            repr_value_checked(value)
+        }
         Value::List(_)
         | Value::Tuple(_)
         | Value::Set(_)
@@ -179,7 +851,18 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
     match value {
         Value::String(value) => Ok(repr_string(value)),
         Value::Bytes(value) => Ok(repr_bytes(value)),
-        Value::ByteArray(value) => Ok(format!("bytearray({})", repr_bytes(value))),
+        Value::ByteArray(value) => Ok(format!("bytearray({})", repr_bytes(&value.borrow()))),
+        value if bytes_subclass_bytes(value).is_some() => Ok(repr_bytes(
+            &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+        )),
+        value if bytearray_subclass_storage(value).is_some() => {
+            Ok(bytearray_subclass_repr(value)
+                .expect("bytearray subclass storage exists after guard"))
+        }
+        value if namedtuple_subclass_storage(value).is_some() => {
+            namedtuple_subclass_repr_checked(value, active)
+                .expect("namedtuple subclass storage exists after guard")
+        }
         Value::List(items) => {
             let ptr = Rc::as_ptr(items) as usize;
             if !active.insert(ptr) {
@@ -256,7 +939,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             active.remove(&ptr);
             Ok(format!("{{{rendered}}}"))
         }
-        Value::UserDict { data } => {
+        Value::UserDict { data, .. } => {
             let ptr = Rc::as_ptr(data) as usize;
             if !active.insert(ptr) {
                 return Ok("UserDict({...})".to_string());
@@ -295,6 +978,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         Value::Exception {
             type_name, args, ..
         } => Ok(format!("{type_name}{}", repr_exception_args_checked(args)?)),
+        Value::Traceback { .. } => Ok("<traceback object>".to_string()),
         Value::AstNode { .. } => ast_repr_value_checked(value),
         Value::BigInt(value) => repr_big_int_checked(value),
         _ => Ok(repr_value(value)),
@@ -374,7 +1058,17 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
     match value {
         Value::String(value) => repr_string(value),
         Value::Bytes(value) => repr_bytes(value),
-        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(value)),
+        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(&value.borrow())),
+        value if bytes_subclass_bytes(value).is_some() => repr_bytes(
+            &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+        ),
+        value if bytearray_subclass_storage(value).is_some() => {
+            bytearray_subclass_repr(value).expect("bytearray subclass storage exists after guard")
+        }
+        value if namedtuple_subclass_storage(value).is_some() => {
+            namedtuple_subclass_repr(value, active)
+                .expect("namedtuple subclass storage exists after guard")
+        }
         Value::List(items) => {
             let ptr = Rc::as_ptr(items) as usize;
             if !active.insert(ptr) {
@@ -451,7 +1145,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
             active.remove(&ptr);
             format!("{{{rendered}}}")
         }
-        Value::UserDict { data } => {
+        Value::UserDict { data, .. } => {
             let ptr = Rc::as_ptr(data) as usize;
             if !active.insert(ptr) {
                 return "UserDict({...})".to_string();
@@ -490,6 +1184,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
         Value::Exception {
             type_name, args, ..
         } => format!("{type_name}{}", repr_exception_args(args)),
+        Value::Traceback { .. } => "<traceback object>".to_string(),
         Value::AstNode { .. } => ast_repr_value(value),
         _ => value.to_string(),
     }
@@ -1588,6 +2283,50 @@ fn new_scope() -> Scope {
     Rc::new(RefCell::new(HashMap::new()))
 }
 
+fn new_module_cache() -> ModuleCache {
+    let Value::Dict(entries) = dict_value(Vec::new()) else {
+        unreachable!("dict_value always returns a dict")
+    };
+    entries
+}
+
+fn source_module_scope(name: &str, source_module: &SourceModule) -> Scope {
+    let attrs = new_scope();
+    {
+        let package = if source_module.is_package {
+            name.to_string()
+        } else {
+            import_parent_and_child_name(name)
+                .map(|(parent, _)| parent.to_string())
+                .unwrap_or_default()
+        };
+        let mut values = attrs.borrow_mut();
+        values.insert("__name__".to_string(), Value::String(name.to_string()));
+        values.insert("__package__".to_string(), Value::String(package));
+        values.insert("__doc__".to_string(), Value::None);
+        values.insert(
+            "__file__".to_string(),
+            Value::String(source_module_virtual_filename(
+                name,
+                source_module.is_package,
+            )),
+        );
+        if source_module.is_package {
+            values.insert("__path__".to_string(), list_value(Vec::new()));
+        }
+    }
+    ensure_scope_has_builtins(&attrs);
+    attrs
+}
+
+fn source_module_virtual_filename(name: &str, is_package: bool) -> String {
+    if is_package {
+        format!("<virtual>/{}/__init__.py", name.replace('.', "/"))
+    } else {
+        format!("<virtual>/{}.py", name.replace('.', "/"))
+    }
+}
+
 fn warning_message_value_at(
     message: String,
     category: Value,
@@ -1689,23 +2428,24 @@ fn ast_subclass_default_for_field_type(field_type: &Value) -> Option<Value> {
 
 const CLASS_NAME_ATTR: &str = "\0class_name";
 const CLASS_QUALNAME_ATTR: &str = "\0class_qualname";
+const CLASS_ATTR_ORDER_ATTR: &str = "\0class_attr_order";
+const FUNCTION_QUALNAME_ATTR: &str = "\0function_qualname";
 
 fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Scope, String> {
-    let Value::Dict(entries) = namespace else {
-        return Err(format!(
-            "TypeError: type.__new__() argument 3 must be dict, not {}",
-            type_name(namespace)
-        ));
+    let entries = match namespace {
+        Value::Dict(entries) | Value::OrderedDict(entries) => entries,
+        value => {
+            return Err(format!(
+                "TypeError: type.__new__() argument 3 must be dict, not {}",
+                type_name(value)
+            ));
+        }
     };
 
     let scope = new_scope();
     {
         let mut attrs = scope.borrow_mut();
-        attrs.insert(
-            "__module__".to_string(),
-            Value::String("__main__".to_string()),
-        );
-        attrs.insert("__doc__".to_string(), Value::None);
+        let mut attr_order = Vec::new();
         for (key, value) in entries.borrow().iter() {
             let Value::String(key) = key else {
                 return Err(format!(
@@ -1724,66 +2464,33 @@ fn scope_from_type_namespace(_class_name: &str, namespace: &Value) -> Result<Sco
                 continue;
             }
             attrs.insert(key.clone(), value.clone());
+            attr_order.push(Value::String(key.clone()));
         }
+        if !attrs.contains_key("__module__") {
+            attrs.insert(
+                "__module__".to_string(),
+                Value::String("__main__".to_string()),
+            );
+            attr_order.push(Value::String("__module__".to_string()));
+        }
+        if !attrs.contains_key("__doc__") {
+            attrs.insert("__doc__".to_string(), Value::None);
+            attr_order.push(Value::String("__doc__".to_string()));
+        }
+        attrs.insert(CLASS_ATTR_ORDER_ATTR.to_string(), tuple_value(attr_order));
     }
 
     Ok(scope)
-}
-
-fn module_value(name: &str, attrs: Vec<(&str, Value)>) -> Value {
-    let scope = new_scope();
-    {
-        let mut values = scope.borrow_mut();
-        values.insert("__name__".to_string(), Value::String(name.to_string()));
-        for (name, value) in attrs {
-            values.insert(name.to_string(), value);
-        }
-    }
-
-    Value::Module {
-        name: name.to_string(),
-        attrs: scope,
-    }
 }
 
 fn builtin_type_value(name: &str) -> Value {
     Value::Builtin(name.to_string())
 }
 
-fn string_key_dict(entries: Vec<(&str, Value)>) -> Value {
-    dict_value(
-        entries
-            .into_iter()
-            .map(|(key, value)| (Value::String(key.to_string()), value))
-            .collect(),
-    )
-}
-
 fn generic_alias_value(origin: Value, args: Vec<Value>) -> Value {
     Value::GenericAlias {
         origin: Box::new(origin),
         args,
-    }
-}
-
-fn synthetic_class_value(name: &str, bases: Vec<Value>, attrs: Vec<(&str, Value)>) -> Value {
-    let scope = new_scope();
-    {
-        let mut values = scope.borrow_mut();
-        values.insert(
-            "__module__".to_string(),
-            Value::String("__main__".to_string()),
-        );
-        for (name, value) in attrs {
-            values.insert(name.to_string(), value);
-        }
-    }
-
-    Value::Class {
-        name: name.to_string(),
-        type_params: Vec::new(),
-        bases,
-        attrs: scope,
     }
 }
 
@@ -1803,6 +2510,7 @@ impl Vm {
             locals: new_scope(),
             closure: Vec::new(),
             is_module: true,
+            is_class_body: false,
             captures_locals: false,
             output: Vec::new(),
             exception_handlers: Vec::new(),
@@ -1810,12 +2518,41 @@ impl Vm {
             pending_exception_after_clear: None,
             current_class: None,
             first_arg_name: None,
+            qualname_prefix: None,
             resume_value: None,
             resume_exception: None,
+            abc_registry: Rc::new(RefCell::new(HashMap::new())),
+            module_cache: new_module_cache(),
+            source_modules: Rc::new(HashMap::new()),
+            stdlib_import_policy: StdlibImportPolicy::allow_all(),
+            frame_stack: Rc::new(RefCell::new(Vec::new())),
+            frame_line_spans: default_code_line_spans(),
         }
     }
 
-    fn new_function(instructions: Vec<Instruction>, globals: Scope, closure: Vec<Scope>) -> Self {
+    pub(crate) fn with_source_modules(mut self, source_modules: SourceModuleTable) -> Self {
+        self.source_modules = source_modules;
+        self
+    }
+
+    pub(crate) fn with_stdlib_import_policy(mut self, policy: StdlibImportPolicy) -> Self {
+        self.stdlib_import_policy = policy;
+        self
+    }
+
+    fn new_function(
+        instructions: Vec<Instruction>,
+        globals: Scope,
+        closure: Vec<Scope>,
+        abc_registry: AbcRegistry,
+        module_cache: ModuleCache,
+        source_modules: SourceModuleTable,
+        stdlib_import_policy: StdlibImportPolicy,
+        frame_stack: FrameStack,
+        first_line: usize,
+        line_sequence: Vec<usize>,
+    ) -> Self {
+        let line_spans = function_code_line_spans(&instructions, first_line, &line_sequence);
         Self {
             instructions,
             ip: 0,
@@ -1824,6 +2561,7 @@ impl Vm {
             locals: new_scope(),
             closure,
             is_module: false,
+            is_class_body: false,
             captures_locals: true,
             output: Vec::new(),
             exception_handlers: Vec::new(),
@@ -1831,12 +2569,28 @@ impl Vm {
             pending_exception_after_clear: None,
             current_class: None,
             first_arg_name: None,
+            qualname_prefix: None,
             resume_value: None,
             resume_exception: None,
+            abc_registry,
+            module_cache,
+            source_modules,
+            stdlib_import_policy,
+            frame_stack,
+            frame_line_spans: line_spans,
         }
     }
 
-    fn new_class_body(instructions: Vec<Instruction>, globals: Scope, closure: Vec<Scope>) -> Self {
+    fn new_class_body(
+        instructions: Vec<Instruction>,
+        globals: Scope,
+        closure: Vec<Scope>,
+        abc_registry: AbcRegistry,
+        module_cache: ModuleCache,
+        source_modules: SourceModuleTable,
+        stdlib_import_policy: StdlibImportPolicy,
+        frame_stack: FrameStack,
+    ) -> Self {
         Self {
             instructions,
             ip: 0,
@@ -1845,6 +2599,7 @@ impl Vm {
             locals: new_scope(),
             closure,
             is_module: false,
+            is_class_body: true,
             captures_locals: false,
             output: Vec::new(),
             exception_handlers: Vec::new(),
@@ -1852,8 +2607,15 @@ impl Vm {
             pending_exception_after_clear: None,
             current_class: None,
             first_arg_name: None,
+            qualname_prefix: None,
             resume_value: None,
             resume_exception: None,
+            abc_registry,
+            module_cache,
+            source_modules,
+            stdlib_import_policy,
+            frame_stack,
+            frame_line_spans: default_code_line_spans(),
         }
     }
 
@@ -1863,6 +2625,11 @@ impl Vm {
         locals: Scope,
         closure: Vec<Scope>,
         is_module: bool,
+        abc_registry: AbcRegistry,
+        module_cache: ModuleCache,
+        source_modules: SourceModuleTable,
+        stdlib_import_policy: StdlibImportPolicy,
+        frame_stack: FrameStack,
     ) -> Self {
         Self {
             instructions,
@@ -1872,6 +2639,7 @@ impl Vm {
             locals,
             closure,
             is_module,
+            is_class_body: false,
             captures_locals: false,
             output: Vec::new(),
             exception_handlers: Vec::new(),
@@ -1879,8 +2647,15 @@ impl Vm {
             pending_exception_after_clear: None,
             current_class: None,
             first_arg_name: None,
+            qualname_prefix: None,
             resume_value: None,
             resume_exception: None,
+            abc_registry,
+            module_cache,
+            source_modules,
+            stdlib_import_policy,
+            frame_stack,
+            frame_line_spans: default_code_line_spans(),
         }
     }
 
@@ -1900,16 +2675,82 @@ impl Vm {
         }
     }
 
+    fn push_runtime_frame(&mut self) -> Result<(), String> {
+        let line = self.frame_line_for_ip(self.ip);
+        let code = Value::CodeObject {
+            mode: CodeMode::Exec,
+            filename: if self.is_module {
+                "<module>".to_string()
+            } else {
+                "<function>".to_string()
+            },
+            instructions: self.instructions.clone(),
+            line_spans: self.frame_line_spans.clone(),
+            identity: Rc::new(()),
+        };
+        let fields = dict_ref_from_entries(vec![
+            (Value::String("f_lineno".to_string()), Value::Number(line)),
+            (Value::String("f_code".to_string()), code),
+            (
+                Value::String("f_globals".to_string()),
+                Value::ScopeDict(self.globals.clone()),
+            ),
+            (
+                Value::String("f_locals".to_string()),
+                Value::ScopeDict(self.locals.clone()),
+            ),
+        ])?;
+        self.frame_stack.borrow_mut().push(RuntimeFrame { fields });
+        Ok(())
+    }
+
+    fn update_current_frame_line(&mut self, instruction_index: usize) {
+        let line = self.frame_line_for_ip(instruction_index);
+        let Some(frame) = self.frame_stack.borrow().last().cloned() else {
+            return;
+        };
+        let mut fields = frame.fields.borrow_mut();
+        let _ = insert_live_dict_entry(
+            &mut fields,
+            Value::String("f_lineno".to_string()),
+            Value::Number(line),
+        );
+    }
+
+    fn frame_line_for_ip(&self, instruction_index: usize) -> i64 {
+        frame_line_for_ip(&self.frame_line_spans, instruction_index)
+    }
+
+    fn should_update_frame_line(instruction: &Instruction) -> bool {
+        !matches!(
+            instruction,
+            Instruction::ImplicitReturn
+                | Instruction::Jump { .. }
+                | Instruction::JumpIfFalse { .. }
+        )
+    }
+
     fn run_inner(&mut self) -> Result<ExecutionExit, String> {
+        self.push_runtime_frame()?;
+        let result = self.run_inner_loop();
+        self.frame_stack.borrow_mut().pop();
+        result
+    }
+
+    fn run_inner_loop(&mut self) -> Result<ExecutionExit, String> {
         loop {
             let instruction = self
                 .instructions
                 .get(self.ip)
                 .cloned()
                 .ok_or_else(|| "instruction pointer moved past end of bytecode".to_string())?;
+            if Self::should_update_frame_line(&instruction) {
+                self.update_current_frame_line(self.ip);
+            }
             self.ip += 1;
 
             match instruction {
+                Instruction::Noop => {}
                 Instruction::LoadConst { dst, value } => {
                     self.write_register(dst, value);
                 }
@@ -1973,7 +2814,8 @@ impl Vm {
                 }
                 Instruction::StoreName { name, src } => {
                     let value = self.read_register(src)?.clone();
-                    self.store_name(name, value);
+                    let result = self.store_name(name, value);
+                    self.runtime_result_or_raise(result)?;
                 }
                 Instruction::StoreGlobal { name, src } => {
                     let value = self.read_register(src)?.clone();
@@ -2006,13 +2848,17 @@ impl Vm {
                     return_root,
                     level,
                 } => {
-                    let module = self.import_module_value(&name, return_root, level)?;
-                    self.write_register(dst, module);
+                    let result = self.import_module_value(&name, return_root, level);
+                    if let Some(module) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, module);
+                    }
                 }
                 Instruction::ImportFrom { dst, module, name } => {
                     let module = self.read_register(module)?.clone();
-                    let value = import_from(module, &name)?;
-                    self.write_register(dst, value);
+                    let result = self.import_from_value(module, &name);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::ImportStar { module } => {
                     let module = self.read_register(module)?.clone();
@@ -2190,14 +3036,16 @@ impl Vm {
                 Instruction::Add { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = add_values(left, right)?;
+                    let value = self.add_values(left, right)?;
                     self.write_register(dst, value);
                 }
                 Instruction::InPlaceAdd { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.in_place_add_values(left, right)?;
-                    self.write_register(dst, value);
+                    let result = self.in_place_add_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::Subtract { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -2208,14 +3056,26 @@ impl Vm {
                 Instruction::InPlaceSubtract { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = self.in_place_subtract_values(left, right)?;
-                    self.write_register(dst, value);
+                    let result = self.in_place_subtract_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::Multiply { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = multiply_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = multiply_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(value)? {
+                        self.write_register(dst, value);
+                    }
+                }
+                Instruction::InPlaceMultiply { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let result = self.in_place_multiply_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
                 }
                 Instruction::MatrixMultiply { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -2378,6 +3238,10 @@ impl Vm {
                         self.write_register(dst, Value::Bool(!value));
                     }
                 }
+                Instruction::Positive { dst, src } => {
+                    let value = self.read_register(src)?.clone();
+                    self.write_register(dst, positive_value(value)?);
+                }
                 Instruction::Negate { dst, src } => {
                     let value = self.read_register(src)?.clone();
                     self.write_register(dst, negate_value(value)?);
@@ -2461,20 +3325,81 @@ impl Vm {
                     let bound = bound
                         .map(|register| self.read_register(register).cloned())
                         .transpose()?
-                        .map(Box::new);
+                        .unwrap_or(Value::None);
                     let default = default
                         .map(|register| self.read_register(register).cloned())
                         .transpose()?
-                        .map(Box::new);
+                        .unwrap_or(Value::None);
+                    let bound = if matches!(bound, Value::None) {
+                        None
+                    } else {
+                        Some(bound)
+                    };
+                    let default = if matches!(default, Value::None) {
+                        None
+                    } else {
+                        Some(default)
+                    };
                     self.write_register(
                         dst,
                         Value::TypeParam {
                             kind,
                             name,
-                            bound,
-                            default,
+                            bound: Rc::new(RefCell::new(bound)),
+                            default: Rc::new(RefCell::new(default)),
+                            infer_variance: true,
+                            covariant: false,
+                            contravariant: false,
+                            identity: Rc::new(()),
                         },
                     );
+                }
+                Instruction::UpdateTypeParam {
+                    target,
+                    bound,
+                    default,
+                } => {
+                    let bound = bound
+                        .map(|register| self.read_register(register).cloned())
+                        .transpose()?;
+                    let default = default
+                        .map(|register| self.read_register(register).cloned())
+                        .transpose()?;
+                    let Value::TypeParam {
+                        bound: bound_cell,
+                        default: default_cell,
+                        ..
+                    } = self.read_register(target)?.clone()
+                    else {
+                        return Err(
+                            "internal error: UpdateTypeParam target is not a type parameter"
+                                .to_string(),
+                        );
+                    };
+                    *bound_cell.borrow_mut() = bound;
+                    *default_cell.borrow_mut() = default;
+                }
+                Instruction::MakeDeferredTypeParamExpr {
+                    dst,
+                    body,
+                    type_params,
+                    class_name,
+                    is_constraint_tuple,
+                } => {
+                    let type_params = self.collect_register_values(&type_params)?;
+                    let (locals, closure) = self.capture_deferred_type_param_scopes();
+                    let value = Value::DeferredTypeParamExpr(Rc::new(DeferredTypeParamExpr {
+                        body,
+                        globals: self.globals.clone(),
+                        locals,
+                        type_param_scope: type_param_scope(&type_params, class_name.as_deref()),
+                        closure,
+                        class_name,
+                        class_value: Rc::new(RefCell::new(None)),
+                        is_constraint_tuple,
+                        identity: Rc::new(()),
+                    }));
+                    self.write_register(dst, value);
                 }
                 Instruction::MakeTypeAlias {
                     dst,
@@ -2497,6 +3422,7 @@ impl Vm {
                     dst,
                     name,
                     type_params,
+                    closure_bindings,
                     positional_only,
                     params,
                     defaults,
@@ -2505,9 +3431,12 @@ impl Vm {
                     keyword_defaults,
                     kwarg,
                     annotations,
+                    docstring,
                     body,
                     is_generator,
                     is_async,
+                    first_line,
+                    line_sequence,
                 } => {
                     let type_params = self.collect_register_values(&type_params)?;
                     let defaults = defaults
@@ -2528,6 +3457,23 @@ impl Vm {
                             Ok((name.clone(), self.read_register(*register)?.clone()))
                         })
                         .collect::<Result<Vec<_>, String>>()?;
+                    let closure_bindings = closure_bindings
+                        .iter()
+                        .map(|(name, register)| {
+                            Ok((name.clone(), self.read_register(*register)?.clone()))
+                        })
+                        .collect::<Result<Vec<_>, String>>()?;
+                    let mut closure = self.capture_closure();
+                    if !closure_bindings.is_empty() {
+                        let scope = new_scope();
+                        scope.borrow_mut().extend(closure_bindings);
+                        closure.insert(0, scope);
+                    }
+                    let function_attrs = new_scope();
+                    function_attrs.borrow_mut().insert(
+                        FUNCTION_QUALNAME_ATTR.to_string(),
+                        Value::String(nested_qualname(self.qualname_prefix.as_deref(), &name)),
+                    );
                     self.write_register(
                         dst,
                         Value::Function {
@@ -2542,11 +3488,16 @@ impl Vm {
                             keyword_defaults,
                             kwarg,
                             annotations,
-                            attrs: new_scope(),
-                            closure: self.capture_closure(),
+                            doc: Rc::new(RefCell::new(
+                                docstring.map(Value::String).unwrap_or(Value::None),
+                            )),
+                            attrs: function_attrs,
+                            closure,
                             body,
                             is_generator,
                             is_async,
+                            first_line,
+                            line_sequence,
                             identity: Rc::new(()),
                             owner_class: None,
                         },
@@ -2584,23 +3535,68 @@ impl Vm {
                     bases,
                     keywords,
                     static_attributes,
+                    docstring,
                     body,
                 } => {
                     let type_params = self.collect_register_values(&type_params)?;
-                    let bases = self.collect_call_args(&bases)?;
-                    let _keywords = self.collect_call_keywords(None, &keywords)?;
-                    let bases = normalize_class_bases(bases)?;
-                    let base_validation =
-                        validate_type_constructor_bases(&bases).map(|_| Value::None);
+                    let raw_bases = self.collect_call_args(&bases)?;
+                    let keywords = self.collect_call_keywords(None, &keywords)?;
+                    let (metaclass, init_subclass_keywords) =
+                        split_class_header_keywords(keywords)?;
+                    let bases = normalize_class_bases(raw_bases.clone())?;
+                    let base_validation = validate_type_constructor_bases(&bases)
+                        .and_then(|_| {
+                            validate_generic_class_bases(&type_params, &raw_bases, &bases)
+                        })
+                        .map(|_| Value::None);
                     if self.runtime_result_or_raise(base_validation)?.is_none() {
                         continue;
                     }
-                    let closure = self.capture_closure();
-                    let mut class_vm = Vm::new_class_body(body, self.globals.clone(), closure);
+                    let class_namespace = {
+                        let prepared = self.prepare_class_namespace(
+                            &name,
+                            &bases,
+                            metaclass.as_deref(),
+                            init_subclass_keywords.clone(),
+                        );
+                        match self.runtime_result_or_raise(prepared)? {
+                            Some(namespace) => namespace,
+                            None => continue,
+                        }
+                    };
+                    let class_locals = class_namespace_scope(class_namespace.as_ref())?;
+                    let bases = class_bases_with_implicit_generic(bases, &type_params);
+                    let class_qualname = nested_qualname(self.qualname_prefix.as_deref(), &name);
+                    let mut closure = self.capture_closure();
+                    if let Some(type_param_scope) =
+                        type_param_scope(&type_params, Some(name.as_str()))
+                    {
+                        closure.insert(0, type_param_scope);
+                    }
+                    let mut class_vm = Vm::new_class_body(
+                        body,
+                        self.globals.clone(),
+                        closure,
+                        self.abc_registry.clone(),
+                        self.module_cache.clone(),
+                        self.source_modules.clone(),
+                        self.stdlib_import_policy.clone(),
+                        self.frame_stack.clone(),
+                    );
+                    class_vm.locals = class_locals;
+                    class_vm.qualname_prefix = Some(class_qualname.clone());
+                    class_vm.store_class_namespace_value(
+                        "__qualname__",
+                        Value::String(class_qualname.clone()),
+                    )?;
+                    if let Some(docstring) = docstring {
+                        class_vm
+                            .store_class_namespace_value("__doc__", Value::String(docstring))?;
+                    }
                     let exit = match class_vm.run_inner() {
                         Ok(exit) => exit,
                         Err(message) => {
-                            self.output.extend(class_vm.output);
+                            self.output.append(&mut class_vm.output);
                             if let Some(exception) = class_vm.current_exception {
                                 self.raise_exception(exception, true)?;
                                 continue;
@@ -2617,7 +3613,7 @@ impl Vm {
                             return Err("yield outside function".to_string());
                         }
                     }
-                    self.output.extend(class_vm.output);
+                    self.output.append(&mut class_vm.output);
                     let static_attributes = tuple_value(
                         static_attributes
                             .into_iter()
@@ -2625,15 +3621,37 @@ impl Vm {
                             .collect::<Vec<_>>(),
                     );
                     class_vm
-                        .locals
+                        .store_class_namespace_value("__static_attributes__", static_attributes)?;
+                    if !type_params.is_empty() || raw_bases.iter().any(base_is_generic_alias) {
+                        let original_bases = original_class_bases(&raw_bases, &bases, &type_params);
+                        class_vm.store_class_namespace_value(
+                            "__orig_bases__",
+                            tuple_value(original_bases),
+                        )?;
+                    }
+                    let class_attrs =
+                        class_namespace_attrs(class_namespace.as_ref(), &class_vm.locals)?;
+                    let class_qualname_value = class_attrs
                         .borrow_mut()
-                        .insert("__static_attributes__".to_string(), static_attributes);
+                        .remove("__qualname__")
+                        .unwrap_or_else(|| Value::String(class_qualname));
+                    if !matches!(&class_qualname_value, Value::String(_)) {
+                        return Err(format!(
+                            "TypeError: type __qualname__ must be a str, not {}",
+                            type_name(&class_qualname_value)
+                        ));
+                    }
+                    class_attrs
+                        .borrow_mut()
+                        .insert(CLASS_QUALNAME_ATTR.to_string(), class_qualname_value);
                     let class_value = Value::Class {
                         name,
                         type_params,
+                        metaclass,
                         bases,
-                        attrs: class_vm.locals,
+                        attrs: class_attrs,
                     };
+                    bind_deferred_type_param_class_values(&class_value);
                     let class_setup = class_mro(&class_value)
                         .and_then(|_| validate_class_slots(&class_value))
                         .and_then(|_| install_slot_descriptors(&class_value));
@@ -2641,6 +3659,11 @@ impl Vm {
                         continue;
                     }
                     attach_owner_class_to_members(&class_value);
+                    let init_subclass =
+                        self.call_init_subclass(&class_value, init_subclass_keywords);
+                    if self.runtime_result_or_raise(init_subclass)?.is_none() {
+                        continue;
+                    }
                     self.write_register(dst, class_value);
                 }
                 Instruction::Return { src } => {
@@ -2649,6 +3672,9 @@ impl Vm {
                         .transpose()?
                         .unwrap_or(Value::None);
                     return Ok(ExecutionExit::Return(value));
+                }
+                Instruction::ImplicitReturn => {
+                    return Ok(ExecutionExit::Return(Value::None));
                 }
                 Instruction::Yield { src, resume_dst } => {
                     let value = src
@@ -2715,18 +3741,19 @@ impl Vm {
                     value_dst,
                     traceback_dst,
                 } => {
-                    let (exception_type, exception_value) =
+                    let (exception_type, exception_value, exception_traceback) =
                         if let Some(exception) = &self.current_exception {
                             (
                                 Value::Builtin(exception.type_name.clone()),
                                 value_from_exception(exception),
+                                exception_traceback_value(&exception.attrs),
                             )
                         } else {
-                            (Value::None, Value::None)
+                            (Value::None, Value::None, Value::None)
                         };
                     self.write_register(type_dst, exception_type);
                     self.write_register(value_dst, exception_value);
-                    self.write_register(traceback_dst, Value::None);
+                    self.write_register(traceback_dst, exception_traceback);
                 }
                 Instruction::BuildList { dst, items } => {
                     let items = items
@@ -3091,6 +4118,9 @@ impl Vm {
             if let Some(value) = self.locals.borrow().get(name).cloned() {
                 return Ok(value);
             }
+            if let Some(value) = self.load_from_locals_mapping_source(name)? {
+                return Ok(value);
+            }
         }
 
         if let Some(value) = self.load_from_closure(name) {
@@ -3148,11 +4178,15 @@ impl Vm {
     }
 
     fn load_from_globals_mapping_source(&mut self, name: &str) -> Result<Option<Value>, String> {
-        let source = self
-            .globals
-            .borrow()
-            .get(SCOPE_MAPPING_SOURCE_FIELD)
-            .cloned();
+        let source = scope_mapping_source(&self.globals, SCOPE_MAPPING_SOURCE_FIELD);
+        let Some(source) = source else {
+            return Ok(None);
+        };
+        self.lookup_custom_mapping_item(&source, name)
+    }
+
+    fn load_from_locals_mapping_source(&mut self, name: &str) -> Result<Option<Value>, String> {
+        let source = locals_mapping_source(&self.locals);
         let Some(source) = source else {
             return Ok(None);
         };
@@ -3164,10 +4198,16 @@ impl Vm {
         mapping: &Value,
         name: &str,
     ) -> Result<Option<Value>, String> {
-        let Some(method) = instance_special_method(mapping, "__getitem__") else {
+        let has_mapping_lookup = instance_special_method(mapping, "__getitem__").is_some()
+            || mapping_entries(mapping).is_ok();
+        if !has_mapping_lookup {
             return Ok(None);
-        };
-        match self.call_value_catching(method, vec![Value::String(name.to_string())])? {
+        }
+
+        let key = Value::String(name.to_string());
+        match self
+            .call_with_exception_capture(|vm| vm.load_subscript_value(mapping.clone(), key))?
+        {
             Ok(value) => Ok(Some(value)),
             Err(exception) if exception.type_name == "KeyError" => Ok(None),
             Err(exception) => {
@@ -3175,6 +4215,31 @@ impl Vm {
                 Ok(Some(Value::None))
             }
         }
+    }
+
+    fn prepare_class_namespace(
+        &mut self,
+        class_name: &str,
+        bases: &[Value],
+        metaclass: Option<&Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Option<Value>, String> {
+        let Some(metaclass) = metaclass else {
+            return Ok(None);
+        };
+        let Some(prepare) = class_prepare_callable(metaclass) else {
+            return Ok(None);
+        };
+
+        let namespace = self.call_value_with_keywords(
+            prepare,
+            vec![
+                Value::String(class_name.to_string()),
+                tuple_value(bases.to_vec()),
+            ],
+            keywords,
+        )?;
+        Ok(Some(namespace))
     }
 
     fn import_module_value(
@@ -3204,16 +4269,213 @@ impl Vm {
                 ],
             );
         }
-        if level != 0 {
-            return Err("ImportError: relative imports are not supported".to_string());
+
+        let resolved_name = self.resolve_import_name_from_current_globals(name, level)?;
+        self.load_imported_module_value(&resolved_name, return_root && level == 0)
+    }
+
+    fn load_imported_module_value(
+        &mut self,
+        name: &str,
+        return_root: bool,
+    ) -> Result<Value, String> {
+        if return_root {
+            if name.contains('.') {
+                self.load_module(name)?;
+            }
+            self.load_module(import_root_name(name))
+        } else {
+            self.load_module(name)
+        }
+    }
+
+    fn resolve_import_name_from_current_globals(
+        &self,
+        name: &str,
+        level: usize,
+    ) -> Result<String, String> {
+        if level == 0 {
+            return Ok(name.to_string());
+        }
+        let package = relative_import_package_from_scope(&self.globals)?;
+        resolve_relative_import_name(name, level, &package)
+    }
+
+    fn resolve_import_name_from_globals_value(
+        &self,
+        name: &str,
+        level: usize,
+        globals: Option<&Value>,
+    ) -> Result<String, String> {
+        if level == 0 {
+            return Ok(name.to_string());
         }
 
-        let module_name = if return_root {
-            import_root_name(name)
+        match globals {
+            None => self.resolve_import_name_from_current_globals(name, level),
+            Some(Value::ScopeDict(scope)) => {
+                let package = relative_import_package_from_scope(scope)?;
+                resolve_relative_import_name(name, level, &package)
+            }
+            Some(Value::Dict(entries)) => {
+                let package = relative_import_package_from_dict(entries)?;
+                resolve_relative_import_name(name, level, &package)
+            }
+            Some(value) if dict_subclass_entries(value).is_some() => {
+                let entries =
+                    dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+                let package = relative_import_package_from_dict(&entries)?;
+                resolve_relative_import_name(name, level, &package)
+            }
+            Some(_) => Err("TypeError: globals must be a dict".to_string()),
+        }
+    }
+
+    fn load_module(&mut self, name: &str) -> Result<Value, String> {
+        if let Some(module) = lookup_string_key(&self.module_cache, name) {
+            if matches!(module, Value::None) {
+                return Err(format!(
+                    "ModuleNotFoundError: import of {name} halted; None in sys.modules"
+                ));
+            }
+            if !self.source_modules.contains_key(name) && !self.stdlib_import_policy.allows(name) {
+                return Err(module_blocked_by_import_policy_error(name));
+            }
+            return Ok(module);
+        }
+
+        if let Some(module) = self.load_source_module(name)? {
+            return Ok(module);
+        }
+
+        self.load_stdlib_module(name)
+    }
+
+    fn load_stdlib_module(&mut self, name: &str) -> Result<Value, String> {
+        if let Some(module) = lookup_string_key(&self.module_cache, name) {
+            if matches!(module, Value::None) {
+                return Err(format!(
+                    "ModuleNotFoundError: import of {name} halted; None in sys.modules"
+                ));
+            }
+            return Ok(module);
+        }
+
+        if !self.stdlib_import_policy.allows(name) {
+            return Err(module_blocked_by_import_policy_error(name));
+        }
+
+        let parent = if let Some((parent_name, _)) = import_parent_and_child_name(name) {
+            self.cached_package_parent(name, parent_name)?
         } else {
-            name
+            None
         };
-        import_module(module_name)
+
+        let sys_modules = Value::Dict(self.module_cache.clone());
+        let module = {
+            let mut import_dependency =
+                |dependency_name: &str| self.load_stdlib_module(dependency_name);
+            create_module(name, sys_modules, &mut import_dependency)?
+        };
+        insert_live_dict_entry(
+            &mut self.module_cache.borrow_mut(),
+            Value::String(name.to_string()),
+            module.clone(),
+        )?;
+        if let Some((parent_name, child_name)) = import_parent_and_child_name(name) {
+            let parent = match parent {
+                Some(parent) => parent,
+                None => self.load_stdlib_module(parent_name)?,
+            };
+            bind_submodule_to_parent(&parent, name, parent_name, child_name, module.clone())?;
+        }
+        Ok(module)
+    }
+
+    fn load_source_module(&mut self, name: &str) -> Result<Option<Value>, String> {
+        let Some(source_module) = self.source_modules.get(name).cloned() else {
+            return Ok(None);
+        };
+
+        let parent = if let Some((parent_name, _)) = import_parent_and_child_name(name) {
+            Some(self.load_module(parent_name)?)
+        } else {
+            None
+        };
+
+        let attrs = source_module_scope(name, &source_module);
+        let module = Value::Module {
+            name: name.to_string(),
+            attrs: attrs.clone(),
+        };
+        insert_live_dict_entry(
+            &mut self.module_cache.borrow_mut(),
+            Value::String(name.to_string()),
+            module.clone(),
+        )?;
+
+        let execution = self.execute_source_module(name, &source_module.source, attrs);
+        if let Err(message) = execution {
+            let _ = delete_mapping_entry(&self.module_cache, &Value::String(name.to_string()));
+            return Err(message);
+        }
+
+        if let Some((parent_name, child_name)) = import_parent_and_child_name(name) {
+            let parent = parent.expect("dotted source modules load their parent first");
+            bind_submodule_to_parent(&parent, name, parent_name, child_name, module.clone())?;
+        }
+
+        Ok(Some(module))
+    }
+
+    fn execute_source_module(
+        &mut self,
+        name: &str,
+        source: &str,
+        attrs: Scope,
+    ) -> Result<(), String> {
+        let instructions = compile_source_module(name, source)?;
+        let mut module_vm = Vm::new_eval(
+            instructions,
+            attrs.clone(),
+            attrs,
+            Vec::new(),
+            true,
+            self.abc_registry.clone(),
+            self.module_cache.clone(),
+            self.source_modules.clone(),
+            self.stdlib_import_policy.clone(),
+            self.frame_stack.clone(),
+        );
+
+        match module_vm.run() {
+            Ok(output) => {
+                self.output.extend(output);
+                Ok(())
+            }
+            Err(message) => {
+                self.output.extend(module_vm.output);
+                if let Some(exception) = module_vm.current_exception {
+                    Err(format_exception_error(&exception))
+                } else {
+                    Err(message)
+                }
+            }
+        }
+    }
+
+    fn cached_package_parent(
+        &self,
+        full_name: &str,
+        parent_name: &str,
+    ) -> Result<Option<Value>, String> {
+        let Some(parent) = lookup_string_key(&self.module_cache, parent_name) else {
+            return Ok(None);
+        };
+        match &parent {
+            Value::Module { name, .. } if name == parent_name => Ok(Some(parent)),
+            _ => Err(module_not_package_error(full_name, parent_name)),
+        }
     }
 
     fn importer_from_builtins(&mut self) -> Result<Option<Value>, String> {
@@ -3236,12 +4498,21 @@ impl Vm {
             .find_map(|scope| scope.borrow().get(name).cloned())
     }
 
-    fn store_name(&mut self, name: String, value: Value) {
+    fn store_name(&mut self, name: String, value: Value) -> Result<(), String> {
         if self.is_module {
             self.store_global(name, value);
+            return Ok(());
+        }
+
+        if let Some(mapping) = scope_mapping_source(&self.locals, SCOPE_LOCALS_MAPPING_SOURCE_FIELD)
+        {
+            return self.store_locals_mapping_item(mapping, name, value);
+        } else if self.is_class_body {
+            store_ordered_scope_item(&self.locals, name, value);
         } else {
             self.locals.borrow_mut().insert(name, value);
         }
+        Ok(())
     }
 
     fn store_global(&mut self, name: String, value: Value) {
@@ -3273,13 +4544,13 @@ impl Vm {
             return Ok(());
         }
 
-        let scope = if self.is_module {
+        let target_scope = if self.is_module {
             self.globals.clone()
         } else {
             self.locals.clone()
         };
-        let mut scope = scope.borrow_mut();
-        match scope.get_mut("__annotations__") {
+        let mut bindings = target_scope.borrow_mut();
+        match bindings.get_mut("__annotations__") {
             Some(Value::Dict(entries)) => {
                 insert_live_dict_entry(&mut entries.borrow_mut(), Value::String(name), annotation)?;
                 Ok(())
@@ -3288,7 +4559,16 @@ impl Vm {
             None => {
                 let mut entries = Vec::new();
                 insert_dict_entry(&mut entries, Value::String(name), annotation)?;
-                scope.insert("__annotations__".to_string(), dict_value(entries));
+                if self.is_class_body {
+                    drop(bindings);
+                    store_ordered_scope_item(
+                        &target_scope,
+                        "__annotations__".to_string(),
+                        dict_value(entries),
+                    );
+                } else {
+                    bindings.insert("__annotations__".to_string(), dict_value(entries));
+                }
                 Ok(())
             }
         }
@@ -3297,6 +4577,10 @@ impl Vm {
     fn delete_name(&mut self, name: &str) -> Result<(), String> {
         if self.is_module {
             self.delete_global(name)
+        } else if let Some(mapping) =
+            scope_mapping_source(&self.locals, SCOPE_LOCALS_MAPPING_SOURCE_FIELD)
+        {
+            self.delete_locals_mapping_item(mapping, name)
         } else if self.locals.borrow_mut().remove(name).is_some() {
             Ok(())
         } else {
@@ -3309,6 +4593,39 @@ impl Vm {
             Ok(())
         } else {
             Err(format!("name '{name}' is not defined"))
+        }
+    }
+
+    fn store_locals_mapping_item(
+        &mut self,
+        mapping: Value,
+        name: String,
+        value: Value,
+    ) -> Result<(), String> {
+        if let Some(method) = instance_special_method(&mapping, "__setitem__") {
+            self.call_value(method, vec![Value::String(name), value])?;
+            return Ok(());
+        }
+        set_mapping_item(&mapping, Value::String(name), value)?;
+        Ok(())
+    }
+
+    fn delete_locals_mapping_item(&mut self, mapping: Value, name: &str) -> Result<(), String> {
+        if let Some(method) = instance_special_method(&mapping, "__delitem__") {
+            self.call_value(method, vec![Value::String(name.to_string())])?;
+            return Ok(());
+        }
+        delete_mapping_item(&mapping, Value::String(name.to_string()))?;
+        Ok(())
+    }
+
+    fn store_class_namespace_value(&mut self, name: &str, value: Value) -> Result<(), String> {
+        if let Some(mapping) = scope_mapping_source(&self.locals, SCOPE_LOCALS_MAPPING_SOURCE_FIELD)
+        {
+            self.store_locals_mapping_item(mapping, name.to_string(), value)
+        } else {
+            store_ordered_scope_item(&self.locals, name.to_string(), value);
+            Ok(())
         }
     }
 
@@ -3333,12 +4650,39 @@ impl Vm {
                     .collect::<Vec<_>>();
 
                 for (name, value) in exports {
-                    self.store_name(name, value);
+                    self.store_name(name, value)?;
                 }
 
                 Ok(())
             }
             value => Err(format!("ImportError: cannot import * from {value}")),
+        }
+    }
+
+    fn import_from_value(&mut self, module: Value, name: &str) -> Result<Value, String> {
+        match import_from(module.clone(), name) {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                let Value::Module {
+                    name: module_name,
+                    attrs,
+                } = module
+                else {
+                    return Err(error);
+                };
+
+                if !attrs.borrow().contains_key("__path__") {
+                    return Err(error);
+                }
+
+                let child_name = format!("{module_name}.{name}");
+                let child = match self.load_module(&child_name) {
+                    Ok(child) => child,
+                    Err(_) => return Err(error),
+                };
+                attrs.borrow_mut().insert(name.to_string(), child.clone());
+                Ok(child)
+            }
         }
     }
 
@@ -3352,8 +4696,62 @@ impl Vm {
         }
     }
 
+    fn capture_deferred_type_param_scopes(&self) -> (Option<Scope>, Vec<Scope>) {
+        if self.is_module {
+            return (None, self.closure.clone());
+        }
+        if self.captures_locals {
+            let mut closure = vec![self.locals.clone()];
+            closure.extend(self.closure.iter().cloned());
+            return (None, closure);
+        }
+        (Some(self.locals.clone()), self.closure.clone())
+    }
+
     fn call_value(&mut self, callee: Value, args: Vec<Value>) -> Result<Value, String> {
         self.call_value_with_keywords(callee, args, Vec::new())
+    }
+
+    fn call_sys_getframe(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("_getframe() does not accept keyword arguments".to_string());
+        }
+        if args.len() > 1 {
+            return Err(format!(
+                "_getframe() expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+
+        let depth = match args.first() {
+            None => 0,
+            Some(Value::Number(depth)) if *depth >= 0 => *depth as usize,
+            Some(Value::Bool(depth)) => bool_as_i64(*depth) as usize,
+            Some(Value::BigInt(depth)) if !depth.is_negative() => depth
+                .to_usize()
+                .ok_or_else(|| "ValueError: call stack is not deep enough".to_string())?,
+            Some(Value::Number(_)) | Some(Value::BigInt(_)) => {
+                return Err("ValueError: call stack is not deep enough".to_string());
+            }
+            Some(value) => {
+                return Err(format!(
+                    "TypeError: '{}' object cannot be interpreted as an integer",
+                    type_name(value)
+                ));
+            }
+        };
+
+        let stack = self.frame_stack.borrow();
+        let Some(index) = stack.len().checked_sub(depth + 1) else {
+            return Err("ValueError: call stack is not deep enough".to_string());
+        };
+        Ok(Value::SimpleNamespace {
+            fields: stack[index].fields.clone(),
+        })
     }
 
     fn call_value_with_keywords(
@@ -3402,11 +4800,18 @@ impl Vm {
             Value::Builtin(name) if name == "eval" => self.call_eval(args, keywords),
             Value::Builtin(name) if name == "exec" => self.call_exec(args, keywords),
             Value::Builtin(name) if name == "compile" => self.call_compile(args, keywords),
+            Value::Builtin(name) if name == "code.co_lines" => call_code_lines(args, keywords),
+            Value::Builtin(name) if name == "code.co_positions" => {
+                call_code_positions(args, keywords)
+            }
             Value::Builtin(name) if name == "sys.get_int_max_str_digits" => {
                 call_sys_get_int_max_str_digits(args, keywords)
             }
             Value::Builtin(name) if name == "sys.set_int_max_str_digits" => {
                 call_sys_set_int_max_str_digits(args, keywords)
+            }
+            Value::Builtin(name) if name == "sys._getframe" => {
+                self.call_sys_getframe(args, keywords)
             }
             Value::Builtin(name) if name == "dis.get_instructions" => {
                 call_dis_get_instructions(args, keywords)
@@ -3470,7 +4875,7 @@ impl Vm {
                 call_ast_constructor(kind, args, keywords)
             }
             Value::Builtin(name) if name == "__import__" => {
-                self.call_import_builtin(args, keywords)
+                call_import_builtin(self, args, keywords)
             }
             Value::Builtin(name) if name == "range" => {
                 if !keywords.is_empty() {
@@ -3500,73 +4905,41 @@ impl Vm {
 
                 self.call_anext(args)
             }
-            Value::Builtin(name) if name == "len" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_len(args)
+            Value::Builtin(name) if name == "len" => call_len_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "max" => call_max_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "min" => call_min_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "sum" => call_sum_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "abs" => call_abs_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "hash" => call_hash_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "Hashable.__hash__" => {
+                call_hashable_hash(args, keywords)
             }
-            Value::Builtin(name) if name == "max" => self.call_minmax("max", args, keywords, true),
-            Value::Builtin(name) if name == "min" => self.call_minmax("min", args, keywords, false),
-            Value::Builtin(name) if name == "sum" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_sum(args)
+            Value::Builtin(name)
+                if name.starts_with("Iterable.") || name.starts_with("Iterator.") =>
+            {
+                self.call_iterable_iterator_abc_method(&name, args, keywords)
             }
-            Value::Builtin(name) if name == "abs" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_abs(args)
+            Value::Builtin(name) if name.starts_with("Coroutine.") => {
+                self.call_coroutine_abc_method(&name, args, keywords)
             }
-            Value::Builtin(name) if name == "hash" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_hash(args)
+            Value::Builtin(name) if name.starts_with("AsyncIterator.") => {
+                self.call_async_iterator_abc_method(&name, args, keywords)
             }
-            Value::Builtin(name) if name == "id" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                call_id(args)
+            Value::Builtin(name) if name.starts_with("AsyncGenerator.") => {
+                self.call_async_generator_abc_method(&name, args, keywords)
             }
-            Value::Builtin(name) if name == "divmod" => {
-                if !keywords.is_empty() {
-                    return Err("TypeError: divmod() takes no keyword arguments".to_string());
-                }
-
-                call_divmod(args)
+            Value::Builtin(name) if name.starts_with("Generator.") => {
+                self.call_generator_abc_method(&name, args, keywords)
             }
+            Value::Builtin(name) if name == "id" => call_id(self, args, keywords),
+            Value::Builtin(name) if name == "divmod" => call_divmod_builtin(self, args, keywords),
             Value::Builtin(name) if name == "round" => self.call_round(args, keywords),
             Value::Builtin(name) if matches!(name.as_str(), "bin" | "oct" | "hex") => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_int_base_builtin(&name, args)
+                call_int_base_builtin(self, &name, args, keywords)
             }
             Value::Builtin(name) if name == "pow" => self.call_pow(args, keywords),
-            Value::Builtin(name) if name == "any" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_any(args)
-            }
-            Value::Builtin(name) if name == "all" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_all(args)
-            }
+            Value::Builtin(name) if name == "any" => call_any_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "all" => call_all_builtin(self, args, keywords),
             Value::Builtin(name) if name == "sorted" => self.call_sorted(args, keywords),
             Value::Builtin(name) if name == "enumerate" => self.call_enumerate(args, keywords),
             Value::Builtin(name) if name == "zip" => self.call_zip(args, keywords),
@@ -3600,17 +4973,60 @@ impl Vm {
                 self.call_tuple(args)
             }
             Value::Builtin(name) if name == "dict" => self.call_dict_constructor(args, keywords),
+            Value::Builtin(name) if name == "OrderedDict" => {
+                self.call_ordered_dict_constructor(args, keywords)
+            }
+            Value::Builtin(name) if name == "Counter" => self.call_counter(args, keywords),
+            Value::Builtin(name) if name == "collections.namedtuple" => {
+                self.call_namedtuple(args, keywords)
+            }
+            Value::Builtin(name) if name == "collections._count_elements" => {
+                call_collections_count_elements(self, args, keywords)
+            }
             Value::Builtin(name) if name == "mappingproxy" => {
                 self.call_mapping_proxy_constructor(args, keywords)
             }
             Value::Builtin(name) if name == "ChainMap" => self.call_chain_map(args, keywords),
+            Value::Builtin(name) if name == "UserList" => self.call_user_list(args, keywords),
             Value::Builtin(name) if name == "UserDict" => self.call_user_dict(args, keywords),
             Value::Builtin(name) if name == "SimpleNamespace" => {
                 self.call_simple_namespace_constructor(args, keywords)
             }
+            Value::Builtin(name)
+                if required_abstract_methods_for_collections_abc(&name).is_some() =>
+            {
+                let required = required_abstract_methods_for_collections_abc(&name)
+                    .expect("guard checked required abstract methods")
+                    .iter()
+                    .map(|method| method.to_string())
+                    .collect::<Vec<_>>();
+                Err(abstract_class_instantiation_error(&name, &required))
+            }
+            Value::Builtin(name) if name == "types.coroutine" => {
+                call_types_coroutine(self, args, keywords)
+            }
+            Value::Builtin(name) if name == "types.get_original_bases" => {
+                call_types_get_original_bases(args, keywords)
+            }
+            Value::Builtin(name) if name == "annotationlib.call_evaluate_function" => {
+                self.call_annotationlib_call_evaluate_function(args, keywords)
+            }
+            Value::Builtin(name) if name == "typing.get_args" => {
+                call_typing_get_args(args, keywords)
+            }
+            Value::Builtin(name) if name == "typing.TypeAliasType" => {
+                self.call_typing_type_alias_type(args, keywords)
+            }
+            Value::Builtin(name) if is_typing_type_param_type_name(&name) => {
+                self.call_typing_type_param(typing_type_param_public_name(&name), args, keywords)
+            }
+            Value::Builtin(name) if name == CONST_EVALUATOR_TYPE_NAME => Err(format!(
+                "TypeError: cannot create '{CONST_EVALUATOR_TYPE_NAME}' instances"
+            )),
             Value::Builtin(name) if name == "copy.deepcopy" => {
                 self.call_copy_deepcopy(args, keywords)
             }
+            Value::Builtin(name) if name == "copy.copy" => self.call_copy_copy(args, keywords),
             Value::Builtin(name) if name == "copy.replace" => {
                 self.call_copy_replace(args, keywords)
             }
@@ -3648,13 +5064,8 @@ impl Vm {
             }
             Value::Builtin(name) if name == "bytes" => self.call_bytes(args, keywords),
             Value::Builtin(name) if name == "bytearray" => self.call_bytearray(args, keywords),
-            Value::Builtin(name) if name == "bool" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_bool(args)
-            }
+            Value::Builtin(name) if name == "memoryview" => self.call_memoryview(args, keywords),
+            Value::Builtin(name) if name == "bool" => call_bool_builtin(self, args, keywords),
             Value::Builtin(name) if name == "int" => self.call_int(args, keywords),
             Value::Builtin(name) if name == "float" => {
                 if !keywords.is_empty() {
@@ -3678,44 +5089,10 @@ impl Vm {
 
                 self.call_slice_indices(args)
             }
-            Value::Builtin(name) if name == "repr" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                self.call_repr(args)
-            }
-            Value::Builtin(name) if name == "ascii" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-                if args.len() != 1 {
-                    return Err(format!(
-                        "TypeError: ascii() expected 1 argument, got {}",
-                        args.len()
-                    ));
-                }
-
-                Ok(Value::String(ascii_repr_value_checked(&args[0])?))
-            }
-            Value::Builtin(name) if name == "chr" => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
-                }
-
-                self.call_chr(args)
-            }
-            Value::Builtin(name) if name == "ord" => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
-                }
-
-                call_ord(args)
-            }
+            Value::Builtin(name) if name == "repr" => call_repr_builtin(self, args, keywords),
+            Value::Builtin(name) if name == "ascii" => call_ascii(self, args, keywords),
+            Value::Builtin(name) if name == "chr" => call_chr(self, args, keywords),
+            Value::Builtin(name) if name == "ord" => call_ord(args, keywords),
             Value::Builtin(name) if name == "getattr" => {
                 if !keywords.is_empty() {
                     return Err(format!("{name}() does not accept keyword arguments"));
@@ -3744,13 +5121,7 @@ impl Vm {
 
                 self.call_hasattr(args)
             }
-            Value::Builtin(name) if name == "callable" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-
-                call_callable(args)
-            }
+            Value::Builtin(name) if name == "callable" => call_callable(self, args, keywords),
             Value::Builtin(name) if name == "vars" => {
                 if !keywords.is_empty() {
                     return Err(format!("{name}() does not accept keyword arguments"));
@@ -3784,14 +5155,17 @@ impl Vm {
                     return Err(format!("{name}() does not accept keyword arguments"));
                 }
 
-                call_isinstance(args)
+                self.call_isinstance(args)
             }
             Value::Builtin(name) if name == "issubclass" => {
                 if !keywords.is_empty() {
                     return Err(format!("{name}() does not accept keyword arguments"));
                 }
 
-                call_issubclass(args)
+                self.call_issubclass(args)
+            }
+            Value::Builtin(name) if name == "collections.abc.register" => {
+                self.call_collections_abc_register(args, keywords)
             }
             Value::Builtin(name) if name == "super" => self.call_super_constructor(args, keywords),
             Value::Builtin(name) if name == "staticmethod" => {
@@ -3801,6 +5175,16 @@ impl Vm {
                 call_classmethod_constructor(args, keywords)
             }
             Value::Builtin(name) if name == "property" => call_property_constructor(args, keywords),
+            Value::Builtin(name) if name == "object.__eq__" || name == "object.__ne__" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {}() does not accept keyword arguments",
+                        method_display_name(&name)
+                    ));
+                }
+
+                self.call_object_rich_compare(&name, args)
+            }
             Value::Builtin(name) if name == "object.__getattribute__" => {
                 if !keywords.is_empty() {
                     return Err("__getattribute__() does not accept keyword arguments".to_string());
@@ -3876,6 +5260,16 @@ impl Vm {
 
                 self.call_method_get(args)
             }
+            Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "{}() does not accept keyword arguments",
+                        method_display_name(&name)
+                    ));
+                }
+
+                self.call_namedtuple_field_descriptor_method(&name, args)
+            }
             Value::Builtin(name) if name.starts_with("member_descriptor.") => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -3907,6 +5301,10 @@ impl Vm {
 
                 call_str_maketrans(args)
             }
+            Value::Builtin(name) if name == "bytes.maketrans" || name == "bytearray.maketrans" => {
+                reject_method_keywords(&name, &keywords)?;
+                call_bytes_maketrans(args)
+            }
             Value::Builtin(name) if is_iterator_protocol_method(&name) => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -3917,7 +5315,16 @@ impl Vm {
 
                 self.call_iterator_protocol_method(&name, args)
             }
+            Value::Builtin(name) if name.starts_with("UserDict.") => {
+                call_user_dict_method(self, &name, args, keywords)
+            }
+            Value::Builtin(name) if name.starts_with("UserList.") => {
+                self.call_user_list_method(&name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("dict.") => {
+                call_dict_method(self, &name, args, keywords)
+            }
+            Value::Builtin(name) if name.starts_with("OrderedDict.") => {
                 call_dict_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("set.") => {
@@ -3970,7 +5377,7 @@ impl Vm {
                 self.call_str_format_map_method(args, keywords)
             }
             Value::Builtin(name) if name.starts_with("str.") => {
-                call_str_method(&name, args, keywords)
+                call_str_method(self, &name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("mappingproxy.") => {
                 self.call_mapping_proxy_method(&name, args, keywords)
@@ -3978,11 +5385,65 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("ChainMap.") => {
                 self.call_chain_map_method(&name, args, keywords)
             }
+            Value::Builtin(name) if name.starts_with("Counter.") => {
+                self.call_counter_method(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "bytes.decode" || name == "bytearray.decode" => {
                 call_bytes_decode_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "bytes.hex" || name == "bytearray.hex" => {
-                call_bytes_hex_method(&name, args, keywords)
+                call_bytes_hex_method(self, &name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_join_method(&name) => {
+                self.call_bytes_join_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_split_method(&name) => {
+                self.call_bytes_split_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_splitlines_method(&name) => {
+                call_bytes_splitlines_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_ascii_case_method(&name) => {
+                call_bytes_ascii_case_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_ascii_predicate_method(&name) => {
+                call_bytes_ascii_predicate_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_expandtabs_method(&name) => {
+                call_bytes_expandtabs_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_zfill_method(&name) => {
+                call_bytes_zfill_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_remove_affix_method(&name) => {
+                call_bytes_remove_affix_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_strip_method(&name) => {
+                call_bytes_strip_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_justify_method(&name) => {
+                call_bytes_justify_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_translate_method(&name) => {
+                call_bytes_translate_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_replace_method(&name) => {
+                call_bytes_replace_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_partition_method(&name) => {
+                call_bytes_partition_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_prefix_suffix_method(&name) => {
+                call_bytes_prefix_suffix_method(self, &name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_search_method(&name) => {
+                self.call_bytes_search_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytearray_mutation_method(&name) => {
+                self.call_bytearray_mutation_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if name.starts_with("memoryview.") => {
+                self.call_memoryview_method(&name, args, keywords)
             }
             Value::Builtin(name)
                 if name.starts_with("tuple.")
@@ -3996,7 +5457,7 @@ impl Vm {
                     ));
                 }
 
-                call_immutable_sequence_method(&name, args)
+                call_immutable_sequence_method(self, &name, args)
             }
             Value::Builtin(name) if name.starts_with("Sequence.") => {
                 self.call_sequence_abc_method(&name, args, keywords)
@@ -4074,6 +5535,34 @@ impl Vm {
                 }
 
                 self.call_coroutine_close(args)
+            }
+            Value::Builtin(name) if name == "async_generator_abc_coroutine.__await__" => {
+                if !keywords.is_empty() {
+                    return Err("__await__() does not accept keyword arguments".to_string());
+                }
+
+                call_async_generator_abc_mixin_coroutine_await(args)
+            }
+            Value::Builtin(name) if name == "async_generator_abc_coroutine.send" => {
+                if !keywords.is_empty() {
+                    return Err("send() does not accept keyword arguments".to_string());
+                }
+
+                self.call_async_generator_abc_mixin_coroutine_send(args)
+            }
+            Value::Builtin(name) if name == "async_generator_abc_coroutine.throw" => {
+                if !keywords.is_empty() {
+                    return Err("throw() does not accept keyword arguments".to_string());
+                }
+
+                self.call_async_generator_abc_mixin_coroutine_throw(args)
+            }
+            Value::Builtin(name) if name == "async_generator_abc_coroutine.close" => {
+                if !keywords.is_empty() {
+                    return Err("close() does not accept keyword arguments".to_string());
+                }
+
+                self.call_async_generator_abc_mixin_coroutine_close(args)
             }
             Value::Builtin(name) if name == "coroutine_wrapper.send" => {
                 if !keywords.is_empty() {
@@ -4208,9 +5697,19 @@ impl Vm {
                 call_exception_constructor_with_keywords(name, args, keywords)
             }
             Value::Builtin(name) => Err(format!("unknown builtin: {name}")),
+            Value::GenericAlias { origin, .. } => {
+                self.call_value_with_keywords(*origin, args, keywords)
+            }
+            Value::NamedTupleType(typ) => self.call_named_tuple_type(typ, args, keywords),
+            Value::NamedTupleTypeMethod { typ, name } => {
+                self.call_named_tuple_type_method(typ, &name, args, keywords)
+            }
+            Value::NamedTupleInstanceMethod { instance, name } => {
+                self.call_named_tuple_instance_method(*instance, &name, args, keywords)
+            }
             Value::Function {
                 name,
-                type_params: _,
+                type_params,
                 globals,
                 positional_only,
                 params,
@@ -4220,34 +5719,47 @@ impl Vm {
                 keyword_defaults,
                 kwarg,
                 annotations: _,
-                attrs: _,
+                doc: _,
+                attrs,
                 closure,
                 body,
                 is_generator,
                 is_async,
-                identity: _,
+                first_line,
+                line_sequence,
+                identity,
                 owner_class,
-            } => self.call_function(
-                name,
-                positional_only,
-                params,
-                defaults,
-                vararg,
-                keyword_only,
-                keyword_defaults,
-                kwarg,
-                closure,
-                body,
-                is_generator,
-                is_async,
-                owner_class.map(|class| *class),
-                globals,
-                args,
-                keywords,
-            ),
+            } => {
+                let function_qualname =
+                    function_qualname_string(&name, &attrs, owner_class.as_deref());
+                self.call_function(
+                    name,
+                    function_qualname,
+                    type_params,
+                    positional_only,
+                    params,
+                    defaults,
+                    vararg,
+                    keyword_only,
+                    keyword_defaults,
+                    kwarg,
+                    closure,
+                    body,
+                    is_generator,
+                    is_async,
+                    first_line,
+                    line_sequence,
+                    iterable_coroutine_function_id(&identity),
+                    owner_class.map(|class| *class),
+                    globals,
+                    args,
+                    keywords,
+                )
+            }
             Value::Class {
                 name,
                 type_params,
+                metaclass: _,
                 attrs,
                 bases,
             } => self.call_class(name, type_params, attrs, bases, args, keywords),
@@ -4257,6 +5769,9 @@ impl Vm {
                 let mut args_with_receiver = vec![*receiver];
                 args_with_receiver.extend(args);
                 self.call_value_with_keywords(*function, args_with_receiver, keywords)
+            }
+            Value::ConstEvaluator { kind, target } => {
+                self.call_const_evaluator(kind, *target, args, keywords)
             }
             value @ Value::Instance { .. } => {
                 if let Some(method) = instance_special_method(&value, "__call__") {
@@ -4393,6 +5908,21 @@ impl Vm {
         stack
     }
 
+    fn warning_filters(&self) -> ListRef {
+        if let Some(Value::List(filters)) =
+            self.globals.borrow().get(WARNINGS_FILTERS_GLOBAL).cloned()
+        {
+            return filters;
+        }
+
+        let filters = Rc::new(RefCell::new(Vec::new()));
+        self.globals.borrow_mut().insert(
+            WARNINGS_FILTERS_GLOBAL.to_string(),
+            Value::List(filters.clone()),
+        );
+        filters
+    }
+
     fn emit_warning(&mut self, message: String, category: Value) -> Result<(), String> {
         self.emit_warning_at(message, category, "<minipython>".to_string(), 0)
     }
@@ -4404,6 +5934,26 @@ impl Vm {
         filename: String,
         lineno: usize,
     ) -> Result<(), String> {
+        self.emit_warning_at_module(message, category, filename, None, lineno)
+    }
+
+    fn emit_warning_at_module(
+        &mut self,
+        message: String,
+        category: Value,
+        filename: String,
+        module: Option<String>,
+        lineno: usize,
+    ) -> Result<(), String> {
+        let module = module.unwrap_or_else(|| warning_module_name_from_filename(&filename));
+        let action = self.warning_action_for(&category, &module);
+        if action == "ignore" {
+            return Ok(());
+        }
+        if action == "error" {
+            return Err(format!("{}: {message}", warning_category_name(&category)));
+        }
+
         let stack = self.warning_stack();
         let Some(Value::List(active)) = stack.borrow().last().cloned() else {
             return Ok(());
@@ -4416,6 +5966,26 @@ impl Vm {
             Value::Number(lineno as i64),
         )?);
         Ok(())
+    }
+
+    fn warning_action_for(&self, category: &Value, module: &str) -> String {
+        let filters = self.warning_filters();
+        for filter in filters.borrow().iter() {
+            let Value::Tuple(fields) = filter else {
+                continue;
+            };
+            let [Value::String(action), filter_category, filter_module] = fields.as_slice() else {
+                continue;
+            };
+            if !warning_category_matches(category, filter_category) {
+                continue;
+            }
+            if !warning_module_matches(filter_module, module) {
+                continue;
+            }
+            return action.clone();
+        }
+        "default".to_string()
     }
 
     fn emit_deprecation_warning(&mut self, message: String) -> Result<(), String> {
@@ -4471,17 +6041,44 @@ impl Vm {
 
     fn call_warnings_simplefilter(
         &mut self,
-        _args: Vec<Value>,
+        args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        for (name, _) in keywords {
-            if !matches!(name.as_str(), "action" | "category" | "lineno" | "append") {
+        let mut values = vec![
+            Value::None,
+            builtin_type_value("Warning"),
+            Value::Number(0),
+            Value::Bool(false),
+        ];
+        let names = ["action", "category", "lineno", "append"];
+        for (index, value) in args.into_iter().enumerate() {
+            if index >= values.len() {
+                return Err("TypeError: simplefilter() takes at most 4 arguments".to_string());
+            }
+            values[index] = value;
+        }
+        for (name, value) in keywords {
+            let Some(index) = names.iter().position(|candidate| candidate == &name) else {
                 return Err(format!(
                     "TypeError: simplefilter() got an unexpected keyword argument '{name}'"
                 ));
-            }
+            };
+            values[index] = value;
         }
+        let action = warning_action_argument(values[0].clone(), "simplefilter")?;
+        let append = self.truth_value(values[3].clone())?;
+        self.add_warning_filter(action, values[1].clone(), Value::None, append);
         Ok(Value::None)
+    }
+
+    fn add_warning_filter(&mut self, action: String, category: Value, module: Value, append: bool) {
+        let filter = tuple_value(vec![Value::String(action), category, module]);
+        let filters = self.warning_filters();
+        if append {
+            filters.borrow_mut().push(filter);
+        } else {
+            filters.borrow_mut().insert(0, filter);
+        }
     }
 
     fn call_warnings_filterwarnings(
@@ -4495,16 +6092,40 @@ impl Vm {
                 args.len()
             ));
         }
-        for (name, _) in keywords {
-            if !matches!(
-                name.as_str(),
-                "action" | "message" | "category" | "module" | "lineno" | "append"
-            ) {
+        let mut values = vec![
+            Value::None,
+            Value::String(String::new()),
+            builtin_type_value("Warning"),
+            Value::String(String::new()),
+            Value::Number(0),
+            Value::Bool(false),
+        ];
+        let names = [
+            "action", "message", "category", "module", "lineno", "append",
+        ];
+        for (index, value) in args.into_iter().enumerate() {
+            values[index] = value;
+        }
+        for (name, value) in keywords {
+            let Some(index) = names.iter().position(|candidate| candidate == &name) else {
                 return Err(format!(
                     "TypeError: filterwarnings() got an unexpected keyword argument '{name}'"
                 ));
-            }
+            };
+            values[index] = value;
         }
+        let action = warning_action_argument(values[0].clone(), "filterwarnings")?;
+        let module = match values[3].clone() {
+            Value::String(_) => values[3].clone(),
+            value => {
+                return Err(format!(
+                    "TypeError: filterwarnings() argument 'module' must be str, not {}",
+                    type_name(&value)
+                ));
+            }
+        };
+        let append = self.truth_value(values[5].clone())?;
+        self.add_warning_filter(action, values[2].clone(), module, append);
         Ok(Value::None)
     }
 
@@ -4559,6 +6180,12 @@ impl Vm {
             return Err("TypeError: catch_warnings.__enter__ expected context object".to_string());
         };
 
+        let filter_snapshot = self.warning_filters().borrow().clone();
+        fields.borrow_mut().insert(
+            "filters_snapshot".to_string(),
+            Value::List(Rc::new(RefCell::new(filter_snapshot))),
+        );
+
         let record = fields
             .borrow()
             .get("record")
@@ -4593,6 +6220,11 @@ impl Vm {
                 "TypeError: __exit__() expected 4 positional arguments, got {}",
                 args.len()
             ));
+        }
+        if let Some(Value::Instance { fields, .. }) = args.first() {
+            if let Some(Value::List(snapshot)) = fields.borrow().get("filters_snapshot").cloned() {
+                *self.warning_filters().borrow_mut() = snapshot.borrow().clone();
+            }
         }
         self.warning_stack().borrow_mut().pop();
         Ok(Value::Bool(false))
@@ -4637,6 +6269,8 @@ impl Vm {
     fn call_function(
         &mut self,
         name: String,
+        function_qualname: String,
+        type_params: Vec<Value>,
         positional_only: Vec<String>,
         params: Vec<String>,
         defaults: Vec<(String, Value)>,
@@ -4648,6 +6282,9 @@ impl Vm {
         body: Vec<Instruction>,
         is_generator: bool,
         is_async: bool,
+        first_line: usize,
+        line_sequence: Vec<usize>,
+        is_iterable_coroutine: bool,
         owner_class: Option<Value>,
         globals: Scope,
         args: Vec<Value>,
@@ -4731,9 +6368,26 @@ impl Vm {
         let first_arg_name = positional_only.first().or_else(|| params.first()).cloned();
         let defaults = defaults.into_iter().collect::<HashMap<_, _>>();
         let keyword_defaults = keyword_defaults.into_iter().collect::<HashMap<_, _>>();
-        let mut function_vm = Vm::new_function(body, globals, closure);
+        let mut function_vm = Vm::new_function(
+            body,
+            globals,
+            closure,
+            self.abc_registry.clone(),
+            self.module_cache.clone(),
+            self.source_modules.clone(),
+            self.stdlib_import_policy.clone(),
+            self.frame_stack.clone(),
+            first_line,
+            line_sequence.clone(),
+        );
         function_vm.current_class = owner_class;
         function_vm.first_arg_name = first_arg_name;
+        function_vm.qualname_prefix = Some(local_qualname_prefix(&function_qualname));
+        let private_class_name = function_vm
+            .current_class
+            .as_ref()
+            .and_then(type_param_private_class_name);
+        insert_type_param_scope_bindings(&function_vm.locals, &type_params, private_class_name);
         for param in positional_only {
             let value = bound
                 .remove(&param)
@@ -4783,11 +6437,15 @@ impl Vm {
                 closure: function_vm.closure,
                 current_class: function_vm.current_class,
                 first_arg_name: function_vm.first_arg_name,
+                qualname_prefix: function_vm.qualname_prefix,
                 exception_handlers: Vec::new(),
                 current_exception: None,
                 pending_exception_after_clear: None,
                 resume_dst: None,
                 done: false,
+                is_iterable_coroutine: is_iterable_coroutine && !is_async,
+                first_line,
+                line_sequence,
             }));
             return Ok(if is_async {
                 Value::AsyncGenerator(state)
@@ -4807,10 +6465,13 @@ impl Vm {
                 closure: function_vm.closure,
                 current_class: function_vm.current_class,
                 first_arg_name: function_vm.first_arg_name,
+                qualname_prefix: function_vm.qualname_prefix,
                 exception_handlers: Vec::new(),
                 current_exception: None,
                 pending_exception_after_clear: None,
                 done: false,
+                first_line,
+                line_sequence,
             }))));
         }
 
@@ -4893,6 +6554,7 @@ impl Vm {
         let class_value = Value::Class {
             name,
             type_params: Vec::new(),
+            metaclass: None,
             bases,
             attrs,
         };
@@ -4904,6 +6566,36 @@ impl Vm {
         }
         attach_owner_class_to_members(&class_value);
         Ok(class_value)
+    }
+
+    fn call_init_subclass(
+        &mut self,
+        class_value: &Value,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Value::Class { bases, .. } = class_value else {
+            return Ok(Value::None);
+        };
+
+        let Some(init_subclass) = find_base_attr_by_mro(bases, "__init_subclass__") else {
+            if keywords.is_empty() {
+                return Ok(Value::None);
+            }
+            return Err(
+                "TypeError: object.__init_subclass__() takes no keyword arguments".to_string(),
+            );
+        };
+
+        let result = self.call_value_with_keywords(
+            bind_method(init_subclass, class_value.clone()),
+            Vec::new(),
+            keywords,
+        )?;
+        if matches!(result, Value::None) {
+            Ok(Value::None)
+        } else {
+            Err("__init_subclass__() should return None".to_string())
+        }
     }
 
     fn call_class(
@@ -4924,6 +6616,7 @@ impl Vm {
             let type_object = Value::Class {
                 name: name.clone(),
                 type_params,
+                metaclass: None,
                 bases: bases.clone(),
                 attrs: attrs.clone(),
             };
@@ -4934,6 +6627,14 @@ impl Vm {
                 args,
                 Vec::new(),
             );
+        }
+
+        if class_bases_include_builtin(&bases, "UserDict") {
+            return self.call_user_dict_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if class_bases_include_builtin(&bases, "Counter") {
+            return self.call_counter_subclass(name, attrs, bases, args, keywords);
         }
 
         if class_bases_include_builtin(&bases, "dict") {
@@ -4948,12 +6649,32 @@ impl Vm {
             return self.call_frozen_set_subclass(name, type_params, attrs, bases, args, keywords);
         }
 
+        if class_bases_include_builtin(&bases, "bytes") {
+            return self.call_bytes_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if class_bases_include_builtin(&bases, "bytearray") {
+            return self.call_bytearray_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if class_bases_namedtuple_type(&bases).is_some() {
+            return self.call_named_tuple_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if class_bases_include_builtin(&bases, "ChainMap") {
+            return self.call_chain_map_subclass(name, attrs, bases, args, keywords);
+        }
+
         if class_bases_include_builtin(&bases, "SimpleNamespace") {
             return self.call_simple_namespace_subclass(name, attrs, bases, args, keywords);
         }
 
         if class_bases_include_builtin(&bases, "AST") {
             return self.call_ast_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if let Some(missing) = missing_abstract_methods_for_class(&attrs, &bases) {
+            return Err(abstract_class_instantiation_error(&name, &missing));
         }
 
         let instance = Value::Instance {
@@ -4977,6 +6698,40 @@ impl Vm {
         Ok(instance)
     }
 
+    fn call_named_tuple_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let typ = class_bases_namedtuple_type(&bases)
+            .ok_or_else(|| format!("TypeError: {name} does not inherit from namedtuple"))?;
+        let storage = self.call_named_tuple_type(typ, args.clone(), keywords.clone())?;
+        let fields = new_scope();
+        fields
+            .borrow_mut()
+            .insert(NAMED_TUPLE_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+
+        let instance = Value::Instance {
+            class_name: name,
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases,
+        };
+
+        if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
     fn call_set_subclass(
         &mut self,
         name: String,
@@ -4991,6 +6746,7 @@ impl Vm {
             let class = Value::Class {
                 name: name.clone(),
                 type_params,
+                metaclass: None,
                 bases: bases.clone(),
                 attrs: attrs.clone(),
             };
@@ -5069,6 +6825,7 @@ impl Vm {
             let class = Value::Class {
                 name: name.clone(),
                 type_params,
+                metaclass: None,
                 bases: bases.clone(),
                 attrs: attrs.clone(),
             };
@@ -5109,6 +6866,72 @@ impl Vm {
         };
 
         if has_own_init && let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
+    fn call_bytes_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let storage = self.call_bytes_like_constructor(&name, args.clone(), keywords.clone())?;
+        fields.borrow_mut().insert(
+            BYTES_SUBCLASS_STORAGE_FIELD.to_string(),
+            Value::Bytes(storage),
+        );
+
+        let instance = Value::Instance {
+            class_name: name,
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases,
+        };
+
+        if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
+    fn call_bytearray_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let storage = self.call_bytes_like_constructor(&name, args.clone(), keywords.clone())?;
+        fields.borrow_mut().insert(
+            BYTEARRAY_SUBCLASS_STORAGE_FIELD.to_string(),
+            byte_array_value(storage),
+        );
+
+        let instance = Value::Instance {
+            class_name: name,
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases,
+        };
+
+        if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
@@ -5399,6 +7222,80 @@ impl Vm {
         Ok(instance)
     }
 
+    fn call_user_dict_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let has_own_init = attrs.borrow().contains_key("__init__");
+        let storage = if has_own_init {
+            self.call_user_dict(Vec::new(), Vec::new())?
+        } else {
+            self.call_user_dict(args.clone(), keywords.clone())?
+        };
+        fields
+            .borrow_mut()
+            .insert(USER_DICT_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+
+        let instance = Value::Instance {
+            class_name: name.clone(),
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases.clone(),
+        };
+
+        if has_own_init && let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
+    fn call_chain_map_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let has_own_init = attrs.borrow().contains_key("__init__");
+        let storage = if has_own_init {
+            self.call_chain_map(Vec::new(), Vec::new())?
+        } else {
+            self.call_chain_map(args.clone(), keywords.clone())?
+        };
+        fields
+            .borrow_mut()
+            .insert(CHAIN_MAP_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+
+        let instance = Value::Instance {
+            class_name: name.clone(),
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases.clone(),
+        };
+
+        if has_own_init && let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
     fn call_super_constructor(
         &self,
         args: Vec<Value>,
@@ -5479,6 +7376,30 @@ impl Vm {
         }
 
         in_place_add_values(left, right)
+    }
+
+    fn in_place_multiply_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(method) = instance_special_method(&left, "__imul__") {
+            return self.call_value(method, vec![right]);
+        }
+
+        if matches!(left, Value::Instance { .. }) {
+            match self.load_attribute_catching(left.clone(), "__imul__")? {
+                Ok(method) => return self.call_value(method, vec![right]),
+                Err(exception) if exception.type_name == "AttributeError" => {}
+                Err(exception) => return Err(format_exception_error(&exception)),
+            }
+        }
+
+        match left {
+            Value::ByteArray(bytes) => {
+                let count = self.index_integer_value(right)?;
+                let count = repeat_count_from_integer_value(count)?;
+                bytearray_repeat_in_place(&bytes, count)?;
+                Ok(Value::ByteArray(bytes))
+            }
+            left => multiply_values(left, right),
+        }
     }
 
     fn load_attribute_value(&mut self, object: Value, name: &str) -> Result<Value, String> {
@@ -5589,6 +7510,7 @@ impl Vm {
                     return Ok(Value::Class {
                         name: class_name,
                         type_params: Vec::new(),
+                        metaclass: None,
                         bases: class_bases,
                         attrs: class_attrs,
                     });
@@ -5598,6 +7520,7 @@ impl Vm {
                 let owner = Value::Class {
                     name: class_name,
                     type_params: Vec::new(),
+                    metaclass: None,
                     bases: class_bases.clone(),
                     attrs: class_attrs.clone(),
                 };
@@ -5630,6 +7553,21 @@ impl Vm {
                     return Ok(bind_method(value, instance));
                 }
 
+                if let Some(method) = collections_abc_mixin_method_from_bases(&class_bases, name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(method.to_string())),
+                        receiver: Box::new(instance),
+                        identity: Rc::new(()),
+                    });
+                }
+
+                if let Some((typ, values)) = namedtuple_subclass_storage(&instance) {
+                    let storage = Value::NamedTuple { typ, values };
+                    if let Ok(value) = load_attribute(storage, name) {
+                        return Ok(value);
+                    }
+                }
+
                 if name == "__dir__" {
                     return Ok(object_dir_bound_method(instance));
                 }
@@ -5650,8 +7588,48 @@ impl Vm {
                     });
                 }
 
+                if let Some(method) = counter_subclass_method(instance.clone(), name) {
+                    return Ok(method);
+                }
+
                 if let Some(method) = dict_subclass_method(instance.clone(), name) {
                     return Ok(method);
+                }
+
+                if let Some(value) = chain_map_subclass_attribute(instance.clone(), name)? {
+                    return Ok(value);
+                }
+
+                if let Some(data) = user_dict_subclass_data(&instance) {
+                    if name == "data" {
+                        return Ok(Value::Dict(data));
+                    }
+                    if matches!(
+                        name,
+                        "__init__"
+                            | "clear"
+                            | "copy"
+                            | "get"
+                            | "items"
+                            | "keys"
+                            | "pop"
+                            | "popitem"
+                            | "setdefault"
+                            | "update"
+                            | "values"
+                            | "__contains__"
+                            | "__delitem__"
+                            | "__getitem__"
+                            | "__iter__"
+                            | "__len__"
+                            | "__setitem__"
+                    ) {
+                        return Ok(Value::BoundMethod {
+                            function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
+                            receiver: Box::new(instance),
+                            identity: Rc::new(()),
+                        });
+                    }
                 }
 
                 if let Some(method) = set_subclass_method(instance.clone(), name) {
@@ -5706,9 +7684,16 @@ impl Vm {
             Value::Class {
                 name: class_name,
                 type_params,
+                metaclass,
                 bases,
                 attrs,
             } => {
+                if name == "__class__" {
+                    return Ok(metaclass
+                        .as_deref()
+                        .cloned()
+                        .unwrap_or_else(|| Value::Builtin("type".to_string())));
+                }
                 if name == "__name__" {
                     return Ok(class_name_value(&class_name, &attrs));
                 }
@@ -5730,7 +7715,10 @@ impl Vm {
                         .unwrap_or(Value::None));
                 }
                 if name == "__type_params__" {
-                    return Ok(tuple_value(type_params));
+                    return Ok(type_params_attr_value(&attrs, type_params));
+                }
+                if name == "__parameters__" {
+                    return Ok(parameters_attr_value(&attrs, type_params));
                 }
                 if name == "__bases__" {
                     return Ok(tuple_value(bases));
@@ -5748,6 +7736,7 @@ impl Vm {
                 let owner = Value::Class {
                     name: class_name.clone(),
                     type_params: type_params.clone(),
+                    metaclass: metaclass.clone(),
                     bases: bases.clone(),
                     attrs: attrs.clone(),
                 };
@@ -5765,6 +7754,7 @@ impl Vm {
                     return Ok(object_dir_bound_method(Value::Class {
                         name: class_name,
                         type_params,
+                        metaclass,
                         bases,
                         attrs,
                     }));
@@ -5779,8 +7769,375 @@ impl Vm {
                 object,
                 identity,
             } => self.load_super_attribute(*class, *object, identity, name),
+            Value::TypeParam {
+                kind,
+                name: type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            } => self.load_type_param_attribute(
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+                name,
+            ),
+            Value::TypeAlias {
+                name: alias_name,
+                type_params,
+                value,
+            } => self.load_type_alias_attribute(alias_name, type_params, *value, name),
             value => load_attribute(value, name),
         }
+    }
+
+    fn load_type_param_attribute(
+        &mut self,
+        kind: String,
+        type_param_name: String,
+        bound: Rc<RefCell<Option<Value>>>,
+        default: Rc<RefCell<Option<Value>>>,
+        infer_variance: bool,
+        covariant: bool,
+        contravariant: bool,
+        identity: Rc<()>,
+        name: &str,
+    ) -> Result<Value, String> {
+        match name {
+            "__kind__" => Ok(Value::String(kind)),
+            "__name__" => Ok(Value::String(type_param_name)),
+            "__infer_variance__" => Ok(Value::Bool(infer_variance)),
+            "__covariant__" => Ok(Value::Bool(covariant)),
+            "__contravariant__" => Ok(Value::Bool(contravariant)),
+            "__bound__" if type_param_cell_is_deferred_constraint_tuple(&bound) == Some(true) => {
+                Ok(Value::None)
+            }
+            "__bound__" => Ok(match self.resolve_type_param_cell_value(&bound)? {
+                Some(Value::Tuple(_)) => Value::None,
+                Some(value) => value,
+                None => Value::None,
+            }),
+            "__constraints__"
+                if type_param_cell_is_deferred_constraint_tuple(&bound) == Some(false) =>
+            {
+                Ok(tuple_value(Vec::new()))
+            }
+            "__constraints__" => Ok(match self.resolve_type_param_cell_value(&bound)? {
+                Some(Value::Tuple(items)) => Value::Tuple(items),
+                _ => tuple_value(Vec::new()),
+            }),
+            "__default__" => Ok(self
+                .resolve_type_param_cell_value(&default)?
+                .unwrap_or_else(typing_no_default_value)),
+            "evaluate_bound" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamBound,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
+            "evaluate_constraints" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamConstraints,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
+            "evaluate_default" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamDefault,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
+            _ => Err(format!(
+                "AttributeError: type parameter has no attribute '{name}'"
+            )),
+        }
+    }
+
+    fn resolve_type_param_cell_value(
+        &mut self,
+        cell: &Rc<RefCell<Option<Value>>>,
+    ) -> Result<Option<Value>, String> {
+        let current = cell.borrow().clone();
+        match current {
+            Some(Value::DeferredTypeParamExpr(deferred)) => {
+                let value = self.eval_deferred_type_param_expr(&deferred)?;
+                *cell.borrow_mut() = Some(value.clone());
+                Ok(Some(value))
+            }
+            value => Ok(value),
+        }
+    }
+
+    fn call_annotationlib_call_evaluate_function(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("call_evaluate_function() does not accept keyword arguments".to_string());
+        }
+        let [evaluate_function, format] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: call_evaluate_function() expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+
+        self.call_value(evaluate_function.clone(), vec![format.clone()])
+    }
+
+    fn call_typing_type_alias_type(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeAliasType() does not accept keyword arguments".to_string());
+        }
+        let [name_value, value] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: TypeAliasType() expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+        let Value::String(alias_name) = name_value else {
+            return Err(format!(
+                "TypeError: TypeAliasType() argument 'name' must be str, not {}",
+                type_name(name_value)
+            ));
+        };
+
+        Ok(Value::TypeAlias {
+            name: alias_name.clone(),
+            type_params: Vec::new(),
+            value: Box::new(value.clone()),
+        })
+    }
+
+    fn call_const_evaluator(
+        &mut self,
+        kind: ConstEvaluatorKind,
+        target: Value,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("evaluate function does not accept keyword arguments".to_string());
+        }
+        let format = match args.as_slice() {
+            [] => ANNOTATION_FORMAT_VALUE,
+            [format] => annotation_format_argument(format)?,
+            _ => {
+                return Err(format!(
+                    "TypeError: evaluate function expected at most 1 argument, got {}",
+                    args.len()
+                ));
+            }
+        };
+
+        let value = self.const_evaluator_value(kind, target)?;
+        match format {
+            ANNOTATION_FORMAT_VALUE | ANNOTATION_FORMAT_FORWARDREF => Ok(value),
+            ANNOTATION_FORMAT_STRING => Ok(Value::String(format_annotation_value_string(&value))),
+            _ => Err("ValueError: unsupported annotation format".to_string()),
+        }
+    }
+
+    fn const_evaluator_value(
+        &mut self,
+        kind: ConstEvaluatorKind,
+        target: Value,
+    ) -> Result<Value, String> {
+        let attribute = match kind {
+            ConstEvaluatorKind::TypeAliasValue => "evaluate_value",
+            ConstEvaluatorKind::TypeParamBound => "__bound__",
+            ConstEvaluatorKind::TypeParamConstraints => "__constraints__",
+            ConstEvaluatorKind::TypeParamDefault => "__default__",
+        };
+
+        if kind == ConstEvaluatorKind::TypeAliasValue {
+            let Value::TypeAlias { value, .. } = target else {
+                return Err("TypeError: invalid type alias evaluator receiver".to_string());
+            };
+            return self.resolve_deferred_type_param_value(*value);
+        }
+
+        self.load_attribute_value(target, attribute)
+    }
+
+    fn call_typing_type_param(
+        &mut self,
+        kind: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some(name_value) = args.first() else {
+            return Err(format!(
+                "TypeError: {kind}() missing required argument 'name'"
+            ));
+        };
+        let Value::String(name) = name_value else {
+            return Err(format!(
+                "TypeError: {kind}() argument 'name' must be str, not {}",
+                type_name(name_value)
+            ));
+        };
+
+        let constraints = args.iter().skip(1).cloned().collect::<Vec<_>>();
+        let mut bound = None;
+        let mut default = None;
+        let mut infer_variance = false;
+        let mut covariant = false;
+        let mut contravariant = false;
+
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "bound" if kind != "TypeVarTuple" && bound.is_none() => bound = Some(value),
+                "default" if default.is_none() => default = Some(value),
+                "infer_variance" if kind != "TypeVarTuple" => infer_variance = is_truthy(&value)?,
+                "covariant" if kind != "TypeVarTuple" => covariant = is_truthy(&value)?,
+                "contravariant" if kind != "TypeVarTuple" => contravariant = is_truthy(&value)?,
+                "bound" | "default" => {
+                    return Err(format!(
+                        "TypeError: {kind}() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: {kind}() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+
+        if kind != "TypeVar" && !constraints.is_empty() {
+            return Err(format!(
+                "TypeError: {kind}() takes exactly one positional argument"
+            ));
+        }
+        if kind == "TypeVar" && !constraints.is_empty() && bound.is_some() {
+            return Err("TypeError: Constraints cannot be combined with bound=...".to_string());
+        }
+        if kind == "TypeVar" && constraints.len() == 1 {
+            return Err("TypeError: A single constraint is not allowed".to_string());
+        }
+        if infer_variance && (covariant || contravariant) {
+            return Err(
+                "TypeError: Variance cannot be specified with infer_variance=True".to_string(),
+            );
+        }
+
+        let bound = if kind == "TypeVar" && !constraints.is_empty() {
+            Some(tuple_value(constraints))
+        } else {
+            bound
+        };
+        let default = match default {
+            Some(Value::Builtin(name)) if name == TYPING_NO_DEFAULT_NAME => None,
+            value => value,
+        };
+
+        Ok(Value::TypeParam {
+            kind: kind.to_string(),
+            name: name.clone(),
+            bound: Rc::new(RefCell::new(bound)),
+            default: Rc::new(RefCell::new(default)),
+            infer_variance,
+            covariant,
+            contravariant,
+            identity: Rc::new(()),
+        })
+    }
+
+    fn load_type_alias_attribute(
+        &mut self,
+        alias_name: String,
+        type_params: Vec<Value>,
+        value: Value,
+        name: &str,
+    ) -> Result<Value, String> {
+        match name {
+            "__name__" => Ok(Value::String(alias_name)),
+            "__type_params__" => Ok(tuple_value(type_params)),
+            "__value__" => self.resolve_deferred_type_param_value(value),
+            "evaluate_value" => Ok(Value::ConstEvaluator {
+                kind: ConstEvaluatorKind::TypeAliasValue,
+                target: Box::new(Value::TypeAlias {
+                    name: alias_name,
+                    type_params,
+                    value: Box::new(value),
+                }),
+            }),
+            _ => Err(format!(
+                "AttributeError: type alias has no attribute '{name}'"
+            )),
+        }
+    }
+
+    fn resolve_deferred_type_param_value(&mut self, value: Value) -> Result<Value, String> {
+        match value {
+            Value::DeferredTypeParamExpr(deferred) => self.eval_deferred_type_param_expr(&deferred),
+            value => Ok(value),
+        }
+    }
+
+    fn eval_deferred_type_param_expr(
+        &mut self,
+        deferred: &DeferredTypeParamExpr,
+    ) -> Result<Value, String> {
+        let mut closure = Vec::new();
+        if let Some(type_param_scope) = &deferred.type_param_scope {
+            closure.push(type_param_scope.clone());
+        }
+        if let (Some(class_name), Some(class_value)) = (
+            deferred.class_name.as_ref(),
+            deferred.class_value.borrow().clone(),
+        ) {
+            let class_scope = new_scope();
+            class_scope
+                .borrow_mut()
+                .insert(class_name.clone(), class_value);
+            closure.push(class_scope);
+        }
+        closure.extend(deferred.closure.iter().cloned());
+
+        let mut eval_vm = Vm::new_eval(
+            deferred.body.clone(),
+            deferred.globals.clone(),
+            deferred.locals.clone().unwrap_or_else(new_scope),
+            closure,
+            false,
+            self.abc_registry.clone(),
+            self.module_cache.clone(),
+            self.source_modules.clone(),
+            self.stdlib_import_policy.clone(),
+            self.frame_stack.clone(),
+        );
+        let result = eval_vm.run_eval();
+        self.output.extend(eval_vm.output);
+        result
     }
 
     fn load_attribute_from_getattr(
@@ -6011,35 +8368,16 @@ impl Vm {
     fn call_locals(&mut self, args: Vec<Value>) -> Result<Value, String> {
         match args.as_slice() {
             [] if self.is_module => Ok(Value::ScopeDict(self.globals.clone())),
+            [] if locals_mapping_source(&self.locals).is_some() => {
+                Ok(locals_mapping_source(&self.locals)
+                    .expect("locals mapping source exists after guard"))
+            }
             [] => Ok(scope_dict_value(&self.locals)),
             values => Err(format!(
                 "TypeError: locals() expected 0 arguments, got {}",
                 values.len()
             )),
         }
-    }
-
-    fn call_hash(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: hash() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        if let Value::MappingProxyObject { mapping } = value {
-            return self.call_hash(vec![mapping.as_ref().clone()]);
-        }
-
-        if let Some(method) = instance_hash_method(value)? {
-            let result = match self.call_value_catching(method, Vec::new())? {
-                Ok(value) => value,
-                Err(exception) => return self.raise_runtime_exception_value(exception),
-            };
-            return hash_result_from_special_method(result);
-        }
-
-        hash_value(value)
     }
 
     fn ensure_hashable_key(&mut self, value: &Value) -> Result<(), String> {
@@ -6060,6 +8398,18 @@ impl Vm {
         }
 
         hash_value(value)
+    }
+
+    fn sort_key_value(&mut self, key: Option<&Value>, value: &Value) -> Result<Value, String> {
+        match key {
+            None | Some(Value::None) => Ok(value.clone()),
+            Some(function) => {
+                match self.call_value_catching(function.clone(), vec![value.clone()])? {
+                    Ok(result) => Ok(result),
+                    Err(exception) => Err(format_exception_error(&exception)),
+                }
+            }
+        }
     }
 
     fn ensure_set_lookup_key(&mut self, value: &Value) -> Result<(), String> {
@@ -6135,6 +8485,11 @@ impl Vm {
 
     fn call_dir(&mut self, args: Vec<Value>) -> Result<Value, String> {
         match args.as_slice() {
+            [] if !self.is_module && locals_mapping_source(&self.locals).is_some() => self
+                .dir_locals_mapping(
+                    locals_mapping_source(&self.locals)
+                        .expect("locals mapping source exists after guard"),
+                ),
             [] if self.is_module => Ok(sorted_name_list(scope_names(&self.globals))),
             [] => Ok(sorted_name_list(scope_names(&self.locals))),
             [object] => match self.load_attribute_catching(object.clone(), "__dir__")? {
@@ -6151,6 +8506,19 @@ impl Vm {
                 "TypeError: dir() expected at most 1 argument, got {}",
                 values.len()
             )),
+        }
+    }
+
+    fn dir_locals_mapping(&mut self, mapping: Value) -> Result<Value, String> {
+        match self.load_attribute_catching(mapping, "keys")? {
+            Ok(keys_method) => match self.call_value_catching(keys_method, Vec::new())? {
+                Ok(value) => self.dir_result_from_value(value),
+                Err(exception) => self.raise_runtime_exception_value(exception),
+            },
+            Err(exception) if exception.type_name == "AttributeError" => {
+                Ok(sorted_name_list(scope_names(&self.locals)))
+            }
+            Err(exception) => self.raise_runtime_exception_value(exception),
         }
     }
 
@@ -6264,6 +8632,22 @@ impl Vm {
                 Ok(list_value(scope_dict_values(scope)))
             }
             _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn call_object_rich_compare(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
+        let [left, right] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: {}() expected 1 argument, got {}",
+                method_display_name(name),
+                method_arg_count(&args)
+            ));
+        };
+
+        if is_identical(left, right) {
+            Ok(Value::Bool(method_display_name(name) == "__eq__"))
+        } else {
+            Ok(Value::NotImplemented)
         }
     }
 
@@ -6469,6 +8853,40 @@ impl Vm {
         }
     }
 
+    fn call_namedtuple_field_descriptor_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+    ) -> Result<Value, String> {
+        let Some((descriptor, rest)) = args.split_first() else {
+            return Err(format!(
+                "{}() expected a namedtuple field descriptor receiver",
+                method_display_name(name)
+            ));
+        };
+        let descriptor @ Value::NamedTupleFieldDescriptor { .. } = descriptor.clone() else {
+            return Err(format!(
+                "{}() expected a namedtuple field descriptor receiver",
+                method_display_name(name)
+            ));
+        };
+
+        match name {
+            "namedtuple_field_descriptor.__get__" => {
+                if rest.is_empty() || rest.len() > 2 {
+                    return Err(format!(
+                        "__get__() expected 1 or 2 arguments, got {}",
+                        rest.len()
+                    ));
+                }
+                self.namedtuple_field_descriptor_get(descriptor, rest[0].clone())
+            }
+            _ => Err(format!(
+                "unknown namedtuple field descriptor method: {name}"
+            )),
+        }
+    }
+
     fn property_get(&mut self, property: Value, object: Value) -> Result<Value, String> {
         let Value::Property { fget, .. } = property.clone() else {
             unreachable!("property_get is only called with property values");
@@ -6545,6 +8963,47 @@ impl Vm {
         } else {
             Err(format!("AttributeError: {name}"))
         }
+    }
+
+    fn namedtuple_field_descriptor_get(
+        &mut self,
+        descriptor: Value,
+        object: Value,
+    ) -> Result<Value, String> {
+        let Value::NamedTupleFieldDescriptor { typ, index } = descriptor.clone() else {
+            unreachable!(
+                "namedtuple_field_descriptor_get is only called with namedtuple field descriptor values"
+            );
+        };
+        if matches!(object, Value::None) {
+            return Ok(descriptor);
+        }
+
+        let Value::NamedTuple {
+            typ: object_typ,
+            values,
+        } = object
+        else {
+            let field = typ.fields.get(index).cloned().unwrap_or_default();
+            return Err(format!(
+                "TypeError: descriptor '{field}' for '{}' objects doesn't apply to a '{}' object",
+                typ.name,
+                type_name(&object)
+            ));
+        };
+
+        if !Rc::ptr_eq(&typ, &object_typ) {
+            let field = typ.fields.get(index).cloned().unwrap_or_default();
+            return Err(format!(
+                "TypeError: descriptor '{field}' for '{}' objects doesn't apply to a '{}' object",
+                typ.name, object_typ.name
+            ));
+        }
+
+        values
+            .get(index)
+            .cloned()
+            .ok_or_else(|| "AttributeError: namedtuple field index out of range".to_string())
     }
 
     fn descriptor_get(
@@ -6757,6 +9216,34 @@ impl Vm {
                         identity: Rc::new(()),
                     });
                 }
+                if type_name == "dict" && is_builtin_dict_type_method(name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("dict.{name}"))),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
+                if type_name == "ChainMap" && is_builtin_chain_map_type_method(name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
+                if type_name == "Hashable" && name == "__hash__" {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin("Hashable.__hash__".to_string())),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
+                if let Some(method) = collections_abc_builtin_mixin_method(type_name, name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(method.to_string())),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
                 continue;
             }
 
@@ -6881,8 +9368,43 @@ impl Vm {
             return self.call_value(method, vec![index]);
         }
 
+        if let Some(entries) = counter_subclass_entries(&object) {
+            ensure_hashable_key(&index)?;
+            return Ok(entries
+                .borrow()
+                .iter()
+                .find(|(key, _)| dict_keys_equal(key, &index))
+                .map(|(_, value)| value.clone())
+                .unwrap_or(Value::Number(0)));
+        }
+
         if let Some(entries) = dict_subclass_entries(&object) {
             return self.load_dict_subclass_subscript(object, entries, index);
+        }
+
+        if let Some(data) = user_dict_subclass_data(&object) {
+            return self.load_user_dict_subclass_subscript(object, data, index);
+        }
+
+        if let Some(maps) = chain_map_subclass_maps(&object) {
+            return self.chain_map_get_item_for_receiver(&object, &maps, index);
+        }
+
+        if let Value::ChainMap { maps } = &object {
+            let maps = maps.clone();
+            return self.chain_map_get_item_for_receiver(&object, &maps, index);
+        }
+
+        if let Value::MemoryView(view) = &object {
+            return match index {
+                Value::Slice { start, stop, step } => {
+                    self.load_memoryview_slice_subscript(view.clone(), start, stop, step)
+                }
+                index => {
+                    let index = self.maybe_index_integer_value(index)?;
+                    load_subscript(object, index)
+                }
+            };
         }
 
         let index = if uses_sequence_index_protocol(&object) {
@@ -6914,6 +9436,26 @@ impl Vm {
         Err(format!("KeyError: {}", format_key_error(&key)))
     }
 
+    fn load_user_dict_subclass_subscript(
+        &mut self,
+        object: Value,
+        data: DictRef,
+        key: Value,
+    ) -> Result<Value, String> {
+        ensure_hashable_key(&key)?;
+        if let Some((_, value)) = data
+            .borrow()
+            .iter()
+            .find(|(existing_key, _)| dict_keys_equal(existing_key, &key))
+        {
+            return Ok(value.clone());
+        }
+        if let Some(missing) = instance_special_method(&object, "__missing__") {
+            return self.call_value(missing, vec![key]);
+        }
+        Err(format!("KeyError: {}", format_key_error(&key)))
+    }
+
     fn store_subscript_value(
         &mut self,
         object: Value,
@@ -6931,11 +9473,43 @@ impl Vm {
             return Ok(object);
         }
 
+        if let Value::MemoryView(view) = &object {
+            return match index {
+                Value::Slice { start, stop, step } => {
+                    let index =
+                        self.sequence_subscript_index(Value::Slice { start, stop, step })?;
+                    store_subscript(object, index, value)
+                }
+                index => {
+                    let index = self.maybe_index_integer_value(index)?;
+                    self.store_memoryview_item_value(view.clone(), index, value)
+                }
+            };
+        }
+
+        if let Some(maps) = chain_map_subclass_maps(&object) {
+            chain_map_set_item(&maps, index, value)?;
+            return Ok(object);
+        }
+
         let index = if uses_sequence_index_protocol(&object) {
             self.sequence_subscript_index(index)?
         } else {
             index
         };
+
+        if let Value::ByteArray(bytes) = &object
+            && !matches!(index, Value::Slice { .. })
+        {
+            let byte = self.bytearray_assignment_byte_value(value)?;
+            let mut borrowed = bytes.borrow_mut();
+            let index = normalized_index(index, borrowed.len(), "bytearray")?;
+            if let Some(slot) = borrowed.get_mut(index) {
+                *slot = byte;
+                return Ok(Value::ByteArray(bytes.clone()));
+            }
+            return Err("bytearray index out of range".to_string());
+        }
 
         store_subscript(object, index, value)
     }
@@ -6949,6 +9523,11 @@ impl Vm {
 
         if let Some(method) = instance_special_method(&object, "__delitem__") {
             self.call_value(method, vec![index])?;
+            return Ok(object);
+        }
+
+        if let Some(maps) = chain_map_subclass_maps(&object) {
+            chain_map_delete_item(&maps, index)?;
             return Ok(object);
         }
 
@@ -6982,6 +9561,70 @@ impl Vm {
                 .maybe_index_integer_value(value)
                 .map(|value| Some(Box::new(value))),
         }
+    }
+
+    fn load_memoryview_slice_subscript(
+        &mut self,
+        view: MemoryViewRef,
+        start: Option<Box<Value>>,
+        stop: Option<Box<Value>>,
+        step: Option<Box<Value>>,
+    ) -> Result<Value, String> {
+        let (bytes, obj, source_offset, source_len, source_stride, readonly, format) = {
+            let state = view.borrow();
+            if state.released {
+                return Err(released_memoryview_error());
+            }
+            (
+                state.bytes.clone(),
+                state.obj.clone(),
+                state.offset,
+                state.len,
+                state.stride,
+                state.readonly,
+                state.format.clone(),
+            )
+        };
+
+        let start = self.index_slice_part(start)?.map(|value| *value);
+        let stop = self.index_slice_part(stop)?.map(|value| *value);
+        let step = self.index_slice_part(step)?.map(|value| *value);
+        let start = slice_bound(start)?;
+        let stop = slice_bound(stop)?;
+        let step = slice_bound(step)?;
+        let len = i64::try_from(source_len).map_err(|_| "sequence is too large".to_string())?;
+        let (_, _, normalized_step) = normalized_slice_indices(len, start, stop, step)?;
+        let indices = slice_indices(source_len, start, stop, step)?;
+        let offset = indices
+            .first()
+            .map(|index| memoryview_physical_index_from_parts(source_offset, source_stride, *index))
+            .transpose()?
+            .unwrap_or(source_offset);
+        let stride = if indices.len() > 1 {
+            let first =
+                memoryview_physical_index_from_parts(source_offset, source_stride, indices[0])?;
+            let second =
+                memoryview_physical_index_from_parts(source_offset, source_stride, indices[1])?;
+            isize::try_from(second).map_err(|_| "memoryview index out of range".to_string())?
+                - isize::try_from(first).map_err(|_| "memoryview index out of range".to_string())?
+        } else {
+            source_stride
+                .checked_mul(
+                    isize::try_from(normalized_step)
+                        .map_err(|_| "memoryview stride is too large".to_string())?,
+                )
+                .ok_or_else(|| "memoryview stride is too large".to_string())?
+        };
+
+        Ok(memory_view_from_parts_with_format(
+            bytes,
+            obj,
+            offset,
+            indices.len(),
+            stride,
+            readonly,
+            format,
+        ))
     }
 
     fn normalize_slice_parts(
@@ -7063,12 +9706,24 @@ impl Vm {
 
         match value {
             value if dict_subclass_entries(&value).is_some() => Ok(self.len_value(value)? != 0),
+            value if chain_map_subclass_maps(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if frozen_set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
+            value if bytes_subclass_bytes(&value).is_some() => Ok(self.len_value(value)? != 0),
+            value if bytearray_subclass_storage(&value).is_some() => {
+                Ok(self.len_value(value)? != 0)
+            }
             Value::ChainMap { maps } => Ok(!chain_map_entries(&maps)?.is_empty()),
-            Value::UserDict { data } => Ok(!data.borrow().is_empty()),
+            Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
+            Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
             Value::MappingView { mapping, .. } => Ok(self.len_value(*mapping)? != 0),
             Value::MappingProxyObject { mapping } => self.truth_value(*mapping),
+            value if counter_subclass_entries(&value).is_some() => {
+                Ok(!counter_subclass_entries(&value)
+                    .expect("Counter subclass entries exist after guard")
+                    .borrow()
+                    .is_empty())
+            }
             value => is_truthy(&value),
         }
     }
@@ -7083,10 +9738,21 @@ impl Vm {
         }
 
         match value {
+            value if counter_subclass_entries(&value).is_some() => {
+                Ok(counter_subclass_entries(&value)
+                    .expect("Counter subclass entries exist after guard")
+                    .borrow()
+                    .len())
+            }
             value if dict_subclass_entries(&value).is_some() => Ok(dict_subclass_entries(&value)
                 .expect("dict subclass entries exist after guard")
                 .borrow()
                 .len()),
+            value if chain_map_subclass_maps(&value).is_some() => {
+                let maps = chain_map_subclass_maps(&value)
+                    .expect("ChainMap subclass maps exist after guard");
+                Ok(chain_map_entries(&maps)?.len())
+            }
             value if set_subclass_items(&value).is_some() => Ok(set_subclass_items(&value)
                 .expect("set subclass items exist after guard")
                 .borrow()
@@ -7096,36 +9762,21 @@ impl Vm {
                     .expect("frozenset subclass items exist after guard")
                     .len())
             }
+            value if bytes_subclass_bytes(&value).is_some() => Ok(bytes_subclass_bytes(&value)
+                .expect("bytes subclass storage exists after guard")
+                .len()),
+            value if bytearray_subclass_storage(&value).is_some() => {
+                Ok(bytearray_subclass_storage(&value)
+                    .expect("bytearray subclass storage exists after guard")
+                    .borrow()
+                    .len())
+            }
             Value::ChainMap { maps } => Ok(chain_map_entries(&maps)?.len()),
-            Value::UserDict { data } => Ok(data.borrow().len()),
+            Value::UserList { data, .. } => Ok(data.borrow().len()),
+            Value::UserDict { data, .. } => Ok(data.borrow().len()),
             Value::MappingView { mapping, .. } => self.len_value(*mapping),
             Value::MappingProxyObject { mapping } => self.len_value(*mapping),
             value => value_len(&value),
-        }
-    }
-
-    fn call_len(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: len() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        let len = self.len_value(value.clone())?;
-        let len = i64::try_from(len)
-            .map_err(|_| "OverflowError: len() result is too large".to_string())?;
-        Ok(Value::Number(len))
-    }
-
-    fn call_bool(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        match args.as_slice() {
-            [] => Ok(Value::Bool(false)),
-            [value] => Ok(Value::Bool(self.truth_value(value.clone())?)),
-            values => Err(format!(
-                "bool() expected at most 1 argument, got {}",
-                values.len()
-            )),
         }
     }
 
@@ -7157,7 +9808,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = vec![None, None, None, None, None, None];
+        let mut values = vec![None, None, None, None, None, None, None, None];
         let names = [
             "source",
             "filename",
@@ -7165,8 +9816,10 @@ impl Vm {
             "flags",
             "dont_inherit",
             "optimize",
+            "module",
+            "_feature_version",
         ];
-        if args.len() > values.len() {
+        if args.len() > 6 {
             return Err(format!(
                 "TypeError: compile() takes at most 6 arguments ({} given)",
                 args.len()
@@ -7198,17 +9851,7 @@ impl Vm {
         let mode = values[2]
             .take()
             .ok_or_else(|| "TypeError: compile() missing required argument 'mode'".to_string())?;
-        let filename = match filename {
-            Value::String(filename) => filename,
-            Value::Bytes(bytes) => String::from_utf8(bytes)
-                .map_err(|_| "TypeError: compile() arg 2 contains non-UTF-8 bytes".to_string())?,
-            value => {
-                return Err(format!(
-                    "TypeError: compile() arg 2 must be a string or bytes, not {}",
-                    type_name(&value)
-                ));
-            }
-        };
+        let filename = self.compile_filename_argument(filename)?;
         let mode = match mode {
             Value::String(mode) => mode,
             value => {
@@ -7226,19 +9869,274 @@ impl Vm {
         if flags & !PYCF_ONLY_AST != 0 {
             return Err("ValueError: compile(): unrecognised flags".to_string());
         }
-        let _dont_inherit = values[4].take();
+        if let Some(dont_inherit) = values[4].take() {
+            self.truth_value(dont_inherit)?;
+        }
         let optimize = values[5]
             .take()
             .map(|value| compile_int_argument(value, "optimize"))
             .transpose()?
             .unwrap_or(-1);
+        let warning_module = match values[6].take() {
+            Some(Value::String(module)) => Some(module),
+            Some(Value::None) | None => None,
+            Some(value) => {
+                return Err(format!(
+                    "TypeError: compile() argument 'module' must be str or None, not {}",
+                    type_name(&value)
+                ));
+            }
+        };
+        let feature_version = values[7]
+            .take()
+            .map(|value| compile_int_argument(value, "_feature_version"))
+            .transpose()?
+            .unwrap_or(-1);
 
         if flags & PYCF_ONLY_AST != 0 {
             code_mode_from_string(&mode)?;
-            return parse_ast_node(source, &mode, false, optimize, None);
+            let feature_version = if feature_version >= 0 {
+                Some(AstFeatureVersion {
+                    major: 3,
+                    minor: feature_version,
+                })
+            } else {
+                None
+            };
+            return parse_ast_node(source, &mode, false, optimize, feature_version);
         }
 
-        compile_code_object(source, filename, &mode)
+        self.compile_code_object_with_warnings(source, filename, &mode, optimize, warning_module)
+    }
+
+    fn compile_filename_argument(&mut self, value: Value) -> Result<String, String> {
+        match value {
+            Value::String(filename) => Ok(filename),
+            Value::Bytes(bytes) => compile_filename_from_bytes(bytes),
+            value @ Value::Instance { .. } => {
+                let Some(method) = instance_special_method(&value, "__fspath__") else {
+                    return Err(format!(
+                        "TypeError: compile() arg 2 must be a string, bytes or os.PathLike object, not {}",
+                        type_name(&value)
+                    ));
+                };
+                match self.call_value_catching(method, Vec::new())? {
+                    Err(exception) => Err(format_exception_error(&exception)),
+                    Ok(Value::String(filename)) => Ok(filename),
+                    Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes),
+                    Ok(result) => Err(format!(
+                        "TypeError: expected __fspath__() to return str or bytes, not {}",
+                        type_name(&result)
+                    )),
+                }
+            }
+            value => Err(format!(
+                "TypeError: compile() arg 2 must be a string, bytes or os.PathLike object, not {}",
+                type_name(&value)
+            )),
+        }
+    }
+
+    fn compile_code_object_with_warnings(
+        &mut self,
+        source: Value,
+        filename: String,
+        mode: &str,
+        optimize: i64,
+        warning_module: Option<String>,
+    ) -> Result<Value, String> {
+        let mode = code_mode_from_string(mode)?;
+        let options = CompileOptions::optimized(optimize);
+        let (instructions, line_spans) = match source {
+            Value::AstNode { .. } => (
+                self.compile_ast_code_object_with_warnings(
+                    &source,
+                    mode,
+                    &filename,
+                    options,
+                    warning_module.as_deref(),
+                )?,
+                default_code_line_spans(),
+            ),
+            source => self.compile_source_code_object_with_warnings(
+                source,
+                mode,
+                &filename,
+                options,
+                warning_module.as_deref(),
+            )?,
+        };
+
+        Ok(Value::CodeObject {
+            mode,
+            filename,
+            instructions,
+            line_spans,
+            identity: Rc::new(()),
+        })
+    }
+
+    fn compile_ast_code_object_with_warnings(
+        &mut self,
+        node: &Value,
+        mode: CodeMode,
+        filename: &str,
+        options: CompileOptions,
+        warning_module: Option<&str>,
+    ) -> Result<Vec<Instruction>, String> {
+        match mode {
+            CodeMode::Exec => {
+                let function_first_lines = ast_function_definition_start_lines(node);
+                let function_line_sequences = ast_function_definition_line_sequences(node);
+                let generator_expression_line_sequences =
+                    ast_generator_expression_line_sequences(node)?;
+                let program = syntax_program_from_ast_module(node)?;
+                emit_compile_warnings(
+                    self,
+                    crate::static_syntax_warnings(&program),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options
+                    .with_function_first_lines(function_first_lines)
+                    .with_function_line_sequences(function_line_sequences)
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences);
+                compile_with_options(&program, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))
+            }
+            CodeMode::Eval => {
+                let generator_expression_line_sequences =
+                    ast_generator_expression_line_sequences(node)?;
+                let expr = syntax_expr_from_ast_expression(node)?;
+                let program = syntax::Program {
+                    statements: vec![syntax::Stmt::Expr(expr.clone())],
+                };
+                emit_compile_warnings(
+                    self,
+                    crate::static_syntax_warnings(&program),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences);
+                compile_eval_with_options(&expr, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))
+            }
+            CodeMode::Single => {
+                let function_first_lines = ast_function_definition_start_lines(node);
+                let function_line_sequences = ast_function_definition_line_sequences(node);
+                let generator_expression_line_sequences =
+                    ast_generator_expression_line_sequences(node)?;
+                let program = syntax_program_from_ast_interactive(node)?;
+                emit_compile_warnings(
+                    self,
+                    crate::static_syntax_warnings(&program),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options
+                    .with_function_first_lines(function_first_lines)
+                    .with_function_line_sequences(function_line_sequences)
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences);
+                compile_interactive_with_options(&program, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))
+            }
+        }
+    }
+
+    fn compile_source_code_object_with_warnings(
+        &mut self,
+        source: Value,
+        mode: CodeMode,
+        filename: &str,
+        options: CompileOptions,
+        warning_module: Option<&str>,
+    ) -> Result<(Vec<Instruction>, Vec<CodeLineSpan>), String> {
+        let source = compile_source_text(source)?;
+        let line_spans = code_line_spans_from_source(&source, mode);
+        let instructions = match mode {
+            CodeMode::Exec => {
+                let (spanned_tokens, lexer_warnings) = lex_with_spans_for_parse(&source)
+                    .map_err(|error| syntax_error_location_error(&error, filename, &source))?;
+                emit_compile_warnings(self, lexer_warnings, filename, warning_module)?;
+                let tokens = spanned_tokens
+                    .iter()
+                    .map(|spanned| spanned.token.clone())
+                    .collect::<Vec<_>>();
+                let program =
+                    parse(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
+                emit_compile_warnings(
+                    self,
+                    static_syntax_warnings_with_source_locations(&program, &spanned_tokens),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options
+                    .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                    .with_function_line_sequences(function_definition_line_sequences(
+                        &spanned_tokens,
+                    ))
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                        &spanned_tokens,
+                    ));
+                compile_with_options(&program, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))?
+            }
+            CodeMode::Eval => {
+                let source = source.trim();
+                let (spanned_tokens, lexer_warnings) = lex_with_spans_for_parse(source)
+                    .map_err(|error| syntax_error_location_error(&error, filename, source))?;
+                emit_compile_warnings(self, lexer_warnings, filename, warning_module)?;
+                let tokens = spanned_tokens
+                    .iter()
+                    .map(|spanned| spanned.token.clone())
+                    .collect::<Vec<_>>();
+                let expr =
+                    parse_eval(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
+                let program = syntax::Program {
+                    statements: vec![syntax::Stmt::Expr(expr.clone())],
+                };
+                emit_compile_warnings(
+                    self,
+                    static_syntax_warnings_with_source_locations(&program, &spanned_tokens),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options.with_generator_expression_line_sequences(
+                    generator_expression_line_sequences(&spanned_tokens),
+                );
+                compile_eval_with_options(&expr, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))?
+            }
+            CodeMode::Single => {
+                let (spanned_tokens, lexer_warnings) = lex_with_spans_for_parse(&source)
+                    .map_err(|error| syntax_error_location_error(&error, filename, &source))?;
+                emit_compile_warnings(self, lexer_warnings, filename, warning_module)?;
+                let tokens = spanned_tokens
+                    .iter()
+                    .map(|spanned| spanned.token.clone())
+                    .collect::<Vec<_>>();
+                let program = parse_interactive(&tokens)
+                    .map_err(|message| format!("SyntaxError: {message}"))?;
+                emit_compile_warnings(
+                    self,
+                    static_syntax_warnings_with_source_locations(&program, &spanned_tokens),
+                    filename,
+                    warning_module,
+                )?;
+                let options = options
+                    .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                    .with_function_line_sequences(function_definition_line_sequences(
+                        &spanned_tokens,
+                    ))
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                        &spanned_tokens,
+                    ));
+                compile_interactive_with_options(&program, options)
+                    .map_err(|message| format!("SyntaxError: {message}"))?
+            }
+        };
+        Ok((instructions, line_spans))
     }
 
     fn call_eval(
@@ -7305,42 +10203,6 @@ impl Vm {
         }
     }
 
-    fn call_import_builtin(
-        &mut self,
-        args: Vec<Value>,
-        keywords: Vec<(String, Value)>,
-    ) -> Result<Value, String> {
-        let mut values = bind_import_args(args, keywords)?;
-        let name = match values[0]
-            .take()
-            .ok_or_else(|| "TypeError: __import__() missing required argument 'name'".to_string())?
-        {
-            Value::String(name) => name,
-            value => {
-                return Err(format!(
-                    "TypeError: __import__() argument 1 must be str, not {}",
-                    type_name(&value)
-                ));
-            }
-        };
-        let fromlist = values[3].take().unwrap_or(Value::None);
-        let level = values[4]
-            .take()
-            .map(|value| compile_int_argument(value, "level"))
-            .transpose()?
-            .unwrap_or(0);
-        if level != 0 {
-            return Err("ImportError: relative imports are not supported".to_string());
-        }
-
-        let module_name = if import_returns_root(&fromlist) {
-            import_root_name(&name)
-        } else {
-            &name
-        };
-        import_module(module_name)
-    }
-
     fn run_code_object(
         &mut self,
         code: Value,
@@ -7361,9 +10223,15 @@ impl Vm {
             locals,
             self.closure.clone(),
             is_module,
+            self.abc_registry.clone(),
+            self.module_cache.clone(),
+            self.source_modules.clone(),
+            self.stdlib_import_policy.clone(),
+            self.frame_stack.clone(),
         );
         code_vm.current_class = self.current_class.clone();
         code_vm.first_arg_name = self.first_arg_name.clone();
+        code_vm.qualname_prefix = self.qualname_prefix.clone();
 
         if value_context && mode == CodeMode::Eval {
             let result = code_vm.run_eval();
@@ -7698,7 +10566,428 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         self.call_bytes_like_constructor("bytearray", args, keywords)
-            .map(Value::ByteArray)
+            .map(byte_array_value)
+    }
+
+    fn call_memoryview(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = args.into_iter();
+        let mut source = values.next();
+        if values.next().is_some() {
+            return Err("TypeError: memoryview() takes exactly one argument".to_string());
+        }
+        for (keyword, value) in keywords {
+            if keyword != "object" {
+                return Err(format!(
+                    "TypeError: memoryview() got an unexpected keyword argument '{keyword}'"
+                ));
+            }
+            if source.is_some() {
+                return Err(
+                    "TypeError: memoryview() got multiple values for argument 'object'".to_string(),
+                );
+            }
+            source = Some(value);
+        }
+        let Some(source) = source else {
+            return Err("TypeError: memoryview() missing required argument 'object'".to_string());
+        };
+        match source {
+            Value::Bytes(bytes) => Ok(memory_view_value(bytes, true)),
+            Value::ByteArray(bytes) => Ok(memory_view_from_byte_array(bytes, false)),
+            Value::MemoryView(view) => {
+                let view = view.borrow();
+                if view.released {
+                    return Err(released_memoryview_error());
+                }
+                Ok(memory_view_from_parts_with_format(
+                    view.bytes.clone(),
+                    view.obj.clone(),
+                    view.offset,
+                    view.len,
+                    view.stride,
+                    view.readonly,
+                    view.format.clone(),
+                ))
+            }
+            value => Err(format!(
+                "TypeError: memoryview: a bytes-like object is required, not '{}'",
+                type_name(&value)
+            )),
+        }
+    }
+
+    fn call_memoryview_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if name == "memoryview.hex" {
+            return call_bytes_hex_method(self, name, args, keywords);
+        }
+        if name == "memoryview.cast" {
+            return self.call_memoryview_cast(args, keywords);
+        }
+        reject_method_keywords(name, &keywords)?;
+
+        match name {
+            "memoryview.tobytes" => {
+                let [Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: tobytes() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(Value::Bytes(memoryview_bytes(view)?))
+            }
+            "memoryview.tolist" => {
+                let [Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: tolist() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                memoryview_list_value(view)
+            }
+            "memoryview.toreadonly" => {
+                let [Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: toreadonly() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let view = view.borrow();
+                if view.released {
+                    return Err(released_memoryview_error());
+                }
+                Ok(memory_view_from_parts_with_format(
+                    view.bytes.clone(),
+                    view.obj.clone(),
+                    view.offset,
+                    view.len,
+                    view.stride,
+                    true,
+                    view.format.clone(),
+                ))
+            }
+            "memoryview.release" => {
+                let [Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: release() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                release_memoryview(view);
+                Ok(Value::None)
+            }
+            "memoryview.__enter__" => {
+                let [receiver @ Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "__enter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                memoryview_len(view)?;
+                Ok(receiver.clone())
+            }
+            "memoryview.__exit__" => {
+                let [Value::MemoryView(view), _exc_type, _exc, _traceback] = args.as_slice() else {
+                    return Err(format!(
+                        "__exit__() expected 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                release_memoryview(view);
+                Ok(Value::None)
+            }
+            "memoryview.count" => {
+                let [Value::MemoryView(view), needle] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: count() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let bytes = memoryview_bytes(view)?;
+                let needle = self.memoryview_element_byte(view, needle.clone())?;
+                let count = if let Some(needle) = needle {
+                    bytes.iter().filter(|byte| **byte == needle).count()
+                } else {
+                    0
+                };
+                i64::try_from(count)
+                    .map(Value::Number)
+                    .map_err(|_| "count() result is too large".to_string())
+            }
+            "memoryview.index" => {
+                let [Value::MemoryView(view), needle, rest @ ..] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: index() expected at least 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                if rest.len() > 2 {
+                    return Err(format!(
+                        "TypeError: index() expected at most 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+
+                let bytes = memoryview_bytes(view)?;
+                let needle = self.memoryview_element_byte(view, needle.clone())?;
+                let Some(needle) = needle else {
+                    return Err("ValueError: subsection not found".to_string());
+                };
+                let (start, stop) = list_search_bounds(rest, bytes.len())?;
+                let index = bytes[start..stop]
+                    .iter()
+                    .position(|byte| *byte == needle)
+                    .map(|index| start + index)
+                    .ok_or_else(|| "ValueError: subsection not found".to_string())?;
+                i64::try_from(index)
+                    .map(Value::Number)
+                    .map_err(|_| "index() result is too large".to_string())
+            }
+            "memoryview.__contains__" => {
+                let [Value::MemoryView(view), needle] = args.as_slice() else {
+                    return Err(format!(
+                        "__contains__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let bytes = memoryview_bytes(view)?;
+                let needle = self.memoryview_element_byte(view, needle.clone())?;
+                Ok(Value::Bool(
+                    needle.is_some_and(|needle| bytes.contains(&needle)),
+                ))
+            }
+            "memoryview.__getitem__" => {
+                let [receiver @ Value::MemoryView(_), index] = args.as_slice() else {
+                    return Err(format!(
+                        "__getitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.load_subscript_value(receiver.clone(), index.clone())
+            }
+            "memoryview.__setitem__" => {
+                let [receiver @ Value::MemoryView(_), index, value] = args.as_slice() else {
+                    return Err(format!(
+                        "__setitem__() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.store_subscript_value(receiver.clone(), index.clone(), value.clone())?;
+                Ok(Value::None)
+            }
+            "memoryview.__delitem__" => {
+                let [receiver @ Value::MemoryView(_), index] = args.as_slice() else {
+                    return Err(format!(
+                        "__delitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                delete_subscript(receiver.clone(), index.clone())?;
+                Ok(Value::None)
+            }
+            "memoryview.__iter__" => {
+                let [receiver @ Value::MemoryView(_)] = args.as_slice() else {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                get_iter(receiver.clone())
+            }
+            "memoryview.__len__" => {
+                let [Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "__len__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                i64::try_from(memoryview_len(view)?)
+                    .map(Value::Number)
+                    .map_err(|_| "len() result is too large".to_string())
+            }
+            "memoryview.__reversed__" => {
+                let [receiver @ Value::MemoryView(view)] = args.as_slice() else {
+                    return Err(format!(
+                        "__reversed__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let len = i64::try_from(memoryview_len(view)?)
+                    .map_err(|_| "__reversed__() length is too large".to_string())?;
+                Ok(shared_iterator(Value::SequenceReverseIterator {
+                    object: Box::new(receiver.clone()),
+                    index: len - 1,
+                }))
+            }
+            _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn call_memoryview_cast(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let [Value::MemoryView(view), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: cast() expected at least 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 2 {
+            return Err(format!(
+                "TypeError: cast() expected at most 2 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        }
+
+        let mut format = rest.first().cloned();
+        let mut shape = rest.get(1).cloned();
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "format" => {
+                    if format.is_some() {
+                        return Err(
+                            "TypeError: cast() got multiple values for argument 'format'"
+                                .to_string(),
+                        );
+                    }
+                    format = Some(value);
+                }
+                "shape" => {
+                    if shape.is_some() {
+                        return Err("TypeError: cast() got multiple values for argument 'shape'"
+                            .to_string());
+                    }
+                    shape = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: cast() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+
+        let Some(format) = format else {
+            return Err("TypeError: cast() missing required argument 'format'".to_string());
+        };
+        let format = match format {
+            Value::String(format) => format,
+            value => {
+                return Err(format!(
+                    "TypeError: memoryview: format must be str, not {}",
+                    type_name(&value)
+                ));
+            }
+        };
+        if !matches!(format.as_str(), "B" | "b" | "c") {
+            return Err(format!(
+                "NotImplementedError: memoryview format '{format}' is not supported"
+            ));
+        }
+
+        let view_state = view.borrow();
+        if view_state.released {
+            return Err(released_memoryview_error());
+        }
+        if !memoryview_is_contiguous(view)? {
+            return Err(
+                "TypeError: memoryview: casts are restricted to C-contiguous views".to_string(),
+            );
+        }
+        let len = view_state.len;
+        let cast_len = self.memoryview_cast_shape_len(shape, len)?;
+        Ok(memory_view_from_parts_with_format(
+            view_state.bytes.clone(),
+            view_state.obj.clone(),
+            view_state.offset,
+            cast_len,
+            1,
+            view_state.readonly,
+            format,
+        ))
+    }
+
+    fn memoryview_cast_shape_len(
+        &mut self,
+        shape: Option<Value>,
+        expected_len: usize,
+    ) -> Result<usize, String> {
+        let Some(shape) = shape else {
+            return Ok(expected_len);
+        };
+        let values = match shape {
+            Value::List(items) => items.borrow().clone(),
+            Value::Tuple(items) => items.as_ref().clone(),
+            Value::None => return Ok(expected_len),
+            value => {
+                return Err(format!(
+                    "TypeError: memoryview.cast(): shape must be a list or tuple, not {}",
+                    type_name(&value)
+                ));
+            }
+        };
+        if values.len() != 1 {
+            return Err(
+                "NotImplementedError: multidimensional memoryview casts are not supported"
+                    .to_string(),
+            );
+        }
+        let len = self.index_i64(values[0].clone(), "memoryview.cast() shape")?;
+        if len < 0 {
+            return Err(
+                "ValueError: memoryview.cast(): elements of shape must be integers > 0".to_string(),
+            );
+        }
+        let len = usize::try_from(len)
+            .map_err(|_| "ValueError: memoryview.cast(): shape is too large".to_string())?;
+        if len != expected_len {
+            return Err(
+                "TypeError: memoryview: product(shape) * itemsize != buffer size".to_string(),
+            );
+        }
+        Ok(len)
+    }
+
+    fn memoryview_byte_argument(&mut self, value: Value) -> Result<Option<u8>, String> {
+        let value = self.index_i64(value, "memoryview item")?;
+        if (0..=255).contains(&value) {
+            Ok(Some(value as u8))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn memoryview_element_byte(
+        &mut self,
+        view: &MemoryViewRef,
+        value: Value,
+    ) -> Result<Option<u8>, String> {
+        if memoryview_format(view)? == "c" {
+            return match value {
+                Value::Bytes(bytes) if bytes.len() == 1 => Ok(Some(bytes[0])),
+                Value::ByteArray(bytes) if bytes.borrow().len() == 1 => Ok(Some(bytes.borrow()[0])),
+                Value::MemoryView(view) => {
+                    let bytes = memoryview_bytes(&view)?;
+                    if bytes.len() == 1 {
+                        Ok(Some(bytes[0]))
+                    } else {
+                        Ok(None)
+                    }
+                }
+                _ => Ok(None),
+            };
+        }
+        self.memoryview_byte_argument(value)
     }
 
     fn call_bytes_like_constructor(
@@ -7726,19 +11015,658 @@ impl Vm {
                     codec_options_from_values(name, encoding.as_ref(), errors.as_ref())?;
                 encode_text(&value, encoding, errors)
             }
-            Value::Bytes(value) | Value::ByteArray(value) => {
+            Value::Bytes(value) => {
                 reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
                 Ok(value)
             }
+            Value::ByteArray(value) => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                Ok(bytearray_bytes(&value))
+            }
+            Value::MemoryView(view) => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                memoryview_bytes(&view)
+            }
             value => {
                 reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
-                let count = self.index_i64(value, &format!("{name}() argument"))?;
-                if count < 0 {
-                    return Err("negative count".to_string());
+                if let Some(bytes) = bytes_subclass_bytes(&value) {
+                    return Ok(bytes);
                 }
-                let count = usize::try_from(count)
-                    .map_err(|_| format!("{name}() argument is too large"))?;
-                Ok(vec![0; count])
+                if let Some(bytes) = bytearray_subclass_bytes(&value) {
+                    return Ok(bytes);
+                }
+                match self.maybe_index_integer_value(value.clone())? {
+                    Value::Number(count) => {
+                        if count < 0 {
+                            return Err("negative count".to_string());
+                        }
+                        let count = usize::try_from(count)
+                            .map_err(|_| format!("{name}() argument is too large"))?;
+                        Ok(vec![0; count])
+                    }
+                    Value::BigInt(count) => {
+                        if count.is_negative() {
+                            return Err("negative count".to_string());
+                        }
+                        let count = count
+                            .to_usize()
+                            .ok_or_else(|| format!("{name}() argument is too large"))?;
+                        Ok(vec![0; count])
+                    }
+                    _ => self.bytes_from_iterable(name, value),
+                }
+            }
+        }
+    }
+
+    fn bytes_from_iterable(&mut self, name: &str, value: Value) -> Result<Vec<u8>, String> {
+        let source_type = type_name(&value).to_string();
+        let mut iterator = match self.get_iter(value) {
+            Ok(iterator) => iterator,
+            Err(error) if error.ends_with(" is not iterable") => {
+                return Err(format!(
+                    "TypeError: cannot convert '{source_type}' object to {name}"
+                ));
+            }
+            Err(error) => return Err(error),
+        };
+        let mut bytes = Vec::new();
+
+        loop {
+            match self.advance_owned_iterator_capturing(&mut iterator)? {
+                Ok(IteratorAdvance::Yield(value)) => {
+                    bytes.push(self.bytes_constructor_item(value)?);
+                }
+                Ok(IteratorAdvance::Complete(_)) => return Ok(bytes),
+                Ok(IteratorAdvance::Raised) => {
+                    return Err("iterator raised exception".to_string());
+                }
+                Err(exception) => return Err(format_exception_error(&exception)),
+            }
+        }
+    }
+
+    fn bytearray_extend_bytes(&mut self, value: Value) -> Result<Vec<u8>, String> {
+        match value {
+            Value::Bytes(value) => Ok(value),
+            Value::ByteArray(value) => Ok(bytearray_bytes(&value)),
+            Value::MemoryView(view) => memoryview_bytes(&view),
+            Value::String(_) => {
+                Err("TypeError: expected iterable of integers; got: 'str'".to_string())
+            }
+            value => {
+                let source_type = type_name(&value).to_string();
+                let mut iterator = match self.get_iter(value) {
+                    Ok(iterator) => iterator,
+                    Err(error) if error.ends_with(" is not iterable") => {
+                        return Err(format!(
+                            "TypeError: can't extend bytearray with {source_type}"
+                        ));
+                    }
+                    Err(error) => return Err(error),
+                };
+                let mut bytes = Vec::new();
+
+                loop {
+                    match self.advance_owned_iterator_capturing(&mut iterator)? {
+                        Ok(IteratorAdvance::Yield(value)) => {
+                            bytes.push(self.bytes_constructor_item(value)?);
+                        }
+                        Ok(IteratorAdvance::Complete(_)) => return Ok(bytes),
+                        Ok(IteratorAdvance::Raised) => {
+                            return Err("iterator raised exception".to_string());
+                        }
+                        Err(exception) => return Err(format_exception_error(&exception)),
+                    }
+                }
+            }
+        }
+    }
+
+    fn bytes_constructor_item(&mut self, value: Value) -> Result<u8, String> {
+        match self.index_integer_value(value)? {
+            Value::Number(value) if (0..=255).contains(&value) => Ok(value as u8),
+            Value::BigInt(value) => value
+                .to_u8()
+                .ok_or_else(|| "ValueError: byte must be in range(0, 256)".to_string()),
+            Value::Number(_) => Err("ValueError: byte must be in range(0, 256)".to_string()),
+            _ => unreachable!("index_integer_value returns an integer"),
+        }
+    }
+
+    fn bytearray_assignment_byte_value(&mut self, value: Value) -> Result<u8, String> {
+        let value = self.maybe_index_integer_value(value)?;
+        bytearray_assignment_byte(value)
+    }
+
+    fn memoryview_assignment_byte_value(
+        &mut self,
+        view: &MemoryViewRef,
+        value: Value,
+    ) -> Result<u8, String> {
+        if memoryview_format(view)? == "c" {
+            return memoryview_c_assignment_byte(value);
+        }
+        let value = self.maybe_index_integer_value(value)?;
+        memoryview_assignment_byte(value)
+    }
+
+    fn store_memoryview_item_value(
+        &mut self,
+        view: MemoryViewRef,
+        index: Value,
+        value: Value,
+    ) -> Result<Value, String> {
+        let (bytes, physical_index) = {
+            let state = view.borrow();
+            if state.released {
+                return Err(released_memoryview_error());
+            }
+            if state.readonly {
+                return Err("TypeError: cannot modify read-only memory".to_string());
+            }
+            let logical_index = normalized_index(index, state.len, "memoryview")?;
+            let physical_index = memoryview_physical_index(&state, logical_index)?;
+            (state.bytes.clone(), physical_index)
+        };
+        let byte = self.memoryview_assignment_byte_value(&view, value)?;
+        {
+            let state = view.borrow();
+            if state.released {
+                return Err(released_memoryview_error());
+            }
+            if state.readonly {
+                return Err("TypeError: cannot modify read-only memory".to_string());
+            }
+        }
+        bytes.borrow_mut()[physical_index] = byte;
+        Ok(Value::MemoryView(view))
+    }
+
+    fn call_bytes_search_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords(name, &keywords)?;
+
+        let method = method_display_name(name);
+        let [receiver, rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: {method}() missing required argument 'self'"
+            ));
+        };
+        if rest.is_empty() {
+            return Err(format!(
+                "TypeError: {method}() expected at least 1 argument, got 0"
+            ));
+        }
+        if rest.len() > 3 {
+            return Err(format!(
+                "TypeError: {method}() expected at most 3 arguments, got {}",
+                rest.len()
+            ));
+        }
+
+        let _receiver_export = bytearray_export_guard(receiver);
+        let haystack = bytes_search_receiver(receiver, method)?;
+        let Some(needle) = self.bytes_search_needle(rest[0].clone())? else {
+            return Ok(Value::None);
+        };
+        let (start, stop) = bytes_subsequence_bounds(self, &rest[1..], haystack.len(), method)?;
+
+        match method {
+            "count" => {
+                let count = bytes_count_matches(&haystack, &needle, start, stop)?;
+                i64::try_from(count)
+                    .map(Value::Number)
+                    .map_err(|_| "count() result is too large".to_string())
+            }
+            "find" => bytes_find_index(&haystack, &needle, start, stop, false)
+                .and_then(|index| {
+                    i64::try_from(index).map_err(|_| "find() result is too large".to_string())
+                })
+                .map(Value::Number),
+            "rfind" => bytes_find_index(&haystack, &needle, start, stop, true)
+                .and_then(|index| {
+                    i64::try_from(index).map_err(|_| "rfind() result is too large".to_string())
+                })
+                .map(Value::Number),
+            "index" => {
+                let index = bytes_find_index(&haystack, &needle, start, stop, false)?;
+                if index < 0 {
+                    return Err("ValueError: subsection not found".to_string());
+                }
+                Ok(Value::Number(index))
+            }
+            "rindex" => {
+                let index = bytes_find_index(&haystack, &needle, start, stop, true)?;
+                if index < 0 {
+                    return Err("ValueError: subsection not found".to_string());
+                }
+                Ok(Value::Number(index))
+            }
+            _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn call_bytes_split_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        let [receiver, rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: {method}() missing required argument 'self'"
+            ));
+        };
+        if rest.len() > 2 {
+            return Err(format!(
+                "TypeError: {method}() expected at most 2 arguments, got {}",
+                rest.len()
+            ));
+        }
+
+        let _receiver_export = bytearray_export_guard(receiver);
+        let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+        let mut separator = rest.first().cloned();
+        let mut maxsplit = rest.get(1).cloned();
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "sep" => {
+                    if separator.is_some() {
+                        return Err(format!(
+                            "TypeError: {method}() got multiple values for argument 'sep'"
+                        ));
+                    }
+                    separator = Some(value);
+                }
+                "maxsplit" => {
+                    if maxsplit.is_some() {
+                        return Err(format!(
+                            "TypeError: {method}() got multiple values for argument 'maxsplit'"
+                        ));
+                    }
+                    maxsplit = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: {method}() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+
+        let separator = match separator {
+            None | Some(Value::None) => None,
+            Some(value) => {
+                let Some(separator) =
+                    self.bytes_like_method_argument(&value, method, "separator")?
+                else {
+                    return Ok(Value::None);
+                };
+                if separator.is_empty() {
+                    return Err("ValueError: empty separator".to_string());
+                }
+                Some(separator)
+            }
+        };
+        let maxsplit = match maxsplit {
+            Some(value) => bytes_split_maxsplit_argument(&value, method)?,
+            None => -1,
+        };
+        let reverse = method == "rsplit";
+        let parts = match separator {
+            Some(separator) => bytes_split_separator(&receiver, &separator, maxsplit, reverse),
+            None => bytes_split_whitespace(&receiver, maxsplit, reverse),
+        };
+
+        Ok(list_value(
+            parts
+                .into_iter()
+                .map(|part| bytes_result_value(kind, part))
+                .collect(),
+        ))
+    }
+
+    fn call_bytearray_mutation_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords(name, &keywords)?;
+
+        match name {
+            "bytearray.append" => {
+                let [Value::ByteArray(bytes), item] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: append() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let byte = self.bytearray_assignment_byte_value(item.clone())?;
+                ensure_bytearray_resizable(bytes)?;
+                bytes.borrow_mut().push(byte);
+                Ok(Value::None)
+            }
+            "bytearray.extend" => {
+                let [Value::ByteArray(bytes), source] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: extend() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let extension = self.bytearray_extend_bytes(source.clone())?;
+                if !extension.is_empty() {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                bytes.borrow_mut().extend(extension);
+                Ok(Value::None)
+            }
+            "bytearray.insert" => {
+                let [Value::ByteArray(bytes), index, item] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: insert() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let byte = self.bytearray_assignment_byte_value(item.clone())?;
+                let index = normalized_insert_index(index, bytes.borrow().len())?;
+                ensure_bytearray_resizable(bytes)?;
+                bytes.borrow_mut().insert(index, byte);
+                Ok(Value::None)
+            }
+            "bytearray.pop" => {
+                let [Value::ByteArray(bytes), rest @ ..] = args.as_slice() else {
+                    return Err("TypeError: pop() expected a bytearray receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "TypeError: pop() expected at most 1 argument, got {}",
+                        rest.len()
+                    ));
+                }
+
+                let mut bytes = bytes.borrow_mut();
+                if bytes.is_empty() {
+                    return Err("IndexError: pop from empty bytearray".to_string());
+                }
+                let index = match rest {
+                    [] => bytes.len() - 1,
+                    [index] => normalized_index(index.clone(), bytes.len(), "bytearray")?,
+                    _ => unreachable!("bytearray.pop arity is checked before matching index"),
+                };
+                if bytes.has_active_exports() {
+                    return Err(bytearray_resize_export_error());
+                }
+                Ok(Value::Number(i64::from(bytes.remove(index))))
+            }
+            "bytearray.remove" => {
+                let [Value::ByteArray(bytes), item] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: remove() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let byte = self.bytearray_assignment_byte_value(item.clone())?;
+                let mut bytes = bytes.borrow_mut();
+                let Some(index) = bytes.iter().position(|candidate| *candidate == byte) else {
+                    return Err("ValueError: value not found in bytearray".to_string());
+                };
+                if bytes.has_active_exports() {
+                    return Err(bytearray_resize_export_error());
+                }
+                bytes.remove(index);
+                Ok(Value::None)
+            }
+            "bytearray.reverse" => {
+                let [Value::ByteArray(bytes)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: reverse() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                bytes.borrow_mut().reverse();
+                Ok(Value::None)
+            }
+            "bytearray.clear" => {
+                let [Value::ByteArray(bytes)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: clear() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                if !bytes.borrow().is_empty() {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                bytes.borrow_mut().clear();
+                Ok(Value::None)
+            }
+            "bytearray.copy" => {
+                let [Value::ByteArray(bytes)] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: copy() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(byte_array_value(bytearray_bytes(bytes)))
+            }
+            "bytearray.resize" => {
+                let [Value::ByteArray(bytes), length] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: resize() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let length = self.bytearray_resize_length(length.clone())?;
+                if length != bytes.borrow().len() {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                let mut bytes = bytes.borrow_mut();
+                let current_len = bytes.len();
+                if length > current_len {
+                    bytes
+                        .try_reserve(length - current_len)
+                        .map_err(|_| "MemoryError".to_string())?;
+                }
+                bytes.resize(length, 0);
+                Ok(Value::None)
+            }
+            "bytearray.take_bytes" => {
+                let [Value::ByteArray(bytes), rest @ ..] = args.as_slice() else {
+                    return Err("TypeError: take_bytes() expected a bytearray receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "TypeError: take_bytes() expected at most 1 argument, got {}",
+                        rest.len()
+                    ));
+                }
+                let stop = match rest {
+                    [] => bytes.borrow().len(),
+                    [Value::None] => bytes.borrow().len(),
+                    [stop] => self.bytearray_take_stop(stop.clone(), bytes)?,
+                    _ => unreachable!("bytearray.take_bytes arity is checked before matching stop"),
+                };
+                if stop > 0 {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                let mut bytes = bytes.borrow_mut();
+                let taken = bytes.drain(..stop).collect();
+                Ok(Value::Bytes(taken))
+            }
+            "bytearray.__iadd__" => {
+                let [Value::ByteArray(bytes), source] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: __iadd__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let extension = bytearray_iadd_extension(source.clone())?;
+                if !extension.is_empty() {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                bytes.borrow_mut().extend(extension);
+                Ok(Value::ByteArray(bytes.clone()))
+            }
+            "bytearray.__imul__" => {
+                let [Value::ByteArray(bytes), count] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: __imul__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let count = self.index_integer_value(count.clone())?;
+                let count = repeat_count_from_integer_value(count)?;
+                let current_len = bytes.borrow().len();
+                let next_len = repeat_bytes_len(current_len, count)?;
+                if next_len != current_len {
+                    ensure_bytearray_resizable(bytes)?;
+                }
+                bytearray_repeat_in_place(bytes, count)?;
+                Ok(Value::ByteArray(bytes.clone()))
+            }
+            "bytearray.__delitem__" => {
+                let [bytearray @ Value::ByteArray(_), index] = args.as_slice() else {
+                    return Err(format!(
+                        "__delitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                delete_subscript(bytearray.clone(), index.clone())?;
+                Ok(Value::None)
+            }
+            "bytearray.__setitem__" => {
+                let [bytearray @ Value::ByteArray(_), index, value] = args.as_slice() else {
+                    return Err(format!(
+                        "__setitem__() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.store_subscript_value(bytearray.clone(), index.clone(), value.clone())?;
+                Ok(Value::None)
+            }
+            _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn bytearray_resize_length(&mut self, value: Value) -> Result<usize, String> {
+        match self.index_integer_value(value)? {
+            Value::Number(value) if value < 0 => Err("ValueError: negative count".to_string()),
+            Value::Number(value) => {
+                let length = usize::try_from(value).map_err(|_| "MemoryError".to_string())?;
+                checked_bytearray_resize_length(length)
+            }
+            Value::BigInt(value) if value.is_negative() => {
+                Err("ValueError: negative count".to_string())
+            }
+            Value::BigInt(value) => {
+                let length = value.to_usize().ok_or_else(|| "MemoryError".to_string())?;
+                checked_bytearray_resize_length(length)
+            }
+            _ => unreachable!("index_integer_value returns an integer"),
+        }
+    }
+
+    fn bytearray_take_stop(&mut self, value: Value, bytes: &ByteArrayRef) -> Result<usize, String> {
+        let stop = self.index_i64(value, "bytearray take count")?;
+        let len = i64::try_from(bytes.borrow().len())
+            .map_err(|_| "bytearray is too large".to_string())?;
+        let stop = if stop < 0 { stop + len } else { stop };
+        if stop < 0 || stop > len {
+            return Err("IndexError: bytearray index out of range".to_string());
+        }
+        usize::try_from(stop).map_err(|_| "bytearray index out of range".to_string())
+    }
+
+    fn custom_buffer_bytes(
+        &mut self,
+        value: &Value,
+        type_error: &str,
+    ) -> Result<BufferConversion, String> {
+        let Some(buffer_method) = instance_special_method(value, "__buffer__") else {
+            return Ok(BufferConversion::NotBuffer);
+        };
+        let buffer = match self.call_value_catching(buffer_method, vec![Value::Number(0)])? {
+            Ok(buffer) => buffer,
+            Err(exception) => {
+                self.raise_exception(exception, true)?;
+                return Ok(BufferConversion::Raised);
+            }
+        };
+        let Value::MemoryView(view) = buffer else {
+            return Err(type_error.to_string());
+        };
+
+        let bytes = memoryview_bytes(&view);
+        let release: Result<(), String> = if let Some(release_method) =
+            instance_special_method(value, "__release_buffer__")
+        {
+            match self.call_value_catching(release_method, vec![Value::MemoryView(view.clone())])? {
+                Ok(_) => Ok(()),
+                Err(exception) => {
+                    self.raise_exception(exception, true)?;
+                    return Ok(BufferConversion::Raised);
+                }
+            }
+        } else {
+            Ok(())
+        };
+        if !view.borrow().released {
+            release_memoryview(&view);
+        }
+        release?;
+        bytes.map(BufferConversion::Bytes)
+    }
+
+    fn bytes_like_method_argument(
+        &mut self,
+        value: &Value,
+        method: &str,
+        position: &str,
+    ) -> Result<Option<Vec<u8>>, String> {
+        let type_error = format!(
+            "TypeError: {method} {position} arg must be bytes-like, not {}",
+            type_name(value)
+        );
+        match self.custom_buffer_bytes(value, &type_error)? {
+            BufferConversion::Bytes(bytes) => return Ok(Some(bytes)),
+            BufferConversion::Raised => return Ok(None),
+            BufferConversion::NotBuffer => {}
+        }
+        bytes_like_method_argument(value, method, position).map(Some)
+    }
+
+    fn bytes_search_needle(&mut self, value: Value) -> Result<Option<Vec<u8>>, String> {
+        match value {
+            Value::Bytes(value) => Ok(Some(value)),
+            Value::ByteArray(value) => Ok(Some(bytearray_bytes(&value))),
+            Value::MemoryView(view) => memoryview_bytes(&view).map(Some),
+            value => {
+                match self.custom_buffer_bytes(
+                    &value,
+                    "TypeError: argument should be integer or bytes-like object",
+                )? {
+                    BufferConversion::Bytes(bytes) => return Ok(Some(bytes)),
+                    BufferConversion::Raised => return Ok(None),
+                    BufferConversion::NotBuffer => {}
+                }
+                let indexed = self.maybe_index_integer_value(value)?;
+                match indexed {
+                    Value::Number(_) | Value::BigInt(_) => byte_assignment_value(
+                        indexed,
+                        "TypeError: argument should be integer or bytes-like object",
+                    )
+                    .map(|byte| Some(vec![byte])),
+                    value => Err(format!(
+                        "TypeError: argument should be integer or bytes-like object, not '{}'",
+                        type_name(&value)
+                    )),
+                }
             }
         }
     }
@@ -7791,7 +11719,7 @@ impl Vm {
             }
             (Some(Value::ByteArray(value)), Some(base)) => {
                 let base = self.int_base_value(base)?;
-                parse_int_bytes_base(&value, base)
+                parse_int_bytes_base(&value.borrow(), base)
             }
             (Some(_), Some(_)) => {
                 Err("TypeError: int() can't convert non-string with explicit base".to_string())
@@ -7828,7 +11756,7 @@ impl Vm {
             }
             Value::String(value) => parse_int_string_base(&value, 10),
             Value::Bytes(value) => parse_int_bytes_base(&value, 10),
-            Value::ByteArray(value) => parse_int_bytes_base(&value, 10),
+            Value::ByteArray(value) => parse_int_bytes_base(&value.borrow(), 10),
             value => {
                 if let Some(method) = instance_special_method(&value, "__int__") {
                     let result = self.call_value(method, Vec::new())?;
@@ -7866,12 +11794,13 @@ impl Vm {
             Value::String(value) => parse_float_string(&value),
             Value::Bytes(value) => {
                 let value = std::str::from_utf8(&value)
-                    .map_err(|_| "could not convert string to float".to_string())?;
+                    .map_err(|_| "ValueError: could not convert string to float".to_string())?;
                 parse_float_string(value)
             }
             Value::ByteArray(value) => {
+                let value = value.borrow();
                 let value = std::str::from_utf8(&value)
-                    .map_err(|_| "could not convert string to float".to_string())?;
+                    .map_err(|_| "ValueError: could not convert string to float".to_string())?;
                 parse_float_string(value)
             }
             value => {
@@ -7902,53 +11831,6 @@ impl Vm {
                 ))
             }
         }
-    }
-
-    fn call_chr(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: chr() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        let value = self.index_integer_value(value.clone())?;
-        let codepoint = match value {
-            Value::Number(value) if (0..=0x10ffff).contains(&value) => Some(value as u32),
-            Value::BigInt(value) => value.to_u32().filter(|value| *value <= 0x10ffff),
-            _ => None,
-        };
-        let Some(ch) = codepoint.and_then(char::from_u32) else {
-            return Err("ValueError: chr() arg not in range(0x110000)".to_string());
-        };
-
-        Ok(Value::String(ch.to_string()))
-    }
-
-    fn call_int_base_builtin(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: {name}() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        let value = self.index_integer_value(value.clone())?;
-        let value = match value {
-            Value::Number(value) => BigInt::from(value),
-            Value::BigInt(value) => value,
-            _ => unreachable!("index_integer_value returns an integer"),
-        };
-        let (prefix, radix) = match name {
-            "bin" => ("0b", 2),
-            "oct" => ("0o", 8),
-            "hex" => ("0x", 16),
-            _ => unreachable!("caller filters supported integer-base builtins"),
-        };
-
-        Ok(Value::String(format_prefixed_integer(
-            &value, prefix, radix,
-        )))
     }
 
     fn call_round(
@@ -8125,12 +12007,16 @@ impl Vm {
                     .iter()
                     .any(|(key, _)| dict_keys_equal(key, &needle)));
             }
+            if let Some(maps) = chain_map_subclass_maps(&haystack) {
+                return self.chain_map_contains_key_in_maps(&maps, &needle);
+            }
             return self.iterable_contains_value(haystack, needle);
         }
 
         match haystack {
-            Value::ChainMap { maps } => chain_map_contains_key(&maps, &needle),
-            Value::UserDict { data } => contains_value(needle, Value::Dict(data)),
+            Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
+            Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
+            Value::UserDict { data, .. } => contains_value(needle, Value::Dict(data)),
             Value::Set(items) => {
                 let snapshot = items.borrow().clone();
                 Ok(self.set_lookup_position(&snapshot, &needle)?.is_some())
@@ -8140,7 +12026,42 @@ impl Vm {
             Value::MappingView { kind, mapping } => {
                 self.mapping_view_contains(kind, *mapping, needle)
             }
+            Value::ByteArray(haystack) => self.bytearray_contains_value(needle, haystack),
+            Value::MemoryView(view) => {
+                let bytes = memoryview_bytes(&view)?;
+                let needle = self.memoryview_element_byte(&view, needle)?;
+                Ok(needle.is_some_and(|needle| bytes.contains(&needle)))
+            }
             haystack => contains_value(needle, haystack),
+        }
+    }
+
+    fn bytearray_contains_value(
+        &mut self,
+        needle: Value,
+        haystack: ByteArrayRef,
+    ) -> Result<bool, String> {
+        let receiver = Value::ByteArray(haystack.clone());
+        let _receiver_export = bytearray_export_guard(&receiver);
+        match needle {
+            Value::Instance { .. } => {
+                match self.custom_buffer_bytes(
+                    &needle,
+                    "TypeError: bytearray membership requires bytes or integer left operand",
+                )? {
+                    BufferConversion::Bytes(needle) => {
+                        return Ok(needle.is_empty()
+                            || haystack
+                                .borrow()
+                                .windows(needle.len())
+                                .any(|window| window == needle.as_slice()));
+                    }
+                    BufferConversion::Raised => return Ok(false),
+                    BufferConversion::NotBuffer => {}
+                }
+                contains_value(needle, receiver)
+            }
+            needle => contains_value(needle, receiver),
         }
     }
 
@@ -8175,6 +12096,16 @@ impl Vm {
             return get_iter(Value::Dict(entries));
         }
 
+        if let Some(maps) = chain_map_subclass_maps(&value) {
+            return Ok(shared_iterator(Value::ListIterator {
+                items: chain_map_entries(&maps)?
+                    .into_iter()
+                    .map(|(key, _)| key)
+                    .collect(),
+                index: 0,
+            }));
+        }
+
         match value {
             Value::ChainMap { maps } => Ok(shared_iterator(Value::ListIterator {
                 items: chain_map_entries(&maps)?
@@ -8183,7 +12114,7 @@ impl Vm {
                     .collect(),
                 index: 0,
             })),
-            Value::UserDict { data } => get_iter(Value::Dict(data)),
+            Value::UserDict { data, .. } => get_iter(Value::Dict(data)),
             Value::MappingProxyObject { mapping } => self.get_iter(*mapping),
             Value::MappingView { kind, mapping } => Ok(shared_iterator(Value::ListIterator {
                 items: self.mapping_view_values(kind, *mapping)?,
@@ -8326,6 +12257,31 @@ impl Vm {
         build_dict(entries)
     }
 
+    fn call_ordered_dict_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 1 {
+            return Err(format!(
+                "OrderedDict expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+
+        let mut entries = match args.as_slice() {
+            [] => Vec::new(),
+            [source] => self.dict_entries_from_update_source(source.clone())?,
+            _ => unreachable!("OrderedDict constructor arity is checked before matching args"),
+        };
+
+        for (key, value) in keywords {
+            insert_dict_entry(&mut entries, Value::String(key), value)?;
+        }
+
+        build_ordered_dict(entries)
+    }
+
     fn call_mapping_proxy_constructor(
         &mut self,
         args: Vec<Value>,
@@ -8380,15 +12336,562 @@ impl Vm {
         Ok(Value::ChainMap { maps })
     }
 
+    fn call_counter(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 1 {
+            return Err(format!(
+                "TypeError: Counter expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+
+        let entries = dict_ref_from_entries(Vec::new())?;
+        if let Some(source) = args.into_iter().next()
+            && !matches!(source, Value::None)
+        {
+            self.counter_update_entries(&entries, source, CounterUpdateMode::Add)?;
+        }
+
+        self.counter_update_mapping_entries(
+            &entries,
+            keywords
+                .into_iter()
+                .map(|(key, value)| (Value::String(key), value))
+                .collect(),
+            CounterUpdateMode::Add,
+        )?;
+
+        Ok(Value::Counter { entries })
+    }
+
+    fn call_counter_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let has_own_init = attrs.borrow().contains_key("__init__");
+        let storage = self.call_counter(Vec::new(), Vec::new())?;
+        fields
+            .borrow_mut()
+            .insert(COUNTER_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+
+        let instance = Value::Instance {
+            class_name: name.clone(),
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases.clone(),
+        };
+
+        if has_own_init && let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        } else {
+            let mut init_args = Vec::with_capacity(args.len() + 1);
+            init_args.push(instance.clone());
+            init_args.extend(args);
+            self.call_counter_method("Counter.__init__", init_args, keywords)?;
+        }
+
+        Ok(instance)
+    }
+
+    fn call_namedtuple(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut positional = args.into_iter();
+        let mut typename = positional.next();
+        let mut field_names = positional.next();
+        if positional.next().is_some() {
+            return Err("TypeError: namedtuple() takes 2 positional arguments".to_string());
+        }
+
+        let mut rename = Value::Bool(false);
+        let mut defaults = None;
+        let mut module = None;
+
+        for (name, value) in keywords {
+            match name.as_str() {
+                "typename" => namedtuple_set_option(&mut typename, &name, value)?,
+                "field_names" => namedtuple_set_option(&mut field_names, &name, value)?,
+                "rename" => rename = value,
+                "defaults" => defaults = Some(value),
+                "module" => module = Some(value),
+                _ => {
+                    return Err(format!(
+                        "TypeError: namedtuple() got an unexpected keyword argument '{name}'"
+                    ));
+                }
+            }
+        }
+
+        let Some(typename) = typename else {
+            return Err("TypeError: namedtuple() missing required argument 'typename'".to_string());
+        };
+        let Some(field_names) = field_names else {
+            return Err(
+                "TypeError: namedtuple() missing required argument 'field_names'".to_string(),
+            );
+        };
+        let Value::String(typename) = typename else {
+            return Err("TypeError: Type names and field names must be strings".to_string());
+        };
+        namedtuple_validate_type_name(&typename)?;
+
+        let fields = self.namedtuple_field_names(field_names)?;
+        let fields = namedtuple_normalize_fields(fields, is_truthy(&rename)?)?;
+        let new_defaults = defaults
+            .as_ref()
+            .and_then(|value| (!matches!(value, Value::None)).then_some(()));
+        let defaults = match defaults {
+            None | Some(Value::None) => Vec::new(),
+            Some(defaults) => self.collect_iterable_values(defaults)?,
+        };
+        let new_defaults = new_defaults.map(|_| defaults.clone());
+        if defaults.len() > fields.len() {
+            return Err("TypeError: Got more default values than field names".to_string());
+        }
+        let default_start = fields.len() - defaults.len();
+        let field_defaults = fields[default_start..]
+            .iter()
+            .cloned()
+            .zip(defaults.iter().cloned())
+            .collect::<Vec<_>>();
+        let doc = namedtuple_doc_text(&typename, &fields);
+        let field_docs = (0..fields.len())
+            .map(|index| RefCell::new(namedtuple_field_doc_text(index)))
+            .collect();
+
+        Ok(Value::NamedTupleType(Rc::new(NamedTupleType {
+            name: typename,
+            fields,
+            field_docs,
+            field_defaults,
+            new_defaults,
+            module: module.unwrap_or_else(|| Value::String("__main__".to_string())),
+            doc: RefCell::new(doc),
+            identity: Rc::new(()),
+        })))
+    }
+
+    fn namedtuple_field_names(&mut self, value: Value) -> Result<Vec<String>, String> {
+        match value {
+            Value::String(value) => Ok(value
+                .replace(',', " ")
+                .split_whitespace()
+                .map(str::to_string)
+                .collect()),
+            value => self
+                .collect_iterable_values(value)?
+                .into_iter()
+                .map(|value| match value {
+                    Value::String(name) => Ok(name),
+                    _ => Err("TypeError: Type names and field names must be strings".to_string()),
+                })
+                .collect(),
+        }
+    }
+
+    fn call_named_tuple_type(
+        &mut self,
+        typ: NamedTupleTypeRef,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > typ.fields.len() {
+            return Err(format!(
+                "TypeError: {} expected {} arguments, got {}",
+                typ.name,
+                typ.fields.len(),
+                args.len()
+            ));
+        }
+
+        let mut values = vec![None; typ.fields.len()];
+        for (index, value) in args.into_iter().enumerate() {
+            values[index] = Some(value);
+        }
+
+        for (name, value) in keywords {
+            let Some(index) = typ.fields.iter().position(|field| field == &name) else {
+                return Err(format!(
+                    "TypeError: {} got an unexpected keyword argument '{name}'",
+                    typ.name
+                ));
+            };
+            if values[index].is_some() {
+                return Err(format!(
+                    "TypeError: {} got multiple values for argument '{name}'",
+                    typ.name
+                ));
+            }
+            values[index] = Some(value);
+        }
+
+        for (field, default) in &typ.field_defaults {
+            if let Some(index) = typ.fields.iter().position(|name| name == field)
+                && values[index].is_none()
+            {
+                values[index] = Some(default.clone());
+            }
+        }
+
+        let mut final_values = Vec::with_capacity(values.len());
+        for (field, value) in typ.fields.iter().zip(values.into_iter()) {
+            let Some(value) = value else {
+                return Err(format!(
+                    "TypeError: {} missing required argument '{field}'",
+                    typ.name
+                ));
+            };
+            final_values.push(value);
+        }
+
+        Ok(Value::NamedTuple {
+            typ,
+            values: Rc::new(final_values),
+        })
+    }
+
+    fn call_named_tuple_type_method(
+        &mut self,
+        typ: NamedTupleTypeRef,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        match name {
+            "_make" => {
+                reject_method_keywords("_make", &keywords)?;
+                let [iterable] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: _make() expected 1 argument, got {}",
+                        args.len()
+                    ));
+                };
+                let values = self.collect_iterable_values(iterable.clone())?;
+                if values.len() != typ.fields.len() {
+                    return Err(format!(
+                        "TypeError: Expected {} arguments, got {}",
+                        typ.fields.len(),
+                        values.len()
+                    ));
+                }
+                Ok(Value::NamedTuple {
+                    typ,
+                    values: Rc::new(values),
+                })
+            }
+            _ => Err(format!(
+                "AttributeError: {} has no method '{name}'",
+                typ.name
+            )),
+        }
+    }
+
+    fn call_named_tuple_instance_method(
+        &mut self,
+        instance: Value,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Value::NamedTuple { typ, values } = instance else {
+            return Err("TypeError: namedtuple method receiver is invalid".to_string());
+        };
+
+        match name {
+            "_asdict" => {
+                reject_method_keywords("_asdict", &keywords)?;
+                if !args.is_empty() {
+                    return Err(format!(
+                        "TypeError: _asdict() expected 0 arguments, got {}",
+                        args.len()
+                    ));
+                }
+                build_dict(namedtuple_dict_entries(&typ, &values))
+            }
+            "_replace" => {
+                if !args.is_empty() {
+                    return Err(format!(
+                        "TypeError: _replace() expected 0 positional arguments, got {}",
+                        args.len()
+                    ));
+                }
+                let mut replaced = values.as_ref().clone();
+                for (name, value) in keywords {
+                    let Some(index) = typ.fields.iter().position(|field| field == &name) else {
+                        return Err(format!(
+                            "TypeError: {}._replace() got an unexpected field name: '{name}'",
+                            typ.name
+                        ));
+                    };
+                    replaced[index] = value;
+                }
+                Ok(Value::NamedTuple {
+                    typ,
+                    values: Rc::new(replaced),
+                })
+            }
+            "__getnewargs__" => {
+                reject_method_keywords("__getnewargs__", &keywords)?;
+                if !args.is_empty() {
+                    return Err(format!(
+                        "TypeError: __getnewargs__() expected 0 arguments, got {}",
+                        args.len()
+                    ));
+                }
+                Ok(tuple_value(values.as_ref().clone()))
+            }
+            _ => Err(format!(
+                "AttributeError: {} has no method '{name}'",
+                typ.name
+            )),
+        }
+    }
+
+    fn count_elements_into_mapping(
+        &mut self,
+        mapping: Value,
+        iterable: Value,
+    ) -> Result<(), String> {
+        match &mapping {
+            Value::Dict(entries) | Value::Counter { entries } => {
+                for key in self.collect_iterable_values_propagating(iterable)? {
+                    self.counter_adjust_count(
+                        entries,
+                        key,
+                        Value::Number(1),
+                        CounterUpdateMode::Add,
+                    )?;
+                }
+                Ok(())
+            }
+            _ => {
+                for key in self.collect_iterable_values_propagating(iterable)? {
+                    self.adjust_mapping_count_by_protocol(
+                        mapping.clone(),
+                        key,
+                        Value::Number(1),
+                        CounterUpdateMode::Add,
+                    )?;
+                }
+                Ok(())
+            }
+        }
+    }
+
+    fn counter_update_entries(
+        &mut self,
+        entries: &DictRef,
+        source: Value,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        if matches!(source, Value::None) {
+            return Ok(());
+        }
+
+        if is_mapping_abc_value(&source) || instance_special_method(&source, "keys").is_some() {
+            let updates = self.dict_entries_from_update_source(source)?;
+            self.counter_update_mapping_entries(entries, updates, mode)?;
+            return Ok(());
+        }
+
+        for key in self.collect_iterable_values_propagating(source)? {
+            self.counter_adjust_count(entries, key, Value::Number(1), mode)?;
+        }
+        Ok(())
+    }
+
+    fn counter_update_receiver(
+        &mut self,
+        receiver: Value,
+        entries: &DictRef,
+        source: Value,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        if matches!(source, Value::None) {
+            return Ok(());
+        }
+
+        if matches!(receiver, Value::Counter { .. }) {
+            return self.counter_update_entries(entries, source, mode);
+        }
+
+        if is_mapping_abc_value(&source) || instance_special_method(&source, "keys").is_some() {
+            let updates = self.dict_entries_from_update_source(source)?;
+            self.counter_update_receiver_from_mapping(receiver, entries, updates, mode)?;
+            return Ok(());
+        }
+
+        for key in self.collect_iterable_values_propagating(source)? {
+            self.adjust_mapping_count_by_protocol(receiver.clone(), key, Value::Number(1), mode)?;
+        }
+        Ok(())
+    }
+
+    fn counter_update_receiver_from_mapping(
+        &mut self,
+        receiver: Value,
+        entries: &DictRef,
+        updates: Vec<(Value, Value)>,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        if matches!(receiver, Value::Counter { .. }) {
+            return self.counter_update_mapping_entries(entries, updates, mode);
+        }
+
+        for (key, delta) in updates {
+            self.adjust_mapping_count_by_protocol(receiver.clone(), key, delta, mode)?;
+        }
+        Ok(())
+    }
+
+    fn counter_adjust_count(
+        &mut self,
+        entries: &DictRef,
+        key: Value,
+        delta: Value,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        ensure_hashable_key(&key)?;
+        let current = dict_lookup(&entries.borrow().entries, &key).unwrap_or(Value::Number(0));
+        let value = match mode {
+            CounterUpdateMode::Add => self.add_values(current, delta)?,
+            CounterUpdateMode::Subtract => subtract_values(current, delta)?,
+        };
+        insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
+    }
+
+    fn counter_update_mapping_entries(
+        &mut self,
+        entries: &DictRef,
+        updates: Vec<(Value, Value)>,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        let can_insert_directly =
+            matches!(mode, CounterUpdateMode::Add) && entries.borrow().entries.is_empty();
+        if can_insert_directly {
+            for (key, value) in updates {
+                ensure_hashable_key(&key)?;
+                insert_live_dict_entry(&mut entries.borrow_mut(), key, value)?;
+            }
+            return Ok(());
+        }
+
+        for (key, value) in updates {
+            self.counter_adjust_count(entries, key, value, mode)?;
+        }
+        Ok(())
+    }
+
+    fn adjust_mapping_count_by_protocol(
+        &mut self,
+        mapping: Value,
+        key: Value,
+        delta: Value,
+        mode: CounterUpdateMode,
+    ) -> Result<(), String> {
+        ensure_hashable_key(&key)?;
+        let get = self.load_attribute_value(mapping.clone(), "get")?;
+        let current = self.call_value(get, vec![key.clone(), Value::Number(0)])?;
+        let next = match mode {
+            CounterUpdateMode::Add => add_values(current, delta)?,
+            CounterUpdateMode::Subtract => subtract_values(current, delta)?,
+        };
+        self.store_subscript_value(mapping, key, next)?;
+        Ok(())
+    }
+
     fn call_user_dict(
         &mut self,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let Value::Dict(data) = self.call_dict_constructor(args, keywords)? else {
-            unreachable!("dict constructor always returns a dict value")
+        let data = dict_ref_from_entries(self.user_dict_constructor_entries(args, keywords)?)?;
+        Ok(Value::UserDict {
+            data,
+            attrs: dict_ref_from_entries(Vec::new())?,
+        })
+    }
+
+    fn user_dict_constructor_entries(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Vec<(Value, Value)>, String> {
+        if args.len() > 1 {
+            return Err(format!(
+                "UserDict expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+
+        let mut entries = match args.as_slice() {
+            [] | [Value::None] => Vec::new(),
+            [source] => self.dict_entries_from_update_source(source.clone())?,
+            _ => unreachable!("UserDict constructor arity is checked before matching args"),
         };
-        Ok(Value::UserDict { data })
+
+        for (key, value) in keywords {
+            insert_dict_entry(&mut entries, Value::String(key), value)?;
+        }
+
+        Ok(entries)
+    }
+
+    fn call_user_list(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut initlist = None;
+        if args.len() > 1 {
+            return Err(format!(
+                "TypeError: UserList expected at most 1 argument, got {}",
+                args.len()
+            ));
+        }
+        if let Some(value) = args.into_iter().next() {
+            initlist = Some(value);
+        }
+
+        for (name, value) in keywords {
+            if name != "initlist" {
+                return Err(format!(
+                    "TypeError: UserList() got an unexpected keyword argument '{name}'"
+                ));
+            }
+            if initlist.is_some() {
+                return Err(
+                    "TypeError: UserList() got multiple values for argument 'initlist'".to_string(),
+                );
+            }
+            initlist = Some(value);
+        }
+
+        let values = match initlist {
+            None | Some(Value::None) => Vec::new(),
+            Some(Value::UserList { data, .. }) => data.borrow().clone(),
+            Some(Value::List(items)) => items.borrow().clone(),
+            Some(value) => self.collect_iterable_values(value)?,
+        };
+
+        Ok(Value::UserList {
+            data: Rc::new(RefCell::new(values)),
+            attrs: dict_ref_from_entries(Vec::new())?,
+        })
     }
 
     fn call_simple_namespace_constructor(
@@ -8398,6 +12901,40 @@ impl Vm {
     ) -> Result<Value, String> {
         let fields = self.simple_namespace_fields_from_args(args, keywords)?;
         Ok(Value::SimpleNamespace { fields })
+    }
+
+    fn call_copy_copy(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut value = None;
+        if args.len() > 1 {
+            return Err(format!(
+                "TypeError: copy() takes 1 positional argument but {} were given",
+                args.len()
+            ));
+        }
+        if let Some(arg) = args.into_iter().next() {
+            value = Some(arg);
+        }
+
+        for (name, keyword_value) in keywords {
+            if name != "x" {
+                return Err(format!(
+                    "TypeError: copy() got an unexpected keyword argument '{name}'"
+                ));
+            }
+            if value.is_some() {
+                return Err("TypeError: copy() got multiple values for argument 'x'".to_string());
+            }
+            value = Some(keyword_value);
+        }
+
+        let value = value.ok_or_else(|| {
+            "TypeError: copy() missing 1 required positional argument: 'x'".to_string()
+        })?;
+        shallow_copy_value(&value)
     }
 
     fn call_copy_deepcopy(
@@ -8530,7 +13067,10 @@ impl Vm {
             .ok_or_else(|| "TypeError: dumps() missing required argument 'obj'".to_string())?;
         if let Some(protocol) = values[1].take() {
             let protocol = self.index_i64(protocol, "pickle protocol")?;
-            if !(0..=PICKLE_HIGHEST_PROTOCOL).contains(&protocol) {
+            if protocol < -1 {
+                return Err("ValueError: pickle protocol must be >= -1".to_string());
+            }
+            if protocol > PICKLE_HIGHEST_PROTOCOL {
                 return Err(format!(
                     "ValueError: pickle protocol must be <= {PICKLE_HIGHEST_PROTOCOL}"
                 ));
@@ -8810,8 +13350,19 @@ impl Vm {
         &mut self,
         value: Value,
     ) -> Result<Vec<(Value, Value)>, String> {
-        if let Value::Dict(entries) | Value::UserDict { data: entries } = &value {
-            return Ok(entries.borrow().clone());
+        if matches!(
+            &value,
+            Value::Dict(_)
+                | Value::OrderedDict(_)
+                | Value::MappingProxy { .. }
+                | Value::UserDict { .. }
+                | Value::ChainMap { .. }
+                | Value::Counter { .. }
+        ) || counter_subclass_entries(&value).is_some()
+            || dict_subclass_entries(&value).is_some()
+            || chain_map_subclass_maps(&value).is_some()
+        {
+            return mapping_entries(&value);
         }
 
         if let Some(keys_method) = instance_special_method(&value, "keys") {
@@ -8962,7 +13513,10 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                self.get_iter(receiver.clone())
+                Ok(shared_iterator(Value::SequenceIterator {
+                    object: Box::new(receiver.clone()),
+                    index: 0,
+                }))
             }
             "__contains__" => {
                 let (receiver, value) =
@@ -9515,36 +14069,54 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords(name, &keywords)?;
-
         match method_display_name(name) {
             "__contains__" => {
-                let [Value::ChainMap { maps }, key] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
                     return Err(format!(
                         "__contains__() expected 1 argument, got {}",
                         method_arg_count(&args)
                     ));
                 };
-                Ok(Value::Bool(chain_map_contains_key(maps, key)?))
+                let maps = chain_map_receiver_maps(receiver)?;
+                Ok(Value::Bool(
+                    self.chain_map_contains_key_in_maps(&maps, key)?,
+                ))
+            }
+            "__delitem__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
+                    return Err(format!(
+                        "__delitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_delete_item(&maps, key.clone())?;
+                Ok(Value::None)
             }
             "__getitem__" => {
-                let [Value::ChainMap { maps }, key] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
                     return Err(format!(
                         "__getitem__() expected 1 argument, got {}",
                         method_arg_count(&args)
                     ));
                 };
-                chain_map_get_item(maps, key.clone())
+                let maps = chain_map_receiver_maps(receiver)?;
+                self.chain_map_get_item_for_receiver(receiver, &maps, key.clone())
             }
             "__iter__" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "__iter__() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
+                let maps = chain_map_receiver_maps(receiver)?;
                 Ok(shared_iterator(Value::ListIterator {
-                    items: chain_map_entries(maps)?
+                    items: chain_map_entries(&maps)?
                         .into_iter()
                         .map(|(key, _)| key)
                         .collect(),
@@ -9552,27 +14124,91 @@ impl Vm {
                 }))
             }
             "__len__" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "__len__() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
-                let len = i64::try_from(chain_map_entries(maps)?.len())
+                let maps = chain_map_receiver_maps(receiver)?;
+                let len = i64::try_from(chain_map_entries(&maps)?.len())
                     .map_err(|_| "len() result is too large".to_string())?;
                 Ok(Value::Number(len))
             }
+            "__or__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, other] = args.as_slice() else {
+                    return Err(format!(
+                        "__or__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_union(receiver, &maps, other).or_else(|_| Ok(Value::NotImplemented))
+            }
+            "__ror__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, other] = args.as_slice() else {
+                    return Err(format!(
+                        "__ror__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_reverse_union(receiver, &maps, other)
+                    .or_else(|_| Ok(Value::NotImplemented))
+            }
+            "__ior__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, other] = args.as_slice() else {
+                    return Err(format!(
+                        "__ior__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_update_first_from_source(&maps, other.clone())?;
+                Ok(receiver.clone())
+            }
+            "__setitem__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, value] = args.as_slice() else {
+                    return Err(format!(
+                        "__setitem__() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_set_item(&maps, key.clone(), value.clone())?;
+                Ok(Value::None)
+            }
+            "clear" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "clear() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_clear(&maps)?;
+                Ok(Value::None)
+            }
             "copy" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "copy() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
-                Ok(Value::ChainMap { maps: maps.clone() })
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_copy(&maps)
             }
             "get" => {
-                let [Value::ChainMap { maps }, key, rest @ ..] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, rest @ ..] = args.as_slice() else {
                     return Err("get() expected a ChainMap receiver".to_string());
                 };
                 if rest.len() > 1 {
@@ -9581,46 +14217,95 @@ impl Vm {
                         rest.len() + 1
                     ));
                 }
+                let maps = chain_map_receiver_maps(receiver)?;
                 let default = rest.first().cloned().unwrap_or(Value::None);
-                Ok(chain_map_get_item_optional(maps, key)?.unwrap_or(default))
+                if self.chain_map_contains_key_in_maps(&maps, key)? {
+                    self.chain_map_get_item_for_receiver(receiver, &maps, key.clone())
+                } else {
+                    Ok(default)
+                }
             }
             "items" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "items() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
+                let maps = chain_map_receiver_maps(receiver)?;
                 Ok(list_value(
-                    chain_map_entries(maps)?
+                    chain_map_entries(&maps)?
                         .into_iter()
                         .map(|(key, value)| tuple_value(vec![key, value]))
                         .collect(),
                 ))
             }
             "keys" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "keys() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
+                let maps = chain_map_receiver_maps(receiver)?;
                 Ok(list_value(
-                    chain_map_entries(maps)?
+                    chain_map_entries(&maps)?
                         .into_iter()
                         .map(|(key, _)| key)
                         .collect(),
                 ))
             }
+            "new_child" => {
+                let [receiver, rest @ ..] = args.as_slice() else {
+                    return Err("new_child() expected a ChainMap receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "new_child() expected at most 1 argument, got {}",
+                        rest.len()
+                    ));
+                }
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_new_child(&maps, rest.first().cloned(), keywords)
+            }
+            "pop" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, rest @ ..] = args.as_slice() else {
+                    return Err("pop() expected a ChainMap receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "pop() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_pop(&maps, key.clone(), rest.first().cloned())
+            }
+            "popitem" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "popitem() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let maps = chain_map_receiver_maps(receiver)?;
+                chain_map_popitem(&maps)
+            }
             "values" => {
-                let [Value::ChainMap { maps }] = args.as_slice() else {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "values() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
+                let maps = chain_map_receiver_maps(receiver)?;
                 Ok(list_value(
-                    chain_map_entries(maps)?
+                    chain_map_entries(&maps)?
                         .into_iter()
                         .map(|(_, value)| value)
                         .collect(),
@@ -9628,6 +14313,421 @@ impl Vm {
             }
             _ => Err(format!("unknown builtin: {name}")),
         }
+    }
+
+    fn call_counter_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        match method_display_name(name) {
+            "fromkeys" => Err(
+                "NotImplementedError: Counter.fromkeys() is undefined. Use Counter(iterable) instead."
+                    .to_string(),
+            ),
+            "__contains__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
+                    return Err(format!(
+                        "__contains__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let entries = counter_receiver_entries(receiver)?;
+                ensure_hashable_key(key)?;
+                Ok(Value::Bool(entries.borrow().iter().any(|(existing_key, _)| {
+                    dict_keys_equal(existing_key, key)
+                })))
+            }
+            "__delitem__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
+                    return Err(format!(
+                        "__delitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let entries = counter_receiver_entries(receiver)?;
+                ensure_hashable_key(key)?;
+                let _ = pop_mapping_entry(&entries, key)?;
+                Ok(Value::None)
+            }
+            "__getitem__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key] = args.as_slice() else {
+                    return Err(format!(
+                        "__getitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                load_subscript(receiver.clone(), key.clone())
+            }
+            "__iter__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let entries = counter_receiver_entries(receiver)?;
+                let (expected_len, expected_version) = {
+                    let entries_ref = entries.borrow();
+                    (entries_ref.len(), entries_ref.version)
+                };
+                Ok(shared_iterator(Value::DictIterator {
+                    kind: DictViewKind::Keys,
+                    entries,
+                    index: 0,
+                    expected_len,
+                    expected_version,
+                }))
+            }
+            "__len__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__len__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let len = i64::try_from(counter_receiver_entries(receiver)?.borrow().len())
+                    .map_err(|_| "len() result is too large".to_string())?;
+                Ok(Value::Number(len))
+            }
+            "__setitem__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, value] = args.as_slice() else {
+                    return Err(format!(
+                        "__setitem__() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let entries = counter_receiver_entries(receiver)?;
+                ensure_hashable_key(key)?;
+                insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
+                Ok(Value::None)
+            }
+            "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [left, right] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let Some(op) = counter_binary_op_from_method(method_display_name(name)) else {
+                    unreachable!("counter binary method names are matched above")
+                };
+                Ok(counter_binary_value_from_operands(left, right, op)?
+                    .unwrap_or(Value::NotImplemented))
+            }
+            "__iadd__" | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [left, right] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let Some(op) = counter_in_place_op_from_method(method_display_name(name)) else {
+                    unreachable!("counter in-place method names are matched above")
+                };
+                Ok(counter_in_place_value_from_operands(left, right, op)?
+                    .unwrap_or(Value::NotImplemented))
+            }
+            "__init__" | "update" | "subtract" => {
+                let Some((receiver, rest)) = args.split_first() else {
+                    return Err(format!(
+                        "TypeError: {}() missing required Counter receiver",
+                        method_display_name(name)
+                    ));
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "{}() expected at most 1 argument, got {}",
+                        method_display_name(name),
+                        rest.len()
+                    ));
+                }
+                let entries = counter_receiver_entries(receiver)?;
+                let mode = if method_display_name(name) == "subtract" {
+                    CounterUpdateMode::Subtract
+                } else {
+                    CounterUpdateMode::Add
+                };
+                if let Some(source) = rest.first()
+                    && !matches!(source, Value::None)
+                {
+                    self.counter_update_receiver(receiver.clone(), &entries, source.clone(), mode)?;
+                }
+                self.counter_update_receiver_from_mapping(
+                    receiver.clone(),
+                    &entries,
+                    keywords
+                        .into_iter()
+                        .map(|(key, value)| (Value::String(key), value))
+                        .collect(),
+                    mode,
+                )?;
+                Ok(Value::None)
+            }
+            "clear" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "clear() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                clear_mapping_entries(&counter_receiver_entries(receiver)?)?;
+                Ok(Value::None)
+            }
+            "copy" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "copy() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                if counter_subclass_entries(receiver).is_some()
+                    && let Value::Instance {
+                        class_name,
+                        class_attrs,
+                        class_bases,
+                        ..
+                    } = receiver
+                {
+                    let class = Value::Class {
+                        name: class_name.clone(),
+                        type_params: Vec::new(),
+                        metaclass: None,
+                        bases: class_bases.clone(),
+                        attrs: class_attrs.clone(),
+                    };
+                    return self.call_value(class, vec![receiver.clone()]);
+                }
+                Ok(Value::Counter {
+                    entries: dict_ref_from_entries(
+                        counter_receiver_entries(receiver)?.borrow().entries.clone(),
+                    )?,
+                })
+            }
+            "elements" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "elements() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let mut values = Vec::new();
+                for (key, count) in counter_receiver_entries(receiver)?.borrow().entries.iter() {
+                    let count = counter_count_i64(count)?;
+                    if count > 0 {
+                        values.extend(std::iter::repeat_n(key.clone(), count as usize));
+                    }
+                }
+                Ok(shared_iterator(Value::ListIterator {
+                    items: values,
+                    index: 0,
+                }))
+            }
+            "get" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, rest @ ..] = args.as_slice() else {
+                    return Err("get() expected a Counter receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "get() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                ensure_hashable_key(key)?;
+                let default = rest.first().cloned().unwrap_or(Value::None);
+                Ok(dict_lookup(&counter_receiver_entries(receiver)?.borrow().entries, key)
+                    .unwrap_or(default))
+            }
+            "items" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "items() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(dict_view_value(
+                    DictViewKind::Items,
+                    counter_receiver_entries(receiver)?,
+                ))
+            }
+            "keys" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "keys() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(dict_view_value(
+                    DictViewKind::Keys,
+                    counter_receiver_entries(receiver)?,
+                ))
+            }
+            "most_common" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, rest @ ..] = args.as_slice() else {
+                    return Err("most_common() expected a Counter receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "most_common() expected at most 1 argument, got {}",
+                        rest.len()
+                    ));
+                }
+                let mut entries = counter_entries_sorted(&counter_receiver_entries(receiver)?);
+                if let Some(limit) = rest.first() {
+                    let limit = self.index_i64(limit.clone(), "most_common")?;
+                    if limit < 0 {
+                        entries.clear();
+                    } else {
+                        entries.truncate(limit as usize);
+                    }
+                }
+                Ok(list_value(
+                    entries
+                        .into_iter()
+                        .map(|(key, value)| tuple_value(vec![key, value]))
+                        .collect(),
+                ))
+            }
+            "pop" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, rest @ ..] = args.as_slice() else {
+                    return Err("pop() expected a Counter receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "pop() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                let entries = counter_receiver_entries(receiver)?;
+                if let Some(value) = pop_mapping_entry(&entries, key)? {
+                    return Ok(value);
+                }
+                if let Some(default) = rest.first() {
+                    return Ok(default.clone());
+                }
+                Err(format!("KeyError: {}", format_key_error(key)))
+            }
+            "popitem" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "popitem() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                pop_mapping_entry_last(&counter_receiver_entries(receiver)?)?
+                    .map(|(key, value)| tuple_value(vec![key, value]))
+                    .ok_or_else(|| "KeyError: popitem(): dictionary is empty".to_string())
+            }
+            "setdefault" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, key, rest @ ..] = args.as_slice() else {
+                    return Err("setdefault() expected a Counter receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "setdefault() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                ensure_hashable_key(key)?;
+                let entries = counter_receiver_entries(receiver)?;
+                if let Some(value) = dict_lookup(&entries.borrow().entries, key) {
+                    return Ok(value);
+                }
+                let default = rest.first().cloned().unwrap_or(Value::None);
+                insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), default.clone())?;
+                Ok(default)
+            }
+            "total" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "total() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let mut total = Value::Number(0);
+                for (_, count) in counter_receiver_entries(receiver)?.borrow().entries.iter() {
+                    total = add_values(total, count.clone())?;
+                }
+                Ok(total)
+            }
+            "values" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "values() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(dict_view_value(
+                    DictViewKind::Values,
+                    counter_receiver_entries(receiver)?,
+                ))
+            }
+            _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn chain_map_get_item_for_receiver(
+        &mut self,
+        receiver: &Value,
+        maps: &[Value],
+        key: Value,
+    ) -> Result<Value, String> {
+        if let Some(value) = self.chain_map_get_item_optional_from_maps(maps, &key)? {
+            return Ok(value);
+        }
+        if let Some(missing) = instance_special_method(receiver, "__missing__") {
+            return self.call_value(missing, vec![key]);
+        }
+        Err(format!("KeyError: {}", format_key_error(&key)))
+    }
+
+    fn chain_map_get_item_optional_from_maps(
+        &mut self,
+        maps: &[Value],
+        key: &Value,
+    ) -> Result<Option<Value>, String> {
+        for map in maps {
+            if let Some(value) = self.mapping_abc_get_item_optional(map.clone(), key.clone())? {
+                return Ok(Some(value));
+            }
+        }
+        Ok(None)
+    }
+
+    fn chain_map_contains_key_in_maps(
+        &mut self,
+        maps: &[Value],
+        key: &Value,
+    ) -> Result<bool, String> {
+        for map in maps {
+            if self.contains_value(key.clone(), map.clone())? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     fn call_mutable_mapping_abc_method(
@@ -9829,8 +14929,88 @@ impl Vm {
         self.rich_equal_values(&left, &right)
     }
 
+    fn add_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(method) = instance_special_method(&left, "__add__") {
+            let result = self.call_value(method, vec![right.clone()])?;
+            if !matches!(result, Value::NotImplemented) {
+                return Ok(result);
+            }
+        }
+
+        if let Some(method) = instance_special_method(&right, "__radd__") {
+            let result = self.call_value(method, vec![left.clone()])?;
+            if !matches!(result, Value::NotImplemented) {
+                return Ok(result);
+            }
+        }
+
+        let left = if is_int_subclass_instance(&left) {
+            Value::Number(0)
+        } else {
+            left
+        };
+        let right = if is_int_subclass_instance(&right) {
+            Value::Number(0)
+        } else {
+            right
+        };
+        add_values(left, right)
+    }
+
+    fn call_binary_special_method(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        method_name: &str,
+        reflected_method_name: &str,
+    ) -> Result<Option<Value>, String> {
+        if let Some(method) = instance_special_method(left, method_name) {
+            let result = self.call_value(method, vec![right.clone()])?;
+            if !matches!(result, Value::NotImplemented) {
+                return Ok(Some(result));
+            }
+        }
+
+        if let Some(method) = instance_special_method(right, reflected_method_name) {
+            let result = self.call_value(method, vec![left.clone()])?;
+            if !matches!(result, Value::NotImplemented) {
+                return Ok(Some(result));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn call_in_place_special_method(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        method_name: &str,
+    ) -> Result<Option<Value>, String> {
+        let Some(method) = instance_special_method(left, method_name) else {
+            return Ok(None);
+        };
+
+        let result = self.call_value(method, vec![right.clone()])?;
+        if matches!(result, Value::NotImplemented) {
+            Ok(None)
+        } else {
+            Ok(Some(result))
+        }
+    }
+
     fn subtract_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        if let Some(value) =
+            self.call_binary_special_method(&left, &right, "__sub__", "__rsub__")?
+        {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Subtract)?
+        {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "-")?;
@@ -9842,17 +15022,44 @@ impl Vm {
 
     fn bit_or_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        if let Some(value) = self.call_binary_special_method(&left, &right, "__or__", "__ror__")? {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Union)?
+        {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "|")?;
             let right = self.set_operator_values(right, "|")?;
             return self.set_union_from_iterables_with_kind(kind, left, &[set_value(right)]);
         }
+        if matches!(left, Value::ChainMap { .. })
+            && chain_map_subclass_maps(&right).is_some()
+            && let Some(method) = instance_special_method(&right, "__ror__")
+        {
+            let result = self.call_value(method, vec![left.clone()])?;
+            if !matches!(result, Value::NotImplemented) {
+                return Ok(result);
+            }
+        }
         bit_or_values(left, right)
     }
 
     fn bit_xor_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        if let Some(value) =
+            self.call_binary_special_method(&left, &right, "__xor__", "__rxor__")?
+        {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::SymmetricDifference)?
+        {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "^")?;
@@ -9868,6 +15075,16 @@ impl Vm {
 
     fn bit_and_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        if let Some(value) =
+            self.call_binary_special_method(&left, &right, "__and__", "__rand__")?
+        {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Intersection)?
+        {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "&")?;
@@ -9878,6 +15095,14 @@ impl Vm {
     }
 
     fn in_place_subtract_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__isub__")? {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Subtract)?
+        {
+            return Ok(value);
+        }
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "-=")?;
@@ -9918,6 +15143,14 @@ impl Vm {
     }
 
     fn in_place_bit_or_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__ior__")? {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Union)?
+        {
+            return Ok(value);
+        }
         match left {
             Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
                 Err("TypeError: '|=' is not supported by mappingproxy; use '|' instead".to_string())
@@ -9930,6 +15163,16 @@ impl Vm {
                 }
                 drop(entries_ref);
                 Ok(Value::Dict(entries))
+            }
+            left @ Value::ChainMap { .. } => {
+                let maps = chain_map_receiver_maps(&left)?;
+                chain_map_update_first_from_source(&maps, right)?;
+                Ok(left)
+            }
+            left if chain_map_subclass_maps(&left).is_some() => {
+                let maps = chain_map_receiver_maps(&left)?;
+                chain_map_update_first_from_source(&maps, right)?;
+                Ok(left)
             }
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "|=")?;
@@ -9952,6 +15195,16 @@ impl Vm {
     }
 
     fn in_place_bit_xor_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__ixor__")? {
+            return Ok(value);
+        }
+        if let Some(value) = counter_in_place_value_from_operands(
+            &left,
+            &right,
+            CounterBinaryOp::SymmetricDifference,
+        )? {
+            return Ok(value);
+        }
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "^=")?;
@@ -9998,6 +15251,14 @@ impl Vm {
     }
 
     fn in_place_bit_and_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__iand__")? {
+            return Ok(value);
+        }
+        if let Some(value) =
+            counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Intersection)?
+        {
+            return Ok(value);
+        }
         match left {
             Value::Set(items) => {
                 let other = self.set_operator_values(right, "&=")?;
@@ -10038,7 +15299,13 @@ impl Vm {
     }
 
     fn less_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        if let Some(result) = self.rich_sequence_order_values(&left, &right, SequenceOrder::Less)? {
+            return Ok(result);
+        }
         if let Some(result) = self.dict_item_view_less(&left, &right)? {
+            return Ok(result);
+        }
+        if let Some(result) = self.counter_compare_values(&left, &right, CounterCompareOp::Less)? {
             return Ok(result);
         }
 
@@ -10081,7 +15348,17 @@ impl Vm {
     }
 
     fn less_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        if let Some(result) =
+            self.rich_sequence_order_values(&left, &right, SequenceOrder::LessEqual)?
+        {
+            return Ok(result);
+        }
         if let Some(result) = self.dict_item_view_less_equal(&left, &right)? {
+            return Ok(result);
+        }
+        if let Some(result) =
+            self.counter_compare_values(&left, &right, CounterCompareOp::LessEqual)?
+        {
             return Ok(result);
         }
 
@@ -10124,7 +15401,17 @@ impl Vm {
     }
 
     fn greater_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        if let Some(result) =
+            self.rich_sequence_order_values(&left, &right, SequenceOrder::Greater)?
+        {
+            return Ok(result);
+        }
         if let Some(result) = self.dict_item_view_greater(&left, &right)? {
+            return Ok(result);
+        }
+        if let Some(result) =
+            self.counter_compare_values(&left, &right, CounterCompareOp::Greater)?
+        {
             return Ok(result);
         }
 
@@ -10167,7 +15454,17 @@ impl Vm {
     }
 
     fn greater_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        if let Some(result) =
+            self.rich_sequence_order_values(&left, &right, SequenceOrder::GreaterEqual)?
+        {
+            return Ok(result);
+        }
         if let Some(result) = self.dict_item_view_greater_equal(&left, &right)? {
+            return Ok(result);
+        }
+        if let Some(result) =
+            self.counter_compare_values(&left, &right, CounterCompareOp::GreaterEqual)?
+        {
             return Ok(result);
         }
 
@@ -10221,19 +15518,7 @@ impl Vm {
     }
 
     fn is_set_like_equality_operand(&self, value: &Value) -> bool {
-        matches!(value, Value::Set(_) | Value::FrozenSet(_))
-            || set_subclass_items(value).is_some()
-            || frozen_set_subclass_items(value).is_some()
-            || matches!(
-                value,
-                Value::DictView {
-                    kind: DictViewKind::Keys | DictViewKind::Items,
-                    ..
-                } | Value::MappingView {
-                    kind: DictViewKind::Keys | DictViewKind::Items,
-                    ..
-                }
-            )
+        is_set_abc_value(value)
     }
 
     fn set_operator_values(&mut self, value: Value, op: &str) -> Result<Vec<Value>, String> {
@@ -10250,6 +15535,7 @@ impl Vm {
                     .as_ref()
                     .clone())
             }
+            value if is_set_abc_value(&value) => self.collect_iterable_values(value),
             Value::DictView { kind, entries } if dict_view_is_set_like(kind) => {
                 Ok(dict_view_values(kind, &entries))
             }
@@ -10528,11 +15814,22 @@ impl Vm {
             return Ok(true);
         }
 
+        if let Some(value) = self.counter_equal_values(left, right)? {
+            return Ok(value);
+        }
+
         match (left, right) {
             (Value::Tuple(left), Value::Tuple(right)) => {
                 return self.rich_sequence_equal(left.as_ref(), right.as_ref());
             }
             (Value::List(left), Value::List(right)) => {
+                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
+            }
+            (Value::UserList { data: left, .. }, Value::UserList { data: right, .. }) => {
+                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
+            }
+            (Value::List(left), Value::UserList { data: right, .. })
+            | (Value::UserList { data: right, .. }, Value::List(left)) => {
                 return self.rich_sequence_equal(&left.borrow(), &right.borrow());
             }
             (Value::Dict(left), Value::Dict(right)) => {
@@ -10542,7 +15839,7 @@ impl Vm {
                     left.len() == right.len() && self.dict_item_entries_subset(&left, &right)?
                 );
             }
-            (Value::UserDict { data: left }, Value::UserDict { data: right }) => {
+            (Value::UserDict { data: left, .. }, Value::UserDict { data: right, .. }) => {
                 let left = left.borrow().entries.clone();
                 let right = right.borrow().entries.clone();
                 return Ok(
@@ -10552,11 +15849,21 @@ impl Vm {
             (Value::SimpleNamespace { fields: left }, Value::SimpleNamespace { fields: right }) => {
                 let left = left.borrow().entries.clone();
                 let right = right.borrow().entries.clone();
+                if let Some(value) = code_metadata_namespace_entries_equal(&left, &right) {
+                    return Ok(value);
+                }
                 return Ok(
                     left.len() == right.len() && self.dict_item_entries_subset(&left, &right)?
                 );
             }
             _ => {}
+        }
+
+        if let (Some(left_bytes), Some(right_bytes)) = (
+            bytes_equality_value_bytes(left),
+            bytes_equality_value_bytes(right),
+        ) {
+            return Ok(left_bytes == right_bytes);
         }
 
         if let Some(value) = self.call_eq_special(left.clone(), right.clone())? {
@@ -10571,6 +15878,87 @@ impl Vm {
         Ok(left == right)
     }
 
+    fn counter_equal_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        let (Some(left), Some(right)) = (
+            counter_entries_if_value(left),
+            counter_entries_if_value(right),
+        ) else {
+            return Ok(None);
+        };
+        let left = left.borrow().entries.clone();
+        let right = right.borrow().entries.clone();
+        for key in counter_union_keys(&left, &right) {
+            let left_count = dict_lookup(&left, &key).unwrap_or(Value::Number(0));
+            let right_count = dict_lookup(&right, &key).unwrap_or(Value::Number(0));
+            if !self.rich_equal_values(&left_count, &right_count)? {
+                return Ok(Some(false));
+            }
+        }
+        Ok(Some(true))
+    }
+
+    fn counter_compare_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        op: CounterCompareOp,
+    ) -> Result<Option<bool>, String> {
+        let (Some(left), Some(right)) = (
+            counter_entries_if_value(left),
+            counter_entries_if_value(right),
+        ) else {
+            return Ok(None);
+        };
+        let left = left.borrow().entries.clone();
+        let right = right.borrow().entries.clone();
+        Ok(Some(match op {
+            CounterCompareOp::LessEqual => self.counter_entries_less_equal(&left, &right)?,
+            CounterCompareOp::Less => {
+                self.counter_entries_less_equal(&left, &right)?
+                    && !self.counter_entries_equal(&left, &right)?
+            }
+            CounterCompareOp::GreaterEqual => self.counter_entries_less_equal(&right, &left)?,
+            CounterCompareOp::Greater => {
+                self.counter_entries_less_equal(&right, &left)?
+                    && !self.counter_entries_equal(&left, &right)?
+            }
+        }))
+    }
+
+    fn counter_entries_equal(
+        &mut self,
+        left: &[(Value, Value)],
+        right: &[(Value, Value)],
+    ) -> Result<bool, String> {
+        for key in counter_union_keys(left, right) {
+            let left_count = dict_lookup(left, &key).unwrap_or(Value::Number(0));
+            let right_count = dict_lookup(right, &key).unwrap_or(Value::Number(0));
+            if !self.rich_equal_values(&left_count, &right_count)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
+    fn counter_entries_less_equal(
+        &mut self,
+        left: &[(Value, Value)],
+        right: &[(Value, Value)],
+    ) -> Result<bool, String> {
+        for key in counter_union_keys(left, right) {
+            let left_count = dict_lookup(left, &key).unwrap_or(Value::Number(0));
+            let right_count = dict_lookup(right, &key).unwrap_or(Value::Number(0));
+            if !self.less_equal_values(left_count, right_count)? {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+
     fn rich_sequence_equal(&mut self, left: &[Value], right: &[Value]) -> Result<bool, String> {
         if left.len() != right.len() {
             return Ok(false);
@@ -10581,6 +15969,54 @@ impl Vm {
             }
         }
         Ok(true)
+    }
+
+    fn rich_sequence_order_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        op: SequenceOrder,
+    ) -> Result<Option<bool>, String> {
+        let Some((left, right)) = sequence_order_operands(left, right) else {
+            return Ok(None);
+        };
+
+        Ok(Some(self.rich_sequence_order(&left, &right, op)?))
+    }
+
+    fn rich_sequence_order(
+        &mut self,
+        left: &[Value],
+        right: &[Value],
+        op: SequenceOrder,
+    ) -> Result<bool, String> {
+        for (left_item, right_item) in left.iter().zip(right.iter()) {
+            if self.rich_equal_values(left_item, right_item)? {
+                continue;
+            }
+            return self.sequence_item_order(left_item.clone(), right_item.clone(), op);
+        }
+
+        Ok(match op {
+            SequenceOrder::Less => left.len() < right.len(),
+            SequenceOrder::LessEqual => left.len() <= right.len(),
+            SequenceOrder::Greater => left.len() > right.len(),
+            SequenceOrder::GreaterEqual => left.len() >= right.len(),
+        })
+    }
+
+    fn sequence_item_order(
+        &mut self,
+        left: Value,
+        right: Value,
+        op: SequenceOrder,
+    ) -> Result<bool, String> {
+        match op {
+            SequenceOrder::Less => self.less_values(left, right),
+            SequenceOrder::LessEqual => self.less_equal_values(left, right),
+            SequenceOrder::Greater => self.greater_values(left, right),
+            SequenceOrder::GreaterEqual => self.greater_equal_values(left, right),
+        }
     }
 
     fn call_eq_special(&mut self, left: Value, right: Value) -> Result<Option<bool>, String> {
@@ -10912,17 +16348,21 @@ impl Vm {
     }
 
     fn set_abc_hash(&mut self, receiver: Value) -> Result<Value, String> {
-        let mut hash = 0_i64;
-        for value in self.collect_iterable_values(receiver)? {
-            let item_hash = hash_value(&value)?;
-            let item_hash = match item_hash {
-                Value::Number(value) => value,
-                Value::BigInt(value) => value.to_i64().unwrap_or(0),
-                _ => unreachable!("hash_value returns an integer"),
-            };
-            hash ^= item_hash;
+        match &receiver {
+            Value::FrozenSet(_) => return hash_value(&receiver),
+            value if frozen_set_subclass_items(value).is_some() => {
+                let items = frozen_set_subclass_items(value)
+                    .expect("frozenset subclass items exist after guard");
+                return hash_value(&Value::FrozenSet(items));
+            }
+            _ => {}
         }
-        Ok(Value::Number(hash))
+
+        let mut values = Vec::new();
+        for value in self.collect_iterable_values(receiver)? {
+            push_unique_set_value(&mut values, value)?;
+        }
+        hash_value(&frozen_set_value(values))
     }
 
     fn set_abc_contains(&mut self, receiver: Value, value: Value) -> Result<bool, String> {
@@ -11129,6 +16569,17 @@ impl Vm {
             }
             Value::StringIterator { chars, index } => Ok(Some(chars.len().saturating_sub(index))),
             Value::BytesIterator { bytes, index } => Ok(Some(bytes.len().saturating_sub(index))),
+            Value::ByteArrayIterator {
+                bytes,
+                index,
+                exhausted,
+            } => {
+                if exhausted {
+                    Ok(Some(0))
+                } else {
+                    Ok(Some(bytes.borrow().len().saturating_sub(index)))
+                }
+            }
             Value::DictIterator {
                 entries,
                 index,
@@ -11325,85 +16776,8 @@ impl Vm {
         }))
     }
 
-    fn call_any(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!("any() expected 1 argument, got {}", args.len()));
-        };
-
-        let mut iterator = self.get_iter(value.clone())?;
-        loop {
-            match self.advance_owned_iterator(&mut iterator)? {
-                IteratorAdvance::Yield(value) => {
-                    if self.truth_value(value)? {
-                        return Ok(Value::Bool(true));
-                    }
-                }
-                IteratorAdvance::Complete(_) | IteratorAdvance::Raised => {
-                    return Ok(Value::Bool(false));
-                }
-            }
-        }
-    }
-
-    fn call_all(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!("all() expected 1 argument, got {}", args.len()));
-        };
-
-        let mut iterator = self.get_iter(value.clone())?;
-        loop {
-            match self.advance_owned_iterator(&mut iterator)? {
-                IteratorAdvance::Yield(value) => {
-                    if !self.truth_value(value)? {
-                        return Ok(Value::Bool(false));
-                    }
-                }
-                IteratorAdvance::Complete(_) | IteratorAdvance::Raised => {
-                    return Ok(Value::Bool(true));
-                }
-            }
-        }
-    }
-
-    fn call_sum(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let (iterable, start) = match args.as_slice() {
-            [] => return Err("sum() takes at least 1 positional argument (0 given)".to_string()),
-            [iterable] => (iterable.clone(), Value::Number(0)),
-            [iterable, start] => (iterable.clone(), start.clone()),
-            values => {
-                return Err(format!(
-                    "sum() takes at most 2 positional arguments ({} given)",
-                    values.len()
-                ));
-            }
-        };
-
-        reject_sum_start(&start)?;
-
-        let mut total = start;
-        let mut iterator = self.get_iter(iterable)?;
-        loop {
-            match self.advance_owned_iterator(&mut iterator)? {
-                IteratorAdvance::Yield(value) => {
-                    if matches!(value, Value::String(_)) {
-                        return Err("sum() can't sum strings".to_string());
-                    }
-                    total = add_values(total, value)?;
-                }
-                IteratorAdvance::Complete(_) | IteratorAdvance::Raised => return Ok(total),
-            }
-        }
-    }
-
-    fn call_abs(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: abs() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        match numeric_bool_value(value.clone()) {
+    fn abs_value(&mut self, value: Value) -> Result<Value, String> {
+        match numeric_bool_value(value) {
             Value::Number(value) => Ok(normalize_big_int(BigInt::from(value).abs())),
             Value::BigInt(value) => Ok(normalize_big_int(value.abs())),
             Value::Float(value) => Ok(Value::Float(value.abs())),
@@ -11423,92 +16797,6 @@ impl Vm {
         }
     }
 
-    fn call_repr(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
-            return Err(format!(
-                "TypeError: repr() expected 1 argument, got {}",
-                args.len()
-            ));
-        };
-
-        if let Some(method) = instance_special_method(value, "__repr__") {
-            let result = match self.call_value_catching(method, Vec::new())? {
-                Ok(value) => value,
-                Err(exception) => return Err(format_exception_error(&exception)),
-            };
-            return match result {
-                Value::String(value) => Ok(Value::String(value)),
-                value => Err(format!(
-                    "TypeError: __repr__ returned non-string (type {})",
-                    type_name(&value)
-                )),
-            };
-        }
-
-        Ok(Value::String(repr_value_checked(value)?))
-    }
-
-    fn call_minmax(
-        &mut self,
-        name: &str,
-        args: Vec<Value>,
-        keywords: Vec<(String, Value)>,
-        choose_max: bool,
-    ) -> Result<Value, String> {
-        let options = minmax_options(name, keywords)?;
-        if args.is_empty() {
-            return Err(format!("{name} expected at least 1 argument, got 0"));
-        }
-
-        let values = if args.len() == 1 {
-            self.collect_iterable_values(args[0].clone())?
-        } else {
-            if options.default.is_some() {
-                return Err(format!(
-                    "Cannot specify a default for {name}() with multiple positional arguments"
-                ));
-            }
-            args
-        };
-
-        self.minmax_values(name, values, options, choose_max)
-    }
-
-    fn minmax_values(
-        &mut self,
-        name: &str,
-        values: Vec<Value>,
-        options: MinMaxOptions,
-        choose_max: bool,
-    ) -> Result<Value, String> {
-        let mut values = values.into_iter();
-        let Some(mut best_value) = values.next() else {
-            return match options.default {
-                Some(default) => Ok(default),
-                None => Err(format!("{name}() arg is an empty sequence")),
-            };
-        };
-        let mut best_key = self.minmax_key_value(options.key.as_ref(), &best_value)?;
-
-        for value in values {
-            let candidate_key = self.minmax_key_value(options.key.as_ref(), &value)?;
-            let ordering = compare_values(candidate_key.clone(), best_key.clone())?;
-            if (choose_max && ordering.is_gt()) || (!choose_max && ordering.is_lt()) {
-                best_value = value;
-                best_key = candidate_key;
-            }
-        }
-
-        Ok(best_value)
-    }
-
-    fn minmax_key_value(&mut self, key: Option<&Value>, value: &Value) -> Result<Value, String> {
-        match key {
-            None | Some(Value::None) => Ok(value.clone()),
-            Some(key) => self.call_value(key.clone(), vec![value.clone()]),
-        }
-    }
-
     fn call_sorted(
         &mut self,
         args: Vec<Value>,
@@ -11524,11 +16812,11 @@ impl Vm {
 
         let mut items = Vec::new();
         for value in self.collect_iterable_values(iterable.clone())? {
-            let key = self.minmax_key_value(options.key.as_ref(), &value)?;
+            let key = self.sort_key_value(options.key.as_ref(), &value)?;
             items.push(SortItem { value, key });
         }
 
-        sort_items_by_key(&mut items, options.reverse.unwrap_or(false))?;
+        self.sort_items_by_key(&mut items, options.reverse.unwrap_or(false))?;
         Ok(list_value(
             items.into_iter().map(|item| item.value).collect(),
         ))
@@ -11551,7 +16839,104 @@ impl Vm {
             ));
         }
 
+        if matches!(method_display_name(name), "__eq__" | "__ne__") {
+            return self.call_list_equality_method(name, args);
+        }
+
         call_list_method(name, args)
+    }
+
+    fn call_user_list_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let method = method_display_name(name);
+        let [Value::UserList { data, attrs }, rest @ ..] = args.as_slice() else {
+            return Err(format!("{method}() expected a UserList receiver"));
+        };
+
+        if method == "copy" {
+            reject_method_keywords(name, &keywords)?;
+            if !rest.is_empty() {
+                return Err(format!(
+                    "copy() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            }
+            return Ok(Value::UserList {
+                data: Rc::new(RefCell::new(data.borrow().clone())),
+                attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+            });
+        }
+
+        if method == "__iter__" {
+            reject_method_keywords(name, &keywords)?;
+            if !rest.is_empty() {
+                return Err(format!(
+                    "__iter__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            }
+            return get_iter(Value::List(data.clone()));
+        }
+
+        if matches!(method, "__eq__" | "__ne__") {
+            reject_method_keywords(name, &keywords)?;
+            let [other] = rest else {
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let left = Value::List(data.clone());
+            let right = user_list_comparison_operand(other);
+            let equal = self.rich_equal_values(&left, &right)?;
+            return Ok(Value::Bool(if method == "__ne__" { !equal } else { equal }));
+        }
+
+        if matches!(method, "__lt__" | "__le__" | "__gt__" | "__ge__") {
+            reject_method_keywords(name, &keywords)?;
+            let [other] = rest else {
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let left = Value::List(data.clone());
+            let right = user_list_comparison_operand(other);
+            let result = match method {
+                "__lt__" => self.less_values(left, right)?,
+                "__le__" => self.less_equal_values(left, right)?,
+                "__gt__" => self.greater_values(left, right)?,
+                "__ge__" => self.greater_equal_values(left, right)?,
+                _ => unreachable!("method is filtered above"),
+            };
+            return Ok(Value::Bool(result));
+        }
+
+        let mut list_args = Vec::with_capacity(args.len());
+        list_args.push(Value::List(data.clone()));
+        list_args.extend(rest.iter().cloned());
+        let list_method = format!("list.{method}");
+        self.call_list_method(&list_method, list_args, keywords)
+    }
+
+    fn call_list_equality_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
+        let method = method_display_name(name);
+        let [Value::List(left), other] = args.as_slice() else {
+            return Err(format!(
+                "{method}() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let Some(right) = list_equality_operand_values(other) else {
+            return Ok(Value::NotImplemented);
+        };
+        let left = left.borrow().clone();
+        let equal = self.rich_sequence_equal(&left, &right)?;
+        Ok(Value::Bool(if method == "__ne__" { !equal } else { equal }))
     }
 
     fn call_list_sort_method(
@@ -11570,13 +16955,38 @@ impl Vm {
         let values = items.borrow().clone();
         let mut sorted = Vec::new();
         for value in values {
-            let key = self.minmax_key_value(options.key.as_ref(), &value)?;
+            let key = self.sort_key_value(options.key.as_ref(), &value)?;
             sorted.push(SortItem { value, key });
         }
 
-        sort_items_by_key(&mut sorted, options.reverse.unwrap_or(false))?;
+        self.sort_items_by_key(&mut sorted, options.reverse.unwrap_or(false))?;
         *items.borrow_mut() = sorted.into_iter().map(|item| item.value).collect();
         Ok(Value::None)
+    }
+
+    fn sort_items_by_key(&mut self, items: &mut [SortItem], reverse: bool) -> Result<(), String> {
+        for index in 1..items.len() {
+            let item = items[index].clone();
+            let mut insertion_index = index;
+
+            while insertion_index > 0 {
+                let should_move_left = if reverse {
+                    self.greater_values(item.key.clone(), items[insertion_index - 1].key.clone())?
+                } else {
+                    self.less_values(item.key.clone(), items[insertion_index - 1].key.clone())?
+                };
+                if !should_move_left {
+                    break;
+                }
+
+                items[insertion_index] = items[insertion_index - 1].clone();
+                insertion_index -= 1;
+            }
+
+            items[insertion_index] = item;
+        }
+
+        Ok(())
     }
 
     fn collect_iterable_values(&mut self, value: Value) -> Result<Vec<Value>, String> {
@@ -11677,6 +17087,46 @@ impl Vm {
         }
 
         Ok(Value::String(parts.join(separator)))
+    }
+
+    fn call_bytes_join_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords(name, &keywords)?;
+
+        let method = method_display_name(name);
+        let [receiver, iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: {method}() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let (separator, kind) = bytes_method_receiver(receiver, method)?;
+        let values = self.collect_iterable_values(iterable.clone())?;
+        let mut output = Vec::new();
+
+        for (index, value) in values.into_iter().enumerate() {
+            let part = match value {
+                Value::Bytes(value) => value,
+                Value::ByteArray(value) => bytearray_bytes(&value),
+                Value::MemoryView(value) => memoryview_bytes(&value)?,
+                value => {
+                    return Err(format!(
+                        "TypeError: sequence item {index}: expected a bytes-like object, {} found",
+                        type_name(&value)
+                    ));
+                }
+            };
+            if index > 0 {
+                output.extend_from_slice(&separator);
+            }
+            output.extend_from_slice(&part);
+        }
+
+        Ok(bytes_result_value(kind, output))
     }
 
     fn call_ast_node_visitor_visit(
@@ -11893,6 +17343,13 @@ impl Vm {
                     IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
                     IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
                     IteratorAdvance::Yield(value) => Ok(IteratorAdvance::Yield(value)),
+                };
+            }
+            Value::AsyncGeneratorAthrowMixin { .. } | Value::AsyncGeneratorAcloseMixin { .. } => {
+                return match self.await_value(iterator.clone(), AwaitResume::Send(Value::None))? {
+                    AwaitAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
+                    AwaitAdvance::Raised => Ok(IteratorAdvance::Raised),
+                    AwaitAdvance::Yield { value, .. } => Ok(IteratorAdvance::Yield(value)),
                 };
             }
             Value::AwaitIterator(iterator) => {
@@ -12289,6 +17746,9 @@ impl Vm {
             Value::AwaitIterator(iterator) => self.advance_await_iterator(*iterator, resume),
             Value::Coroutine(state) => self.await_coroutine_value(state, resume, true),
             Value::CoroutineAwait(state) => self.await_coroutine_value(state, resume, false),
+            Value::Generator(state) if state.borrow().is_iterable_coroutine => {
+                self.await_iterable_coroutine_generator(state, resume)
+            }
             Value::AsyncGeneratorNext {
                 state,
                 send,
@@ -12316,6 +17776,12 @@ impl Vm {
                     IteratorAdvance::Complete(_) => Ok(AwaitAdvance::Complete(Value::None)),
                     IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
                 }
+            }
+            Value::AsyncGeneratorAthrowMixin { typ, val, tb, done } => {
+                self.await_async_generator_athrow_mixin(*typ, *val, *tb, done, resume)
+            }
+            Value::AsyncGeneratorAcloseMixin { receiver, done } => {
+                self.await_async_generator_aclose_mixin(*receiver, done, resume)
             }
             Value::AnextDefault { awaitable, default } => self
                 .await_value_with_stop_async_default(*awaitable, *default)
@@ -12361,6 +17827,33 @@ impl Vm {
                 AwaitAdvance::Yield { pending, .. } => {
                     value = pending;
                     resume = AwaitResume::Send(Value::None);
+                }
+            }
+        }
+    }
+
+    fn await_value_to_completion_catching(
+        &mut self,
+        value: Value,
+    ) -> Result<Result<Value, MiniException>, String> {
+        let saved_handlers = std::mem::take(&mut self.exception_handlers);
+        let previous_exception = self.current_exception.clone();
+        let previous_pending_exception = self.pending_exception_after_clear.clone();
+        let result = self.await_value_to_completion(value);
+        let raised_exception = self.current_exception.clone();
+        self.exception_handlers = saved_handlers;
+        self.current_exception = previous_exception;
+        self.pending_exception_after_clear = previous_pending_exception;
+
+        match result {
+            Ok(value) => Ok(Ok(value)),
+            Err(message) => {
+                if let Some(exception) =
+                    raised_exception.or_else(|| runtime_exception_from_message(&message))
+                {
+                    Ok(Err(exception))
+                } else {
+                    Err(message)
                 }
             }
         }
@@ -12431,6 +17924,121 @@ impl Vm {
         self.advance_await_iterator(iterator, resume)
     }
 
+    fn await_async_generator_athrow_mixin(
+        &mut self,
+        typ: Value,
+        val: Value,
+        tb: Value,
+        done: Rc<Cell<bool>>,
+        resume: AwaitResume,
+    ) -> Result<AwaitAdvance, String> {
+        if done.get() {
+            self.raise_coroutine_reuse_error()?;
+            return Ok(AwaitAdvance::Raised);
+        }
+
+        let exception = match resume {
+            AwaitResume::Send(_) => {
+                let mut exception_value = if matches!(val, Value::None) {
+                    if matches!(tb, Value::None) {
+                        typ
+                    } else {
+                        match self.call_value_catching(typ, Vec::new())? {
+                            Ok(value) => value,
+                            Err(exception) => {
+                                done.set(true);
+                                self.raise_exception(exception, true)?;
+                                return Ok(AwaitAdvance::Raised);
+                            }
+                        }
+                    }
+                } else {
+                    val
+                };
+
+                if !matches!(tb, Value::None) {
+                    let with_traceback = self.load_attribute_without_custom_getattribute(
+                        exception_value,
+                        "with_traceback",
+                    )?;
+                    exception_value = match self.call_value_catching(with_traceback, vec![tb])? {
+                        Ok(value) => value,
+                        Err(exception) => {
+                            done.set(true);
+                            self.raise_exception(exception, true)?;
+                            return Ok(AwaitAdvance::Raised);
+                        }
+                    };
+                }
+
+                exception_from_value(exception_value)?
+            }
+            AwaitResume::Throw(exception) => exception,
+        };
+        done.set(true);
+        self.raise_exception(exception, true)?;
+        Ok(AwaitAdvance::Raised)
+    }
+
+    fn await_async_generator_aclose_mixin(
+        &mut self,
+        receiver: Value,
+        done: Rc<Cell<bool>>,
+        resume: AwaitResume,
+    ) -> Result<AwaitAdvance, String> {
+        if done.get() {
+            self.raise_coroutine_reuse_error()?;
+            return Ok(AwaitAdvance::Raised);
+        }
+
+        if let AwaitResume::Throw(exception) = resume {
+            done.set(true);
+            self.raise_exception(exception, true)?;
+            return Ok(AwaitAdvance::Raised);
+        }
+
+        let athrow = self.load_attribute_without_custom_getattribute(receiver, "athrow")?;
+        let awaitable = match self
+            .call_value_catching(athrow, vec![Value::Builtin("GeneratorExit".to_string())])?
+        {
+            Ok(awaitable) => awaitable,
+            Err(exception) => {
+                return self.complete_async_generator_aclose_mixin(done, Err(exception));
+            }
+        };
+        let result = self.await_value_to_completion_catching(awaitable)?;
+        self.complete_async_generator_aclose_mixin(done, result)
+    }
+
+    fn complete_async_generator_aclose_mixin(
+        &mut self,
+        done: Rc<Cell<bool>>,
+        result: Result<Value, MiniException>,
+    ) -> Result<AwaitAdvance, String> {
+        done.set(true);
+        match result {
+            Ok(_) => {
+                self.raise_exception(
+                    runtime_error_exception("asynchronous generator ignored GeneratorExit"),
+                    true,
+                )?;
+                Ok(AwaitAdvance::Raised)
+            }
+            Err(exception)
+                if matches!(
+                    exception.type_name.as_str(),
+                    "GeneratorExit" | "StopAsyncIteration"
+                ) =>
+            {
+                Ok(AwaitAdvance::Complete(Value::None))
+            }
+            Err(exception) => {
+                self.raise_exception(exception, true)?;
+                Ok(AwaitAdvance::Raised)
+            }
+        }
+    }
+
     fn advance_await_iterator(
         &mut self,
         mut iterator: Value,
@@ -12486,7 +18094,7 @@ impl Vm {
         value: Value,
         is_exit: bool,
     ) -> Result<Option<Value>, String> {
-        if !is_awaitable_value(&value) {
+        if !is_runtime_awaitable_value(&value) {
             let method = context_manager_method_name(is_exit, true);
             self.raise_exception(
                 type_error_exception(&format!(
@@ -12540,6 +18148,29 @@ impl Vm {
                 }
             }
             IteratorAdvance::Raised => Ok(Value::None),
+        }
+    }
+
+    fn await_iterable_coroutine_generator(
+        &mut self,
+        state: Rc<RefCell<GeneratorState>>,
+        resume: AwaitResume,
+    ) -> Result<AwaitAdvance, String> {
+        let advance = match resume {
+            AwaitResume::Send(value) => {
+                self.advance_generator(state.clone(), GeneratorResume::Send(value))?
+            }
+            AwaitResume::Throw(exception) => {
+                self.advance_generator(state.clone(), GeneratorResume::Throw(exception))?
+            }
+        };
+        match advance {
+            IteratorAdvance::Complete(value) => Ok(AwaitAdvance::Complete(value)),
+            IteratorAdvance::Raised => Ok(AwaitAdvance::Raised),
+            IteratorAdvance::Yield(value) => Ok(AwaitAdvance::Yield {
+                value,
+                pending: Value::Generator(state),
+            }),
         }
     }
 
@@ -12720,6 +18351,93 @@ impl Vm {
         }
     }
 
+    fn call_async_generator_abc_mixin_coroutine_send(
+        &mut self,
+        args: Vec<Value>,
+    ) -> Result<Value, String> {
+        let [receiver, value] = args.as_slice() else {
+            return Err(format!(
+                "send() expected 1 argument, got {}",
+                args.len().saturating_sub(1)
+            ));
+        };
+        let Some(done) = async_generator_abc_mixin_done(receiver) else {
+            return Err(format!("{receiver} is not a coroutine"));
+        };
+        if done.get() {
+            return self.raise_coroutine_reuse_error();
+        }
+        if !matches!(value, Value::None) {
+            self.raise_exception(
+                MiniException {
+                    type_name: "TypeError".to_string(),
+                    type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
+                    type_object: None,
+                    message: Some(
+                        "can't send non-None value to a just-started coroutine".to_string(),
+                    ),
+                    args: exception_args_from_message(
+                        "can't send non-None value to a just-started coroutine",
+                    ),
+                    attrs: Vec::new(),
+                    cause: None,
+                    context: None,
+                    suppress_context: false,
+                    exceptions: None,
+                },
+                true,
+            )?;
+            return Ok(Value::None);
+        }
+
+        match self.await_value(receiver.clone(), AwaitResume::Send(Value::None))? {
+            AwaitAdvance::Complete(value) => self.raise_stop_iteration(value),
+            AwaitAdvance::Raised => Ok(Value::None),
+            AwaitAdvance::Yield { value, .. } => Ok(value),
+        }
+    }
+
+    fn call_async_generator_abc_mixin_coroutine_throw(
+        &mut self,
+        args: Vec<Value>,
+    ) -> Result<Value, String> {
+        let [receiver, value] = args.as_slice() else {
+            return Err(format!(
+                "throw() expected 1 argument, got {}",
+                args.len().saturating_sub(1)
+            ));
+        };
+        let Some(done) = async_generator_abc_mixin_done(receiver) else {
+            return Err(format!("{receiver} is not a coroutine"));
+        };
+        if done.get() {
+            return self.raise_coroutine_reuse_error();
+        }
+
+        done.set(true);
+        let exception = exception_from_value(value.clone())?;
+        self.raise_exception(exception, true)?;
+        Ok(Value::None)
+    }
+
+    fn call_async_generator_abc_mixin_coroutine_close(
+        &mut self,
+        args: Vec<Value>,
+    ) -> Result<Value, String> {
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "close() expected 0 arguments, got {}",
+                args.len().saturating_sub(1)
+            ));
+        };
+        let Some(done) = async_generator_abc_mixin_done(receiver) else {
+            return Err(format!("{receiver} is not a coroutine"));
+        };
+
+        done.set(true);
+        Ok(Value::None)
+    }
+
     fn call_generator_send(&mut self, args: Vec<Value>) -> Result<Value, String> {
         let [receiver, value] = args.as_slice() else {
             return Err(format!(
@@ -12802,6 +18520,312 @@ impl Vm {
                 }
             }
             value => Err(format!("{value} is not a generator")),
+        }
+    }
+
+    fn call_iterable_iterator_abc_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(format!(
+                "{}() does not accept keyword arguments",
+                method_display_name(name)
+            ));
+        }
+
+        match name {
+            "Iterable.__iter__" => {
+                let [_receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(empty_generator_value(
+                    "Iterable.__iter__",
+                    self.globals.clone(),
+                ))
+            }
+            "Iterator.__iter__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(receiver.clone())
+            }
+            "Iterator.__next__" => {
+                let [_receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__next__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.raise_stop_iteration(Value::None)
+            }
+            _ => Err(format!("{name} is not a collections.abc iterator method")),
+        }
+    }
+
+    fn call_coroutine_abc_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(format!(
+                "{}() does not accept keyword arguments",
+                method_display_name(name)
+            ));
+        }
+
+        match name {
+            "Coroutine.send" => {
+                let [_receiver, _value] = args.as_slice() else {
+                    return Err(format!(
+                        "send() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.raise_stop_iteration(Value::None)
+            }
+            "Coroutine.throw" => {
+                if !(2..=4).contains(&args.len()) {
+                    return Err(format!(
+                        "throw() expected 1 to 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let exception_value = args
+                    .get(2)
+                    .filter(|value| !matches!(value, Value::None))
+                    .cloned()
+                    .unwrap_or_else(|| args[1].clone());
+                let exception = exception_from_value(exception_value)?;
+                self.raise_exception(exception, true)?;
+                Ok(Value::None)
+            }
+            "Coroutine.close" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "close() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let throw =
+                    self.load_attribute_without_custom_getattribute(receiver.clone(), "throw")?;
+                match self
+                    .call_value_catching(throw, vec![Value::Builtin("GeneratorExit".to_string())])?
+                {
+                    Ok(_) => {
+                        self.raise_exception(
+                            runtime_error_exception("coroutine ignored GeneratorExit"),
+                            true,
+                        )?;
+                        Ok(Value::None)
+                    }
+                    Err(exception)
+                        if matches!(
+                            exception.type_name.as_str(),
+                            "GeneratorExit" | "StopIteration"
+                        ) =>
+                    {
+                        Ok(Value::None)
+                    }
+                    Err(exception) => {
+                        self.raise_exception(exception, true)?;
+                        Ok(Value::None)
+                    }
+                }
+            }
+            _ => Err(format!("{name} is not a collections.abc coroutine method")),
+        }
+    }
+
+    fn call_async_iterator_abc_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(format!(
+                "{}() does not accept keyword arguments",
+                method_display_name(name)
+            ));
+        }
+
+        match name {
+            "AsyncIterator.__aiter__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__aiter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(receiver.clone())
+            }
+            _ => Err(format!(
+                "{name} is not a collections.abc async iterator method"
+            )),
+        }
+    }
+
+    fn call_async_generator_abc_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(format!(
+                "{}() does not accept keyword arguments",
+                method_display_name(name)
+            ));
+        }
+
+        match name {
+            "AsyncGenerator.__aiter__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__aiter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(receiver.clone())
+            }
+            "AsyncGenerator.__anext__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__anext__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let asend =
+                    self.load_attribute_without_custom_getattribute(receiver.clone(), "asend")?;
+                self.call_value(asend, vec![Value::None])
+            }
+            "AsyncGenerator.athrow" => {
+                if !(2..=4).contains(&args.len()) {
+                    return Err(format!(
+                        "athrow() expected 1 to 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                Ok(Value::AsyncGeneratorAthrowMixin {
+                    typ: Box::new(args[1].clone()),
+                    val: Box::new(args.get(2).cloned().unwrap_or(Value::None)),
+                    tb: Box::new(args.get(3).cloned().unwrap_or(Value::None)),
+                    done: Rc::new(Cell::new(false)),
+                })
+            }
+            "AsyncGenerator.aclose" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "aclose() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(Value::AsyncGeneratorAcloseMixin {
+                    receiver: Box::new(receiver.clone()),
+                    done: Rc::new(Cell::new(false)),
+                })
+            }
+            _ => Err(format!(
+                "{name} is not a collections.abc async generator method"
+            )),
+        }
+    }
+
+    fn call_generator_abc_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(format!(
+                "{}() does not accept keyword arguments",
+                method_display_name(name)
+            ));
+        }
+
+        match name {
+            "Generator.__iter__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(receiver.clone())
+            }
+            "Generator.__next__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__next__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let send =
+                    self.load_attribute_without_custom_getattribute(receiver.clone(), "send")?;
+                self.call_value(send, vec![Value::None])
+            }
+            "Generator.throw" => {
+                if !(2..=4).contains(&args.len()) {
+                    return Err(format!(
+                        "throw() expected 1 to 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let exception_value = args
+                    .get(2)
+                    .filter(|value| !matches!(value, Value::None))
+                    .cloned()
+                    .unwrap_or_else(|| args[1].clone());
+                let exception = exception_from_value(exception_value)?;
+                self.raise_exception(exception, true)?;
+                Ok(Value::None)
+            }
+            "Generator.close" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "close() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let throw =
+                    self.load_attribute_without_custom_getattribute(receiver.clone(), "throw")?;
+                match self
+                    .call_value_catching(throw, vec![Value::Builtin("GeneratorExit".to_string())])?
+                {
+                    Ok(_) => {
+                        self.raise_exception(
+                            runtime_error_exception("generator ignored GeneratorExit"),
+                            true,
+                        )?;
+                        Ok(Value::None)
+                    }
+                    Err(exception)
+                        if matches!(
+                            exception.type_name.as_str(),
+                            "GeneratorExit" | "StopIteration"
+                        ) =>
+                    {
+                        Ok(Value::None)
+                    }
+                    Err(exception) => {
+                        self.raise_exception(exception, true)?;
+                        Ok(Value::None)
+                    }
+                }
+            }
+            _ => Err(format!("{name} is not implemented")),
         }
     }
 
@@ -13027,9 +19051,11 @@ impl Vm {
                 locals: state.locals.clone(),
                 closure: state.closure.clone(),
                 is_module: false,
+                is_class_body: false,
                 captures_locals: true,
                 current_class: state.current_class.clone(),
                 first_arg_name: state.first_arg_name.clone(),
+                qualname_prefix: state.qualname_prefix.clone(),
                 output: Vec::new(),
                 exception_handlers: state
                     .exception_handlers
@@ -13052,6 +19078,16 @@ impl Vm {
                     CoroutineResume::Throw(_) | CoroutineResume::Close => None,
                 },
                 resume_exception: None,
+                abc_registry: self.abc_registry.clone(),
+                module_cache: self.module_cache.clone(),
+                source_modules: self.source_modules.clone(),
+                stdlib_import_policy: self.stdlib_import_policy.clone(),
+                frame_stack: self.frame_stack.clone(),
+                frame_line_spans: function_code_line_spans(
+                    &state.instructions,
+                    state.first_line,
+                    &state.line_sequence,
+                ),
             }
         };
 
@@ -13130,6 +19166,7 @@ impl Vm {
         state.closure = coroutine_vm.closure;
         state.current_class = coroutine_vm.current_class;
         state.first_arg_name = coroutine_vm.first_arg_name;
+        state.qualname_prefix = coroutine_vm.qualname_prefix;
         state.exception_handlers = coroutine_vm
             .exception_handlers
             .into_iter()
@@ -13194,9 +19231,11 @@ impl Vm {
                     locals: state.locals.clone(),
                     closure: state.closure.clone(),
                     is_module: false,
+                    is_class_body: false,
                     captures_locals: true,
                     current_class: state.current_class.clone(),
                     first_arg_name: state.first_arg_name.clone(),
+                    qualname_prefix: state.qualname_prefix.clone(),
                     output: Vec::new(),
                     exception_handlers: state
                         .exception_handlers
@@ -13216,6 +19255,16 @@ impl Vm {
                         .transpose()?,
                     resume_value: None,
                     resume_exception: None,
+                    abc_registry: self.abc_registry.clone(),
+                    module_cache: self.module_cache.clone(),
+                    source_modules: self.source_modules.clone(),
+                    stdlib_import_policy: self.stdlib_import_policy.clone(),
+                    frame_stack: self.frame_stack.clone(),
+                    frame_line_spans: function_code_line_spans(
+                        &state.instructions,
+                        state.first_line,
+                        &state.line_sequence,
+                    ),
                 },
                 state.resume_dst,
                 state.ip == 0,
@@ -13301,6 +19350,7 @@ impl Vm {
         state.closure = generator_vm.closure;
         state.current_class = generator_vm.current_class;
         state.first_arg_name = generator_vm.first_arg_name;
+        state.qualname_prefix = generator_vm.qualname_prefix;
         state.exception_handlers = generator_vm
             .exception_handlers
             .into_iter()
@@ -13380,6 +19430,7 @@ impl Vm {
         if attach_context && exception.context.is_none() {
             exception.context = self.current_exception.clone().map(Box::new);
         }
+        ensure_exception_traceback(&mut exception);
 
         'handler_frames: while let Some(frame) = self.exception_handlers.pop() {
             let handlers = frame.handlers;
@@ -13397,6 +19448,7 @@ impl Vm {
                     );
                     type_error.context = Some(Box::new(exception));
                     exception = type_error;
+                    ensure_exception_traceback(&mut exception);
                     continue 'handler_frames;
                 }
 
@@ -13446,7 +19498,7 @@ impl Vm {
         value: Value,
     ) -> Result<(), String> {
         match binding.unwrap_or(ExceptHandlerNameBinding::Local) {
-            ExceptHandlerNameBinding::Local => self.store_name(name.to_string(), value),
+            ExceptHandlerNameBinding::Local => self.store_name(name.to_string(), value)?,
             ExceptHandlerNameBinding::Global => self.store_global(name.to_string(), value),
             ExceptHandlerNameBinding::Nonlocal => self.store_nonlocal(name, value)?,
         }
@@ -13504,6 +19556,56 @@ fn scope_from_ast_node_attrs(node: Value) -> Result<Scope, String> {
     Ok(scope)
 }
 
+fn shallow_copy_value(value: &Value) -> Result<Value, String> {
+    match value {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => Ok(Value::AstNode {
+            kind: kind.clone(),
+            fields: fields.clone(),
+            attrs: Rc::new(RefCell::new(DictStorage::new(
+                attrs.borrow().entries.clone(),
+            ))),
+            identity: Rc::new(()),
+        }),
+        Value::ByteArray(value) => Ok(byte_array_value(bytearray_bytes(value))),
+        Value::List(items) => Ok(list_value(items.borrow().clone())),
+        Value::UserList { data, attrs } => Ok(Value::UserList {
+            data: Rc::new(RefCell::new(data.borrow().clone())),
+            attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
+        Value::Set(items) => Ok(set_value(items.borrow().clone())),
+        Value::Dict(entries) => Ok(dict_value(entries.borrow().entries.clone())),
+        Value::Counter { entries } => Ok(Value::Counter {
+            entries: dict_ref_from_entries(entries.borrow().entries.clone())?,
+        }),
+        Value::UserDict { data, attrs } => Ok(Value::UserDict {
+            data: dict_ref_from_entries(data.borrow().entries.clone())?,
+            attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
+        Value::ChainMap { maps } => chain_map_copy(maps),
+        Value::SimpleNamespace { fields } => Ok(Value::SimpleNamespace {
+            fields: dict_ref_from_entries(fields.borrow().entries.clone())?,
+        }),
+        Value::Instance {
+            class_name,
+            fields,
+            class_attrs,
+            class_bases,
+        } => Ok(Value::Instance {
+            class_name: class_name.clone(),
+            fields: Rc::new(RefCell::new(fields.borrow().clone())),
+            class_attrs: class_attrs.clone(),
+            class_bases: class_bases.clone(),
+        }),
+        Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
+        _ => Ok(value.clone()),
+    }
+}
+
 fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Value, String> {
     match value {
         Value::AstNode {
@@ -13549,6 +19651,15 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 .map(|item| deep_copy_value(item, memo))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
+        Value::NamedTuple { typ, values } => Ok(Value::NamedTuple {
+            typ: typ.clone(),
+            values: Rc::new(
+                values
+                    .iter()
+                    .map(|item| deep_copy_value(item, memo))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+        }),
         Value::Set(items) => Ok(set_value(
             items
                 .borrow()
@@ -13562,6 +19673,15 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 .map(|item| deep_copy_value(item, memo))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
+        Value::ByteArray(bytes) => {
+            let key = Rc::as_ptr(bytes) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied = byte_array_value(bytearray_bytes(bytes));
+            memo.insert(key, copied.clone());
+            Ok(copied)
+        }
         Value::Dict(entries) => {
             let entries = entries.borrow().entries.clone();
             let copied_entries = entries
@@ -13572,6 +19692,24 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 .collect::<Result<Vec<_>, String>>()?;
             build_dict(copied_entries)
         }
+        Value::Counter { entries } => {
+            let entries = entries.borrow().entries.clone();
+            let copied_entries = entries
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            Ok(Value::Counter {
+                entries: dict_ref_from_entries(copied_entries)?,
+            })
+        }
+        Value::ChainMap { maps } => Ok(Value::ChainMap {
+            maps: maps
+                .iter()
+                .map(|map| deep_copy_value(map, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+        }),
         Value::SimpleNamespace { fields } => {
             let entries = fields.borrow().entries.clone();
             let copied_entries = entries
@@ -13583,6 +19721,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             Ok(Value::SimpleNamespace {
                 fields: dict_ref_from_entries(copied_entries)?,
             })
+        }
+        Value::Iterator(state) => {
+            let iterator = state.borrow().clone();
+            Ok(shared_iterator(deep_copy_iterator_state(&iterator, memo)?))
         }
         Value::Instance {
             class_name,
@@ -13603,318 +19745,173 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 class_bases: class_bases.clone(),
             })
         }
+        Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
         _ => Ok(value.clone()),
     }
 }
 
-fn import_module(name: &str) -> Result<Value, String> {
-    match name {
-        "test" => Ok(test_package_module()),
-        "test.typinganndata" => Ok(test_typinganndata_package_module()),
-        "test.typinganndata.ann_module" => Ok(test_typinganndata_ann_module()),
-        "test.typinganndata.ann_module2" => Ok(test_typinganndata_ann_module2()),
-        "test.typinganndata.ann_module3" => Ok(test_typinganndata_ann_module3()),
-        "sys" => Ok(module_value(
-            "sys",
-            vec![
-                ("path", list_value(vec![Value::String(String::new())])),
-                ("argv", list_value(Vec::new())),
-                ("maxsize", Value::Number(i64::MAX)),
-                ("version", Value::String("minipython".to_string())),
-                (
-                    "get_int_max_str_digits",
-                    Value::Builtin("sys.get_int_max_str_digits".to_string()),
-                ),
-                (
-                    "set_int_max_str_digits",
-                    Value::Builtin("sys.set_int_max_str_digits".to_string()),
-                ),
-                (
-                    "modules",
-                    dict_value(vec![(
-                        Value::String("time".to_string()),
-                        import_module("time")?,
-                    )]),
-                ),
-            ],
-        )),
-        "time" => Ok(module_value(
-            "time",
-            vec![
-                ("time", Value::Builtin("time".to_string())),
-                ("sleep", Value::Builtin("sleep".to_string())),
-            ],
-        )),
-        "math" => Ok(module_value(
-            "math",
-            vec![
-                ("pi", Value::Float(std::f64::consts::PI)),
-                ("tau", Value::Float(std::f64::consts::TAU)),
-                ("sqrt", Value::Builtin("sqrt".to_string())),
-            ],
-        )),
-        "os" => Ok(module_value(
-            "os",
-            vec![
-                ("name", Value::String("posix".to_string())),
-                ("path", import_module("os.path")?),
-            ],
-        )),
-        "os.path" => Ok(module_value(
-            "os.path",
-            vec![("sep", Value::String("/".to_string()))],
-        )),
-        "copy" => Ok(module_value(
-            "copy",
-            vec![
-                ("deepcopy", Value::Builtin("copy.deepcopy".to_string())),
-                ("replace", Value::Builtin("copy.replace".to_string())),
-            ],
-        )),
-        "pickle" => Ok(module_value(
-            "pickle",
-            vec![
-                ("HIGHEST_PROTOCOL", Value::Number(PICKLE_HIGHEST_PROTOCOL)),
-                ("dumps", Value::Builtin("pickle.dumps".to_string())),
-                ("loads", Value::Builtin("pickle.loads".to_string())),
-            ],
-        )),
-        "inspect" => Ok(module_value(
-            "inspect",
-            vec![
-                ("CO_GENERATOR", Value::Number(0x0020)),
-                ("CO_COROUTINE", Value::Number(0x0080)),
-                ("CO_ASYNC_GENERATOR", Value::Number(0x0200)),
-            ],
-        )),
-        "dis" => Ok(module_value(
-            "dis",
-            vec![
-                (
-                    "hasconst",
-                    list_value(vec![Value::Number(DIS_LOAD_CONST_OPCODE)]),
-                ),
-                (
-                    "get_instructions",
-                    Value::Builtin("dis.get_instructions".to_string()),
-                ),
-            ],
-        )),
-        "warnings" => Ok(module_value(
-            "warnings",
-            vec![
-                (
-                    "catch_warnings",
-                    Value::Builtin("warnings.catch_warnings".to_string()),
-                ),
-                (
-                    "simplefilter",
-                    Value::Builtin("warnings.simplefilter".to_string()),
-                ),
-                (
-                    "filterwarnings",
-                    Value::Builtin("warnings.filterwarnings".to_string()),
-                ),
-                ("warn", Value::Builtin("warnings.warn".to_string())),
-            ],
-        )),
-        "ast" => Ok(module_value("ast", ast_module_entries())),
-        "annotationlib" => Ok(annotationlib_module()),
-        "typing" => Ok(module_value(
-            "typing",
-            vec![("Tuple", builtin_type_value("tuple"))],
-        )),
-        "types" => Ok(module_value(
-            "types",
-            vec![
-                (
-                    "MappingProxyType",
-                    Value::Builtin("mappingproxy".to_string()),
-                ),
-                (
-                    "SimpleNamespace",
-                    Value::Builtin("SimpleNamespace".to_string()),
-                ),
-            ],
-        )),
-        "collections" => Ok(module_value(
-            "collections",
-            vec![
-                ("ChainMap", Value::Builtin("ChainMap".to_string())),
-                ("UserDict", Value::Builtin("UserDict".to_string())),
-                ("abc", import_module("collections.abc")?),
-            ],
-        )),
-        "collections.abc" => Ok(module_value(
-            "collections.abc",
-            vec![
-                ("Hashable", Value::Builtin("Hashable".to_string())),
-                ("Iterable", Value::Builtin("Iterable".to_string())),
-                ("Iterator", Value::Builtin("Iterator".to_string())),
-                ("Generator", Value::Builtin("Generator".to_string())),
-                ("Reversible", Value::Builtin("Reversible".to_string())),
-                ("Awaitable", Value::Builtin("Awaitable".to_string())),
-                ("Coroutine", Value::Builtin("Coroutine".to_string())),
-                ("AsyncIterable", Value::Builtin("AsyncIterable".to_string())),
-                ("AsyncIterator", Value::Builtin("AsyncIterator".to_string())),
-                (
-                    "AsyncGenerator",
-                    Value::Builtin("AsyncGenerator".to_string()),
-                ),
-                ("Sized", Value::Builtin("Sized".to_string())),
-                ("Container", Value::Builtin("Container".to_string())),
-                ("Callable", Value::Builtin("Callable".to_string())),
-                ("Collection", Value::Builtin("Collection".to_string())),
-                ("Buffer", Value::Builtin("Buffer".to_string())),
-                ("Sequence", Value::Builtin("Sequence".to_string())),
-                (
-                    "MutableSequence",
-                    Value::Builtin("MutableSequence".to_string()),
-                ),
-                ("ByteString", Value::Builtin("ByteString".to_string())),
-                ("Mapping", Value::Builtin("Mapping".to_string())),
-                (
-                    "MutableMapping",
-                    Value::Builtin("MutableMapping".to_string()),
-                ),
-                ("MappingView", Value::Builtin("MappingView".to_string())),
-                ("KeysView", Value::Builtin("KeysView".to_string())),
-                ("ItemsView", Value::Builtin("ItemsView".to_string())),
-                ("ValuesView", Value::Builtin("ValuesView".to_string())),
-                ("Set", Value::Builtin("Set".to_string())),
-                ("MutableSet", Value::Builtin("MutableSet".to_string())),
-            ],
-        )),
-        "string" => Ok(module_value(
-            "string",
-            vec![("templatelib", import_module("string.templatelib")?)],
-        )),
-        "string.templatelib" => Ok(module_value(
-            "string.templatelib",
-            vec![
-                ("Template", Value::Builtin("Template".to_string())),
-                ("Interpolation", Value::Builtin("Interpolation".to_string())),
-                (
-                    "convert",
-                    Value::Builtin("string.templatelib.convert".to_string()),
-                ),
-            ],
-        )),
-        _ => Err(format!("ModuleNotFoundError: No module named '{name}'")),
-    }
-}
-
-fn test_package_module() -> Value {
-    module_value(
-        "test",
-        vec![
-            ("__annotations__", string_key_dict(Vec::new())),
-            ("typinganndata", test_typinganndata_package_module()),
-        ],
-    )
-}
-
-fn annotationlib_module() -> Value {
-    module_value(
-        "annotationlib",
-        vec![(
-            "Format",
-            synthetic_class_value(
-                "Format",
-                vec![builtin_type_value("object")],
-                vec![("VALUE", Value::Number(1))],
-            ),
-        )],
-    )
-}
-
-fn test_typinganndata_package_module() -> Value {
-    module_value(
-        "test.typinganndata",
-        vec![
-            ("ann_module", test_typinganndata_ann_module()),
-            ("ann_module2", test_typinganndata_ann_module2()),
-            ("ann_module3", test_typinganndata_ann_module3()),
-        ],
-    )
-}
-
-fn test_typinganndata_ann_module() -> Value {
-    let tuple_int_int = generic_alias_value(
-        builtin_type_value("tuple"),
-        vec![builtin_type_value("int"), builtin_type_value("int")],
-    );
-    let int_or_float = union_type_value(builtin_type_value("int"), builtin_type_value("float"));
-    let metaclass = synthetic_class_value(
-        "M",
-        vec![builtin_type_value("type")],
-        vec![(
-            "__annotations__",
-            string_key_dict(vec![("o", builtin_type_value("type"))]),
-        )],
-    );
-
-    module_value(
-        "test.typinganndata.ann_module",
-        vec![
-            (
-                "__annotations__",
-                string_key_dict(vec![
-                    ("x", builtin_type_value("int")),
-                    ("y", builtin_type_value("str")),
-                    ("f", tuple_int_int),
-                    ("u", int_or_float),
-                ]),
-            ),
-            ("M", metaclass),
-        ],
-    )
-}
-
-fn test_typinganndata_ann_module2() -> Value {
-    module_value(
-        "test.typinganndata.ann_module2",
-        vec![("__annotations__", string_key_dict(Vec::new()))],
-    )
-}
-
-fn test_typinganndata_ann_module3() -> Value {
-    let d_bad_ann = synthetic_class_value(
-        "D_bad_ann",
-        vec![builtin_type_value("object")],
-        vec![(
-            "__init__",
-            Value::Builtin("test.typinganndata.ann_module3.D_bad_ann.__init__".to_string()),
-        )],
-    );
-
-    module_value(
-        "test.typinganndata.ann_module3",
-        vec![
-            (
-                "f_bad_ann",
-                Value::Builtin("test.typinganndata.ann_module3.f_bad_ann".to_string()),
-            ),
-            (
-                "g_bad_ann",
-                Value::Builtin("test.typinganndata.ann_module3.g_bad_ann".to_string()),
-            ),
-            ("D_bad_ann", d_bad_ann),
-        ],
-    )
-}
-
-fn import_from(module: Value, name: &str) -> Result<Value, String> {
-    match module {
-        Value::Module {
-            name: module_name,
-            attrs,
-        } => attrs.borrow().get(name).cloned().ok_or_else(|| {
-            format!("ImportError: cannot import name '{name}' from '{module_name}'")
+fn deep_copy_iterator_state(
+    iterator: &Value,
+    memo: &mut HashMap<usize, Value>,
+) -> Result<Value, String> {
+    match iterator {
+        Value::RangeIterator {
+            current,
+            stop,
+            step,
+        } => Ok(Value::RangeIterator {
+            current: *current,
+            stop: *stop,
+            step: *step,
         }),
-        value => Err(format!(
-            "ImportError: cannot import name '{name}' from {value}"
-        )),
+        Value::ListIterator { items, index } => Ok(Value::ListIterator {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+        }),
+        Value::TupleIterator { items, index } => Ok(Value::TupleIterator {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+        }),
+        Value::TemplateIterator { items, index } => Ok(Value::TemplateIterator {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+        }),
+        Value::StringIterator { chars, index } => Ok(Value::StringIterator {
+            chars: chars.clone(),
+            index: *index,
+        }),
+        Value::BytesIterator { bytes, index } => Ok(Value::BytesIterator {
+            bytes: bytes.clone(),
+            index: *index,
+        }),
+        Value::ByteArrayIterator {
+            bytes,
+            index,
+            exhausted,
+        } => {
+            let bytes = match memo.get(&(Rc::as_ptr(bytes) as usize)) {
+                Some(Value::ByteArray(copied)) => copied.clone(),
+                _ => {
+                    let copied = byte_array_value(bytearray_bytes(bytes));
+                    memo.insert(Rc::as_ptr(bytes) as usize, copied.clone());
+                    let Value::ByteArray(copied) = copied else {
+                        unreachable!("byte_array_value returns Value::ByteArray")
+                    };
+                    copied
+                }
+            };
+            Ok(Value::ByteArrayIterator {
+                bytes,
+                index: *index,
+                exhausted: *exhausted,
+            })
+        }
+        Value::SetIterator {
+            items,
+            index,
+            source,
+            expected_len,
+        } => Ok(Value::SetIterator {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+            source: source.clone(),
+            expected_len: *expected_len,
+        }),
+        Value::DictIterator {
+            kind,
+            entries,
+            index,
+            expected_len,
+            expected_version,
+        } => Ok(Value::DictIterator {
+            kind: *kind,
+            entries: entries.clone(),
+            index: *index,
+            expected_len: *expected_len,
+            expected_version: *expected_version,
+        }),
+        Value::ReverseIterator { items, index } => Ok(Value::ReverseIterator {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+        }),
+        Value::DictReverseIterator {
+            kind,
+            entries,
+            keys,
+            index,
+            expected_len,
+            expected_version,
+        } => Ok(Value::DictReverseIterator {
+            kind: *kind,
+            entries: entries.clone(),
+            keys: keys
+                .iter()
+                .map(|key| deep_copy_value(key, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+            expected_len: *expected_len,
+            expected_version: *expected_version,
+        }),
+        Value::EnumerateIterator { iterator, index } => Ok(Value::EnumerateIterator {
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            index: index.clone(),
+        }),
+        Value::ZipIterator { iterators, strict } => Ok(Value::ZipIterator {
+            iterators: iterators
+                .iter()
+                .map(|iterator| deep_copy_value(iterator, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            strict: *strict,
+        }),
+        Value::MapIterator {
+            function,
+            iterators,
+            strict,
+        } => Ok(Value::MapIterator {
+            function: Box::new(deep_copy_value(function, memo)?),
+            iterators: iterators
+                .iter()
+                .map(|iterator| deep_copy_value(iterator, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            strict: *strict,
+        }),
+        Value::FilterIterator { function, iterator } => Ok(Value::FilterIterator {
+            function: Box::new(deep_copy_value(function, memo)?),
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+        }),
+        Value::CallIterator {
+            callable,
+            sentinel,
+            done,
+        } => Ok(Value::CallIterator {
+            callable: Box::new(deep_copy_value(callable, memo)?),
+            sentinel: Box::new(deep_copy_value(sentinel, memo)?),
+            done: *done,
+        }),
+        Value::SequenceIterator { object, index } => Ok(Value::SequenceIterator {
+            object: Box::new(deep_copy_value(object, memo)?),
+            index: *index,
+        }),
+        Value::SequenceReverseIterator { object, index } => Ok(Value::SequenceReverseIterator {
+            object: Box::new(deep_copy_value(object, memo)?),
+            index: *index,
+        }),
+        value => Ok(value.clone()),
     }
 }
 
@@ -13923,12 +19920,12 @@ fn normalize_class_bases(bases: Vec<Value>) -> Result<Vec<Value>, String> {
 
     for base in bases {
         match base {
-            Value::Class { .. } => normalized.push(base),
+            Value::Class { .. } | Value::NamedTupleType(_) => normalized.push(base),
             Value::Builtin(name) if is_class_like_builtin(&name) => {
                 normalized.push(Value::Builtin(name));
             }
             Value::GenericAlias { origin, .. } => match *origin {
-                Value::Class { .. } => normalized.push(*origin),
+                Value::Class { .. } | Value::NamedTupleType(_) => normalized.push(*origin),
                 Value::Builtin(name) if is_class_like_builtin(&name) => {
                     normalized.push(Value::Builtin(name));
                 }
@@ -13943,6 +19940,140 @@ fn normalize_class_bases(bases: Vec<Value>) -> Result<Vec<Value>, String> {
     }
 
     Ok(normalized)
+}
+
+fn split_class_header_keywords(
+    keywords: Vec<(String, Value)>,
+) -> Result<(Option<Box<Value>>, Vec<(String, Value)>), String> {
+    let mut metaclass = None;
+    let mut init_subclass_keywords = Vec::new();
+
+    for (name, value) in keywords {
+        if name != "metaclass" {
+            init_subclass_keywords.push((name, value));
+            continue;
+        }
+        if metaclass.is_some() {
+            return Err(
+                "TypeError: got multiple values for keyword argument 'metaclass'".to_string(),
+            );
+        }
+        metaclass = Some(Box::new(normalize_class_metaclass(value)?));
+    }
+
+    Ok((metaclass, init_subclass_keywords))
+}
+
+fn class_prepare_callable(metaclass: &Value) -> Option<Value> {
+    let Value::Class { attrs, bases, .. } = metaclass else {
+        return None;
+    };
+    find_class_attr(attrs, bases, "__prepare__").map(|value| match value {
+        Value::StaticMethod { function } => *function,
+        Value::ClassMethod { function } => Value::BoundMethod {
+            function,
+            receiver: Box::new(metaclass.clone()),
+            identity: Rc::new(()),
+        },
+        value => value,
+    })
+}
+
+fn class_namespace_scope(namespace: Option<&Value>) -> Result<Scope, String> {
+    match namespace {
+        None => Ok(new_scope()),
+        Some(Value::Dict(entries)) | Some(Value::OrderedDict(entries)) => {
+            Ok(dict_to_scope(entries))
+        }
+        Some(value) if class_namespace_mapping_entries(value).is_ok() => {
+            let scope = new_scope();
+            scope
+                .borrow_mut()
+                .insert(SCOPE_LOCALS_MAPPING_SOURCE_FIELD.to_string(), value.clone());
+            Ok(scope)
+        }
+        Some(value) => Err(format!(
+            "TypeError: __prepare__() must return a mapping, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn class_namespace_attrs(namespace: Option<&Value>, locals: &Scope) -> Result<Scope, String> {
+    let Some(namespace) = namespace else {
+        return Ok(locals.clone());
+    };
+    if matches!(namespace, Value::Dict(_) | Value::OrderedDict(_)) {
+        return Ok(locals.clone());
+    }
+
+    let attrs = new_scope();
+    for (key, value) in class_namespace_mapping_entries(namespace)? {
+        let Value::String(key) = key else {
+            return Err(format!(
+                "TypeError: type.__new__() argument 3 must be dict with string keys, got {}",
+                type_name(&key)
+            ));
+        };
+        attrs.borrow_mut().insert(key, value);
+    }
+    Ok(attrs)
+}
+
+fn class_namespace_mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
+    mapping_entries(value)
+}
+
+fn normalize_class_metaclass(value: Value) -> Result<Value, String> {
+    match value {
+        Value::GenericAlias { origin, .. } => normalize_class_metaclass(*origin),
+        class @ Value::Class { .. } => Ok(class),
+        Value::Builtin(name) if is_class_like_builtin(&name) => Ok(Value::Builtin(name)),
+        value => Err(format!(
+            "TypeError: metaclass must be a class, got {}",
+            type_name(&value)
+        )),
+    }
+}
+
+fn base_is_generic_alias(base: &Value) -> bool {
+    matches!(base, Value::GenericAlias { .. })
+}
+
+fn base_is_generic(base: &Value) -> bool {
+    match base {
+        Value::Builtin(name) => name == "Generic",
+        Value::GenericAlias { origin, .. } => {
+            matches!(origin.as_ref(), Value::Builtin(name) if name == "Generic")
+        }
+        _ => false,
+    }
+}
+
+fn class_bases_with_implicit_generic(mut bases: Vec<Value>, type_params: &[Value]) -> Vec<Value> {
+    if !type_params.is_empty() && !bases.iter().any(base_is_generic) {
+        bases.push(Value::Builtin("Generic".to_string()));
+    }
+    bases
+}
+
+fn original_class_bases(
+    raw_bases: &[Value],
+    normalized_bases: &[Value],
+    type_params: &[Value],
+) -> Vec<Value> {
+    let mut original = raw_bases.to_vec();
+    if !type_params.is_empty() && !original.iter().any(base_is_generic) {
+        original.push(generic_alias_value(
+            Value::Builtin("Generic".to_string()),
+            type_params.to_vec(),
+        ));
+    }
+    if original.is_empty() {
+        normalized_bases.to_vec()
+    } else {
+        original
+    }
 }
 
 fn validate_type_constructor_bases(bases: &[Value]) -> Result<(), String> {
@@ -13965,6 +20096,69 @@ fn validate_type_constructor_bases(bases: &[Value]) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn validate_generic_class_bases(
+    type_params: &[Value],
+    raw_bases: &[Value],
+    bases: &[Value],
+) -> Result<(), String> {
+    if type_params.is_empty() {
+        return Ok(());
+    }
+
+    if raw_bases.iter().any(base_is_generic) {
+        return Err("TypeError: Cannot inherit from Generic[...] multiple times.".to_string());
+    }
+
+    if raw_bases
+        .iter()
+        .any(|base| contains_unlisted_type_param(base, type_params))
+    {
+        return Err(
+            "TypeError: Some type variables are not listed in type parameter list".to_string(),
+        );
+    }
+
+    if bases
+        .iter()
+        .any(|base| matches!(base, Value::Builtin(name) if name == "object"))
+    {
+        return Err(
+            "TypeError: Cannot create a consistent method resolution order (MRO) for bases object, Generic"
+                .to_string(),
+        );
+    }
+
+    Ok(())
+}
+
+fn contains_unlisted_type_param(value: &Value, type_params: &[Value]) -> bool {
+    match value {
+        Value::TypeParam { identity, .. } => !type_params.iter().any(|type_param| {
+            matches!(
+                type_param,
+                Value::TypeParam {
+                    identity: type_param_identity,
+                    ..
+                } if Rc::ptr_eq(identity, type_param_identity)
+            )
+        }),
+        Value::GenericAlias { origin, args } => {
+            contains_unlisted_type_param(origin, type_params)
+                || args
+                    .iter()
+                    .any(|arg| contains_unlisted_type_param(arg, type_params))
+        }
+        Value::Tuple(items) => items
+            .iter()
+            .any(|item| contains_unlisted_type_param(item, type_params)),
+        Value::List(items) => items
+            .borrow()
+            .iter()
+            .any(|item| contains_unlisted_type_param(item, type_params)),
+        _ => false,
+    }
 }
 
 fn is_final_builtin_type(name: &str) -> bool {
@@ -14017,20 +20211,46 @@ fn class_qualname_value(class_name: &str, attrs: &Scope) -> Value {
         .unwrap_or_else(|| Value::String(class_name.to_string()))
 }
 
-fn function_qualname_value(function_name: &str, owner_class: Option<&Value>) -> Value {
+fn nested_qualname(prefix: Option<&str>, name: &str) -> String {
+    prefix
+        .map(|prefix| format!("{prefix}.{name}"))
+        .unwrap_or_else(|| name.to_string())
+}
+
+fn local_qualname_prefix(function_qualname: &str) -> String {
+    format!("{function_qualname}.<locals>")
+}
+
+fn function_qualname_string(
+    function_name: &str,
+    attrs: &Scope,
+    owner_class: Option<&Value>,
+) -> String {
+    if let Some(Value::String(qualname)) = attrs.borrow().get(FUNCTION_QUALNAME_ATTR).cloned() {
+        return qualname;
+    }
+
     let Some(Value::Class {
         name: class_name,
         attrs,
         ..
     }) = owner_class
     else {
-        return Value::String(function_name.to_string());
+        return function_name.to_string();
     };
 
     let Value::String(owner_qualname) = class_qualname_value(class_name, attrs) else {
-        return Value::String(function_name.to_string());
+        return function_name.to_string();
     };
-    Value::String(format!("{owner_qualname}.{function_name}"))
+    format!("{owner_qualname}.{function_name}")
+}
+
+fn function_qualname_value(
+    function_name: &str,
+    attrs: &Scope,
+    owner_class: Option<&Value>,
+) -> Value {
+    Value::String(function_qualname_string(function_name, attrs, owner_class))
 }
 
 fn function_module_value(owner_class: Option<&Value>) -> Value {
@@ -14046,12 +20266,7 @@ fn function_module_value(owner_class: Option<&Value>) -> Value {
 }
 
 fn class_dict_value(attrs: &Scope) -> Value {
-    let mut entries = attrs
-        .borrow()
-        .iter()
-        .filter(|(name, _)| !name.starts_with('\0'))
-        .map(|(name, value)| (Value::String(name.clone()), value.clone()))
-        .collect::<Vec<_>>();
+    let mut entries = scope_dict_entries(attrs);
     if !entries
         .iter()
         .any(|(key, _)| matches!(key, Value::String(name) if name == "__module__"))
@@ -14100,117 +20315,28 @@ fn compile_int_argument(value: Value, name: &str) -> Result<i64, String> {
     }
 }
 
-fn call_sys_get_int_max_str_digits(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("get_int_max_str_digits() does not accept keyword arguments".to_string());
-    }
-    if !args.is_empty() {
-        return Err(format!(
-            "get_int_max_str_digits() takes no arguments ({} given)",
-            args.len()
-        ));
-    }
-
-    Ok(Value::Number(get_int_max_str_digits() as i64))
-}
-
-fn call_sys_set_int_max_str_digits(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("set_int_max_str_digits() does not accept keyword arguments".to_string());
-    }
-    if args.len() != 1 {
-        return Err(format!(
-            "set_int_max_str_digits() takes exactly one argument ({} given)",
-            args.len()
-        ));
-    }
-
-    let maxdigits = match args.into_iter().next().expect("length checked") {
-        Value::Number(value) if value >= 0 => value as usize,
-        Value::Bool(value) => bool_as_i64(value) as usize,
-        Value::BigInt(value) if !value.is_negative() => value
-            .to_usize()
-            .ok_or_else(|| "ValueError: maxdigits is too large".to_string())?,
-        Value::Number(_) | Value::BigInt(_) => {
-            return Err("ValueError: maxdigits must be non-negative".to_string());
-        }
-        value => {
-            return Err(format!(
-                "TypeError: 'maxdigits' must be an integer, not {}",
-                type_name(&value)
-            ));
-        }
-    };
-
-    set_int_max_str_digits(maxdigits)?;
-    Ok(Value::None)
-}
-
-fn call_dis_get_instructions(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("TypeError: get_instructions() does not accept keyword arguments".to_string());
-    }
-    if args.len() != 1 {
-        return Err(format!(
-            "TypeError: get_instructions() expected 1 argument, got {}",
-            args.len()
-        ));
-    }
-
-    let code = args.into_iter().next().expect("length checked");
-    let Value::CodeObject {
-        mode, instructions, ..
-    } = code
-    else {
-        return Err(format!(
-            "TypeError: don't know how to disassemble {} objects",
-            type_name(&code)
-        ));
-    };
-
-    let mut rows = Vec::new();
-    for instruction in instructions {
-        if let Instruction::LoadConst { value, .. } = instruction {
-            rows.push(dis_instruction_value(DIS_LOAD_CONST_OPCODE, value)?);
-        }
-    }
-
-    if mode == CodeMode::Exec {
-        rows.push(dis_instruction_value(DIS_LOAD_CONST_OPCODE, Value::None)?);
-    }
-
-    Ok(list_value(rows))
-}
-
-fn dis_instruction_value(opcode: i64, argval: Value) -> Result<Value, String> {
-    Ok(Value::SimpleNamespace {
-        fields: dict_ref_from_entries(vec![
-            (Value::String("opcode".to_string()), Value::Number(opcode)),
-            (Value::String("argval".to_string()), argval),
-        ])?,
-    })
-}
-
 fn compile_source_text(source: Value) -> Result<String, String> {
     match source {
         Value::String(source) => Ok(source),
-        Value::Bytes(bytes) | Value::ByteArray(bytes) => {
+        Value::Bytes(bytes) => {
+            decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))
+        }
+        Value::ByteArray(bytes) => decode_source_for_parse(&bytes.borrow())
+            .map_err(|message| format!("SyntaxError: {message}")),
+        Value::MemoryView(view) => {
+            let bytes = memoryview_bytes(&view)?;
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))
         }
         value => Err(format!(
-            "TypeError: compile() arg 1 must be a string, bytes or bytearray, not {}",
+            "TypeError: compile() arg 1 must be a string, bytes, bytearray or memoryview, not {}",
             type_name(&value)
         )),
     }
+}
+
+fn compile_filename_from_bytes(bytes: Vec<u8>) -> Result<String, String> {
+    String::from_utf8(bytes)
+        .map_err(|_| "TypeError: compile() arg 2 contains non-UTF-8 bytes".to_string())
 }
 
 fn code_mode_from_string(mode: &str) -> Result<CodeMode, String> {
@@ -14226,8 +20352,11 @@ fn code_mode_from_string(mode: &str) -> Result<CodeMode, String> {
 
 fn compile_code_object(source: Value, filename: String, mode: &str) -> Result<Value, String> {
     let mode = code_mode_from_string(mode)?;
-    let instructions = match source {
-        Value::AstNode { .. } => compile_ast_code_object(&source, mode)?,
+    let (instructions, line_spans) = match source {
+        Value::AstNode { .. } => (
+            compile_ast_code_object(&source, mode)?,
+            default_code_line_spans(),
+        ),
         source => compile_source_code_object(source, mode)?,
     };
 
@@ -14235,51 +20364,927 @@ fn compile_code_object(source: Value, filename: String, mode: &str) -> Result<Va
         mode,
         filename,
         instructions,
+        line_spans,
         identity: Rc::new(()),
     })
 }
 
-fn compile_source_code_object(source: Value, mode: CodeMode) -> Result<Vec<Instruction>, String> {
+fn compile_source_code_object(
+    source: Value,
+    mode: CodeMode,
+) -> Result<(Vec<Instruction>, Vec<CodeLineSpan>), String> {
     let source = compile_source_text(source)?;
-    Ok(match mode {
+    let line_spans = code_line_spans_from_source(&source, mode);
+    let instructions = match mode {
         CodeMode::Exec => {
-            let tokens =
-                lex_for_parse(&source).map_err(|message| format!("SyntaxError: {message}"))?;
+            let (spanned_tokens, _warnings) = lex_with_spans_for_parse(&source)
+                .map_err(|error| format!("SyntaxError: {}", error.message))?;
+            let tokens = spanned_tokens
+                .iter()
+                .map(|spanned| spanned.token.clone())
+                .collect::<Vec<_>>();
             let program = parse(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
-            compile(&program).map_err(|message| format!("SyntaxError: {message}"))?
+            let options = CompileOptions::default()
+                .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+                .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                    &spanned_tokens,
+                ));
+            compile_with_options(&program, options)
+                .map_err(|message| format!("SyntaxError: {message}"))?
         }
         CodeMode::Eval => {
             let source = source.trim();
-            let tokens =
-                lex_for_parse(source).map_err(|message| format!("SyntaxError: {message}"))?;
+            let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+                .map_err(|error| format!("SyntaxError: {}", error.message))?;
+            let tokens = spanned_tokens
+                .iter()
+                .map(|spanned| spanned.token.clone())
+                .collect::<Vec<_>>();
             let expr = parse_eval(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
-            compile_eval(&expr).map_err(|message| format!("SyntaxError: {message}"))?
+            let options = CompileOptions::default().with_generator_expression_line_sequences(
+                generator_expression_line_sequences(&spanned_tokens),
+            );
+            compile_eval_with_options(&expr, options)
+                .map_err(|message| format!("SyntaxError: {message}"))?
         }
         CodeMode::Single => {
-            let tokens =
-                lex_for_parse(&source).map_err(|message| format!("SyntaxError: {message}"))?;
+            let (spanned_tokens, _warnings) = lex_with_spans_for_parse(&source)
+                .map_err(|error| format!("SyntaxError: {}", error.message))?;
+            let tokens = spanned_tokens
+                .iter()
+                .map(|spanned| spanned.token.clone())
+                .collect::<Vec<_>>();
             let program =
                 parse_interactive(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
-            compile_interactive(&program).map_err(|message| format!("SyntaxError: {message}"))?
+            let options = CompileOptions::default()
+                .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+                .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                    &spanned_tokens,
+                ));
+            compile_interactive_with_options(&program, options)
+                .map_err(|message| format!("SyntaxError: {message}"))?
+        }
+    };
+    Ok((instructions, line_spans))
+}
+
+fn compile_source_module(name: &str, source: &str) -> Result<Vec<Instruction>, String> {
+    let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
+        .map_err(|error| format!("SyntaxError: {} in virtual module '{name}'", error.message))?;
+    let tokens = spanned_tokens
+        .iter()
+        .map(|spanned| spanned.token.clone())
+        .collect::<Vec<_>>();
+    let program = parse(&tokens)
+        .map_err(|message| format!("SyntaxError: {message} in virtual module '{name}'"))?;
+    let options = CompileOptions::default()
+        .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+        .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+        .with_generator_expression_line_sequences(generator_expression_line_sequences(
+            &spanned_tokens,
+        ));
+    compile_with_options(&program, options)
+        .map_err(|message| format!("SyntaxError: {message} in virtual module '{name}'"))
+}
+
+fn default_code_line_spans() -> Vec<CodeLineSpan> {
+    vec![CodeLineSpan {
+        start: 0,
+        end: 1,
+        line: 0,
+    }]
+}
+
+fn code_line_spans_from_source(source: &str, mode: CodeMode) -> Vec<CodeLineSpan> {
+    let lines = executable_source_lines(source, mode)
+        .or_else(|| first_executable_source_line(source, mode).map(|line| vec![line]));
+    let Some(lines) = lines else {
+        return default_code_line_spans();
+    };
+    code_line_spans_from_lines(lines)
+}
+
+fn code_line_spans_from_lines(lines: Vec<usize>) -> Vec<CodeLineSpan> {
+    let mut spans = default_code_line_spans();
+    for line in lines {
+        let start = spans.len();
+        spans.push(CodeLineSpan {
+            start,
+            end: start + 1,
+            line: line as i64,
+        });
+    }
+    spans
+}
+
+fn frame_line_for_ip(line_spans: &[CodeLineSpan], instruction_index: usize) -> i64 {
+    line_spans
+        .iter()
+        .find(|span| instruction_index >= span.start && instruction_index < span.end)
+        .or_else(|| {
+            line_spans
+                .iter()
+                .rev()
+                .find(|span| instruction_index >= span.start)
+        })
+        .map(|span| span.line)
+        .unwrap_or(0)
+}
+
+fn executable_source_lines(source: &str, mode: CodeMode) -> Option<Vec<usize>> {
+    if mode == CodeMode::Eval {
+        return None;
+    }
+
+    let (tokens, _warnings) = lex_with_spans_for_parse(source).ok()?;
+    let mut lines = Vec::new();
+    let mut at_statement_start = true;
+
+    for token in tokens {
+        match token.token {
+            Token::Encoding(_)
+            | Token::TypeComment(_)
+            | Token::TypeIgnore(_)
+            | Token::Indent
+            | Token::Dedent
+            | Token::Newline => {
+                at_statement_start = true;
+            }
+            Token::Semicolon => {
+                at_statement_start = true;
+            }
+            Token::Eof => break,
+            _ if at_statement_start => {
+                lines.push(token.line);
+                at_statement_start = false;
+            }
+            _ => {}
+        }
+    }
+
+    if lines.is_empty() { None } else { Some(lines) }
+}
+
+fn first_executable_source_line(source: &str, mode: CodeMode) -> Option<usize> {
+    let source = if mode == CodeMode::Eval {
+        source.trim_start_matches(|ch: char| ch.is_whitespace())
+    } else {
+        source
+    };
+
+    source.lines().enumerate().find_map(|(index, line)| {
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            None
+        } else {
+            Some(index + 1)
         }
     })
+}
+
+fn emit_compile_warnings(
+    vm: &mut Vm,
+    warnings: Vec<LexWarning>,
+    filename: &str,
+    warning_module: Option<&str>,
+) -> Result<(), String> {
+    for warning in warnings {
+        emit_ast_parse_warning(vm, warning, filename, warning_module)?;
+    }
+    Ok(())
+}
+
+fn static_syntax_warnings_with_source_locations(
+    program: &syntax::Program,
+    spanned_tokens: &[SpannedToken],
+) -> Vec<LexWarning> {
+    let mut warnings = crate::static_syntax_warnings(program);
+    let mut finally_return_locations =
+        finally_control_flow_warning_locations(spanned_tokens, WarningKeyword::Return);
+    let mut finally_break_locations =
+        finally_control_flow_warning_locations(spanned_tokens, WarningKeyword::Break);
+    let mut finally_continue_locations =
+        finally_control_flow_warning_locations(spanned_tokens, WarningKeyword::Continue);
+    let mut assert_locations = token_keyword_locations(spanned_tokens, WarningKeyword::Assert);
+    let mut identity_locations = identity_literal_warning_locations(spanned_tokens);
+    for warning in &mut warnings {
+        if warning.message == "'return' in a 'finally' block" {
+            apply_next_warning_location(warning, &mut finally_return_locations);
+            continue;
+        }
+        if warning.message == "'break' in a 'finally' block" {
+            apply_next_warning_location(warning, &mut finally_break_locations);
+            continue;
+        }
+        if warning.message == "'continue' in a 'finally' block" {
+            apply_next_warning_location(warning, &mut finally_continue_locations);
+            continue;
+        }
+        if warning.message == "assertion is always true, perhaps remove parentheses?" {
+            apply_next_warning_location(warning, &mut assert_locations);
+            continue;
+        }
+        if warning.line != 1 || !warning.message.starts_with("\"is") {
+            continue;
+        }
+        if let Some(index) = identity_locations
+            .iter()
+            .position(|(message, _line)| message == &warning.message)
+        {
+            let (_, line) = identity_locations.remove(index);
+            warning.line = line;
+            warning.end_line = line;
+        }
+    }
+    warnings
+}
+
+#[derive(Clone, Copy)]
+enum WarningKeyword {
+    Assert,
+    Return,
+    Break,
+    Continue,
+}
+
+fn token_keyword_locations(
+    spanned_tokens: &[SpannedToken],
+    keyword: WarningKeyword,
+) -> Vec<(usize, usize, usize, usize)> {
+    spanned_tokens
+        .iter()
+        .filter(|spanned| token_matches_warning_keyword(&spanned.token, keyword))
+        .map(spanned_warning_location)
+        .collect()
+}
+
+fn finally_control_flow_warning_locations(
+    spanned_tokens: &[SpannedToken],
+    keyword: WarningKeyword,
+) -> Vec<(usize, usize, usize, usize)> {
+    let mut locations = Vec::new();
+    let mut indent_depth = 0usize;
+    let mut awaiting_finally_indent = false;
+    let mut inline_finally = false;
+    let mut finally_indent_depths = Vec::new();
+
+    for spanned in spanned_tokens {
+        match &spanned.token {
+            Token::Indent => {
+                indent_depth += 1;
+                if awaiting_finally_indent {
+                    finally_indent_depths.push(indent_depth);
+                    awaiting_finally_indent = false;
+                    inline_finally = false;
+                }
+            }
+            Token::Dedent => {
+                indent_depth = indent_depth.saturating_sub(1);
+                while finally_indent_depths
+                    .last()
+                    .is_some_and(|depth| *depth > indent_depth)
+                {
+                    finally_indent_depths.pop();
+                }
+            }
+            Token::Finally => {
+                awaiting_finally_indent = true;
+                inline_finally = true;
+            }
+            Token::Newline => {
+                inline_finally = false;
+            }
+            _ if token_matches_warning_keyword(&spanned.token, keyword)
+                && (inline_finally || !finally_indent_depths.is_empty()) =>
+            {
+                locations.push(spanned_warning_location(spanned));
+            }
+            _ => {}
+        }
+    }
+
+    locations
+}
+
+fn token_matches_warning_keyword(token: &Token, keyword: WarningKeyword) -> bool {
+    matches!(
+        (token, keyword),
+        (Token::Assert, WarningKeyword::Assert)
+            | (Token::Return, WarningKeyword::Return)
+            | (Token::Break, WarningKeyword::Break)
+            | (Token::Continue, WarningKeyword::Continue)
+    )
+}
+
+fn spanned_warning_location(spanned: &SpannedToken) -> (usize, usize, usize, usize) {
+    (
+        spanned.line,
+        spanned.column,
+        spanned.end_line,
+        spanned.end_column,
+    )
+}
+
+fn apply_next_warning_location(
+    warning: &mut LexWarning,
+    locations: &mut Vec<(usize, usize, usize, usize)>,
+) {
+    if locations.is_empty() {
+        return;
+    }
+    let (line, column, end_line, end_column) = locations.remove(0);
+    warning.line = line;
+    warning.column = column;
+    warning.end_line = end_line;
+    warning.end_column = end_column;
+}
+
+fn warning_action_argument(value: Value, function_name: &str) -> Result<String, String> {
+    let Value::String(action) = value else {
+        return Err(format!(
+            "TypeError: {function_name}() argument 'action' must be str"
+        ));
+    };
+    if matches!(
+        action.as_str(),
+        "default" | "always" | "error" | "ignore" | "module" | "once"
+    ) {
+        Ok(action)
+    } else {
+        Err(format!("ValueError: invalid warnings action: {action}"))
+    }
+}
+
+fn warning_category_name(category: &Value) -> String {
+    match category {
+        Value::Builtin(name) => name.clone(),
+        Value::Class { name, .. } => name.clone(),
+        value => type_name(value).to_string(),
+    }
+}
+
+fn warning_category_matches(category: &Value, filter_category: &Value) -> bool {
+    match filter_category {
+        Value::None => true,
+        Value::Builtin(name) => class_is_subclass_of_builtin(category, name),
+        Value::Class { name, .. } => match category {
+            Value::Class {
+                name: category_name,
+                ..
+            }
+            | Value::Builtin(category_name) => category_name == name,
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+fn warning_module_matches(filter_module: &Value, module: &str) -> bool {
+    match filter_module {
+        Value::None => true,
+        Value::String(pattern) if pattern.is_empty() => true,
+        Value::String(pattern) => warning_pattern_matches(pattern, module),
+        _ => false,
+    }
+}
+
+fn warning_pattern_matches(pattern: &str, value: &str) -> bool {
+    let anchored_end = pattern.ends_with("\\z");
+    let pattern = pattern.strip_suffix("\\z").unwrap_or(pattern);
+    let literal = warning_pattern_literal(pattern);
+    if anchored_end {
+        value.ends_with(&literal)
+    } else {
+        value.contains(&literal)
+    }
+}
+
+fn warning_pattern_literal(pattern: &str) -> String {
+    let mut literal = String::new();
+    let mut chars = pattern.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '\\' {
+            if let Some(next) = chars.next() {
+                literal.push(next);
+            }
+        } else {
+            literal.push(ch);
+        }
+    }
+    literal
+}
+
+fn warning_module_name_from_filename(filename: &str) -> String {
+    if filename.starts_with('<') && filename.ends_with('>') {
+        return filename.to_string();
+    }
+    let filename = filename.replace('\\', "/");
+    let filename = filename.trim_end_matches(".py");
+    let parts = filename
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect::<Vec<_>>();
+    if parts.is_empty() {
+        filename.to_string()
+    } else {
+        parts.join(".")
+    }
+}
+
+fn identity_literal_warning_locations(spanned_tokens: &[SpannedToken]) -> Vec<(String, usize)> {
+    let mut locations = Vec::new();
+    let mut index = 0;
+    while index < spanned_tokens.len() {
+        if !matches!(spanned_tokens[index].token, Token::Is) {
+            index += 1;
+            continue;
+        }
+
+        let (op, right_index) = if spanned_tokens
+            .get(index + 1)
+            .is_some_and(|spanned| matches!(spanned.token, Token::Not))
+        {
+            (ComparisonOpForWarning::IsNot, index + 2)
+        } else {
+            (ComparisonOpForWarning::Is, index + 1)
+        };
+        let left_type = index.checked_sub(1).and_then(|left_index| {
+            token_identity_warning_literal_type(&spanned_tokens[left_index].token)
+        });
+        let right_type = spanned_tokens
+            .get(right_index)
+            .and_then(|spanned| token_identity_warning_literal_type(&spanned.token));
+        if let Some(literal_type) = left_type.or(right_type) {
+            locations.push((
+                identity_literal_warning_message_for_type(op, literal_type),
+                spanned_tokens[index].line,
+            ));
+        }
+        index += 1;
+    }
+    locations
+}
+
+#[derive(Clone, Copy)]
+enum ComparisonOpForWarning {
+    Is,
+    IsNot,
+}
+
+fn token_identity_warning_literal_type(token: &Token) -> Option<&'static str> {
+    match token {
+        Token::Number(_) | Token::BigInt(_) => Some("int"),
+        Token::Float(_) => Some("float"),
+        Token::Imaginary(_) => Some("complex"),
+        Token::String(_) => Some("str"),
+        Token::Bytes(_) => Some("bytes"),
+        _ => None,
+    }
+}
+
+fn identity_literal_warning_message_for_type(
+    op: ComparisonOpForWarning,
+    literal_type: &str,
+) -> String {
+    match op {
+        ComparisonOpForWarning::Is => {
+            format!("\"is\" with '{literal_type}' literal. Did you mean \"==\"?")
+        }
+        ComparisonOpForWarning::IsNot => {
+            format!("\"is not\" with '{literal_type}' literal. Did you mean \"!=\"?")
+        }
+    }
 }
 
 fn compile_ast_code_object(node: &Value, mode: CodeMode) -> Result<Vec<Instruction>, String> {
     match mode {
         CodeMode::Exec => {
+            let function_first_lines = ast_function_definition_start_lines(node);
+            let function_line_sequences = ast_function_definition_line_sequences(node);
+            let generator_expression_line_sequences =
+                ast_generator_expression_line_sequences(node)?;
             let program = syntax_program_from_ast_module(node)?;
-            compile(&program).map_err(|message| format!("SyntaxError: {message}"))
+            let options = CompileOptions::default()
+                .with_function_first_lines(function_first_lines)
+                .with_function_line_sequences(function_line_sequences)
+                .with_generator_expression_line_sequences(generator_expression_line_sequences);
+            compile_with_options(&program, options)
+                .map_err(|message| format!("SyntaxError: {message}"))
         }
         CodeMode::Eval => {
+            let generator_expression_line_sequences =
+                ast_generator_expression_line_sequences(node)?;
             let expr = syntax_expr_from_ast_expression(node)?;
-            compile_eval(&expr).map_err(|message| format!("SyntaxError: {message}"))
+            let options = CompileOptions::default()
+                .with_generator_expression_line_sequences(generator_expression_line_sequences);
+            compile_eval_with_options(&expr, options)
+                .map_err(|message| format!("SyntaxError: {message}"))
         }
         CodeMode::Single => {
+            let function_first_lines = ast_function_definition_start_lines(node);
+            let function_line_sequences = ast_function_definition_line_sequences(node);
+            let generator_expression_line_sequences =
+                ast_generator_expression_line_sequences(node)?;
             let program = syntax_program_from_ast_interactive(node)?;
-            compile_interactive(&program).map_err(|message| format!("SyntaxError: {message}"))
+            let options = CompileOptions::default()
+                .with_function_first_lines(function_first_lines)
+                .with_function_line_sequences(function_line_sequences)
+                .with_generator_expression_line_sequences(generator_expression_line_sequences);
+            compile_interactive_with_options(&program, options)
+                .map_err(|message| format!("SyntaxError: {message}"))
         }
     }
+}
+
+fn ast_function_definition_start_lines(node: &Value) -> Vec<usize> {
+    let mut lines = Vec::new();
+    collect_ast_function_definition_start_lines(node, &mut lines);
+    lines
+}
+
+fn annotate_ast_function_definition_start_lines(node: &Value, lines: &[usize]) {
+    let mut lines = lines.iter();
+    annotate_ast_function_definition_start_lines_inner(node, &mut lines);
+}
+
+fn ast_function_definition_line_sequences(node: &Value) -> Vec<Vec<usize>> {
+    let mut sequences = Vec::new();
+    collect_ast_function_definition_line_sequences(node, &mut sequences);
+    sequences
+}
+
+fn annotate_ast_function_definition_line_sequences(node: &Value, sequences: &[Vec<usize>]) {
+    let mut sequences = sequences.iter();
+    annotate_ast_function_definition_line_sequences_inner(node, &mut sequences);
+}
+
+fn ast_generator_expression_line_sequences(
+    node: &Value,
+) -> Result<Vec<(usize, Vec<usize>)>, String> {
+    let mut sequences = Vec::new();
+    collect_ast_generator_expression_line_sequences(node, &mut sequences)?;
+    Ok(sequences)
+}
+
+fn annotate_ast_generator_expression_line_sequences(
+    node: &Value,
+    sequences: &[(usize, Vec<usize>)],
+) {
+    let mut sequences = sequences.iter();
+    annotate_ast_generator_expression_line_sequences_inner(node, &mut sequences);
+}
+
+fn annotate_ast_function_definition_start_lines_inner<'a>(
+    node: &Value,
+    lines: &mut std::slice::Iter<'a, usize>,
+) {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            if matches!(kind.as_str(), "FunctionDef" | "AsyncFunctionDef")
+                && let Some(line) = lines.next()
+            {
+                let _ = ast_set_attr(
+                    attrs,
+                    AST_FUNCTION_FIRST_LINE_ATTR,
+                    Value::Number(*line as i64),
+                );
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    annotate_ast_function_definition_start_lines_inner(&value, lines);
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                annotate_ast_function_definition_start_lines_inner(item, lines);
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                annotate_ast_function_definition_start_lines_inner(item, lines);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn annotate_ast_function_definition_line_sequences_inner<'a>(
+    node: &Value,
+    sequences: &mut std::slice::Iter<'a, Vec<usize>>,
+) {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            if matches!(kind.as_str(), "FunctionDef" | "AsyncFunctionDef")
+                && let Some(sequence) = sequences.next()
+            {
+                let _ = ast_set_attr(
+                    attrs,
+                    AST_FUNCTION_LINE_SEQUENCE_ATTR,
+                    tuple_value(
+                        sequence
+                            .iter()
+                            .map(|line| Value::Number(*line as i64))
+                            .collect(),
+                    ),
+                );
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    annotate_ast_function_definition_line_sequences_inner(&value, sequences);
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                annotate_ast_function_definition_line_sequences_inner(item, sequences);
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                annotate_ast_function_definition_line_sequences_inner(item, sequences);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn annotate_ast_generator_expression_line_sequences_inner<'a>(
+    node: &Value,
+    sequences: &mut std::slice::Iter<'a, (usize, Vec<usize>)>,
+) {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            if kind == "GeneratorExp"
+                && let Some((first_line, sequence)) = sequences.next()
+            {
+                let _ = ast_set_attr(
+                    attrs,
+                    AST_GENERATOR_EXPRESSION_FIRST_LINE_ATTR,
+                    Value::Number(*first_line as i64),
+                );
+                let _ = ast_set_attr(
+                    attrs,
+                    AST_GENERATOR_EXPRESSION_LINE_SEQUENCE_ATTR,
+                    tuple_value(
+                        sequence
+                            .iter()
+                            .map(|line| Value::Number(*line as i64))
+                            .collect(),
+                    ),
+                );
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    annotate_ast_generator_expression_line_sequences_inner(&value, sequences);
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                annotate_ast_generator_expression_line_sequences_inner(item, sequences);
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                annotate_ast_generator_expression_line_sequences_inner(item, sequences);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_ast_function_definition_start_lines(node: &Value, lines: &mut Vec<usize>) {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            if matches!(kind.as_str(), "FunctionDef" | "AsyncFunctionDef") {
+                let line = ast_internal_function_first_line_number(node).unwrap_or_else(|| {
+                    let mut line = ast_node_line_number(node).unwrap_or(1);
+                    if let Some(Value::List(decorators)) =
+                        lookup_string_key(attrs, "decorator_list")
+                    {
+                        for decorator in decorators.borrow().iter() {
+                            if let Some(decorator_line) = ast_node_line_number(decorator) {
+                                line = line.min(decorator_line);
+                            }
+                        }
+                    }
+                    line
+                });
+                lines.push(line);
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    collect_ast_function_definition_start_lines(&value, lines);
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                collect_ast_function_definition_start_lines(item, lines);
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                collect_ast_function_definition_start_lines(item, lines);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_ast_function_definition_line_sequences(node: &Value, sequences: &mut Vec<Vec<usize>>) {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            if matches!(kind.as_str(), "FunctionDef" | "AsyncFunctionDef") {
+                let line = ast_internal_function_first_line_number(node).unwrap_or_else(|| {
+                    let mut line = ast_node_line_number(node).unwrap_or(1);
+                    if let Some(Value::List(decorators)) =
+                        lookup_string_key(attrs, "decorator_list")
+                    {
+                        for decorator in decorators.borrow().iter() {
+                            if let Some(decorator_line) = ast_node_line_number(decorator) {
+                                line = line.min(decorator_line);
+                            }
+                        }
+                    }
+                    line
+                });
+                let sequence =
+                    ast_internal_function_line_sequence(node).unwrap_or_else(|| vec![line]);
+                sequences.push(sequence);
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    collect_ast_function_definition_line_sequences(&value, sequences);
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                collect_ast_function_definition_line_sequences(item, sequences);
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                collect_ast_function_definition_line_sequences(item, sequences);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn collect_ast_generator_expression_line_sequences(
+    node: &Value,
+    sequences: &mut Vec<(usize, Vec<usize>)>,
+) -> Result<(), String> {
+    match node {
+        Value::AstNode {
+            kind,
+            fields,
+            attrs,
+            ..
+        } => {
+            let _guard = AstCompileRecursionGuard::enter(node)?;
+            if kind == "GeneratorExp" {
+                let line = ast_node_line_number(node).unwrap_or(1);
+                let sequence = ast_internal_generator_expression_line_sequence(node)
+                    .unwrap_or_else(|| (line, vec![line]));
+                sequences.push(sequence);
+            }
+
+            for field in fields {
+                if let Some(value) = lookup_string_key(attrs, field) {
+                    collect_ast_generator_expression_line_sequences(&value, sequences)?;
+                }
+            }
+        }
+        Value::List(items) => {
+            for item in items.borrow().iter() {
+                collect_ast_generator_expression_line_sequences(item, sequences)?;
+            }
+        }
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                collect_ast_generator_expression_line_sequences(item, sequences)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn ast_internal_function_first_line_number(node: &Value) -> Option<usize> {
+    let Value::AstNode { attrs, .. } = node else {
+        return None;
+    };
+
+    lookup_string_key(attrs, AST_FUNCTION_FIRST_LINE_ATTR)
+        .and_then(|value| match value {
+            Value::Number(line) if line > 0 => usize::try_from(line).ok(),
+            _ => None,
+        })
+        .filter(|line| *line > 0)
+}
+
+fn ast_internal_function_line_sequence(node: &Value) -> Option<Vec<usize>> {
+    let Value::AstNode { attrs, .. } = node else {
+        return None;
+    };
+
+    let value = lookup_string_key(attrs, AST_FUNCTION_LINE_SEQUENCE_ATTR)?;
+    let items = match value {
+        Value::Tuple(items) => items.as_ref().clone(),
+        Value::List(items) => items.borrow().clone(),
+        _ => return None,
+    };
+    let sequence = items
+        .iter()
+        .map(|value| match value {
+            Value::Number(line) if *line > 0 => usize::try_from(*line).ok(),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    if sequence.is_empty() {
+        None
+    } else {
+        Some(sequence)
+    }
+}
+
+fn ast_internal_generator_expression_line_sequence(node: &Value) -> Option<(usize, Vec<usize>)> {
+    let Value::AstNode { attrs, .. } = node else {
+        return None;
+    };
+
+    let first_line = match lookup_string_key(attrs, AST_GENERATOR_EXPRESSION_FIRST_LINE_ATTR)? {
+        Value::Number(line) if line > 0 => usize::try_from(line).ok()?,
+        _ => return None,
+    };
+    let value = lookup_string_key(attrs, AST_GENERATOR_EXPRESSION_LINE_SEQUENCE_ATTR)?;
+    let sequence_items = match value {
+        Value::Tuple(items) => items.as_ref().clone(),
+        Value::List(items) => items.borrow().clone(),
+        _ => return None,
+    };
+    let sequence = sequence_items
+        .iter()
+        .map(|value| match value {
+            Value::Number(line) if *line > 0 => usize::try_from(*line).ok(),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    if sequence.is_empty() {
+        None
+    } else {
+        Some((first_line, sequence))
+    }
+}
+
+fn ast_node_line_number(node: &Value) -> Option<usize> {
+    let Value::AstNode { attrs, .. } = node else {
+        return None;
+    };
+
+    lookup_string_key(attrs, "lineno")
+        .and_then(|value| match value {
+            Value::Number(line) if line > 0 => usize::try_from(line).ok(),
+            Value::Bool(value) => Some(if value { 1 } else { 0 }),
+            _ => None,
+        })
+        .filter(|line| *line > 0)
 }
 
 fn syntax_program_from_ast_module(node: &Value) -> Result<syntax::Program, String> {
@@ -14312,6 +21317,7 @@ fn ast_compile_stmt(node: &Value) -> Result<syntax::Stmt, String> {
         Some("Assign") => Ok(syntax::Stmt::Assign {
             targets: ast_compile_nonempty_target_list_field(node, "targets", "Assign", "Store")?,
             value: ast_compile_expr(&ast_compile_required_field(node, "value")?)?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("AnnAssign") => Ok(syntax::Stmt::AnnAssign {
             target: ast_compile_target(&ast_compile_required_field(node, "target")?)?,
@@ -14320,7 +21326,11 @@ fn ast_compile_stmt(node: &Value) -> Result<syntax::Stmt, String> {
             simple: ast_compile_boolish_field(node, "simple")?,
         }),
         Some("TypeAlias") => Ok(syntax::Stmt::TypeAlias {
-            name: ast_compile_name_target_field(node, "name")?,
+            name: ast_compile_name_target_field_with_error(
+                node,
+                "name",
+                "TypeError: TypeAlias with non-Name name",
+            )?,
             type_params: ast_compile_type_params_field(node, "type_params")?,
             value: ast_compile_expr(&ast_compile_required_field(node, "value")?)?,
         }),
@@ -14339,6 +21349,7 @@ fn ast_compile_stmt(node: &Value) -> Result<syntax::Stmt, String> {
             body: ast_compile_nonempty_stmt_list_field(node, "body", "FunctionDef")?,
             decorators: ast_compile_expr_list_field(node, "decorator_list")?,
             returns: ast_compile_optional_expr_field(node, "returns")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("AsyncFunctionDef") => Ok(syntax::Stmt::AsyncFunctionDef {
             name: ast_compile_string_field(node, "name")?,
@@ -14347,6 +21358,7 @@ fn ast_compile_stmt(node: &Value) -> Result<syntax::Stmt, String> {
             body: ast_compile_nonempty_stmt_list_field(node, "body", "AsyncFunctionDef")?,
             decorators: ast_compile_expr_list_field(node, "decorator_list")?,
             returns: ast_compile_optional_expr_field(node, "returns")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("ClassDef") => Ok(syntax::Stmt::ClassDef {
             name: ast_compile_string_field(node, "name")?,
@@ -14411,22 +21423,26 @@ fn ast_compile_stmt(node: &Value) -> Result<syntax::Stmt, String> {
             iter: ast_compile_expr(&ast_compile_required_field(node, "iter")?)?,
             body: ast_compile_nonempty_stmt_list_field(node, "body", "For")?,
             else_body: ast_compile_stmt_list_field(node, "orelse")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("With") => Ok(syntax::Stmt::With {
             items: ast_compile_nonempty_with_items_field(node, "items", "With")?,
             body: ast_compile_nonempty_stmt_list_field(node, "body", "With")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("Try") => ast_compile_try_stmt(node, false),
         Some("TryStar") => ast_compile_try_stmt(node, true),
         Some("AsyncWith") => Ok(syntax::Stmt::AsyncWith {
             items: ast_compile_nonempty_with_items_field(node, "items", "AsyncWith")?,
             body: ast_compile_nonempty_stmt_list_field(node, "body", "AsyncWith")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("AsyncFor") => Ok(syntax::Stmt::AsyncFor {
             target: ast_compile_target(&ast_compile_required_field(node, "target")?)?,
             iter: ast_compile_expr(&ast_compile_required_field(node, "iter")?)?,
             body: ast_compile_nonempty_stmt_list_field(node, "body", "AsyncFor")?,
             else_body: ast_compile_stmt_list_field(node, "orelse")?,
+            type_comment: ast_compile_optional_string_field(node, "type_comment")?,
         }),
         Some("Break") => Ok(syntax::Stmt::Break),
         Some("Continue") => Ok(syntax::Stmt::Continue),
@@ -14497,7 +21513,11 @@ fn ast_compile_expr(node: &Value) -> Result<syntax::Expr, String> {
         )?)),
         Some("Dict") => ast_compile_dict_expr(node),
         Some("NamedExpr") => Ok(syntax::Expr::NamedExpr {
-            name: ast_compile_name_target_field(node, "target")?,
+            name: ast_compile_name_target_field_with_error(
+                node,
+                "target",
+                "TypeError: NamedExpr target must be a Name",
+            )?,
             value: Box::new(ast_compile_expr(&ast_compile_required_field(
                 node, "value",
             )?)?),
@@ -14708,6 +21728,32 @@ fn ast_compile_call_expr(node: &Value) -> Result<syntax::Expr, String> {
         });
     }
 
+    if args
+        .iter()
+        .all(|arg| matches!(arg, syntax::CallArg::Expr(_)))
+        && keywords
+            .iter()
+            .all(|keyword| matches!(keyword, syntax::CallKeyword::Named(_, _)))
+    {
+        return Ok(syntax::Expr::KeywordCall {
+            callee,
+            args: args
+                .into_iter()
+                .map(|arg| match arg {
+                    syntax::CallArg::Expr(expr) => expr,
+                    syntax::CallArg::Unpack(_) => unreachable!(),
+                })
+                .collect(),
+            keywords: keywords
+                .into_iter()
+                .map(|keyword| match keyword {
+                    syntax::CallKeyword::Named(name, expr) => (name, expr),
+                    syntax::CallKeyword::Unpack(_) => unreachable!(),
+                })
+                .collect(),
+        });
+    }
+
     Ok(syntax::Expr::UnpackCall {
         callee,
         args,
@@ -14824,11 +21870,13 @@ fn ast_compile_subscript_target(node: &Value, _expected: &str) -> Result<syntax:
     )?)?);
     let slice = ast_compile_required_field(node, "slice")?;
     if ast_node_kind(&slice) == Some("Slice") {
-        return Ok(syntax::Target::Slice {
+        return Ok(syntax::Target::Subscript {
             object,
-            start: ast_compile_optional_expr_field(&slice, "lower")?,
-            stop: ast_compile_optional_expr_field(&slice, "upper")?,
-            step: ast_compile_optional_expr_field(&slice, "step")?,
+            index: syntax::Expr::SliceLiteral {
+                start: ast_compile_optional_expr_field(&slice, "lower")?.map(Box::new),
+                stop: ast_compile_optional_expr_field(&slice, "upper")?.map(Box::new),
+                step: ast_compile_optional_expr_field(&slice, "step")?.map(Box::new),
+            },
         });
     }
 
@@ -14868,9 +21916,9 @@ fn ast_compile_arguments(node: &Value) -> Result<syntax::FunctionParams, String>
         }
     }
 
-    let (vararg, vararg_annotation) =
+    let (vararg, vararg_annotation, vararg_type_comment) =
         ast_compile_optional_arg_name_annotation(&ast_compile_required_field(node, "vararg")?)?;
-    let (kwarg, kwarg_annotation) =
+    let (kwarg, kwarg_annotation, kwarg_type_comment) =
         ast_compile_optional_arg_name_annotation(&ast_compile_required_field(node, "kwarg")?)?;
 
     Ok(syntax::FunctionParams {
@@ -14878,9 +21926,11 @@ fn ast_compile_arguments(node: &Value) -> Result<syntax::FunctionParams, String>
         positional,
         vararg,
         vararg_annotation,
+        vararg_type_comment,
         keyword_only,
         kwarg,
         kwarg_annotation,
+        kwarg_type_comment,
     })
 }
 
@@ -14888,11 +21938,12 @@ fn ast_compile_param_list_field(node: &Value, field: &str) -> Result<Vec<syntax:
     ast_compile_list_field(node, field)?
         .into_iter()
         .map(|arg| {
-            let (name, annotation) = ast_compile_arg_name_annotation(&arg)?;
+            let (name, annotation, type_comment) = ast_compile_arg_name_annotation(&arg)?;
             Ok(syntax::Param {
                 name,
                 annotation: annotation.map(|expr| *expr),
                 default: None,
+                type_comment,
             })
         })
         .collect()
@@ -14900,21 +21951,22 @@ fn ast_compile_param_list_field(node: &Value, field: &str) -> Result<Vec<syntax:
 
 fn ast_compile_optional_arg_name_annotation(
     node: &Value,
-) -> Result<(Option<String>, Option<Box<syntax::Expr>>), String> {
+) -> Result<(Option<String>, Option<Box<syntax::Expr>>, Option<String>), String> {
     if matches!(node, Value::None) {
-        return Ok((None, None));
+        return Ok((None, None, None));
     }
-    let (name, annotation) = ast_compile_arg_name_annotation(node)?;
-    Ok((Some(name), annotation))
+    let (name, annotation, type_comment) = ast_compile_arg_name_annotation(node)?;
+    Ok((Some(name), annotation, type_comment))
 }
 
 fn ast_compile_arg_name_annotation(
     node: &Value,
-) -> Result<(String, Option<Box<syntax::Expr>>), String> {
+) -> Result<(String, Option<Box<syntax::Expr>>, Option<String>), String> {
     ast_compile_expect_kind(node, "arg")?;
     let name = ast_compile_string_field(node, "arg")?;
     let annotation = ast_compile_optional_expr_field(node, "annotation")?.map(Box::new);
-    Ok((name, annotation))
+    let type_comment = ast_compile_optional_string_field(node, "type_comment")?;
+    Ok((name, annotation, type_comment))
 }
 
 fn ast_compile_call_keywords_field(
@@ -15619,9 +22671,15 @@ fn ast_compile_interpolation_text_field(node: &Value, field: &str) -> Result<Str
     }
 }
 
-fn ast_compile_name_target_field(node: &Value, field: &str) -> Result<String, String> {
+fn ast_compile_name_target_field_with_error(
+    node: &Value,
+    field: &str,
+    message: &str,
+) -> Result<String, String> {
     let target = ast_compile_required_field(node, field)?;
-    ast_compile_expect_kind(&target, "Name")?;
+    if ast_compile_expect_kind(&target, "Name").is_err() {
+        return Err(message.to_string());
+    }
     ast_compile_name_identifier_field(&target, "id")
 }
 
@@ -15840,10 +22898,10 @@ fn ast_compile_optional_expr_field(
 }
 
 fn ast_compile_optional_string_field(node: &Value, field: &str) -> Result<Option<String>, String> {
-    match ast_compile_required_field(node, field)? {
-        Value::None => Ok(None),
-        Value::String(value) => Ok(Some(value)),
-        value => Err(format!(
+    match ast_required_field(node, field) {
+        Err(_) | Ok(Value::None) => Ok(None),
+        Ok(Value::String(value)) => Ok(Some(value)),
+        Ok(value) => Err(format!(
             "TypeError: field \"{field}\" must be a string or None, not {}",
             type_name(&value)
         )),
@@ -16039,193 +23097,19 @@ fn ast_optional_expr(value: Option<&syntax::Expr>) -> Value {
     value.map(ast_expr_node).unwrap_or(Value::None)
 }
 
-fn ast_context_node(name: &str) -> Value {
-    ast_node(name, Vec::new())
+fn ast_optional_type_comment(value: &Option<String>, include_type_comments: bool) -> Value {
+    if include_type_comments {
+        value
+            .as_ref()
+            .map(|comment| Value::String(comment.clone()))
+            .unwrap_or(Value::None)
+    } else {
+        Value::None
+    }
 }
 
-const AST_MODULE_TYPE_NAMES: &[&str] = &[
-    "AST",
-    "mod",
-    "stmt",
-    "expr",
-    "excepthandler",
-    "pattern",
-    "type_ignore",
-    "type_param",
-    "Module",
-    "Expression",
-    "Interactive",
-    "FunctionType",
-    "Pass",
-    "Expr",
-    "Assign",
-    "AnnAssign",
-    "TypeAlias",
-    "AugAssign",
-    "Delete",
-    "FunctionDef",
-    "AsyncFunctionDef",
-    "ClassDef",
-    "Import",
-    "ImportFrom",
-    "Return",
-    "Global",
-    "Nonlocal",
-    "Assert",
-    "Raise",
-    "If",
-    "Match",
-    "Try",
-    "TryStar",
-    "With",
-    "AsyncWith",
-    "While",
-    "For",
-    "AsyncFor",
-    "Break",
-    "Continue",
-    "Name",
-    "Constant",
-    "Attribute",
-    "BinOp",
-    "Compare",
-    "UnaryOp",
-    "BoolOp",
-    "IfExp",
-    "NamedExpr",
-    "Yield",
-    "YieldFrom",
-    "Await",
-    "Starred",
-    "List",
-    "ListComp",
-    "SetComp",
-    "GeneratorExp",
-    "Tuple",
-    "Dict",
-    "DictComp",
-    "Subscript",
-    "Slice",
-    "Call",
-    "Lambda",
-    "JoinedStr",
-    "FormattedValue",
-    "TemplateStr",
-    "Interpolation",
-    "expr_context",
-    "boolop",
-    "operator",
-    "unaryop",
-    "cmpop",
-    "Load",
-    "Store",
-    "Del",
-    "Add",
-    "Sub",
-    "Mult",
-    "MatMult",
-    "Div",
-    "FloorDiv",
-    "Mod",
-    "Pow",
-    "BitOr",
-    "BitXor",
-    "BitAnd",
-    "LShift",
-    "RShift",
-    "Eq",
-    "NotEq",
-    "Lt",
-    "LtE",
-    "Gt",
-    "GtE",
-    "In",
-    "NotIn",
-    "Is",
-    "IsNot",
-    "Not",
-    "UAdd",
-    "USub",
-    "Invert",
-    "And",
-    "Or",
-    "arguments",
-    "arg",
-    "keyword",
-    "alias",
-    "ExceptHandler",
-    "withitem",
-    "comprehension",
-    "match_case",
-    "MatchValue",
-    "MatchSingleton",
-    "MatchAs",
-    "MatchOr",
-    "MatchSequence",
-    "MatchMapping",
-    "MatchClass",
-    "MatchStar",
-    "TypeVar",
-    "TypeVarTuple",
-    "ParamSpec",
-    "TypeIgnore",
-];
-
-fn ast_module_entries() -> Vec<(&'static str, Value)> {
-    let mut entries = AST_MODULE_TYPE_NAMES
-        .iter()
-        .map(|name| {
-            let builtin_name = if *name == "Interpolation" {
-                "ast.Interpolation"
-            } else {
-                *name
-            };
-            (*name, Value::Builtin(builtin_name.to_string()))
-        })
-        .collect::<Vec<_>>();
-    entries.extend([
-        ("Set", Value::Builtin("ast.Set".to_string())),
-        ("PyCF_ONLY_AST", Value::Number(1024)),
-        ("parse", Value::Builtin("ast.parse".to_string())),
-        ("dump", Value::Builtin("ast.dump".to_string())),
-        ("compare", Value::Builtin("ast.compare".to_string())),
-        (
-            "literal_eval",
-            Value::Builtin("ast.literal_eval".to_string()),
-        ),
-        (
-            "copy_location",
-            Value::Builtin("ast.copy_location".to_string()),
-        ),
-        (
-            "fix_missing_locations",
-            Value::Builtin("ast.fix_missing_locations".to_string()),
-        ),
-        (
-            "increment_lineno",
-            Value::Builtin("ast.increment_lineno".to_string()),
-        ),
-        (
-            "get_docstring",
-            Value::Builtin("ast.get_docstring".to_string()),
-        ),
-        (
-            "get_source_segment",
-            Value::Builtin("ast.get_source_segment".to_string()),
-        ),
-        ("iter_fields", Value::Builtin("ast.iter_fields".to_string())),
-        (
-            "iter_child_nodes",
-            Value::Builtin("ast.iter_child_nodes".to_string()),
-        ),
-        ("walk", Value::Builtin("ast.walk".to_string())),
-        ("NodeVisitor", Value::Builtin("NodeVisitor".to_string())),
-        (
-            "NodeTransformer",
-            Value::Builtin("NodeTransformer".to_string()),
-        ),
-    ]);
-    entries
+fn ast_context_node(name: &str) -> Value {
+    ast_node(name, Vec::new())
 }
 
 fn ast_builtin_value_for_kind(kind: &str) -> Value {
@@ -16394,13 +23278,23 @@ fn call_ast_subclasses(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Resu
     ))
 }
 
-fn ast_program_node(program: &syntax::Program, type_ignores: Vec<Value>) -> Value {
+fn ast_program_node(
+    program: &syntax::Program,
+    type_ignores: Vec<Value>,
+    include_type_comments: bool,
+) -> Value {
     ast_node(
         "Module",
         vec![
             (
                 "body",
-                ast_nodes_list(program.statements.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    program
+                        .statements
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
             ("type_ignores", list_value(type_ignores)),
         ],
@@ -16412,7 +23306,13 @@ fn ast_interactive_node(program: &syntax::Program) -> Value {
         "Interactive",
         vec![(
             "body",
-            ast_nodes_list(program.statements.iter().map(ast_stmt_node).collect()),
+            ast_nodes_list(
+                program
+                    .statements
+                    .iter()
+                    .map(|stmt| ast_stmt_node(stmt, false))
+                    .collect(),
+            ),
         )],
     )
 }
@@ -16434,11 +23334,15 @@ fn ast_function_type_node(function_type: &syntax::FunctionType) -> Value {
     )
 }
 
-fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
+fn ast_stmt_node(stmt: &syntax::Stmt, include_type_comments: bool) -> Value {
     match stmt {
         syntax::Stmt::Pass => ast_node("Pass", Vec::new()),
         syntax::Stmt::Expr(value) => ast_node("Expr", vec![("value", ast_expr_node(value))]),
-        syntax::Stmt::Assign { targets, value } => ast_node(
+        syntax::Stmt::Assign {
+            targets,
+            value,
+            type_comment,
+        } => ast_node(
             "Assign",
             vec![
                 (
@@ -16451,7 +23355,10 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
                     ),
                 ),
                 ("value", ast_expr_node(value)),
-                ("type_comment", Value::None),
+                (
+                    "type_comment",
+                    ast_optional_type_comment(type_comment, include_type_comments),
+                ),
             ],
         ),
         syntax::Stmt::AnnAssign {
@@ -16517,6 +23424,7 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             body,
             decorators,
             returns,
+            type_comment,
         } => ast_function_def_node(
             "FunctionDef",
             name,
@@ -16525,6 +23433,8 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             body,
             decorators,
             returns.as_ref(),
+            type_comment,
+            include_type_comments,
         ),
         syntax::Stmt::AsyncFunctionDef {
             name,
@@ -16533,6 +23443,7 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             body,
             decorators,
             returns,
+            type_comment,
         } => ast_function_def_node(
             "AsyncFunctionDef",
             name,
@@ -16541,6 +23452,8 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             body,
             decorators,
             returns.as_ref(),
+            type_comment,
+            include_type_comments,
         ),
         syntax::Stmt::ClassDef {
             name,
@@ -16563,7 +23476,11 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
                 ),
                 (
                     "body",
-                    ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                    ast_nodes_list(
+                        body.iter()
+                            .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                            .collect(),
+                    ),
                 ),
                 (
                     "decorator_list",
@@ -16651,11 +23568,21 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
                 ("test", ast_expr_node(condition)),
                 (
                     "body",
-                    ast_nodes_list(then_body.iter().map(ast_stmt_node).collect()),
+                    ast_nodes_list(
+                        then_body
+                            .iter()
+                            .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                            .collect(),
+                    ),
                 ),
                 (
                     "orelse",
-                    ast_nodes_list(else_body.iter().map(ast_stmt_node).collect()),
+                    ast_nodes_list(
+                        else_body
+                            .iter()
+                            .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                            .collect(),
+                    ),
                 ),
             ],
         ),
@@ -16665,7 +23592,12 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
                 ("subject", ast_expr_node(subject)),
                 (
                     "cases",
-                    ast_nodes_list(cases.iter().map(ast_match_case_node).collect()),
+                    ast_nodes_list(
+                        cases
+                            .iter()
+                            .map(|case| ast_match_case_node(case, include_type_comments))
+                            .collect(),
+                    ),
                 ),
             ],
         ),
@@ -16674,15 +23606,43 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             handlers,
             else_body,
             finally_body,
-        } => ast_try_node("Try", body, handlers, else_body, finally_body),
+        } => ast_try_node(
+            "Try",
+            body,
+            handlers,
+            else_body,
+            finally_body,
+            include_type_comments,
+        ),
         syntax::Stmt::TryStar {
             body,
             handlers,
             else_body,
             finally_body,
-        } => ast_try_node("TryStar", body, handlers, else_body, finally_body),
-        syntax::Stmt::With { items, body } => ast_with_node("With", items, body),
-        syntax::Stmt::AsyncWith { items, body } => ast_with_node("AsyncWith", items, body),
+        } => ast_try_node(
+            "TryStar",
+            body,
+            handlers,
+            else_body,
+            finally_body,
+            include_type_comments,
+        ),
+        syntax::Stmt::With {
+            items,
+            body,
+            type_comment,
+        } => ast_with_node("With", items, body, type_comment, include_type_comments),
+        syntax::Stmt::AsyncWith {
+            items,
+            body,
+            type_comment,
+        } => ast_with_node(
+            "AsyncWith",
+            items,
+            body,
+            type_comment,
+            include_type_comments,
+        ),
         syntax::Stmt::While {
             condition,
             body,
@@ -16693,11 +23653,20 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
                 ("test", ast_expr_node(condition)),
                 (
                     "body",
-                    ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                    ast_nodes_list(
+                        body.iter()
+                            .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                            .collect(),
+                    ),
                 ),
                 (
                     "orelse",
-                    ast_nodes_list(else_body.iter().map(ast_stmt_node).collect()),
+                    ast_nodes_list(
+                        else_body
+                            .iter()
+                            .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                            .collect(),
+                    ),
                 ),
             ],
         ),
@@ -16706,13 +23675,31 @@ fn ast_stmt_node(stmt: &syntax::Stmt) -> Value {
             iter,
             body,
             else_body,
-        } => ast_for_node("For", target, iter, body, else_body),
+            type_comment,
+        } => ast_for_node(
+            "For",
+            target,
+            iter,
+            body,
+            else_body,
+            type_comment,
+            include_type_comments,
+        ),
         syntax::Stmt::AsyncFor {
             target,
             iter,
             body,
             else_body,
-        } => ast_for_node("AsyncFor", target, iter, body, else_body),
+            type_comment,
+        } => ast_for_node(
+            "AsyncFor",
+            target,
+            iter,
+            body,
+            else_body,
+            type_comment,
+            include_type_comments,
+        ),
         syntax::Stmt::Break => ast_node("Break", Vec::new()),
         syntax::Stmt::Continue => ast_node("Continue", Vec::new()),
     }
@@ -16726,22 +23713,31 @@ fn ast_function_def_node(
     body: &[syntax::Stmt],
     decorators: &[syntax::Expr],
     returns: Option<&syntax::Expr>,
+    type_comment: &Option<String>,
+    include_type_comments: bool,
 ) -> Value {
     ast_node(
         kind,
         vec![
             ("name", Value::String(name.to_string())),
-            ("args", ast_arguments_node(params)),
+            ("args", ast_arguments_node(params, include_type_comments)),
             (
                 "body",
-                ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    body.iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "decorator_list",
                 ast_nodes_list(decorators.iter().map(ast_expr_node).collect()),
             ),
             ("returns", ast_optional_expr(returns)),
-            ("type_comment", Value::None),
+            (
+                "type_comment",
+                ast_optional_type_comment(type_comment, include_type_comments),
+            ),
             (
                 "type_params",
                 ast_nodes_list(type_params.iter().map(ast_type_param_node).collect()),
@@ -16756,31 +23752,57 @@ fn ast_try_node(
     handlers: &[syntax::ExceptHandler],
     else_body: &[syntax::Stmt],
     finally_body: &[syntax::Stmt],
+    include_type_comments: bool,
 ) -> Value {
     ast_node(
         kind,
         vec![
             (
                 "body",
-                ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    body.iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "handlers",
-                ast_nodes_list(handlers.iter().map(ast_except_handler_node).collect()),
+                ast_nodes_list(
+                    handlers
+                        .iter()
+                        .map(|handler| ast_except_handler_node(handler, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "orelse",
-                ast_nodes_list(else_body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    else_body
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "finalbody",
-                ast_nodes_list(finally_body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    finally_body
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
         ],
     )
 }
 
-fn ast_with_node(kind: &str, items: &[syntax::WithItem], body: &[syntax::Stmt]) -> Value {
+fn ast_with_node(
+    kind: &str,
+    items: &[syntax::WithItem],
+    body: &[syntax::Stmt],
+    type_comment: &Option<String>,
+    include_type_comments: bool,
+) -> Value {
     ast_node(
         kind,
         vec![
@@ -16790,9 +23812,16 @@ fn ast_with_node(kind: &str, items: &[syntax::WithItem], body: &[syntax::Stmt]) 
             ),
             (
                 "body",
-                ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    body.iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
-            ("type_comment", Value::None),
+            (
+                "type_comment",
+                ast_optional_type_comment(type_comment, include_type_comments),
+            ),
         ],
     )
 }
@@ -16803,6 +23832,8 @@ fn ast_for_node(
     iter: &syntax::Expr,
     body: &[syntax::Stmt],
     else_body: &[syntax::Stmt],
+    type_comment: &Option<String>,
+    include_type_comments: bool,
 ) -> Value {
     ast_node(
         kind,
@@ -16811,13 +23842,25 @@ fn ast_for_node(
             ("iter", ast_expr_node(iter)),
             (
                 "body",
-                ast_nodes_list(body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    body.iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "orelse",
-                ast_nodes_list(else_body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    else_body
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
-            ("type_comment", Value::None),
+            (
+                "type_comment",
+                ast_optional_type_comment(type_comment, include_type_comments),
+            ),
         ],
     )
 }
@@ -17096,7 +24139,7 @@ fn ast_expr_node(expr: &syntax::Expr) -> Value {
         syntax::Expr::Lambda { params, body } => ast_node(
             "Lambda",
             vec![
-                ("args", ast_arguments_node(params)),
+                ("args", ast_arguments_node(params, false)),
                 ("body", ast_expr_node(body)),
             ],
         ),
@@ -17308,7 +24351,7 @@ fn ast_comprehension_node(clause: &syntax::ComprehensionClause) -> Value {
     )
 }
 
-fn ast_arguments_node(params: &syntax::FunctionParams) -> Value {
+fn ast_arguments_node(params: &syntax::FunctionParams, include_type_comments: bool) -> Value {
     let positional_defaults = params
         .positional_only
         .iter()
@@ -17320,23 +24363,48 @@ fn ast_arguments_node(params: &syntax::FunctionParams) -> Value {
         vec![
             (
                 "posonlyargs",
-                ast_nodes_list(params.positional_only.iter().map(ast_param_node).collect()),
+                ast_nodes_list(
+                    params
+                        .positional_only
+                        .iter()
+                        .map(|param| ast_param_node(param, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "args",
-                ast_nodes_list(params.positional.iter().map(ast_param_node).collect()),
+                ast_nodes_list(
+                    params
+                        .positional
+                        .iter()
+                        .map(|param| ast_param_node(param, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "vararg",
                 params
                     .vararg
                     .as_ref()
-                    .map(|name| ast_arg_node(name, params.vararg_annotation.as_deref()))
+                    .map(|name| {
+                        ast_arg_node(
+                            name,
+                            params.vararg_annotation.as_deref(),
+                            &params.vararg_type_comment,
+                            include_type_comments,
+                        )
+                    })
                     .unwrap_or(Value::None),
             ),
             (
                 "kwonlyargs",
-                ast_nodes_list(params.keyword_only.iter().map(ast_param_node).collect()),
+                ast_nodes_list(
+                    params
+                        .keyword_only
+                        .iter()
+                        .map(|param| ast_param_node(param, include_type_comments))
+                        .collect(),
+                ),
             ),
             (
                 "kw_defaults",
@@ -17359,7 +24427,14 @@ fn ast_arguments_node(params: &syntax::FunctionParams) -> Value {
                 params
                     .kwarg
                     .as_ref()
-                    .map(|name| ast_arg_node(name, params.kwarg_annotation.as_deref()))
+                    .map(|name| {
+                        ast_arg_node(
+                            name,
+                            params.kwarg_annotation.as_deref(),
+                            &params.kwarg_type_comment,
+                            include_type_comments,
+                        )
+                    })
                     .unwrap_or(Value::None),
             ),
             ("defaults", ast_nodes_list(positional_defaults)),
@@ -17367,17 +24442,30 @@ fn ast_arguments_node(params: &syntax::FunctionParams) -> Value {
     )
 }
 
-fn ast_param_node(param: &syntax::Param) -> Value {
-    ast_arg_node(&param.name, param.annotation.as_ref())
+fn ast_param_node(param: &syntax::Param, include_type_comments: bool) -> Value {
+    ast_arg_node(
+        &param.name,
+        param.annotation.as_ref(),
+        &param.type_comment,
+        include_type_comments,
+    )
 }
 
-fn ast_arg_node(name: &str, annotation: Option<&syntax::Expr>) -> Value {
+fn ast_arg_node(
+    name: &str,
+    annotation: Option<&syntax::Expr>,
+    type_comment: &Option<String>,
+    include_type_comments: bool,
+) -> Value {
     ast_node(
         "arg",
         vec![
             ("arg", Value::String(name.to_string())),
             ("annotation", ast_optional_expr(annotation)),
-            ("type_comment", Value::None),
+            (
+                "type_comment",
+                ast_optional_type_comment(type_comment, include_type_comments),
+            ),
         ],
     )
 }
@@ -17448,7 +24536,7 @@ fn ast_import_from_targets(targets: &syntax::ImportFromTargets) -> Value {
     }
 }
 
-fn ast_except_handler_node(handler: &syntax::ExceptHandler) -> Value {
+fn ast_except_handler_node(handler: &syntax::ExceptHandler, include_type_comments: bool) -> Value {
     ast_node(
         "ExceptHandler",
         vec![
@@ -17470,7 +24558,13 @@ fn ast_except_handler_node(handler: &syntax::ExceptHandler) -> Value {
             ),
             (
                 "body",
-                ast_nodes_list(handler.body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    handler
+                        .body
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
         ],
     )
@@ -17492,7 +24586,7 @@ fn ast_with_item_node(item: &syntax::WithItem) -> Value {
     )
 }
 
-fn ast_match_case_node(case: &syntax::MatchCase) -> Value {
+fn ast_match_case_node(case: &syntax::MatchCase, include_type_comments: bool) -> Value {
     ast_node(
         "match_case",
         vec![
@@ -17506,7 +24600,12 @@ fn ast_match_case_node(case: &syntax::MatchCase) -> Value {
             ),
             (
                 "body",
-                ast_nodes_list(case.body.iter().map(ast_stmt_node).collect()),
+                ast_nodes_list(
+                    case.body
+                        .iter()
+                        .map(|stmt| ast_stmt_node(stmt, include_type_comments))
+                        .collect(),
+                ),
             ),
         ],
     )
@@ -18284,39 +25383,79 @@ fn call_ast_parse(
         .map(|value| compile_int_argument(value, "optimize"))
         .transpose()?
         .unwrap_or(-1);
+    let warning_module = match values[6].take() {
+        Some(Value::String(module)) => Some(module),
+        Some(Value::None) | None => None,
+        Some(value) => {
+            return Err(format!(
+                "TypeError: parse() argument 'module' must be str or None, not {}",
+                type_name(&value)
+            ));
+        }
+    };
 
     let source_for_warnings = source.clone();
     let node = parse_ast_node(source, &mode, type_comments, optimize, feature_version)?;
-    emit_ast_parse_warnings(vm, &source_for_warnings, &filename)?;
+    emit_ast_parse_warnings(
+        vm,
+        &source_for_warnings,
+        &filename,
+        warning_module.as_deref(),
+    )?;
     Ok(node)
 }
 
-fn emit_ast_parse_warnings(vm: &mut Vm, source: &Value, filename: &str) -> Result<(), String> {
+fn emit_ast_parse_warnings(
+    vm: &mut Vm,
+    source: &Value,
+    filename: &str,
+    warning_module: Option<&str>,
+) -> Result<(), String> {
     let source = match source {
         Value::String(source) => source.clone(),
-        Value::Bytes(bytes) | Value::ByteArray(bytes) => match decode_source_for_parse(bytes) {
+        Value::Bytes(bytes) => match decode_source_for_parse(bytes) {
             Ok(source) => source,
             Err(_) => return Ok(()),
         },
+        Value::ByteArray(bytes) => match decode_source_for_parse(&bytes.borrow()) {
+            Ok(source) => source,
+            Err(_) => return Ok(()),
+        },
+        Value::MemoryView(view) => {
+            let bytes = match memoryview_bytes(view) {
+                Ok(bytes) => bytes,
+                Err(_) => return Ok(()),
+            };
+            match decode_source_for_parse(&bytes) {
+                Ok(source) => source,
+                Err(_) => return Ok(()),
+            }
+        }
         _ => return Ok(()),
     };
     let Ok((_tokens, warnings)) = lex_with_spans_for_parse(&source) else {
         return Ok(());
     };
     for warning in warnings {
-        emit_ast_parse_warning(vm, warning, filename)?;
+        emit_ast_parse_warning(vm, warning, filename, warning_module)?;
     }
     Ok(())
 }
 
-fn emit_ast_parse_warning(vm: &mut Vm, warning: LexWarning, filename: &str) -> Result<(), String> {
+fn emit_ast_parse_warning(
+    vm: &mut Vm,
+    warning: LexWarning,
+    filename: &str,
+    warning_module: Option<&str>,
+) -> Result<(), String> {
     let category = match warning.category {
         LexWarningCategory::SyntaxWarning => builtin_type_value("SyntaxWarning"),
     };
-    vm.emit_warning_at(
+    vm.emit_warning_at_module(
         warning.message,
         category,
         filename.to_string(),
+        warning_module.map(|module| module.to_string()),
         warning.line,
     )
 }
@@ -18378,7 +25517,13 @@ fn parse_ast_node(
             }
             source
         }
-        Value::Bytes(bytes) | Value::ByteArray(bytes) => {
+        Value::Bytes(bytes) => {
+            decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))?
+        }
+        Value::ByteArray(bytes) => decode_source_for_parse(&bytes.borrow())
+            .map_err(|message| format!("SyntaxError: {message}"))?,
+        Value::MemoryView(view) => {
+            let bytes = memoryview_bytes(&view)?;
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))?
         }
         value => {
@@ -18394,6 +25539,9 @@ fn parse_ast_node(
             let (spanned_tokens, _warnings) = lex_with_spans_for_parse(&source)
                 .map_err(|error| format!("SyntaxError: {}", error.message))?;
             ast_validate_feature_version_tokens(&spanned_tokens, feature_version)?;
+            if type_comments {
+                ast_validate_type_comment_tokens(&spanned_tokens)?;
+            }
             let tokens = spanned_tokens
                 .iter()
                 .map(|token| token.token.clone())
@@ -18404,8 +25552,20 @@ fn parse_ast_node(
             } else {
                 Vec::new()
             };
-            let node = ast_program_node(&program, type_ignores);
+            let node = ast_program_node(&program, type_ignores, type_comments);
             annotate_ast_parse_locations(&node, &source, &spanned_tokens);
+            annotate_ast_function_definition_start_lines(
+                &node,
+                &function_definition_start_lines(&spanned_tokens),
+            );
+            annotate_ast_function_definition_line_sequences(
+                &node,
+                &function_definition_line_sequences(&spanned_tokens),
+            );
+            annotate_ast_generator_expression_line_sequences(
+                &node,
+                &generator_expression_line_sequences(&spanned_tokens),
+            );
             ast_apply_parse_optimizations(&node, optimize)?;
             Ok(node)
         }
@@ -18414,6 +25574,9 @@ fn parse_ast_node(
             let (spanned_tokens, _warnings) = lex_with_spans_for_parse(&source)
                 .map_err(|error| format!("SyntaxError: {}", error.message))?;
             ast_validate_feature_version_tokens(&spanned_tokens, feature_version)?;
+            if type_comments {
+                ast_validate_type_comment_tokens(&spanned_tokens)?;
+            }
             let tokens = spanned_tokens
                 .iter()
                 .map(|token| token.token.clone())
@@ -18422,6 +25585,18 @@ fn parse_ast_node(
                 parse_interactive(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
             let node = ast_interactive_node(&program);
             annotate_ast_parse_locations(&node, &source, &spanned_tokens);
+            annotate_ast_function_definition_start_lines(
+                &node,
+                &function_definition_start_lines(&spanned_tokens),
+            );
+            annotate_ast_function_definition_line_sequences(
+                &node,
+                &function_definition_line_sequences(&spanned_tokens),
+            );
+            annotate_ast_generator_expression_line_sequences(
+                &node,
+                &generator_expression_line_sequences(&spanned_tokens),
+            );
             ast_apply_parse_optimizations(&node, optimize)?;
             Ok(node)
         }
@@ -18528,6 +25703,188 @@ fn ast_validate_feature_version_tokens(
     }
 
     Ok(())
+}
+
+fn ast_validate_type_comment_tokens(tokens: &[SpannedToken]) -> Result<(), String> {
+    for index in 0..tokens.len() {
+        match &tokens[index].token {
+            Token::TypeIgnore(_) => {}
+            Token::TypeComment(_) if ast_type_comment_is_allowed(tokens, index) => {}
+            Token::TypeComment(_) => return Err("SyntaxError: invalid syntax".to_string()),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn ast_type_comment_is_allowed(tokens: &[SpannedToken], index: usize) -> bool {
+    ast_type_comment_is_in_function_parameters(tokens, index)
+        || ast_type_comment_follows_allowed_header_colon(tokens, index)
+        || ast_type_comment_is_function_body_comment(tokens, index)
+        || ast_type_comment_follows_assignment(tokens, index)
+}
+
+fn ast_type_comment_is_in_function_parameters(tokens: &[SpannedToken], index: usize) -> bool {
+    let mut paren_depth = 0usize;
+    let mut function_param_depths = Vec::new();
+    let mut pending_def = false;
+
+    for token in tokens.iter().take(index) {
+        match &token.token {
+            Token::Def => pending_def = true,
+            Token::LeftParen => {
+                paren_depth += 1;
+                if pending_def {
+                    function_param_depths.push(paren_depth);
+                    pending_def = false;
+                }
+            }
+            Token::RightParen => {
+                if function_param_depths.last().copied() == Some(paren_depth) {
+                    function_param_depths.pop();
+                }
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            Token::Colon if paren_depth == 0 => pending_def = false,
+            Token::Newline | Token::Indent | Token::Dedent | Token::Semicolon | Token::Eof
+                if paren_depth == 0 =>
+            {
+                pending_def = false;
+            }
+            _ => {}
+        }
+    }
+
+    !function_param_depths.is_empty()
+}
+
+fn ast_type_comment_follows_allowed_header_colon(tokens: &[SpannedToken], index: usize) -> bool {
+    let Some(previous) = ast_previous_same_line_token_index(tokens, index) else {
+        return false;
+    };
+    if !matches!(tokens[previous].token, Token::Colon) {
+        return false;
+    }
+
+    let line_start = ast_logical_statement_start(tokens, index);
+    ast_line_starts_type_comment_header(tokens, line_start, index, false)
+}
+
+fn ast_type_comment_is_function_body_comment(tokens: &[SpannedToken], index: usize) -> bool {
+    if !matches!(
+        tokens.get(index + 1).map(|token| &token.token),
+        Some(Token::Newline)
+    ) {
+        return false;
+    }
+
+    let Some(header_colon) = ast_previous_non_layout_token_index(tokens, index) else {
+        return false;
+    };
+    if !matches!(tokens[header_colon].token, Token::Colon) {
+        return false;
+    }
+
+    let line_start = ast_logical_statement_start(tokens, header_colon);
+    ast_line_starts_type_comment_header(tokens, line_start, header_colon, true)
+}
+
+fn ast_type_comment_follows_assignment(tokens: &[SpannedToken], index: usize) -> bool {
+    let line_start = ast_logical_statement_start(tokens, index);
+    let mut paren_depth = 0usize;
+    let mut bracket_depth = 0usize;
+    let mut brace_depth = 0usize;
+    let mut saw_top_level_equal = false;
+    let mut saw_top_level_colon_before_equal = false;
+
+    for token in tokens.iter().take(index).skip(line_start) {
+        match &token.token {
+            Token::LeftParen => paren_depth += 1,
+            Token::RightParen => paren_depth = paren_depth.saturating_sub(1),
+            Token::LeftBracket => bracket_depth += 1,
+            Token::RightBracket => bracket_depth = bracket_depth.saturating_sub(1),
+            Token::LeftBrace => brace_depth += 1,
+            Token::RightBrace => brace_depth = brace_depth.saturating_sub(1),
+            Token::Equal if paren_depth == 0 && bracket_depth == 0 && brace_depth == 0 => {
+                saw_top_level_equal = true;
+            }
+            Token::Colon
+                if paren_depth == 0
+                    && bracket_depth == 0
+                    && brace_depth == 0
+                    && !saw_top_level_equal =>
+            {
+                saw_top_level_colon_before_equal = true;
+            }
+            _ => {}
+        }
+    }
+
+    saw_top_level_equal && !saw_top_level_colon_before_equal
+}
+
+fn ast_previous_same_line_token_index(tokens: &[SpannedToken], index: usize) -> Option<usize> {
+    let line = tokens.get(index)?.line;
+    tokens[..index]
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, token)| token.line == line && !ast_is_layout_token(&token.token))
+        .map(|(index, _)| index)
+}
+
+fn ast_previous_non_layout_token_index(tokens: &[SpannedToken], index: usize) -> Option<usize> {
+    tokens[..index]
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, token)| !ast_is_layout_token(&token.token))
+        .map(|(index, _)| index)
+}
+
+fn ast_logical_statement_start(tokens: &[SpannedToken], index: usize) -> usize {
+    tokens[..index]
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, token)| {
+            matches!(
+                token.token,
+                Token::Newline | Token::Indent | Token::Dedent | Token::Semicolon
+            )
+        })
+        .map(|(index, _)| index + 1)
+        .unwrap_or(0)
+}
+
+fn ast_line_starts_type_comment_header(
+    tokens: &[SpannedToken],
+    start: usize,
+    end: usize,
+    function_only: bool,
+) -> bool {
+    let mut significant = tokens[start..end]
+        .iter()
+        .filter(|token| !ast_is_layout_token(&token.token))
+        .map(|token| &token.token);
+
+    match significant.next() {
+        Some(Token::Def) => true,
+        Some(Token::Async) => match significant.next() {
+            Some(Token::Def) => true,
+            Some(Token::For | Token::With) if !function_only => true,
+            _ => false,
+        },
+        Some(Token::For | Token::With) if !function_only => true,
+        _ => false,
+    }
+}
+
+fn ast_is_layout_token(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Encoding(_) | Token::Newline | Token::Indent | Token::Dedent
+    )
 }
 
 fn ast_tokens_have_positional_only_parameters(tokens: &[SpannedToken]) -> bool {
@@ -18812,6 +26169,10 @@ fn parse_ast_eval_node(source: &str, optimize: i64) -> Result<Value, String> {
     })?;
     let node = ast_expression_node(&expr);
     annotate_ast_parse_locations(&node, source, &spanned_tokens);
+    annotate_ast_generator_expression_line_sequences(
+        &node,
+        &generator_expression_line_sequences(&spanned_tokens),
+    );
     ast_apply_parse_optimizations(&node, optimize)?;
     Ok(node)
 }
@@ -19361,6 +26722,7 @@ impl AstLocationAnnotator<'_> {
             "Import" => self.annotate_import_node(node),
             "ImportFrom" => self.annotate_import_from_node(node),
             "If" => self.annotate_if_node(node),
+            "Match" => self.annotate_match_node(node),
             "While" => self.annotate_while_node(node),
             "For" => self.annotate_for_node(node, false),
             "AsyncFor" => self.annotate_for_node(node, true),
@@ -19450,6 +26812,12 @@ impl AstLocationAnnotator<'_> {
                 &["key", "value"],
             ),
             "comprehension" => self.annotate_comprehension_node(node),
+            "match_case" => self.annotate_match_case_node(node),
+            "MatchValue" => self.annotate_child_field(node, "value"),
+            "MatchSingleton" => self.annotate_match_singleton_node(node),
+            "MatchAs" => self.annotate_match_as_node(node),
+            "MatchStar" => self.annotate_match_star_node(node),
+            "MatchOr" => self.annotate_match_or_node(node),
             "keyword" => self.annotate_keyword_node(node),
             "alias" => self.annotate_alias_node(node),
             "TypeVar" | "TypeVarTuple" | "ParamSpec" => self.annotate_type_param_node(node),
@@ -19698,6 +27066,16 @@ impl AstLocationAnnotator<'_> {
         span
     }
 
+    fn annotate_match_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let start = self
+            .find_token(|token| matches!(token, Token::Identifier(name) if name == "match"))
+            .map(token_location);
+        let mut span = combine_optional_spans(start, self.annotate_child_field(node, "subject"));
+        self.find_token(|token| matches!(token, Token::Colon));
+        span = combine_optional_spans(span, self.annotate_list_field(node, "cases"));
+        span
+    }
+
     fn annotate_while_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
         let start = self
             .find_token(|token| matches!(token, Token::While))
@@ -19846,6 +27224,96 @@ impl AstLocationAnnotator<'_> {
         self.find_token(|token| matches!(token, Token::From));
         let value = self.annotate_child_field(node, "value");
         combine_optional_spans(start, value)
+    }
+
+    fn annotate_match_case_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let start = self
+            .find_token(|token| matches!(token, Token::Identifier(name) if name == "case"))
+            .map(token_location);
+        let mut span = combine_optional_spans(start, self.annotate_child_field(node, "pattern"));
+        if self.next_token_before(
+            |token| matches!(token, Token::If),
+            |token| matches!(token, Token::Colon),
+        ) {
+            let guard_start = self
+                .find_token(|token| matches!(token, Token::If))
+                .map(token_location);
+            span = combine_optional_spans(span, guard_start);
+            span = combine_optional_spans(span, self.annotate_child_field(node, "guard"));
+        }
+        self.find_token(|token| matches!(token, Token::Colon));
+        combine_optional_spans(span, self.annotate_list_field(node, "body"))
+    }
+
+    fn annotate_match_singleton_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let value = ast_lookup_field(node, "value")?;
+        self.find_token(|token| ast_constant_matches_token(&value, token))
+            .map(token_location)
+    }
+
+    fn annotate_match_as_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let mut span = None;
+        if let Some(pattern) = ast_lookup_field(node, "pattern")
+            && matches!(pattern, Value::AstNode { .. })
+        {
+            span = combine_optional_spans(span, self.annotate_node(&pattern));
+            if self.next_token_before(
+                |token| matches!(token, Token::As),
+                |token| matches!(token, Token::Colon | Token::Pipe | Token::Comma),
+            ) {
+                self.find_token(|token| matches!(token, Token::As));
+            }
+        }
+
+        match ast_lookup_field(node, "name") {
+            Some(Value::String(name)) => {
+                let name = self
+                    .find_token(
+                        |token| matches!(token, Token::Identifier(candidate) if candidate == &name),
+                    )
+                    .map(token_location);
+                combine_optional_spans(span, name)
+            }
+            Some(Value::None) | None => {
+                let wildcard = self
+                    .find_token(|token| matches!(token, Token::Identifier(name) if name == "_"))
+                    .map(token_location);
+                combine_optional_spans(span, wildcard)
+            }
+            _ => span,
+        }
+    }
+
+    fn annotate_match_star_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let star = self
+            .find_token(|token| matches!(token, Token::Star))
+            .map(token_location);
+        let name = match ast_lookup_field(node, "name") {
+            Some(Value::String(name)) => self
+                .find_token(
+                    |token| matches!(token, Token::Identifier(candidate) if candidate == &name),
+                )
+                .map(token_location),
+            Some(Value::None) | None => self
+                .find_token(|token| matches!(token, Token::Identifier(name) if name == "_"))
+                .map(token_location),
+            _ => None,
+        };
+        combine_optional_spans(star, name)
+    }
+
+    fn annotate_match_or_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
+        let mut span = None;
+        for (index, pattern) in ast_lookup_list_field(node, "patterns").iter().enumerate() {
+            if index > 0 {
+                let pipe = self
+                    .find_token(|token| matches!(token, Token::Pipe))
+                    .map(token_location);
+                span = combine_optional_spans(span, pipe);
+            }
+            span = combine_optional_spans(span, self.annotate_node(pattern));
+        }
+        span
     }
 
     fn annotate_name_node(&mut self, node: &Value) -> Option<AstSourceLocation> {
@@ -22631,6 +30099,9 @@ fn compile_eval_argument(value: Value) -> Result<Value, String> {
         Value::ByteArray(bytes) => {
             compile_code_object(Value::ByteArray(bytes), "<string>".to_string(), "eval")
         }
+        Value::MemoryView(view) => {
+            compile_code_object(Value::MemoryView(view), "<string>".to_string(), "eval")
+        }
         value => Err(format!(
             "TypeError: eval() arg 1 must be a string or code object, not {}",
             type_name(&value)
@@ -22649,6 +30120,9 @@ fn compile_exec_argument(value: Value) -> Result<Value, String> {
         }
         Value::ByteArray(bytes) => {
             compile_code_object(Value::ByteArray(bytes), "<string>".to_string(), "exec")
+        }
+        Value::MemoryView(view) => {
+            compile_code_object(Value::MemoryView(view), "<string>".to_string(), "exec")
         }
         value => Err(format!(
             "TypeError: exec() arg 1 must be a string or code object, not {}",
@@ -22698,49 +30172,6 @@ fn bind_eval_exec_args(
         ));
     }
     Ok(values)
-}
-
-fn bind_import_args(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Vec<Option<Value>>, String> {
-    let mut values = vec![None, None, None, None, None];
-    let names = ["name", "globals", "locals", "fromlist", "level"];
-    if args.len() > values.len() {
-        return Err(format!(
-            "TypeError: __import__() expected at most 5 arguments, got {}",
-            args.len()
-        ));
-    }
-    for (index, value) in args.into_iter().enumerate() {
-        values[index] = Some(value);
-    }
-    for (name, value) in keywords {
-        let Some(index) = names.iter().position(|candidate| candidate == &name) else {
-            return Err(format!(
-                "TypeError: __import__() got an unexpected keyword argument '{name}'"
-            ));
-        };
-        if values[index].is_some() {
-            return Err(format!(
-                "TypeError: __import__() got multiple values for argument '{name}'"
-            ));
-        }
-        values[index] = Some(value);
-    }
-    if values[0].is_none() {
-        return Err("TypeError: __import__() missing required argument 'name'".to_string());
-    }
-    Ok(values)
-}
-
-fn import_returns_root(fromlist: &Value) -> bool {
-    match fromlist {
-        Value::None => true,
-        Value::Tuple(items) => items.is_empty(),
-        Value::List(items) => items.borrow().is_empty(),
-        _ => false,
-    }
 }
 
 fn eval_scopes_from_optional_args(
@@ -22831,6 +30262,9 @@ fn eval_scope_argument(
                 }),
             ))
         }
+        value if role == "locals" && is_general_mapping_argument(value) => {
+            Ok((general_locals_mapping_to_scope(value), None))
+        }
         value => Err(format!(
             "TypeError: {role} must be a dict, not {}",
             type_name(value)
@@ -22918,6 +30352,9 @@ fn exec_scope_argument(
                 }),
             ))
         }
+        value if role == "locals" && is_general_mapping_argument(value) => {
+            Ok((general_locals_mapping_to_scope(value), None))
+        }
         value => Err(format!(
             "TypeError: {role} must be a dict, not {}",
             type_name(value)
@@ -22926,6 +30363,9 @@ fn exec_scope_argument(
 }
 
 fn same_scope_mapping(left: &Value, right: &Value) -> bool {
+    if is_identical(left, right) {
+        return true;
+    }
     match (left, right) {
         (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
         (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),
@@ -22985,6 +30425,35 @@ fn import_root_name(name: &str) -> &str {
         .expect("import name always has at least one part")
 }
 
+fn import_parent_and_child_name(name: &str) -> Option<(&str, &str)> {
+    name.rsplit_once('.')
+        .filter(|(parent, child)| !parent.is_empty() && !child.is_empty())
+}
+
+fn module_not_package_error(full_name: &str, parent_name: &str) -> String {
+    format!("ModuleNotFoundError: No module named '{full_name}'; '{parent_name}' is not a package")
+}
+
+fn module_blocked_by_import_policy_error(name: &str) -> String {
+    format!("ModuleNotFoundError: No module named '{name}'")
+}
+
+fn bind_submodule_to_parent(
+    parent: &Value,
+    full_name: &str,
+    parent_name: &str,
+    child_name: &str,
+    child: Value,
+) -> Result<(), String> {
+    match parent {
+        Value::Module { name, attrs } if name == parent_name => {
+            attrs.borrow_mut().insert(child_name.to_string(), child);
+            Ok(())
+        }
+        _ => Err(module_not_package_error(full_name, parent_name)),
+    }
+}
+
 fn lookup_string_key(entries: &DictRef, name: &str) -> Option<Value> {
     entries.borrow().iter().find_map(|(key, value)| match key {
         Value::String(key) if key == name => Some(value.clone()),
@@ -22992,145 +30461,101 @@ fn lookup_string_key(entries: &DictRef, name: &str) -> Option<Value> {
     })
 }
 
+fn dict_has_string_key(entries: &DictRef, name: &str) -> bool {
+    entries
+        .borrow()
+        .iter()
+        .any(|(key, _)| matches!(key, Value::String(key) if key == name))
+}
+
+fn relative_import_package_from_scope(scope: &Scope) -> Result<String, String> {
+    let values = scope.borrow();
+    relative_import_package(
+        values.get("__package__").cloned(),
+        values.get("__name__").cloned(),
+        values.contains_key("__path__"),
+    )
+}
+
+fn relative_import_package_from_dict(entries: &DictRef) -> Result<String, String> {
+    relative_import_package(
+        lookup_string_key(entries, "__package__"),
+        lookup_string_key(entries, "__name__"),
+        dict_has_string_key(entries, "__path__"),
+    )
+}
+
+fn relative_import_package(
+    package_value: Option<Value>,
+    name_value: Option<Value>,
+    has_path: bool,
+) -> Result<String, String> {
+    match package_value {
+        Some(Value::String(package)) => {
+            if package.is_empty() {
+                return Err(
+                    "ImportError: attempted relative import with no known parent package"
+                        .to_string(),
+                );
+            }
+            return Ok(package);
+        }
+        Some(Value::None) | None => {}
+        Some(_) => return Err("TypeError: package must be a string".to_string()),
+    }
+
+    let module_name = match name_value {
+        Some(Value::String(name)) => name,
+        Some(_) => return Err("TypeError: __name__ must be a string".to_string()),
+        None => return Err("KeyError: '__name__' not in globals".to_string()),
+    };
+
+    if has_path {
+        if module_name.is_empty() {
+            Err("ImportError: attempted relative import with no known parent package".to_string())
+        } else {
+            Ok(module_name)
+        }
+    } else if let Some((parent, _)) = module_name.rsplit_once('.') {
+        if parent.is_empty() {
+            Err("ImportError: attempted relative import with no known parent package".to_string())
+        } else {
+            Ok(parent.to_string())
+        }
+    } else {
+        Err("ImportError: attempted relative import with no known parent package".to_string())
+    }
+}
+
+fn resolve_relative_import_name(name: &str, level: usize, package: &str) -> Result<String, String> {
+    debug_assert!(level > 0);
+
+    let parts = package.split('.').collect::<Vec<_>>();
+    if level > parts.len() {
+        return Err("ImportError: attempted relative import beyond top-level package".to_string());
+    }
+
+    let base = parts[..parts.len() - (level - 1)].join(".");
+    if name.is_empty() {
+        Ok(base)
+    } else {
+        Ok(format!("{base}.{name}"))
+    }
+}
+
 fn default_builtin_value(name: &str) -> Option<Value> {
     if name == "Ellipsis" {
         Some(Value::Ellipsis)
     } else if name == "NotImplemented" {
         Some(Value::NotImplemented)
+    } else if name == "__debug__" {
+        Some(Value::Bool(true))
     } else if is_builtin_name(name) {
         Some(Value::Builtin(name.to_string()))
     } else {
         None
     }
 }
-
-const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
-    "Ellipsis",
-    "NotImplemented",
-    "__import__",
-    "print",
-    "format",
-    "eval",
-    "exec",
-    "compile",
-    "range",
-    "next",
-    "iter",
-    "anext",
-    "len",
-    "max",
-    "min",
-    "sum",
-    "abs",
-    "hash",
-    "id",
-    "divmod",
-    "round",
-    "bin",
-    "oct",
-    "hex",
-    "pow",
-    "any",
-    "all",
-    "sorted",
-    "enumerate",
-    "zip",
-    "map",
-    "filter",
-    "reversed",
-    "isinstance",
-    "issubclass",
-    "repr",
-    "ascii",
-    "chr",
-    "ord",
-    "getattr",
-    "setattr",
-    "delattr",
-    "hasattr",
-    "callable",
-    "vars",
-    "globals",
-    "locals",
-    "dir",
-    "property",
-    "super",
-    "staticmethod",
-    "classmethod",
-    "slice",
-    "int",
-    "str",
-    "bytes",
-    "bytearray",
-    "list",
-    "dict",
-    "tuple",
-    "set",
-    "frozenset",
-    "float",
-    "bool",
-    "object",
-    "type",
-    "BaseException",
-    "BaseExceptionGroup",
-    "Exception",
-    "ExceptionGroup",
-    "GeneratorExit",
-    "KeyboardInterrupt",
-    "SystemExit",
-    "ArithmeticError",
-    "AssertionError",
-    "AttributeError",
-    "EOFError",
-    "ImportError",
-    "LookupError",
-    "MemoryError",
-    "NameError",
-    "OSError",
-    "ReferenceError",
-    "RuntimeError",
-    "StopAsyncIteration",
-    "StopIteration",
-    "SyntaxError",
-    "SystemError",
-    "TypeError",
-    "ValueError",
-    "Warning",
-    "BlockingIOError",
-    "FileExistsError",
-    "FileNotFoundError",
-    "InterruptedError",
-    "IsADirectoryError",
-    "NotADirectoryError",
-    "PermissionError",
-    "ProcessLookupError",
-    "TimeoutError",
-    "FloatingPointError",
-    "OverflowError",
-    "ZeroDivisionError",
-    "IndexError",
-    "KeyError",
-    "ModuleNotFoundError",
-    "NotImplementedError",
-    "RecursionError",
-    "IndentationError",
-    "TabError",
-    "UnicodeError",
-    "UnicodeDecodeError",
-    "UnicodeEncodeError",
-    "UnicodeTranslateError",
-    "BytesWarning",
-    "DeprecationWarning",
-    "EncodingWarning",
-    "FutureWarning",
-    "ImportWarning",
-    "PendingDeprecationWarning",
-    "ResourceWarning",
-    "RuntimeWarning",
-    "SyntaxWarning",
-    "UnicodeWarning",
-    "UserWarning",
-];
 
 fn default_builtins_dict_value() -> Value {
     dict_value(
@@ -23157,6 +30582,27 @@ fn dict_subclass_to_scope(value: &Value, entries: &DictRef) -> Scope {
         .borrow_mut()
         .insert(SCOPE_MAPPING_SOURCE_FIELD.to_string(), value.clone());
     scope
+}
+
+fn general_locals_mapping_to_scope(value: &Value) -> Scope {
+    let scope = new_scope();
+    scope
+        .borrow_mut()
+        .insert(SCOPE_LOCALS_MAPPING_SOURCE_FIELD.to_string(), value.clone());
+    scope
+}
+
+fn is_general_mapping_argument(value: &Value) -> bool {
+    instance_special_method(value, "__getitem__").is_some()
+}
+
+fn scope_mapping_source(scope: &Scope, field: &str) -> Option<Value> {
+    scope.borrow().get(field).cloned()
+}
+
+fn locals_mapping_source(scope: &Scope) -> Option<Value> {
+    scope_mapping_source(scope, SCOPE_LOCALS_MAPPING_SOURCE_FIELD)
+        .or_else(|| scope_mapping_source(scope, SCOPE_MAPPING_SOURCE_FIELD))
 }
 
 fn dict_to_scope(entries: &DictRef) -> Scope {
@@ -23227,6 +30673,7 @@ fn exec_annotate_function_value(globals: Scope, annotations: Value) -> Value {
         keyword_defaults: Vec::new(),
         kwarg: None,
         annotations: Vec::new(),
+        doc: Rc::new(RefCell::new(Value::None)),
         attrs: new_scope(),
         closure: Vec::new(),
         body: vec![
@@ -23238,6 +30685,8 @@ fn exec_annotate_function_value(globals: Scope, annotations: Value) -> Value {
         ],
         is_generator: false,
         is_async: false,
+        first_line: 1,
+        line_sequence: vec![1],
         identity: Rc::new(()),
         owner_class: None,
     }
@@ -23257,12 +30706,78 @@ fn sync_scope_to_dict(scope: &Scope, dict: &DictRef) -> Result<(), String> {
 }
 
 fn scope_dict_entries(scope: &Scope) -> Vec<(Value, Value)> {
-    scope
-        .borrow()
-        .iter()
-        .filter(|(name, _)| !name.starts_with('\0'))
-        .map(|(name, value)| (Value::String(name.clone()), value.clone()))
-        .collect()
+    let values = scope.borrow();
+    let mut entries = Vec::new();
+    let mut emitted = HashSet::new();
+
+    if let Some(Value::Tuple(order)) = values.get(CLASS_ATTR_ORDER_ATTR) {
+        for item in order.iter() {
+            let Value::String(name) = item else {
+                continue;
+            };
+            if name.starts_with('\0') || !emitted.insert(name.clone()) {
+                continue;
+            }
+            if let Some(value) = values.get(name) {
+                entries.push((Value::String(name.clone()), value.clone()));
+            }
+        }
+    }
+
+    for (name, value) in values.iter() {
+        if name.starts_with('\0') || emitted.contains(name) {
+            continue;
+        }
+        entries.push((Value::String(name.clone()), value.clone()));
+    }
+
+    entries
+}
+
+fn store_ordered_scope_item(scope: &Scope, name: String, value: Value) {
+    let mut values = scope.borrow_mut();
+    let should_append_order = !name.starts_with('\0') && !values.contains_key(&name);
+    values.insert(name.clone(), value);
+    if should_append_order {
+        append_scope_attr_order(&mut values, &name);
+    }
+}
+
+fn append_scope_attr_order(values: &mut HashMap<String, Value>, name: &str) {
+    if name.starts_with('\0') {
+        return;
+    }
+
+    let mut order = values
+        .get(CLASS_ATTR_ORDER_ATTR)
+        .and_then(|value| match value {
+            Value::Tuple(items) => Some(
+                items
+                    .iter()
+                    .filter_map(|item| match item {
+                        Value::String(name) if !name.starts_with('\0') => Some(name.clone()),
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>(),
+            ),
+            _ => None,
+        })
+        .unwrap_or_else(|| {
+            values
+                .keys()
+                .filter(|key| !key.starts_with('\0') && key.as_str() != name)
+                .cloned()
+                .collect()
+        });
+
+    if !order.iter().any(|existing| existing == name) {
+        order.push(name.to_string());
+    }
+
+    values.insert(
+        CLASS_ATTR_ORDER_ATTR.to_string(),
+        tuple_value(order.into_iter().map(Value::String).collect()),
+    );
 }
 
 fn scope_dict_keys(scope: &Scope) -> Vec<Value> {
@@ -23372,9 +30887,15 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(fields.iter().cloned());
             names.extend(dict_string_names(attrs));
             names.extend(
-                ["__class__", "__dict__", "_attributes", "_fields"]
-                    .into_iter()
-                    .map(str::to_string),
+                [
+                    "__class__",
+                    "__dict__",
+                    "__match_args__",
+                    "_attributes",
+                    "_fields",
+                ]
+                .into_iter()
+                .map(str::to_string),
             );
         }
         Value::Class { attrs, bases, .. } => append_class_dir_names(&mut names, attrs, bases),
@@ -23406,16 +30927,55 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             .map(str::to_string),
         ),
         Value::Dict(_) => names.extend(builtin_type_dir_names("dict")),
+        Value::OrderedDict(_) => names.extend(builtin_type_dir_names("OrderedDict")),
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => {
             names.extend(builtin_type_dir_names("mappingproxy"))
         }
         Value::List(_) => names.extend(builtin_type_dir_names("list")),
+        Value::UserList { attrs, .. } => {
+            names.extend(builtin_type_dir_names("UserList"));
+            names.push("data".to_string());
+            names.extend(dict_string_names(attrs));
+        }
+        Value::NamedTupleType(typ) => {
+            names.extend(builtin_type_dir_names("tuple"));
+            names.extend(
+                [
+                    "__match_args__",
+                    "__module__",
+                    "__name__",
+                    "__slots__",
+                    "_field_defaults",
+                    "_fields",
+                    "_make",
+                ]
+                .into_iter()
+                .map(str::to_string),
+            );
+            names.extend(typ.fields.iter().cloned());
+        }
         Value::Tuple(_) => names.extend(builtin_type_dir_names("tuple")),
+        Value::NamedTuple { typ, .. } => {
+            names.extend(builtin_type_dir_names("tuple"));
+            names.extend(
+                [
+                    "__match_args__",
+                    "_asdict",
+                    "_field_defaults",
+                    "_fields",
+                    "_replace",
+                ]
+                .into_iter()
+                .map(str::to_string),
+            );
+            names.extend(typ.fields.iter().cloned());
+        }
         Value::Set(_) => names.extend(builtin_type_dir_names("set")),
         Value::FrozenSet(_) => names.extend(builtin_type_dir_names("frozenset")),
         Value::String(_) => names.extend(builtin_type_dir_names("str")),
         Value::Bytes(_) => names.extend(builtin_type_dir_names("bytes")),
         Value::ByteArray(_) => names.extend(builtin_type_dir_names("bytearray")),
+        Value::MemoryView(_) => names.extend(builtin_type_dir_names("memoryview")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
         Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => {
             names.extend(builtin_type_dir_names("int"))
@@ -23424,13 +30984,19 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Slice { .. } => {
             names.extend(["start", "stop", "step"].into_iter().map(str::to_string))
         }
+        Value::Traceback { .. } => names.extend(builtin_type_dir_names("traceback")),
         Value::BoundMethod { .. } => names.extend(
             ["__func__", "__name__", "__self__"]
                 .into_iter()
                 .map(str::to_string),
         ),
         Value::Exception { attrs, .. } => {
-            names.extend(attrs.iter().map(|(name, _)| name.clone()));
+            names.extend(
+                attrs
+                    .iter()
+                    .filter(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR)
+                    .map(|(name, _)| name.clone()),
+            );
             names.extend(
                 [
                     "__cause__",
@@ -23461,6 +31027,7 @@ fn append_class_dir_names(names: &mut Vec<String>, attrs: &Scope, bases: &[Value
             "__doc__",
             "__module__",
             "__name__",
+            "__parameters__",
             "__qualname__",
             "__type_params__",
         ]
@@ -23495,7 +31062,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
     .collect::<Vec<_>>();
 
     let methods: &[&str] = match name {
-        "str" => &[
+        "str" | "UserString" => &[
             "capitalize",
             "casefold",
             "center",
@@ -23544,17 +31111,43 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "upper",
             "zfill",
         ],
-        "list" => &[
+        "list" | "UserList" => &[
             "append", "clear", "copy", "count", "extend", "index", "insert", "pop", "remove",
             "reverse", "sort",
         ],
-        "dict" => &[
+        "dict" | "UserDict" => &[
+            "__contains__",
+            "__delitem__",
+            "__getitem__",
+            "__iter__",
+            "__len__",
+            "__setitem__",
             "clear",
             "copy",
             "fromkeys",
             "get",
             "items",
             "keys",
+            "pop",
+            "popitem",
+            "setdefault",
+            "update",
+            "values",
+        ],
+        "OrderedDict" => &[
+            "__contains__",
+            "__delitem__",
+            "__getitem__",
+            "__iter__",
+            "__len__",
+            "__setitem__",
+            "clear",
+            "copy",
+            "fromkeys",
+            "get",
+            "items",
+            "keys",
+            "move_to_end",
             "pop",
             "popitem",
             "setdefault",
@@ -23606,7 +31199,131 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "symmetric_difference",
             "union",
         ],
-        "tuple" | "bytes" | "bytearray" | "range" => &["count", "index"],
+        "memoryview" => &[
+            "c_contiguous",
+            "contiguous",
+            "count",
+            "f_contiguous",
+            "format",
+            "cast",
+            "hex",
+            "index",
+            "itemsize",
+            "nbytes",
+            "ndim",
+            "obj",
+            "readonly",
+            "release",
+            "shape",
+            "strides",
+            "suboffsets",
+            "tobytes",
+            "tolist",
+            "toreadonly",
+        ],
+        "tuple" | "range" => &["count", "index"],
+        "bytes" => &[
+            "capitalize",
+            "center",
+            "count",
+            "decode",
+            "endswith",
+            "expandtabs",
+            "find",
+            "fromhex",
+            "hex",
+            "index",
+            "isalnum",
+            "isalpha",
+            "isascii",
+            "isdigit",
+            "islower",
+            "isspace",
+            "istitle",
+            "isupper",
+            "join",
+            "ljust",
+            "lower",
+            "lstrip",
+            "maketrans",
+            "partition",
+            "removeprefix",
+            "removesuffix",
+            "replace",
+            "rfind",
+            "rindex",
+            "rjust",
+            "rpartition",
+            "rsplit",
+            "rstrip",
+            "split",
+            "splitlines",
+            "startswith",
+            "strip",
+            "swapcase",
+            "title",
+            "translate",
+            "upper",
+            "zfill",
+        ],
+        "bytearray" => &[
+            "__delitem__",
+            "__iadd__",
+            "__imul__",
+            "__setitem__",
+            "append",
+            "capitalize",
+            "center",
+            "clear",
+            "copy",
+            "count",
+            "decode",
+            "endswith",
+            "extend",
+            "expandtabs",
+            "find",
+            "fromhex",
+            "hex",
+            "index",
+            "insert",
+            "isalnum",
+            "isalpha",
+            "isascii",
+            "isdigit",
+            "islower",
+            "isspace",
+            "istitle",
+            "isupper",
+            "join",
+            "ljust",
+            "lower",
+            "lstrip",
+            "maketrans",
+            "partition",
+            "pop",
+            "remove",
+            "removeprefix",
+            "removesuffix",
+            "replace",
+            "resize",
+            "reverse",
+            "rfind",
+            "rindex",
+            "rjust",
+            "rpartition",
+            "rsplit",
+            "rstrip",
+            "split",
+            "splitlines",
+            "startswith",
+            "strip",
+            "swapcase",
+            "take_bytes",
+            "title",
+            "translate",
+            "upper",
+            "zfill",
+        ],
         "int" | "bool" => &[
             "as_integer_ratio",
             "bit_count",
@@ -23683,11 +31400,14 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             keyword_defaults,
             kwarg,
             annotations,
+            doc,
             attrs,
             closure,
             body,
             is_generator,
             is_async,
+            first_line,
+            line_sequence,
             identity,
             owner_class,
         } => Value::Function {
@@ -23702,11 +31422,14 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             keyword_defaults,
             kwarg,
             annotations,
+            doc,
             attrs,
             closure,
             body,
             is_generator,
             is_async,
+            first_line,
+            line_sequence,
             identity,
             owner_class: owner_class.or_else(|| Some(Box::new(class.clone()))),
         },
@@ -23735,6 +31458,7 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
 struct SlotSpec {
     names: Vec<String>,
     has_dict: bool,
+    has_weakref: bool,
 }
 
 fn validate_class_slots(class: &Value) -> Result<(), String> {
@@ -23748,6 +31472,20 @@ fn validate_class_slots(class: &Value) -> Result<(), String> {
 
     if spec.has_dict && class_inherits_instance_dict(bases)? {
         return Err("TypeError: __dict__ slot disallowed: we already got one".to_string());
+    }
+    if spec.has_weakref && class_inherits_weakref(bases)? {
+        return Err(
+            "TypeError: __weakref__ slot disallowed: either we already got one, or __itemsize__ != 0"
+                .to_string(),
+        );
+    }
+    if class_bases_include_builtin(bases, "int")
+        && spec
+            .names
+            .iter()
+            .any(|name| !matches!(name.as_str(), "__dict__" | "__weakref__"))
+    {
+        return Err("TypeError: nonempty __slots__ not supported for subtype of 'int'".to_string());
     }
 
     Ok(())
@@ -23829,6 +31567,27 @@ fn class_inherits_instance_dict(bases: &[Value]) -> Result<bool, String> {
         }
         match base {
             Value::Class { attrs, bases, .. } => class_allows_instance_dict(attrs, bases),
+            Value::Builtin(_) => Ok(false),
+            _ => Ok(false),
+        }
+    })
+}
+
+fn class_allows_weakref(attrs: &Scope, bases: &[Value]) -> Result<bool, String> {
+    let Some(spec) = own_slot_spec(attrs) else {
+        return Ok(true);
+    };
+    let spec = spec?;
+    Ok(spec.has_weakref || class_inherits_weakref(bases)?)
+}
+
+fn class_inherits_weakref(bases: &[Value]) -> Result<bool, String> {
+    bases.iter().try_fold(false, |has_weakref, base| {
+        if has_weakref {
+            return Ok(true);
+        }
+        match base {
+            Value::Class { attrs, bases, .. } => class_allows_weakref(attrs, bases),
             Value::Builtin(_) => Ok(false),
             _ => Ok(false),
         }
@@ -23950,6 +31709,7 @@ fn slot_spec_from_value(value: &Value) -> Result<SlotSpec, String> {
 
     Ok(SlotSpec {
         has_dict: dict_count == 1,
+        has_weakref: weakref_count == 1,
         names,
     })
 }
@@ -23986,6 +31746,11 @@ fn class_mro(class: &Value) -> Result<Vec<Value>, String> {
             values.extend(mro_for_bases(bases)?);
             Ok(values)
         }
+        Value::NamedTupleType(_) => Ok(vec![
+            class.clone(),
+            Value::Builtin("tuple".to_string()),
+            Value::Builtin("object".to_string()),
+        ]),
         Value::Builtin(_) => Ok(vec![class.clone()]),
         value => Err(format!("expected class, got {value}")),
     }
@@ -24077,6 +31842,7 @@ fn mro_conflict_names(sequences: &[Vec<Value>]) -> String {
 fn class_display_name(value: &Value) -> String {
     match value {
         Value::Class { name, .. } | Value::Builtin(name) => name.clone(),
+        Value::NamedTupleType(typ) => typ.name.clone(),
         value => value.to_string(),
     }
 }
@@ -24096,6 +31862,9 @@ fn same_class_value(left: &Value, right: &Value) -> bool {
             },
         ) => left_name == right_name && Rc::ptr_eq(left_attrs, right_attrs),
         (Value::Builtin(left), Value::Builtin(right)) => left == right,
+        (Value::NamedTupleType(left), Value::NamedTupleType(right)) => {
+            Rc::ptr_eq(&left.identity, &right.identity)
+        }
         _ => false,
     }
 }
@@ -24122,6 +31891,7 @@ fn super_owner_class(object: &Value) -> Result<Value, String> {
         } => Ok(Value::Class {
             name: class_name.clone(),
             type_params: Vec::new(),
+            metaclass: None,
             bases: class_bases.clone(),
             attrs: class_attrs.clone(),
         }),
@@ -24143,8 +31913,23 @@ fn instance_special_method(object: &Value, name: &str) -> Option<Value> {
         return None;
     };
 
-    find_class_attr(class_attrs, class_bases, name)
-        .map(|method| bind_method(method, object.clone()))
+    if let Some(method) = find_class_attr(class_attrs, class_bases, name) {
+        return Some(bind_method(method, object.clone()));
+    }
+
+    if let Some(method) = set_abc_mixin_method(class_bases, object.clone(), name) {
+        return Some(method);
+    }
+
+    if let Some(method) = mutable_set_abc_mixin_method(class_bases, object.clone(), name) {
+        return Some(method);
+    }
+
+    collections_abc_mixin_method_from_bases(class_bases, name).map(|method| Value::BoundMethod {
+        function: Box::new(Value::Builtin(method.to_string())),
+        receiver: Box::new(object.clone()),
+        identity: Rc::new(()),
+    })
 }
 
 fn context_manager_method_name(is_exit: bool, is_async: bool) -> &'static str {
@@ -24163,8 +31948,18 @@ fn is_awaitable_value(value: &Value) -> bool {
             | Value::AsyncGeneratorNext { .. }
             | Value::AsyncGeneratorThrow { .. }
             | Value::AsyncGeneratorClose(_)
+            | Value::AsyncGeneratorAthrowMixin { .. }
+            | Value::AsyncGeneratorAcloseMixin { .. }
             | Value::AnextDefault { .. }
     ) || is_generic_awaitable_value(value)
+}
+
+fn is_runtime_awaitable_value(value: &Value) -> bool {
+    is_awaitable_value(value) || is_iterable_coroutine_generator(value)
+}
+
+fn is_iterable_coroutine_generator(value: &Value) -> bool {
+    matches!(value, Value::Generator(state) if state.borrow().is_iterable_coroutine)
 }
 
 fn is_generic_awaitable_value(value: &Value) -> bool {
@@ -24214,10 +32009,12 @@ fn descriptor_owner_from_object(object: &Value) -> Option<Value> {
         } => Some(Value::Class {
             name: class_name.clone(),
             type_params: Vec::new(),
+            metaclass: None,
             bases: class_bases.clone(),
             attrs: class_attrs.clone(),
         }),
-        Value::Class { .. } | Value::Builtin(_) => Some(Value::Builtin("type".to_string())),
+        class @ Value::Class { .. } => Some(class_metaclass_value(class)),
+        Value::Builtin(_) => Some(Value::Builtin("type".to_string())),
         value => Some(Value::Builtin(type_name(value).to_string())),
     }
 }
@@ -24232,6 +32029,7 @@ fn type_object_for_value(value: &Value) -> Value {
         } => Value::Class {
             name: class_name.clone(),
             type_params: Vec::new(),
+            metaclass: None,
             bases: class_bases.clone(),
             attrs: class_attrs.clone(),
         },
@@ -24247,7 +32045,11 @@ fn type_object_for_value(value: &Value) -> Value {
             Value::Builtin("ast.Interpolation".to_string())
         }
         Value::SimpleNamespace { .. } => Value::Builtin("SimpleNamespace".to_string()),
-        Value::Class { .. } => Value::Builtin("type".to_string()),
+        Value::NamedTuple { typ, .. } => Value::NamedTupleType(typ.clone()),
+        Value::NamedTupleType(_) => Value::Builtin("type".to_string()),
+        Value::TypeParam { kind, .. } => Value::Builtin(format!("typing.{kind}")),
+        Value::ConstEvaluator { .. } => Value::Builtin(CONST_EVALUATOR_TYPE_NAME.to_string()),
+        class @ Value::Class { .. } => class_metaclass_value(class),
         Value::Builtin(name) if is_builtin_type_object_name(name) => {
             Value::Builtin("type".to_string())
         }
@@ -24256,8 +32058,19 @@ fn type_object_for_value(value: &Value) -> Value {
     }
 }
 
+fn class_metaclass_value(class: &Value) -> Value {
+    match class {
+        Value::Class {
+            metaclass: Some(metaclass),
+            ..
+        } => metaclass.as_ref().clone(),
+        _ => Value::Builtin("type".to_string()),
+    }
+}
+
 fn is_builtin_type_object_name(name: &str) -> bool {
     is_class_like_builtin(name)
+        || is_typing_type_param_type_name(name)
         || matches!(
             name,
             "NoneType"
@@ -24267,6 +32080,7 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "function"
                 | "method"
                 | "module"
+                | "traceback"
                 | "generator"
                 | "coroutine"
                 | "coroutine_wrapper"
@@ -24297,7 +32111,10 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "mappingproxy"
                 | "code"
                 | "TypeVar"
+                | "TypeVarTuple"
+                | "ParamSpec"
                 | "TypeAliasType"
+                | "_typing._ConstEvaluator"
                 | "GenericAlias"
                 | "Unpack"
                 | "Template"
@@ -24328,6 +32145,7 @@ fn is_iterator_value(value: &Value) -> bool {
             | Value::TemplateIterator { .. }
             | Value::StringIterator { .. }
             | Value::BytesIterator { .. }
+            | Value::ByteArrayIterator { .. }
             | Value::SetIterator { .. }
             | Value::DictIterator { .. }
             | Value::ReverseIterator { .. }
@@ -24362,6 +32180,7 @@ fn is_iterator_abc_value(value: &Value) -> bool {
             | Value::TemplateIterator { .. }
             | Value::StringIterator { .. }
             | Value::BytesIterator { .. }
+            | Value::ByteArrayIterator { .. }
             | Value::SetIterator { .. }
             | Value::DictIterator { .. }
             | Value::ReverseIterator { .. }
@@ -24414,11 +32233,13 @@ fn is_iterable_abc_value(value: &Value) -> bool {
             Value::String(_)
                 | Value::Bytes(_)
                 | Value::ByteArray(_)
+                | Value::MemoryView(_)
                 | Value::List(_)
                 | Value::Tuple(_)
                 | Value::Set(_)
                 | Value::FrozenSet(_)
                 | Value::Dict(_)
+                | Value::OrderedDict(_)
                 | Value::ScopeDict(_)
                 | Value::DictView { .. }
                 | Value::MappingView { .. }
@@ -24446,9 +32267,12 @@ fn is_reversible_abc_value(value: &Value) -> bool {
         Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::MemoryView(_)
             | Value::List(_)
             | Value::Tuple(_)
             | Value::Dict(_)
+            | Value::OrderedDict(_)
+            | Value::Counter { .. }
             | Value::ScopeDict(_)
             | Value::DictView { .. }
             | Value::MappingView { .. }
@@ -24465,6 +32289,7 @@ fn is_sequence_abc_value(value: &Value) -> bool {
         Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::MemoryView(_)
             | Value::List(_)
             | Value::Tuple(_)
             | Value::Range { .. }
@@ -24489,8 +32314,10 @@ fn is_buffer_abc_value(value: &Value) -> bool {
         return false;
     }
 
-    matches!(value, Value::Bytes(_) | Value::ByteArray(_))
-        || instance_abc_bases_include(value, "Buffer")
+    matches!(
+        value,
+        Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_)
+    ) || instance_abc_bases_include(value, "Buffer")
         || instance_has_callable_special_method(value, "__buffer__")
 }
 
@@ -24503,12 +32330,17 @@ fn is_mapping_abc_value(value: &Value) -> bool {
     matches!(
         value,
         Value::Dict(_)
+            | Value::OrderedDict(_)
             | Value::ScopeDict(_)
             | Value::MappingProxy { .. }
             | Value::MappingProxyObject { .. }
             | Value::ChainMap { .. }
+            | Value::Counter { .. }
             | Value::UserDict { .. }
-    ) || dict_subclass_entries(value).is_some()
+    ) || counter_subclass_entries(value).is_some()
+        || dict_subclass_entries(value).is_some()
+        || user_dict_subclass_data(value).is_some()
+        || chain_map_subclass_maps(value).is_some()
         || instance_abc_bases_include(value, "Mapping")
 }
 
@@ -24521,6 +32353,24 @@ fn is_mapping_proxy_value(value: &Value) -> bool {
         value,
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. }
     )
+}
+
+fn counter_subclass_entries(value: &Value) -> Option<DictRef> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "Counter") {
+        return None;
+    }
+    match fields.borrow().get(COUNTER_SUBCLASS_STORAGE_FIELD).cloned() {
+        Some(Value::Counter { entries }) => Some(entries),
+        _ => None,
+    }
 }
 
 fn dict_subclass_entries(value: &Value) -> Option<DictRef> {
@@ -24537,6 +32387,50 @@ fn dict_subclass_entries(value: &Value) -> Option<DictRef> {
     }
     match fields.borrow().get(DICT_SUBCLASS_STORAGE_FIELD).cloned() {
         Some(Value::Dict(entries)) => Some(entries),
+        _ => None,
+    }
+}
+
+fn user_dict_subclass_data(value: &Value) -> Option<DictRef> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "UserDict") {
+        return None;
+    }
+    match fields
+        .borrow()
+        .get(USER_DICT_SUBCLASS_STORAGE_FIELD)
+        .cloned()
+    {
+        Some(Value::UserDict { data, .. }) => Some(data),
+        _ => None,
+    }
+}
+
+fn chain_map_subclass_maps(value: &Value) -> Option<Vec<Value>> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "ChainMap") {
+        return None;
+    }
+    match fields
+        .borrow()
+        .get(CHAIN_MAP_SUBCLASS_STORAGE_FIELD)
+        .cloned()
+    {
+        Some(Value::ChainMap { maps }) => Some(maps),
         _ => None,
     }
 }
@@ -24581,6 +32475,141 @@ fn frozen_set_subclass_items(value: &Value) -> Option<FrozenSetRef> {
     }
 }
 
+fn bytes_subclass_bytes(value: &Value) -> Option<Vec<u8>> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "bytes") {
+        return None;
+    }
+    match fields.borrow().get(BYTES_SUBCLASS_STORAGE_FIELD).cloned() {
+        Some(Value::Bytes(bytes)) => Some(bytes),
+        _ => None,
+    }
+}
+
+fn bytearray_subclass_storage(value: &Value) -> Option<ByteArrayRef> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "bytearray") {
+        return None;
+    }
+    match fields
+        .borrow()
+        .get(BYTEARRAY_SUBCLASS_STORAGE_FIELD)
+        .cloned()
+    {
+        Some(Value::ByteArray(bytes)) => Some(bytes),
+        _ => None,
+    }
+}
+
+fn bytearray_subclass_bytes(value: &Value) -> Option<Vec<u8>> {
+    bytearray_subclass_storage(value).map(|bytes| bytearray_bytes(&bytes))
+}
+
+fn bytearray_subclass_repr(value: &Value) -> Option<String> {
+    let Value::Instance { class_name, .. } = value else {
+        return None;
+    };
+    let bytes = bytearray_subclass_storage(value)?;
+    Some(format!("{class_name}({})", repr_bytes(&bytes.borrow())))
+}
+
+fn namedtuple_subclass_storage(value: &Value) -> Option<(NamedTupleTypeRef, Rc<Vec<Value>>)> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    class_bases_namedtuple_type(class_bases)?;
+    match fields
+        .borrow()
+        .get(NAMED_TUPLE_SUBCLASS_STORAGE_FIELD)
+        .cloned()
+    {
+        Some(Value::NamedTuple { typ, values }) => Some((typ, values)),
+        _ => None,
+    }
+}
+
+fn namedtuple_subclass_repr_checked(
+    value: &Value,
+    active: &mut HashSet<usize>,
+) -> Option<Result<String, String>> {
+    let Value::Instance { class_name, .. } = value else {
+        return None;
+    };
+    let (typ, values) = namedtuple_subclass_storage(value)?;
+    let ptr = Rc::as_ptr(&values) as usize;
+    if !active.insert(ptr) {
+        return Some(Ok(format!("{class_name}(...)")));
+    }
+
+    let rendered = typ
+        .fields
+        .iter()
+        .zip(values.iter())
+        .map(|(field, value)| {
+            repr_value_inner_checked(value, active).map(|value| format!("{field}={value}"))
+        })
+        .collect::<Result<Vec<_>, _>>();
+    active.remove(&ptr);
+
+    Some(rendered.map(|items| format!("{}({})", class_name, items.join(", "))))
+}
+
+fn namedtuple_subclass_repr(value: &Value, active: &mut HashSet<usize>) -> Option<String> {
+    let Value::Instance { class_name, .. } = value else {
+        return None;
+    };
+    let (typ, values) = namedtuple_subclass_storage(value)?;
+    let ptr = Rc::as_ptr(&values) as usize;
+    if !active.insert(ptr) {
+        return Some(format!("{class_name}(...)"));
+    }
+
+    let rendered = typ
+        .fields
+        .iter()
+        .zip(values.iter())
+        .map(|(field, value)| format!("{field}={}", repr_value_inner(value, active)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    active.remove(&ptr);
+
+    Some(format!("{class_name}({rendered})"))
+}
+
+fn bytes_ordering_value_bytes(value: &Value) -> Option<Vec<u8>> {
+    match value {
+        Value::Bytes(bytes) => Some(bytes.clone()),
+        Value::ByteArray(bytes) => Some(bytearray_bytes(bytes)),
+        value => bytes_subclass_bytes(value).or_else(|| bytearray_subclass_bytes(value)),
+    }
+}
+
+fn bytes_equality_value_bytes(value: &Value) -> Option<Vec<u8>> {
+    match value {
+        Value::MemoryView(view) => memoryview_bytes(view).ok(),
+        value => bytes_ordering_value_bytes(value),
+    }
+}
+
 fn is_simple_namespace_value(value: &Value) -> bool {
     match value {
         Value::SimpleNamespace { .. } => true,
@@ -24592,27 +32621,7 @@ fn is_simple_namespace_value(value: &Value) -> bool {
 }
 
 fn dict_subclass_method(receiver: Value, name: &str) -> Option<Value> {
-    if dict_subclass_entries(&receiver).is_some()
-        && matches!(
-            name,
-            "clear"
-                | "copy"
-                | "get"
-                | "items"
-                | "keys"
-                | "pop"
-                | "popitem"
-                | "setdefault"
-                | "update"
-                | "values"
-                | "__contains__"
-                | "__delitem__"
-                | "__getitem__"
-                | "__len__"
-                | "__iter__"
-                | "__setitem__"
-        )
-    {
+    if dict_subclass_entries(&receiver).is_some() && is_builtin_dict_type_method(name) {
         Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("dict.{name}"))),
             receiver: Box::new(receiver),
@@ -24621,6 +32630,121 @@ fn dict_subclass_method(receiver: Value, name: &str) -> Option<Value> {
     } else {
         None
     }
+}
+
+fn counter_subclass_method(receiver: Value, name: &str) -> Option<Value> {
+    if counter_subclass_entries(&receiver).is_some() && is_builtin_counter_type_method(name) {
+        Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        })
+    } else {
+        None
+    }
+}
+
+fn is_builtin_dict_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "clear"
+            | "copy"
+            | "get"
+            | "items"
+            | "keys"
+            | "pop"
+            | "popitem"
+            | "setdefault"
+            | "update"
+            | "values"
+            | "__contains__"
+            | "__delitem__"
+            | "__getitem__"
+            | "__len__"
+            | "__iter__"
+            | "__setitem__"
+    )
+}
+
+fn chain_map_subclass_attribute(receiver: Value, name: &str) -> Result<Option<Value>, String> {
+    let Some(maps) = chain_map_subclass_maps(&receiver) else {
+        return Ok(None);
+    };
+
+    match name {
+        "maps" => Ok(Some(list_value(maps))),
+        "parents" => Ok(Some(chain_map_parents(&maps)?)),
+        "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
+        | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__" | "__iter__"
+        | "__len__" | "__or__" | "__ror__" | "__setitem__" => Ok(Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        })),
+        _ => Ok(None),
+    }
+}
+
+fn is_builtin_chain_map_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "clear"
+            | "copy"
+            | "get"
+            | "items"
+            | "keys"
+            | "new_child"
+            | "pop"
+            | "popitem"
+            | "values"
+            | "__contains__"
+            | "__delitem__"
+            | "__getitem__"
+            | "__ior__"
+            | "__iter__"
+            | "__len__"
+            | "__or__"
+            | "__ror__"
+            | "__setitem__"
+    )
+}
+
+fn is_builtin_counter_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "__init__"
+            | "clear"
+            | "copy"
+            | "elements"
+            | "fromkeys"
+            | "get"
+            | "items"
+            | "keys"
+            | "most_common"
+            | "pop"
+            | "popitem"
+            | "setdefault"
+            | "subtract"
+            | "total"
+            | "update"
+            | "values"
+            | "__contains__"
+            | "__delitem__"
+            | "__getitem__"
+            | "__add__"
+            | "__sub__"
+            | "__or__"
+            | "__and__"
+            | "__xor__"
+            | "__iadd__"
+            | "__isub__"
+            | "__ior__"
+            | "__iand__"
+            | "__ixor__"
+            | "__iter__"
+            | "__len__"
+            | "__setitem__"
+    )
 }
 
 fn set_subclass_method(receiver: Value, name: &str) -> Option<Value> {
@@ -24729,6 +32853,10 @@ fn is_coroutine_abc_value(value: &Value) -> bool {
     }
 
     matches!(value, Value::Coroutine(_))
+        || matches!(
+            value,
+            Value::AsyncGeneratorAthrowMixin { .. } | Value::AsyncGeneratorAcloseMixin { .. }
+        )
         || instance_abc_bases_include(value, "Coroutine")
         || (instance_has_callable_special_method(value, "__await__")
             && instance_has_callable_special_method(value, "send")
@@ -24791,21 +32919,12 @@ fn is_async_generator_abc_value(value: &Value) -> bool {
 fn is_hashable_abc_value(value: &Value) -> bool {
     match value {
         Value::MappingProxyObject { mapping } => is_hashable_abc_value(mapping),
+        Value::MemoryView(_) => true,
         Value::Instance {
             class_attrs,
             class_bases,
             ..
-        } => {
-            if class_bases_explicitly_include_builtin(class_bases, "Hashable") {
-                return true;
-            }
-            if let Some(hash) = find_class_attr(class_attrs, class_bases, "__hash__") {
-                return !matches!(hash, Value::None);
-            }
-            frozen_set_subclass_items(value).is_some()
-                || (!set_subclass_items(value).is_some()
-                    && !class_special_method_is_none(class_attrs, class_bases, "__hash__"))
-        }
+        } => class_satisfies_hashable_abc(class_attrs, class_bases),
         _ => hash_value(value).is_ok(),
     }
 }
@@ -24823,6 +32942,7 @@ fn is_sized_abc_value(value: &Value) -> bool {
         Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::MemoryView(_)
             | Value::List(_)
             | Value::Tuple(_)
             | Value::Set(_)
@@ -24850,6 +32970,7 @@ fn is_container_abc_value(value: &Value) -> bool {
         Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::MemoryView(_)
             | Value::List(_)
             | Value::Tuple(_)
             | Value::Set(_)
@@ -25426,61 +33547,7 @@ fn immutable_sequence_method(
     receiver: Value,
     name: &str,
 ) -> Result<Value, String> {
-    let supported = matches!(
-        name,
-        "__contains__" | "__getitem__" | "__iter__" | "__len__"
-    ) || (type_name == "str"
-        && matches!(
-            name,
-            "startswith"
-                | "endswith"
-                | "find"
-                | "rfind"
-                | "index"
-                | "rindex"
-                | "count"
-                | "lower"
-                | "upper"
-                | "capitalize"
-                | "title"
-                | "swapcase"
-                | "casefold"
-                | "islower"
-                | "isupper"
-                | "istitle"
-                | "isspace"
-                | "isalpha"
-                | "isalnum"
-                | "isdigit"
-                | "isdecimal"
-                | "isnumeric"
-                | "isascii"
-                | "isidentifier"
-                | "isprintable"
-                | "splitlines"
-                | "expandtabs"
-                | "replace"
-                | "removeprefix"
-                | "removesuffix"
-                | "split"
-                | "rsplit"
-                | "partition"
-                | "rpartition"
-                | "join"
-                | "translate"
-                | "encode"
-                | "format"
-                | "format_map"
-                | "strip"
-                | "lstrip"
-                | "rstrip"
-                | "ljust"
-                | "rjust"
-                | "center"
-                | "zfill"
-        ))
-        || (type_name == "bytes" && matches!(name, "decode" | "hex"));
-    if supported {
+    if is_immutable_sequence_type_method(type_name, name) {
         Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
             receiver: Box::new(receiver),
@@ -25491,6 +33558,112 @@ fn immutable_sequence_method(
             "AttributeError: {type_name} has no attribute '{name}'"
         ))
     }
+}
+
+fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
+    matches!(
+        name,
+        "__contains__" | "__getitem__" | "__iter__" | "__len__"
+    ) || (matches!(type_name, "tuple" | "range") && matches!(name, "count" | "index"))
+        || (type_name == "tuple"
+            && matches!(
+                name,
+                "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
+            ))
+        || (type_name == "str"
+            && matches!(
+                name,
+                "startswith"
+                    | "endswith"
+                    | "find"
+                    | "rfind"
+                    | "index"
+                    | "rindex"
+                    | "count"
+                    | "lower"
+                    | "upper"
+                    | "capitalize"
+                    | "title"
+                    | "swapcase"
+                    | "casefold"
+                    | "islower"
+                    | "isupper"
+                    | "istitle"
+                    | "isspace"
+                    | "isalpha"
+                    | "isalnum"
+                    | "isdigit"
+                    | "isdecimal"
+                    | "isnumeric"
+                    | "isascii"
+                    | "isidentifier"
+                    | "isprintable"
+                    | "splitlines"
+                    | "expandtabs"
+                    | "replace"
+                    | "removeprefix"
+                    | "removesuffix"
+                    | "split"
+                    | "rsplit"
+                    | "partition"
+                    | "rpartition"
+                    | "join"
+                    | "translate"
+                    | "encode"
+                    | "format"
+                    | "format_map"
+                    | "strip"
+                    | "lstrip"
+                    | "rstrip"
+                    | "ljust"
+                    | "rjust"
+                    | "center"
+                    | "zfill"
+            ))
+        || (type_name == "bytes"
+            && matches!(
+                name,
+                "lower"
+                    | "upper"
+                    | "capitalize"
+                    | "title"
+                    | "swapcase"
+                    | "islower"
+                    | "isupper"
+                    | "istitle"
+                    | "isspace"
+                    | "isalpha"
+                    | "isalnum"
+                    | "isdigit"
+                    | "isascii"
+                    | "expandtabs"
+                    | "zfill"
+                    | "decode"
+                    | "hex"
+                    | "startswith"
+                    | "endswith"
+                    | "count"
+                    | "find"
+                    | "rfind"
+                    | "index"
+                    | "rindex"
+                    | "replace"
+                    | "removeprefix"
+                    | "removesuffix"
+                    | "partition"
+                    | "rpartition"
+                    | "translate"
+                    | "splitlines"
+                    | "rsplit"
+                    | "split"
+                    | "join"
+                    | "strip"
+                    | "lstrip"
+                    | "rstrip"
+                    | "ljust"
+                    | "rjust"
+                    | "center"
+            ))
 }
 
 fn iterator_protocol_method(type_name: &str, receiver: Value, name: &str) -> Result<Value, String> {
@@ -25531,6 +33704,7 @@ fn iterator_has_length_hint(value: &Value) -> bool {
             | Value::TupleIterator { .. }
             | Value::StringIterator { .. }
             | Value::BytesIterator { .. }
+            | Value::ByteArrayIterator { .. }
             | Value::SetIterator { .. }
             | Value::DictIterator { .. }
             | Value::ReverseIterator { .. }
@@ -25540,9 +33714,154 @@ fn iterator_has_length_hint(value: &Value) -> bool {
     )
 }
 
+fn insert_type_param_scope_bindings(
+    scope: &Scope,
+    type_params: &[Value],
+    private_class_name: Option<&str>,
+) -> Vec<(String, Value)> {
+    let bindings = type_param_scope_bindings(type_params, private_class_name);
+    scope.borrow_mut().extend(bindings.iter().cloned());
+    bindings
+}
+
+fn type_param_scope(type_params: &[Value], private_class_name: Option<&str>) -> Option<Scope> {
+    let bindings = type_param_scope_bindings(type_params, private_class_name);
+    if bindings.is_empty() {
+        return None;
+    }
+    let scope = new_scope();
+    scope.borrow_mut().extend(bindings);
+    Some(scope)
+}
+
+fn type_param_scope_bindings(
+    type_params: &[Value],
+    private_class_name: Option<&str>,
+) -> Vec<(String, Value)> {
+    type_params.iter().fold(Vec::new(), |mut bindings, value| {
+        let Value::TypeParam { name, .. } = value else {
+            return bindings;
+        };
+        bindings.push((name.clone(), value.clone()));
+        let mangled = mangle_private_type_param_name(private_class_name, name);
+        if mangled != *name {
+            bindings.push((mangled, value.clone()));
+        }
+        bindings
+    })
+}
+
+fn mangle_private_type_param_name(private_class_name: Option<&str>, name: &str) -> String {
+    let Some(class_name) = private_class_name else {
+        return name.to_string();
+    };
+    if !name.starts_with("__") || name.ends_with("__") || name.contains('.') {
+        return name.to_string();
+    }
+
+    let stripped_class_name = class_name.trim_start_matches('_');
+    if stripped_class_name.is_empty() {
+        return name.to_string();
+    }
+
+    format!("_{stripped_class_name}{name}")
+}
+
+fn type_param_private_class_name(value: &Value) -> Option<&str> {
+    match value {
+        Value::Class { name, .. } => Some(name.as_str()),
+        _ => None,
+    }
+}
+
+fn typing_no_default_value() -> Value {
+    Value::Builtin(TYPING_NO_DEFAULT_NAME.to_string())
+}
+
+fn type_param_const_evaluator(
+    evaluator_kind: ConstEvaluatorKind,
+    kind: String,
+    name: String,
+    bound: Rc<RefCell<Option<Value>>>,
+    default: Rc<RefCell<Option<Value>>>,
+    infer_variance: bool,
+    covariant: bool,
+    contravariant: bool,
+    identity: Rc<()>,
+) -> Value {
+    Value::ConstEvaluator {
+        kind: evaluator_kind,
+        target: Box::new(Value::TypeParam {
+            kind,
+            name,
+            bound,
+            default,
+            infer_variance,
+            covariant,
+            contravariant,
+            identity,
+        }),
+    }
+}
+
+fn bind_deferred_type_param_class_values(class_value: &Value) {
+    let Value::Class {
+        name: class_name,
+        type_params,
+        ..
+    } = class_value
+    else {
+        return;
+    };
+
+    for type_param in type_params {
+        let Value::TypeParam { bound, default, .. } = type_param else {
+            continue;
+        };
+        bind_deferred_type_param_cell_class_value(bound, class_name, class_value);
+        bind_deferred_type_param_cell_class_value(default, class_name, class_value);
+    }
+}
+
+fn bind_deferred_type_param_cell_class_value(
+    cell: &Rc<RefCell<Option<Value>>>,
+    class_name: &str,
+    class_value: &Value,
+) {
+    let Some(Value::DeferredTypeParamExpr(deferred)) = cell.borrow().as_ref().cloned() else {
+        return;
+    };
+    if deferred.class_name.as_deref() == Some(class_name) {
+        *deferred.class_value.borrow_mut() = Some(class_value.clone());
+    }
+}
+
+fn type_param_cell_is_deferred_constraint_tuple(cell: &Rc<RefCell<Option<Value>>>) -> Option<bool> {
+    let Some(Value::DeferredTypeParamExpr(deferred)) = cell.borrow().as_ref().cloned() else {
+        return None;
+    };
+    Some(deferred.is_constraint_tuple)
+}
+
+fn type_params_attr_value(attrs: &Scope, type_params: Vec<Value>) -> Value {
+    attrs
+        .borrow()
+        .get("__type_params__")
+        .cloned()
+        .unwrap_or_else(|| tuple_value(type_params))
+}
+
+fn parameters_attr_value(attrs: &Scope, type_params: Vec<Value>) -> Value {
+    if let Some(value) = attrs.borrow().get("__parameters__").cloned() {
+        return value;
+    }
+    type_params_attr_value(attrs, type_params)
+}
+
 fn load_function_attribute(function: Value, name: &str) -> Result<Value, String> {
     let Value::Function {
         name: function_name,
+        body,
         type_params,
         globals,
         positional_only,
@@ -25551,9 +33870,12 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         keyword_only,
         kwarg,
         annotations,
+        doc,
         attrs,
         is_generator,
         is_async,
+        first_line,
+        line_sequence,
         owner_class,
         ..
     } = &function
@@ -25565,14 +33887,15 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         "__name__" => Ok(Value::String(function_name.clone())),
         "__qualname__" => Ok(function_qualname_value(
             function_name,
+            attrs,
             owner_class.as_deref(),
         )),
         "__module__" => Ok(function_module_value(owner_class.as_deref())),
-        "__doc__" => Ok(Value::None),
+        "__doc__" => Ok(doc.borrow().clone()),
         "__globals__" => Ok(Value::ScopeDict(globals.clone())),
         "__builtins__" => Ok(function_builtins_value(globals)),
         "__dict__" => Ok(Value::ScopeDict(attrs.clone())),
-        "__type_params__" => Ok(tuple_value(type_params.clone())),
+        "__type_params__" => Ok(type_params_attr_value(attrs, type_params.clone())),
         "__annotations__" => Ok(dict_value(
             annotations
                 .iter()
@@ -25586,8 +33909,11 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             vararg.as_ref(),
             keyword_only,
             kwarg.as_ref(),
+            body,
             *is_generator,
             *is_async,
+            *first_line,
+            line_sequence,
         ),
         "__call__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("callable.__call__".to_string())),
@@ -25608,22 +33934,12 @@ fn function_code_object_value(
     vararg: Option<&String>,
     keyword_only: &[String],
     kwarg: Option<&String>,
+    body: &[Instruction],
     is_generator: bool,
     is_async: bool,
+    first_line: usize,
+    line_sequence: &[usize],
 ) -> Result<Value, String> {
-    let mut varnames = positional_only
-        .iter()
-        .chain(params)
-        .cloned()
-        .collect::<Vec<_>>();
-    if let Some(vararg) = vararg {
-        varnames.push(vararg.clone());
-    }
-    varnames.extend(keyword_only.iter().cloned());
-    if let Some(kwarg) = kwarg {
-        varnames.push(kwarg.clone());
-    }
-
     let mut flags = 0;
     if is_async && is_generator {
         flags |= 0x0200;
@@ -25633,15 +33949,302 @@ fn function_code_object_value(
         flags |= 0x0020;
     }
 
+    let code_object = function_metadata_code_object(body, first_line, line_sequence);
     Ok(Value::SimpleNamespace {
         fields: dict_ref_from_entries(vec![
             (
                 Value::String("co_varnames".to_string()),
-                tuple_value(varnames.into_iter().map(Value::String).collect()),
+                tuple_value(
+                    function_code_varnames(
+                        positional_only,
+                        params,
+                        vararg,
+                        keyword_only,
+                        kwarg,
+                        body,
+                    )
+                    .into_iter()
+                    .map(Value::String)
+                    .collect(),
+                ),
+            ),
+            (
+                Value::String("co_consts".to_string()),
+                tuple_value(function_code_constants(body)),
             ),
             (Value::String("co_flags".to_string()), Value::Number(flags)),
+            (
+                Value::String("co_firstlineno".to_string()),
+                Value::Number(first_line as i64),
+            ),
+            (
+                Value::String("co_lines".to_string()),
+                code_object_bound_method("code.co_lines", code_object.clone()),
+            ),
+            (
+                Value::String("co_positions".to_string()),
+                code_object_bound_method("code.co_positions", code_object),
+            ),
         ])?,
     })
+}
+
+fn function_metadata_code_object(
+    body: &[Instruction],
+    first_line: usize,
+    line_sequence: &[usize],
+) -> Value {
+    Value::CodeObject {
+        mode: CodeMode::Exec,
+        filename: "<function>".to_string(),
+        instructions: body.to_vec(),
+        line_spans: function_code_line_spans(body, first_line, line_sequence),
+        identity: Rc::new(()),
+    }
+}
+
+fn function_code_line_spans(
+    body: &[Instruction],
+    first_line: usize,
+    line_sequence: &[usize],
+) -> Vec<CodeLineSpan> {
+    let lines = if line_sequence.is_empty() {
+        vec![first_line]
+    } else {
+        line_sequence.to_vec()
+    };
+
+    let mut spans = Vec::with_capacity(lines.len());
+    let mut start = 0usize;
+    for (index, line) in lines.iter().enumerate() {
+        let end = if index + 1 == lines.len() {
+            body.len().max(start + 1)
+        } else if index == 0 {
+            (start + 1).min(body.len()).max(start + 1)
+        } else {
+            next_function_line_span_end(body, start)
+        };
+        spans.push(CodeLineSpan {
+            start,
+            end,
+            line: *line as i64,
+        });
+        start = end;
+    }
+    spans
+}
+
+fn next_function_line_span_end(body: &[Instruction], start: usize) -> usize {
+    if start >= body.len() {
+        return start + 1;
+    }
+
+    body.iter()
+        .enumerate()
+        .skip(start)
+        .find_map(|(index, instruction)| {
+            function_line_boundary_instruction(instruction).then_some(index + 1)
+        })
+        .unwrap_or_else(|| (start + 1).max(body.len()))
+}
+
+fn function_line_boundary_instruction(instruction: &Instruction) -> bool {
+    matches!(
+        instruction,
+        Instruction::Noop
+            | Instruction::StoreName { .. }
+            | Instruction::StoreGlobal { .. }
+            | Instruction::StoreNonlocal { .. }
+            | Instruction::StoreOuterName { .. }
+            | Instruction::StoreAnnotation { .. }
+            | Instruction::DeleteName { .. }
+            | Instruction::DeleteGlobal { .. }
+            | Instruction::DeleteNonlocal { .. }
+            | Instruction::StoreAttribute { .. }
+            | Instruction::DeleteAttribute { .. }
+            | Instruction::StoreSubscript { .. }
+            | Instruction::DeleteSubscript { .. }
+            | Instruction::StoreSlice { .. }
+            | Instruction::DeleteSlice { .. }
+            | Instruction::JumpIfFalse { .. }
+            | Instruction::Jump { .. }
+            | Instruction::Return { .. }
+            | Instruction::ImplicitReturn
+            | Instruction::Yield { .. }
+            | Instruction::Assert { .. }
+            | Instruction::Raise { .. }
+            | Instruction::Pop { .. }
+            | Instruction::Display { .. }
+            | Instruction::Halt
+    )
+}
+
+fn code_object_bound_method(name: &str, code_object: Value) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin(name.to_string())),
+        receiver: Box::new(code_object),
+        identity: Rc::new(()),
+    }
+}
+
+fn function_code_varnames(
+    positional_only: &[String],
+    params: &[String],
+    vararg: Option<&String>,
+    keyword_only: &[String],
+    kwarg: Option<&String>,
+    body: &[Instruction],
+) -> Vec<String> {
+    let mut varnames = Vec::new();
+    push_code_varnames(positional_only.iter(), &mut varnames);
+    push_code_varnames(params.iter(), &mut varnames);
+    if let Some(vararg) = vararg {
+        push_code_varname(vararg, &mut varnames);
+    }
+    push_code_varnames(keyword_only.iter(), &mut varnames);
+    if let Some(kwarg) = kwarg {
+        push_code_varname(kwarg, &mut varnames);
+    }
+
+    for instruction in body {
+        match instruction {
+            Instruction::StoreName { name, .. }
+            | Instruction::DeleteName { name }
+            | Instruction::StoreAnnotation { name, .. } => push_code_varname(name, &mut varnames),
+            _ => {}
+        }
+    }
+
+    varnames
+}
+
+fn push_code_varnames<'a>(names: impl Iterator<Item = &'a String>, varnames: &mut Vec<String>) {
+    for name in names {
+        push_code_varname(name, varnames);
+    }
+}
+
+fn push_code_varname(name: &str, varnames: &mut Vec<String>) {
+    if !varnames.iter().any(|existing| existing == name) {
+        varnames.push(name.to_string());
+    }
+}
+
+fn function_code_constants(body: &[Instruction]) -> Vec<Value> {
+    let mut constants = Vec::new();
+    for instruction in body {
+        match instruction {
+            Instruction::LoadConst { value, .. } => constants.push(value.clone()),
+            Instruction::MakeFunction {
+                body,
+                first_line,
+                line_sequence,
+                ..
+            } => constants.push(function_metadata_code_object(
+                body,
+                *first_line,
+                line_sequence,
+            )),
+            _ => {}
+        }
+    }
+    constants
+}
+
+fn code_object_firstlineno(filename: &str, line_spans: &[CodeLineSpan]) -> i64 {
+    if filename != "<function>" {
+        return 1;
+    }
+
+    line_spans
+        .iter()
+        .filter_map(|span| (span.line > 0).then_some(span.line))
+        .min()
+        .unwrap_or(1)
+}
+
+fn call_types_get_original_bases(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("get_original_bases() does not accept keyword arguments".to_string());
+    }
+    let [class] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: get_original_bases() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    load_attribute(class.clone(), "__orig_bases__")
+        .or_else(|_| load_attribute(class.clone(), "__bases__"))
+}
+
+fn call_typing_get_args(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("get_args() does not accept keyword arguments".to_string());
+    }
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: get_args() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    match value {
+        Value::GenericAlias { args, .. } => Ok(tuple_value(args.clone())),
+        _ => Ok(tuple_value(Vec::new())),
+    }
+}
+
+fn annotation_format_argument(value: &Value) -> Result<i64, String> {
+    match value {
+        Value::Number(value)
+            if matches!(
+                *value,
+                ANNOTATION_FORMAT_VALUE | ANNOTATION_FORMAT_FORWARDREF | ANNOTATION_FORMAT_STRING
+            ) =>
+        {
+            Ok(*value)
+        }
+        value => Err(format!(
+            "ValueError: unsupported annotation format {}",
+            format_annotation_value_string(value)
+        )),
+    }
+}
+
+fn format_annotation_value_string(value: &Value) -> String {
+    match value {
+        Value::Builtin(name) => name.strip_prefix("typing.").unwrap_or(name).to_string(),
+        Value::Class { name, .. }
+        | Value::TypeParam { name, .. }
+        | Value::TypeAlias { name, .. } => name.clone(),
+        Value::Tuple(items) => match items.as_slice() {
+            [] => "()".to_string(),
+            [item] => format!("({},)", format_annotation_value_string(item)),
+            _ => format!(
+                "({})",
+                items
+                    .iter()
+                    .map(format_annotation_value_string)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        },
+        Value::GenericAlias { origin, args } => format!(
+            "{}[{}]",
+            format_annotation_value_string(origin),
+            args.iter()
+                .map(format_annotation_value_string)
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Value::Unpack(value) => format!("*{}", format_annotation_value_string(value)),
+        Value::None => "None".to_string(),
+        value => value.to_string(),
+    }
 }
 
 fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
@@ -25680,6 +34283,44 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 ));
             }
 
+            let instance = Value::Instance {
+                class_name: class_name.clone(),
+                fields: fields.clone(),
+                class_attrs: class_attrs.clone(),
+                class_bases: class_bases.clone(),
+            };
+            if let Some(data) = user_dict_subclass_data(&instance) {
+                if name == "data" {
+                    return Ok(Value::Dict(data));
+                }
+                if matches!(
+                    name,
+                    "__init__"
+                        | "clear"
+                        | "copy"
+                        | "get"
+                        | "items"
+                        | "keys"
+                        | "pop"
+                        | "popitem"
+                        | "setdefault"
+                        | "update"
+                        | "values"
+                        | "__contains__"
+                        | "__delitem__"
+                        | "__getitem__"
+                        | "__iter__"
+                        | "__len__"
+                        | "__setitem__"
+                ) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
+                        receiver: Box::new(instance),
+                        identity: Rc::new(()),
+                    });
+                }
+            }
+
             if name == "__dir__" {
                 return Ok(object_dir_bound_method(Value::Instance {
                     class_name,
@@ -25694,9 +34335,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Class {
             name: class_name,
             type_params,
+            metaclass,
             bases,
             attrs,
         } => {
+            if name == "__class__" {
+                return Ok(metaclass
+                    .as_deref()
+                    .cloned()
+                    .unwrap_or_else(|| Value::Builtin("type".to_string())));
+            }
             if name == "__name__" {
                 return Ok(class_name_value(&class_name, &attrs));
             }
@@ -25718,10 +34366,22 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .unwrap_or(Value::None));
             }
             if name == "__type_params__" {
-                return Ok(tuple_value(type_params));
+                return Ok(type_params_attr_value(&attrs, type_params));
+            }
+            if name == "__parameters__" {
+                return Ok(parameters_attr_value(&attrs, type_params));
             }
             if name == "__bases__" {
                 return Ok(tuple_value(bases));
+            }
+            if name == "__orig_bases__" {
+                return attrs
+                    .borrow()
+                    .get("__orig_bases__")
+                    .cloned()
+                    .ok_or_else(|| {
+                        "AttributeError: type object has no attribute '__orig_bases__'".to_string()
+                    });
             }
             if name == "__base__" {
                 return Ok(class_base_value(&bases));
@@ -25740,6 +34400,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         Ok(object_dir_bound_method(Value::Class {
                             name: class_name,
                             type_params,
+                            metaclass,
                             bases,
                             attrs,
                         }))
@@ -25751,8 +34412,40 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 })
         }
         function @ Value::Function { .. } => load_function_attribute(function, name),
-        Value::CodeObject { filename, .. } => match name {
+        Value::CodeObject {
+            mode,
+            filename,
+            instructions,
+            line_spans,
+            identity,
+        } => match name {
             "co_filename" => Ok(Value::String(filename)),
+            "co_firstlineno" => Ok(Value::Number(code_object_firstlineno(
+                &filename,
+                &line_spans,
+            ))),
+            "co_lines" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("code.co_lines".to_string())),
+                receiver: Box::new(Value::CodeObject {
+                    mode,
+                    filename,
+                    instructions,
+                    line_spans,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
+            "co_positions" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("code.co_positions".to_string())),
+                receiver: Box::new(Value::CodeObject {
+                    mode,
+                    filename,
+                    instructions,
+                    line_spans,
+                    identity,
+                }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!("AttributeError: code has no attribute '{name}'")),
         },
         Value::Property {
@@ -25779,6 +34472,27 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             _ => Err(format!(
                 "AttributeError: property has no attribute '{name}'"
+            )),
+        },
+        Value::NamedTupleFieldDescriptor { typ, index } => match name {
+            "__name__" => Ok(Value::String(
+                typ.fields.get(index).cloned().unwrap_or_default(),
+            )),
+            "__doc__" => Ok(Value::String(
+                typ.field_docs
+                    .get(index)
+                    .map(|doc| doc.borrow().clone())
+                    .unwrap_or_default(),
+            )),
+            "__get__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "namedtuple_field_descriptor.__get__".to_string(),
+                )),
+                receiver: Box::new(Value::NamedTupleFieldDescriptor { typ, index }),
+                identity: Rc::new(()),
+            }),
+            _ => Err(format!(
+                "AttributeError: namedtuple field descriptor has no attribute '{name}'"
             )),
         },
         Value::MemberDescriptor {
@@ -25828,11 +34542,62 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name: type_param_name,
             bound,
             default,
+            infer_variance,
+            covariant,
+            contravariant,
+            identity,
         } => match name {
             "__kind__" => Ok(Value::String(kind)),
             "__name__" => Ok(Value::String(type_param_name)),
-            "__bound__" => Ok(bound.map(|value| *value).unwrap_or(Value::None)),
-            "__default__" => Ok(default.map(|value| *value).unwrap_or(Value::None)),
+            "__infer_variance__" => Ok(Value::Bool(infer_variance)),
+            "__covariant__" => Ok(Value::Bool(covariant)),
+            "__contravariant__" => Ok(Value::Bool(contravariant)),
+            "__bound__" => Ok(match bound.borrow().as_ref() {
+                Some(Value::Tuple(_)) => Value::None,
+                Some(value) => value.clone(),
+                None => Value::None,
+            }),
+            "__constraints__" => Ok(match bound.borrow().as_ref() {
+                Some(Value::Tuple(items)) => Value::Tuple(items.clone()),
+                _ => tuple_value(Vec::new()),
+            }),
+            "__default__" => Ok(default
+                .borrow()
+                .clone()
+                .unwrap_or_else(typing_no_default_value)),
+            "evaluate_bound" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamBound,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
+            "evaluate_constraints" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamConstraints,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
+            "evaluate_default" => Ok(type_param_const_evaluator(
+                ConstEvaluatorKind::TypeParamDefault,
+                kind,
+                type_param_name,
+                bound,
+                default,
+                infer_variance,
+                covariant,
+                contravariant,
+                identity,
+            )),
             _ => Err(format!(
                 "AttributeError: type parameter has no attribute '{name}'"
             )),
@@ -25845,6 +34610,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__name__" => Ok(Value::String(alias_name)),
             "__type_params__" => Ok(tuple_value(type_params)),
             "__value__" => Ok(*value),
+            "evaluate_value" => Ok(Value::ConstEvaluator {
+                kind: ConstEvaluatorKind::TypeAliasValue,
+                target: Box::new(Value::TypeAlias {
+                    name: alias_name,
+                    type_params,
+                    value,
+                }),
+            }),
             _ => Err(format!(
                 "AttributeError: type alias has no attribute '{name}'"
             )),
@@ -25852,6 +34625,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::GenericAlias { origin, args } => match name {
             "__origin__" => Ok(*origin),
             "__args__" => Ok(tuple_value(args)),
+            "__parameters__" => Ok(tuple_value(Vec::new())),
             "__name__" => load_attribute(*origin, "__name__"),
             _ => Err(format!(
                 "AttributeError: generic alias has no attribute '{name}'"
@@ -25859,6 +34633,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::Unpack(value) => match name {
             "__value__" => Ok(*value),
+            "__origin__" | "__args__" | "__parameters__" | "__name__" => {
+                load_attribute(*value, name)
+            }
             _ => Err(format!("AttributeError: unpack has no attribute '{name}'")),
         },
         Value::SimpleNamespace { fields } => {
@@ -25901,6 +34678,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 identity: Rc::new(()),
             }),
             "_fields" => Ok(lookup_string_key(&attrs, "_fields")
+                .unwrap_or_else(|| tuple_value(fields.into_iter().map(Value::String).collect()))),
+            "__match_args__" => Ok(lookup_string_key(&attrs, "__match_args__")
                 .unwrap_or_else(|| tuple_value(fields.into_iter().map(Value::String).collect()))),
             "_attributes" => Ok(lookup_string_key(&attrs, "_attributes").unwrap_or_else(|| {
                 tuple_value(
@@ -25958,25 +34737,154 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),
         Value::String(_) if name == "maketrans" => Ok(Value::Builtin("str.maketrans".to_string())),
         Value::String(value) => immutable_sequence_method("str", Value::String(value), name),
+        Value::Bytes(_) if name == "maketrans" => Ok(Value::Builtin("bytes.maketrans".to_string())),
         Value::Bytes(value) => immutable_sequence_method("bytes", Value::Bytes(value), name),
-        Value::ByteArray(value) if matches!(name, "decode" | "hex") => Ok(Value::BoundMethod {
-            function: Box::new(Value::Builtin(format!("bytearray.{name}"))),
-            receiver: Box::new(Value::ByteArray(value)),
-            identity: Rc::new(()),
-        }),
+        Value::ByteArray(_) if name == "maketrans" => {
+            Ok(Value::Builtin("bytearray.maketrans".to_string()))
+        }
+        Value::ByteArray(value)
+            if matches!(
+                name,
+                "lower"
+                    | "upper"
+                    | "capitalize"
+                    | "title"
+                    | "swapcase"
+                    | "islower"
+                    | "isupper"
+                    | "istitle"
+                    | "isspace"
+                    | "isalpha"
+                    | "isalnum"
+                    | "isdigit"
+                    | "isascii"
+                    | "expandtabs"
+                    | "zfill"
+                    | "decode"
+                    | "append"
+                    | "extend"
+                    | "insert"
+                    | "pop"
+                    | "remove"
+                    | "reverse"
+                    | "clear"
+                    | "copy"
+                    | "resize"
+                    | "take_bytes"
+                    | "__iadd__"
+                    | "__imul__"
+                    | "__delitem__"
+                    | "__setitem__"
+                    | "hex"
+                    | "startswith"
+                    | "endswith"
+                    | "count"
+                    | "find"
+                    | "rfind"
+                    | "index"
+                    | "rindex"
+                    | "replace"
+                    | "removeprefix"
+                    | "removesuffix"
+                    | "partition"
+                    | "rpartition"
+                    | "translate"
+                    | "splitlines"
+                    | "rsplit"
+                    | "split"
+                    | "join"
+                    | "strip"
+                    | "lstrip"
+                    | "rstrip"
+                    | "ljust"
+                    | "rjust"
+                    | "center"
+            ) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("bytearray.{name}"))),
+                receiver: Box::new(Value::ByteArray(value)),
+                identity: Rc::new(()),
+            })
+        }
+        Value::MemoryView(view) => match name {
+            "format" => Ok(Value::String(memoryview_format(&view)?)),
+            "itemsize" | "ndim" => {
+                memoryview_len(&view)?;
+                Ok(Value::Number(1))
+            }
+            "shape" => Ok(tuple_value(vec![Value::Number(
+                i64::try_from(memoryview_len(&view)?).unwrap_or(i64::MAX),
+            )])),
+            "strides" => {
+                let stride = i64::try_from(memoryview_stride(&view)?)
+                    .map_err(|_| "memoryview stride is too large".to_string())?;
+                Ok(tuple_value(vec![Value::Number(stride)]))
+            }
+            "suboffsets" => {
+                memoryview_len(&view)?;
+                Ok(tuple_value(Vec::new()))
+            }
+            "readonly" => Ok(Value::Bool(memoryview_readonly(&view)?)),
+            "obj" => memoryview_exporter(&view),
+            "c_contiguous" | "f_contiguous" | "contiguous" => {
+                Ok(Value::Bool(memoryview_is_contiguous(&view)?))
+            }
+            "nbytes" => Ok(Value::Number(
+                i64::try_from(memoryview_len(&view)?).unwrap_or(i64::MAX),
+            )),
+            "tobytes" | "tolist" | "hex" | "cast" | "toreadonly" | "release" | "__enter__"
+            | "__exit__" | "count" | "index" | "__contains__" | "__getitem__" | "__setitem__"
+            | "__delitem__" | "__iter__" | "__len__" | "__reversed__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("memoryview.{name}"))),
+                receiver: Box::new(Value::MemoryView(view)),
+                identity: Rc::new(()),
+            }),
+            _ => Err(format!(
+                "AttributeError: memoryview has no attribute '{name}'"
+            )),
+        },
         Value::Range { start, stop, step } => {
             immutable_sequence_method("range", Value::Range { start, stop, step }, name)
         }
         Value::List(items) => match name {
             "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
-            | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__getitem__"
-            | "__iter__" | "__len__" | "__setitem__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("list.{name}"))),
-                receiver: Box::new(Value::List(items)),
-                identity: Rc::new(()),
-            }),
+            | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
+            | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("list.{name}"))),
+                    receiver: Box::new(Value::List(items)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!("AttributeError: list has no attribute '{name}'")),
         },
+        Value::UserList { data, attrs } => {
+            if name == "data" {
+                return Ok(Value::List(data));
+            }
+            if let Some(value) = attrs
+                .borrow()
+                .iter()
+                .find(|(key, _)| matches!(key, Value::String(attr_name) if attr_name == name))
+                .map(|(_, value)| value.clone())
+            {
+                return Ok(value);
+            }
+            match name {
+                "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
+                | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
+                | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__setitem__" | "__lt__"
+                | "__le__" | "__gt__" | "__ge__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("UserList.{name}"))),
+                    receiver: Box::new(Value::UserList { data, attrs }),
+                    identity: Rc::new(()),
+                }),
+                _ => Err(format!(
+                    "AttributeError: UserList has no attribute '{name}'"
+                )),
+            }
+        }
         Value::Dict(entries) => match name {
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
@@ -25987,6 +34895,149 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
+        Value::OrderedDict(entries) => match name {
+            "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
+            | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
+            | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("OrderedDict.{name}"))),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
+            _ => Err(format!(
+                "AttributeError: OrderedDict has no attribute '{name}'"
+            )),
+        },
+        Value::Counter { entries } => match name {
+            "__init__" | "clear" | "copy" | "elements" | "get" | "items" | "keys"
+            | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__iter__"
+            | "__len__" | "__setitem__" | "__add__" | "__sub__" | "__or__" | "__and__"
+            | "__xor__" | "__iadd__" | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                    receiver: Box::new(Value::Counter { entries }),
+                    identity: Rc::new(()),
+                })
+            }
+            _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
+        },
+        Value::UserDict { data, attrs } => {
+            if name == "data" {
+                return Ok(Value::Dict(data));
+            }
+            if let Some(value) = attrs
+                .borrow()
+                .iter()
+                .find(|(key, _)| matches!(key, Value::String(attr_name) if attr_name == name))
+                .map(|(_, value)| value.clone())
+            {
+                return Ok(value);
+            }
+            match name {
+                "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
+                | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
+                | "__getitem__" | "__iter__" | "__len__" | "__setitem__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
+                        receiver: Box::new(Value::UserDict { data, attrs }),
+                        identity: Rc::new(()),
+                    })
+                }
+                _ => Err(format!(
+                    "AttributeError: UserDict has no attribute '{name}'"
+                )),
+            }
+        }
+        Value::NamedTupleType(typ) => {
+            if let Some(index) = typ.fields.iter().position(|field| field == name) {
+                return Ok(namedtuple_field_descriptor(&typ, index));
+            }
+            match name {
+                "__name__" | "__qualname__" => Ok(Value::String(typ.name.clone())),
+                "__module__" => Ok(typ.module.clone()),
+                "__doc__" => Ok(Value::String(typ.doc.borrow().clone())),
+                "__slots__" => Ok(tuple_value(Vec::new())),
+                "__base__" => Ok(builtin_type_value("tuple")),
+                "__bases__" => Ok(tuple_value(vec![builtin_type_value("tuple")])),
+                "__match_args__" | "_fields" => Ok(namedtuple_fields_value(&typ)),
+                "_field_defaults" => namedtuple_field_defaults_value(&typ),
+                "__getitem__" => Ok(Value::Builtin("tuple.__getitem__".to_string())),
+                "__new__" => namedtuple_new_method_value(&typ),
+                "_make" => Ok(Value::NamedTupleTypeMethod {
+                    typ,
+                    name: name.to_string(),
+                }),
+                "__dict__" => {
+                    let mut entries = vec![
+                        (
+                            Value::String("__name__".to_string()),
+                            Value::String(typ.name.clone()),
+                        ),
+                        (Value::String("__module__".to_string()), typ.module.clone()),
+                        (
+                            Value::String("__slots__".to_string()),
+                            tuple_value(Vec::new()),
+                        ),
+                        (
+                            Value::String("_fields".to_string()),
+                            namedtuple_fields_value(&typ),
+                        ),
+                        (
+                            Value::String("__match_args__".to_string()),
+                            namedtuple_fields_value(&typ),
+                        ),
+                        (
+                            Value::String("_field_defaults".to_string()),
+                            namedtuple_field_defaults_value(&typ)?,
+                        ),
+                        (
+                            Value::String("__doc__".to_string()),
+                            Value::String(typ.doc.borrow().clone()),
+                        ),
+                        (
+                            Value::String("__new__".to_string()),
+                            namedtuple_new_method_value(&typ)?,
+                        ),
+                    ];
+                    for (index, field) in typ.fields.iter().enumerate() {
+                        entries.push((
+                            Value::String(field.clone()),
+                            namedtuple_field_descriptor(&typ, index),
+                        ));
+                    }
+                    Ok(mapping_proxy_from_entries(entries))
+                }
+                _ => Err(format!(
+                    "AttributeError: type object '{}' has no attribute '{name}'",
+                    typ.name
+                )),
+            }
+        }
+        Value::NamedTuple { typ, values } => {
+            if let Some(index) = typ.fields.iter().position(|field| field == name) {
+                return values
+                    .get(index)
+                    .cloned()
+                    .ok_or_else(|| format!("AttributeError: object has no attribute '{name}'"));
+            }
+            match name {
+                "__class__" => Ok(Value::NamedTupleType(typ.clone())),
+                "__match_args__" | "_fields" => Ok(namedtuple_fields_value(&typ)),
+                "_field_defaults" => namedtuple_field_defaults_value(&typ),
+                "_asdict" | "_replace" | "__getnewargs__" => Ok(Value::NamedTupleInstanceMethod {
+                    instance: Box::new(Value::NamedTuple { typ, values }),
+                    name: name.to_string(),
+                }),
+                "__len__" | "__iter__" | "__getitem__" | "__contains__" | "count" | "index"
+                | "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                    immutable_sequence_method("tuple", Value::Tuple(values), name)
+                }
+                _ => Err(format!(
+                    "AttributeError: '{}' object has no attribute '{name}'",
+                    typ.name
+                )),
+            }
+        }
         Value::ScopeDict(scope) => match name {
             "items" | "keys" | "values" | "__contains__" | "__delitem__" | "__getitem__"
             | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -26035,12 +35086,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::ChainMap { maps } => match name {
-            "copy" | "get" | "items" | "keys" | "values" | "__contains__" | "__getitem__"
-            | "__iter__" | "__len__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
-                receiver: Box::new(Value::ChainMap { maps }),
-                identity: Rc::new(()),
-            }),
+            "maps" => Ok(list_value(maps.clone())),
+            "parents" => chain_map_parents(&maps),
+            "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
+            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
+            | "__iter__" | "__len__" | "__or__" | "__ror__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
+                    receiver: Box::new(Value::ChainMap { maps }),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: ChainMap has no attribute '{name}'"
             )),
@@ -26164,6 +35220,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::BytesIterator { bytes, index } => length_hint_iterator_protocol_method(
             "bytes_iterator",
             Value::BytesIterator { bytes, index },
+            name,
+        ),
+        Value::ByteArrayIterator {
+            bytes,
+            index,
+            exhausted,
+        } => length_hint_iterator_protocol_method(
+            "bytearray_iterator",
+            Value::ByteArrayIterator {
+                bytes,
+                index,
+                exhausted,
+            },
             name,
         ),
         Value::SetIterator {
@@ -26451,8 +35520,47 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: coroutine_wrapper has no attribute '{name}'"
             )),
         },
+        object @ (Value::AsyncGeneratorAthrowMixin { .. }
+        | Value::AsyncGeneratorAcloseMixin { .. }) => match name {
+            "__await__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "async_generator_abc_coroutine.__await__".to_string(),
+                )),
+                receiver: Box::new(object),
+                identity: Rc::new(()),
+            }),
+            "send" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "async_generator_abc_coroutine.send".to_string(),
+                )),
+                receiver: Box::new(object),
+                identity: Rc::new(()),
+            }),
+            "throw" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "async_generator_abc_coroutine.throw".to_string(),
+                )),
+                receiver: Box::new(object),
+                identity: Rc::new(()),
+            }),
+            "close" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(
+                    "async_generator_abc_coroutine.close".to_string(),
+                )),
+                receiver: Box::new(object),
+                identity: Rc::new(()),
+            }),
+            _ => Err(format!(
+                "AttributeError: coroutine has no attribute '{name}'"
+            )),
+        },
         Value::Builtin(function_name) if function_name == "dict" && name == "fromkeys" => {
             Ok(Value::Builtin("dict.fromkeys".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "dict" && is_builtin_dict_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("dict.{name}")))
         }
         Value::Builtin(function_name) if function_name == "bytes" && name == "fromhex" => {
             Ok(Value::Builtin("bytes.fromhex".to_string()))
@@ -26460,11 +35568,70 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "bytearray" && name == "fromhex" => {
             Ok(Value::Builtin("bytearray.fromhex".to_string()))
         }
+        Value::Builtin(function_name)
+            if matches!(function_name.as_str(), "bytes" | "bytearray") && name == "maketrans" =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.maketrans")))
+        }
+        Value::Builtin(function_name)
+            if matches!(function_name.as_str(), "bytes" | "bytearray")
+                && matches!(
+                    name,
+                    "lower"
+                        | "upper"
+                        | "capitalize"
+                        | "title"
+                        | "swapcase"
+                        | "islower"
+                        | "isupper"
+                        | "istitle"
+                        | "isspace"
+                        | "isalpha"
+                        | "isalnum"
+                        | "isdigit"
+                        | "isascii"
+                        | "expandtabs"
+                        | "zfill"
+                        | "decode"
+                        | "hex"
+                        | "startswith"
+                        | "endswith"
+                        | "count"
+                        | "find"
+                        | "rfind"
+                        | "index"
+                        | "rindex"
+                        | "replace"
+                        | "removeprefix"
+                        | "removesuffix"
+                        | "partition"
+                        | "rpartition"
+                        | "translate"
+                        | "splitlines"
+                        | "rsplit"
+                        | "split"
+                ) =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
         Value::Builtin(function_name) if function_name == "str" && name == "maketrans" => {
             Ok(Value::Builtin("str.maketrans".to_string()))
         }
+        Value::Builtin(function_name)
+            if is_immutable_sequence_type_method(&function_name, name) =>
+        {
+            Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
         Value::Builtin(function_name) if is_builtin_set_type_method(&function_name, name) => {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "UserDict" && name == "__init__" => {
+            Ok(Value::Builtin("UserDict.__init__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "Counter" && is_builtin_counter_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("Counter.{name}")))
         }
         Value::Builtin(function_name)
             if is_exception_type_name(&function_name) && name == "__bases__" =>
@@ -26480,8 +35647,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "object"
                 && matches!(
                     name,
-                    "__getattribute__" | "__setattr__" | "__delattr__" | "__format__" | "__dir__"
+                    "__eq__"
+                        | "__ne__"
+                        | "__getattribute__"
+                        | "__setattr__"
+                        | "__delattr__"
+                        | "__format__"
+                        | "__dir__"
                 ) =>
+        {
+            Ok(Value::Builtin(format!("object.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "NoneType" && matches!(name, "__eq__" | "__ne__") =>
         {
             Ok(Value::Builtin(format!("object.{name}")))
         }
@@ -26639,6 +35817,67 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name)
+            if name == "register" && is_collections_abc_type_name(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("collections.abc.register".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
+            if is_collections_abc_type_name(&function_name)
+                && collections_abc_builtin_mixin_method(&function_name, name).is_some() =>
+        {
+            Ok(Value::Builtin(
+                collections_abc_builtin_mixin_method(&function_name, name)
+                    .expect("guard checked collections ABC mixin")
+                    .to_string(),
+            ))
+        }
+        Value::Builtin(function_name) if function_name == "Hashable" && name == "__hash__" => {
+            Ok(Value::Builtin("Hashable.__hash__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Iterable" && name == "__iter__" => {
+            Ok(Value::Builtin("Iterable.__iter__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Iterator" && name == "__iter__" => {
+            Ok(Value::Builtin("Iterator.__iter__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Iterator" && name == "__next__" => {
+            Ok(Value::Builtin("Iterator.__next__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Coroutine" && name == "send" => {
+            Ok(Value::Builtin("Coroutine.send".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Coroutine" && name == "throw" => {
+            Ok(Value::Builtin("Coroutine.throw".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "Coroutine" && name == "close" => {
+            Ok(Value::Builtin("Coroutine.close".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "AsyncIterator" && name == "__aiter__" =>
+        {
+            Ok(Value::Builtin("AsyncIterator.__aiter__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "AsyncGenerator" && name == "__aiter__" =>
+        {
+            Ok(Value::Builtin("AsyncGenerator.__aiter__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "AsyncGenerator" && name == "__anext__" =>
+        {
+            Ok(Value::Builtin("AsyncGenerator.__anext__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "AsyncGenerator" && name == "athrow" => {
+            Ok(Value::Builtin("AsyncGenerator.athrow".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "AsyncGenerator" && name == "aclose" => {
+            Ok(Value::Builtin("AsyncGenerator.aclose".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "SimpleNamespace" =>
         {
             Ok(Value::String(function_name))
@@ -26714,11 +35953,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 Value::String(class_name.to_string()),
             )]))
         }
+        Value::Builtin(function_name)
+            if name == "__type_params__" && is_builtin_type_object_name(&function_name) =>
+        {
+            Ok(tuple_value(Vec::new()))
+        }
         Value::Builtin(function_name) if name == "__name__" && is_ast_type_name(&function_name) => {
             Ok(Value::String(
                 ast_builtin_kind(&function_name)
                     .expect("guard checked AST builtin kind")
                     .to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__name__" && is_typing_type_param_type_name(&function_name) =>
+        {
+            Ok(Value::String(
+                typing_type_param_public_name(&function_name).to_string(),
             ))
         }
         Value::Builtin(function_name)
@@ -26746,6 +35997,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 format!("AttributeError: module '{module_name}' has no attribute '{name}'")
             })
         }
+        Value::Traceback { .. } => match name {
+            "__class__" => Ok(Value::Builtin("traceback".to_string())),
+            _ => Err(format!(
+                "AttributeError: traceback has no attribute '{name}'"
+            )),
+        },
+        Value::None if matches!(name, "__eq__" | "__ne__") => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("object.{name}"))),
+            receiver: Box::new(Value::None),
+            identity: Rc::new(()),
+        }),
         Value::Exception {
             type_name,
             type_hierarchy,
@@ -26762,7 +36024,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__cause__" => Ok(cause.map(|cause| *cause).unwrap_or(Value::None)),
             "__context__" => Ok(context.map(|context| *context).unwrap_or(Value::None)),
             "__suppress_context__" => Ok(Value::Bool(suppress_context)),
-            "__traceback__" => Ok(Value::None),
+            "__traceback__" => Ok(exception_traceback_value(&attrs)),
             "__class__" => Ok(type_object
                 .map(|class| *class)
                 .unwrap_or(Value::Builtin(type_name))),
@@ -26787,6 +36049,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             _ => attrs
                 .into_iter()
+                .filter(|(attr_name, _)| attr_name != EXCEPTION_TRACEBACK_ATTR)
                 .find_map(|(attr_name, value)| (attr_name == name).then_some(value))
                 .ok_or_else(|| format!("AttributeError: exception has no attribute '{name}'")),
         },
@@ -26876,6 +36139,22 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             )?;
             Ok(())
         }
+        Value::UserDict { attrs, .. } => {
+            insert_live_dict_entry(
+                &mut attrs.borrow_mut(),
+                Value::String(name.to_string()),
+                value,
+            )?;
+            Ok(())
+        }
+        Value::UserList { attrs, .. } => {
+            insert_live_dict_entry(
+                &mut attrs.borrow_mut(),
+                Value::String(name.to_string()),
+                value,
+            )?;
+            Ok(())
+        }
         Value::AstNode { attrs, .. } => {
             insert_live_dict_entry(
                 &mut attrs.borrow_mut(),
@@ -26884,6 +36163,13 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             )?;
             Ok(())
         }
+        Value::Exception { .. } if name == "__traceback__" => {
+            if is_traceback_or_none(&value) {
+                Ok(())
+            } else {
+                Err("TypeError: __traceback__ must be a traceback or None".to_string())
+            }
+        }
         Value::Class { attrs, .. } => {
             if matches!(name, "__name__" | "__qualname__") {
                 return store_class_metadata_attribute(&attrs, name, value);
@@ -26891,21 +36177,46 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             if name == "__module__" {
                 return store_class_module_attribute(&attrs, value);
             }
-            attrs.borrow_mut().insert(name.to_string(), value);
+            store_ordered_scope_item(&attrs, name.to_string(), value);
             Ok(())
         }
         Value::Module { attrs, .. } => {
             attrs.borrow_mut().insert(name.to_string(), value);
             Ok(())
         }
-        Value::Function { attrs, .. } => {
+        Value::Function { doc, attrs, .. } => {
             if is_readonly_function_attribute(name) {
                 return Err(format!(
                     "AttributeError: function attribute '{name}' is read-only"
                 ));
             }
+            if name == "__doc__" {
+                *doc.borrow_mut() = value;
+                return Ok(());
+            }
+            if name == "__qualname__" {
+                match value {
+                    value @ Value::String(_) => {
+                        attrs
+                            .borrow_mut()
+                            .insert(FUNCTION_QUALNAME_ATTR.to_string(), value);
+                    }
+                    value => {
+                        return Err(format!(
+                            "TypeError: __qualname__ must be set to a string object, not '{}'",
+                            type_name(&value)
+                        ));
+                    }
+                }
+                return Ok(());
+            }
             attrs.borrow_mut().insert(name.to_string(), value);
             Ok(())
+        }
+        Value::Builtin(function_name) if function_name == CONST_EVALUATOR_TYPE_NAME => {
+            Err(format!(
+                "TypeError: cannot set '{name}' attribute of immutable type '{CONST_EVALUATOR_TYPE_NAME}'"
+            ))
         }
         Value::Builtin(function_name)
             if name == "_fields" && ast_builtin_kind(&function_name).is_some() =>
@@ -26914,6 +36225,32 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             set_ast_builtin_class_attr_override(kind, name, Some(value));
             Ok(())
         }
+        Value::NamedTupleType(typ) if name == "__doc__" => {
+            let Value::String(value) = value else {
+                return Err(format!(
+                    "TypeError: can only assign string to .__doc__, not '{}'",
+                    type_name(&value)
+                ));
+            };
+            *typ.doc.borrow_mut() = value;
+            Ok(())
+        }
+        Value::NamedTupleFieldDescriptor { typ, index } if name == "__doc__" => {
+            let Value::String(value) = value else {
+                return Err(format!(
+                    "TypeError: can only assign string to .__doc__, not '{}'",
+                    type_name(&value)
+                ));
+            };
+            let Some(doc) = typ.field_docs.get(index) else {
+                return Err("AttributeError: namedtuple field index out of range".to_string());
+            };
+            *doc.borrow_mut() = value;
+            Ok(())
+        }
+        Value::NamedTuple { .. } => Err(format!(
+            "AttributeError: can't set attribute '{name}' on namedtuple"
+        )),
         value => Err(format!(
             "AttributeError: cannot set attribute '{name}' on {value}"
         )),
@@ -26952,9 +36289,8 @@ fn store_class_metadata_attribute(attrs: &Scope, name: &str, value: Value) -> Re
 }
 
 fn store_class_module_attribute(attrs: &Scope, value: Value) -> Result<(), String> {
-    let mut attrs = attrs.borrow_mut();
-    attrs.insert("__module__".to_string(), value);
-    attrs.remove("__firstlineno__");
+    store_ordered_scope_item(attrs, "__module__".to_string(), value);
+    attrs.borrow_mut().remove("__firstlineno__");
     Ok(())
 }
 
@@ -27000,6 +36336,12 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
         }
         Value::Class { attrs, .. } => {
+            if name == "__type_params__" {
+                return Err(
+                    "TypeError: cannot delete '__type_params__' attribute of immutable type"
+                        .to_string(),
+                );
+            }
             if attrs.borrow_mut().remove(name).is_some() {
                 Ok(())
             } else {
@@ -27020,7 +36362,11 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 ))
             }
         }
-        Value::Function { attrs, .. } => {
+        Value::Function { doc, attrs, .. } => {
+            if name == "__doc__" {
+                *doc.borrow_mut() = Value::None;
+                return Ok(());
+            }
             if attrs.borrow_mut().remove(name).is_some() {
                 Ok(())
             } else {
@@ -27042,6 +36388,13 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 Ok(())
             }
         }
+        Value::NamedTupleType(typ) if name == "__doc__" => {
+            *typ.doc.borrow_mut() = String::new();
+            Ok(())
+        }
+        Value::NamedTuple { .. } => Err(format!(
+            "AttributeError: can't delete attribute '{name}' on namedtuple"
+        )),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
         )),
@@ -27063,6 +36416,74 @@ fn bind_method(value: Value, receiver: Value) -> Value {
             }
         }
         value => value,
+    }
+}
+
+fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {
+    mro_for_bases(bases).ok()?.into_iter().find_map(|base| {
+        let Value::Builtin(type_name) = base else {
+            return None;
+        };
+        collections_abc_builtin_mixin_method(&type_name, name)
+    })
+}
+
+fn collections_abc_builtin_mixin_method(type_name: &str, name: &str) -> Option<&'static str> {
+    match (type_name, name) {
+        ("Iterable", "__iter__") => Some("Iterable.__iter__"),
+        ("Iterator", "__iter__") => Some("Iterator.__iter__"),
+        ("Iterator", "__next__") => Some("Iterator.__next__"),
+        ("Coroutine", "send") => Some("Coroutine.send"),
+        ("Coroutine", "throw") => Some("Coroutine.throw"),
+        ("Coroutine", "close") => Some("Coroutine.close"),
+        ("AsyncIterator", "__aiter__") => Some("AsyncIterator.__aiter__"),
+        ("AsyncGenerator", "__aiter__") => Some("AsyncGenerator.__aiter__"),
+        ("AsyncGenerator", "__anext__") => Some("AsyncGenerator.__anext__"),
+        ("AsyncGenerator", "athrow") => Some("AsyncGenerator.athrow"),
+        ("AsyncGenerator", "aclose") => Some("AsyncGenerator.aclose"),
+        ("Generator", "__iter__") => Some("Generator.__iter__"),
+        ("Generator", "__next__") => Some("Generator.__next__"),
+        ("Generator", "throw") => Some("Generator.throw"),
+        ("Generator", "close") => Some("Generator.close"),
+        (
+            "Set",
+            "__le__" | "__lt__" | "__gt__" | "__ge__" | "__eq__" | "__ne__" | "__and__"
+            | "__rand__" | "isdisjoint" | "__or__" | "__ror__" | "__sub__" | "__rsub__" | "__xor__"
+            | "__rxor__" | "_from_iterable" | "_hash",
+        ) => Some(match name {
+            "__le__" => "Set.__le__",
+            "__lt__" => "Set.__lt__",
+            "__gt__" => "Set.__gt__",
+            "__ge__" => "Set.__ge__",
+            "__eq__" => "Set.__eq__",
+            "__ne__" => "Set.__ne__",
+            "__and__" => "Set.__and__",
+            "__rand__" => "Set.__rand__",
+            "isdisjoint" => "Set.isdisjoint",
+            "__or__" => "Set.__or__",
+            "__ror__" => "Set.__ror__",
+            "__sub__" => "Set.__sub__",
+            "__rsub__" => "Set.__rsub__",
+            "__xor__" => "Set.__xor__",
+            "__rxor__" => "Set.__rxor__",
+            "_from_iterable" => "Set._from_iterable",
+            "_hash" => "Set._hash",
+            _ => unreachable!("match guard listed Set mixin names"),
+        }),
+        (
+            "MutableSet",
+            "remove" | "pop" | "clear" | "__ior__" | "__iand__" | "__ixor__" | "__isub__",
+        ) => Some(match name {
+            "remove" => "MutableSet.remove",
+            "pop" => "MutableSet.pop",
+            "clear" => "MutableSet.clear",
+            "__ior__" => "MutableSet.__ior__",
+            "__iand__" => "MutableSet.__iand__",
+            "__ixor__" => "MutableSet.__ixor__",
+            "__isub__" => "MutableSet.__isub__",
+            _ => unreachable!("match guard listed MutableSet mixin names"),
+        }),
+        _ => None,
     }
 }
 
@@ -27132,6 +36553,7 @@ fn is_builtin_name(name: &str) -> bool {
             | "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "dict"
             | "tuple"
@@ -27171,6 +36593,7 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "dict"
             | "tuple"
@@ -27183,6 +36606,11 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "slice"
             | "mappingproxy"
             | "ChainMap"
+            | "Counter"
+            | "OrderedDict"
+            | "UserList"
+            | "UserDict"
+            | "UserString"
             | "SimpleNamespace"
             | "property"
             | "super"
@@ -27190,6 +36618,7 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "classmethod"
             | "object"
             | "type"
+            | "Generic"
             | "Template"
             | "Interpolation"
             | "TemplateIter"
@@ -27227,6 +36656,17 @@ fn is_class_like_builtin(name: &str) -> bool {
 
 fn is_ast_type_name(name: &str) -> bool {
     ast_builtin_kind(name).is_some()
+}
+
+fn is_typing_type_param_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "typing.TypeVar" | "typing.TypeVarTuple" | "typing.ParamSpec"
+    )
+}
+
+fn typing_type_param_public_name(name: &str) -> &str {
+    name.strip_prefix("typing.").unwrap_or(name)
 }
 
 fn ast_builtin_kind(name: &str) -> Option<&str> {
@@ -27293,6 +36733,77 @@ fn is_collections_abc_type_name(name: &str) -> bool {
     )
 }
 
+fn required_abstract_methods_for_collections_abc(name: &str) -> Option<&'static [&'static str]> {
+    match name {
+        "Awaitable" => Some(&["__await__"]),
+        "Coroutine" => Some(&["__await__", "send", "throw"]),
+        "Hashable" => Some(&["__hash__"]),
+        "AsyncIterable" => Some(&["__aiter__"]),
+        "AsyncIterator" => Some(&["__anext__"]),
+        "Iterable" => Some(&["__iter__"]),
+        "Reversible" => Some(&["__reversed__", "__iter__"]),
+        "Collection" => Some(&["__len__", "__iter__", "__contains__"]),
+        "Iterator" => Some(&["__next__"]),
+        "Generator" => Some(&["send", "throw"]),
+        "AsyncGenerator" => Some(&["asend", "athrow"]),
+        "Sized" => Some(&["__len__"]),
+        "Container" => Some(&["__contains__"]),
+        "Callable" => Some(&["__call__"]),
+        _ => None,
+    }
+}
+
+fn missing_abstract_methods_for_class(attrs: &Scope, bases: &[Value]) -> Option<Vec<String>> {
+    let mut required = Vec::new();
+    collect_required_abstract_methods_from_bases(bases, &mut required);
+    required.sort_unstable();
+    required.dedup();
+
+    let missing = required
+        .into_iter()
+        .filter(|method| !class_has_callable_special_method(attrs, bases, method))
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    (!missing.is_empty()).then_some(missing)
+}
+
+fn collect_required_abstract_methods_from_bases(bases: &[Value], methods: &mut Vec<&'static str>) {
+    for base in bases {
+        match base {
+            Value::Builtin(name) => {
+                if let Some(required) = required_abstract_methods_for_collections_abc(name) {
+                    methods.extend(required.iter().copied());
+                }
+            }
+            Value::Class { bases, .. } => {
+                collect_required_abstract_methods_from_bases(bases, methods)
+            }
+            _ => {}
+        }
+    }
+}
+
+fn abstract_class_instantiation_error(class_name: &str, missing: &[String]) -> String {
+    if missing.is_empty() {
+        return format!(
+            "TypeError: Can't instantiate abstract class {class_name} without an implementation for abstract methods"
+        );
+    }
+
+    let mut missing = missing.to_vec();
+    missing.sort_unstable();
+    missing.dedup();
+    let methods = missing.join(", ");
+    let plural = if missing.len() == 1 {
+        "method"
+    } else {
+        "methods"
+    };
+    format!(
+        "TypeError: Can't instantiate abstract class {class_name} with abstract {plural} {methods}"
+    )
+}
+
 fn builtin_match_args(name: &str) -> Option<Vec<String>> {
     if let Some(kind) = ast_builtin_kind(name) {
         return Some(
@@ -27343,10 +36854,12 @@ fn builtin_exception_bases(name: &str) -> Option<&'static [&'static str]> {
         "Exception" => Some(&["BaseException"]),
         "ExceptionGroup" => Some(&["BaseExceptionGroup", "Exception"]),
         "GeneratorExit" | "KeyboardInterrupt" | "SystemExit" => Some(&["BaseException"]),
-        "ArithmeticError" | "AssertionError" | "AttributeError" | "EOFError" | "ImportError"
-        | "LookupError" | "MemoryError" | "NameError" | "OSError" | "ReferenceError"
-        | "RuntimeError" | "StopAsyncIteration" | "StopIteration" | "SyntaxError"
-        | "SystemError" | "TypeError" | "ValueError" | "Warning" => Some(&["Exception"]),
+        "ArithmeticError" | "AssertionError" | "AttributeError" | "BufferError" | "EOFError"
+        | "ImportError" | "LookupError" | "MemoryError" | "NameError" | "OSError"
+        | "ReferenceError" | "RuntimeError" | "StopAsyncIteration" | "StopIteration"
+        | "SyntaxError" | "SystemError" | "TypeError" | "ValueError" | "Warning" => {
+            Some(&["Exception"])
+        }
         "UnboundLocalError" => Some(&["NameError"]),
         "BlockingIOError" | "FileExistsError" | "FileNotFoundError" | "InterruptedError"
         | "IsADirectoryError" | "NotADirectoryError" | "PermissionError" | "ProcessLookupError"
@@ -27669,11 +37182,86 @@ fn unicode_error_attrs(
 fn unicode_error_object_attr(value: &Value, bytes_object_attr: bool) -> Value {
     if bytes_object_attr {
         if let Value::ByteArray(bytes) = value {
-            return Value::Bytes(bytes.clone());
+            return Value::Bytes(bytearray_bytes(bytes));
         }
     }
 
     value.clone()
+}
+
+fn new_traceback_value() -> Value {
+    Value::Traceback {
+        identity: Rc::new(()),
+    }
+}
+
+fn is_traceback_or_none(value: &Value) -> bool {
+    matches!(value, Value::Traceback { .. } | Value::None)
+}
+
+fn exception_traceback_value(attrs: &[(String, Value)]) -> Value {
+    attrs
+        .iter()
+        .find_map(|(name, value)| (name == EXCEPTION_TRACEBACK_ATTR).then_some(value.clone()))
+        .unwrap_or(Value::None)
+}
+
+fn set_exception_traceback_attr(attrs: &mut Vec<(String, Value)>, traceback: Value) {
+    if matches!(traceback, Value::None) {
+        attrs.retain(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR);
+        return;
+    }
+
+    if let Some((_, value)) = attrs
+        .iter_mut()
+        .find(|(name, _)| name == EXCEPTION_TRACEBACK_ATTR)
+    {
+        *value = traceback;
+    } else {
+        attrs.push((EXCEPTION_TRACEBACK_ATTR.to_string(), traceback));
+    }
+}
+
+fn ensure_exception_traceback(exception: &mut MiniException) {
+    if matches!(exception_traceback_value(&exception.attrs), Value::None) {
+        set_exception_traceback_attr(&mut exception.attrs, new_traceback_value());
+    }
+}
+
+fn exception_value_with_traceback(receiver: Value, traceback: Value) -> Result<Value, String> {
+    if !is_traceback_or_none(&traceback) {
+        return Err("TypeError: __traceback__ must be a traceback or None".to_string());
+    }
+
+    let Value::Exception {
+        type_name,
+        type_hierarchy,
+        type_object,
+        message,
+        args,
+        mut attrs,
+        exceptions,
+        cause,
+        context,
+        suppress_context,
+    } = receiver
+    else {
+        return Err("with_traceback() receiver must be an exception".to_string());
+    };
+    set_exception_traceback_attr(&mut attrs, traceback);
+
+    Ok(Value::Exception {
+        type_name,
+        type_hierarchy,
+        type_object,
+        message,
+        args,
+        attrs,
+        exceptions,
+        cause,
+        context,
+        suppress_context,
+    })
 }
 
 fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
@@ -27683,11 +37271,7 @@ fn call_exception_with_traceback(args: Vec<Value>) -> Result<Value, String> {
             args.len().saturating_sub(1)
         ));
     };
-    if !matches!(traceback, Value::None) {
-        return Err("TypeError: __traceback__ must be a traceback or None".to_string());
-    }
-
-    Ok(receiver.clone())
+    exception_value_with_traceback(receiver.clone(), traceback.clone())
 }
 
 fn stop_iteration_message(value: Value) -> Option<String> {
@@ -27726,17 +37310,25 @@ fn type_name(value: &Value) -> &str {
         Value::String(_) => "str",
         Value::Bytes(_) => "bytes",
         Value::ByteArray(_) => "bytearray",
+        Value::MemoryView(_) => "memoryview",
         Value::Bool(_) => "bool",
         Value::List(_) => "list",
         Value::Tuple(_) => "tuple",
         Value::Set(_) => "set",
         Value::FrozenSet(_) => "frozenset",
         Value::Dict(_) | Value::ScopeDict(_) => "dict",
+        Value::OrderedDict(_) => "OrderedDict",
+        Value::Counter { .. } => "Counter",
         Value::DictView { kind, .. } => dict_view_type_name(*kind),
         Value::MappingView { kind, .. } => dict_view_type_name(*kind),
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
+        Value::UserList { .. } => "UserList",
         Value::UserDict { .. } => "UserDict",
+        Value::NamedTupleType(_) => "type",
+        Value::NamedTuple { typ, .. } => typ.name.as_str(),
+        Value::NamedTupleFieldDescriptor { .. } => "namedtuple_field_descriptor",
+        Value::NamedTupleTypeMethod { .. } | Value::NamedTupleInstanceMethod { .. } => "method",
         Value::SimpleNamespace { .. } => SIMPLE_NAMESPACE_TYPE_NAME,
         Value::PicklePayload(_) => "pickle payload",
         Value::AstNode { kind, .. } => kind.as_str(),
@@ -27749,6 +37341,7 @@ fn type_name(value: &Value) -> &str {
         Value::TemplateIterator { .. } => "TemplateIter",
         Value::StringIterator { .. } => "str_iterator",
         Value::BytesIterator { .. } => "bytes_iterator",
+        Value::ByteArrayIterator { .. } => "bytearray_iterator",
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { .. } => "dict_keyiterator",
         Value::ReverseIterator { .. } => "list_reverseiterator",
@@ -27771,11 +37364,16 @@ fn type_name(value: &Value) -> &str {
             "async_generator_asend"
         }
         Value::AsyncGeneratorClose(_) => "async_generator_athrow",
+        Value::AsyncGeneratorAthrowMixin { .. } | Value::AsyncGeneratorAcloseMixin { .. } => {
+            "coroutine"
+        }
         Value::AnextDefault { .. } => "anext_awaitable",
         Value::Class { .. } => "type",
         Value::Builtin(_) => "builtin_function_or_method",
-        Value::TypeParam { .. } => "TypeVar",
+        Value::TypeParam { kind, .. } => kind.as_str(),
+        Value::DeferredTypeParamExpr(_) => "DeferredTypeParamExpr",
         Value::TypeAlias { .. } => "TypeAliasType",
+        Value::ConstEvaluator { .. } => CONST_EVALUATOR_TYPE_NAME,
         Value::GenericAlias { .. } => "GenericAlias",
         Value::Unpack(_) => "Unpack",
         Value::Template { .. } => "Template",
@@ -27788,6 +37386,7 @@ fn type_name(value: &Value) -> &str {
         Value::Super { .. } => "super",
         Value::BoundMethod { .. } => "method",
         Value::Module { .. } => "module",
+        Value::Traceback { .. } => "traceback",
         Value::Exception { type_name, .. } => type_name.as_str(),
         Value::None => "NoneType",
         Value::NotImplemented => "NotImplementedType",
@@ -27803,6 +37402,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::TemplateIterator { .. } => "TemplateIter",
         Value::StringIterator { .. } => "str_iterator",
         Value::BytesIterator { .. } => "bytes_iterator",
+        Value::ByteArrayIterator { .. } => "bytearray_iterator",
         Value::SetIterator { .. } => "set_iterator",
         Value::DictIterator { .. } => "dict_keyiterator",
         Value::ReverseIterator { .. } => "list_reverseiterator",
@@ -27827,12 +37427,14 @@ fn type_name_for_await_error(value: &Value) -> &str {
         Value::String(_) => "str",
         Value::Bytes(_) => "bytes",
         Value::ByteArray(_) => "bytearray",
+        Value::MemoryView(_) => "memoryview",
         Value::Bool(_) => "bool",
         Value::List(_) => "list",
         Value::Tuple(_) => "tuple",
         Value::Set(_) => "set",
         Value::FrozenSet(_) => "frozenset",
         Value::Dict(_) => "dict",
+        Value::OrderedDict(_) => "OrderedDict",
         Value::DictView { kind, .. } => dict_view_type_name(*kind),
         Value::MappingView { kind, .. } => dict_view_type_name(*kind),
         Value::Template { .. } => "Template",
@@ -27861,16 +37463,19 @@ fn coroutine_is_suspended_on_await(state: &CoroutineState) -> bool {
 }
 
 fn is_pending_await_value(value: &Value) -> bool {
-    matches!(
-        value,
+    match value {
+        Value::Generator(state) if state.borrow().is_iterable_coroutine => true,
         Value::AwaitIterator(_)
-            | Value::Coroutine(_)
-            | Value::CoroutineAwait(_)
-            | Value::AsyncGeneratorNext { .. }
-            | Value::AsyncGeneratorThrow { .. }
-            | Value::AsyncGeneratorClose(_)
-            | Value::AnextDefault { .. }
-    )
+        | Value::Coroutine(_)
+        | Value::CoroutineAwait(_)
+        | Value::AsyncGeneratorNext { .. }
+        | Value::AsyncGeneratorThrow { .. }
+        | Value::AsyncGeneratorClose(_)
+        | Value::AsyncGeneratorAthrowMixin { .. }
+        | Value::AsyncGeneratorAcloseMixin { .. }
+        | Value::AnextDefault { .. } => true,
+        _ => false,
+    }
 }
 
 fn is_non_awaitable_error_message(message: &str) -> bool {
@@ -27936,6 +37541,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
         Value::Class {
             name,
             type_params,
+            metaclass,
             bases,
             attrs,
         } if class_bases_derive_from_exception(&bases) => {
@@ -27943,6 +37549,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
             let type_object = Value::Class {
                 name: name.clone(),
                 type_params,
+                metaclass,
                 bases,
                 attrs,
             };
@@ -27974,6 +37581,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
             let type_object = Value::Class {
                 name: class_name.clone(),
                 type_params: Vec::new(),
+                metaclass: None,
                 bases: class_bases,
                 attrs: class_attrs,
             };
@@ -28075,6 +37683,29 @@ fn call_coroutine_await(args: Vec<Value>) -> Result<Value, String> {
     match receiver {
         Value::Coroutine(state) => Ok(Value::CoroutineAwait(state.clone())),
         value => Err(format!("{value} is not a coroutine")),
+    }
+}
+
+fn call_async_generator_abc_mixin_coroutine_await(args: Vec<Value>) -> Result<Value, String> {
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "__await__() expected 0 arguments, got {}",
+            args.len().saturating_sub(1)
+        ));
+    };
+
+    if async_generator_abc_mixin_done(receiver).is_some() {
+        Ok(Value::AwaitIterator(Box::new(receiver.clone())))
+    } else {
+        Err(format!("{receiver} is not a coroutine"))
+    }
+}
+
+fn async_generator_abc_mixin_done(value: &Value) -> Option<Rc<Cell<bool>>> {
+    match value {
+        Value::AsyncGeneratorAthrowMixin { done, .. }
+        | Value::AsyncGeneratorAcloseMixin { done, .. } => Some(done.clone()),
+        _ => None,
     }
 }
 
@@ -28379,7 +38010,131 @@ fn class_value_is_exception_base(value: &Value) -> bool {
     }
 }
 
+const SYNTAX_ERROR_LOCATION_MARKER: &str = "\u{1f}minipython.syntax_error_location\u{1f}";
+
+fn syntax_error_location_error(error: &LexError, filename: &str, source: &str) -> String {
+    let fields = [
+        error.message.as_str(),
+        filename,
+        &error.line.to_string(),
+        &error.column.to_string(),
+        &source_line_text(source, error.line),
+        &error.end_line.to_string(),
+        &error.end_column.to_string(),
+    ];
+    let encoded = fields
+        .iter()
+        .map(|field| format!("{}:{field}", field.len()))
+        .collect::<String>();
+    format!("{SYNTAX_ERROR_LOCATION_MARKER}{encoded}")
+}
+
+fn source_line_text(source: &str, line: usize) -> String {
+    if line == 0 {
+        return String::new();
+    }
+
+    let mut current_line = 1;
+    let mut line_start = 0;
+    let mut chars = source.char_indices().peekable();
+    while let Some((index, ch)) = chars.next() {
+        if !matches!(ch, '\n' | '\r') {
+            continue;
+        }
+
+        if current_line == line {
+            return source[line_start..index].to_string();
+        }
+
+        current_line += 1;
+        line_start = index + ch.len_utf8();
+        if ch == '\r'
+            && let Some((next_index, '\n')) = chars.peek().copied()
+        {
+            chars.next();
+            line_start = next_index + '\n'.len_utf8();
+        }
+    }
+
+    if current_line == line {
+        source[line_start..].to_string()
+    } else {
+        String::new()
+    }
+}
+
+fn syntax_error_location_exception(message: &str) -> Option<MiniException> {
+    let encoded = message.strip_prefix(SYNTAX_ERROR_LOCATION_MARKER)?;
+    let fields = decode_length_prefixed_fields(encoded, 7)?;
+    let lineno = fields[2].parse::<i64>().ok()?;
+    let offset = fields[3].parse::<i64>().ok()?;
+    let end_lineno = fields[5].parse::<i64>().ok()?;
+    let end_offset = fields[6].parse::<i64>().ok()?;
+    Some(syntax_error_exception_with_location(
+        fields[0].clone(),
+        fields[1].clone(),
+        lineno,
+        offset,
+        fields[4].clone(),
+        end_lineno,
+        end_offset,
+    ))
+}
+
+fn decode_length_prefixed_fields(encoded: &str, expected: usize) -> Option<Vec<String>> {
+    let mut rest = encoded;
+    let mut fields = Vec::with_capacity(expected);
+    for _ in 0..expected {
+        let colon = rest.find(':')?;
+        let length = rest[..colon].parse::<usize>().ok()?;
+        rest = &rest[colon + 1..];
+        if rest.len() < length {
+            return None;
+        }
+        fields.push(rest[..length].to_string());
+        rest = &rest[length..];
+    }
+
+    if rest.is_empty() { Some(fields) } else { None }
+}
+
+fn syntax_error_exception_with_location(
+    message: String,
+    filename: String,
+    lineno: i64,
+    offset: i64,
+    text: String,
+    end_lineno: i64,
+    end_offset: i64,
+) -> MiniException {
+    let location = tuple_value(vec![
+        Value::String(filename),
+        Value::Number(lineno),
+        Value::Number(offset),
+        Value::String(text),
+        Value::Number(end_lineno),
+        Value::Number(end_offset),
+    ]);
+    let args = vec![Value::String(message.clone()), location];
+    MiniException {
+        type_name: "SyntaxError".to_string(),
+        type_hierarchy: builtin_exception_type_hierarchy("SyntaxError"),
+        type_object: None,
+        message: Some(message),
+        attrs: syntax_error_attrs(&args),
+        args,
+        cause: None,
+        context: None,
+        suppress_context: false,
+        exceptions: None,
+    }
+}
+
 fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
+    if let Some(exception) = syntax_error_location_exception(message) {
+        return Some(exception);
+    }
+
     let (type_name, message) = if let Some(key) = message.strip_prefix("KeyError: ") {
         ("KeyError", key.to_string())
     } else if let Some(message) = message.strip_prefix("ValueError: ") {
@@ -28440,6 +38195,8 @@ fn is_index_error_message(message: &str) -> bool {
             | "tuple index out of range"
             | "string index out of range"
             | "bytes index out of range"
+            | "bytearray index out of range"
+            | "memoryview index out of range"
             | "range object index out of range"
     )
 }
@@ -28466,6 +38223,7 @@ fn is_type_error_message(message: &str) -> bool {
         || message.starts_with("__format__ must return ")
         || message.starts_with("format() argument 2 must be str")
         || message.starts_with("object.__format__() argument 2 must be str")
+        || message.starts_with("cannot multiply ")
         || message.contains("unsupported operand type(s) for ")
         || message.contains("unsupported format string passed to ")
         || message.contains(" indices must be integers")
@@ -28770,12 +38528,12 @@ fn int_string_conversion_limit_error(max_digits: usize, digit_count: usize) -> S
 fn parse_float_string(value: &str) -> Result<Value, String> {
     let text = value.trim().replace('_', "");
     if text.is_empty() {
-        return Err("could not convert string to float".to_string());
+        return Err("ValueError: could not convert string to float".to_string());
     }
 
     text.parse::<f64>()
         .map(Value::Float)
-        .map_err(|_| "could not convert string to float".to_string())
+        .map_err(|_| "ValueError: could not convert string to float".to_string())
 }
 
 fn call_str(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
@@ -28792,10 +38550,19 @@ fn call_str(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, S
 
     if encoding.is_some() || errors.is_some() {
         return match object {
-            Value::Bytes(value) | Value::ByteArray(value) => {
+            Value::Bytes(value) => {
                 let (encoding, errors) =
                     codec_options_from_values("str", encoding.as_ref(), errors.as_ref())?;
                 Ok(Value::String(decode_bytes(&value, encoding, errors)?))
+            }
+            Value::ByteArray(value) => {
+                let (encoding, errors) =
+                    codec_options_from_values("str", encoding.as_ref(), errors.as_ref())?;
+                Ok(Value::String(decode_bytes(
+                    &value.borrow(),
+                    encoding,
+                    errors,
+                )?))
             }
             Value::String(_) => Err("TypeError: decoding str is not supported".to_string()),
             value => Err(format!(
@@ -28831,123 +38598,20 @@ fn unbound_super_value(class: &Value) -> Result<Value, String> {
     })
 }
 
-fn call_staticmethod_constructor(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("staticmethod() does not accept keyword arguments".to_string());
-    }
-    let [function] = args.as_slice() else {
-        return Err(format!(
-            "staticmethod() expected 1 argument, got {}",
-            args.len()
-        ));
-    };
-
-    Ok(Value::StaticMethod {
-        function: Box::new(function.clone()),
-    })
+fn function_identity_key(identity: &Rc<()>) -> usize {
+    Rc::as_ptr(identity) as usize
 }
 
-fn call_classmethod_constructor(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("classmethod() does not accept keyword arguments".to_string());
-    }
-    let [function] = args.as_slice() else {
-        return Err(format!(
-            "classmethod() expected 1 argument, got {}",
-            args.len()
-        ));
-    };
-
-    Ok(Value::ClassMethod {
-        function: Box::new(function.clone()),
-    })
+fn mark_iterable_coroutine_function(identity: &Rc<()>) {
+    let key = function_identity_key(identity);
+    ITERABLE_COROUTINE_FUNCTIONS.with(|functions| {
+        functions.borrow_mut().insert(key);
+    });
 }
 
-fn call_property_constructor(
-    args: Vec<Value>,
-    keywords: Vec<(String, Value)>,
-) -> Result<Value, String> {
-    if args.len() > 4 {
-        return Err(format!(
-            "property() expected at most 4 arguments, got {}",
-            args.len()
-        ));
-    }
-
-    let mut fget = None;
-    let mut fset = None;
-    let mut fdel = None;
-    let mut doc = None;
-
-    for (index, value) in args.into_iter().enumerate() {
-        match index {
-            0 => fget = Some(value),
-            1 => fset = Some(value),
-            2 => fdel = Some(value),
-            3 => doc = Some(value),
-            _ => unreachable!("property positional arity is checked above"),
-        }
-    }
-
-    for (keyword, value) in keywords {
-        match keyword.as_str() {
-            "fget" => set_property_constructor_slot("property", "fget", &mut fget, value)?,
-            "fset" => set_property_constructor_slot("property", "fset", &mut fset, value)?,
-            "fdel" => set_property_constructor_slot("property", "fdel", &mut fdel, value)?,
-            "doc" => set_property_constructor_slot("property", "doc", &mut doc, value)?,
-            _ => {
-                return Err(format!(
-                    "property() got an unexpected keyword argument '{keyword}'"
-                ));
-            }
-        }
-    }
-
-    Ok(Value::Property {
-        fget: optional_property_part(fget),
-        fset: optional_property_part(fset),
-        fdel: optional_property_part(fdel),
-        doc: optional_property_part(doc),
-    })
-}
-
-fn set_property_constructor_slot(
-    function_name: &str,
-    slot_name: &str,
-    slot: &mut Option<Value>,
-    value: Value,
-) -> Result<(), String> {
-    if slot.is_some() {
-        return Err(format!(
-            "{function_name}() got multiple values for argument '{slot_name}'"
-        ));
-    }
-    *slot = Some(value);
-    Ok(())
-}
-
-fn optional_property_part(value: Option<Value>) -> Option<Box<Value>> {
-    match value {
-        Some(Value::None) | None => None,
-        Some(value) => Some(Box::new(value)),
-    }
-}
-
-fn call_callable(args: Vec<Value>) -> Result<Value, String> {
-    let [value] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: callable() takes exactly one argument ({} given)",
-            args.len()
-        ));
-    };
-
-    Ok(Value::Bool(is_callable_value(value)))
+fn iterable_coroutine_function_id(identity: &Rc<()>) -> bool {
+    let key = function_identity_key(identity);
+    ITERABLE_COROUTINE_FUNCTIONS.with(|functions| functions.borrow().contains(&key))
 }
 
 fn attribute_name_arg(value: &Value) -> Result<String, String> {
@@ -28967,58 +38631,170 @@ fn is_callable_value(value: &Value) -> bool {
             | Value::Function { .. }
             | Value::Class { .. }
             | Value::BoundMethod { .. }
+            | Value::ConstEvaluator { .. }
     ) || instance_special_method(value, "__call__").is_some()
 }
 
-fn call_isinstance(args: Vec<Value>) -> Result<Value, String> {
-    let [subject, classinfo] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: isinstance expected 2 arguments, got {}",
-            args.len()
-        ));
-    };
+impl Vm {
+    fn call_isinstance(&self, args: Vec<Value>) -> Result<Value, String> {
+        let [subject, classinfo] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: isinstance expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
 
-    Ok(Value::Bool(value_matches_classinfo(subject, classinfo)?))
-}
-
-fn call_issubclass(args: Vec<Value>) -> Result<Value, String> {
-    let [class, classinfo] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: issubclass expected 2 arguments, got {}",
-            args.len()
-        ));
-    };
-
-    if !is_classinfo_type(class) {
-        return Err(format!(
-            "TypeError: issubclass() arg 1 must be a class, got {class}"
-        ));
+        Ok(Value::Bool(
+            self.value_matches_classinfo(subject, classinfo)?,
+        ))
     }
 
-    Ok(Value::Bool(class_matches_classinfo(class, classinfo)?))
-}
+    fn call_issubclass(&self, args: Vec<Value>) -> Result<Value, String> {
+        let [class, classinfo] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: issubclass expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
 
-fn value_matches_classinfo(subject: &Value, classinfo: &Value) -> Result<bool, String> {
-    match classinfo {
-        Value::Builtin(name)
-            if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
-        {
-            Ok(value_matches_builtin_class(subject, name))
+        if !is_classinfo_type(class) {
+            return Err(format!(
+                "TypeError: issubclass() arg 1 must be a class, got {class}"
+            ));
         }
-        Value::Class {
-            name, attrs, bases, ..
-        } => Ok(value_matches_user_class(subject, name, attrs, bases)),
-        Value::Tuple(items) => {
-            for item in items.iter() {
-                if value_matches_classinfo(subject, item)? {
-                    return Ok(true);
-                }
+
+        Ok(Value::Bool(self.class_matches_classinfo(class, classinfo)?))
+    }
+
+    fn value_matches_classinfo(&self, subject: &Value, classinfo: &Value) -> Result<bool, String> {
+        match classinfo {
+            Value::Builtin(name)
+                if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
+            {
+                Ok(self.value_matches_registered_abc(subject, name)
+                    || value_matches_builtin_class(subject, name))
             }
-            Ok(false)
+            Value::Class {
+                name, attrs, bases, ..
+            } => Ok(value_matches_user_class(subject, name, attrs, bases)),
+            Value::NamedTupleType(typ) => Ok(match subject {
+                Value::NamedTuple {
+                    typ: subject_type, ..
+                } => Rc::ptr_eq(&subject_type.identity, &typ.identity),
+                Value::Instance { class_bases, .. } => {
+                    class_bases_include_namedtuple_type(class_bases, typ)
+                }
+                _ => false,
+            }),
+            Value::Tuple(items) => {
+                for item in items.iter() {
+                    if self.value_matches_classinfo(subject, item)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            value => Err(format!(
+                "TypeError: isinstance() arg 2 must be a type or tuple of types, got {value}"
+            )),
         }
-        value => Err(format!(
-            "TypeError: isinstance() arg 2 must be a type or tuple of types, got {value}"
-        )),
+    }
+
+    fn class_matches_classinfo(&self, class: &Value, classinfo: &Value) -> Result<bool, String> {
+        match classinfo {
+            Value::Builtin(name)
+                if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
+            {
+                Ok(self.class_matches_registered_abc(class, name)
+                    || class_is_subclass_of_builtin(class, name))
+            }
+            Value::Class { name, attrs, .. } => {
+                Ok(class_is_subclass_of_user_class(class, name, attrs))
+            }
+            Value::NamedTupleType(target) => Ok(match class {
+                Value::NamedTupleType(candidate) => {
+                    Rc::ptr_eq(&candidate.identity, &target.identity)
+                }
+                Value::Class { bases, .. } => class_bases_include_namedtuple_type(bases, target),
+                _ => false,
+            }),
+            Value::Tuple(items) => {
+                for item in items.iter() {
+                    if self.class_matches_classinfo(class, item)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            value => Err(format!(
+                "TypeError: issubclass() arg 2 must be a class or tuple of classes, got {value}"
+            )),
+        }
+    }
+
+    fn value_matches_registered_abc(&self, subject: &Value, abc_name: &str) -> bool {
+        if !is_collections_abc_type_name(abc_name) {
+            return false;
+        }
+        self.abc_registry
+            .borrow()
+            .iter()
+            .any(|(registered_abc, classes)| {
+                (registered_abc == abc_name || builtin_class_inherits(registered_abc, abc_name))
+                    && classes
+                        .iter()
+                        .any(|registered| value_matches_class_value(subject, registered))
+            })
+    }
+
+    fn class_matches_registered_abc(&self, class: &Value, abc_name: &str) -> bool {
+        if !is_collections_abc_type_name(abc_name) {
+            return false;
+        }
+        self.abc_registry
+            .borrow()
+            .iter()
+            .any(|(registered_abc, classes)| {
+                (registered_abc == abc_name || builtin_class_inherits(registered_abc, abc_name))
+                    && classes
+                        .iter()
+                        .any(|registered| registered_class_matches_class(registered, class))
+            })
+    }
+
+    fn call_collections_abc_register(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("register() does not accept keyword arguments".to_string());
+        }
+        let [Value::Builtin(abc_name), class] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: register() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if !is_collections_abc_type_name(abc_name) {
+            return Err("TypeError: register() receiver must be a collections.abc ABC".to_string());
+        }
+        if !is_classinfo_type(class) {
+            return Err(format!(
+                "TypeError: Can only register classes, got {}",
+                type_name(class)
+            ));
+        }
+
+        let mut registry = self.abc_registry.borrow_mut();
+        let classes = registry.entry(abc_name.clone()).or_default();
+        if !classes
+            .iter()
+            .any(|registered| same_class_object(registered, class))
+        {
+            classes.push(class.clone());
+        }
+        Ok(class.clone())
     }
 }
 
@@ -29032,34 +38808,52 @@ fn value_matches_class_value(subject: &Value, class: &Value) -> bool {
         Value::Class {
             name, attrs, bases, ..
         } => value_matches_user_class(subject, name, attrs, bases),
+        Value::NamedTupleType(typ) => match subject {
+            Value::NamedTuple {
+                typ: subject_type, ..
+            } => Rc::ptr_eq(&subject_type.identity, &typ.identity),
+            Value::Instance { class_bases, .. } => {
+                class_bases_include_namedtuple_type(class_bases, typ)
+            }
+            _ => false,
+        },
         _ => false,
     }
 }
 
-fn class_matches_classinfo(class: &Value, classinfo: &Value) -> Result<bool, String> {
-    match classinfo {
+fn registered_class_matches_class(registered: &Value, class: &Value) -> bool {
+    match registered {
         Value::Builtin(name)
             if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
         {
-            Ok(class_is_subclass_of_builtin(class, name))
+            class_is_subclass_of_builtin(class, name)
         }
-        Value::Class { name, attrs, .. } => Ok(class_is_subclass_of_user_class(class, name, attrs)),
-        Value::Tuple(items) => {
-            for item in items.iter() {
-                if class_matches_classinfo(class, item)? {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
+        Value::Class { name, attrs, .. } => class_is_subclass_of_user_class(class, name, attrs),
+        Value::NamedTupleType(target) => match class {
+            Value::NamedTupleType(candidate) => Rc::ptr_eq(&candidate.identity, &target.identity),
+            Value::Class { bases, .. } => class_bases_include_namedtuple_type(bases, target),
+            _ => false,
+        },
+        _ => false,
+    }
+}
+
+fn same_class_object(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::Builtin(left), Value::Builtin(right)) => left == right,
+        (Value::Class { attrs: left, .. }, Value::Class { attrs: right, .. }) => {
+            Rc::ptr_eq(left, right)
         }
-        value => Err(format!(
-            "TypeError: issubclass() arg 2 must be a class or tuple of classes, got {value}"
-        )),
+        (Value::NamedTupleType(left), Value::NamedTupleType(right)) => {
+            Rc::ptr_eq(&left.identity, &right.identity)
+        }
+        _ => false,
     }
 }
 
 fn is_classinfo_type(value: &Value) -> bool {
     matches!(value, Value::Class { .. })
+        || matches!(value, Value::NamedTupleType(_))
         || matches!(value, Value::Builtin(name) if is_builtin_type_object_name(name) || is_exception_type_name(name))
 }
 
@@ -29079,6 +38873,7 @@ fn class_is_subclass_of_builtin(class: &Value, target_name: &str) -> bool {
 
     match class {
         Value::Builtin(name) => builtin_class_inherits(name, target_name),
+        Value::NamedTupleType(_) => builtin_class_inherits("tuple", target_name),
         Value::Class { name, bases, .. }
             if class_bases_derive_from_exception(bases) && is_exception_type_name(target_name) =>
         {
@@ -29087,10 +38882,7 @@ fn class_is_subclass_of_builtin(class: &Value, target_name: &str) -> bool {
                 .any(|type_name| type_name == target_name)
         }
         Value::Class { attrs, bases, .. } if target_name == "Hashable" => {
-            if class_bases_explicitly_include_builtin(bases, target_name) {
-                return true;
-            }
-            !class_special_method_is_none(attrs, bases, "__hash__")
+            class_satisfies_hashable_abc(attrs, bases)
         }
         Value::Class { attrs, bases, .. } if target_name == "Buffer" => {
             if class_bases_explicitly_include_builtin(bases, target_name) {
@@ -29290,6 +39082,7 @@ fn builtin_class_inherits(name: &str, target_name: &str) -> bool {
 
     name == target_name
         || target_name == "object"
+        || (name == "Counter" && target_name == "dict")
         || (name == "NodeTransformer" && target_name == "NodeVisitor")
         || (name == "bool" && target_name == "int")
         || (name == "Iterator" && target_name == "Iterable")
@@ -29388,12 +39181,66 @@ fn class_bases_include_builtin(bases: &[Value], target_name: &str) -> bool {
         .any(|base| class_is_subclass_of_builtin(base, target_name))
 }
 
+fn class_bases_namedtuple_type(bases: &[Value]) -> Option<NamedTupleTypeRef> {
+    bases.iter().find_map(|base| match base {
+        Value::NamedTupleType(typ) => Some(typ.clone()),
+        Value::Class { bases, .. } => class_bases_namedtuple_type(bases),
+        _ => None,
+    })
+}
+
+fn class_bases_include_namedtuple_type(bases: &[Value], target: &NamedTupleTypeRef) -> bool {
+    bases.iter().any(|base| match base {
+        Value::NamedTupleType(typ) => Rc::ptr_eq(&typ.identity, &target.identity),
+        Value::Class { bases, .. } => class_bases_include_namedtuple_type(bases, target),
+        _ => false,
+    })
+}
+
 fn class_bases_explicitly_include_builtin(bases: &[Value], target_name: &str) -> bool {
     bases.iter().any(|base| match base {
         Value::Builtin(name) => builtin_class_inherits(name, target_name),
         Value::Class { bases, .. } => class_bases_explicitly_include_builtin(bases, target_name),
         _ => false,
     })
+}
+
+fn class_satisfies_hashable_abc(attrs: &Scope, bases: &[Value]) -> bool {
+    if class_bases_include_collections_abc(bases, "Hashable") {
+        return true;
+    }
+    if class_special_method_is_none(attrs, bases, "__hash__") {
+        return false;
+    }
+    if class_has_callable_special_method(attrs, bases, "__hash__") {
+        return true;
+    }
+    !class_bases_include_unhashable_builtin(bases)
+}
+
+fn class_bases_include_collections_abc(bases: &[Value], target_name: &str) -> bool {
+    bases.iter().any(|base| match base {
+        Value::Builtin(name) => {
+            is_collections_abc_type_name(name) && builtin_class_inherits(name, target_name)
+        }
+        Value::Class { bases, .. } => class_bases_include_collections_abc(bases, target_name),
+        _ => false,
+    })
+}
+
+fn class_bases_include_unhashable_builtin(bases: &[Value]) -> bool {
+    bases.iter().any(|base| match base {
+        Value::Builtin(name) => is_builtin_unhashable_instance_type_name(name),
+        Value::Class { bases, .. } => class_bases_include_unhashable_builtin(bases),
+        _ => false,
+    })
+}
+
+fn is_builtin_unhashable_instance_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "bytearray" | "list" | "dict" | "set" | "ChainMap" | "Counter" | "UserList" | "UserDict"
+    )
 }
 
 fn class_has_callable_special_method(attrs: &Scope, bases: &[Value], name: &str) -> bool {
@@ -29418,6 +39265,7 @@ fn is_builtin_hashable_type_name(name: &str) -> bool {
             | "bool"
             | "str"
             | "bytes"
+            | "memoryview"
             | "tuple"
             | "frozenset"
             | "range"
@@ -29428,12 +39276,15 @@ fn is_builtin_hashable_type_name(name: &str) -> bool {
             | "function"
             | "method"
             | "module"
+            | "traceback"
             | "property"
             | "member_descriptor"
             | "staticmethod"
             | "classmethod"
             | "super"
             | "TypeVar"
+            | "TypeVarTuple"
+            | "ParamSpec"
             | "TypeAliasType"
             | "GenericAlias"
             | "Unpack"
@@ -29447,6 +39298,7 @@ fn is_builtin_sized_type_name(name: &str) -> bool {
         "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "tuple"
             | "set"
@@ -29458,6 +39310,8 @@ fn is_builtin_sized_type_name(name: &str) -> bool {
             | "dict_items"
             | "mappingproxy"
             | "ChainMap"
+            | "Counter"
+            | "UserList"
     )
 }
 
@@ -29467,6 +39321,7 @@ fn is_builtin_container_type_name(name: &str) -> bool {
         "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "tuple"
             | "set"
@@ -29478,6 +39333,8 @@ fn is_builtin_container_type_name(name: &str) -> bool {
             | "dict_items"
             | "mappingproxy"
             | "ChainMap"
+            | "Counter"
+            | "UserList"
     )
 }
 
@@ -29497,12 +39354,12 @@ fn is_builtin_collection_type_name(name: &str) -> bool {
 fn is_builtin_sequence_type_name(name: &str) -> bool {
     matches!(
         name,
-        "str" | "bytes" | "bytearray" | "list" | "tuple" | "range"
+        "str" | "bytes" | "bytearray" | "memoryview" | "list" | "UserList" | "tuple" | "range"
     )
 }
 
 fn is_builtin_mutable_sequence_type_name(name: &str) -> bool {
-    matches!(name, "list" | "bytearray")
+    matches!(name, "list" | "UserList" | "bytearray")
 }
 
 fn is_builtin_byte_string_type_name(name: &str) -> bool {
@@ -29510,15 +39367,15 @@ fn is_builtin_byte_string_type_name(name: &str) -> bool {
 }
 
 fn is_builtin_buffer_type_name(name: &str) -> bool {
-    matches!(name, "bytes" | "bytearray")
+    matches!(name, "bytes" | "bytearray" | "memoryview")
 }
 
 fn is_builtin_mapping_type_name(name: &str) -> bool {
-    matches!(name, "dict" | "mappingproxy" | "ChainMap")
+    matches!(name, "dict" | "mappingproxy" | "ChainMap" | "Counter")
 }
 
 fn is_builtin_mutable_mapping_type_name(name: &str) -> bool {
-    matches!(name, "dict")
+    matches!(name, "dict" | "Counter")
 }
 
 fn is_builtin_mapping_view_type_name(name: &str) -> bool {
@@ -29551,6 +39408,7 @@ fn is_builtin_reversible_type_name(name: &str) -> bool {
         "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "tuple"
             | "dict"
@@ -29559,6 +39417,8 @@ fn is_builtin_reversible_type_name(name: &str) -> bool {
             | "dict_values"
             | "dict_items"
             | "mappingproxy"
+            | "Counter"
+            | "UserList"
     )
 }
 
@@ -29566,7 +39426,10 @@ fn is_builtin_awaitable_type_name(name: &str) -> bool {
     is_builtin_coroutine_type_name(name)
         || matches!(
             name,
-            "async_generator_asend" | "async_generator_athrow" | "anext_awaitable"
+            "async_generator_asend"
+                | "async_generator_athrow"
+                | "async_generator_aclose"
+                | "anext_awaitable"
         )
 }
 
@@ -29600,6 +39463,7 @@ fn is_builtin_iterator_type_name(name: &str) -> bool {
             | "TemplateIter"
             | "str_iterator"
             | "bytes_iterator"
+            | "bytearray_iterator"
             | "set_iterator"
             | "dict_keyiterator"
             | "dict_reversekeyiterator"
@@ -29620,6 +39484,7 @@ fn is_builtin_iterable_type_name(name: &str) -> bool {
         "str"
             | "bytes"
             | "bytearray"
+            | "memoryview"
             | "list"
             | "tuple"
             | "set"
@@ -29631,14 +39496,10 @@ fn is_builtin_iterable_type_name(name: &str) -> bool {
             | "dict_items"
             | "mappingproxy"
             | "ChainMap"
+            | "Counter"
+            | "UserList"
             | "Template"
     )
-}
-
-#[derive(Default)]
-struct MinMaxOptions {
-    key: Option<Value>,
-    default: Option<Value>,
 }
 
 #[derive(Default)]
@@ -29651,36 +39512,6 @@ struct SortedOptions {
 struct SortItem {
     value: Value,
     key: Value,
-}
-
-fn minmax_options(name: &str, keywords: Vec<(String, Value)>) -> Result<MinMaxOptions, String> {
-    let mut options = MinMaxOptions::default();
-    for (keyword, value) in keywords {
-        match keyword.as_str() {
-            "key" => {
-                if options.key.is_some() {
-                    return Err(format!(
-                        "{name}() got multiple values for keyword argument 'key'"
-                    ));
-                }
-                options.key = Some(value);
-            }
-            "default" => {
-                if options.default.is_some() {
-                    return Err(format!(
-                        "{name}() got multiple values for keyword argument 'default'"
-                    ));
-                }
-                options.default = Some(value);
-            }
-            _ => {
-                return Err(format!(
-                    "'{keyword}' is an invalid keyword argument for {name}()"
-                ));
-            }
-        }
-    }
-    Ok(options)
 }
 
 fn sorted_options(
@@ -29760,70 +39591,6 @@ fn sorted_reverse_option(value: Value) -> Result<bool, String> {
     }
 }
 
-fn sort_items_by_key(items: &mut [SortItem], reverse: bool) -> Result<(), String> {
-    for index in 1..items.len() {
-        let item = items[index].clone();
-        let mut insertion_index = index;
-
-        while insertion_index > 0 {
-            let ordering =
-                compare_values(item.key.clone(), items[insertion_index - 1].key.clone())?;
-            let should_move_left = if reverse {
-                ordering.is_gt()
-            } else {
-                ordering.is_lt()
-            };
-            if !should_move_left {
-                break;
-            }
-
-            items[insertion_index] = items[insertion_index - 1].clone();
-            insertion_index -= 1;
-        }
-
-        items[insertion_index] = item;
-    }
-
-    Ok(())
-}
-
-fn reject_sum_start(value: &Value) -> Result<(), String> {
-    match value {
-        Value::String(_) => Err("sum() can't sum strings [use ''.join(seq) instead]".to_string()),
-        Value::Bytes(_) => Err("sum() can't sum bytes [use b''.join(seq) instead]".to_string()),
-        Value::ByteArray(_) => {
-            Err("sum() can't sum bytearray [use b''.join(seq) instead]".to_string())
-        }
-        _ => Ok(()),
-    }
-}
-
-fn call_id(args: Vec<Value>) -> Result<Value, String> {
-    let [value] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: id() expected 1 argument, got {}",
-            args.len()
-        ));
-    };
-
-    Ok(identity_value(value))
-}
-
-fn call_divmod(args: Vec<Value>) -> Result<Value, String> {
-    let [left, right] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: divmod expected 2 arguments, got {}",
-            args.len()
-        ));
-    };
-
-    let quotient = floor_divide_values(left.clone(), right.clone())
-        .map_err(|message| divmod_error_message(&message, left.clone(), right.clone()))?;
-    let remainder = modulo_values(left.clone(), right.clone())
-        .map_err(|message| divmod_error_message(&message, left.clone(), right.clone()))?;
-    Ok(tuple_value(vec![quotient, remainder]))
-}
-
 fn divmod_error_message(message: &str, left: Value, right: Value) -> String {
     if is_zero_division_error_message(message) || message.starts_with("TypeError: ") {
         return message.to_string();
@@ -29833,51 +39600,6 @@ fn divmod_error_message(message: &str, left: Value, right: Value) -> String {
         type_name(&left),
         type_name(&right)
     )
-}
-
-fn call_ord(args: Vec<Value>) -> Result<Value, String> {
-    let [value] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: ord() expected 1 argument, got {}",
-            args.len()
-        ));
-    };
-
-    let codepoint = match value {
-        Value::String(value) => {
-            let mut chars = value.chars();
-            let Some(ch) = chars.next() else {
-                return Err(
-                    "TypeError: ord() expected a character, but string of length 0 found"
-                        .to_string(),
-                );
-            };
-            if chars.next().is_some() {
-                return Err(format!(
-                    "TypeError: ord() expected a character, but string of length {} found",
-                    value.chars().count()
-                ));
-            }
-            ch as u32
-        }
-        Value::Bytes(value) | Value::ByteArray(value) => {
-            let [byte] = value.as_slice() else {
-                return Err(format!(
-                    "TypeError: ord() expected a character, but string of length {} found",
-                    value.len()
-                ));
-            };
-            u32::from(*byte)
-        }
-        value => {
-            return Err(format!(
-                "TypeError: ord() expected string of length 1, but {} found",
-                type_name(value)
-            ));
-        }
-    };
-
-    Ok(Value::Number(i64::from(codepoint)))
 }
 
 fn call_template_convert(args: Vec<Value>) -> Result<Value, String> {
@@ -30046,15 +39768,6 @@ fn template_conversion_argument(value: Value) -> Result<Option<String>, String> 
     }
 }
 
-fn format_prefixed_integer(value: &BigInt, prefix: &str, radix: u32) -> String {
-    let digits = value.abs().to_str_radix(radix);
-    if value.is_negative() {
-        format!("-{prefix}{digits}")
-    } else {
-        format!("{prefix}{digits}")
-    }
-}
-
 fn round_float_to_int(value: f64) -> Result<Value, String> {
     if value.is_nan() {
         return Err("ValueError: cannot convert float NaN to integer".to_string());
@@ -30173,10 +39886,14 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             index: 0,
         })),
         Value::ByteArray(value) => Ok(shared_iterator(Value::ReverseIterator {
-            items: value
+            items: bytearray_bytes(&value)
                 .into_iter()
                 .map(|byte| Value::Number(byte as i64))
                 .collect(),
+            index: 0,
+        })),
+        Value::MemoryView(view) => Ok(shared_iterator(Value::ReverseIterator {
+            items: memoryview_values(&view)?,
             index: 0,
         })),
         Value::Range { start, stop, step } => Ok(shared_iterator(Value::ReverseIterator {
@@ -30186,7 +39903,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 .collect(),
             index: 0,
         })),
-        Value::Dict(entries) => {
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             let (keys, expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (
@@ -30248,6 +39965,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
 }
 
 fn call_str_method(
+    vm: &mut Vm,
     name: &str,
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
@@ -30268,10 +39986,14 @@ fn call_str_method(
         ));
     }
 
-    call_immutable_sequence_method(name, args)
+    call_immutable_sequence_method(vm, name, args)
 }
 
-fn call_immutable_sequence_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+fn call_immutable_sequence_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+) -> Result<Value, String> {
     match name {
         "str.startswith" => return call_str_prefix_suffix_method(name, args, true),
         "str.endswith" => return call_str_prefix_suffix_method(name, args, false),
@@ -30313,7 +40035,16 @@ fn call_immutable_sequence_method(name: &str, args: Vec<Value>) -> Result<Value,
             return call_bytes_decode_method(name, args, Vec::new());
         }
         "bytes.hex" | "bytearray.hex" => {
-            return call_bytes_hex_method(name, args, Vec::new());
+            return call_bytes_hex_method(vm, name, args, Vec::new());
+        }
+        "bytes.splitlines" | "bytearray.splitlines" => {
+            return call_bytes_splitlines_method(name, args, Vec::new());
+        }
+        "bytes.removeprefix"
+        | "bytes.removesuffix"
+        | "bytearray.removeprefix"
+        | "bytearray.removesuffix" => {
+            return call_bytes_remove_affix_method(name, args, Vec::new());
         }
         "str.strip" => return call_str_strip_method(name, args, true, true),
         "str.lstrip" => return call_str_strip_method(name, args, true, false),
@@ -30357,6 +40088,76 @@ fn call_immutable_sequence_method(name: &str, args: Vec<Value>) -> Result<Value,
             let len = i64::try_from(value_len(receiver)?)
                 .map_err(|_| "len() result is too large".to_string())?;
             Ok(Value::Number(len))
+        }
+        "count" => {
+            let [receiver, needle] = args.as_slice() else {
+                return Err(format!(
+                    "count() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            vm.sequence_abc_count(receiver.clone(), needle.clone())
+        }
+        "index" => {
+            let [receiver, needle, rest @ ..] = args.as_slice() else {
+                return Err(format!(
+                    "index() expected at least 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if rest.len() > 2 {
+                return Err(format!(
+                    "index() expected at most 3 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            }
+            let start = rest.first().cloned().unwrap_or(Value::Number(0));
+            let stop = rest.get(1).cloned();
+            vm.sequence_abc_index(receiver.clone(), needle.clone(), start, stop)
+        }
+        "__eq__" | "__ne__" => {
+            let [receiver, other] = args.as_slice() else {
+                return Err(format!(
+                    "{}() expected 1 argument, got {}",
+                    method_display_name(name),
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(left) = tuple_order_operand_values(receiver) else {
+                return Err(format!(
+                    "{}() expected a tuple receiver",
+                    method_display_name(name)
+                ));
+            };
+            let Some(right) = tuple_order_operand_values(other) else {
+                return Ok(Value::NotImplemented);
+            };
+            let equal = vm.rich_sequence_equal(&left, &right)?;
+            Ok(Value::Bool(if method_display_name(name) == "__ne__" {
+                !equal
+            } else {
+                equal
+            }))
+        }
+        "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+            let [receiver, other] = args.as_slice() else {
+                return Err(format!(
+                    "{}() expected 1 argument, got {}",
+                    method_display_name(name),
+                    method_arg_count(&args)
+                ));
+            };
+            let op = match method_display_name(name) {
+                "__lt__" => SequenceOrder::Less,
+                "__le__" => SequenceOrder::LessEqual,
+                "__gt__" => SequenceOrder::Greater,
+                "__ge__" => SequenceOrder::GreaterEqual,
+                _ => unreachable!("method is filtered above"),
+            };
+            match vm.rich_sequence_order_values(receiver, other, op)? {
+                Some(result) => Ok(Value::Bool(result)),
+                None => Ok(Value::NotImplemented),
+            }
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
@@ -31314,8 +41115,13 @@ fn call_bytes_decode_method(
     let [receiver, rest @ ..] = args.as_slice() else {
         return Err(format!("TypeError: {method}() expected 0 arguments, got 0"));
     };
+    let bytearray;
     let bytes = match receiver {
-        Value::Bytes(value) | Value::ByteArray(value) => value,
+        Value::Bytes(value) => value.as_slice(),
+        Value::ByteArray(value) => {
+            bytearray = value.borrow();
+            bytearray.as_slice()
+        }
         value => {
             return Err(format!(
                 "TypeError: {method}() expected a bytes-like receiver, got {}",
@@ -31348,6 +41154,7 @@ fn decode_bytes_with_options(
 }
 
 fn call_bytes_hex_method(
+    vm: &mut Vm,
     name: &str,
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
@@ -31356,25 +41163,40 @@ fn call_bytes_hex_method(
     let [receiver, rest @ ..] = args.as_slice() else {
         return Err(format!("TypeError: {method}() expected 0 arguments, got 0"));
     };
-    let bytes = match receiver {
-        Value::Bytes(value) | Value::ByteArray(value) => value,
-        value => {
-            return Err(format!(
-                "TypeError: {method}() expected a bytes-like receiver, got {}",
-                type_name(value)
-            ));
-        }
-    };
 
+    let _receiver_export = bytearray_export_guard(receiver);
     let mut slots = constructor_slots(method, rest.to_vec(), keywords, &["sep", "bytes_per_sep"])?;
     let bytes_per_sep = slots[1]
         .take()
         .map(|value| integer_value_to_i64(value, "bytes_per_sep"))
         .transpose()?
         .unwrap_or(1);
-    let separator = slots[0].as_ref().map(hex_separator).transpose()?;
+    let separator = slots[0]
+        .as_ref()
+        .map(|value| hex_separator(vm, value))
+        .transpose()?;
+    let bytes = bytes_hex_receiver(receiver, method)?;
 
-    Ok(Value::String(bytes_hex(bytes, separator, bytes_per_sep)))
+    Ok(Value::String(bytes_hex(&bytes, separator, bytes_per_sep)))
+}
+
+fn bytes_hex_receiver(receiver: &Value, method: &str) -> Result<Vec<u8>, String> {
+    match receiver {
+        Value::Bytes(value) => Ok(value.clone()),
+        Value::ByteArray(value) => Ok(bytearray_bytes(value)),
+        Value::MemoryView(view) => memoryview_bytes(view),
+        value if bytes_subclass_bytes(value).is_some() => {
+            Ok(bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"))
+        }
+        value if bytearray_subclass_bytes(value).is_some() => {
+            Ok(bytearray_subclass_bytes(value)
+                .expect("bytearray subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: {method}() expected a bytes-like receiver, got {}",
+            type_name(value)
+        )),
+    }
 }
 
 fn call_bytes_fromhex(name: &str, args: Vec<Value>) -> Result<Value, String> {
@@ -31387,7 +41209,7 @@ fn call_bytes_fromhex(name: &str, args: Vec<Value>) -> Result<Value, String> {
 
     let bytes = bytes_fromhex(source)?;
     if name.starts_with("bytearray.") {
-        Ok(Value::ByteArray(bytes))
+        Ok(byte_array_value(bytes))
     } else {
         Ok(Value::Bytes(bytes))
     }
@@ -31436,7 +41258,7 @@ fn bytes_hex(bytes: &[u8], separator: Option<char>, bytes_per_sep: i64) -> Strin
     output
 }
 
-fn hex_separator(value: &Value) -> Result<char, String> {
+fn hex_separator(vm: &mut Vm, value: &Value) -> Result<char, String> {
     match value {
         Value::String(value) => {
             let mut chars = value.chars();
@@ -31460,6 +41282,21 @@ fn hex_separator(value: &Value) -> Result<char, String> {
             }
             Ok(*byte as char)
         }
+        value if bytes_subclass_bytes(value).is_some() => {
+            let len = vm.len_value(value.clone())?;
+            if len != 1 {
+                return Err("ValueError: sep must be length 1.".to_string());
+            }
+            let bytes =
+                bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard");
+            let [byte] = bytes.as_slice() else {
+                return Err("ValueError: sep must be length 1.".to_string());
+            };
+            if !byte.is_ascii() {
+                return Err("ValueError: sep must be ASCII.".to_string());
+            }
+            Ok(*byte as char)
+        }
         value => Err(format!(
             "TypeError: object of type '{}' has no len()",
             type_name(value)
@@ -31470,9 +41307,22 @@ fn hex_separator(value: &Value) -> Result<char, String> {
 fn bytes_fromhex(value: &Value) -> Result<Vec<u8>, String> {
     let text = match value {
         Value::String(value) => value.clone(),
-        Value::Bytes(value) | Value::ByteArray(value) => {
+        Value::Bytes(value) => {
             let mut text = String::new();
             for byte in value {
+                if !byte.is_ascii() {
+                    return Err(
+                        "ValueError: non-hexadecimal number found in fromhex() arg".to_string()
+                    );
+                }
+                text.push(*byte as char);
+            }
+            text
+        }
+        Value::ByteArray(value) => {
+            let value = value.borrow();
+            let mut text = String::new();
+            for byte in value.iter() {
                 if !byte.is_ascii() {
                     return Err(
                         "ValueError: non-hexadecimal number found in fromhex() arg".to_string()
@@ -32235,6 +42085,74 @@ fn string_replace_count_argument(value: &Value, method: &str) -> Result<i64, Str
                 i64::MAX
             }
         })),
+        value => Err(format!(
+            "TypeError: {method} count must be an integer, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn bytes_replace(receiver: &[u8], old: &[u8], new: &[u8], count: i64) -> Result<Vec<u8>, String> {
+    if count == 0 {
+        return Ok(receiver.to_vec());
+    }
+
+    let limit = limited_replacement_count(count);
+    if old.is_empty() {
+        return bytes_replace_empty_needle(receiver, new, limit);
+    }
+
+    let mut output = Vec::new();
+    let mut index = 0usize;
+    let mut replacements = 0usize;
+
+    while index < receiver.len() {
+        if limit.is_none_or(|limit| replacements < limit)
+            && index + old.len() <= receiver.len()
+            && receiver[index..index + old.len()] == *old
+        {
+            output.extend_from_slice(new);
+            replacements += 1;
+            index += old.len();
+        } else {
+            output.push(receiver[index]);
+            index += 1;
+        }
+    }
+
+    Ok(output)
+}
+
+fn bytes_replace_empty_needle(
+    receiver: &[u8],
+    new: &[u8],
+    limit: Option<usize>,
+) -> Result<Vec<u8>, String> {
+    let mut output = Vec::new();
+    let mut replacements = 0usize;
+
+    for byte in receiver {
+        if limit.is_none_or(|limit| replacements < limit) {
+            output.extend_from_slice(new);
+            replacements += 1;
+        }
+        output.push(*byte);
+    }
+
+    if limit.is_none_or(|limit| replacements < limit) {
+        output.extend_from_slice(new);
+    }
+
+    Ok(output)
+}
+
+fn bytes_replace_count_argument(value: &Value, method: &str) -> Result<i64, String> {
+    match value {
+        Value::Bool(value) => Ok(bool_as_i64(*value)),
+        Value::Number(value) => Ok(*value),
+        Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
         value => Err(format!(
             "TypeError: {method} count must be an integer, not {}",
             type_name(value)
@@ -33112,6 +43030,51 @@ fn call_dict_method(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
+    if name == "OrderedDict.move_to_end" {
+        reject_method_keywords(name, &keywords)?;
+        let [Value::OrderedDict(entries), key, rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "move_to_end() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "move_to_end() expected at most 2 arguments, got {}",
+                rest.len() + 1
+            ));
+        }
+        let last = match rest {
+            [] => true,
+            [value] => vm.truth_value(value.clone())?,
+            _ => unreachable!("rest length checked above"),
+        };
+        ensure_hashable_key(key)?;
+        let mut entries = entries.borrow_mut();
+        let Some(position) = entries
+            .iter()
+            .position(|(existing_key, _)| dict_keys_equal(existing_key, key))
+        else {
+            return Err(format!("KeyError: {}", format_key_error(key)));
+        };
+        let item = entries.remove(position);
+        if last {
+            entries.push(item);
+        } else {
+            entries.insert(0, item);
+        }
+        mark_dict_changed(&mut entries);
+        return Ok(Value::None);
+    }
+
+    let canonical_name;
+    let name = if let Some(method) = name.strip_prefix("OrderedDict.") {
+        canonical_name = format!("dict.{method}");
+        canonical_name.as_str()
+    } else {
+        name
+    };
+
     match name {
         "dict.clear" => {
             reject_method_keywords(name, &keywords)?;
@@ -33159,13 +43122,16 @@ fn call_dict_method(
         }
         "dict.__delitem__" => {
             reject_method_keywords(name, &keywords)?;
-            let [dict @ Value::Dict(_), key] = args.as_slice() else {
+            let [dict, key] = args.as_slice() else {
                 return Err(format!(
                     "__delitem__() expected 1 argument, got {}",
                     method_arg_count(&args)
                 ));
             };
-            delete_subscript(dict.clone(), key.clone())?;
+            let Some(entries) = dict_receiver_entries(dict) else {
+                return Err("__delitem__() expected a dict receiver".to_string());
+            };
+            delete_mapping_entry(&entries, key)?;
             Ok(Value::None)
         }
         "dict.__getitem__" => {
@@ -33178,7 +43144,7 @@ fn call_dict_method(
             };
             if let Some(entries) = dict_subclass_entries(dict) {
                 vm.load_dict_subclass_subscript(dict.clone(), entries, key.clone())
-            } else if matches!(dict, Value::Dict(_)) {
+            } else if matches!(dict, Value::Dict(_) | Value::OrderedDict(_)) {
                 load_subscript(dict.clone(), key.clone())
             } else {
                 Err("__getitem__() expected a dict receiver".to_string())
@@ -33201,13 +43167,17 @@ fn call_dict_method(
         }
         "dict.__setitem__" => {
             reject_method_keywords(name, &keywords)?;
-            let [dict @ Value::Dict(_), key, value] = args.as_slice() else {
+            let [dict, key, value] = args.as_slice() else {
                 return Err(format!(
                     "__setitem__() expected 2 arguments, got {}",
                     method_arg_count(&args)
                 ));
             };
-            store_subscript(dict.clone(), key.clone(), value.clone())?;
+            let Some(entries) = dict_receiver_entries(dict) else {
+                return Err("__setitem__() expected a dict receiver".to_string());
+            };
+            ensure_hashable_key(key)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
             Ok(Value::None)
         }
         "dict.get" => {
@@ -33261,7 +43231,10 @@ fn call_dict_method(
         }
         "dict.pop" => {
             reject_method_keywords(name, &keywords)?;
-            let [Value::Dict(entries), key, rest @ ..] = args.as_slice() else {
+            let [receiver, key, rest @ ..] = args.as_slice() else {
+                return Err("pop() expected a dict receiver".to_string());
+            };
+            let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("pop() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
@@ -33287,11 +43260,14 @@ fn call_dict_method(
         }
         "dict.popitem" => {
             reject_method_keywords(name, &keywords)?;
-            let [Value::Dict(entries)] = args.as_slice() else {
+            let [receiver] = args.as_slice() else {
                 return Err(format!(
                     "popitem() expected 0 arguments, got {}",
                     method_arg_count(&args)
                 ));
+            };
+            let Some(entries) = dict_receiver_entries(receiver) else {
+                return Err("popitem() expected a dict receiver".to_string());
             };
             let mut entries = entries.borrow_mut();
             let Some((key, value)) = entries.pop() else {
@@ -33302,7 +43278,10 @@ fn call_dict_method(
         }
         "dict.setdefault" => {
             reject_method_keywords(name, &keywords)?;
-            let [Value::Dict(entries), key, rest @ ..] = args.as_slice() else {
+            let [receiver, key, rest @ ..] = args.as_slice() else {
+                return Err("setdefault() expected a dict receiver".to_string());
+            };
+            let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("setdefault() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
@@ -33325,7 +43304,10 @@ fn call_dict_method(
             Ok(default)
         }
         "dict.update" => {
-            let [Value::Dict(entries), rest @ ..] = args.as_slice() else {
+            let [receiver, rest @ ..] = args.as_slice() else {
+                return Err("update() expected a dict receiver".to_string());
+            };
+            let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("update() expected a dict receiver".to_string());
             };
             if rest.len() > 1 {
@@ -33368,10 +43350,103 @@ fn call_dict_method(
     }
 }
 
+fn call_user_dict_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let Some((receiver, rest)) = args.split_first() else {
+        return Err(format!("{method}() expected a UserDict receiver"));
+    };
+    let data = match receiver {
+        Value::UserDict { data, .. } => data.clone(),
+        value if user_dict_subclass_data(value).is_some() => {
+            user_dict_subclass_data(value).expect("UserDict subclass data exists after guard")
+        }
+        _ => return Err(format!("{method}() expected a UserDict receiver")),
+    };
+
+    if method == "__init__" {
+        let entries = vm.user_dict_constructor_entries(rest.to_vec(), keywords)?;
+        let mut data = data.borrow_mut();
+        data.entries = entries;
+        mark_dict_changed(&mut data);
+        return Ok(Value::None);
+    }
+
+    if method == "copy" {
+        reject_method_keywords(name, &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "copy() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        }
+        let attrs = match receiver {
+            Value::UserDict { attrs, .. } => attrs.borrow().entries.clone(),
+            Value::Instance { fields, .. } => fields
+                .borrow()
+                .iter()
+                .filter(|(key, _)| key.as_str() != USER_DICT_SUBCLASS_STORAGE_FIELD)
+                .map(|(key, value)| (Value::String(key.clone()), value.clone()))
+                .collect(),
+            _ => Vec::new(),
+        };
+        return Ok(Value::UserDict {
+            data: dict_ref_from_entries(data.borrow().entries.clone())?,
+            attrs: dict_ref_from_entries(attrs)?,
+        });
+    }
+
+    if method == "__iter__" {
+        reject_method_keywords(name, &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "__iter__() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        }
+        return get_iter(Value::Dict(data.clone()));
+    }
+
+    if method == "__getitem__" && user_dict_subclass_data(receiver).is_some() {
+        reject_method_keywords(name, &keywords)?;
+        let [key] = rest else {
+            return Err(format!(
+                "__getitem__() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        return vm.load_user_dict_subclass_subscript(receiver.clone(), data, key.clone());
+    }
+
+    let dict_receiver = Value::Dict(data.clone());
+    let mut dict_args = Vec::with_capacity(args.len());
+    dict_args.push(dict_receiver);
+    dict_args.extend(rest.iter().cloned());
+    let dict_method = format!("dict.{method}");
+    let result = call_dict_method(vm, &dict_method, dict_args, keywords)?;
+
+    match method {
+        "__setitem__" | "__delitem__" | "clear" | "pop" | "popitem" | "setdefault" | "update" => {
+            Ok(result)
+        }
+        "__contains__" | "__getitem__" | "__len__" | "get" | "items" | "keys" | "values" => {
+            Ok(result)
+        }
+        _ => Err(format!("unknown builtin: {name}")),
+    }
+}
+
 fn dict_receiver_entries(value: &Value) -> Option<DictRef> {
     match value {
-        Value::Dict(entries) => Some(entries.clone()),
-        value => dict_subclass_entries(value),
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+            Some(entries.clone())
+        }
+        Value::UserDict { data, .. } => Some(data.clone()),
+        value => counter_subclass_entries(value).or_else(|| dict_subclass_entries(value)),
     }
 }
 
@@ -33501,6 +43576,7 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
                 Value::Class {
                     name,
                     type_params,
+                    metaclass: _,
                     bases,
                     attrs,
                 } if class_bases_include_builtin(bases, "set") => {
@@ -33961,6 +44037,7 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
                 Value::Class {
                     name,
                     type_params,
+                    metaclass: _,
                     bases,
                     attrs,
                 } if class_bases_include_builtin(bases, "frozenset") => {
@@ -34309,8 +44386,25 @@ fn set_is_proper_superset(left: &[Value], right: &[Value]) -> bool {
 
 fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
-        Value::Dict(entries) | Value::MappingProxy { entries } => Ok(entries.borrow().clone()),
-        Value::UserDict { data } => Ok(data.borrow().clone()),
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::MappingProxy { entries }
+        | Value::Counter { entries } => Ok(entries.borrow().clone()),
+        value if counter_subclass_entries(&value).is_some() => Ok(counter_subclass_entries(&value)
+            .expect("Counter subclass entries exist after guard")
+            .borrow()
+            .clone()),
+        Value::UserDict { data, .. } => Ok(data.borrow().clone()),
+        value if user_dict_subclass_data(&value).is_some() => Ok(user_dict_subclass_data(&value)
+            .expect("UserDict subclass data exists after guard")
+            .borrow()
+            .clone()),
+        Value::ChainMap { maps } => chain_map_entries(&maps),
+        value if chain_map_subclass_maps(&value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(&value).expect("ChainMap subclass maps exist after guard");
+            chain_map_entries(&maps)
+        }
         value => {
             let items = sequence_values(value)?;
             let mut entries = Vec::new();
@@ -34333,9 +44427,25 @@ fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, 
 
 fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
-        Value::Dict(entries) | Value::MappingProxy { entries } => Ok(entries.borrow().clone()),
-        Value::UserDict { data } => Ok(data.borrow().clone()),
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::MappingProxy { entries }
+        | Value::Counter { entries } => Ok(entries.borrow().clone()),
+        value if counter_subclass_entries(value).is_some() => Ok(counter_subclass_entries(value)
+            .expect("Counter subclass entries exist after guard")
+            .borrow()
+            .clone()),
+        Value::UserDict { data, .. } => Ok(data.borrow().clone()),
+        value if user_dict_subclass_data(value).is_some() => Ok(user_dict_subclass_data(value)
+            .expect("UserDict subclass data exists after guard")
+            .borrow()
+            .clone()),
         Value::ChainMap { maps } => chain_map_entries(maps),
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            chain_map_entries(&maps)
+        }
         value if dict_subclass_entries(value).is_some() => Ok(dict_subclass_entries(value)
             .expect("dict subclass entries exist after guard")
             .borrow()
@@ -34375,6 +44485,427 @@ fn chain_map_contains_key(maps: &[Value], key: &Value) -> Result<bool, String> {
     Ok(chain_map_get_item_optional(maps, key)?.is_some())
 }
 
+fn chain_map_receiver_maps(receiver: &Value) -> Result<Vec<Value>, String> {
+    match receiver {
+        Value::ChainMap { maps } => Ok(maps.clone()),
+        value if chain_map_subclass_maps(value).is_some() => {
+            Ok(chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard"))
+        }
+        value => Err(format!("{} is not a ChainMap", type_name(value))),
+    }
+}
+
+fn counter_receiver_entries(receiver: &Value) -> Result<DictRef, String> {
+    match receiver {
+        Value::Counter { entries } => Ok(entries.clone()),
+        value if counter_subclass_entries(value).is_some() => Ok(
+            counter_subclass_entries(value).expect("Counter subclass entries exist after guard")
+        ),
+        value => Err(format!("{} is not a Counter", type_name(value))),
+    }
+}
+
+fn chain_map_copy(maps: &[Value]) -> Result<Value, String> {
+    let Some((first, rest)) = maps.split_first() else {
+        return Ok(Value::ChainMap {
+            maps: vec![build_dict(Vec::new())?],
+        });
+    };
+    let mut copied_maps = Vec::with_capacity(maps.len());
+    copied_maps.push(shallow_copy_mapping_for_chain_map(first)?);
+    copied_maps.extend(rest.iter().cloned());
+    Ok(Value::ChainMap { maps: copied_maps })
+}
+
+fn chain_map_parents(maps: &[Value]) -> Result<Value, String> {
+    if maps.len() > 1 {
+        Ok(Value::ChainMap {
+            maps: maps[1..].to_vec(),
+        })
+    } else {
+        Ok(Value::ChainMap {
+            maps: vec![build_dict(Vec::new())?],
+        })
+    }
+}
+
+fn chain_map_new_child(
+    maps: &[Value],
+    child: Option<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let child = match child {
+        None | Some(Value::None) => build_dict(
+            keywords
+                .into_iter()
+                .map(|(name, value)| (Value::String(name), value))
+                .collect(),
+        )?,
+        Some(child) => {
+            if !is_mapping_abc_value(&child) {
+                return Err(format!(
+                    "TypeError: ChainMap expected mapping, got {}",
+                    type_name(&child)
+                ));
+            }
+            for (name, value) in keywords {
+                set_mapping_item(&child, Value::String(name), value)?;
+            }
+            child
+        }
+    };
+
+    let mut child_maps = Vec::with_capacity(maps.len() + 1);
+    child_maps.push(child);
+    child_maps.extend(maps.iter().cloned());
+    Ok(Value::ChainMap { maps: child_maps })
+}
+
+fn chain_map_set_item(maps: &[Value], key: Value, value: Value) -> Result<(), String> {
+    let Some(first) = maps.first() else {
+        return Err("KeyError: ChainMap has no first mapping".to_string());
+    };
+    set_mapping_item(first, key, value)
+}
+
+fn chain_map_delete_item(maps: &[Value], key: Value) -> Result<(), String> {
+    let Some(first) = maps.first() else {
+        return Err("KeyError: ChainMap has no first mapping".to_string());
+    };
+    delete_mapping_item(first, key)
+}
+
+fn chain_map_pop(maps: &[Value], key: Value, default: Option<Value>) -> Result<Value, String> {
+    let Some(first) = maps.first() else {
+        return default.ok_or_else(|| "KeyError: ChainMap has no first mapping".to_string());
+    };
+    match pop_mapping_item(first, &key)? {
+        Some(value) => Ok(value),
+        None => default.ok_or_else(|| {
+            format!(
+                "KeyError: Key not found in the first mapping: {}",
+                format_key_error(&key)
+            )
+        }),
+    }
+}
+
+fn chain_map_popitem(maps: &[Value]) -> Result<Value, String> {
+    let Some(first) = maps.first() else {
+        return Err("KeyError: No keys found in the first mapping.".to_string());
+    };
+    pop_mapping_item_last(first)?
+        .map(|(key, value)| tuple_value(vec![key, value]))
+        .ok_or_else(|| "KeyError: No keys found in the first mapping.".to_string())
+}
+
+fn chain_map_clear(maps: &[Value]) -> Result<(), String> {
+    let Some(first) = maps.first() else {
+        return Ok(());
+    };
+    clear_mapping_items(first)
+}
+
+fn chain_map_union(receiver: &Value, maps: &[Value], other: &Value) -> Result<Value, String> {
+    let updates = mapping_entries(other)?;
+    let Some((first, rest)) = maps.split_first() else {
+        return chain_map_result_like(receiver, vec![build_dict(updates)?]);
+    };
+
+    let first = dict_union_from_entries(mapping_entries(first)?, updates)?;
+    let mut result_maps = Vec::with_capacity(maps.len());
+    result_maps.push(first);
+    result_maps.extend(rest.iter().cloned());
+    chain_map_result_like(receiver, result_maps)
+}
+
+fn chain_map_reverse_union(
+    receiver: &Value,
+    maps: &[Value],
+    other: &Value,
+) -> Result<Value, String> {
+    let mut entries = mapping_entries(other)?;
+    for map in maps.iter().rev() {
+        for (key, value) in mapping_entries(map)? {
+            insert_dict_entry(&mut entries, key, value)?;
+        }
+    }
+    chain_map_result_like(receiver, vec![build_dict(entries)?])
+}
+
+fn chain_map_update_first_from_source(maps: &[Value], source: Value) -> Result<(), String> {
+    let updates = dict_entries_from_update_source(source)?;
+    let Some(first) = maps.first() else {
+        return Err("KeyError: ChainMap has no first mapping".to_string());
+    };
+    for (key, value) in updates {
+        set_mapping_item(first, key, value)?;
+    }
+    Ok(())
+}
+
+fn chain_map_result_like(receiver: &Value, maps: Vec<Value>) -> Result<Value, String> {
+    if let Value::Instance {
+        class_name,
+        class_attrs,
+        class_bases,
+        ..
+    } = receiver
+        && chain_map_subclass_maps(receiver).is_some()
+    {
+        let fields = new_scope();
+        fields.borrow_mut().insert(
+            CHAIN_MAP_SUBCLASS_STORAGE_FIELD.to_string(),
+            Value::ChainMap { maps },
+        );
+        return Ok(Value::Instance {
+            class_name: class_name.clone(),
+            fields,
+            class_attrs: class_attrs.clone(),
+            class_bases: class_bases.clone(),
+        });
+    }
+
+    Ok(Value::ChainMap { maps })
+}
+
+fn shallow_copy_mapping_for_chain_map(map: &Value) -> Result<Value, String> {
+    match map {
+        Value::Dict(entries) => Ok(dict_value(entries.borrow().entries.clone())),
+        Value::OrderedDict(entries) => build_ordered_dict(entries.borrow().entries.clone()),
+        Value::UserDict { data, attrs } => Ok(Value::UserDict {
+            data: dict_ref_from_entries(data.borrow().entries.clone())?,
+            attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
+        Value::ChainMap { maps } => chain_map_copy(maps),
+        value if dict_subclass_entries(value).is_some() => build_dict(
+            dict_subclass_entries(value)
+                .expect("dict subclass entries exist after guard")
+                .borrow()
+                .entries
+                .clone(),
+        ),
+        value => Ok(value.clone()),
+    }
+}
+
+fn set_mapping_item(map: &Value, key: Value, value: Value) -> Result<(), String> {
+    match map {
+        Value::Dict(entries) | Value::OrderedDict(entries) => {
+            ensure_hashable_key(&key)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
+        }
+        Value::Counter { entries } => {
+            ensure_hashable_key(&key)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
+        }
+        Value::UserDict { data, .. } => {
+            ensure_hashable_key(&key)?;
+            insert_live_dict_entry(&mut data.borrow_mut(), key, value)
+        }
+        mapping if user_dict_subclass_data(mapping).is_some() => {
+            ensure_hashable_key(&key)?;
+            let data = user_dict_subclass_data(mapping)
+                .expect("UserDict subclass data exists after guard");
+            insert_live_dict_entry(&mut data.borrow_mut(), key, value)
+        }
+        Value::ChainMap { maps } => chain_map_set_item(maps, key, value),
+        mapping if dict_subclass_entries(mapping).is_some() => {
+            ensure_hashable_key(&key)?;
+            let entries =
+                dict_subclass_entries(mapping).expect("dict subclass entries exist after guard");
+            insert_live_dict_entry(&mut entries.borrow_mut(), key, value)
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support item assignment",
+            type_name(value)
+        )),
+    }
+}
+
+fn delete_mapping_item(map: &Value, key: Value) -> Result<(), String> {
+    ensure_hashable_key(&key)?;
+    match map {
+        Value::Dict(entries) | Value::OrderedDict(entries) => delete_mapping_entry(entries, &key),
+        Value::Counter { entries } => {
+            let _ = pop_mapping_entry(entries, &key)?;
+            Ok(())
+        }
+        Value::UserDict { data, .. } => delete_mapping_entry(data, &key),
+        value if user_dict_subclass_data(value).is_some() => {
+            let data =
+                user_dict_subclass_data(value).expect("UserDict subclass data exists after guard");
+            delete_mapping_entry(&data, &key)
+        }
+        Value::ChainMap { maps } => chain_map_delete_item(maps, key),
+        value if dict_subclass_entries(value).is_some() => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            delete_mapping_entry(&entries, &key)
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support item deletion",
+            type_name(value)
+        )),
+    }
+}
+
+fn delete_mapping_entry(entries: &DictRef, key: &Value) -> Result<(), String> {
+    let mut entries = entries.borrow_mut();
+    if let Some(position) = entries
+        .iter()
+        .position(|(existing_key, _)| dict_keys_equal(existing_key, key))
+    {
+        entries.remove(position);
+        mark_dict_changed(&mut entries);
+        Ok(())
+    } else {
+        Err(format!(
+            "KeyError: Key not found in the first mapping: {}",
+            format_key_error(key)
+        ))
+    }
+}
+
+fn pop_mapping_item(map: &Value, key: &Value) -> Result<Option<Value>, String> {
+    ensure_hashable_key(key)?;
+    match map {
+        Value::Dict(entries) | Value::OrderedDict(entries) => pop_mapping_entry(entries, key),
+        Value::Counter { entries } => pop_mapping_entry(entries, key),
+        Value::UserDict { data, .. } => pop_mapping_entry(data, key),
+        value if user_dict_subclass_data(value).is_some() => {
+            let data =
+                user_dict_subclass_data(value).expect("UserDict subclass data exists after guard");
+            pop_mapping_entry(&data, key)
+        }
+        Value::ChainMap { maps } => match chain_map_pop(maps, key.clone(), None) {
+            Ok(value) => Ok(Some(value)),
+            Err(message) if message.starts_with("KeyError:") => Ok(None),
+            Err(message) => Err(message),
+        },
+        value if dict_subclass_entries(value).is_some() => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            pop_mapping_entry(&entries, key)
+        }
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            match chain_map_pop(&maps, key.clone(), None) {
+                Ok(value) => Ok(Some(value)),
+                Err(message) if message.starts_with("KeyError:") => Ok(None),
+                Err(message) => Err(message),
+            }
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support item deletion",
+            type_name(value)
+        )),
+    }
+}
+
+fn pop_mapping_entry(entries: &DictRef, key: &Value) -> Result<Option<Value>, String> {
+    let mut entries = entries.borrow_mut();
+    if let Some(position) = entries
+        .iter()
+        .position(|(existing_key, _)| dict_keys_equal(existing_key, key))
+    {
+        let (_, value) = entries.remove(position);
+        mark_dict_changed(&mut entries);
+        Ok(Some(value))
+    } else {
+        Ok(None)
+    }
+}
+
+fn pop_mapping_item_last(map: &Value) -> Result<Option<(Value, Value)>, String> {
+    match map {
+        Value::Dict(entries) | Value::OrderedDict(entries) => pop_mapping_entry_last(entries),
+        Value::Counter { entries } => pop_mapping_entry_last(entries),
+        Value::UserDict { data, .. } => pop_mapping_entry_last(data),
+        value if user_dict_subclass_data(value).is_some() => {
+            let data =
+                user_dict_subclass_data(value).expect("UserDict subclass data exists after guard");
+            pop_mapping_entry_last(&data)
+        }
+        Value::ChainMap { maps } => match chain_map_popitem(maps) {
+            Ok(Value::Tuple(items)) if items.len() == 2 => {
+                Ok(Some((items[0].clone(), items[1].clone())))
+            }
+            Ok(_) => unreachable!("ChainMap popitem always returns a two-item tuple"),
+            Err(message) if message.starts_with("KeyError:") => Ok(None),
+            Err(message) => Err(message),
+        },
+        value if dict_subclass_entries(value).is_some() => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            pop_mapping_entry_last(&entries)
+        }
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            match chain_map_popitem(&maps) {
+                Ok(Value::Tuple(items)) if items.len() == 2 => {
+                    Ok(Some((items[0].clone(), items[1].clone())))
+                }
+                Ok(_) => unreachable!("ChainMap popitem always returns a two-item tuple"),
+                Err(message) if message.starts_with("KeyError:") => Ok(None),
+                Err(message) => Err(message),
+            }
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support popitem",
+            type_name(value)
+        )),
+    }
+}
+
+fn pop_mapping_entry_last(entries: &DictRef) -> Result<Option<(Value, Value)>, String> {
+    let mut entries = entries.borrow_mut();
+    let item = entries.pop();
+    if item.is_some() {
+        mark_dict_changed(&mut entries);
+    }
+    Ok(item)
+}
+
+fn clear_mapping_items(map: &Value) -> Result<(), String> {
+    match map {
+        Value::Dict(entries) | Value::OrderedDict(entries) => clear_mapping_entries(entries),
+        Value::Counter { entries } => clear_mapping_entries(entries),
+        Value::UserDict { data, .. } => clear_mapping_entries(data),
+        value if user_dict_subclass_data(value).is_some() => {
+            let data =
+                user_dict_subclass_data(value).expect("UserDict subclass data exists after guard");
+            clear_mapping_entries(&data)
+        }
+        Value::ChainMap { maps } => chain_map_clear(maps),
+        value if dict_subclass_entries(value).is_some() => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            clear_mapping_entries(&entries)
+        }
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            chain_map_clear(&maps)
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support clear",
+            type_name(value)
+        )),
+    }
+}
+
+fn clear_mapping_entries(entries: &DictRef) -> Result<(), String> {
+    let mut entries = entries.borrow_mut();
+    if !entries.is_empty() {
+        entries.clear();
+        mark_dict_changed(&mut entries);
+    }
+    Ok(())
+}
+
 fn dict_union_from_entries(
     mut entries: Vec<(Value, Value)>,
     updates: Vec<(Value, Value)>,
@@ -34383,6 +44914,1332 @@ fn dict_union_from_entries(
         insert_dict_entry(&mut entries, key, value)?;
     }
     build_dict(entries)
+}
+
+fn is_bytes_search_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.count"
+            | "bytes.find"
+            | "bytes.rfind"
+            | "bytes.index"
+            | "bytes.rindex"
+            | "bytearray.count"
+            | "bytearray.find"
+            | "bytearray.rfind"
+            | "bytearray.index"
+            | "bytearray.rindex"
+    )
+}
+
+fn is_bytes_prefix_suffix_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.startswith" | "bytes.endswith" | "bytearray.startswith" | "bytearray.endswith"
+    )
+}
+
+fn is_bytearray_mutation_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytearray.append"
+            | "bytearray.extend"
+            | "bytearray.insert"
+            | "bytearray.pop"
+            | "bytearray.remove"
+            | "bytearray.reverse"
+            | "bytearray.clear"
+            | "bytearray.copy"
+            | "bytearray.resize"
+            | "bytearray.take_bytes"
+            | "bytearray.__iadd__"
+            | "bytearray.__imul__"
+            | "bytearray.__delitem__"
+            | "bytearray.__setitem__"
+    )
+}
+
+fn is_bytes_join_method(name: &str) -> bool {
+    matches!(name, "bytes.join" | "bytearray.join")
+}
+
+fn is_bytes_split_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.split" | "bytes.rsplit" | "bytearray.split" | "bytearray.rsplit"
+    )
+}
+
+fn is_bytes_splitlines_method(name: &str) -> bool {
+    matches!(name, "bytes.splitlines" | "bytearray.splitlines")
+}
+
+fn is_bytes_ascii_case_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.lower"
+            | "bytes.upper"
+            | "bytes.capitalize"
+            | "bytes.title"
+            | "bytes.swapcase"
+            | "bytearray.lower"
+            | "bytearray.upper"
+            | "bytearray.capitalize"
+            | "bytearray.title"
+            | "bytearray.swapcase"
+    )
+}
+
+fn is_bytes_ascii_predicate_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.islower"
+            | "bytes.isupper"
+            | "bytes.istitle"
+            | "bytes.isspace"
+            | "bytes.isalpha"
+            | "bytes.isalnum"
+            | "bytes.isdigit"
+            | "bytes.isascii"
+            | "bytearray.islower"
+            | "bytearray.isupper"
+            | "bytearray.istitle"
+            | "bytearray.isspace"
+            | "bytearray.isalpha"
+            | "bytearray.isalnum"
+            | "bytearray.isdigit"
+            | "bytearray.isascii"
+    )
+}
+
+fn is_bytes_expandtabs_method(name: &str) -> bool {
+    matches!(name, "bytes.expandtabs" | "bytearray.expandtabs")
+}
+
+fn is_bytes_zfill_method(name: &str) -> bool {
+    matches!(name, "bytes.zfill" | "bytearray.zfill")
+}
+
+fn is_bytes_remove_affix_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.removeprefix"
+            | "bytes.removesuffix"
+            | "bytearray.removeprefix"
+            | "bytearray.removesuffix"
+    )
+}
+
+fn is_bytes_strip_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.strip"
+            | "bytes.lstrip"
+            | "bytes.rstrip"
+            | "bytearray.strip"
+            | "bytearray.lstrip"
+            | "bytearray.rstrip"
+    )
+}
+
+fn is_bytes_justify_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.ljust"
+            | "bytes.rjust"
+            | "bytes.center"
+            | "bytearray.ljust"
+            | "bytearray.rjust"
+            | "bytearray.center"
+    )
+}
+
+fn is_bytes_translate_method(name: &str) -> bool {
+    matches!(name, "bytes.translate" | "bytearray.translate")
+}
+
+fn is_bytes_replace_method(name: &str) -> bool {
+    matches!(name, "bytes.replace" | "bytearray.replace")
+}
+
+fn is_bytes_partition_method(name: &str) -> bool {
+    matches!(
+        name,
+        "bytes.partition" | "bytes.rpartition" | "bytearray.partition" | "bytearray.rpartition"
+    )
+}
+
+#[derive(Clone, Copy)]
+enum BytesResultKind {
+    Bytes,
+    ByteArray,
+}
+
+fn bytes_split_separator(
+    receiver: &[u8],
+    separator: &[u8],
+    maxsplit: i64,
+    reverse: bool,
+) -> Vec<Vec<u8>> {
+    if reverse {
+        bytes_rsplit_separator(receiver, separator, maxsplit)
+    } else {
+        bytes_split_separator_forward(receiver, separator, maxsplit)
+    }
+}
+
+fn bytes_split_separator_forward(receiver: &[u8], separator: &[u8], maxsplit: i64) -> Vec<Vec<u8>> {
+    let limit = limited_replacement_count(maxsplit);
+    if matches!(limit, Some(0)) {
+        return vec![receiver.to_vec()];
+    }
+
+    let mut parts = Vec::new();
+    let mut start = 0usize;
+    let mut index = 0usize;
+    let mut splits = 0usize;
+    while index + separator.len() <= receiver.len() {
+        if limit.is_some_and(|limit| splits >= limit) {
+            break;
+        }
+        if receiver[index..index + separator.len()] == *separator {
+            parts.push(receiver[start..index].to_vec());
+            splits += 1;
+            index += separator.len();
+            start = index;
+        } else {
+            index += 1;
+        }
+    }
+    parts.push(receiver[start..].to_vec());
+    parts
+}
+
+fn bytes_rsplit_separator(receiver: &[u8], separator: &[u8], maxsplit: i64) -> Vec<Vec<u8>> {
+    let limit = limited_replacement_count(maxsplit);
+    if matches!(limit, Some(0)) {
+        return vec![receiver.to_vec()];
+    }
+
+    let mut parts = Vec::new();
+    let mut end = receiver.len();
+    let mut search_end = receiver.len();
+    let mut splits = 0usize;
+    while search_end >= separator.len() {
+        if limit.is_some_and(|limit| splits >= limit) {
+            break;
+        }
+        let Some(position) = (0..=search_end - separator.len())
+            .rev()
+            .find(|position| receiver[*position..*position + separator.len()] == *separator)
+        else {
+            break;
+        };
+        parts.push(receiver[position + separator.len()..end].to_vec());
+        splits += 1;
+        end = position;
+        search_end = position;
+    }
+    parts.push(receiver[..end].to_vec());
+    parts.reverse();
+    parts
+}
+
+fn bytes_split_whitespace(receiver: &[u8], maxsplit: i64, reverse: bool) -> Vec<Vec<u8>> {
+    if reverse {
+        bytes_rsplit_whitespace(receiver, maxsplit)
+    } else {
+        bytes_split_whitespace_forward(receiver, maxsplit)
+    }
+}
+
+fn bytes_split_whitespace_forward(receiver: &[u8], maxsplit: i64) -> Vec<Vec<u8>> {
+    let limit = limited_replacement_count(maxsplit);
+    let mut parts = Vec::new();
+    let mut index = 0usize;
+    let mut splits = 0usize;
+
+    while index < receiver.len() && is_bytes_whitespace(receiver[index]) {
+        index += 1;
+    }
+
+    while index < receiver.len() {
+        if limit.is_some_and(|limit| splits >= limit) {
+            parts.push(receiver[index..].to_vec());
+            return parts;
+        }
+
+        let start = index;
+        while index < receiver.len() && !is_bytes_whitespace(receiver[index]) {
+            index += 1;
+        }
+        parts.push(receiver[start..index].to_vec());
+
+        while index < receiver.len() && is_bytes_whitespace(receiver[index]) {
+            index += 1;
+        }
+        if index < receiver.len() {
+            splits += 1;
+        }
+    }
+
+    parts
+}
+
+fn bytes_rsplit_whitespace(receiver: &[u8], maxsplit: i64) -> Vec<Vec<u8>> {
+    let limit = limited_replacement_count(maxsplit);
+    let mut parts = Vec::new();
+    let mut end = receiver.len();
+    let mut splits = 0usize;
+
+    while end > 0 && is_bytes_whitespace(receiver[end - 1]) {
+        end -= 1;
+    }
+
+    while end > 0 {
+        if limit.is_some_and(|limit| splits >= limit) {
+            parts.push(receiver[..end].to_vec());
+            parts.reverse();
+            return parts;
+        }
+
+        let part_end = end;
+        while end > 0 && !is_bytes_whitespace(receiver[end - 1]) {
+            end -= 1;
+        }
+        parts.push(receiver[end..part_end].to_vec());
+
+        while end > 0 && is_bytes_whitespace(receiver[end - 1]) {
+            end -= 1;
+        }
+        if end > 0 {
+            splits += 1;
+        }
+    }
+
+    parts.reverse();
+    parts
+}
+
+fn is_bytes_whitespace(byte: u8) -> bool {
+    matches!(byte, b'\t' | b'\n' | 0x0b | 0x0c | b'\r' | b' ')
+}
+
+fn bytes_split_maxsplit_argument(value: &Value, method: &str) -> Result<i64, String> {
+    string_split_maxsplit_argument(value, method)
+}
+
+fn call_bytes_splitlines_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() + keywords.len() > 1 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 1 argument, got {}",
+            rest.len() + keywords.len()
+        ));
+    }
+
+    let keepends = match (rest, keywords.as_slice()) {
+        ([], []) => false,
+        ([value], []) => is_truthy(value)?,
+        ([], [(keyword, value)]) if keyword == "keepends" => is_truthy(value)?,
+        ([], [(keyword, _)]) => {
+            return Err(format!(
+                "TypeError: '{keyword}' is an invalid keyword argument for {method}()"
+            ));
+        }
+        _ => unreachable!("splitlines arity checked above"),
+    };
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    Ok(list_value(
+        bytes_splitlines(&receiver, keepends)
+            .into_iter()
+            .map(|line| bytes_result_value(kind, line))
+            .collect(),
+    ))
+}
+
+fn bytes_splitlines(receiver: &[u8], keepends: bool) -> Vec<Vec<u8>> {
+    let mut lines = Vec::new();
+    let mut line_start = 0usize;
+    let mut index = 0usize;
+
+    while index < receiver.len() {
+        let Some(line_break_end) = bytes_line_break_end(receiver, index) else {
+            index += 1;
+            continue;
+        };
+        let line_end = if keepends { line_break_end } else { index };
+        lines.push(receiver[line_start..line_end].to_vec());
+        index = line_break_end;
+        line_start = line_break_end;
+    }
+
+    if line_start < receiver.len() {
+        lines.push(receiver[line_start..].to_vec());
+    }
+
+    lines
+}
+
+fn bytes_line_break_end(receiver: &[u8], index: usize) -> Option<usize> {
+    match receiver[index] {
+        b'\n' => Some(index + 1),
+        b'\r' if receiver.get(index + 1) == Some(&b'\n') => Some(index + 2),
+        b'\r' => Some(index + 1),
+        _ => None,
+    }
+}
+
+fn call_bytes_ascii_case_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+    let method = method_display_name(name);
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() expected 0 arguments, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let value = match method {
+        "lower" => bytes_ascii_lower(&receiver),
+        "upper" => bytes_ascii_upper(&receiver),
+        "capitalize" => bytes_ascii_capitalize(&receiver),
+        "title" => bytes_ascii_title(&receiver),
+        "swapcase" => bytes_ascii_swapcase(&receiver),
+        _ => unreachable!("byte ASCII case method checked before dispatch"),
+    };
+    Ok(bytes_result_value(kind, value))
+}
+
+fn call_bytes_ascii_predicate_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+    let method = method_display_name(name);
+    let [receiver] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() expected 0 arguments, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let (receiver, _) = bytes_method_receiver(receiver, method)?;
+    let value = match method {
+        "islower" => bytes_ascii_islower(&receiver),
+        "isupper" => bytes_ascii_isupper(&receiver),
+        "istitle" => bytes_ascii_istitle(&receiver),
+        "isspace" => !receiver.is_empty() && receiver.iter().copied().all(is_bytes_whitespace),
+        "isalpha" => !receiver.is_empty() && receiver.iter().copied().all(is_ascii_alpha_byte),
+        "isalnum" => !receiver.is_empty() && receiver.iter().copied().all(is_ascii_alnum_byte),
+        "isdigit" => !receiver.is_empty() && receiver.iter().copied().all(is_ascii_digit_byte),
+        "isascii" => receiver.iter().all(u8::is_ascii),
+        _ => unreachable!("byte ASCII predicate method checked before dispatch"),
+    };
+    Ok(Value::Bool(value))
+}
+
+fn bytes_ascii_lower(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().copied().map(ascii_lower_byte).collect()
+}
+
+fn bytes_ascii_upper(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().copied().map(ascii_upper_byte).collect()
+}
+
+fn bytes_ascii_capitalize(bytes: &[u8]) -> Vec<u8> {
+    let Some((&first, rest)) = bytes.split_first() else {
+        return Vec::new();
+    };
+    let mut value = Vec::with_capacity(bytes.len());
+    value.push(ascii_upper_byte(first));
+    value.extend(rest.iter().copied().map(ascii_lower_byte));
+    value
+}
+
+fn bytes_ascii_title(bytes: &[u8]) -> Vec<u8> {
+    let mut value = Vec::with_capacity(bytes.len());
+    let mut previous_cased = false;
+    for byte in bytes.iter().copied() {
+        if is_ascii_alpha_byte(byte) {
+            value.push(if previous_cased {
+                ascii_lower_byte(byte)
+            } else {
+                ascii_upper_byte(byte)
+            });
+            previous_cased = true;
+        } else {
+            value.push(byte);
+            previous_cased = false;
+        }
+    }
+    value
+}
+
+fn bytes_ascii_swapcase(bytes: &[u8]) -> Vec<u8> {
+    bytes.iter().copied().map(ascii_swapcase_byte).collect()
+}
+
+fn bytes_ascii_islower(bytes: &[u8]) -> bool {
+    let mut has_cased = false;
+    for byte in bytes.iter().copied() {
+        if is_ascii_upper_byte(byte) {
+            return false;
+        }
+        if is_ascii_lower_byte(byte) {
+            has_cased = true;
+        }
+    }
+    has_cased
+}
+
+fn bytes_ascii_isupper(bytes: &[u8]) -> bool {
+    let mut has_cased = false;
+    for byte in bytes.iter().copied() {
+        if is_ascii_lower_byte(byte) {
+            return false;
+        }
+        if is_ascii_upper_byte(byte) {
+            has_cased = true;
+        }
+    }
+    has_cased
+}
+
+fn bytes_ascii_istitle(bytes: &[u8]) -> bool {
+    let mut has_cased = false;
+    let mut previous_cased = false;
+    for byte in bytes.iter().copied() {
+        if is_ascii_upper_byte(byte) {
+            if previous_cased {
+                return false;
+            }
+            has_cased = true;
+            previous_cased = true;
+        } else if is_ascii_lower_byte(byte) {
+            if !previous_cased {
+                return false;
+            }
+            has_cased = true;
+            previous_cased = true;
+        } else {
+            previous_cased = false;
+        }
+    }
+    has_cased
+}
+
+fn ascii_lower_byte(byte: u8) -> u8 {
+    if is_ascii_upper_byte(byte) {
+        byte + 32
+    } else {
+        byte
+    }
+}
+
+fn ascii_upper_byte(byte: u8) -> u8 {
+    if is_ascii_lower_byte(byte) {
+        byte - 32
+    } else {
+        byte
+    }
+}
+
+fn ascii_swapcase_byte(byte: u8) -> u8 {
+    if is_ascii_lower_byte(byte) {
+        ascii_upper_byte(byte)
+    } else if is_ascii_upper_byte(byte) {
+        ascii_lower_byte(byte)
+    } else {
+        byte
+    }
+}
+
+fn is_ascii_lower_byte(byte: u8) -> bool {
+    byte.is_ascii_lowercase()
+}
+
+fn is_ascii_upper_byte(byte: u8) -> bool {
+    byte.is_ascii_uppercase()
+}
+
+fn is_ascii_alpha_byte(byte: u8) -> bool {
+    byte.is_ascii_alphabetic()
+}
+
+fn is_ascii_digit_byte(byte: u8) -> bool {
+    byte.is_ascii_digit()
+}
+
+fn is_ascii_alnum_byte(byte: u8) -> bool {
+    byte.is_ascii_alphanumeric()
+}
+
+fn call_bytes_expandtabs_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() + keywords.len() > 1 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 1 argument, got {}",
+            rest.len() + keywords.len()
+        ));
+    }
+
+    let tabsize = match (rest, keywords.as_slice()) {
+        ([], []) => 8,
+        ([value], []) => string_tabsize_argument(value, method)?,
+        ([], [(keyword, value)]) if keyword == "tabsize" => string_tabsize_argument(value, method)?,
+        ([], [(keyword, _)]) => {
+            return Err(format!(
+                "TypeError: '{keyword}' is an invalid keyword argument for {method}()"
+            ));
+        }
+        _ => unreachable!("expandtabs arity checked above"),
+    };
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    Ok(bytes_result_value(
+        kind,
+        bytes_expandtabs(&receiver, tabsize)?,
+    ))
+}
+
+fn call_bytes_zfill_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+    let method = method_display_name(name);
+    let [receiver, width] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let width = string_width_argument(width, method)?;
+    Ok(bytes_result_value(kind, bytes_zfill(&receiver, width)))
+}
+
+fn bytes_expandtabs(receiver: &[u8], tabsize: i32) -> Result<Vec<u8>, String> {
+    let mut expanded = Vec::new();
+    let mut column = 0usize;
+    let tabsize = usize::try_from(tabsize).unwrap_or(0);
+
+    for byte in receiver.iter().copied() {
+        match byte {
+            b'\t' if tabsize == 0 => {}
+            b'\t' => {
+                let spaces = tabsize - (column % tabsize);
+                expanded.extend(std::iter::repeat_n(b' ', spaces));
+                column = column
+                    .checked_add(spaces)
+                    .ok_or_else(|| "OverflowError: expanded string is too long".to_string())?;
+            }
+            b'\n' | b'\r' => {
+                expanded.push(byte);
+                column = 0;
+            }
+            byte => {
+                expanded.push(byte);
+                column = column
+                    .checked_add(1)
+                    .ok_or_else(|| "OverflowError: expanded string is too long".to_string())?;
+            }
+        }
+    }
+
+    Ok(expanded)
+}
+
+fn bytes_zfill(receiver: &[u8], width: usize) -> Vec<u8> {
+    if width <= receiver.len() {
+        return receiver.to_vec();
+    }
+
+    let zeros = width - receiver.len();
+    let mut output = Vec::with_capacity(width);
+    if let Some((sign @ (b'+' | b'-'), rest)) = receiver.split_first() {
+        output.push(*sign);
+        output.extend(std::iter::repeat_n(b'0', zeros));
+        output.extend_from_slice(rest);
+    } else {
+        output.extend(std::iter::repeat_n(b'0', zeros));
+        output.extend_from_slice(receiver);
+    }
+    output
+}
+
+fn call_bytes_remove_affix_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() != 1 {
+        return Err(format!(
+            "TypeError: {method}() expected 1 argument, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let affix = bytes_like_method_argument(&rest[0], method, "first")?;
+    let remove_prefix = method == "removeprefix";
+    Ok(bytes_result_value(
+        kind,
+        bytes_remove_affix(&receiver, &affix, remove_prefix),
+    ))
+}
+
+fn bytes_remove_affix(receiver: &[u8], affix: &[u8], remove_prefix: bool) -> Vec<u8> {
+    if affix.is_empty() {
+        return receiver.to_vec();
+    }
+
+    if remove_prefix && receiver.starts_with(affix) {
+        return receiver[affix.len()..].to_vec();
+    }
+
+    if !remove_prefix && receiver.ends_with(affix) {
+        return receiver[..receiver.len() - affix.len()].to_vec();
+    }
+
+    receiver.to_vec()
+}
+
+fn call_bytes_strip_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() > 1 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 1 argument, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let strip_left = method != "rstrip";
+    let strip_right = method != "lstrip";
+    let stripped = match rest.first() {
+        None | Some(Value::None) => {
+            bytes_strip_by(&receiver, strip_left, strip_right, is_bytes_whitespace)
+        }
+        Some(value) => {
+            let strip_bytes = bytes_like_method_argument(value, method, "first")?;
+            bytes_strip_by(&receiver, strip_left, strip_right, |byte| {
+                strip_bytes.contains(&byte)
+            })
+        }
+    };
+
+    Ok(bytes_result_value(kind, stripped))
+}
+
+fn bytes_strip_by(
+    receiver: &[u8],
+    strip_left: bool,
+    strip_right: bool,
+    should_strip: impl Fn(u8) -> bool,
+) -> Vec<u8> {
+    let mut start = 0usize;
+    let mut end = receiver.len();
+
+    if strip_left {
+        while start < end && should_strip(receiver[start]) {
+            start += 1;
+        }
+    }
+
+    if strip_right {
+        while end > start && should_strip(receiver[end - 1]) {
+            end -= 1;
+        }
+    }
+
+    receiver[start..end].to_vec()
+}
+
+fn call_bytes_justify_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.is_empty() {
+        return Err(format!(
+            "TypeError: {method}() expected at least 1 argument, got 0"
+        ));
+    }
+    if rest.len() > 2 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 2 arguments, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let width = string_width_argument(&rest[0], method)?;
+    if width <= receiver.len() {
+        return Ok(bytes_result_value(kind, receiver));
+    }
+
+    let fill = match rest.get(1) {
+        Some(value) => bytes_fill_character(value, method)?,
+        None => b' ',
+    };
+    let padding = width - receiver.len();
+    let mode = match method {
+        "ljust" => JustifyMode::Left,
+        "rjust" => JustifyMode::Right,
+        _ => JustifyMode::Center,
+    };
+    let (left, right) = match mode {
+        JustifyMode::Left => (0, padding),
+        JustifyMode::Right => (padding, 0),
+        JustifyMode::Center => (padding / 2, padding - padding / 2),
+    };
+
+    let mut output = Vec::with_capacity(width);
+    output.extend(std::iter::repeat_n(fill, left));
+    output.extend_from_slice(&receiver);
+    output.extend(std::iter::repeat_n(fill, right));
+    Ok(bytes_result_value(kind, output))
+}
+
+fn bytes_fill_character(value: &Value, method: &str) -> Result<u8, String> {
+    let fill = bytes_like_method_argument(value, method, "fill character")?;
+    match fill.as_slice() {
+        [byte] => Ok(*byte),
+        _ => Err("TypeError: The fill character must be exactly one byte long".to_string()),
+    }
+}
+
+fn call_bytes_maketrans(args: Vec<Value>) -> Result<Value, String> {
+    let [from, to] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: maketrans() expected 2 arguments, got {}",
+            args.len()
+        ));
+    };
+    let from = bytes_like_method_argument(from, "maketrans", "first")?;
+    let to = bytes_like_method_argument(to, "maketrans", "second")?;
+    if from.len() != to.len() {
+        return Err("ValueError: maketrans arguments must have same length".to_string());
+    }
+
+    let mut table = (0u8..=255).collect::<Vec<_>>();
+    for (from, to) in from.into_iter().zip(to) {
+        table[from as usize] = to;
+    }
+    Ok(Value::Bytes(table))
+}
+
+fn call_bytes_translate_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.is_empty() {
+        return Err(format!(
+            "TypeError: {method}() expected at least 1 argument, got 0"
+        ));
+    }
+
+    let mut delete = rest.get(1).cloned();
+    for (keyword, value) in keywords {
+        match keyword.as_str() {
+            "delete" => {
+                if delete.is_some() || rest.len() > 1 {
+                    return Err(format!(
+                        "TypeError: {method}() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                delete = Some(value);
+            }
+            _ => {
+                return Err(format!(
+                    "TypeError: '{keyword}' is an invalid keyword argument for {method}()"
+                ));
+            }
+        }
+    }
+    if rest.len() > 2 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 2 arguments, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let table = match &rest[0] {
+        Value::None => None,
+        value => {
+            let table = bytes_like_method_argument(value, method, "translation table")?;
+            if table.len() != 256 {
+                return Err("ValueError: translation table must be 256 characters long".to_string());
+            }
+            Some(table)
+        }
+    };
+    let delete = match delete {
+        Some(value) => bytes_like_method_argument(&value, method, "delete")?,
+        None => Vec::new(),
+    };
+
+    let mut output = Vec::with_capacity(receiver.len());
+    for byte in receiver {
+        if delete.contains(&byte) {
+            continue;
+        }
+        output.push(table.as_ref().map_or(byte, |table| table[byte as usize]));
+    }
+    Ok(bytes_result_value(kind, output))
+}
+
+fn call_bytes_replace_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() < 2 {
+        return Err(format!(
+            "TypeError: {method}() expected at least 2 arguments, got {}",
+            rest.len()
+        ));
+    }
+    if rest.len() > 3 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 3 arguments, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let old = bytes_like_method_argument(&rest[0], method, "first")?;
+    let new = bytes_like_method_argument(&rest[1], method, "second")?;
+    let count = match rest.get(2) {
+        Some(value) => bytes_replace_count_argument(value, method)?,
+        None => -1,
+    };
+
+    Ok(bytes_result_value(
+        kind,
+        bytes_replace(&receiver, &old, &new, count)?,
+    ))
+}
+
+fn call_bytes_partition_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.len() != 1 {
+        return Err(format!(
+            "TypeError: {method}() expected 1 argument, got {}",
+            rest.len()
+        ));
+    }
+
+    let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    let separator = bytes_like_method_argument(&rest[0], method, "first")?;
+    if separator.is_empty() {
+        return Err("ValueError: empty separator".to_string());
+    }
+
+    let len = i64::try_from(receiver.len()).map_err(|_| "bytes object is too large".to_string())?;
+    let reverse = method == "rpartition";
+    let index = bytes_find_index(&receiver, &separator, 0, len, reverse)?;
+
+    if index < 0 {
+        return Ok(tuple_value(match (kind, reverse) {
+            (BytesResultKind::Bytes, false) => vec![
+                Value::Bytes(receiver),
+                Value::Bytes(Vec::new()),
+                Value::Bytes(Vec::new()),
+            ],
+            (BytesResultKind::Bytes, true) => vec![
+                Value::Bytes(Vec::new()),
+                Value::Bytes(Vec::new()),
+                Value::Bytes(receiver),
+            ],
+            (BytesResultKind::ByteArray, false) => vec![
+                byte_array_value(receiver),
+                byte_array_value(Vec::new()),
+                byte_array_value(Vec::new()),
+            ],
+            (BytesResultKind::ByteArray, true) => vec![
+                byte_array_value(Vec::new()),
+                byte_array_value(Vec::new()),
+                byte_array_value(receiver),
+            ],
+        }));
+    }
+
+    let start = usize::try_from(index).map_err(|_| "bytes index out of range".to_string())?;
+    let after = start
+        .checked_add(separator.len())
+        .ok_or_else(|| "bytes index out of range".to_string())?;
+    let head = receiver[..start].to_vec();
+    let tail = receiver[after..].to_vec();
+
+    Ok(tuple_value(match kind {
+        BytesResultKind::Bytes => vec![
+            Value::Bytes(head),
+            partition_separator_value(&rest[0], separator),
+            Value::Bytes(tail),
+        ],
+        BytesResultKind::ByteArray => vec![
+            byte_array_value(head),
+            byte_array_value(separator),
+            byte_array_value(tail),
+        ],
+    }))
+}
+
+fn bytes_method_receiver(
+    receiver: &Value,
+    method: &str,
+) -> Result<(Vec<u8>, BytesResultKind), String> {
+    match receiver {
+        Value::Bytes(value) => Ok((value.clone(), BytesResultKind::Bytes)),
+        Value::ByteArray(value) => Ok((bytearray_bytes(value), BytesResultKind::ByteArray)),
+        value => Err(format!(
+            "TypeError: {method}() expected a bytes-like receiver, got {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn bytes_result_value(kind: BytesResultKind, bytes: Vec<u8>) -> Value {
+    match kind {
+        BytesResultKind::Bytes => Value::Bytes(bytes),
+        BytesResultKind::ByteArray => byte_array_value(bytes),
+    }
+}
+
+fn partition_separator_value(original: &Value, bytes: Vec<u8>) -> Value {
+    match original {
+        Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => original.clone(),
+        _ => Value::Bytes(bytes),
+    }
+}
+
+fn bytes_like_method_argument(
+    value: &Value,
+    method: &str,
+    position: &str,
+) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value.clone()),
+        Value::ByteArray(value) => Ok(bytearray_bytes(value)),
+        Value::MemoryView(view) => memoryview_bytes(view),
+        value => Err(format!(
+            "TypeError: {method} {position} arg must be bytes-like, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn call_bytes_prefix_suffix_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+
+    let method = method_display_name(name);
+    let [receiver, rest @ ..] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {method}() missing required argument 'self'"
+        ));
+    };
+    if rest.is_empty() {
+        return Err(format!(
+            "TypeError: {method}() expected at least 1 argument, got 0"
+        ));
+    }
+    if rest.len() > 3 {
+        return Err(format!(
+            "TypeError: {method}() expected at most 3 arguments, got {}",
+            rest.len()
+        ));
+    }
+
+    let haystack = bytes_search_receiver(receiver, method)?;
+    let (start, stop) = bytes_prefix_suffix_bounds(vm, &rest[1..], haystack.len(), method)?;
+    let starts_with = method == "startswith";
+    bytes_prefix_suffix_matches(&haystack, &rest[0], start, stop, starts_with, method)
+        .map(Value::Bool)
+}
+
+fn bytes_search_receiver(receiver: &Value, method: &str) -> Result<Vec<u8>, String> {
+    match receiver {
+        Value::Bytes(value) => Ok(value.clone()),
+        Value::ByteArray(value) => Ok(bytearray_bytes(value)),
+        value => Err(format!(
+            "TypeError: {method}() expected a bytes-like receiver, got {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn bytes_prefix_suffix_bounds(
+    vm: &mut Vm,
+    args: &[Value],
+    len: usize,
+    method: &str,
+) -> Result<(i64, i64), String> {
+    let len = i64::try_from(len).map_err(|_| "bytes object is too large".to_string())?;
+    let start = match args.first() {
+        Some(value) => bytes_bound_argument(vm, value, 0, method)?,
+        None => 0,
+    };
+    let stop = match args.get(1) {
+        Some(value) => bytes_bound_argument(vm, value, len, method)?,
+        None => len,
+    };
+    Ok((
+        normalize_string_start_bound(start, len),
+        normalize_string_stop_bound(stop, len),
+    ))
+}
+
+fn bytes_subsequence_bounds(
+    vm: &mut Vm,
+    args: &[Value],
+    len: usize,
+    method: &str,
+) -> Result<(i64, i64), String> {
+    let len = i64::try_from(len).map_err(|_| "bytes object is too large".to_string())?;
+    let start = match args.first() {
+        Some(value) => bytes_bound_argument(vm, value, 0, method)?,
+        None => 0,
+    };
+    let stop = match args.get(1) {
+        Some(value) => bytes_bound_argument(vm, value, len, method)?,
+        None => len,
+    };
+    Ok((
+        normalize_string_start_bound(start, len),
+        normalize_string_stop_bound(stop, len),
+    ))
+}
+
+fn bytes_bound_argument(
+    vm: &mut Vm,
+    value: &Value,
+    default: i64,
+    method: &str,
+) -> Result<i64, String> {
+    if matches!(value, Value::None) {
+        return Ok(default);
+    }
+
+    match vm.index_integer_value(value.clone())? {
+        Value::Number(value) => Ok(value),
+        Value::BigInt(value) => Ok(value.to_i64().unwrap_or_else(|| {
+            if value.is_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
+            }
+        })),
+        value => Err(format!(
+            "TypeError: {method} slice indices must be integers or None, got {}",
+            type_name(&value)
+        )),
+    }
+}
+
+fn bytes_prefix_suffix_matches(
+    haystack: &[u8],
+    prefix: &Value,
+    start: i64,
+    stop: i64,
+    starts_with: bool,
+    method: &str,
+) -> Result<bool, String> {
+    match prefix {
+        Value::Tuple(items) => {
+            for item in items.iter() {
+                if bytes_prefix_suffix_matches(haystack, item, start, stop, starts_with, method)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        value => {
+            let prefix = bytes_like_prefix_suffix_argument(value, method)?;
+            if start > stop {
+                return Ok(false);
+            }
+            let start =
+                usize::try_from(start).map_err(|_| "bytes index out of range".to_string())?;
+            let stop = usize::try_from(stop).map_err(|_| "bytes index out of range".to_string())?;
+            let window = &haystack[start..stop];
+            if starts_with {
+                Ok(window.starts_with(&prefix))
+            } else {
+                Ok(window.ends_with(&prefix))
+            }
+        }
+    }
+}
+
+fn bytes_like_prefix_suffix_argument(value: &Value, method: &str) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value.clone()),
+        Value::ByteArray(value) => Ok(bytearray_bytes(value)),
+        Value::MemoryView(view) => memoryview_bytes(view),
+        value => Err(format!(
+            "TypeError: {method} first arg must be bytes or a tuple of bytes, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn bytes_count_matches(
+    haystack: &[u8],
+    needle: &[u8],
+    start: i64,
+    stop: i64,
+) -> Result<usize, String> {
+    if start > stop {
+        return Ok(0);
+    }
+    let start = usize::try_from(start).map_err(|_| "bytes index out of range".to_string())?;
+    let stop = usize::try_from(stop).map_err(|_| "bytes index out of range".to_string())?;
+    if needle.is_empty() {
+        return stop
+            .checked_sub(start)
+            .and_then(|count| count.checked_add(1))
+            .ok_or_else(|| "bytes count is too large".to_string());
+    }
+    if needle.len() > stop.saturating_sub(start) {
+        return Ok(0);
+    }
+
+    let mut index = start;
+    let mut count = 0usize;
+    while index + needle.len() <= stop {
+        if haystack[index..index + needle.len()] == *needle {
+            count = count
+                .checked_add(1)
+                .ok_or_else(|| "bytes count is too large".to_string())?;
+            index += needle.len();
+        } else {
+            index += 1;
+        }
+    }
+    Ok(count)
+}
+
+fn bytes_find_index(
+    haystack: &[u8],
+    needle: &[u8],
+    start: i64,
+    stop: i64,
+    reverse: bool,
+) -> Result<i64, String> {
+    if start > stop {
+        return Ok(-1);
+    }
+    let start = usize::try_from(start).map_err(|_| "bytes index out of range".to_string())?;
+    let stop = usize::try_from(stop).map_err(|_| "bytes index out of range".to_string())?;
+    if needle.is_empty() {
+        let index = if reverse { stop } else { start };
+        return i64::try_from(index).map_err(|_| "bytes index out of range".to_string());
+    }
+    if needle.len() > stop.saturating_sub(start) {
+        return Ok(-1);
+    }
+
+    let last_start = stop - needle.len();
+    let found = if reverse {
+        (start..=last_start)
+            .rev()
+            .find(|candidate| haystack[*candidate..*candidate + needle.len()] == *needle)
+    } else {
+        (start..=last_start)
+            .find(|candidate| haystack[*candidate..*candidate + needle.len()] == *needle)
+    };
+
+    found
+        .map(|index| i64::try_from(index).map_err(|_| "bytes index out of range".to_string()))
+        .transpose()
+        .map(|index| index.unwrap_or(-1))
 }
 
 fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<(), String> {
@@ -34394,6 +46251,27 @@ fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
             method_display_name(name)
         ))
     }
+}
+
+fn namedtuple_fields_value(typ: &NamedTupleType) -> Value {
+    tuple_value(typ.fields.iter().cloned().map(Value::String).collect())
+}
+
+fn namedtuple_field_descriptor(typ: &NamedTupleTypeRef, index: usize) -> Value {
+    Value::NamedTupleFieldDescriptor {
+        typ: typ.clone(),
+        index,
+    }
+}
+
+fn namedtuple_field_defaults_value(typ: &NamedTupleType) -> Result<Value, String> {
+    build_dict(
+        typ.field_defaults
+            .iter()
+            .cloned()
+            .map(|(field, value)| (Value::String(field), value))
+            .collect(),
+    )
 }
 
 fn list_search_bounds(args: &[Value], len: usize) -> Result<(usize, usize), String> {
@@ -34440,6 +46318,14 @@ fn method_arg_count(args: &[Value]) -> usize {
     args.len().saturating_sub(1)
 }
 
+fn checked_bytearray_resize_length(length: usize) -> Result<usize, String> {
+    if length > MAX_BYTEARRAY_RESIZE_LEN {
+        Err("MemoryError".to_string())
+    } else {
+        Ok(length)
+    }
+}
+
 fn is_iterator_protocol_method(name: &str) -> bool {
     matches!(
         method_display_name(name),
@@ -34455,15 +46341,28 @@ fn value_len(value: &Value) -> Result<usize, String> {
     match value {
         Value::String(value) => Ok(value.chars().count()),
         Value::Bytes(value) => Ok(value.len()),
-        Value::ByteArray(value) => Ok(value.len()),
+        Value::ByteArray(value) => Ok(value.borrow().len()),
+        Value::MemoryView(view) => memoryview_len(view),
         Value::List(items) => Ok(items.borrow().len()),
+        Value::UserList { data, .. } => Ok(data.borrow().len()),
         Value::Tuple(items) => Ok(items.len()),
+        Value::NamedTuple { values, .. } => Ok(values.len()),
         Value::Set(items) => Ok(items.borrow().len()),
         Value::FrozenSet(items) => Ok(items.len()),
-        Value::Dict(entries) => Ok(entries.borrow().len()),
+        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(entries.borrow().len()),
+        Value::Counter { entries } => Ok(entries.borrow().len()),
         Value::MappingProxy { entries } => Ok(entries.borrow().len()),
+        value if counter_subclass_entries(value).is_some() => Ok(counter_subclass_entries(value)
+            .expect("Counter subclass entries exist after guard")
+            .borrow()
+            .len()),
         Value::ChainMap { maps } => Ok(chain_map_entries(maps)?.len()),
-        Value::UserDict { data } => Ok(data.borrow().len()),
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            Ok(chain_map_entries(&maps)?.len())
+        }
+        Value::UserDict { data, .. } => Ok(data.borrow().len()),
         Value::ScopeDict(scope) => Ok(scope.borrow().len()),
         Value::DictView { entries, .. } => Ok(entries.borrow().len()),
         Value::Range { start, stop, step } => Ok(range_values(*start, *stop, *step)?.len()),
@@ -34496,6 +46395,7 @@ fn uses_sequence_index_protocol(value: &Value) -> bool {
         value,
         Value::List(_)
             | Value::Tuple(_)
+            | Value::NamedTuple { .. }
             | Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
@@ -34574,6 +46474,24 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
         }
         Value::BytesIterator { bytes, index } => {
             if *index >= bytes.len() {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+
+            let value = Value::Number(bytes[*index] as i64);
+            *index += 1;
+            Ok(IteratorAdvance::Yield(value))
+        }
+        Value::ByteArrayIterator {
+            bytes,
+            index,
+            exhausted,
+        } => {
+            if *exhausted {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            let bytes = bytes.borrow();
+            if *index >= bytes.len() {
+                *exhausted = true;
                 return Ok(IteratorAdvance::Complete(Value::None));
             }
 
@@ -34776,8 +46694,35 @@ fn shared_iterator(iterator: Value) -> Value {
     Value::Iterator(Rc::new(RefCell::new(iterator)))
 }
 
+fn empty_generator_value(name: &str, globals: Scope) -> Value {
+    Value::Generator(Rc::new(RefCell::new(GeneratorState {
+        name: name.to_string(),
+        instructions: vec![Instruction::Return { src: None }],
+        ip: 0,
+        registers: Vec::new(),
+        globals,
+        locals: new_scope(),
+        closure: Vec::new(),
+        current_class: None,
+        first_arg_name: None,
+        qualname_prefix: None,
+        exception_handlers: Vec::new(),
+        current_exception: None,
+        pending_exception_after_clear: None,
+        resume_dst: None,
+        done: false,
+        is_iterable_coroutine: false,
+        first_line: 1,
+        line_sequence: vec![1],
+    })))
+}
+
 fn build_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
     dict_ref_from_entries(entries).map(Value::Dict)
+}
+
+fn build_ordered_dict(entries: Vec<(Value, Value)>) -> Result<Value, String> {
+    dict_ref_from_entries(entries).map(Value::OrderedDict)
 }
 
 fn dict_ref_from_entries(entries: Vec<(Value, Value)>) -> Result<DictRef, String> {
@@ -34791,6 +46736,280 @@ fn dict_ref_from_entries(entries: Vec<(Value, Value)>) -> Result<DictRef, String
         unreachable!("dict_value always returns a dict")
     };
     Ok(entries)
+}
+
+#[derive(Clone, Copy)]
+enum SequenceOrder {
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+fn sequence_order_operands(left: &Value, right: &Value) -> Option<(Vec<Value>, Vec<Value>)> {
+    if let (Some(left), Some(right)) = (
+        list_order_operand_values(left),
+        list_order_operand_values(right),
+    ) {
+        return Some((left, right));
+    }
+    if let (Some(left), Some(right)) = (
+        tuple_order_operand_values(left),
+        tuple_order_operand_values(right),
+    ) {
+        return Some((left, right));
+    }
+    None
+}
+
+fn list_order_operand_values(value: &Value) -> Option<Vec<Value>> {
+    match value {
+        Value::List(items) | Value::UserList { data: items, .. } => Some(items.borrow().clone()),
+        _ => None,
+    }
+}
+
+fn list_equality_operand_values(value: &Value) -> Option<Vec<Value>> {
+    match value {
+        Value::List(items) => Some(items.borrow().clone()),
+        _ => None,
+    }
+}
+
+fn user_list_comparison_operand(value: &Value) -> Value {
+    match value {
+        Value::UserList { data, .. } => Value::List(data.clone()),
+        value => value.clone(),
+    }
+}
+
+fn tuple_order_operand_values(value: &Value) -> Option<Vec<Value>> {
+    match value {
+        Value::Tuple(items) | Value::NamedTuple { values: items, .. } => {
+            Some(items.as_ref().clone())
+        }
+        value => namedtuple_subclass_storage(value).map(|(_, values)| values.as_ref().clone()),
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CounterUpdateMode {
+    Add,
+    Subtract,
+}
+
+#[derive(Clone, Copy)]
+enum CounterBinaryOp {
+    Add,
+    Subtract,
+    Union,
+    Intersection,
+    SymmetricDifference,
+}
+
+#[derive(Clone, Copy)]
+enum CounterCompareOp {
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
+}
+
+fn counter_entries_if_value(value: &Value) -> Option<DictRef> {
+    match value {
+        Value::Counter { entries } => Some(entries.clone()),
+        value => counter_subclass_entries(value),
+    }
+}
+
+fn counter_binary_op_from_method(name: &str) -> Option<CounterBinaryOp> {
+    match name {
+        "__add__" => Some(CounterBinaryOp::Add),
+        "__sub__" => Some(CounterBinaryOp::Subtract),
+        "__or__" => Some(CounterBinaryOp::Union),
+        "__and__" => Some(CounterBinaryOp::Intersection),
+        "__xor__" => Some(CounterBinaryOp::SymmetricDifference),
+        _ => None,
+    }
+}
+
+fn counter_in_place_op_from_method(name: &str) -> Option<CounterBinaryOp> {
+    match name {
+        "__iadd__" => Some(CounterBinaryOp::Add),
+        "__isub__" => Some(CounterBinaryOp::Subtract),
+        "__ior__" => Some(CounterBinaryOp::Union),
+        "__iand__" => Some(CounterBinaryOp::Intersection),
+        "__ixor__" => Some(CounterBinaryOp::SymmetricDifference),
+        _ => None,
+    }
+}
+
+fn counter_union_keys(left: &[(Value, Value)], right: &[(Value, Value)]) -> Vec<Value> {
+    let mut keys = left.iter().map(|(key, _)| key.clone()).collect::<Vec<_>>();
+    for (key, _) in right {
+        if !keys.iter().any(|existing| dict_keys_equal(existing, key)) {
+            keys.push(key.clone());
+        }
+    }
+    keys
+}
+
+fn counter_binary_value_from_operands(
+    left: &Value,
+    right: &Value,
+    op: CounterBinaryOp,
+) -> Result<Option<Value>, String> {
+    let (Some(left), Some(right)) = (
+        counter_entries_if_value(left),
+        counter_entries_if_value(right),
+    ) else {
+        return Ok(None);
+    };
+    counter_binary_value(&left, &right, op).map(Some)
+}
+
+fn counter_in_place_value_from_operands(
+    left: &Value,
+    right: &Value,
+    op: CounterBinaryOp,
+) -> Result<Option<Value>, String> {
+    let (Some(left_entries), Some(right_entries)) = (
+        counter_entries_if_value(left),
+        counter_entries_if_value(right),
+    ) else {
+        return Ok(None);
+    };
+    counter_in_place_value(&left_entries, &right_entries, op)?;
+    Ok(Some(Value::Counter {
+        entries: left_entries.clone(),
+    }))
+}
+
+fn counter_binary_value(
+    left: &DictRef,
+    right: &DictRef,
+    op: CounterBinaryOp,
+) -> Result<Value, String> {
+    Ok(Value::Counter {
+        entries: dict_ref_from_entries(counter_binary_entries(left, right, op)?)?,
+    })
+}
+
+fn counter_in_place_value(
+    left: &DictRef,
+    right: &DictRef,
+    op: CounterBinaryOp,
+) -> Result<(), String> {
+    let result = counter_binary_entries(left, right, op)?;
+    let mut left_ref = left.borrow_mut();
+    if !left_ref.entries.is_empty() || !result.is_empty() {
+        left_ref.entries.clear();
+        mark_dict_changed(&mut left_ref);
+    }
+    for (key, value) in result {
+        insert_live_dict_entry(&mut left_ref, key, value)?;
+    }
+    Ok(())
+}
+
+fn counter_binary_entries(
+    left: &DictRef,
+    right: &DictRef,
+    op: CounterBinaryOp,
+) -> Result<Vec<(Value, Value)>, String> {
+    let left_entries = left.borrow().entries.clone();
+    let right_entries = right.borrow().entries.clone();
+    let keys = counter_union_keys(&left_entries, &right_entries);
+    let mut result = Vec::new();
+
+    for key in keys {
+        let left_count = dict_lookup(&left_entries, &key).unwrap_or(Value::Number(0));
+        let right_count = dict_lookup(&right_entries, &key).unwrap_or(Value::Number(0));
+        let count = counter_binary_count(left_count, right_count, op)?;
+        if compare_values(count.clone(), Value::Number(0))?.is_gt() {
+            result.push((key, count));
+        }
+    }
+
+    Ok(result)
+}
+
+fn counter_binary_count(left: Value, right: Value, op: CounterBinaryOp) -> Result<Value, String> {
+    match op {
+        CounterBinaryOp::Add => add_values(left, right),
+        CounterBinaryOp::Subtract => subtract_values(left, right),
+        CounterBinaryOp::Union => counter_max_count(left, right),
+        CounterBinaryOp::Intersection => counter_min_count(left, right),
+        CounterBinaryOp::SymmetricDifference => {
+            let difference = subtract_values(left, right)?;
+            if compare_values(difference.clone(), Value::Number(0))?.is_lt() {
+                negate_value(difference)
+            } else {
+                Ok(difference)
+            }
+        }
+    }
+}
+
+fn counter_max_count(left: Value, right: Value) -> Result<Value, String> {
+    if compare_values(left.clone(), right.clone())?.is_lt() {
+        Ok(right)
+    } else {
+        Ok(left)
+    }
+}
+
+fn counter_min_count(left: Value, right: Value) -> Result<Value, String> {
+    if compare_values(left.clone(), right.clone())?.is_lt() {
+        Ok(left)
+    } else {
+        Ok(right)
+    }
+}
+
+fn counter_entries_sorted(entries: &DictRef) -> Vec<(Value, Value)> {
+    let mut indexed = entries
+        .borrow()
+        .entries
+        .iter()
+        .cloned()
+        .enumerate()
+        .collect::<Vec<_>>();
+    indexed.sort_by(
+        |(left_index, (_, left_value)), (right_index, (_, right_value))| {
+            counter_count_i128(right_value)
+                .cmp(&counter_count_i128(left_value))
+                .then_with(|| left_index.cmp(right_index))
+        },
+    );
+    indexed.into_iter().map(|(_, entry)| entry).collect()
+}
+
+fn counter_count_i128(value: &Value) -> i128 {
+    match numeric_bool_value(value.clone()) {
+        Value::Number(value) => value as i128,
+        Value::BigInt(value) => value.to_i128().unwrap_or_else(|| {
+            if value.is_negative() {
+                i128::MIN
+            } else {
+                i128::MAX
+            }
+        }),
+        _ => 0,
+    }
+}
+
+fn counter_count_i64(value: &Value) -> Result<i64, String> {
+    match numeric_bool_value(value.clone()) {
+        Value::Number(value) => Ok(value),
+        Value::BigInt(value) => value
+            .to_i64()
+            .ok_or_else(|| "OverflowError: Counter count is too large".to_string()),
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(&value)
+        )),
+    }
 }
 
 fn insert_set_item(items: &mut Vec<Value>, item: Value) -> Result<(), String> {
@@ -34846,7 +47065,7 @@ fn mark_dict_changed(entries: &mut DictStorage) {
 
 fn dict_entries_from_mapping(value: Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
-        Value::Dict(entries) => Ok(entries.borrow().clone()),
+        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(entries.borrow().clone()),
         value => Err(format!("dict update source must be a dict, got {value}")),
     }
 }
@@ -34897,16 +47116,21 @@ fn identity_value(value: &Value) -> Value {
 fn identity_bits(value: &Value) -> u64 {
     match value {
         Value::List(items) => rc_identity_bits(items),
+        Value::UserList { data, .. } => rc_identity_bits(data),
         Value::Tuple(items) => rc_plain_identity_bits(items),
+        Value::NamedTuple { values, .. } => rc_plain_identity_bits(values),
+        Value::ByteArray(bytes) => rc_identity_bits(bytes),
         Value::Set(items) => rc_identity_bits(items),
         Value::FrozenSet(items) => rc_plain_identity_bits(items),
         Value::Dict(entries) => rc_identity_bits(entries),
+        Value::OrderedDict(entries) => rc_identity_bits(entries),
+        Value::Counter { entries } => rc_identity_bits(entries),
         Value::ScopeDict(scope) => scope_identity_bits(scope),
         Value::DictView { entries, .. } => rc_identity_bits(entries),
         Value::MappingView { mapping, .. } => identity_bits(mapping),
         Value::MappingProxy { entries } => rc_identity_bits(entries),
         Value::ChainMap { maps } => maps.as_ptr() as usize as u64,
-        Value::UserDict { data } => rc_identity_bits(data),
+        Value::UserDict { data, .. } => rc_identity_bits(data),
         Value::SimpleNamespace { fields } => rc_identity_bits(fields),
         Value::Generator(state) => rc_identity_bits(state),
         Value::Coroutine(state) => rc_identity_bits(state),
@@ -34917,9 +47141,20 @@ fn identity_bits(value: &Value) -> u64 {
         Value::AsyncGeneratorClose(state) => rc_identity_bits(state),
         Value::Iterator(value) => rc_identity_bits(value),
         Value::Class { attrs, .. } => scope_identity_bits(attrs),
+        Value::NamedTupleFieldDescriptor { typ, index } => {
+            let mut hasher = DefaultHasher::new();
+            "namedtuple_field_descriptor".hash(&mut hasher);
+            rc_plain_identity_bits(&typ.identity).hash(&mut hasher);
+            index.hash(&mut hasher);
+            hasher.finish()
+        }
         Value::Instance { fields, .. } => scope_identity_bits(fields),
         Value::Module { attrs, .. } => scope_identity_bits(attrs),
         Value::Function { identity, .. } => rc_plain_identity_bits(identity),
+        Value::TypeParam { identity, .. } => rc_plain_identity_bits(identity),
+        Value::DeferredTypeParamExpr(deferred) => rc_plain_identity_bits(&deferred.identity),
+        Value::Traceback { identity } => rc_plain_identity_bits(identity),
+        Value::MemoryView(view) => rc_identity_bits(view),
         _ => stable_identity_bits(value),
     }
 }
@@ -34972,10 +47207,21 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         }
         Value::String(value) => hash_bytes_like(value.as_bytes(), hasher),
         Value::Bytes(value) => hash_bytes_like(value, hasher),
+        Value::MemoryView(view) => {
+            let bytes = memoryview_hash_bytes(view)?;
+            hash_bytes_like(&bytes, hasher)
+        }
         Value::Tuple(items) => {
             "tuple".hash(hasher);
             items.len().hash(hasher);
             for item in items.iter() {
+                hash_value_into(item, hasher)?;
+            }
+        }
+        Value::NamedTuple { values, .. } => {
+            "tuple".hash(hasher);
+            values.len().hash(hasher);
+            for item in values.iter() {
                 hash_value_into(item, hasher)?;
             }
         }
@@ -34997,14 +47243,10 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             hash_optional_slice_part(step, hasher)?;
         }
         Value::CodeObject {
-            mode,
-            filename,
-            instructions,
-            ..
+            mode, instructions, ..
         } => {
             "code".hash(hasher);
             mode.hash(hasher);
-            filename.hash(hasher);
             format!("{instructions:?}").hash(hasher);
         }
         Value::Range { start, stop, step } => {
@@ -35043,6 +47285,14 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::AsyncGeneratorClose(state) => {
             hash_rc_identity("async_generator_aclose", state, hasher)
         }
+        Value::AsyncGeneratorAthrowMixin { done, .. } => {
+            "coroutine".hash(hasher);
+            (Rc::as_ptr(done) as usize).hash(hasher);
+        }
+        Value::AsyncGeneratorAcloseMixin { done, .. } => {
+            "coroutine".hash(hasher);
+            (Rc::as_ptr(done) as usize).hash(hasher);
+        }
         Value::AnextDefault { awaitable, default } => {
             "anext_awaitable".hash(hasher);
             hash_value_into(awaitable, hasher)?;
@@ -35053,14 +47303,41 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             name.hash(hasher);
             hash_scope_identity(attrs, hasher);
         }
-        Value::TypeParam { kind, name, .. } => {
-            "type_param".hash(hasher);
-            kind.hash(hasher);
+        Value::NamedTupleType(typ) => {
+            "namedtuple_type".hash(hasher);
+            rc_plain_identity_bits(&typ.identity).hash(hasher);
+        }
+        Value::NamedTupleFieldDescriptor { typ, index } => {
+            "namedtuple_field_descriptor".hash(hasher);
+            rc_plain_identity_bits(&typ.identity).hash(hasher);
+            index.hash(hasher);
+        }
+        Value::NamedTupleTypeMethod { typ, name } => {
+            "namedtuple_type_method".hash(hasher);
+            rc_plain_identity_bits(&typ.identity).hash(hasher);
             name.hash(hasher);
+        }
+        Value::NamedTupleInstanceMethod { instance, name } => {
+            "namedtuple_instance_method".hash(hasher);
+            hash_value_into(instance, hasher)?;
+            name.hash(hasher);
+        }
+        Value::TypeParam { identity, .. } => {
+            "type_param".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::DeferredTypeParamExpr(deferred) => {
+            "deferred_type_param_expr".hash(hasher);
+            rc_plain_identity_bits(&deferred.identity).hash(hasher);
         }
         Value::TypeAlias { name, .. } => {
             "type_alias".hash(hasher);
             name.hash(hasher);
+        }
+        Value::ConstEvaluator { kind, target } => {
+            "const_evaluator".hash(hasher);
+            kind.hash(hasher);
+            hash_value_into(target, hasher)?;
         }
         Value::GenericAlias { origin, args } => {
             "generic_alias".hash(hasher);
@@ -35125,6 +47402,10 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             "ast_node".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
         }
+        Value::Traceback { identity } => {
+            "traceback".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
         Value::Module { name, attrs } => {
             "module".hash(hasher);
             name.hash(hasher);
@@ -35139,15 +47420,18 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::Ellipsis => "Ellipsis".hash(hasher),
         Value::MappingProxyObject { mapping } => hash_value_into(mapping, hasher)?,
         Value::List(_)
+        | Value::UserList { .. }
         | Value::ByteArray(_)
         | Value::Set(_)
         | Value::Dict(_)
+        | Value::OrderedDict(_)
         | Value::ScopeDict(_)
         | Value::SimpleNamespace { .. }
         | Value::DictView { .. }
         | Value::MappingView { .. }
         | Value::MappingProxy { .. }
         | Value::ChainMap { .. }
+        | Value::Counter { .. }
         | Value::UserDict { .. }
         | Value::Template { .. }
         | Value::Exception { .. }
@@ -35157,6 +47441,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::TemplateIterator { .. }
         | Value::StringIterator { .. }
         | Value::BytesIterator { .. }
+        | Value::ByteArrayIterator { .. }
         | Value::SetIterator { .. }
         | Value::DictIterator { .. }
         | Value::ReverseIterator { .. }
@@ -35222,6 +47507,13 @@ fn hash_rc_identity<T>(tag: &str, value: &Rc<RefCell<T>>, hasher: &mut DefaultHa
 }
 
 fn ensure_hashable_key(value: &Value) -> Result<(), String> {
+    if let Value::MemoryView(view) = value {
+        let readonly = memoryview_readonly(view)?;
+        if !readonly {
+            return Err("ValueError: cannot hash writable memoryview object".to_string());
+        }
+        return Ok(());
+    }
     if is_hashable_key(value) {
         Ok(())
     } else {
@@ -35243,6 +47535,7 @@ fn ensure_set_lookup_key(value: &Value) -> Result<(), String> {
 
 fn is_hashable_key(value: &Value) -> bool {
     match value {
+        Value::MemoryView(view) => memoryview_readonly(view).unwrap_or(false),
         Value::Number(_)
         | Value::BigInt(_)
         | Value::Float(_)
@@ -35261,10 +47554,18 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::AsyncGeneratorNext { .. }
         | Value::AsyncGeneratorThrow { .. }
         | Value::AsyncGeneratorClose(_)
+        | Value::AsyncGeneratorAthrowMixin { .. }
+        | Value::AsyncGeneratorAcloseMixin { .. }
         | Value::AnextDefault { .. }
         | Value::Class { .. }
+        | Value::NamedTupleType(_)
+        | Value::NamedTupleFieldDescriptor { .. }
+        | Value::NamedTupleTypeMethod { .. }
+        | Value::NamedTupleInstanceMethod { .. }
         | Value::TypeParam { .. }
+        | Value::DeferredTypeParamExpr(_)
         | Value::TypeAlias { .. }
+        | Value::ConstEvaluator { .. }
         | Value::GenericAlias { .. }
         | Value::Unpack(_)
         | Value::PicklePayload(_)
@@ -35277,12 +47578,14 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Super { .. }
         | Value::BoundMethod { .. }
         | Value::AstNode { .. }
+        | Value::Traceback { .. }
         | Value::Module { .. }
         | Value::Builtin(_)
         | Value::None
         | Value::NotImplemented
         | Value::Ellipsis => true,
         Value::Tuple(items) => items.iter().all(is_hashable_key),
+        Value::NamedTuple { values, .. } => values.iter().all(is_hashable_key),
         Value::FrozenSet(items) => items.iter().all(is_hashable_key),
         Value::Slice { start, stop, step } => {
             optional_slice_part_is_hashable(start)
@@ -35291,15 +47594,18 @@ fn is_hashable_key(value: &Value) -> bool {
         }
         Value::MappingProxyObject { mapping } => is_hashable_key(mapping),
         Value::List(_)
+        | Value::UserList { .. }
         | Value::ByteArray(_)
         | Value::Set(_)
         | Value::Dict(_)
+        | Value::OrderedDict(_)
         | Value::ScopeDict(_)
         | Value::SimpleNamespace { .. }
         | Value::DictView { .. }
         | Value::MappingView { .. }
         | Value::MappingProxy { .. }
         | Value::ChainMap { .. }
+        | Value::Counter { .. }
         | Value::UserDict { .. }
         | Value::Template { .. }
         | Value::Exception { .. }
@@ -35309,6 +47615,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::TemplateIterator { .. }
         | Value::StringIterator { .. }
         | Value::BytesIterator { .. }
+        | Value::ByteArrayIterator { .. }
         | Value::SetIterator { .. }
         | Value::DictIterator { .. }
         | Value::ReverseIterator { .. }
@@ -35388,8 +47695,16 @@ fn get_iter(value: Value) -> Result<Value, String> {
             items: items.borrow().clone(),
             index: 0,
         })),
+        Value::UserList { data, .. } => Ok(shared_iterator(Value::ListIterator {
+            items: data.borrow().clone(),
+            index: 0,
+        })),
         Value::Tuple(items) => Ok(shared_iterator(Value::TupleIterator {
             items: items.as_ref().clone(),
+            index: 0,
+        })),
+        Value::NamedTuple { values, .. } => Ok(shared_iterator(Value::TupleIterator {
+            items: values.as_ref().clone(),
             index: 0,
         })),
         Value::Template {
@@ -35407,10 +47722,22 @@ fn get_iter(value: Value) -> Result<Value, String> {
             bytes: value,
             index: 0,
         })),
-        Value::ByteArray(value) => Ok(shared_iterator(Value::BytesIterator {
+        Value::ByteArray(value) => Ok(shared_iterator(Value::ByteArrayIterator {
             bytes: value,
             index: 0,
+            exhausted: false,
         })),
+        Value::MemoryView(view) => Ok(shared_iterator(Value::ListIterator {
+            items: memoryview_values(&view)?,
+            index: 0,
+        })),
+        Value::GenericAlias { origin, args } => {
+            let alias = Value::GenericAlias { origin, args };
+            Ok(shared_iterator(Value::TupleIterator {
+                items: vec![Value::Unpack(Box::new(alias))],
+                index: 0,
+            }))
+        }
         Value::Set(items) => {
             let items_ref = items.borrow();
             let values = items_ref.clone();
@@ -35429,7 +47756,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             source: None,
             expected_len: items.len(),
         })),
-        Value::Dict(entries) => {
+        Value::Dict(entries) | Value::Counter { entries } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (entries_ref.len(), entries_ref.version)
@@ -35500,6 +47827,15 @@ fn get_iter(value: Value) -> Result<Value, String> {
         Value::BytesIterator { bytes, index } => {
             Ok(shared_iterator(Value::BytesIterator { bytes, index }))
         }
+        Value::ByteArrayIterator {
+            bytes,
+            index,
+            exhausted,
+        } => Ok(shared_iterator(Value::ByteArrayIterator {
+            bytes,
+            index,
+            exhausted,
+        })),
         Value::SetIterator {
             items,
             index,
@@ -35636,6 +47972,7 @@ fn match_class_pattern(subject: &Value, class: &Value) -> Result<bool, String> {
         Value::Builtin(name) if is_class_like_builtin(name) => {
             Ok(value_matches_builtin_class(subject, name))
         }
+        Value::NamedTupleType(_) => Ok(value_matches_class_value(subject, class)),
         _ => Err("called match pattern must be a class".to_string()),
     }
 }
@@ -35707,14 +48044,26 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "float" => matches!(subject, Value::Float(_)),
         "complex" => matches!(subject, Value::Complex { .. }),
         "str" => matches!(subject, Value::String(_)),
-        "bytes" => matches!(subject, Value::Bytes(_)),
-        "bytearray" => matches!(subject, Value::ByteArray(_)),
+        "bytes" => matches!(subject, Value::Bytes(_)) || bytes_subclass_bytes(subject).is_some(),
+        "bytearray" => {
+            matches!(subject, Value::ByteArray(_)) || bytearray_subclass_storage(subject).is_some()
+        }
+        "memoryview" => matches!(subject, Value::MemoryView(_)),
         "bool" => matches!(subject, Value::Bool(_)),
         "list" => matches!(subject, Value::List(_)),
-        "dict" => matches!(subject, Value::Dict(_)) || dict_subclass_entries(subject).is_some(),
+        "dict" => {
+            matches!(subject, Value::Dict(_) | Value::Counter { .. })
+                || counter_subclass_entries(subject).is_some()
+                || dict_subclass_entries(subject).is_some()
+        }
+        "Counter" => {
+            matches!(subject, Value::Counter { .. }) || counter_subclass_entries(subject).is_some()
+        }
         "ChainMap" => matches!(subject, Value::ChainMap { .. }),
+        "UserList" => matches!(subject, Value::UserList { .. }),
+        "UserDict" => matches!(subject, Value::UserDict { .. }),
         "SimpleNamespace" => is_simple_namespace_value(subject),
-        "tuple" => matches!(subject, Value::Tuple(_)),
+        "tuple" => matches!(subject, Value::Tuple(_) | Value::NamedTuple { .. }),
         "set" => matches!(subject, Value::Set(_)) || set_subclass_items(subject).is_some(),
         "frozenset" => {
             matches!(subject, Value::FrozenSet(_)) || frozen_set_subclass_items(subject).is_some()
@@ -35725,6 +48074,16 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "super" => matches!(subject, Value::Super { .. }),
         "staticmethod" => matches!(subject, Value::StaticMethod { .. }),
         "classmethod" => matches!(subject, Value::ClassMethod { .. }),
+        "traceback" => matches!(subject, Value::Traceback { .. }),
+        "typing.TypeVar" => {
+            matches!(subject, Value::TypeParam { kind, .. } if kind == "TypeVar")
+        }
+        "typing.TypeVarTuple" => {
+            matches!(subject, Value::TypeParam { kind, .. } if kind == "TypeVarTuple")
+        }
+        "typing.ParamSpec" => {
+            matches!(subject, Value::TypeParam { kind, .. } if kind == "ParamSpec")
+        }
         "type" => {
             matches!(subject, Value::Class { .. })
                 || matches!(subject, Value::Builtin(name) if is_builtin_type_object_name(name))
@@ -35861,6 +48220,34 @@ fn validate_match_class_arguments(
         return Ok(());
     }
 
+    if let Value::NamedTupleType(typ) = class {
+        if positional_count > typ.fields.len() {
+            return Err(format!(
+                "{}() accepts {} positional sub-patterns",
+                typ.name,
+                typ.fields.len()
+            ));
+        }
+
+        let mut positional_names: Vec<&str> = Vec::new();
+        for attr_name in typ.fields.iter().take(positional_count) {
+            if positional_names
+                .iter()
+                .copied()
+                .chain(keyword_names.iter().map(String::as_str))
+                .any(|existing| existing == attr_name)
+            {
+                return Err(format!(
+                    "{}() got multiple sub-patterns for attribute '{}'",
+                    typ.name, attr_name
+                ));
+            }
+            positional_names.push(attr_name.as_str());
+        }
+
+        return Ok(());
+    }
+
     let Value::Class {
         name, attrs, bases, ..
     } = class
@@ -35947,6 +48334,16 @@ fn load_match_class_positional(
 }
 
 fn match_class_positional_attr_name(class: &Value, index: usize) -> Result<Option<String>, String> {
+    if let Value::NamedTupleType(typ) = class {
+        return typ.fields.get(index).cloned().map(Some).ok_or_else(|| {
+            format!(
+                "{}() accepts {} positional sub-patterns",
+                typ.name,
+                typ.fields.len()
+            )
+        });
+    }
+
     let Value::Class {
         name, attrs, bases, ..
     } = class
@@ -36019,7 +48416,9 @@ fn match_sequence_length(value: &Value, min_len: usize, exact: bool) -> bool {
 fn sequence_pattern_len(value: &Value) -> Option<usize> {
     match value {
         Value::List(items) => Some(items.borrow().len()),
+        Value::UserList { data, .. } => Some(data.borrow().len()),
         Value::Tuple(items) => Some(items.len()),
+        Value::NamedTuple { values, .. } => Some(values.len()),
         Value::Range { start, stop, step } => range_values(*start, *stop, *step)
             .ok()
             .map(|values| values.len()),
@@ -36043,7 +48442,9 @@ fn load_sequence_rest(value: Value, start: usize, suffix: usize) -> Result<Value
 fn sequence_pattern_values(value: Value) -> Result<Vec<Value>, String> {
     match value {
         Value::List(items) => Ok(items.borrow().clone()),
+        Value::UserList { data, .. } => Ok(data.borrow().clone()),
         Value::Tuple(items) => Ok(items.as_ref().clone()),
+        Value::NamedTuple { values, .. } => Ok(values.as_ref().clone()),
         Value::Range { start, stop, step } => Ok(range_values(start, stop, step)?
             .into_iter()
             .map(Value::Number)
@@ -36055,7 +48456,9 @@ fn sequence_pattern_values(value: Value) -> Result<Vec<Value>, String> {
 fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
     match value {
         Value::List(items) => Ok(items.borrow().clone()),
+        Value::UserList { data, .. } => Ok(data.borrow().clone()),
         Value::Tuple(items) => Ok(items.as_ref().clone()),
+        Value::NamedTuple { values, .. } => Ok(values.as_ref().clone()),
         Value::Set(items) => Ok(items.borrow().clone()),
         Value::FrozenSet(items) => Ok(items.as_ref().clone()),
         Value::Dict(entries) => Ok(entries
@@ -36063,16 +48466,40 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
             .iter()
             .map(|(key, _)| key.clone())
             .collect()),
+        Value::Counter { entries } => Ok(entries
+            .borrow()
+            .iter()
+            .map(|(key, _)| key.clone())
+            .collect()),
+        value if counter_subclass_entries(&value).is_some() => {
+            let entries = counter_subclass_entries(&value)
+                .expect("Counter subclass entries exist after guard");
+            Ok(entries
+                .borrow()
+                .iter()
+                .map(|(key, _)| key.clone())
+                .collect())
+        }
         Value::MappingProxy { entries } => Ok(entries
             .borrow()
             .iter()
             .map(|(key, _)| key.clone())
             .collect()),
-        Value::UserDict { data } => Ok(data.borrow().iter().map(|(key, _)| key.clone()).collect()),
+        Value::UserDict { data, .. } => {
+            Ok(data.borrow().iter().map(|(key, _)| key.clone()).collect())
+        }
         Value::ChainMap { maps } => Ok(chain_map_entries(&maps)?
             .into_iter()
             .map(|(key, _)| key)
             .collect()),
+        value if chain_map_subclass_maps(&value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(&value).expect("ChainMap subclass maps exist after guard");
+            Ok(chain_map_entries(&maps)?
+                .into_iter()
+                .map(|(key, _)| key)
+                .collect())
+        }
         Value::ScopeDict(scope) => Ok(scope_dict_keys(&scope)),
         Value::DictView { kind, entries } => Ok(dict_view_values(kind, &entries)),
         Value::String(value) => Ok(value
@@ -36083,10 +48510,11 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
             .into_iter()
             .map(|byte| Value::Number(byte as i64))
             .collect()),
-        Value::ByteArray(value) => Ok(value
+        Value::ByteArray(value) => Ok(bytearray_bytes(&value)
             .into_iter()
             .map(|byte| Value::Number(byte as i64))
             .collect()),
+        Value::MemoryView(view) => memoryview_values(&view),
         Value::Range { start, stop, step } => Ok(range_values(start, stop, step)?
             .into_iter()
             .map(Value::Number)
@@ -36097,6 +48525,7 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
         | Value::TemplateIterator { .. }
         | Value::StringIterator { .. }
         | Value::BytesIterator { .. }
+        | Value::ByteArrayIterator { .. }
         | Value::SetIterator { .. }
         | Value::DictIterator { .. }
         | Value::ReverseIterator { .. }
@@ -36139,6 +48568,13 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                     .ok_or_else(|| "list index out of range".to_string())
             }
         },
+        Value::UserList { data, attrs } => {
+            let result = load_subscript(Value::List(data.clone()), index)?;
+            match result {
+                Value::List(items) => Ok(Value::UserList { data: items, attrs }),
+                value => Ok(value),
+            }
+        }
         Value::Tuple(items) => match index {
             Value::Slice { start, stop, step } => load_slice(
                 Value::Tuple(items),
@@ -36154,6 +48590,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                     .ok_or_else(|| "tuple index out of range".to_string())
             }
         },
+        Value::NamedTuple { values, .. } => load_subscript(Value::Tuple(values), index),
         Value::String(value) => match index {
             Value::Slice { start, stop, step } => load_slice(
                 Value::String(value),
@@ -36193,12 +48630,22 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 unbox_slice_part(step),
             ),
             index => {
+                let value = value.borrow();
                 let index = normalized_index(index, value.len(), "bytearray")?;
                 value
                     .get(index)
                     .map(|byte| Value::Number(*byte as i64))
                     .ok_or_else(|| "bytearray index out of range".to_string())
             }
+        },
+        Value::MemoryView(view) => match index {
+            Value::Slice { start, stop, step } => load_slice(
+                Value::MemoryView(view),
+                unbox_slice_part(start),
+                unbox_slice_part(stop),
+                unbox_slice_part(step),
+            ),
+            index => memoryview_item_value(&view, index),
         },
         Value::Range { start, stop, step } => match index {
             Value::Slice {
@@ -36221,7 +48668,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                     .ok_or_else(|| "range object index out of range".to_string())
             }
         },
-        Value::Dict(entries) => {
+        Value::Dict(entries) | Value::OrderedDict(entries) => {
             ensure_hashable_key(&index)?;
             entries
                 .borrow()
@@ -36229,6 +48676,15 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 .find(|(key, _)| dict_keys_equal(key, &index))
                 .map(|(_, value)| value.clone())
                 .ok_or_else(|| format!("KeyError: {}", format_key_error(&index)))
+        }
+        Value::Counter { entries } => {
+            ensure_hashable_key(&index)?;
+            Ok(entries
+                .borrow()
+                .iter()
+                .find(|(key, _)| dict_keys_equal(key, &index))
+                .map(|(_, value)| value.clone())
+                .unwrap_or(Value::Number(0)))
         }
         Value::MappingProxy { entries } => {
             ensure_hashable_key(&index)?;
@@ -36239,7 +48695,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 .map(|(_, value)| value.clone())
                 .ok_or_else(|| format!("KeyError: {}", format_key_error(&index)))
         }
-        Value::UserDict { data } => {
+        Value::UserDict { data, .. } => {
             ensure_hashable_key(&index)?;
             data.borrow()
                 .iter()
@@ -36257,6 +48713,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             origin: Box::new(Value::Builtin(name)),
             args: generic_alias_args(index),
         }),
+        Value::NamedTupleType(_) => Ok(generic_alias_value(object, generic_alias_args(index))),
         Value::Class { .. } => Ok(Value::GenericAlias {
             origin: Box::new(object),
             args: generic_alias_args(index),
@@ -36294,10 +48751,91 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
                 }
             }
         },
+        Value::UserList { data, attrs } => {
+            store_subscript(Value::List(data.clone()), index, value)?;
+            Ok(Value::UserList { data, attrs })
+        }
+        Value::ByteArray(bytes) => match index {
+            Value::Slice { start, stop, step } => store_slice(
+                Value::ByteArray(bytes),
+                unbox_slice_part(start),
+                unbox_slice_part(stop),
+                unbox_slice_part(step),
+                value,
+            ),
+            index => {
+                let byte = bytearray_assignment_byte(value)?;
+                let mut borrowed = bytes.borrow_mut();
+                let index = normalized_index(index, borrowed.len(), "bytearray")?;
+                if let Some(slot) = borrowed.get_mut(index) {
+                    *slot = byte;
+                    drop(borrowed);
+                    Ok(Value::ByteArray(bytes))
+                } else {
+                    Err("bytearray index out of range".to_string())
+                }
+            }
+        },
+        Value::MemoryView(view) => match index {
+            Value::Slice { start, stop, step } => store_slice(
+                Value::MemoryView(view),
+                unbox_slice_part(start),
+                unbox_slice_part(stop),
+                unbox_slice_part(step),
+                value,
+            ),
+            index => {
+                let (bytes, physical_index) = {
+                    let state = view.borrow();
+                    if state.released {
+                        return Err(released_memoryview_error());
+                    }
+                    if state.readonly {
+                        return Err("TypeError: cannot modify read-only memory".to_string());
+                    }
+                    let logical_index = normalized_index(index, state.len, "memoryview")?;
+                    let physical_index = memoryview_physical_index(&state, logical_index)?;
+                    (state.bytes.clone(), physical_index)
+                };
+                let byte = if memoryview_format(&view)? == "c" {
+                    memoryview_c_assignment_byte(value)?
+                } else {
+                    memoryview_assignment_byte(value)?
+                };
+                bytes.borrow_mut()[physical_index] = byte;
+                Ok(Value::MemoryView(view))
+            }
+        },
         Value::Dict(entries) => {
             ensure_hashable_key(&index)?;
             insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
             Ok(Value::Dict(entries))
+        }
+        Value::OrderedDict(entries) => {
+            ensure_hashable_key(&index)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            Ok(Value::OrderedDict(entries))
+        }
+        Value::Counter { entries } => {
+            ensure_hashable_key(&index)?;
+            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            Ok(Value::Counter { entries })
+        }
+        object if counter_subclass_entries(&object).is_some() => {
+            ensure_hashable_key(&index)?;
+            let entries = counter_subclass_entries(&object)
+                .expect("Counter subclass entries exist after guard");
+            insert_live_dict_entry(&mut entries.borrow_mut(), index, value)?;
+            Ok(object)
+        }
+        Value::UserDict { data, attrs } => {
+            ensure_hashable_key(&index)?;
+            insert_live_dict_entry(&mut data.borrow_mut(), index, value)?;
+            Ok(Value::UserDict { data, attrs })
+        }
+        Value::ChainMap { maps } => {
+            chain_map_set_item(&maps, index, value)?;
+            Ok(Value::ChainMap { maps })
         }
         Value::ScopeDict(scope) => {
             insert_scope_dict_entry(&scope, index, value)?;
@@ -36306,10 +48844,23 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
         Value::MappingProxy { .. } => {
             Err("TypeError: 'mappingproxy' object does not support item assignment".to_string())
         }
-        Value::Tuple(_) => Err("'tuple' object does not support item assignment".to_string()),
-        Value::String(_) => Err("'str' object does not support item assignment".to_string()),
-        Value::Range { .. } => Err("'range' object does not support item assignment".to_string()),
-        value => Err(format!("{value} does not support item assignment")),
+        Value::Tuple(_) => {
+            Err("TypeError: 'tuple' object does not support item assignment".to_string())
+        }
+        Value::NamedTuple { typ, .. } => Err(format!(
+            "TypeError: '{}' object does not support item assignment",
+            typ.name
+        )),
+        Value::String(_) => {
+            Err("TypeError: 'str' object does not support item assignment".to_string())
+        }
+        Value::Range { .. } => {
+            Err("TypeError: 'range' object does not support item assignment".to_string())
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support item assignment",
+            type_name(&value)
+        )),
     }
 }
 
@@ -36330,6 +48881,31 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
                 Ok(Value::List(items))
             }
         },
+        Value::UserList { data, attrs } => {
+            delete_subscript(Value::List(data.clone()), index)?;
+            Ok(Value::UserList { data, attrs })
+        }
+        Value::ByteArray(bytes) => match index {
+            Value::Slice { start, stop, step } => delete_slice(
+                Value::ByteArray(bytes),
+                unbox_slice_part(start),
+                unbox_slice_part(stop),
+                unbox_slice_part(step),
+            ),
+            index => {
+                let mut borrowed = bytes.borrow_mut();
+                let index = normalized_index(index, borrowed.len(), "bytearray")?;
+                if borrowed.has_active_exports() {
+                    return Err(bytearray_resize_export_error());
+                }
+                borrowed.remove(index);
+                drop(borrowed);
+                Ok(Value::ByteArray(bytes))
+            }
+        },
+        Value::MemoryView(_) => {
+            Err("TypeError: memoryview object does not support item deletion".to_string())
+        }
         Value::Dict(entries) => {
             ensure_hashable_key(&index)?;
             let mut entries_borrowed = entries.borrow_mut();
@@ -36345,6 +48921,27 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
                 Err(format!("KeyError: {}", format_key_error(&index)))
             }
         }
+        Value::Counter { entries } => {
+            ensure_hashable_key(&index)?;
+            let _ = pop_mapping_entry(&entries, &index)?;
+            Ok(Value::Counter { entries })
+        }
+        object if counter_subclass_entries(&object).is_some() => {
+            ensure_hashable_key(&index)?;
+            let entries = counter_subclass_entries(&object)
+                .expect("Counter subclass entries exist after guard");
+            let _ = pop_mapping_entry(&entries, &index)?;
+            Ok(object)
+        }
+        Value::UserDict { data, attrs } => {
+            ensure_hashable_key(&index)?;
+            delete_mapping_entry(&data, &index)?;
+            Ok(Value::UserDict { data, attrs })
+        }
+        Value::ChainMap { maps } => {
+            chain_map_delete_item(&maps, index)?;
+            Ok(Value::ChainMap { maps })
+        }
         Value::ScopeDict(scope) => {
             delete_scope_dict_entry(&scope, &index)?;
             Ok(Value::ScopeDict(scope))
@@ -36352,10 +48949,23 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::MappingProxy { .. } => {
             Err("TypeError: 'mappingproxy' object does not support item deletion".to_string())
         }
-        Value::Tuple(_) => Err("'tuple' object does not support item deletion".to_string()),
-        Value::String(_) => Err("'str' object does not support item deletion".to_string()),
-        Value::Range { .. } => Err("'range' object does not support item deletion".to_string()),
-        value => Err(format!("{value} does not support item deletion")),
+        Value::Tuple(_) => {
+            Err("TypeError: 'tuple' object does not support item deletion".to_string())
+        }
+        Value::NamedTuple { typ, .. } => Err(format!(
+            "TypeError: '{}' object does not support item deletion",
+            typ.name
+        )),
+        Value::String(_) => {
+            Err("TypeError: 'str' object does not support item deletion".to_string())
+        }
+        Value::Range { .. } => {
+            Err("TypeError: 'range' object does not support item deletion".to_string())
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support item deletion",
+            type_name(&value)
+        )),
     }
 }
 
@@ -36396,10 +49006,96 @@ fn store_slice(
             drop(borrowed);
             Ok(Value::List(items))
         }
-        Value::Tuple(_) => Err("'tuple' object does not support item assignment".to_string()),
-        Value::String(_) => Err("'str' object does not support item assignment".to_string()),
-        Value::Range { .. } => Err("'range' object does not support item assignment".to_string()),
-        value => Err(format!("{value} does not support slice assignment")),
+        Value::ByteArray(bytes) => {
+            let start = slice_bound(start)?;
+            let stop = slice_bound(stop)?;
+            let step = slice_bound(step)?;
+            let step_value = slice_step_value(step)?;
+            let replacement = bytearray_slice_assignment_value(value)?;
+
+            if step_value == 1 {
+                let len = bytes.borrow().len();
+                let (start, stop) = contiguous_slice_bounds(len, start, stop)?;
+                if replacement.len() != stop.saturating_sub(start) {
+                    ensure_bytearray_resizable(&bytes)?;
+                }
+                let mut borrowed = bytes.borrow_mut();
+                borrowed.splice(start..stop, replacement);
+            } else {
+                let len = bytes.borrow().len();
+                let mut borrowed = bytes.borrow_mut();
+                let indices = slice_indices(len, start, stop, Some(step_value))?;
+                if replacement.len() != indices.len() {
+                    if borrowed.has_active_exports() {
+                        return Err(bytearray_resize_export_error());
+                    }
+                    return Err(format!(
+                        "attempt to assign bytes of size {} to extended slice of size {}",
+                        replacement.len(),
+                        indices.len()
+                    ));
+                }
+
+                for (index, byte) in indices.into_iter().zip(replacement) {
+                    borrowed[index] = byte;
+                }
+            }
+
+            Ok(Value::ByteArray(bytes))
+        }
+        Value::MemoryView(view) => {
+            let start = slice_bound(start)?;
+            let stop = slice_bound(stop)?;
+            let step = slice_bound(step)?;
+            let replacement = memoryview_slice_assignment_value(&view, value)?;
+            let (bytes, physical_indices) = {
+                let state = view.borrow();
+                if state.released {
+                    return Err(released_memoryview_error());
+                }
+                if state.readonly {
+                    return Err("TypeError: cannot modify read-only memory".to_string());
+                }
+                let logical_indices = slice_indices(state.len, start, stop, step)?;
+                let physical_indices = logical_indices
+                    .into_iter()
+                    .map(|index| memoryview_physical_index(&state, index))
+                    .collect::<Result<Vec<_>, _>>()?;
+                (state.bytes.clone(), physical_indices)
+            };
+
+            if replacement.len() != physical_indices.len() {
+                return Err(
+                    "ValueError: memoryview assignment: lvalue and rvalue have different structures"
+                        .to_string(),
+                );
+            }
+
+            let mut borrowed = bytes.borrow_mut();
+            for (index, byte) in physical_indices.into_iter().zip(replacement) {
+                borrowed[index] = byte;
+            }
+
+            drop(borrowed);
+            Ok(Value::MemoryView(view))
+        }
+        Value::Tuple(_) => {
+            Err("TypeError: 'tuple' object does not support item assignment".to_string())
+        }
+        Value::NamedTuple { typ, .. } => Err(format!(
+            "TypeError: '{}' object does not support item assignment",
+            typ.name
+        )),
+        Value::String(_) => {
+            Err("TypeError: 'str' object does not support item assignment".to_string())
+        }
+        Value::Range { .. } => {
+            Err("TypeError: 'range' object does not support item assignment".to_string())
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support slice assignment",
+            type_name(&value)
+        )),
     }
 }
 
@@ -36431,10 +49127,55 @@ fn delete_slice(
             drop(borrowed);
             Ok(Value::List(items))
         }
-        Value::Tuple(_) => Err("'tuple' object does not support item deletion".to_string()),
-        Value::String(_) => Err("'str' object does not support item deletion".to_string()),
-        Value::Range { .. } => Err("'range' object does not support item deletion".to_string()),
-        value => Err(format!("{value} does not support slice deletion")),
+        Value::ByteArray(bytes) => {
+            let start = slice_bound(start)?;
+            let stop = slice_bound(stop)?;
+            let step = slice_bound(step)?;
+            let step_value = slice_step_value(step)?;
+
+            if step_value == 1 {
+                let len = bytes.borrow().len();
+                let (start, stop) = contiguous_slice_bounds(len, start, stop)?;
+                if start != stop {
+                    ensure_bytearray_resizable(&bytes)?;
+                }
+                let mut borrowed = bytes.borrow_mut();
+                borrowed.drain(start..stop);
+            } else {
+                let len = bytes.borrow().len();
+                let mut indices = slice_indices(len, start, stop, Some(step_value))?;
+                if !indices.is_empty() {
+                    ensure_bytearray_resizable(&bytes)?;
+                }
+                let mut borrowed = bytes.borrow_mut();
+                indices.sort_unstable_by(|left, right| right.cmp(left));
+                for index in indices {
+                    borrowed.remove(index);
+                }
+            }
+
+            Ok(Value::ByteArray(bytes))
+        }
+        Value::MemoryView(_) => {
+            Err("TypeError: memoryview object does not support item deletion".to_string())
+        }
+        Value::Tuple(_) => {
+            Err("TypeError: 'tuple' object does not support item deletion".to_string())
+        }
+        Value::NamedTuple { typ, .. } => Err(format!(
+            "TypeError: '{}' object does not support item deletion",
+            typ.name
+        )),
+        Value::String(_) => {
+            Err("TypeError: 'str' object does not support item deletion".to_string())
+        }
+        Value::Range { .. } => {
+            Err("TypeError: 'range' object does not support item deletion".to_string())
+        }
+        value => Err(format!(
+            "TypeError: '{}' object does not support slice deletion",
+            type_name(&value)
+        )),
     }
 }
 
@@ -36497,6 +49238,7 @@ fn load_slice(
             Ok(Value::Bytes(value))
         }
         Value::ByteArray(value) => {
+            let value = value.borrow();
             let indices = slice_indices(
                 value.len(),
                 slice_bound(start)?,
@@ -36504,7 +49246,48 @@ fn load_slice(
                 slice_bound(step)?,
             )?;
             let value = indices.into_iter().map(|index| value[index]).collect();
-            Ok(Value::ByteArray(value))
+            Ok(byte_array_value(value))
+        }
+        Value::MemoryView(view) => {
+            let start = slice_bound(start)?;
+            let stop = slice_bound(stop)?;
+            let step = slice_bound(step)?;
+            let state = view.borrow();
+            if state.released {
+                return Err(released_memoryview_error());
+            }
+            let len = i64::try_from(state.len).map_err(|_| "sequence is too large".to_string())?;
+            let (_, _, normalized_step) = normalized_slice_indices(len, start, stop, step)?;
+            let indices = slice_indices(state.len, start, stop, step)?;
+            let offset = indices
+                .first()
+                .map(|index| memoryview_physical_index(&state, *index))
+                .transpose()?
+                .unwrap_or(state.offset);
+            let stride = if indices.len() > 1 {
+                let first = memoryview_physical_index(&state, indices[0])?;
+                let second = memoryview_physical_index(&state, indices[1])?;
+                isize::try_from(second).map_err(|_| "memoryview index out of range".to_string())?
+                    - isize::try_from(first)
+                        .map_err(|_| "memoryview index out of range".to_string())?
+            } else {
+                state
+                    .stride
+                    .checked_mul(
+                        isize::try_from(normalized_step)
+                            .map_err(|_| "memoryview stride is too large".to_string())?,
+                    )
+                    .ok_or_else(|| "memoryview stride is too large".to_string())?
+            };
+            Ok(memory_view_from_parts_with_format(
+                state.bytes.clone(),
+                state.obj.clone(),
+                offset,
+                indices.len(),
+                stride,
+                state.readonly,
+                state.format.clone(),
+            ))
         }
         Value::Range {
             start: range_start,
@@ -36553,10 +49336,13 @@ fn slice_bound(value: Option<Value>) -> Result<Option<i64>, String> {
     match value {
         Some(Value::Bool(value)) => Ok(Some(bool_as_i64(value))),
         Some(Value::Number(value)) => Ok(Some(value)),
-        Some(Value::BigInt(value)) => value
-            .to_i64()
-            .map(Some)
-            .ok_or_else(|| "slice index is too large".to_string()),
+        Some(Value::BigInt(value)) => Ok(Some(value.to_i64().unwrap_or_else(|| {
+            if value.is_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
+            }
+        }))),
         Some(Value::None) => Ok(None),
         Some(value) => Err(format!("slice indices must be integers, got {value}")),
         None => Ok(None),
@@ -36603,9 +49389,10 @@ fn slice_indices(
         while index < stop {
             indices
                 .push(usize::try_from(index).map_err(|_| "slice index out of range".to_string())?);
-            index = index
-                .checked_add(step)
-                .ok_or_else(|| "slice index overflow".to_string())?;
+            let Some(next) = index.checked_add(step) else {
+                break;
+            };
+            index = next;
         }
     } else {
         let mut index = start;
@@ -36613,9 +49400,10 @@ fn slice_indices(
         while index > stop {
             indices
                 .push(usize::try_from(index).map_err(|_| "slice index out of range".to_string())?);
-            index = index
-                .checked_add(step)
-                .ok_or_else(|| "slice index overflow".to_string())?;
+            let Some(next) = index.checked_add(step) else {
+                break;
+            };
+            index = next;
         }
     }
 
@@ -36718,7 +49506,15 @@ fn numeric_bool_operands(left: Value, right: Value) -> (Value, Value) {
     (numeric_bool_value(left), numeric_bool_value(right))
 }
 
+fn is_int_subclass_instance(value: &Value) -> bool {
+    matches!(value, Value::Instance { class_bases, .. } if class_bases_include_builtin(class_bases, "int"))
+}
+
 fn add_values(left: Value, right: Value) -> Result<Value, String> {
+    if let Some(value) = counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Add)? {
+        return Ok(value);
+    }
+
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
@@ -36813,13 +49609,19 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             left.extend(right);
             Ok(Value::Bytes(left))
         }
-        (Value::ByteArray(mut left), Value::ByteArray(right)) => {
-            left.extend(right);
-            Ok(Value::ByteArray(left))
+        (Value::ByteArray(left), Value::ByteArray(right)) => {
+            let mut bytes = bytearray_bytes(&left);
+            bytes.extend(bytearray_bytes(&right));
+            Ok(byte_array_value(bytes))
         }
-        (Value::ByteArray(mut left), Value::Bytes(right)) => {
-            left.extend(right);
-            Ok(Value::ByteArray(left))
+        (Value::ByteArray(left), Value::Bytes(right)) => {
+            let mut bytes = bytearray_bytes(&left);
+            bytes.extend(right);
+            Ok(byte_array_value(bytes))
+        }
+        (Value::Bytes(mut left), Value::ByteArray(right)) => {
+            left.extend(bytearray_bytes(&right));
+            Ok(Value::Bytes(left))
         }
         (Value::List(left), Value::List(right)) => {
             let mut items = left.borrow().clone();
@@ -36840,14 +49642,50 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn in_place_add_values(left: Value, right: Value) -> Result<Value, String> {
+    if let Some(value) = counter_in_place_value_from_operands(&left, &right, CounterBinaryOp::Add)?
+    {
+        return Ok(value);
+    }
+
     match left {
         Value::List(items) => {
             let values = sequence_values(right)?;
             items.borrow_mut().extend(values);
             Ok(Value::List(items))
         }
+        Value::ByteArray(bytes) => {
+            let extension = bytearray_iadd_extension(right)?;
+            if !extension.is_empty() {
+                ensure_bytearray_resizable(&bytes)?;
+            }
+            bytes.borrow_mut().extend(extension);
+            Ok(Value::ByteArray(bytes))
+        }
         left => add_values(left, right),
     }
+}
+
+fn bytearray_iadd_extension(value: Value) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value),
+        Value::ByteArray(value) => Ok(bytearray_bytes(&value)),
+        Value::MemoryView(view) => memoryview_bytes(&view),
+        value => Err(format!(
+            "TypeError: can't concat {} to bytearray",
+            type_name(&value)
+        )),
+    }
+}
+
+fn bytearray_repeat_in_place(bytes: &ByteArrayRef, count: i64) -> Result<(), String> {
+    let current_len = bytes.borrow().len();
+    let next_len = repeat_bytes_len(current_len, count)?;
+    if next_len != current_len {
+        ensure_bytearray_resizable(bytes)?;
+    }
+    let repeated = repeat_bytes(bytearray_bytes(bytes), count)?;
+    **bytes.borrow_mut() = repeated;
+    Ok(())
 }
 
 fn concatenate_templates(
@@ -37063,12 +49901,13 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
             big_int_repeat_count(&count)?,
         )?)),
         (Value::ByteArray(value), Value::Number(count))
-        | (Value::Number(count), Value::ByteArray(value)) => {
-            Ok(Value::ByteArray(repeat_bytes(value, count)?))
-        }
+        | (Value::Number(count), Value::ByteArray(value)) => Ok(byte_array_value(repeat_bytes(
+            bytearray_bytes(&value),
+            count,
+        )?)),
         (Value::ByteArray(value), Value::BigInt(count))
-        | (Value::BigInt(count), Value::ByteArray(value)) => Ok(Value::ByteArray(repeat_bytes(
-            value,
+        | (Value::BigInt(count), Value::ByteArray(value)) => Ok(byte_array_value(repeat_bytes(
+            bytearray_bytes(&value),
             big_int_repeat_count(&count)?,
         )?)),
         (left, right) => Err(format!("cannot multiply {left} and {right}")),
@@ -37079,6 +49918,17 @@ fn big_int_repeat_count(count: &BigInt) -> Result<i64, String> {
     count
         .to_i64()
         .ok_or_else(|| "sequence repeat count is too large".to_string())
+}
+
+fn repeat_count_from_integer_value(value: Value) -> Result<i64, String> {
+    match value {
+        Value::Number(count) => Ok(count),
+        Value::BigInt(count) => big_int_repeat_count(&count),
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(&value)
+        )),
+    }
 }
 
 fn repeat_values(values: Vec<Value>, count: i64) -> Result<Vec<Value>, String> {
@@ -37115,6 +49965,17 @@ fn repeat_string(value: String, count: i64) -> Result<String, String> {
     Ok(value.repeat(count))
 }
 
+fn repeat_bytes_len(len: usize, count: i64) -> Result<usize, String> {
+    if count <= 0 {
+        return Ok(0);
+    }
+
+    let count =
+        usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
+    len.checked_mul(count)
+        .ok_or_else(|| "sequence repeat count is too large".to_string())
+}
+
 fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
     if count <= 0 {
         return Ok(Vec::new());
@@ -37122,10 +49983,7 @@ fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
 
     let count =
         usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
-    value
-        .len()
-        .checked_mul(count)
-        .ok_or_else(|| "sequence repeat count is too large".to_string())?;
+    repeat_bytes_len(value.len(), count as i64)?;
 
     let mut repeated = Vec::with_capacity(value.len() * count);
     for _ in 0..count {
@@ -37885,6 +50743,44 @@ fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
 
     match (left, right) {
         (Value::Bool(left), Value::Bool(right)) => Ok(Value::Bool(left | right)),
+        (left @ Value::ChainMap { .. }, right) => {
+            let maps = chain_map_receiver_maps(&left)?;
+            chain_map_union(&left, &maps, &right).map_err(|_| {
+                format!(
+                    "TypeError: unsupported operand type(s) for |: 'ChainMap' and '{}'",
+                    type_name(&right)
+                )
+            })
+        }
+        (left, right) if chain_map_subclass_maps(&left).is_some() => {
+            let maps = chain_map_receiver_maps(&left)?;
+            chain_map_union(&left, &maps, &right).map_err(|_| {
+                format!(
+                    "TypeError: unsupported operand type(s) for |: '{}' and '{}'",
+                    type_name(&left),
+                    type_name(&right)
+                )
+            })
+        }
+        (left, right @ Value::ChainMap { .. }) => {
+            let maps = chain_map_receiver_maps(&right)?;
+            chain_map_reverse_union(&right, &maps, &left).map_err(|_| {
+                format!(
+                    "TypeError: unsupported operand type(s) for |: '{}' and 'ChainMap'",
+                    type_name(&left)
+                )
+            })
+        }
+        (left, right) if chain_map_subclass_maps(&right).is_some() => {
+            let maps = chain_map_receiver_maps(&right)?;
+            chain_map_reverse_union(&right, &maps, &left).map_err(|_| {
+                format!(
+                    "TypeError: unsupported operand type(s) for |: '{}' and '{}'",
+                    type_name(&left),
+                    type_name(&right)
+                )
+            })
+        }
         (Value::Dict(left), Value::Dict(right)) => {
             dict_union_from_entries(left.borrow().clone(), right.borrow().clone())
         }
@@ -37913,6 +50809,7 @@ fn is_type_union_operand(value: &Value) -> bool {
         Value::Builtin(name) => is_builtin_type_object_name(name),
         Value::None => true,
         Value::Class { .. }
+        | Value::NamedTupleType(_)
         | Value::TypeParam { .. }
         | Value::TypeAlias { .. }
         | Value::GenericAlias { .. } => true,
@@ -37964,6 +50861,16 @@ fn in_place_bit_or_values(left: Value, right: Value) -> Result<Value, String> {
             }
             drop(entries_ref);
             Ok(Value::Dict(entries))
+        }
+        left @ Value::ChainMap { .. } => {
+            let maps = chain_map_receiver_maps(&left)?;
+            chain_map_update_first_from_source(&maps, right)?;
+            Ok(left)
+        }
+        left if chain_map_subclass_maps(&left).is_some() => {
+            let maps = chain_map_receiver_maps(&left)?;
+            chain_map_update_first_from_source(&maps, right)?;
+            Ok(left)
         }
         Value::Set(items) => {
             let other = set_operator_operand(right, "|=")?;
@@ -38138,6 +51045,24 @@ fn right_shift_values(left: Value, right: Value) -> Result<Value, String> {
     }
 }
 
+#[derive(Clone, Copy)]
+enum CounterUnaryOp {
+    Positive,
+    Negative,
+}
+
+fn positive_value(value: Value) -> Result<Value, String> {
+    match value {
+        Value::Bool(value) => Ok(Value::Number(bool_as_i64(value))),
+        Value::Number(value) => Ok(Value::Number(value)),
+        Value::BigInt(value) => Ok(normalize_big_int(value)),
+        Value::Float(value) => Ok(Value::Float(value)),
+        Value::Complex { real, imag } => Ok(Value::Complex { real, imag }),
+        Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Positive),
+        value => Err(format!("cannot apply unary plus to {value}")),
+    }
+}
+
 fn negate_value(value: Value) -> Result<Value, String> {
     match value {
         Value::Bool(value) => Ok(Value::Number(-bool_as_i64(value))),
@@ -38148,8 +51073,27 @@ fn negate_value(value: Value) -> Result<Value, String> {
             real: -real,
             imag: -imag,
         }),
+        Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Negative),
         value => Err(format!("cannot negate {value}")),
     }
+}
+
+fn counter_unary_value(entries: &DictRef, op: CounterUnaryOp) -> Result<Value, String> {
+    let entries = entries.borrow().entries.clone();
+    let mut result = Vec::new();
+    for (key, count) in entries {
+        let ordering = compare_values(count.clone(), Value::Number(0))?;
+        match op {
+            CounterUnaryOp::Positive if ordering.is_gt() => result.push((key, count)),
+            CounterUnaryOp::Negative if ordering.is_lt() => {
+                result.push((key, negate_value(count)?));
+            }
+            _ => {}
+        }
+    }
+    Ok(Value::Counter {
+        entries: dict_ref_from_entries(result)?,
+    })
 }
 
 fn invert_value(value: Value) -> Result<Value, String> {
@@ -38197,16 +51141,26 @@ fn compare_values(left: Value, right: Value) -> Result<Ordering, String> {
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
         (Value::String(left), Value::String(right)) => Ok(left.cmp(right)),
         (Value::Bytes(left), Value::Bytes(right)) => Ok(left.cmp(right)),
-        (Value::ByteArray(left), Value::ByteArray(right)) => Ok(left.cmp(right)),
+        (Value::ByteArray(left), Value::ByteArray(right)) => Ok(left.borrow().cmp(&right.borrow())),
         (Value::Bytes(left), Value::ByteArray(right))
-        | (Value::ByteArray(right), Value::Bytes(left)) => Ok(left.cmp(right)),
-        (Value::Tuple(left), Value::Tuple(right)) => {
-            compare_sequence_values(left.as_ref(), right.as_ref())
+        | (Value::ByteArray(right), Value::Bytes(left)) => Ok(left.cmp(&right.borrow())),
+        (left, right) => {
+            if let (Some(left_bytes), Some(right_bytes)) = (
+                bytes_ordering_value_bytes(left),
+                bytes_ordering_value_bytes(right),
+            ) {
+                return Ok(left_bytes.cmp(&right_bytes));
+            }
+            match (left, right) {
+                (Value::Tuple(left), Value::Tuple(right)) => {
+                    compare_sequence_values(left.as_ref(), right.as_ref())
+                }
+                (Value::List(left), Value::List(right)) => {
+                    compare_sequence_values(&left.borrow(), &right.borrow())
+                }
+                _ => Err(format!("cannot compare {left} and {right}")),
+            }
         }
-        (Value::List(left), Value::List(right)) => {
-            compare_sequence_values(&left.borrow(), &right.borrow())
-        }
-        _ => Err(format!("cannot compare {left} and {right}")),
     }
 }
 
@@ -38221,6 +51175,20 @@ fn compare_sequence_values(left: &[Value], right: &[Value]) -> Result<Ordering, 
     Ok(left.len().cmp(&right.len()))
 }
 
+fn ordered_compare_values(left: Value, right: Value, op: &str) -> Result<Ordering, String> {
+    compare_values(left.clone(), right.clone()).map_err(|message| {
+        if message.starts_with("cannot compare ") {
+            format!(
+                "TypeError: '{op}' not supported between instances of '{}' and '{}'",
+                type_name(&left),
+                type_name(&right)
+            )
+        } else {
+            message
+        }
+    })
+}
+
 fn less_values(left: Value, right: Value) -> Result<bool, String> {
     if let Some(message) = mappingproxy_order_type_error(&left, &right, "<") {
         return Err(message);
@@ -38232,7 +51200,7 @@ fn less_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(set_is_proper_subset(&left, &right));
     }
 
-    Ok(compare_values(left, right)?.is_lt())
+    Ok(ordered_compare_values(left, right, "<")?.is_lt())
 }
 
 fn less_equal_values(left: Value, right: Value) -> Result<bool, String> {
@@ -38246,7 +51214,7 @@ fn less_equal_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(set_is_subset(&left, &right));
     }
 
-    let ordering = compare_values(left, right)?;
+    let ordering = ordered_compare_values(left, right, "<=")?;
     Ok(ordering.is_lt() || ordering.is_eq())
 }
 
@@ -38261,7 +51229,7 @@ fn greater_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(set_is_proper_superset(&left, &right));
     }
 
-    Ok(compare_values(left, right)?.is_gt())
+    Ok(ordered_compare_values(left, right, ">")?.is_gt())
 }
 
 fn greater_equal_values(left: Value, right: Value) -> Result<bool, String> {
@@ -38275,14 +51243,16 @@ fn greater_equal_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(set_is_superset(&left, &right));
     }
 
-    let ordering = compare_values(left, right)?;
+    let ordering = ordered_compare_values(left, right, ">=")?;
     Ok(ordering.is_gt() || ordering.is_eq())
 }
 
 fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
     match haystack {
         Value::List(items) => Ok(items.borrow().iter().any(|item| item == &needle)),
+        Value::UserList { data, .. } => Ok(data.borrow().iter().any(|item| item == &needle)),
         Value::Tuple(items) => Ok(items.iter().any(|item| item == &needle)),
+        Value::NamedTuple { values, .. } => Ok(values.iter().any(|item| item == &needle)),
         Value::Set(items) => {
             ensure_set_lookup_key(&needle)?;
             Ok(items.borrow().iter().any(|item| item == &needle))
@@ -38301,42 +51271,73 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             Value::Number(needle) if (0..=255).contains(&needle) => {
                 Ok(haystack.contains(&(needle as u8)))
             }
+            Value::Number(_) => Err("ValueError: byte must be in range(0, 256)".to_string()),
             Value::BigInt(needle) => {
                 if let Some(needle) = needle.to_i64() {
-                    Ok((0..=255).contains(&needle) && haystack.contains(&(needle as u8)))
+                    if (0..=255).contains(&needle) {
+                        Ok(haystack.contains(&(needle as u8)))
+                    } else {
+                        Err("ValueError: byte must be in range(0, 256)".to_string())
+                    }
                 } else {
-                    Ok(false)
+                    Err("ValueError: byte must be in range(0, 256)".to_string())
                 }
             }
             Value::Bytes(needle) if needle.is_empty() => Ok(true),
             Value::Bytes(needle) => Ok(haystack
                 .windows(needle.len())
                 .any(|window| window == needle.as_slice())),
+            Value::ByteArray(needle) if needle.borrow().is_empty() => Ok(true),
+            Value::ByteArray(needle) => Ok(haystack
+                .windows(needle.borrow().len())
+                .any(|window| window == needle.borrow().as_slice())),
+            Value::MemoryView(needle) => {
+                let needle = memoryview_bytes(&needle)?;
+                Ok(needle.is_empty()
+                    || haystack
+                        .windows(needle.len())
+                        .any(|window| window == needle.as_slice()))
+            }
             value => Err(format!(
-                "bytes membership requires bytes or integer left operand, got {value}"
+                "TypeError: bytes membership requires bytes or integer left operand, got {value}"
             )),
         },
         Value::ByteArray(haystack) => match needle {
             Value::Number(needle) if (0..=255).contains(&needle) => {
-                Ok(haystack.contains(&(needle as u8)))
+                Ok(haystack.borrow().contains(&(needle as u8)))
             }
+            Value::Number(_) => Err("ValueError: byte must be in range(0, 256)".to_string()),
             Value::BigInt(needle) => {
                 if let Some(needle) = needle.to_i64() {
-                    Ok((0..=255).contains(&needle) && haystack.contains(&(needle as u8)))
+                    if (0..=255).contains(&needle) {
+                        Ok(haystack.borrow().contains(&(needle as u8)))
+                    } else {
+                        Err("ValueError: byte must be in range(0, 256)".to_string())
+                    }
                 } else {
-                    Ok(false)
+                    Err("ValueError: byte must be in range(0, 256)".to_string())
                 }
             }
             Value::Bytes(needle) if needle.is_empty() => Ok(true),
             Value::Bytes(needle) => Ok(haystack
+                .borrow()
                 .windows(needle.len())
                 .any(|window| window == needle.as_slice())),
-            Value::ByteArray(needle) if needle.is_empty() => Ok(true),
+            Value::ByteArray(needle) if needle.borrow().is_empty() => Ok(true),
             Value::ByteArray(needle) => Ok(haystack
-                .windows(needle.len())
-                .any(|window| window == needle.as_slice())),
+                .borrow()
+                .windows(needle.borrow().len())
+                .any(|window| window == needle.borrow().as_slice())),
+            Value::MemoryView(needle) => {
+                let needle = memoryview_bytes(&needle)?;
+                Ok(needle.is_empty()
+                    || haystack
+                        .borrow()
+                        .windows(needle.len())
+                        .any(|window| window == needle.as_slice()))
+            }
             value => Err(format!(
-                "bytearray membership requires bytes or integer left operand, got {value}"
+                "TypeError: bytearray membership requires bytes or integer left operand, got {value}"
             )),
         },
         Value::Range { start, stop, step } => match needle {
@@ -38350,7 +51351,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             }
             _ => Ok(false),
         },
-        Value::Dict(entries) => {
+        Value::Dict(entries) | Value::Counter { entries } => {
             ensure_hashable_key(&needle)?;
             Ok(entries
                 .borrow()
@@ -38364,14 +51365,37 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 .iter()
                 .any(|(key, _)| dict_keys_equal(key, &needle)))
         }
-        Value::UserDict { data } => {
+        Value::UserDict { data, .. } => {
             ensure_hashable_key(&needle)?;
             Ok(data
                 .borrow()
                 .iter()
                 .any(|(key, _)| dict_keys_equal(key, &needle)))
         }
+        value if dict_subclass_entries(&value).is_some() => {
+            ensure_hashable_key(&needle)?;
+            let entries =
+                dict_subclass_entries(&value).expect("dict subclass entries exist after guard");
+            Ok(entries
+                .borrow()
+                .iter()
+                .any(|(key, _)| dict_keys_equal(key, &needle)))
+        }
+        value if user_dict_subclass_data(&value).is_some() => {
+            ensure_hashable_key(&needle)?;
+            let data =
+                user_dict_subclass_data(&value).expect("UserDict subclass data exists after guard");
+            Ok(data
+                .borrow()
+                .iter()
+                .any(|(key, _)| dict_keys_equal(key, &needle)))
+        }
         Value::ChainMap { maps } => chain_map_contains_key(&maps, &needle),
+        value if chain_map_subclass_maps(&value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(&value).expect("ChainMap subclass maps exist after guard");
+            chain_map_contains_key(&maps, &needle)
+        }
         Value::ScopeDict(scope) => {
             ensure_hashable_key(&needle)?;
             Ok(scope_dict_lookup(&scope, &needle).is_some())
@@ -38388,6 +51412,13 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             DictViewKind::Items => Ok(dict_view_values(kind, &entries)
                 .iter()
                 .any(|item| item == &needle)),
+        },
+        Value::PicklePayload(_) => match needle {
+            Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => Ok(false),
+            value => Err(format!(
+                "TypeError: pickle payload membership requires a bytes-like left operand, got {}",
+                type_name(&value)
+            )),
         },
         value => Err(format!("{value} is not iterable")),
     }
@@ -38406,10 +51437,22 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         | (Value::Bool(false), Value::Bool(false)) => true,
         (Value::Bytes(left), Value::Bytes(right)) if left.is_empty() && right.is_empty() => true,
         (Value::List(left), Value::List(right)) => Rc::ptr_eq(left, right),
+        (
+            Value::UserList {
+                data: left_data, ..
+            },
+            Value::UserList {
+                data: right_data, ..
+            },
+        ) => Rc::ptr_eq(left_data, right_data),
         (Value::Tuple(left), Value::Tuple(right)) => Rc::ptr_eq(left, right),
+        (Value::ByteArray(left), Value::ByteArray(right)) => Rc::ptr_eq(left, right),
         (Value::Set(left), Value::Set(right)) => Rc::ptr_eq(left, right),
         (Value::FrozenSet(left), Value::FrozenSet(right)) => Rc::ptr_eq(left, right),
         (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),
+        (Value::Counter { entries: left }, Value::Counter { entries: right }) => {
+            Rc::ptr_eq(left, right)
+        }
         (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
         (
             Value::DictView {
@@ -38439,9 +51482,14 @@ fn is_identical(left: &Value, right: &Value) -> bool {
                 entries: right_entries,
             },
         ) => Rc::ptr_eq(left_entries, right_entries),
-        (Value::UserDict { data: left_data }, Value::UserDict { data: right_data }) => {
-            Rc::ptr_eq(left_data, right_data)
-        }
+        (
+            Value::UserDict {
+                data: left_data, ..
+            },
+            Value::UserDict {
+                data: right_data, ..
+            },
+        ) => Rc::ptr_eq(left_data, right_data),
         (
             Value::SimpleNamespace {
                 fields: left_fields,
@@ -38458,6 +51506,29 @@ fn is_identical(left: &Value, right: &Value) -> bool {
                 attrs: right_attrs, ..
             },
         ) => Rc::ptr_eq(left_attrs, right_attrs),
+        (Value::NamedTupleType(left), Value::NamedTupleType(right)) => {
+            Rc::ptr_eq(&left.identity, &right.identity)
+        }
+        (
+            Value::TypeParam {
+                identity: left_identity,
+                ..
+            },
+            Value::TypeParam {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
+            Value::NamedTupleFieldDescriptor {
+                typ: left_typ,
+                index: left_index,
+            },
+            Value::NamedTupleFieldDescriptor {
+                typ: right_typ,
+                index: right_index,
+            },
+        ) => Rc::ptr_eq(left_typ, right_typ) && left_index == right_index,
         (
             Value::Instance {
                 fields: left_fields,
@@ -38469,6 +51540,14 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             },
         ) => Rc::ptr_eq(left_fields, right_fields),
         (
+            Value::Module {
+                attrs: left_attrs, ..
+            },
+            Value::Module {
+                attrs: right_attrs, ..
+            },
+        ) => Rc::ptr_eq(left_attrs, right_attrs),
+        (
             Value::Function {
                 identity: left_identity,
                 ..
@@ -38516,6 +51595,14 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             Value::AstNode {
                 identity: right_identity,
                 ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
+            Value::Traceback {
+                identity: left_identity,
+            },
+            Value::Traceback {
+                identity: right_identity,
             },
         ) => Rc::ptr_eq(left_identity, right_identity),
         (
@@ -38534,6 +51621,7 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
         (Value::AwaitIterator(left), Value::AwaitIterator(right)) => left == right,
         (Value::AsyncGenerator(left), Value::AsyncGenerator(right)) => Rc::ptr_eq(left, right),
+        (Value::MemoryView(left), Value::MemoryView(right)) => Rc::ptr_eq(left, right),
         (Value::Builtin(left), Value::Builtin(right)) => left == right,
         _ => false,
     }
@@ -38548,22 +51636,31 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::Complex { real, imag } => Ok(*real != 0.0 || *imag != 0.0),
         Value::String(value) => Ok(!value.is_empty()),
         Value::Bytes(value) => Ok(!value.is_empty()),
-        Value::ByteArray(value) => Ok(!value.is_empty()),
+        Value::ByteArray(value) => Ok(!value.borrow().is_empty()),
+        Value::MemoryView(view) => Ok(memoryview_len(view)? != 0),
         Value::List(items) => Ok(!items.borrow().is_empty()),
+        Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
         Value::Tuple(items) => Ok(!items.is_empty()),
         Value::Set(items) => Ok(!items.borrow().is_empty()),
         Value::FrozenSet(items) => Ok(!items.is_empty()),
-        Value::Dict(entries) => Ok(!entries.borrow().is_empty()),
+        Value::Dict(entries) | Value::OrderedDict(entries) => Ok(!entries.borrow().is_empty()),
         Value::ScopeDict(scope) => Ok(!scope.borrow().is_empty()),
         Value::DictView { entries, .. } => Ok(!entries.borrow().is_empty()),
         Value::MappingView { .. } => Ok(true),
         Value::MappingProxy { entries } => Ok(!entries.borrow().is_empty()),
         Value::MappingProxyObject { .. } => Ok(true),
         Value::ChainMap { maps } => Ok(!chain_map_entries(maps)?.is_empty()),
-        Value::UserDict { data } => Ok(!data.borrow().is_empty()),
+        Value::Counter { entries } => Ok(!entries.borrow().is_empty()),
+        Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
+        Value::NamedTupleType(_) => Ok(true),
+        Value::NamedTuple { values, .. } => Ok(!values.is_empty()),
+        Value::NamedTupleFieldDescriptor { .. }
+        | Value::NamedTupleTypeMethod { .. }
+        | Value::NamedTupleInstanceMethod { .. } => Ok(true),
         Value::SimpleNamespace { .. } => Ok(true),
         Value::PicklePayload(_) => Ok(true),
         Value::AstNode { .. } => Ok(true),
+        Value::Traceback { .. } => Ok(true),
         Value::CodeObject { .. } => Ok(true),
         Value::Slice { .. } => Ok(true),
         Value::Range { start, stop, step } => Ok(!range_is_exhausted(*start, *stop, *step)),
@@ -38573,6 +51670,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::TemplateIterator { .. } => Ok(true),
         Value::StringIterator { .. } => Ok(true),
         Value::BytesIterator { .. } => Ok(true),
+        Value::ByteArrayIterator { .. } => Ok(true),
         Value::SetIterator { .. } => Ok(true),
         Value::DictIterator { .. } => Ok(true),
         Value::ReverseIterator { .. } => Ok(true),
@@ -38594,10 +51692,14 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::AsyncGeneratorNext { .. }
         | Value::AsyncGeneratorThrow { .. }
         | Value::AsyncGeneratorClose(_)
+        | Value::AsyncGeneratorAthrowMixin { .. }
+        | Value::AsyncGeneratorAcloseMixin { .. }
         | Value::AnextDefault { .. } => Ok(true),
         Value::Class { .. } => Ok(true),
         Value::TypeParam { .. } => Ok(true),
+        Value::DeferredTypeParamExpr(_) => Ok(true),
         Value::TypeAlias { .. } => Ok(true),
+        Value::ConstEvaluator { .. } => Ok(true),
         Value::GenericAlias { .. } => Ok(true),
         Value::Unpack(_) => Ok(true),
         Value::Template { .. } => Ok(true),

@@ -34,6 +34,7 @@ pub fn parse_with_diagnostic(tokens: &[Token]) -> Result<Program, ParserDiagnost
 
 pub fn parse_eval(tokens: &[Token]) -> Result<Expr, String> {
     let mut parser = Parser::new(tokens);
+    parser.skip_newlines();
     let expr = parser.parse_expression_list_until_statement_boundary()?;
     parser.skip_newlines();
     parser.expect_eof()?;
@@ -74,6 +75,14 @@ struct CallArguments {
 enum ParameterListEnd {
     RightParen,
     Colon,
+}
+
+#[derive(Clone, Copy)]
+enum ParameterTypeCommentTarget {
+    Positional(usize),
+    KeywordOnly(usize),
+    Vararg,
+    Kwarg,
 }
 
 #[derive(Clone, Copy)]
@@ -177,6 +186,10 @@ impl Parser<'_> {
         let statement = self.parse_statement()?;
         let first_has_own_boundary = statement_has_own_boundary(&statement);
         statements.push(statement);
+
+        if first_has_own_boundary && !self.interactive_compound_statement_has_terminator() {
+            return Err("unexpected EOF while parsing".to_string());
+        }
 
         if !first_has_own_boundary {
             while matches!(self.peek(), Some(Token::Semicolon)) {
@@ -321,7 +334,12 @@ impl Parser<'_> {
                 if matches!(self.peek(), Some(Token::Equal)) {
                     validate_store_target(&target)?;
                     let (targets, value) = self.parse_assignment_targets_and_value(target)?;
-                    return Ok(Stmt::Assign { targets, value });
+                    let type_comment = self.take_type_comment();
+                    return Ok(Stmt::Assign {
+                        targets,
+                        value,
+                        type_comment,
+                    });
                 }
 
                 if matches!(self.peek(), Some(Token::Colon)) {
@@ -466,6 +484,7 @@ impl Parser<'_> {
         self.expect_in()?;
         let iter = self.parse_expression_list_until_colon()?;
         self.expect_colon()?;
+        let type_comment = self.take_type_comment();
         let body = self.parse_block_after_colon()?;
         let else_body = if matches!(self.peek(), Some(Token::Else)) {
             self.advance();
@@ -480,6 +499,7 @@ impl Parser<'_> {
             iter,
             body,
             else_body,
+            type_comment,
         })
     }
 
@@ -611,12 +631,18 @@ impl Parser<'_> {
 
     fn parse_with_statement(&mut self) -> Result<Stmt, String> {
         self.expect_with()?;
-        let (items, body) = self.parse_with_items_and_body()?;
+        let (items, body, type_comment) = self.parse_with_items_and_body()?;
 
-        Ok(Stmt::With { items, body })
+        Ok(Stmt::With {
+            items,
+            body,
+            type_comment,
+        })
     }
 
-    fn parse_with_items_and_body(&mut self) -> Result<(Vec<WithItem>, Vec<Stmt>), String> {
+    fn parse_with_items_and_body(
+        &mut self,
+    ) -> Result<(Vec<WithItem>, Vec<Stmt>, Option<String>), String> {
         let parenthesized = self.left_paren_starts_parenthesized_with_items();
         if parenthesized {
             self.advance();
@@ -629,9 +655,10 @@ impl Parser<'_> {
         }
 
         self.expect_colon()?;
+        let type_comment = self.take_type_comment();
         let body = self.parse_block_after_colon()?;
 
-        Ok((items, body))
+        Ok((items, body, type_comment))
     }
 
     fn left_paren_starts_parenthesized_with_items(&self) -> bool {
@@ -1183,8 +1210,13 @@ impl Parser<'_> {
             Some(Token::Float(value)) => Ok(Expr::Float(value)),
             Some(Token::Imaginary(value)) => Ok(Expr::Imaginary(value)),
             Some(Token::String(value)) => {
-                let parts = self.parse_adjacent_string_parts(vec![FStringPart::Literal(value)])?;
-                Ok(joined_string_parts_to_expr(parts))
+                let (parts, has_f_string) =
+                    self.parse_adjacent_string_parts(vec![FStringPart::Literal(value)], false)?;
+                Ok(if has_f_string {
+                    joined_string_parts_to_joined_expr(parts)
+                } else {
+                    joined_string_parts_to_expr(parts)
+                })
             }
             Some(Token::Bytes(value)) => {
                 let value = self.parse_adjacent_bytes(value)?;
@@ -1192,7 +1224,7 @@ impl Parser<'_> {
             }
             Some(Token::FString(parts)) => {
                 let parts = self.parse_f_string_token_parts(&parts)?;
-                let parts = self.parse_adjacent_string_parts(parts)?;
+                let (parts, _) = self.parse_adjacent_string_parts(parts, true)?;
                 Ok(joined_string_parts_to_joined_expr(parts))
             }
             Some(Token::TString(parts)) => {
@@ -1509,8 +1541,11 @@ impl Parser<'_> {
         } else {
             None
         };
+        if !type_params.is_empty() {
+            validate_generic_function_annotations(&params, returns.as_ref())?;
+        }
         self.expect_colon()?;
-        let body = self.parse_function_body_after_colon()?;
+        let (type_comment, body) = self.parse_function_body_after_colon()?;
 
         Ok(Stmt::FunctionDef {
             name,
@@ -1519,6 +1554,7 @@ impl Parser<'_> {
             body,
             decorators,
             returns,
+            type_comment,
         })
     }
 
@@ -1545,6 +1581,7 @@ impl Parser<'_> {
         self.expect_in()?;
         let iter = self.parse_expression_list_until_colon()?;
         self.expect_colon()?;
+        let type_comment = self.take_type_comment();
         let body = self.parse_block_after_colon()?;
         let else_body = if matches!(self.peek(), Some(Token::Else)) {
             self.advance();
@@ -1559,14 +1596,19 @@ impl Parser<'_> {
             iter,
             body,
             else_body,
+            type_comment,
         })
     }
 
     fn parse_async_with_statement(&mut self) -> Result<Stmt, String> {
         self.expect_with()?;
-        let (items, body) = self.parse_with_items_and_body()?;
+        let (items, body, type_comment) = self.parse_with_items_and_body()?;
 
-        Ok(Stmt::AsyncWith { items, body })
+        Ok(Stmt::AsyncWith {
+            items,
+            body,
+            type_comment,
+        })
     }
 
     fn parse_class_def_statement(&mut self, decorators: Vec<Expr>) -> Result<Stmt, String> {
@@ -1616,8 +1658,11 @@ impl Parser<'_> {
         } else {
             None
         };
+        if !type_params.is_empty() {
+            validate_generic_function_annotations(&params, returns.as_ref())?;
+        }
         self.expect_colon()?;
-        let body = self.parse_function_body_after_colon()?;
+        let (type_comment, body) = self.parse_function_body_after_colon()?;
 
         Ok(Stmt::AsyncFunctionDef {
             name,
@@ -1626,6 +1671,7 @@ impl Parser<'_> {
             body,
             decorators,
             returns,
+            type_comment,
         })
     }
 
@@ -1657,9 +1703,17 @@ impl Parser<'_> {
 
         let mut type_params = Vec::new();
         let mut seen_names = Vec::new();
+        let mut saw_default = false;
 
         loop {
             let type_param = self.parse_type_param(&mut seen_names)?;
+            if saw_default && type_param.default.is_none() {
+                return Err(format!(
+                    "non-default type parameter '{}' follows default type parameter",
+                    type_param.name
+                ));
+            }
+            saw_default |= type_param.default.is_some();
             type_params.push(type_param);
 
             if !matches!(self.peek(), Some(Token::Comma)) {
@@ -1712,12 +1766,15 @@ impl Parser<'_> {
 
         let default = if matches!(self.peek(), Some(Token::Equal)) {
             self.advance();
-            if matches!(kind, TypeParamKind::TypeVarTuple)
-                && matches!(self.peek(), Some(Token::Star))
-            {
+            let is_starred_typevartuple_default = matches!(kind, TypeParamKind::TypeVarTuple)
+                && matches!(self.peek(), Some(Token::Star));
+            if is_starred_typevartuple_default {
                 self.advance();
             }
-            let default = self.parse_expression()?;
+            let mut default = self.parse_expression()?;
+            if is_starred_typevartuple_default {
+                default = Expr::Starred(Box::new(default));
+            }
             let context = match kind {
                 TypeParamKind::TypeVar => "a TypeVar default",
                 TypeParamKind::TypeVarTuple => "a TypeVarTuple default",
@@ -1747,6 +1804,7 @@ impl Parser<'_> {
         let mut vararg_name_for_unique_check = None;
         let mut keyword_only_names_for_unique_check = Vec::new();
         let mut kwarg_name_for_unique_check = None;
+        let mut last_parameter: Option<ParameterTypeCommentTarget>;
         let allow_annotations = matches!(end, ParameterListEnd::RightParen);
 
         if self.at_parameter_list_end(end) {
@@ -1823,9 +1881,16 @@ impl Parser<'_> {
                 }
                 kwarg_name_for_unique_check = Some(name.clone());
                 params.kwarg = Some(name);
+                if let Some(comment) = self.take_type_comment() {
+                    params.kwarg_type_comment = Some(comment);
+                }
+                last_parameter = Some(ParameterTypeCommentTarget::Kwarg);
 
                 if matches!(self.peek(), Some(Token::Comma)) {
                     self.advance();
+                    if let Some(comment) = self.take_type_comment() {
+                        assign_parameter_type_comment(&mut params, last_parameter, comment)?;
+                    }
                     if !self.at_parameter_list_end(end) {
                         return Err("parameters cannot follow var-keyword parameter".to_string());
                     }
@@ -1854,6 +1919,10 @@ impl Parser<'_> {
                         }
                         vararg_name_for_unique_check = Some(name.clone());
                         params.vararg = Some(name);
+                        if let Some(comment) = self.take_type_comment() {
+                            params.vararg_type_comment = Some(comment);
+                        }
+                        last_parameter = Some(ParameterTypeCommentTarget::Vararg);
                     }
                     Some(Token::Comma) => {
                         self.advance();
@@ -1878,12 +1947,18 @@ impl Parser<'_> {
                     }
                 }
             } else {
-                let param =
+                let mut param =
                     self.parse_parameter(&mut seen_names, allow_annotations, !after_star)?;
+                if let Some(comment) = self.take_type_comment() {
+                    param.type_comment = Some(comment);
+                }
 
                 if after_star {
                     keyword_only_names_for_unique_check.push(param.name.clone());
                     params.keyword_only.push(param);
+                    last_parameter = Some(ParameterTypeCommentTarget::KeywordOnly(
+                        params.keyword_only.len() - 1,
+                    ));
                     bare_star_needs_keyword_only = false;
                 } else {
                     if param.default.is_some() {
@@ -1895,6 +1970,9 @@ impl Parser<'_> {
                         );
                     }
                     params.positional.push(param);
+                    last_parameter = Some(ParameterTypeCommentTarget::Positional(
+                        params.positional.len() - 1,
+                    ));
                 }
             }
 
@@ -1903,6 +1981,9 @@ impl Parser<'_> {
             }
 
             self.advance();
+            if let Some(comment) = self.take_type_comment() {
+                assign_parameter_type_comment(&mut params, last_parameter, comment)?;
+            }
             if self.at_parameter_list_end(end) {
                 break;
             }
@@ -1955,6 +2036,7 @@ impl Parser<'_> {
             name,
             annotation,
             default,
+            type_comment: None,
         })
     }
 
@@ -2423,19 +2505,20 @@ impl Parser<'_> {
         self.parse_inline_block()
     }
 
-    fn parse_function_block_after_colon(&mut self) -> Result<Vec<Stmt>, String> {
+    fn parse_function_block_after_colon(&mut self) -> Result<(Option<String>, Vec<Stmt>), String> {
         if matches!(
             self.peek(),
             Some(Token::Newline | Token::TypeComment(_) | Token::TypeIgnore(_))
         ) {
-            self.parse_func_type_comment()?;
-            return self.parse_block();
+            let type_comment = self.parse_func_type_comment()?;
+            let body = self.parse_block()?;
+            return Ok((type_comment, body));
         }
 
-        self.parse_inline_block()
+        self.parse_inline_block().map(|body| (None, body))
     }
 
-    fn parse_function_body_after_colon(&mut self) -> Result<Vec<Stmt>, String> {
+    fn parse_function_body_after_colon(&mut self) -> Result<(Option<String>, Vec<Stmt>), String> {
         let saved_class_body_depth = self.class_body_depth;
         self.class_body_depth = 0;
         let body = self.parse_function_block_after_colon();
@@ -2698,24 +2781,24 @@ impl Parser<'_> {
         Ok(arg_types)
     }
 
-    fn parse_func_type_comment(&mut self) -> Result<(), String> {
-        let mut saw_type_comment = false;
+    fn parse_func_type_comment(&mut self) -> Result<Option<String>, String> {
+        let mut type_comment = None;
 
-        if matches!(self.peek(), Some(Token::TypeComment(_))) {
+        if let Some(Token::TypeComment(body)) = self.peek().cloned() {
             self.advance();
-            saw_type_comment = true;
+            type_comment = Some(body);
         } else if matches!(self.peek(), Some(Token::TypeIgnore(_))) {
             self.advance();
         }
 
         self.expect_newline()?;
 
-        if matches!(self.peek(), Some(Token::TypeComment(_))) {
-            if saw_type_comment {
+        if let Some(Token::TypeComment(body)) = self.peek().cloned() {
+            if type_comment.is_some() {
                 return Err("Cannot have two type comments on def".to_string());
             }
             self.advance();
-            saw_type_comment = true;
+            type_comment = Some(body);
 
             match self.advance() {
                 Some(Token::Newline) => {}
@@ -2724,11 +2807,11 @@ impl Parser<'_> {
             }
         }
 
-        if saw_type_comment && matches!(self.peek(), Some(Token::TypeComment(_))) {
+        if type_comment.is_some() && matches!(self.peek(), Some(Token::TypeComment(_))) {
             return Err("Cannot have two type comments on def".to_string());
         }
 
-        Ok(())
+        Ok(type_comment)
     }
 
     fn parse_yield_expression(&mut self) -> Result<Expr, String> {
@@ -3407,7 +3490,8 @@ impl Parser<'_> {
     fn parse_adjacent_string_parts(
         &mut self,
         mut parts: Vec<FStringPart>,
-    ) -> Result<Vec<FStringPart>, String> {
+        mut has_f_string: bool,
+    ) -> Result<(Vec<FStringPart>, bool), String> {
         loop {
             match self.peek() {
                 Some(Token::String(value)) => {
@@ -3415,6 +3499,7 @@ impl Parser<'_> {
                     self.advance();
                 }
                 Some(Token::FString(token_parts)) => {
+                    has_f_string = true;
                     let token_parts = token_parts.clone();
                     self.advance();
                     parts.extend(self.parse_f_string_token_parts(&token_parts)?);
@@ -3431,7 +3516,7 @@ impl Parser<'_> {
             }
         }
 
-        Ok(parts)
+        Ok((parts, has_f_string))
     }
 
     fn parse_adjacent_bytes(&mut self, mut value: Vec<u8>) -> Result<Vec<u8>, String> {
@@ -3579,8 +3664,13 @@ impl Parser<'_> {
             Some(Token::Float(value)) => Ok(Expr::Float(value)),
             Some(Token::Imaginary(value)) => Ok(Expr::Imaginary(value)),
             Some(Token::String(value)) => {
-                let parts = self.parse_adjacent_string_parts(vec![FStringPart::Literal(value)])?;
-                Ok(joined_string_parts_to_expr(parts))
+                let (parts, has_f_string) =
+                    self.parse_adjacent_string_parts(vec![FStringPart::Literal(value)], false)?;
+                Ok(if has_f_string {
+                    joined_string_parts_to_joined_expr(parts)
+                } else {
+                    joined_string_parts_to_expr(parts)
+                })
             }
             Some(Token::Bytes(value)) => {
                 let value = self.parse_adjacent_bytes(value)?;
@@ -3588,8 +3678,8 @@ impl Parser<'_> {
             }
             Some(Token::FString(parts)) => {
                 let parts = self.parse_f_string_token_parts(&parts)?;
-                let parts = self.parse_adjacent_string_parts(parts)?;
-                Ok(joined_string_parts_to_expr(parts))
+                let (parts, _) = self.parse_adjacent_string_parts(parts, true)?;
+                Ok(joined_string_parts_to_joined_expr(parts))
             }
             Some(Token::TString(parts)) => {
                 let parts = self.parse_t_string_token_parts(&parts)?;
@@ -4404,6 +4494,12 @@ impl Parser<'_> {
         token
     }
 
+    fn previous(&self) -> Option<&Token> {
+        self.current
+            .checked_sub(1)
+            .and_then(|index| self.tokens.get(index))
+    }
+
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.current)
     }
@@ -4495,10 +4591,22 @@ impl Parser<'_> {
         self.skip_newlines();
     }
 
+    fn interactive_compound_statement_has_terminator(&self) -> bool {
+        matches!(self.previous(), Some(Token::Newline | Token::Dedent))
+    }
+
     fn skip_type_comment_tokens(&mut self) {
         while is_type_comment_token(self.peek()) {
             self.advance();
         }
+    }
+
+    fn take_type_comment(&mut self) -> Option<String> {
+        let Some(Token::TypeComment(comment)) = self.peek().cloned() else {
+            return None;
+        };
+        self.advance();
+        Some(comment)
     }
 }
 
@@ -5316,6 +5424,34 @@ fn validate_generic_definition_arguments(arguments: &CallArguments) -> Result<()
                 validate_type_scope_expression(expr, "the definition of a generic")?;
             }
         }
+    }
+
+    Ok(())
+}
+
+fn validate_generic_function_annotations(
+    params: &FunctionParams,
+    returns: Option<&Expr>,
+) -> Result<(), String> {
+    for param in params
+        .positional_only
+        .iter()
+        .chain(params.positional.iter())
+        .chain(params.keyword_only.iter())
+    {
+        if let Some(annotation) = &param.annotation {
+            validate_type_scope_expression(annotation, "the definition of a generic")?;
+        }
+    }
+
+    if let Some(annotation) = params.vararg_annotation.as_deref() {
+        validate_type_scope_expression(annotation, "the definition of a generic")?;
+    }
+    if let Some(annotation) = params.kwarg_annotation.as_deref() {
+        validate_type_scope_expression(annotation, "the definition of a generic")?;
+    }
+    if let Some(returns) = returns {
+        validate_type_scope_expression(returns, "the definition of a generic")?;
     }
 
     Ok(())
@@ -6950,6 +7086,30 @@ fn parameter_list_end_label(end: ParameterListEnd) -> &'static str {
     }
 }
 
+fn assign_parameter_type_comment(
+    params: &mut FunctionParams,
+    target: Option<ParameterTypeCommentTarget>,
+    comment: String,
+) -> Result<(), String> {
+    let Some(target) = target else {
+        return Err("type comment does not belong to a parameter".to_string());
+    };
+
+    let slot = match target {
+        ParameterTypeCommentTarget::Positional(index) => &mut params.positional[index].type_comment,
+        ParameterTypeCommentTarget::KeywordOnly(index) => {
+            &mut params.keyword_only[index].type_comment
+        }
+        ParameterTypeCommentTarget::Vararg => &mut params.vararg_type_comment,
+        ParameterTypeCommentTarget::Kwarg => &mut params.kwarg_type_comment,
+    };
+    if slot.is_some() {
+        return Err("Cannot have two type comments on parameter".to_string());
+    }
+    *slot = Some(comment);
+    Ok(())
+}
+
 fn call_arg_exprs(args: Vec<CallArg>) -> Vec<Expr> {
     args.into_iter()
         .map(|arg| match arg {
@@ -7088,6 +7248,30 @@ mod tests {
                 statements: vec![Stmt::Expr(Expr::Number(1)), Stmt::Expr(Expr::Number(2))],
             })
         );
+    }
+
+    #[test]
+    fn rejects_interactive_inline_compound_without_terminal_newline() {
+        let tokens = lex("def f(): pass").unwrap();
+
+        assert_eq!(
+            parse_interactive(&tokens),
+            Err("unexpected EOF while parsing".to_string())
+        );
+    }
+
+    #[test]
+    fn parses_interactive_inline_compound_with_terminal_newline() {
+        let tokens = lex("def f(): pass\n").unwrap();
+
+        assert!(parse_interactive(&tokens).is_ok());
+    }
+
+    #[test]
+    fn parses_interactive_indented_compound_without_terminal_newline() {
+        let tokens = lex("def f():\n    pass").unwrap();
+
+        assert!(parse_interactive(&tokens).is_ok());
     }
 
     #[test]
@@ -7563,6 +7747,7 @@ mod tests {
                         callee: Box::new(Expr::Name("print".to_string())),
                         args: vec![Expr::Name("value".to_string())],
                     })],
+                    type_comment: None,
                 }],
             })
         );
@@ -7576,7 +7761,7 @@ mod tests {
         let program = parse(&tokens).unwrap();
 
         match &program.statements[..] {
-            [Stmt::With { items, body }] => {
+            [Stmt::With { items, body, .. }] => {
                 assert_eq!(items.len(), 2);
                 assert!(matches!(items[0].context_expr, Expr::Call { .. }));
                 assert_eq!(items[0].optional_vars, Some(Target::Name("a".to_string())));
@@ -7594,7 +7779,7 @@ mod tests {
         let program = parse(&tokens).unwrap();
 
         match &program.statements[..] {
-            [Stmt::With { items, body }] => {
+            [Stmt::With { items, body, .. }] => {
                 assert_eq!(items.len(), 1);
                 assert!(matches!(items[0].context_expr, Expr::Call { .. }));
                 assert_eq!(
@@ -7715,6 +7900,7 @@ mod tests {
                         },
                     ],
                     body: vec![Stmt::Pass],
+                    type_comment: None,
                 }],
             })
         );
@@ -8061,6 +8247,7 @@ mod tests {
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Number(2)),
                     },
+                    type_comment: None,
                 }],
             })
         );
@@ -8076,6 +8263,7 @@ mod tests {
                 statements: vec![Stmt::Assign {
                     targets: vec![Target::Name("a".to_string()), Target::Name("b".to_string()),],
                     value: Expr::Number(3),
+                    type_comment: None,
                 }],
             })
         );
@@ -8174,6 +8362,7 @@ mod tests {
                         ]),
                     }],
                     value: Expr::Name("value".to_string()),
+                    type_comment: None,
                 }],
             })
         );
@@ -8192,6 +8381,7 @@ mod tests {
                         Target::Name("b".to_string()),
                     ])],
                     value: Expr::Tuple(vec![Expr::Number(1), Expr::Number(2)]),
+                    type_comment: None,
                 }],
             })
         );
@@ -8211,6 +8401,7 @@ mod tests {
                         Target::Name("b".to_string()),
                     ])],
                     value: Expr::Name("values".to_string()),
+                    type_comment: None,
                 }],
             })
         );
@@ -8290,6 +8481,26 @@ mod tests {
                         format_spec: None,
                     },
                 ]))],
+            })
+        );
+    }
+
+    #[test]
+    fn parses_literal_only_f_string_as_joined_string() {
+        assert_eq!(
+            parse(&lex("f\"hello\"").unwrap()),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::JoinedString(vec![FStringPart::Literal(
+                    "hello".to_string()
+                )]))],
+            })
+        );
+        assert_eq!(
+            parse(&lex("\"mini\" f\"python\"").unwrap()),
+            Ok(Program {
+                statements: vec![Stmt::Expr(Expr::JoinedString(vec![FStringPart::Literal(
+                    "minipython".to_string()
+                )]))],
             })
         );
     }
@@ -8566,6 +8777,7 @@ mod tests {
                         callee: Box::new(Expr::Name("print".to_string())),
                         args: vec![Expr::Name("value".to_string())],
                     })],
+                    type_comment: None,
                 }],
             })
         );
@@ -8596,6 +8808,7 @@ mod tests {
                         name: "x".to_string(),
                         annotation: Some(Expr::Name("int".to_string())),
                         default: None,
+                        type_comment: None,
                     }]
                 );
                 assert_eq!(params.vararg, Some("args".to_string()));
@@ -8609,6 +8822,7 @@ mod tests {
                         name: "y".to_string(),
                         annotation: Some(Expr::Name("bool".to_string())),
                         default: Some(Expr::Bool(true)),
+                        type_comment: None,
                     }]
                 );
                 assert_eq!(params.kwarg, Some("kwargs".to_string()));
@@ -8635,11 +8849,13 @@ mod tests {
                             name: "a".to_string(),
                             annotation: None,
                             default: None,
+                            type_comment: None,
                         },
                         Param {
                             name: "b".to_string(),
                             annotation: Some(Expr::Name("int".to_string())),
                             default: Some(Expr::Number(2)),
+                            type_comment: None,
                         },
                     ]
                 );
@@ -8649,6 +8865,7 @@ mod tests {
                         name: "c".to_string(),
                         annotation: None,
                         default: Some(Expr::Number(3)),
+                        type_comment: None,
                     }]
                 );
                 assert_eq!(
@@ -8657,6 +8874,7 @@ mod tests {
                         name: "d".to_string(),
                         annotation: None,
                         default: None,
+                        type_comment: None,
                     }]
                 );
             }
@@ -9402,6 +9620,7 @@ mod tests {
                         args: vec![Expr::Name("x".to_string())],
                     })],
                     else_body: Vec::new(),
+                    type_comment: None,
                 }],
             })
         );
@@ -9425,6 +9644,7 @@ mod tests {
                         callee: Box::new(Expr::Name("print".to_string())),
                         args: vec![Expr::String("done".to_string())],
                     })],
+                    type_comment: None,
                 }],
             })
         );
@@ -9687,6 +9907,7 @@ mod tests {
                     Stmt::Assign {
                         targets: vec![Target::Name("x".to_string())],
                         value: Expr::Number(1),
+                        type_comment: None,
                     },
                     Stmt::Expr(Expr::Call {
                         callee: Box::new(Expr::Name("print".to_string())),

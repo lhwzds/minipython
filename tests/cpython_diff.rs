@@ -187,7 +187,7 @@ fn run_minipython_source(source: &str) -> Result<Vec<String>, String> {
         .spawn(move || run_source(&source))
         .expect("failed to spawn MiniPython differential test thread");
     match handle.join() {
-        Ok(result) => result,
+        Ok(result) => result.map(minipython_print_records_to_stdout_lines),
         Err(payload) => std::panic::resume_unwind(payload),
     }
 }
@@ -200,9 +200,18 @@ fn run_minipython_source_bytes(source: &[u8]) -> Result<Vec<String>, String> {
         .spawn(move || run_source_bytes(&source))
         .expect("failed to spawn MiniPython bytes differential test thread");
     match handle.join() {
-        Ok(result) => result,
+        Ok(result) => result.map(minipython_print_records_to_stdout_lines),
         Err(payload) => std::panic::resume_unwind(payload),
     }
+}
+
+fn minipython_print_records_to_stdout_lines(records: Vec<String>) -> Vec<String> {
+    let mut stdout = String::new();
+    for record in records {
+        stdout.push_str(&record);
+        stdout.push('\n');
+    }
+    stdout.lines().map(str::to_string).collect()
 }
 
 fn assert_cpython_bytes_output_parity(case: &BytesDiffCase) {
@@ -813,6 +822,21 @@ except SyntaxError as error:
             origin: "Lib/test/test_bytes.py::test_fromhex / ::test_hex / hex separator tests",
             name: "bytes-hex-fromhex",
             source: "print(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'), bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30 '))\nprint(b''.hex(), b'\\x1a\\x2b\\x30'.hex(), bytearray(b'\\x1a\\x2b\\x30').hex())\nthree = b'\\xb9\\x01\\xef'\nprint(three.hex(), three.hex(':'), three.hex(':', 2), three.hex('*', -2), three.hex(sep=':', bytes_per_sep=2))\nsix = b'\\x03\\x06\\x09\\x0c\\x0f\\x12'\nprint(six.hex('.', 1), six.hex(' ', 2), six.hex('-', 3), six.hex(':', 4), six.hex('_', -3), six.hex(':', -4))\nfor expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex(chr(0x100)), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_copied / ::test_partition_bytearray_doesnt_share_nullstring",
+            name: "bytearray-nonmutating-copy-buffer-semantics",
+            source: "b = bytearray(b'abc')\nr = b.replace(b'abc', b'cde', 0)\nprint(r, r is b)\nr += b'!'\nprint(b, r)\nt = bytearray([i for i in range(256)])\nx = bytearray(b'')\ny = x.translate(t)\nprint(y, y is x)\ny += b'!'\nprint(x, y)\na, b, c = bytearray(b'x').partition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\na, b, c = bytearray(b'x').partition(b'y')\nprint(b, c)\nb, c, a = bytearray(b'x').rpartition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\nc, b, a = bytearray(b'x').rpartition(b'y')\nprint(b, c)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_length_hint / ::test_repeat_after_setslice",
+            name: "bytearray-iterator-length-hint-and-repeat-regressions",
+            source: "ba = bytearray(b'ab')\nit = iter(ba)\nprint(next(it), it.__length_hint__())\nba.clear()\nprint(it.__length_hint__(), list(it))\nb = bytearray(b'abc')\nb[:2] = b'x'\nb1 = b * 1\nb3 = b * 3\nprint(b, b1, b1 == b'xc', b1 == b)\nprint(b3)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index_inbounds skip_bounds_safety_slice",
+            name: "bytearray-mutating-index-slice-inbounds-safety",
+            source: "class MutatesOnIndex:\n    def __init__(self):\n        self.ba = bytearray(0x180)\n    def __index__(self):\n        self.ba.clear()\n        self.new_ba = bytearray(0x180)\n        self.ba.extend([0] * 0x180)\n        return 0\ninstance = MutatesOnIndex()\ninstance.ba[instance:1] = [ord('?')]\nprint(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))",
         },
         DiffCase {
             origin: "Lib/test/test_fstring.py::test_yield / ::test_yield_send",
@@ -2155,11 +2179,35 @@ x = C()
 print(C.__name__, C.__qualname__, C.__module__)
 print(C.__bases__[0] is B, C.__base__ is B, 'spam' in C.__dict__, 'ham' in C.__dict__)
 print(type(x) is C, x.__class__ is C, x.ham(), x.spam())
-for expr in [lambda: type('A', [], {}), lambda: type('A', (), []), lambda: type(b'A', (), {}), lambda: type('A\0B', (), {}), lambda: type('A', (None,), {}), lambda: type('A', (bool,), {}), lambda: type('A', (int, str), {})]:
+import types
+for expr in [lambda: type('A', [], {}), lambda: type('A', (), []), lambda: type('A', (), {}, ()), lambda: type('A', (), types.MappingProxyType({})), lambda: type(b'A', (), {}), lambda: type('A\0B', (), {}), lambda: type('A', (None,), {}), lambda: type('A', (bool,), {}), lambda: type('A', (int, str), {})]:
     try:
         expr()
     except (TypeError, ValueError) as error:
         print(error.__class__.__name__)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::TestType::test_type_nokwargs",
+            name: "type-nokwargs",
+            source: r#"for expr in [lambda: type('a', (), {}, x=5), lambda: type('a', (), dict={})]:
+    try:
+        expr()
+        print('ok')
+    except TypeError as error:
+        print(type(error).__name__)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::TestType::test_namespace_order",
+            name: "type-namespace-order",
+            source: r#"from collections import OrderedDict
+od = OrderedDict([('a', 1), ('b', 2)])
+od.move_to_end('a')
+expected = list(od.items())
+C = type('C', (), od)
+print(expected)
+print(list(C.__dict__.items())[:2])
+print(expected == list(C.__dict__.items())[:2])
+print(type(od).__name__, 'move_to_end' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",
@@ -2309,6 +2357,26 @@ except ZeroDivisionError:
     print(g['x'])"#,
         },
         DiffCase {
+            origin: "Lib/test/test_compile.py::TestSpecifics::test_encoding",
+            name: "compile-specifics-encoding",
+            source: r#"try:
+    compile(b'# -*- coding: badencoding -*-\npass\n', 'tmp', 'exec')
+except SyntaxError:
+    print('bad-bytes-cookie')
+code = '# -*- coding: badencoding -*-\n"\xc2\xa4"\n'
+compile(code, 'tmp', 'exec')
+print(eval(code))
+code = '"\xc2\xa4"\n'
+print(eval(code))
+print(eval(b'"\xc2\xa4"\n'))
+print(eval(b'# -*- coding: latin1 -*-\n"\xc2\xa4"\n'))
+print(eval(b'# -*- coding: utf-8 -*-\n"\xc2\xa4"\n'))
+print(eval(b'# -*- coding: iso8859-15 -*-\n"\xc2\xa4"\n'))
+code = '"""\\\n# -*- coding: iso8859-15 -*-\n\xc2\xa4"""\n'
+print(eval(code))
+print(eval(b'"""\\\n# -*- coding: iso8859-15 -*-\n\xc2\xa4"""\n'))"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec",
             name: "exec-builtin",
             source: r#"print(exec('z = 1'))
@@ -2398,6 +2466,27 @@ g = {}
 l = {}
 exec('value = len([1])', g, l)
 print('__builtins__' in g, '__builtins__' in l, l['value'])
+class M:
+    def __getitem__(self, key):
+        if key == 'a':
+            return 12
+        raise KeyError
+    def __setitem__(self, key, value):
+        self.results = (key, value)
+    def keys(self):
+        return list('xyz')
+m = M()
+g = globals()
+exec('z = a', g, m)
+print(m.results)
+try:
+    exec('z = b', g, m)
+except NameError:
+    print('name-error')
+exec('z = dir()', g, m)
+print(m.results)
+exec('z = locals()', g, m)
+print(m.results[0], m.results[1] is m)
 g = {}
 exec('import math\nname = math.__name__', g)
 print(g['name'], '__import__' in g['__builtins__'])"#,

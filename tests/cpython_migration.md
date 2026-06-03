@@ -43,6 +43,26 @@ ported, partial, blocked by runtime/AST-module work, or not started.
 | Grammar inventory maintenance | CPython main currently has 276 grammar rules, and the inventory has matching rows. | Keep the inventory synchronized and guarded by `tests/cpython_inventory.rs`; use the runtime coverage matrix to decide what is still incomplete. |
 | CPython test manifest | Syntax-adjacent CPython modules now have group-level method counts from the current local source: `test_grammar.py` has 75 methods, `test_syntax.py` has 55, `test_compile.py` has 186 methods, and `test_ast/test_ast.py` has 216. `test_grammar.py` currently has no module-level `test_*` functions; its executable tests are under `TokenTests` and `GrammarTests`. `TokenTests`, `GrammarTests`, `SyntaxWarningTest`, `SyntaxErrorTestCase`, `LazyImportRestrictionTestCase`, `TestBooleanExpression`, `TestStaticAttributes`, `TestExpressionStackSize`, and `TestStackSizeStability` are now fully ported at method level for the current local CPython source. Python-visible `ast.parse()` / `ast.dump()` now exposes first-pass node fields and AST type checks, first-pass lazy import `is_lazy` fields, first-pass `compile(..., ast.PyCF_ONLY_AST)` returns public AST nodes, first-pass `compile(public_ast, ...)` executes representative public AST trees, including cyclic public-AST `RecursionError` detection and the first `to_tuple()` snippet round-trips, all current `ASTConstructorTests` methods are now covered by direct method-level Rust evidence, the first public AST iteration helpers are covered, first-pass `ast.literal_eval()` values, decimal integer digit-limit diagnostics, syntax-error multiline indentation behavior, and syntax-error context preservation are covered, first-pass location helpers for generated nodes are covered, first-pass parser-generated source locations for common expression/call shapes and multiline docstring expression start positions are covered, first-pass `ast.get_docstring()` is covered, first-pass `ast.get_source_segment()` is covered for supported parsed nodes plus explicit-location multi-line extraction, first-pass function/class definition source spans are covered, first-pass lambda/subscript/display source spans are covered including starred call-argument end positions, first-pass yield/await/comprehension source spans are covered, first-pass suite/control-flow source spans are covered including CPython's explicit `elif` statement start-position checks, first-pass import/import-from source spans are covered including parenthesized multi-line import-from, first-pass f-string replacement-expression source spans are covered, first-pass `ast.dump(indent=...)` formatting is covered, and first-pass incomplete-node / `show_empty` dump behavior is covered; full parser source locations for remaining node families, broader compile-from-AST execution, remaining public-AST dump edge cases, deeper `literal_eval()` edge cases, full `to_tuple()` parity, and most `test_compile.py` code-object/optimization/source-position groups remain open. | Continue with partial `test_ast.py` and `test_compile.py` classes method-by-method. |
 
+Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
+
+- Added `cpython_bytes_bytearray_subclass_basics_subset`, covering the first
+  bytes/bytearray subclass construction, `isinstance()` / `issubclass()`,
+  `bytes()` conversion, length, and truthiness slice from CPython
+  `BaseBytesTest::test_custom`, `AssortedBytesTest`, and the module-level
+  subclass definitions.
+- Added `cpython_bytes_bytearray_subclass_repr_and_compare_subset`, extending
+  that CPython slice to bytes subclass `repr()` / `str()`, bytearray subclass
+  class-name repr, bytes-like equality against builtin `bytes`, `bytearray`,
+  and `memoryview`, and bytewise ordering for supported bytes-like values.
+- Added `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, migrating
+  current CPython `ByteArrayTest::test_hex_use_after_free`. MiniPython now keeps
+  the bytearray receiver resize-locked while a bytes-subclass separator runs
+  re-entrant `__len__` code, so the attempted `clear()` raises a catchable
+  `BufferError` and leaves the receiver unchanged.
+- This regression stays in `tests/cpython_subset.rs` rather than the default
+  `tests/cpython_diff.rs` oracle because macOS system Python 3.9 still has the
+  old accepted-and-cleared behavior.
+
 Completed in the `test_compile.py` boolean/control-flow pass:
 
 - Added `Lib/test/test_compile.py` to the method-level manifest. The current
@@ -100,18 +120,113 @@ Started in the `test_compile.py` source-positions direct-method pass:
 - This pins the public-AST compile path where a multiline `Assert` node's
   location is copied to a generated method call, `ast.fix_missing_locations()`
   fills child nodes, and `compile(public_ast, ...)` accepts the rewritten tree.
+- Added `cpython_compile_source_positions_code_positions_first_pass_subset`,
+  starting the public `code.co_positions()` surface from CPython
+  `TestSourcePositions::test_simple_assignment`. MiniPython now returns
+  iterable `(line, end_line, col, end_col)` tuples for compiled code objects,
+  using the current first-pass line-span model and `None` columns until the
+  register bytecode carries instruction-level source columns.
+- Added `cpython_compile_source_positions_multistatement_code_lines_subset`,
+  extending that first-pass runtime code-object location model across multiple
+  statement-leading source lines for `compile(..., "exec")`, with matching
+  `co_lines()` and `co_positions()` line output.
+- Added `cpython_compile_specifics_lineno_after_no_code_first_pass_subset`,
+  starting function `__code__` line-table coverage for no-code bodies. Function
+  code metadata now exposes `co_firstlineno`, `co_lines()`, and
+  `co_positions()` as public first-pass metadata while still leaving precise
+  instruction/opcode source ranges for a future function-body span model.
+- Extended the same test to pin source-token-derived function `co_firstlineno`
+  for later definitions in a module, and threaded function definition lines
+  through `CompileOptions`, `MakeFunction`, and runtime `Function` metadata for
+  source-compiled code.
+- Added `cpython_compile_specifics_lineno_procedure_call_subset`, porting the
+  public part of CPython `TestSpecifics::test_lineno_procedure_call`: a
+  multiline parenthesized procedure call must not report the opening-paren-only
+  physical line through function `co_lines()`.
+- Added `cpython_compile_specifics_lineno_attribute_subset`, porting CPython
+  `TestSpecifics::test_lineno_attribute` for multiline attribute load, method
+  call, store, and augmented-store function `co_lines()` sequences.
+- Added
+  `cpython_compile_specifics_line_number_implicit_return_after_async_for_subset`,
+  porting CPython
+  `TestSpecifics::test_line_number_implicit_return_after_async_for` for the
+  public async-function `co_lines()` sequence around an `async for` body and its
+  implicit return path.
+- Added `cpython_compile_specifics_lineno_after_implicit_return_subset`,
+  porting CPython `TestSpecifics::test_lineno_after_implicit_return` for the
+  public `sys._getframe()` frame-line behavior after implicit returns from
+  executed and skipped `if` bodies.
+- Added `cpython_compile_specifics_if_implicit_return_code_lines_subset`,
+  pinning the same implicit-return `if` shape through public function
+  `co_lines()` output.
+- Added
+  `cpython_compile_specifics_lineno_of_backward_jump_conditional_in_loop_subset`,
+  adapting CPython `TestSpecifics::test_lineno_of_backward_jump_conditional_in_loop`
+  to MiniPython's public `co_lines()` surface instead of CPython `dis` opcode
+  positions.
+- Added `cpython_compile_specifics_synthetic_jump_line_tables_subset`,
+  adapting CPython's three synthetic-jump multiple-predecessor methods to
+  MiniPython's public function `co_lines()` surface for the same try/loop
+  cold-block source shapes.
+- Added `cpython_compile_specifics_lineno_propagation_empty_blocks_subset`,
+  adapting CPython `TestSpecifics::test_lineno_propagation_empty_blocks` to
+  MiniPython's public function `co_lines()` surface for the same
+  while/try/except/else empty-block smoke-test source shape.
+- Added `cpython_compile_specifics_line_number_genexp_subset`, porting CPython
+  `TestSpecifics::test_line_number_genexp` for the public nested generator
+  expression code-object `co_lines()` sequence exposed through the outer
+  function's `co_consts`.
+- Added `cpython_compile_specifics_big_dict_literal_subset`, porting CPython
+  `TestSpecifics::test_big_dict_literal` at the public source level by
+  evaluating a 0xFFFF+1-entry dict display and proving every key/value entry is
+  preserved through `len()`.
+- Function code-object metadata now carries source-token-derived line sequences
+  through `CompileOptions`, `MakeFunction`, runtime `Function`, and hidden
+  source-to-public-AST metadata so `compile(source)` and `compile(AST)` stay
+  aligned while public `FunctionDef.lineno` remains CPython-compatible.
 - `TestSourcePositions` remains `partial` because most methods still assert
-  CPython code-object `co_positions()` and opcode/debug-range locations, which
-  require a broader instruction source-span model in MiniPython.
+  CPython opcode/debug-range locations, which require a broader instruction
+  source-span model in MiniPython.
 
 Started in the `test_compile.py` TestSpecifics newline/indent pass:
 
 - Added `cpython_compile_specifics_newline_and_indentation_subset`, migrating
   CPython `Lib/test/test_compile.py::TestSpecifics::test_no_ending_newline`,
-  `test_empty`, `test_other_newlines`, and `test_indentation`.
+  `test_empty`, `test_other_newlines`, `test_indentation`, and
+  `test_leading_newlines`.
 - This pins `compile(source, filename, "exec")` acceptance for empty string
   source, non-newline-terminated source, CRLF source, lone-CR source, mixed
-  newline source containing function definitions, and nested indented blocks.
+  newline source containing function definitions, nested indented blocks, plus
+  first-pass public code-object `co_firstlineno` and `co_lines()` behavior for
+  source that starts with 256 blank physical lines.
+- Added `cpython_compile_specifics_encoding_subset`, migrating CPython
+  `test_encoding`. MiniPython now accepts eval input with leading comment or
+  coding-cookie lines, preserves string-source behavior where coding cookies do
+  not affect already-decoded source strings, and preserves bytes-source PEP 263
+  decoding across bad cookies, default UTF-8, latin-1, utf-8, and iso8859-15
+  examples.
+- Added `cpython_compile_specifics_runtime_warning_capture_subset`, migrating
+  CPython `test_compile_warnings`. Runtime `compile()` now emits tokenizer and
+  static SyntaxWarnings through `warnings.catch_warnings(record=True)` on every
+  invocation, preserving source filenames, category identity, and line numbers
+  for the supported tokenizer and identity-literal warning shapes.
+- Added `cpython_compile_specifics_warning_in_finally_subset`, migrating
+  CPython `test_compile_warning_in_finally`. MiniPython now preserves the
+  Python-visible behavior that identity-literal warnings in ordinary `finally`
+  and `except*` / `finally` code paths are captured once per source occurrence
+  with the expected source line.
+- Added `cpython_compile_specifics_filter_syntax_warnings_by_module_subset`,
+  migrating CPython `test_filter_syntax_warnings_by_module` for runtime
+  `compile()`. MiniPython now accepts the public keyword-only `module=`
+  argument, rejects non-string/non-`None` module values, and captures the same
+  tokenizer, static codegen, identity-literal, and finally-control-flow
+  `SyntaxWarning` line numbers from CPython's `syntax_warnings.py` source shape
+  without requiring sandbox file access.
+- Added `cpython_compile_specifics_pep_765_warning_subset`, migrating CPython
+  `test_pep_765_warnings` and `test_pep_765_no_warnings`. Source and public-AST
+  `compile()` now emit finally-control-flow SyntaxWarnings for `return`,
+  `break`, and `continue` escaping a `finally` block, while nested definitions
+  and nested loops inside `finally` stay warning-free.
 - `TestSpecifics` remains `partial`; many remaining methods assert CPython
   code-object metadata, optimization behavior, warnings, filename handling,
   constants, and traceback/line-number details outside this input-boundary
@@ -125,6 +240,17 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `test_duplicate_global_local`, `test_argument_order`, and
   `test_float_literals` through the public `compile()`, `eval()`, and `exec()`
   SyntaxError boundary.
+- Added `cpython_compile_specifics_debug_assignment_subset`, completing CPython
+  `test_debug_assignment`: MiniPython now imports the public `builtins` module,
+  exposes `builtins.__debug__`, permits `setattr(builtins, "__debug__", ...)`,
+  and preserves expression-level `__debug__` as the original constant value.
+- Added `cpython_compile_specifics_docstring_optimize_subset`, completing the
+  public behavior from CPython `test_docstring` and
+  `test_docstring_interactive_mode`: source and public-AST `compile()` now
+  preserve function, class, and module docstrings for optimize `-1/0/1`, omit
+  them for optimize `2`, keep literal-only f-strings as `JoinedString` rather
+  than ordinary string docstrings, and keep function `__doc__` out of
+  `function.__dict__` when read, assigned, or deleted.
 - Added `cpython_compile_specifics_none_assignment_subset`, migrating
   `test_none_assignment` across both `single` and `exec` compile modes for
   assignment, augmented assignment, definitions, loop targets, parameters, and
@@ -134,19 +260,185 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   aliases, parenthesized from-imports, future imports, and CPython-invalid
   malformed import shapes.
 - Added `cpython_compile_specifics_compile_stability_subset`, covering
-  `test_sequence_unpacking_error`, `test_annotation_limit`,
+  `test_extended_arg`, `test_sequence_unpacking_error`,
+  `test_annotation_limit`,
   `test_condition_expression_with_dead_blocks_compiles`,
   `test_condition_expression_with_redundant_comparisons_compiles`,
   `test_dead_code_with_except_handler_compiles`, and
-  `test_try_except_in_while_with_chained_condition_compiles`.
+  `test_try_except_in_while_with_chained_condition_compiles`. The
+  `test_extended_arg` migration keeps the public long-expression and loop
+  execution behavior while treating CPython's `EXTENDED_ARG` opcode layout as
+  outside MiniPython's register-VM contract.
+- Added `cpython_compile_specifics_invalid_public_ast_subset`, migrating
+  CPython `test_compile_invalid_namedexpr` and
+  `test_compile_invalid_typealias`: compile-from-public-AST now rejects a
+  `NamedExpr` whose `target` is not `ast.Name` with
+  `NamedExpr target must be a Name`, and a `TypeAlias` whose `name` is not
+  `ast.Name` with `TypeAlias with non-Name name`.
+- Added `cpython_compile_specifics_single_statement_subset`, migrating
+  CPython `test_single_statement` and `test_bad_single_statement` for the
+  public `compile(source, filename, "single")` boundary. MiniPython now accepts
+  one interactive statement, including semicolon-separated simple statements
+  and newline-terminated compound statements, while rejecting multiple physical
+  statements and unterminated inline compound statements such as
+  `def f(): pass`.
 - Added `cpython_compile_specifics_dict_evaluation_order_subset`, migrating
   `test_dict_evaluation_order` and pinning left-to-right key-before-value dict
   display evaluation.
 - Added `cpython_compile_specifics_compile_filename_subset`, starting
   `test_compile_filename` by exposing public code-object `co_filename`,
   accepting string and bytes filenames, and rejecting unsupported bytearray/list
-  filenames. The remaining memoryview and path-like filename branches require
-  broader memoryview/path-like runtime support.
+  filenames.
+- Expanded `cpython_compile_specifics_compile_filename_subset` with CPython's
+  `test_path_like_objects` behavior: `compile()` now accepts filename objects
+  whose `__fspath__()` returns `str` or `bytes`, rejects non-string path
+  results, and propagates exceptions raised by `__fspath__()`.
+- Expanded `cpython_compile_specifics_compile_filename_subset` with the
+  remaining memoryview filename rejection from `test_compile_filename`.
+- Added `cpython_compile_specifics_compile_argument_conversion_subset`, porting
+  the public argument-conversion behavior covered by CPython
+  `test_compile_filename_refleak`: non-string `mode` rejects with `TypeError`,
+  oversized `optimize` rejects with `OverflowError`, and `dont_inherit`
+  truth-value conversion calls `__bool__()` and propagates its exception. The
+  CPython refcount/regression intent remains an internal implementation concern.
+- Classified CPython
+  `test_compile.py::TestSpecifics::test_compiler_recursion_limit` as
+  `blocked_by_cpython_internal`: MiniPython keeps its own parser/compiler
+  complexity guard coverage through
+  `cpython_static_nesting_and_complexity_limit_subset`, but the CPython-only
+  compiler-frame recursion-depth and platform crash-depth matrix is not a
+  language-surface contract.
+- Added `cpython_compile_specifics_lambda_code_metadata_subset`, migrating the
+  public behavior from CPython `test_for_distinct_code_objects`,
+  `test_lambda_doc`, and `test_lambda_consts`: distinct lambda objects expose
+  distinct public `__code__` identities, lambda `__doc__` is `None`, and
+  function code metadata now exposes `co_consts` from bytecode constants.
+- Added `cpython_compile_specifics_name_mangling_code_varnames_subset`,
+  migrating CPython `test_mangling`: function code metadata now exposes local
+  assignment, deletion, annotation, and import bindings in `co_varnames` after
+  compiler name mangling, so class-private names such as `__mangled` and
+  `import __mangled_mod` appear as `_A__mangled` / `_A__mangled_mod` while
+  dunder names such as `__not_mangled__` and `__package__` remain unchanged.
+- Added `cpython_compile_specifics_integer_constant_edges_subset`, migrating
+  the public behavior from CPython `test_unary_minus` and the 64-bit-platform
+  `test_32_63_bit_values` branch: hexadecimal integers above 63 bits survive
+  `eval()` and unary minus as Python `int` values, signed minimum-boundary
+  decimal literals remain `int`, and function `__code__.co_consts` exposes the
+  large integer constants as `int` values. MiniPython does not require
+  CPython's exact constant-folding table shape for unary negative literals.
+- Added `cpython_compile_specifics_public_regression_shapes_subset`, migrating
+  the public compile/runtime surface of CPython `test_if_expression_expression_empty_block`,
+  `test_multi_line_lambda_as_argument`, `test_apply_static_swaps`,
+  `test_apply_static_swaps_2`, `test_apply_static_swaps_3`,
+  `test_variable_dependent`, `test_duplicated_small_exit_block`,
+  `test_cold_block_moved_to_end`,
+  `test_remove_empty_basic_block_with_jump_target_label`,
+  `test_remove_redundant_nop_edge_case`,
+  `test_global_declaration_in_except_used_in_else`, `test_regression_gh_120225`,
+  and `test_globals_dict_subclass`. This pins conditional-expression compile
+  regressions, multiline lambda keyword arguments, duplicate target assignment
+  ordering, dependent store ordering, control-flow compile stability, combined
+  `try` / `except` and `except*` global declarations used from `else`, the
+  async-match/f-string/async-dict-comprehension regression shape, and globals
+  dict-subclass lookup behavior without copying CPython opcode/NOP layout.
+- Added `cpython_compile_specifics_null_terminated_memoryview_subset`, migrating
+  CPython `test_null_terminated` for memoryview source objects. MiniPython now
+  supports `memoryview(bytes_like)` as a bytes-like compile/eval/exec source,
+  including sliced memoryviews, while preserving embedded-NUL `SyntaxError`
+  rejection.
+- Added `cpython_compile_specifics_exec_general_mapping_locals_subset`,
+  migrating CPython `test_exec_with_general_mapping_for_locals`. MiniPython now
+  accepts ordinary mapping objects as explicit `locals` for `exec()`, resolves
+  names through `__getitem__`, writes through `__setitem__`, treats mapping
+  `KeyError` as a missing local name, uses `keys()` for zero-argument `dir()`,
+  exposes the original mapping through `locals()`, and still rejects ordinary
+  mapping objects as `globals`.
+- Expanded `cpython_memoryview_minimal_runtime_subset`, migrating the first
+  constructor/equality/hash/attribute/method slice from CPython
+  `Lib/test/test_memoryview.py`: positional and `object=` construction, byte
+  iteration, equality with bytes-like objects, read-only memoryview hashing,
+  writable memoryview `ValueError` on hash, one-dimensional byte-view
+  attributes, `tobytes()`, `tolist()`, `hex()`, `count()`, `index()`, and
+  `toreadonly()`. The slice now also covers CPython's public
+  `memoryview.release()` lifecycle, context-manager `__enter__` /
+  `__exit__`, released-state `ValueError` behavior for supported operations,
+  released `str()` / `repr()` shape, same-object identity through `with ... as`,
+  and reversed iteration through `reversed(m)` and `m[::-1]`.
+- Added `cpython_memoryview_writable_setitem_subset`, migrating the supported
+  one-dimensional bytearray-backed side of CPython
+  `Lib/test/test_memoryview.py::AbstractMemoryTests::test_setitem_readonly`,
+  `test_setitem_writable`, and `test_delitem`: shared `bytearray` identity,
+  writable memoryview item assignment, same-size slice assignment, overlapping
+  self-copy, read-only assignment `TypeError`, memoryview deletion `TypeError`,
+  bounds errors, and no-resize assignment checks.
+- Added `cpython_memoryview_slice_reference_subset`, migrating the first
+  supported one-dimensional slice-reference behavior from CPython
+  `Lib/test/test_memoryview.py::BaseMemorySliceTests` and
+  `BaseMemorySliceSliceTests`: memoryview slices share the original bytearray
+  buffer instead of copying bytes, writes through a sliced view update the
+  backing bytearray, backing bytearray writes are visible through the view,
+  same-size slice assignment works on subviews, slice-of-slice keeps sharing,
+  negative-stride subviews write back to the correct physical byte positions,
+  and readonly status is preserved through slicing.
+- Added `cpython_memoryview_public_buffer_attributes_subset`, migrating the
+  supported one-dimensional public attribute side of CPython
+  `Lib/test/test_memoryview.py` and `Lib/test/test_buffer.py`: `memoryview.obj`
+  preserves the original exporter for bytearray-backed views, `memoryview(m)`
+  and `m.toreadonly()` keep the same exporter, slices preserve exporter
+  identity, `strides` reflects positive, negative, and empty-slice step
+  semantics, `c_contiguous`, `f_contiguous`, and `contiguous` follow CPython's
+  one-dimensional rules, bytes-backed views expose the original bytes object by
+  value, and released views reject the new public attributes with `ValueError`.
+- Added `cpython_memoryview_getitem_index_count_compare_subset`, migrating the
+  supported one-dimensional public behavior from CPython
+  `Lib/test/test_memoryview.py::AbstractMemoryTests::test_getitem`,
+  `test_index`, `test_count`, and `test_compare`: integer getitem returns byte
+  integers, negative indices are normalized, invalid index bounds and types
+  raise the expected exception classes, `index()` matches list-style
+  `start`/`stop` behavior for hits and `ValueError` misses, `count()` matches
+  the logical view contents, equality works against bytes, bytearray, and
+  memoryview objects while non-buffer objects compare unequal, and unsupported
+  ordered comparisons raise Python-level `TypeError`.
+- Added `cpython_memoryview_hex_separator_subset`, migrating CPython
+  `Lib/test/test_memoryview.py::ConcreteMemoryviewTest::test_memoryview_hex`
+  and `test_memoryview_hex_separator` for the supported one-dimensional byte
+  view surface: non-contiguous reversed views produce hex over logical bytes,
+  positional and keyword separator arguments work, positive `bytes_per_sep`
+  groups from the right, negative values group from the left, and overlarge
+  grouping counts omit separators.
+- Added `cpython_memoryview_copy_rejection_subset`, migrating CPython
+  `Lib/test/test_memoryview.py::OtherTest::test_copy` for the supported
+  read-only and writable memoryview surfaces: `copy.copy(memoryview(...))`
+  raises `TypeError` instead of duplicating or aliasing a view.
+- Added `cpython_memoryview_pickle_rejection_subset`, migrating CPython
+  `Lib/test/test_memoryview.py::OtherTest::test_pickle` for MiniPython's
+  internal pickle payload API: supported memoryview objects now raise
+  `TypeError` across every exposed pickle protocol, including when nested
+  inside list/dict containers.
+- Added `cpython_memoryview_hash_release_cache_subset`, migrating CPython
+  `Lib/test/test_memoryview.py::AbstractMemoryTests::test_hash` and
+  `test_hash_writable` for supported one-dimensional views: a read-only
+  memoryview that has already been hashed keeps that cached hash across
+  `release()`, while first hash after release and writable memoryview hashing
+  still raise `ValueError`.
+- Added `cpython_memoryview_release_during_index_subset`, migrating the
+  supported one-dimensional public behavior from CPython
+  `Lib/test/test_memoryview.py::OtherTest::test_use_released_memory`: scalar
+  memoryview access and memoryview writes re-check released state after
+  Python-level `__index__` conversion, slice reads keep a live subview of the
+  original exporter even when bound conversion releases the source view, RHS
+  byte conversion through `__index__` cannot write after release, and bound
+  `__getitem__` / `__setitem__` methods route through the same VM semantics.
+- Added `cpython_memoryview_cast_one_byte_format_subset`, migrating the
+  supported one-dimensional public behavior from CPython
+  `Lib/test/test_memoryview.py::OtherTest::test_ctypes_cast`: MiniPython now
+  supports `memoryview.cast()` for one-byte `B`, `b`, and `c` formats, including
+  positional and keyword `format` / one-dimensional `shape` arguments,
+  format-aware `tolist()`, scalar indexing, iteration, reversed iteration,
+  membership, writable `c`-format item and slice assignment, format preservation
+  through `memoryview(m)`, slicing, and `toreadonly()`, plus CPython-style
+  rejection of non-contiguous casts. Non-byte formats, ctypes exporters, and
+  multidimensional casts remain outside this slice.
 - `TestSpecifics` remains `partial`; the next useful slice is still the subset
   that avoids direct assertions about deeper CPython code-object internals such
   as constant merging, bytecode shape, line tables, and platform traceback
@@ -177,7 +469,7 @@ Completed in the AST snippets public-`to_tuple()` PEP 695 pass:
 | Scope declaration errors | `Lib/test/test_syntax.py` global/nonlocal doctests; `Lib/test/test_scope.py`; `Lib/test/test_global.py` | `global_stmt`, `nonlocal_stmt`, `function_def`, `class_def` | Completed | Rust tests reject use-before-global, assign-before-global, missing nonlocal binding, module-level nonlocal, global/nonlocal conflicts, and cover global/nonlocal writes across supported name-binding forms. |
 | Match pattern edge cases | `Lib/test/test_syntax.py`; `Lib/test/test_patma.py`; `Lib/test/test_ast/test_ast.py` pattern cases | `match_stmt`, `patterns`, `mapping_pattern`, `class_pattern`, `or_pattern`, `as_pattern` | Completed | Rust tests cover valid match suites, invalid empty suites, inline and indented case bodies, invalid capture placement, duplicate mapping keys/rest, OR-pattern binding consistency, guards, and irrefutable-case ordering. |
 | f-string and t-string grammar | `Lib/test/test_fstring.py`; `Lib/test/test_tstring.py`; `Lib/test/test_tokenize.py` | `fstring`, `fstring_replacement_field`, `tstring`, token trio rules | Partial | Rust tests cover nested expressions/specs, conversions, debug syntax, raw prefixes, invalid braces, and tokenizer split behavior. |
-| Type parameter grammar | `Lib/test/test_type_params.py`; `Lib/test/test_compile.py` type alias/default coverage | `type_params`, `type_param_seq`, `type_param`, `type_param_default` | Completed | Rust tests cover class/function/async-function/type-alias type params, duplicate names, bounds, constraints, defaults, starred defaults, trailing commas, and invalid variadic bounds. |
+| Type parameter grammar | `Lib/test/test_type_params.py`; `Lib/test/test_compile.py` type alias/default coverage | `type_params`, `type_param_seq`, `type_param`, `type_param_default` | Completed | Rust tests cover class/function/async-function/type-alias type params, duplicate names, lazy bounds/constraints/defaults, lazy type-alias values, public `__constraints__` metadata, defaults, starred defaults, public evaluate functions for values/bounds/constraints/defaults through annotationlib formats, trailing commas, dunder metadata access/assignment, nested generic function/class type-parameter closure identity, generic class/function `__qualname__` metadata, generic metaclass access through `metaclass=MyMeta[A, B]`, class-header starargs and `**kwargs` propagation into `__init_subclass__`, class-scope lookup across prior class bindings, enclosing nonlocal bindings, future class bindings, explicit `global`/`nonlocal`, later class/global/nonlocal mutation visibility, generic-alias, nested-class, and bound/value generator/list-comprehension type-scope capture, generic-method generator-expression annotation capture, class-private type-parameter mangling with no leak across module/function/class scopes, traditional `typing.TypeVar` interoperability with PEP 695 annotations and generic-base rejection, runtime compatibility with `typing.TypeVar`, `typing.TypeVarTuple`, and `typing.ParamSpec`, invalid variadic bounds, rejected non-default type parameters after defaults, and type-parameter/nonlocal scope interactions. |
 
 ## Immediate Next Slice
 
@@ -801,6 +1093,16 @@ Completed in the raw-definition invalid/type-comment promotion pass:
   function type comments, duplicate function type comments, invalid function
   headers, invalid async function headers, invalid class headers, and missing
   raw-definition suites.
+- Public AST `type_comment` metadata for `FunctionDef`, `AsyncFunctionDef`,
+  `Assign`, `For`, `AsyncFor`, `With`, and `AsyncWith` when
+  `ast.parse(..., type_comments=True)`, plus ordinary `ast.parse()` retaining
+  those fields as `None`, is covered by
+  `cpython_type_comment_public_ast_metadata_subset`.
+- Public `ast.arg.type_comment` metadata for positional-only, ordinary,
+  vararg, keyword-only, and kwarg parameters when
+  `ast.parse(..., type_comments=True)`, plus ordinary `ast.parse()` retaining
+  those fields as `None`, is covered by
+  `cpython_type_comment_argument_ast_metadata_subset`.
 
 Completed in the import-helper promotion pass:
 
@@ -918,7 +1220,30 @@ Completed in the type-parameter grammar promotion pass:
   `type_param_default`, and `type_param_starred_default`, plus executable
   CPython-derived coverage for function, async-function, class, and type-alias
   type parameter lists, trailing commas, TypeVar tuple constraints, generic
-  alias defaults, and starred TypeVarTuple defaults.
+  alias defaults, starred TypeVarTuple defaults, and
+  `test_type_params.py::TypeParameterDefaultsTest::test_nondefault_after_default`.
+- Added executable CPython-derived coverage for
+  `test_type_params.py::TypeParamsNonlocalTest`, rejecting direct `nonlocal`
+  declarations for type-parameter names while preserving ordinary local
+  shadowing that can be captured by a nested `nonlocal`.
+- Added `Lib/test/test_type_params.py` to the strict CPython migration
+  manifest. `TypeParamsNonlocalTest` is tracked as `ported` with direct
+  method-level audit rows for all 4 current CPython methods; broader
+  type-parameter groups are classified as `partial` or `blocked_by_runtime`
+  where they need `typing`, `types.new_class()`, pickle, weakref, or exact
+  runtime-evaluation APIs that MiniPython has not fully implemented.
+- Promoted `test_type_params.py::TypeParamsInvalidTest` from `partial` to
+  `ported` in the strict manifest. Added method-level Rust evidence for all 13
+  current CPython methods, including the duplicate-name matrix, ordinary
+  binding/type-parameter non-collisions, rejected named/yield/await expressions
+  in generic type scopes, generic-function annotation validation, and the
+  explicit-`object` generic-class MRO `TypeError`.
+- Promoted `test_type_params.py::TypeParamsTypeParamsDunder` from `partial` to
+  `ported` in the strict manifest. `cpython_type_params_dunder_subset` covers all
+  6 current CPython methods, including nested generic class/function
+  type-parameter closure identity, `__parameters__`, empty non-generic
+  `__type_params__`, and class/function `__type_params__` assignment override
+  behavior.
 
 Completed in the invalid dict display promotion pass:
 
@@ -1190,11 +1515,10 @@ Completed in the raise-statement supported-promotion pass:
   exception calls.
 - Migrated the first `BaseException.with_traceback` slice from
   `Lib/test/test_exceptions.py::testWithTraceback` and
-  `::testInvalidTraceback`: MiniPython now exposes `__traceback__` as `None`,
-  accepts `with_traceback(None)`, and raises a catchable `TypeError` for
-  non-`None` traceback values. Real traceback objects and CPython's object
-  identity guarantee for `with_traceback` remain tied to the broader heap
-  exception/object model.
+  `::testInvalidTraceback`: MiniPython now exposes captured traceback objects,
+  preserves traceback identity through `with_traceback(tb)`, accepts
+  `with_traceback(None)`, and raises a catchable `TypeError` for invalid
+  traceback values including direct `__traceback__` assignment.
 - Migrated the `SystemExit` / `OSError` attribute slice from
   `Lib/test/test_exceptions.py::testAttributes`: builtin exception values now
   preserve `SystemExit.code`; `OSError` exposes `errno`, `strerror`,
@@ -1502,8 +1826,9 @@ Completed in the import helper supported-promotion pass:
   subscripts.
 - A later recursive stdlib compile seed keeps the grammar support honest for
   relative imports inside real packages, including `from ._threading_handler
-  import ...`; runtime relative import resolution remains unsupported without a
-  custom importer.
+  import ...`; runtime resolution now covers package-context relative imports
+  against MiniPython's builtin stdlib module table, while real filesystem
+  package loading remains future work.
 
 Completed in the delete-statement supported-promotion pass:
 
@@ -1912,6 +2237,426 @@ Completed in the bytes-literal pass:
 - Kept `STRING` as `partial` because the row still tracks the broader CPython
   tokenizer string surface, including exact tokenizer token-stream modeling and
   remaining invalid-literal diagnostics.
+
+Completed in the bytes iterable-constructor pass:
+
+- Added `cpython_bytes_iterable_constructor_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_from_iterable`,
+  `test_from_tuple`, `test_from_list`, `test_from_index`,
+  `test_constructor_type_errors`, and `test_constructor_value_errors`.
+- Added `cpython_bytes_constructor_exception_subset`, adapted from
+  `BaseBytesTest::test_constructor_exceptions`, preserving exceptions raised by
+  `__index__` and `__iter__` during `bytes()` / `bytearray()` construction.
+- Extended `bytes()` and `bytearray()` so non-string, non-buffer sources first
+  use integer/`__index__` length construction when possible, then fall back to
+  iterable construction; iterable items are converted through `__index__` and
+  must be in `range(0, 256)`.
+
+Completed in the bytes constructor/concat/repeat/contains pass:
+
+- Added `cpython_bytes_constructor_concat_repeat_contains_subset`, adapted from
+  CPython `Lib/test/test_bytes.py::BaseBytesTest::test_from_int`,
+  `test_concat`, `test_repeat`, `test_repeat_1char`, and `test_contains`.
+- Extended bytes/bytearray CPython parity evidence for integer-length
+  construction, mixed bytes/bytearray concatenation result types, sequence
+  repetition including zero and negative counts, and membership over integer,
+  bytes, bytearray, and memoryview needles.
+- Routed sequence repetition errors through Python-level exception conversion
+  so `try` / `except TypeError` can catch unsupported repeat operands, and
+  aligned bytes/bytearray membership `ValueError` / `TypeError` behavior for
+  out-of-range integers and unsupported left operands.
+
+Completed in the bytes compare/slice/reversed pass:
+
+- Added `cpython_bytes_compare_slice_reversed_subset`, adapted from
+  `Lib/test/test_bytes.py::BaseBytesTest::test_compare`,
+  `test_compare_to_str`, `test_reversed`, `test_getslice`, and
+  `test_extended_getslice`.
+- Extended CPython parity evidence for bytes and bytearray lexicographic
+  comparisons, comparison against `str`, reversed iteration over byte values,
+  positive/negative ordinary slices, and CPython's extended-slice matrix against
+  equivalent list slicing.
+- Adjusted slice index iteration so an overflowing next index from an already
+  normalized huge `step` stops the slice rather than raising an overflow error,
+  matching CPython behavior for cases such as `seq[-100:sys.maxsize:sys.maxsize]`.
+
+Completed in the bytes search-method pass:
+
+- Added `cpython_bytes_search_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_count`, `test_find`,
+  `test_rfind`, `test_index`, and `test_rindex`.
+- Added runtime support for `bytes` and `bytearray` `count()`, `find()`,
+  `rfind()`, `index()`, and `rindex()` over bytes-like needles and integer byte
+  needles, including `start` / `stop` bounds, non-overlapping count behavior,
+  `find()` / `rfind()` `-1` results, and `index()` / `rindex()` `ValueError`
+  behavior for missing subsections.
+- Extended the same search-method slice to accept `None` start/stop bounds,
+  matching CPython `BaseBytesTest::test_none_arguments` for the supported
+  search/count/index/rindex surface.
+
+Completed in the bytes prefix/suffix-method pass:
+
+- Added `cpython_bytes_prefix_suffix_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_startswith`, `test_endswith`,
+  the prefix/suffix assertions in `test_none_arguments`, and the related arity
+  checks in `test_find_etc_raise_correct_error_messages`.
+- Added runtime support for `bytes` and `bytearray` `startswith()` and
+  `endswith()` over bytes-like prefixes/suffixes and tuple alternatives,
+  including CPython-style tuple short-circuiting, `None` start/stop bounds,
+  empty tuple false results, and TypeError paths for unsupported first
+  arguments.
+
+Completed in the bytes search-bound `__index__` pass:
+
+- Added `cpython_bytes_search_bounds_index_subset`, adapted from CPython
+  `Lib/test/string_tests.py` search-bound behavior and the supported
+  `Lib/test/test_bytes.py` search/prefix/suffix surface.
+- Extended `bytes` and `bytearray` `count()`, `find()`, `rfind()`, `index()`,
+  `rindex()`, `startswith()`, and `endswith()` so `start` / `stop` bounds use
+  Python-level `__index__` conversion.
+- Covered positive and negative custom index objects plus propagation of
+  exceptions raised by `__index__` while evaluating search windows.
+
+Completed in the bytes join-method pass:
+
+- Added `cpython_bytes_join_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_join`.
+- Added runtime support for `bytes.join()` and `bytearray.join()` over
+  iterable inputs, preserving receiver-driven result types and accepting
+  `bytes`, `bytearray`, and `memoryview` sequence items.
+- Covered empty joins, list/tuple/iterator inputs, empty separators, reduced
+  stress joins, and representative `TypeError` paths for non-iterable inputs
+  and non-bytes-like items.
+
+Completed in the bytes split/rsplit-method pass:
+
+- Added `cpython_bytes_split_rsplit_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_split_string_error`,
+  `test_split_int_error`, `test_split_unicodewhitespace`,
+  `test_rsplit_unicodewhitespace`, and the concrete memoryview separator
+  checks in `test_split_bytearray` / `test_rsplit_bytearray`.
+- Added runtime support for `bytes.split()`, `bytes.rsplit()`,
+  `bytearray.split()`, and `bytearray.rsplit()` over default ASCII whitespace
+  splitting, explicit bytes-like separators, `maxsplit`, `sep` / `maxsplit`
+  keywords, receiver-driven result types, empty-separator `ValueError`, and
+  representative TypeError paths for unsupported separator/maxsplit values.
+
+Completed in the bytes splitlines-method pass:
+
+- Added `cpython_bytes_splitlines_methods_subset`, adapted from CPython
+  `Lib/test/string_tests.py::test_splitlines` for the bytes-like API, plus
+  public bytearray copy-shape coverage from `Lib/test/test_bytes.py`.
+- Added runtime support for `bytes.splitlines()` and
+  `bytearray.splitlines()`, preserving receiver-driven result types and
+  supporting positional and keyword `keepends`.
+- Covered CR, LF, CRLF, terminal line-break behavior, empty inputs, and the
+  bytes-specific boundary that VT, FF, FS, RS, and NEL are not line separators
+  for bytes even though several of them are text separators for `str`.
+
+Completed in the bytes ASCII case/predicate-method pass:
+
+- Added `cpython_bytes_ascii_case_predicate_methods_subset`, adapted from
+  CPython `Lib/test/string_tests.py` methods as applied through
+  `Lib/test/test_bytes.py` `BytesAsStringTest` and `ByteArrayAsStringTest`.
+- Added runtime support for `bytes` and `bytearray` `lower()`, `upper()`,
+  `capitalize()`, `title()`, `swapcase()`, `islower()`, `isupper()`,
+  `istitle()`, `isspace()`, `isalpha()`, `isalnum()`, `isdigit()`, and
+  `isascii()`.
+- Covered ASCII-only byte semantics, non-ASCII byte preservation for case
+  transforms, receiver-driven `bytes` / `bytearray` result types, empty-input
+  predicate behavior, and representative extra-argument `TypeError` paths.
+
+Completed in the bytes expandtabs/zfill-method pass:
+
+- Added `cpython_bytes_expandtabs_zfill_methods_subset`, adapted from CPython
+  `Lib/test/string_tests.py::test_expandtabs` and `::test_zfill` as applied
+  through `Lib/test/test_bytes.py` `BytesAsStringTest` and
+  `ByteArrayAsStringTest`.
+- Added runtime support for `bytes.expandtabs()`, `bytearray.expandtabs()`,
+  `bytes.zfill()`, and `bytearray.zfill()`, preserving receiver-driven result
+  types and builtin type `dir()` visibility.
+- Covered byte-level tab expansion across CR/LF boundaries, `tabsize=`
+  keyword behavior, negative/zero/bool tab sizes, sign-aware zero fill, and
+  representative `TypeError` paths.
+
+Completed in the bytes strip-method pass:
+
+- Added `cpython_bytes_strip_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_strip_bytearray`,
+  `test_strip_string_error`, and `test_strip_int_error`.
+- Added runtime support for `bytes.strip()`, `bytes.lstrip()`,
+  `bytes.rstrip()`, `bytearray.strip()`, `bytearray.lstrip()`, and
+  `bytearray.rstrip()` over default ASCII whitespace plus explicit bytes-like
+  strip sets, preserving receiver-driven result types.
+- Covered `memoryview` and `bytearray` strip-set arguments, empty strip sets,
+  `None`, and representative TypeError paths for `str`, integer, keyword, and
+  extra-argument forms.
+
+Completed in the bytes alignment-method pass:
+
+- Added `cpython_bytes_alignment_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_center`, `test_ljust`,
+  `test_rjust`, and `test_xjust_int_error`.
+- Added runtime support for `bytes.center()`, `bytes.ljust()`,
+  `bytes.rjust()`, `bytearray.center()`, `bytearray.ljust()`, and
+  `bytearray.rjust()`, preserving receiver-driven result types.
+- Covered default space fill, `bytes` and `bytearray` single-byte fill
+  arguments, unchanged-width cases, and representative TypeError paths for
+  missing, integer-fill, empty-fill, and multi-byte fill arguments.
+
+Completed in the bytes removeprefix/removesuffix-method pass:
+
+- Added `cpython_bytes_remove_affix_methods_subset`, adapted from CPython
+  `Lib/test/string_tests.py::test_removeprefix` and `test_removesuffix`,
+  plus public bytes-like argument coverage. CPython's `Lib/test/test_bytes.py`
+  only touches these methods in bytearray free-threading stress tests, which
+  remain outside this safe MiniPython runtime slice.
+- Added runtime support for `bytes.removeprefix()`, `bytes.removesuffix()`,
+  `bytearray.removeprefix()`, and `bytearray.removesuffix()` over `bytes`,
+  `bytearray`, and `memoryview` affixes, preserving receiver-driven result
+  types.
+- Covered matching and non-matching affixes, empty receiver/affix behavior,
+  full-affix removal, no-keyword behavior, and representative TypeError paths
+  for missing, extra, and non-bytes-like arguments.
+
+Completed in the bytes maketrans/translate-method pass:
+
+- Added `cpython_bytes_maketrans_translate_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_maketrans` and
+  `test_translate`.
+- Added runtime support for `bytes.maketrans()`, `bytearray.maketrans()`,
+  `bytes.translate()`, and `bytearray.translate()` over bytes-like table and
+  delete arguments, preserving receiver-driven `translate()` result types while
+  returning a `bytes` translation table from both type-level `maketrans()`
+  methods.
+- Covered 256-byte table construction and validation, `None` table deletion,
+  `delete=` keyword behavior, bytes-like `maketrans()` arguments,
+  `memoryview` tables, class and instance `maketrans()` lookup, and
+  representative TypeError/ValueError paths.
+
+Completed in the bytes replace/partition-method pass:
+
+- Added `cpython_bytes_replace_partition_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_replace`,
+  `test_replace_int_error`, `test_partition`, `test_rpartition`,
+  `test_partition_string_error`, and `test_partition_int_error`.
+- Added runtime support for `bytes` and `bytearray` `replace()`,
+  `partition()`, and `rpartition()` over bytes-like arguments, preserving the
+  receiver-dependent result type, replacement count handling, empty-needle
+  insertion behavior, empty-separator `ValueError`, and representative
+  TypeError paths for non-bytes-like arguments.
+
+Completed in the bytearray mutation-method pass:
+
+- Added `cpython_bytearray_mutation_methods_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::ByteArrayTest` public mutation behavior.
+- Added runtime support for `bytearray.append()`, `extend()`, `insert()`,
+  `pop()`, `remove()`, `reverse()`, `clear()`, and `copy()`, preserving
+  in-place alias-visible mutation for shared bytearray objects and returning
+  `None` for mutating methods.
+- Covered integer-byte validation, bytes/bytearray/memoryview extension,
+  integer-iterable extension, insert/pop index normalization, independent
+  `copy()` identity, `dir(bytearray)` method visibility, and representative
+  `TypeError`, `ValueError`, and `IndexError` paths.
+
+Completed in the bytearray extend pass:
+
+- Added `cpython_bytearray_extend_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::ByteArrayTest::test_extend`.
+- Covered self-extension, `map()` iterators, generator expressions, explicit
+  iterators, list inputs, all-or-nothing invalid item handling, `__index__`
+  item conversion, and CPython-style `bytearray.extend()` TypeError messages
+  for string and non-iterable sources.
+
+Completed in the bytearray resize pass:
+
+- Added `cpython_bytearray_resize_subset`, adapted from current CPython
+  `Lib/test/test_bytes.py::ByteArrayTest::test_resize`.
+- Added runtime support for `bytearray.resize()`, covering truncation,
+  zero-filled growth, `None` return values, `__index__` length conversion,
+  negative-length `ValueError`, type/arity `TypeError`, `dir(bytearray)`
+  visibility, and a sandbox-safe `MemoryError` guard for impractically large
+  sizes such as `sys.maxsize`.
+- Added `cpython_bytearray_resize_forbidden_subset`, adapted from current
+  CPython `Lib/test/test_bytes.py::ByteArrayTest::test_resize_forbidden`,
+  covering active memoryview exports blocking `bytearray.resize()`, resizing
+  slice assignment, `pop()`, `remove()`, item deletion, and non-contiguous
+  slice-size changes before mutating the original bytearray.
+
+Completed in the bytearray take-bytes pass:
+
+- Added `cpython_bytearray_take_bytes_subset`, adapted from current CPython
+  `Lib/test/test_bytes.py::ByteArrayTest::test_take_bytes`.
+- Added runtime support for `bytearray.take_bytes()`, covering whole-buffer
+  extraction, prefix extraction, negative stop normalization, `None` stop,
+  `__index__` stop conversion, deletion from the original bytearray,
+  active memoryview exporter `BufferError`, `IndexError` / `TypeError` paths,
+  and `dir(bytearray)` visibility without exposing the method on `bytes`.
+- Classified `__alloc__`, `sys.getsizeof()`, the CPython-only
+  `test_take_bytes_optimization` as allocation/internal optimization work
+  outside this public semantic slice.
+
+Completed in the bytearray iterator/repeat regression pass:
+
+- Added `cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset`,
+  adapted from CPython `Lib/test/test_bytes.py::ByteArrayTest::
+  test_iterator_length_hint` and `::test_repeat_after_setslice`.
+- Covered bytearray iterator remaining-length behavior after the original
+  bytearray is cleared, ensuring `list(it)` exhausts cleanly instead of seeing a
+  stale or negative length.
+- Covered bytearray repetition after a resizing slice assignment, preserving
+  the current logical buffer for `* 1` and `* 3`.
+- Added the same scenario to `tests/cpython_diff.rs` as a default CPython oracle
+  parity case named `bytearray-iterator-length-hint-and-repeat-regressions`.
+
+Completed in the bytearray mutating-index safety pass:
+
+- Added `cpython_bytearray_mutating_index_safety_subset`, adapted from current
+  CPython `Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index` and
+  `::test_mutating_index_inbounds`.
+- Extended bytearray single-byte conversion to honor `__index__` for
+  assignment, `append()`, `insert()`, and `remove()`.
+- Covered the safety case where RHS `__index__` clears the bytearray during
+  `b[0] = value`, which must re-check the current bytearray length and raise
+  `IndexError` instead of writing through stale state.
+- Covered index `__index__` mutation that clears and restores the bytearray
+  before item and slice assignment, ensuring the assignment updates the intended
+  bytearray object and not an unrelated allocation.
+- Added the version-stable slice in-bounds subcase to `tests/cpython_diff.rs`
+  as `bytearray-mutating-index-slice-inbounds-safety`. The `Boom` branch and
+  item-assignment in-bounds branch are intentionally not in the default oracle
+  because the system CPython 3.9.6 oracle differs from current CPython source
+  for those cases.
+- Classified `_testlimitedcapi.sequence_setitem` branches as CPython C API
+  coverage, not MiniPython runtime behavior.
+
+Completed in the bytearray search reentrancy BufferError pass:
+
+- Added `cpython_bytearray_search_reentrancy_buffererror_subset`, adapted from
+  current CPython `Lib/test/test_bytes.py::ByteArrayTest::
+  test_search_methods_reentrancy_raises_buffererror`.
+- Added a first bytearray active-export counter to MiniPython's bytearray
+  storage and memoryview lifecycle. Bytearray-backed memoryviews and scoped
+  bytearray receiver guards now block length-changing mutations with
+  `BufferError`.
+- Added minimal public `__buffer__` protocol conversion for the migrated
+  bytearray search/membership/split paths, including `__release_buffer__`
+  cleanup after copying bytes out of a returned memoryview.
+- Covered `bytearray.find()`, `count()`, `index()`, `rindex()`, `rfind()`,
+  membership, `split()`, and `rsplit()` when argument conversion re-enters and
+  attempts to clear the receiver bytearray.
+- This case is not added to `tests/cpython_diff.rs`: the local default oracle is
+  system CPython 3.9.6, which does not expose the current public `__buffer__`
+  protocol behavior needed by this test.
+
+Completed in the bytearray extend empty-buffer overflow pass:
+
+- Added `cpython_bytearray_extend_empty_buffer_overflow_subset`, adapted from
+  current CPython `Lib/test/test_bytes.py::ByteArrayTest::
+  test_extend_empty_buffer_overflow`.
+- Covered the Python-visible behavior that `bytearray.extend()` still consumes an
+  iterator whose `__length_hint__()` returns zero, and that `float(bytearray())`
+  raises a catchable `ValueError` afterward.
+- Changed `float()` parsing failures for strings, bytes, and bytearray values to
+  report `ValueError:`-typed runtime errors so MiniPython's Python-level
+  `try`/`except ValueError` can catch them.
+- The original CPython regression guards a C fast-path NUL-termination bug; the
+  MiniPython subset intentionally pins the public behavior rather than copying
+  CPython's internal allocation scenario.
+- This case is not added to `tests/cpython_diff.rs`: the local default oracle is
+  system CPython 3.9.6, which still exhibits the historical corrupted-bytearray
+  behavior that current CPython's regression test prevents.
+
+Completed in the bytearray extended slice-assignment pass:
+
+- Added `cpython_bytearray_extended_slice_assignment_subset`, adapted from
+  CPython `Lib/test/test_bytes.py::ByteArrayTest::test_extended_set_del_slice`
+  and `::test_setslice_trap`.
+- Extended bytearray slice assignment to accept integer iterables, not only
+  bytes-like objects, while preserving byte validation and extended-slice
+  length checks.
+- Covered assignment/deletion parity against list slicing for large positive
+  and negative slice bounds, tuple/range/list RHS inputs, direct
+  `__setitem__` / `__delitem__`, self-slice assignment, and
+  `dir(bytearray)` visibility for the special methods.
+
+Completed in the bytearray inplace concat/repeat pass:
+
+- Added `cpython_bytearray_inplace_concat_repeat_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::ByteArrayTest::test_iconcat`, `test_irepeat`, and
+  `test_irepeat_1char`.
+- Added register bytecode and VM support for `InPlaceMultiply` so `*=` can
+  preserve mutable-object identity instead of falling back to ordinary
+  multiplication.
+- Extended bytearray `+=`, `*=`, `__iadd__`, and `__imul__` behavior to mutate
+  the original bytearray object, return the same object, expose the special
+  methods through `dir(bytearray)`, accept bytes-like concat operands, and route
+  representative `TypeError` paths through catchable Python exceptions.
+
+Completed in the bytearray non-mutating copy-buffer pass:
+
+- Added `cpython_bytearray_nonmutating_methods_copy_buffers_subset`, adapted
+  from CPython `Lib/test/test_bytes.py::ByteArrayTest::test_copied` and
+  `test_partition_bytearray_doesnt_share_nullstring`.
+- Covered `bytearray.replace(..., count=0)` and `bytearray.translate()` returning
+  distinct bytearray objects for non-mutating operations.
+- Covered `bytearray.partition()` and `bytearray.rpartition()` returning
+  independent empty bytearray objects when the separator is absent, so later
+  in-place mutation of one empty result does not affect the other.
+- Added the same scenario to `tests/cpython_diff.rs` as a CPython oracle parity
+  case named `bytearray-nonmutating-copy-buffer-semantics`.
+
+Completed in the bytes copy-module pass:
+
+- Added `cpython_bytes_copy_module_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_copy`.
+- Exposed `copy.copy()` in the minimal `copy` module alongside the existing
+  `copy.deepcopy()` and `copy.replace()` subset.
+- Added shallow-copy behavior for supported MiniPython values, including
+  independent bytearray buffers for `copy.copy(bytearray(...))`; `copy.deepcopy`
+  now also copies bytearray buffers instead of sharing them.
+- Covered positional and keyword `x` argument binding, bytes/bytearray type and
+  equality preservation, bytearray shallow/deep copy independence, and
+  representative `TypeError` paths.
+
+Completed in the bytes pickle round-trip pass:
+
+- Added `cpython_bytes_pickle_roundtrip_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_pickling`.
+- Covered public pickle round-trip value/type preservation for supported
+  bytes and bytearray payloads across every exposed `pickle.HIGHEST_PROTOCOL`
+  value.
+- Kept the scope explicit: MiniPython still uses an internal pickle payload
+  rather than CPython's binary pickle byte stream, and bytearray round-trips
+  now have regression evidence for independent mutable buffers.
+
+Completed in the bytes iterator pickle round-trip pass:
+
+- Added `cpython_bytes_iterator_pickle_roundtrip_subset`, adapted from CPython
+  `Lib/test/test_bytes.py::BaseBytesTest::test_iterator_pickling`.
+- Fixed `pickle.dumps()` / `pickle.loads()` over shared `Value::Iterator`
+  wrappers so each unpickle creates a fresh iterator state instead of sharing
+  and consuming the payload's original `Rc<RefCell<_>>`.
+- Covered bytes and bytearray iterator value/type preservation for initial and
+  already-advanced iterators across every exposed pickle protocol. The remaining
+  pickle gap after this pass still included bytearray iterator pickles that must
+  keep a copied iterator tied to a copied mutable bytearray exporter, subclass
+  pickling, and CPython's real binary pickle format.
+
+Completed in the bytearray iterator shared-exporter pickle pass:
+
+- Added `cpython_bytearray_iterator_pickle_shared_exporter_subset`, adapted from
+  CPython `Lib/test/test_bytes.py::ByteArrayTest::test_iterator_pickling2`.
+- Added a dedicated `ByteArrayIterator` VM state that stores a `ByteArrayRef`
+  rather than a stale bytes snapshot, so bytearray iterators see post-creation
+  mutations and expose `bytearray_iterator` type identity.
+- Extended pickle graph copying so a pickled `(iterator, bytearray)` pair
+  unpickles to an iterator tied to the copied bytearray object. This covers
+  initial, running, empty, and exhausted iterator states across every exposed
+  pickle protocol.
+- Remaining `test_bytes.py` pickle work is now mostly subclass pickle behavior
+  and CPython's real binary pickle format, not the public bytearray iterator /
+  copied-exporter relationship.
 
 Completed in the string-prefix matrix pass:
 
@@ -3229,7 +3974,7 @@ Completed in the type builtin pass:
   construction, including string class names, tuple bases, dict namespaces,
   inherited class attributes, method binding from namespace functions,
   `__name__`, `__qualname__`, `__module__`, and covered bad-argument
-  diagnostics.
+  diagnostics including extra positional arguments and mappingproxy namespaces.
 - Added `cpython_type_name_qualname_subset`, adapted from
   `TestType::test_type_name` and `::test_type_qualname`, covering mutable
   class `__name__` and `__qualname__`, namespace `__qualname__`, namespace
@@ -3239,8 +3984,24 @@ Completed in the type builtin pass:
   `TestType::test_type_doc` and `::test_type_firstlineno`, covering class
   `__doc__` construction and assignment over the supported value set plus
   CPython's removal of `__firstlineno__` when `__module__` is reassigned.
-- Added a CPython/MiniPython differential parity case for the supported
-  `type()` subset.
+- Added `cpython_type_bad_slots_subset`, adapted from
+  `TestType::test_bad_slots`, covering invalid dynamic-class `__slots__`
+  public error classes for bytes specs, invalid identifiers, class-variable
+  conflicts, duplicate `__dict__` / `__weakref__`, inherited `__dict__` /
+  `__weakref__`, and non-special slots on supported `int` subtypes.
+- Added `cpython_type_nokwargs_subset`, adapted from
+  `TestType::test_type_nokwargs`, covering keyword rejection for the
+  three-argument `type()` constructor.
+- Added `cpython_type_typeparams_subset`, adapted from
+  `TestType::test_type_typeparams`, covering generic class `__type_params__`,
+  assignment override, and delete rejection that preserves the override.
+- Added `cpython_type_namespace_order_subset`, adapted from
+  `TestType::test_namespace_order`, covering minimal `OrderedDict`
+  construction, `move_to_end()`, and preservation of ordered namespace entries
+  in a dynamic class `__dict__`.
+- Added CPython/MiniPython differential parity cases for the supported
+  `type()` subset, including keyword rejection and dynamic-class namespace
+  order.
 
 Completed in the pow builtin pass:
 
@@ -3298,6 +4059,11 @@ Completed in the attribute introspection builtin pass:
   TypeError/AttributeError paths for the supported subset.
 - Tightened this builtin family's argument/type errors so they become catchable
   CPython-style `TypeError` exceptions.
+- Added `cpython_builtin_none_ne_direct_subset`, adapted from
+  `Lib/test/test_builtin.py::BuiltinTest::test___ne__`; MiniPython now exposes
+  the inherited `object.__eq__` / `object.__ne__` methods for direct `None`
+  calls, preserving identity comparison and `NotImplemented` for unrelated
+  objects.
 
 Completed in the bound method metadata pass:
 
@@ -3416,6 +4182,36 @@ Completed in the integer digit-limit runtime pass:
   digit-limit behavior through `format()`, f-strings, `str.format()`, and
   old-style `%s` / `%r` / `%a` / `%d` / `%i` / `%u` formatting, while
   preserving unlimited hexadecimal formatting.
+- Added `cpython_compile_specifics_int_literals_too_long_subset`, directly
+  porting CPython
+  `Lib/test/test_compile.py::TestSpecifics::test_int_literals_too_long` for
+  compile-time decimal literal limits, `SyntaxError.lineno` on the offending
+  source line, and unlimited hexadecimal source literals under the same digit
+  limit.
+- Source compile lexer errors now preserve `SyntaxError` location attributes
+  instead of collapsing them to a message-only exception.
+- Added `cpython_compile_specifics_compile_ast_public_subset` and
+  `cpython_compile_specifics_compile_ast_cpython_file_subset`, directly
+  covering the public behavior from CPython
+  `Lib/test/test_compile.py::TestSpecifics::test_compile_ast`: source-to-AST
+  compile returns `ast.Module`, AST-to-code recompilation keeps code-object
+  equality independent of filename while preserving the second
+  `co_filename`, mismatched start nodes / invalid children raise `TypeError`,
+  and the full local CPython `Lib/test/test_compile.py` source round-trips
+  through public AST compilation.
+- Aligned public-AST-to-syntax lowering with the parser for sliced assignment
+  targets and ordinary keyword calls. `Subscript(..., Slice(...), Store())`
+  now lowers to a parser-equivalent subscript target whose index is a slice
+  literal, and keyword-only public AST calls lower to `KeywordCall` unless
+  `*` / `**` unpacking requires `UnpackCall`.
+- MiniPython `CodeObject` equality and hashing now ignore filename and compare
+  the executable mode plus register bytecode instructions, matching the public
+  behavior needed by CPython's source -> AST -> code compile path while leaving
+  `co_filename` observable.
+- Fixed the `collections.abc.Sequence.__iter__` mixin path to build a
+  `SequenceIterator` directly from `__getitem__` instead of recursively calling
+  `iter(self)`, which keeps direct `MutableSequence` subclasses iterable under
+  `list()` and `extend()` without stack overflow.
 
 Completed in the iter/next builtin pass:
 
@@ -3712,6 +4508,35 @@ Completed in the collections ABC iterator pass:
 - Kept CPython's key distinction that `Iterator` requires both `__iter__` and
   `__next__`; a class with only `__next__` is not an Iterator ABC instance.
 
+Completed in the collections ABC Iterable sample-matrix pass:
+
+- Added `cpython_collections_abc_iterable_sample_matrix_subset`, adapted from
+  CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Iterable`.
+- Preserved CPython's public `Iterable` recognition matrix for scalar
+  non-samples, builtin containers, dict views, native generators, and generator
+  expressions.
+- Added `Iterable.__iter__`, `Iterator.__iter__`, and `Iterator.__next__` ABC
+  mixins so direct subclasses can delegate to `super()` with CPython-compatible
+  empty-iterator and `StopIteration` behavior.
+- Preserved CPython-style `__iter__ = None` blocking for structural iterable
+  classes.
+
+Completed in the collections ABC Iterator sample-matrix pass:
+
+- Added `cpython_collections_abc_iterator_sample_matrix_subset`, adapted from
+  CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Iterator`.
+- Preserved the CPython public sample matrix for `Iterator` recognition:
+  scalar/container non-samples are rejected by both `isinstance()` and
+  `issubclass(type(...))`, while bytes/string/tuple/list/dict/set/frozenset
+  iterators, dict-view iterators, native generators, and generator expressions
+  are accepted.
+- Kept the Issue 10565 behavior that a class defining only `__next__` is not an
+  `Iterator`.
+- This pass required no runtime change because MiniPython's existing iterator
+  ABC recognition already matched the migrated public behavior.
+
 Completed in the collections ABC core-runtime pass:
 
 - Added `cpython_collections_abc_core_runtime_subset`, adapted from
@@ -3746,7 +4571,7 @@ Completed in the collections ABC sequence pass:
 - Added `cpython_collections_abc_sequence_subset`, adapted from CPython
   `Lib/test/test_collections.py::test_Sequence`.
 - Added `issubclass` support for CPython's registered built-in sequence types:
-  `list`, `tuple`, `str`, `bytes`, `bytearray`, and `range`.
+  `list`, `tuple`, `str`, `bytes`, `bytearray`, `range`, and `memoryview`.
 - Added `isinstance` support for explicit `Sequence` subclasses while preserving
   CPython's rule that a plain user class with `__len__` + `__getitem__` is not
   structurally considered a `Sequence`.
@@ -3784,12 +4609,14 @@ Completed in the collections ABC byte-string/buffer pass:
 - Added `cpython_collections_abc_bytestring_buffer_subset`, adapted from CPython
   `Lib/test/test_collections.py::test_ByteString` and `::test_Buffer`.
 - Extended `collections.abc` with `ByteString` and `Buffer`.
-- Added `bytes` / `bytearray` registrations for both ABCs, while preserving
-  CPython's distinction that `ByteString` itself does not inherit `Buffer`.
+- Added `bytes` / `bytearray` registrations for `ByteString` and
+  `bytes` / `bytearray` / `memoryview` registrations for `Buffer`, while
+  preserving CPython's distinction that `ByteString` itself does not inherit
+  `Buffer` and `memoryview` does not inherit `ByteString`.
 - Added `Buffer` structural `__buffer__` checks for user classes and
   CPython-style `__buffer__ = None` blocking.
-- Left `memoryview` parity and `ByteString` deprecation warnings for future
-  runtime-warning and buffer-object support.
+- Left full `memoryview`/buffer protocol parity and `ByteString` deprecation
+  warnings for future runtime-warning and buffer-object support.
 
 Completed in the collections ABC mutable-sequence pass:
 
@@ -3823,6 +4650,24 @@ Completed in the collections ABC set/mutable-set mixins pass:
 - Added explicit-subclass `MutableSet` mixins for `remove`, `pop`, `clear`,
   `__ior__`, `__iand__`, `__ixor__`, and `__isub__`, including identity
   clearing behavior for self-subtraction and self-symmetric-difference.
+- Added `cpython_collections_abc_set_from_iterable_operator_subset`, adapted
+  from CPython `Lib/test/test_collections.py::test_Set_from_iterable`, so
+  normal and in-place `MutableSet` operators dispatch through ABC mixins and
+  honor an instance `_from_iterable` override.
+- Added `cpython_collections_abc_set_real_set_interoperability_subset`,
+  adapted from CPython
+  `Lib/test/test_collections.py::test_Set_interoperability_with_real_sets`,
+  covering custom `Set` subclasses with real `set` and list operands across
+  binary operators, ordering, equality, inequality, and non-Set ordering
+  `TypeError` paths.
+- Added `cpython_collections_abc_set_hash_matches_frozenset_subset`, adapted
+  from CPython
+  `Lib/test/test_collections.py::test_Set_hash_matches_frozenset`, covering
+  `Set._hash(frozenset(...)) == hash(frozenset(...))` for supported hashable
+  samples including `None`, numbers, strings, booleans, object identities,
+  NaN, nested frozensets, large integers, and range-derived frozensets. The
+  `sys.maxsize` range stress sample remains pending MiniPython range-limit
+  work.
 
 Completed in the frozenset first-pass runtime pass:
 
@@ -4066,6 +4911,74 @@ Completed in the collections ABC async-runtime pass:
 - Preserved CPython's distinctions that a plain generator is not Awaitable,
   an `__await__`-only object is not a Coroutine, and `__anext__` without
   `__aiter__` is not an AsyncIterator.
+- Added the exact CPython `AsyncIterator` public non-sample matrix for
+  `None`, `object`, and `list`, including both `isinstance(value,
+  AsyncIterator)` and `issubclass(type(value), AsyncIterator)` rejection.
+
+Completed in the collections ABC AsyncIterator mixin pass:
+
+- Added `cpython_collections_abc_async_iterator_mixin_subset`, adapted from
+  CPython `Lib/_collections_abc.py::AsyncIterator` and
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncIterator`.
+- Added the inherited `AsyncIterator.__aiter__` ABC mixin for direct subclasses,
+  preserving CPython's public behavior that `ai.__aiter__()` returns `ai`.
+
+Completed in the collections ABC AsyncGenerator core-mixin pass:
+
+- Added `cpython_collections_abc_async_generator_core_mixin_subset`, adapted
+  from CPython `Lib/_collections_abc.py::AsyncGenerator` and
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncGenerator`.
+- Added the inherited `AsyncGenerator.__aiter__` and
+  `AsyncGenerator.__anext__` ABC mixins for direct subclasses.
+- Preserved CPython's public behavior that `agen.__aiter__()` returns `agen`
+  and `agen.__anext__()` delegates through `agen.asend(None)`.
+
+Completed in the collections ABC AsyncGenerator throw/close mixin pass:
+
+- Added `cpython_collections_abc_async_generator_throw_close_mixin_subset`,
+  adapted from CPython `Lib/_collections_abc.py::AsyncGenerator` and
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncGenerator`.
+- Added coroutine-like runtime values for default `AsyncGenerator.athrow()` and
+  `AsyncGenerator.aclose()` ABC mixins on direct subclasses, including
+  CPython-style `type(...).__name__ == "coroutine"`, `Awaitable` / `Coroutine`
+  membership, `.send(None)` drive-to-`StopIteration`, `.close()`, and reuse
+  errors after close or completion.
+- Extended default `athrow()` handling to preserve CPython's public `typ`,
+  explicit `val`, real traceback objects, `tb=None`, and invalid
+  non-traceback `tb` behavior.
+- Preserved CPython's public close behavior: `aclose()` awaits
+  `athrow(GeneratorExit)`, swallows `GeneratorExit` / `StopAsyncIteration`,
+  propagates other exceptions, and raises
+  `RuntimeError("asynchronous generator ignored GeneratorExit")` when the
+  subclass ignores close by returning normally.
+- Left exact CPython diagnostic wording for later passes where it depends on
+  implementation internals.
+
+Completed in the collections ABC `types.coroutine()` pass:
+
+- Added `cpython_collections_abc_types_coroutine_subset`, adapted from CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Awaitable` and
+  `::test_Coroutine`.
+- Added a first-pass `types.coroutine()` builtin that marks generator functions
+  as iterable coroutines while preserving function identity.
+- Added await execution for those iterable-coroutine generators, while
+  preserving CPython's ABC distinction that they are neither `Awaitable` nor
+  `Coroutine` instances.
+- Extended ABC registry lookup so `Coroutine.register(C)` also propagates
+  through `Awaitable` for `isinstance()` and `issubclass()`.
+
+Completed in the collections ABC Coroutine mixin pass:
+
+- Added `cpython_collections_abc_coroutine_mixin_subset`, adapted from CPython
+  `Lib/_collections_abc.py::Coroutine` and
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Coroutine`.
+- Added `Coroutine.send`, `Coroutine.throw`, and `Coroutine.close` ABC mixins
+  for direct subclasses that delegate to `super()`.
+- Preserved CPython's public mixin outcomes: default `send()` raises
+  `StopIteration`, default `throw()` raises the passed exception, `close()`
+  swallows `GeneratorExit` / `StopIteration`, reports
+  `coroutine ignored GeneratorExit` when `throw()` returns normally, and
+  propagates unrelated close-time exceptions.
 
 Completed in the collections ABC generator-runtime pass:
 
@@ -4079,6 +4992,117 @@ Completed in the collections ABC generator-runtime pass:
   `AsyncIterator` relationships.
 - Preserved CPython-style `None` blocking for generator protocol methods such
   as `send = None` and async-generator protocol methods such as `asend = None`.
+
+Completed in the collections ABC Generator sample/mixin pass:
+
+- Added `cpython_collections_abc_generator_sample_matrix_subset` and
+  `cpython_collections_abc_generator_mixin_subset`, adapted from CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Generator`.
+- Preserved the CPython public non-sample/sample matrix for `Generator`
+  recognition, including scalar/container/iterator non-samples, structural
+  `Gen`, native generators, lambda-yield generators, and direct `Generator`
+  subclasses.
+- Added `collections.abc.Generator` mixin methods for direct subclasses:
+  `__iter__` returns `self`, `__next__` delegates to `send(None)`, default
+  `throw()` raises the passed exception, and `close()` dispatches
+  `throw(GeneratorExit)` with the CPython `FailOnClose` and
+  `IgnoreGeneratorExit` outcomes.
+- Added compiler support for lambda bodies containing `yield`, so
+  `(lambda: (yield))()` is created as a generator function and participates
+  in `Iterator` / `Generator` ABC recognition.
+
+Completed in the collections ABC registration pass:
+
+- Added `cpython_collections_abc_registration_subset`, adapted from CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_registration`.
+- Added VM-backed `ABC.register()` state for the supported one-trick pony ABCs:
+  `Hashable`, `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`, and
+  `Callable`.
+- Preserved the public behavior that registration returns the registered class
+  and affects both `issubclass()` and `isinstance()`, including subclasses of
+  the registered class.
+
+Completed in the collections ABC abstract-method pass:
+
+- Added `cpython_collections_abc_abstract_methods_subset`, adapted from CPython
+  `Lib/test/test_collections.py::ABCTestCase.validate_abstract_methods` as used
+  by `TestOneTrickPonyABCs`.
+- Added a first-pass required-abstract-method table for the supported one-trick
+  pony ABCs, including `Awaitable`, `Coroutine`, `Hashable`, `AsyncIterable`,
+  `AsyncIterator`, `Iterable`, `Reversible`, `Collection`, `Iterator`,
+  `Generator`, `AsyncGenerator`, `Sized`, `Container`, and `Callable`.
+- Added generic user-class instantiation checks so direct subclasses with all
+  required protocol methods instantiate, while subclasses missing each required
+  method raise `TypeError`.
+- Rejected direct constructor calls for those abstract ABC objects themselves.
+  The runtime now matches CPython's public `TypeError` text for missing-method
+  subclasses and direct ABC constructor calls, including the sorted
+  abstract-method name list, while still avoiding CPython's ABCMeta cache
+  machinery and `__abstractmethods__` internals.
+
+Completed in the collections ABC direct-subclassing pass:
+
+- Added `cpython_collections_abc_direct_subclassing_subset`, adapted from
+  CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_direct_subclassing`.
+- Promoted that method audit row to `ported` by covering the full CPython loop
+  over `Hashable`, `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`,
+  and `Callable`.
+- Preserved the public subclass relationship behavior that `class C(B): pass`
+  is a subclass of `B`, while unrelated builtin classes such as `int` are not
+  subclasses of each generated user class.
+
+Completed in the collections ABC validate-isinstance pass:
+
+- Added `cpython_collections_abc_validate_isinstance_subset`, adapted from
+  CPython `Lib/test/test_collections.py::ABCTestCase.validate_isinstance` as
+  used by the one-trick pony ABC tests for `Hashable`, `AsyncIterable`,
+  `Iterable`, `Sized`, `Container`, and `Callable`.
+- Preserved the helper's dynamic-class behavior: a class with `__hash__ = None`
+  becomes an ABC match after `setattr(C, special_method, stub)`, while the same
+  class shape without that target special method remains a non-match.
+- Tightened `Hashable` ABC detection for user classes so `__hash__ = None`
+  blocks hashability even when the class explicitly inherits `object`, while a
+  callable `__hash__` still satisfies the ABC.
+
+Completed in the collections ABC Hashable mixin pass:
+
+- Added `cpython_collections_abc_hashable_direct_subclass_subset`, adapted from
+  CPython `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Hashable`.
+- Added the public `Hashable.__hash__` ABC mixin method and made it visible
+  through both ordinary builtin class attribute lookup and `super()` lookup.
+- Preserved CPython's direct-subclass behavior that `class H(Hashable)` can
+  implement `__hash__` as `return super().__hash__()`, yielding `0`, while
+  unrelated builtin classes such as `int` are not subclasses of `H`.
+
+Completed in the collections ABC Reversible direct-subclass pass:
+
+- Added `cpython_collections_abc_reversible_direct_subclass_subset`, adapted
+  from CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Reversible`.
+- Preserved the public behavior that a direct `Reversible` subclass providing
+  `__iter__` and `__reversed__` can be passed to `reversed()`, yielding the
+  subclass-provided iterator, while unrelated builtin classes such as `float`
+  are not subclasses of the generated subclass.
+- This pass required no runtime change because MiniPython's existing
+  `reversed()` protocol path already dispatches the user-defined
+  `__reversed__` method correctly.
+
+Completed in the collections ABC Collection direct-subclass pass:
+
+- Added `cpython_collections_abc_collection_direct_subclass_subset`, adapted
+  from CPython
+  `Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Collection`.
+- Preserved the public behavior for complete direct `Collection` subclasses
+  and derived subclasses, including empty iteration results and rejection of
+  unrelated builtin classes such as `list`, `set`, and `float` as subclasses of
+  the generated user classes.
+- Covered the CPython missing-method and `None` blocking matrix for structural
+  `Collection` recognition, including inherited `__contains__ = None`
+  blocking.
+- This pass required no runtime change because MiniPython's existing
+  `Collection` subclasshook and special-method blocking logic already matched
+  the migrated public behavior.
 
 Completed in the selector/atom differential-parity pass:
 
@@ -4490,6 +5514,37 @@ Completed in the AST type-ignore line-number pass:
   `Module.type_ignores`, matching CPython's special handling for type-ignore
   nodes.
 
+Completed in the AST type-comment metadata pass:
+
+- Migrated the first public `Lib/test/test_type_comments.py` AST metadata
+  slice into `cpython_type_comment_public_ast_metadata_subset`, covering
+  statement-level `type_comment` preservation for function definitions, async
+  function definitions, assignments, for-loops, async for-loops,
+  with-statements, async with-statements, and parenthesized with-statements.
+- Added `cpython_type_comment_argument_ast_metadata_subset` for the next public
+  `Lib/test/test_type_comments.py` slice, covering `ast.arg.type_comment`
+  metadata on positional-only, ordinary, `*args`, keyword-only, and `**kwargs`
+  parameters, including annotated parameters that also carry a type comment.
+- Kept the CPython distinction that `ast.parse(source)` leaves these public AST
+  fields as `None`, while `ast.parse(source, type_comments=True)` exposes the
+  parsed strings.
+- Added `cpython_inappropriate_type_comments_subset`, migrating CPython
+  `TypeCommentTests.test_inappropriate_type_comments`: misplaced `# type:`
+  comments on pass statements, expression statements, augmented assignment,
+  while headers/bodies, try headers, finally headers, and invalid
+  `ignore...` spellings are ignored by ordinary `ast.parse()` but rejected as
+  `SyntaxError` when `type_comments=True`.
+- Added `cpython_type_comment_modern_syntax_and_ignores_subset`, covering the
+  remaining public `Lib/test/test_type_comments.py` smoke methods for
+  async-comprehension, matrix-multiply, f-string, underscored-number,
+  non-ASCII function type-comment, parenthesized-with, type-ignore-tag, and
+  `async` / `await` assignment rejection behavior under public `ast.parse()`.
+- Added `Lib/test/test_type_comments.py` to the strict CPython migration
+  manifest. Its single `TypeCommentTests` group is now tracked as `ported`
+  with direct method-level audit rows for all 17 current CPython methods, and
+  the Rust manifest verifier checks the method list against the local CPython
+  source.
+
 Completed in the AST ImportFrom validation pass:
 
 - Migrated CPython
@@ -4802,10 +5857,11 @@ Completed in the PEP 758 feature-version pass:
   `ast.parse(..., feature_version=(3, 14))` accept unparenthesized multiple
   exception types in `except` and `except*`, while
   `feature_version=(3, 13)` raises `SyntaxError`.
-- Added the single-expression acceptance cases from
-  `::test_pep758_except_with_single_expr`, preserving ordinary single
-  exception and parenthesized tuple exception parsing for both feature
-  versions.
+- Added the full single-expression matrix from
+  `::test_pep758_except_with_single_expr`, preserving ordinary `except` and
+  `except*` parsing for bare single expressions, tuple expressions,
+  parenthesized expressions, and `as exc` variants at both `(3, 14)` and
+  `(3, 13)`.
 - `ast.parse()` now reads the `feature_version` argument and applies this
   PEP 758 syntax gate before producing public AST nodes.
 
@@ -5035,10 +6091,11 @@ Started in the AST validator stdlib-validation pass:
   recursive `.py` files from `__phello__`, `_pyrepl`, `asyncio`,
   `collections`, `compression`, `concurrent`, `ctypes`, `curses`, `dbm`,
   `email`, and `encodings`.
-- Relative `ImportFrom` now compiles with an import level carried in bytecode,
-  so compile-only CPython stdlib validation can pass package-relative imports
-  such as `_pyrepl/__main__.py`; the default VM still raises `ImportError` for
-  unresolved relative imports at runtime.
+- Relative `ImportFrom` now compiles with an import level carried in bytecode
+  and the default VM resolves package-context relative imports against the
+  builtin stdlib module table, so compile-only CPython stdlib validation can
+  pass package-relative imports such as `_pyrepl/__main__.py` while runtime
+  tests cover the supported synthetic package surface.
 - The lexer now treats `from ._module import name` as a relative import module
   name instead of the invalid numeric-looking `._5` form, covering the
   `_pyrepl/reader.py` regression.
@@ -5242,6 +6299,16 @@ Completed in the first AST compare pass:
 - Native AST nodes now read instance-level `_fields` / `_attributes` overrides
   before their generated defaults, which is needed for CPython's mutable AST
   metadata tests.
+
+Completed in the AST compare literals pass:
+
+- Added `cpython_ast_compare_literals_exact_subset`, migrating CPython
+  `Lib/test/test_ast/test_ast.py::AST_Tests.test_compare_literals`.
+- Public `ast.compare()` is now pinned against CPython's full literal matrix for
+  `Constant` values, including signed integers, float infinities, non-ASCII
+  strings, tuples, frozensets, and same-looking int/float/bool/complex values
+  that must compare unequal because their public AST constant types differ.
+- The `AST_Tests` method audit now marks `test_compare_literals` as `ported`.
 
 Completed in the AST compare modes pass:
 
@@ -5509,6 +6576,77 @@ Completed in the AST helper recursion exact pass:
 
 Completed in the AST snippets eval public-`to_tuple()` pass:
 
+- Added `cpython_ast_snippets_exec_to_tuple_match_subset`, extending CPython
+  `Lib/test/test_ast/test_ast.py::AST_Tests.test_snippets` coverage for the
+  `snippets.py::exec_tests` match-statement public AST snapshots.
+- Fixed parser-generated public AST source-location annotation for `Match`
+  statements and wildcard `MatchAs` patterns so their `to_tuple()` positions
+  match CPython, while preserving compile-from-public-AST round-trips for the
+  migrated snapshots.
+- Added `cpython_ast_snippets_exec_to_tuple_annotations_subset`, extending
+  CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_snippets` coverage for
+  the `snippets.py::exec_tests` public AST snapshots that exercise
+  module/class docstrings, `*args`, `**kwargs`, unpacked vararg annotations,
+  return annotations containing starred generic aliases, all-parameter-kind
+  function signatures, and compile-from-public-AST round trips.
+- Added `cpython_ast_snippets_exec_to_tuple_assignment_ops_subset`, migrating
+  the CPython `snippets.py::exec_tests` public AST snapshots for `AnnAssign`
+  with starred generic annotations and all augmented-assignment operators.
+- This pins source locations and compile-from-public-AST round trips for
+  `AnnAssign`, `Starred` annotation operands, and operator singleton nodes from
+  `Add` through `FloorDiv`.
+- Added `cpython_ast_snippets_exec_to_tuple_assignment_targets_and_blocks_subset`,
+  migrating the CPython public AST snapshots for tuple/list/subscript
+  assignment targets, `for` / `while` `else` bodies, and `elif` chains.
+- This pins CPython's nested-`If` public AST shape for `elif`, plus source
+  locations for block-spanning compound statements and assignment target
+  contexts.
+- Added `cpython_ast_snippets_exec_to_tuple_with_raise_assert_subset`, migrating
+  the CPython public AST snapshots for `with`, `raise`, and `assert`
+  statements.
+- This pins `withitem` optional-target shapes, parenthesized with-item source
+  locations, `Raise` exception/cause nodes, and assert-message nodes while
+  preserving compile-from-public-AST round trips.
+- Added `cpython_ast_snippets_exec_to_tuple_try_handlers_subset`, migrating the
+  CPython public AST snapshots for `try`, `try/finally`, `try*`, handler names,
+  `else`, and `finally` statement shapes.
+- This pins `Try`, `TryStar`, `ExceptHandler`, handler type/name source spans,
+  and compile-from-public-AST round trips for the migrated exception-handling
+  snapshots.
+- Added `cpython_ast_snippets_exec_to_tuple_import_control_subset`, migrating
+  the CPython public AST snapshots for ordinary and lazy imports, from-imports,
+  `global`, `pass`, loop-contained `break` / `continue`, and tuple/list
+  `for` targets.
+- This pins `Import`, `ImportFrom`, `alias`, `Global`, `Pass`, `Break`,
+  `Continue`, and unpacking `For` target source spans while preserving
+  compile-from-public-AST round trips.
+- Added `cpython_ast_snippets_exec_to_tuple_decorators_namedexpr_subset`,
+  migrating the CPython public AST snapshots for decorated ordinary functions,
+  async functions, classes, generator-expression decorator arguments,
+  attribute decorators, and named expressions in expression, `if`, and `while`
+  statement positions.
+- This pins decorator-list source spans, decorated definition bodies,
+  generator-expression decorator arguments, nested attribute decorator nodes,
+  and `NamedExpr` target/value spans while preserving compile-from-public-AST
+  round trips.
+- Added `cpython_ast_snippets_exec_to_tuple_positional_only_params_subset`,
+  migrating the CPython public AST snapshots for positional-only parameters,
+  positional defaults, keyword-only defaults, and `**kwargs` argument nodes.
+- This pins `arguments.posonlyargs`, `arguments.args`, `arguments.kwonlyargs`,
+  `arguments.kw_defaults`, `arguments.defaults`, and `arguments.kwarg` shapes
+  while preserving compile-from-public-AST round trips.
+- Added `cpython_ast_snippets_exec_to_tuple_type_params_subset`, migrating the
+  CPython public AST snapshots for PEP 695 type aliases plus generic class and
+  function definitions.
+- This pins `TypeAlias`, `ClassDef.type_params`, `FunctionDef.type_params`,
+  `TypeVar` bounds/defaults, `TypeVarTuple` defaults, and `ParamSpec` defaults
+  while preserving compile-from-public-AST round trips.
+- Added `cpython_ast_start_modes_public_to_tuple_subset`, migrating focused
+  public AST root-node snapshots for `eval`, `single`, and `func_type` parsing
+  modes.
+- This pins `Expression`, `Interactive`, and `FunctionType` `to_tuple()` shapes,
+  including `Interactive` assignment bodies and `FunctionType` type-expression
+  arguments exposed by `ast.parse(..., mode="func_type")`.
 - Added `cpython_ast_snippets_eval_to_tuple_core_expr_subset`, migrating the
   first CPython `Lib/test/test_ast/snippets.py::eval_tests` public AST
   `to_tuple()` snapshots beyond the old `1 + 2` smoke case.
@@ -5550,6 +6688,38 @@ Completed in the AST snippets eval interpolated-string pass:
 - Replaced the older f-string-only replacement-expression annotator with a
   shared interpolated-string source-location path that handles f-strings and
   t-strings, including literal `Constant` parts and `Interpolation` nodes.
+
+Completed in the AST snippets public-order pass:
+
+- Added `cpython_ast_snippets_public_order_subset`, migrating the
+  `_assertTrueorder` invariant that CPython applies inside
+  `Lib/test/test_ast/test_ast.py::AST_Tests.test_snippets`.
+- Public AST instances now expose `__match_args__` alongside `_fields`, and
+  `dir(ast_node)` includes it, so parser-built `Module`, `Interactive`, and
+  `Expression` trees can satisfy CPython's recursive `_fields ==
+  __match_args__` check.
+- The migrated subset now covers the full current CPython 219-snippet matrix
+  across `exec`, `single`, and `eval`, including decorator-list ordering,
+  exception handlers, match statements, if-expressions, and interpolated
+  strings, while preserving compile-from-public-AST round trips.
+- The same full snippet matrix now also covers
+  `AST_Tests.test_ast_validation`: every current snippet is parsed through
+  `ast.parse(..., optimize=False)` in default `exec` mode and then compiled
+  from the parser-produced public AST.
+
+Completed in the AST_Tests method-audit pass:
+
+- Added a method-level `AST_Tests` audit table to `cpython_test_manifest.md`,
+  covering all 61 current methods from the local CPython source.
+- The manifest now distinguishes fully ported public AST behavior from the
+  remaining partial public `test_repr` snapshot matrix.
+- CPython-only or runtime-policy cases are now explicitly classified:
+  `test_AST_garbage_collection` needs public `weakref` / cyclic GC support,
+  while `test_issue31592`, `test_precedence_enum`, and
+  `test_ast_recursion_limit` validate CPython implementation boundaries that
+  MiniPython should not copy structurally.
+- Added a manifest regression check that compares the audit rows against the
+  current `AST_Tests` method names in `/Volumes/samsung/GitHub/cpython`.
 
 Completed in the redundant-parentheses trailer source-segment pass:
 
@@ -5652,9 +6822,512 @@ Completed in the remaining direct EndPositionTests split pass:
   already-supported first-pass source-location behavior into exact CPython
   method evidence.
 
+Completed in the CPython builtin manifest expansion pass:
+
+- Added `Lib/test/test_builtin.py` to the strict CPython migration manifest,
+  bringing 133 current local CPython builtin-test methods into the tracked
+  source-group total.
+- Added guarded source counts for `BuiltinTest`, `TestBreakpoint`, `PtyTests`,
+  `TestSorted`, `ShutdownTest`, `ImmortalTests`, and `TestType`, plus the
+  module-level `test_*` source-data row.
+- Classified already-supported public builtin surfaces as `partial` instead of
+  overstating completion, and classified breakpoint/PTY runtime integration and
+  CPython shutdown/immortal refcount checks separately from ordinary language
+  behavior.
+- Extended the manifest parser to recognize current CPython generic class
+  headers such as `class A[T]:` when extracting test method counts.
+
+Completed in the direct TestSorted migration pass:
+
+- Added `cpython_builtin_sorted_exact_subset`, migrating all four current
+  CPython `Lib/test/test_builtin.py::TestSorted` methods into direct
+  method-level Rust evidence.
+- The test covers deterministic basic ordering without mutating the input list,
+  `key=`, `reverse=`, `key=None`, accepted list/tuple/str/set/frozenset/dict-key
+  iterable inputs, positional-only `iterable` rejection, second positional
+  argument rejection, and the legacy third positional comparison-function
+  rejection.
+- Updated the strict CPython manifest to mark `TestSorted` as `ported` and added
+  a guarded method audit for its four current method names.
+
+Completed in the CPython collections manifest expansion pass:
+
+- Added `Lib/test/test_collections.py` to the strict CPython migration manifest,
+  bringing 103 current local CPython collections-test methods into the tracked
+  source-group total.
+- Added guarded source counts for `TestUserObjects`, `TestChainMap`,
+  `TestNamedTuple`, `ABCTestCase`, `TestOneTrickPonyABCs`, `WithSet`,
+  `TestCollectionABCs`, the two Counter helper subclasses, and `TestCounter`,
+  plus the module-level `test_*` source-data row.
+- Classified `TestOneTrickPonyABCs` and `TestCollectionABCs` as `partial`
+  because MiniPython already has real first-pass coverage for supported
+  `collections.abc` behavior, while `TestUserObjects`, `TestChainMap`, and
+  `TestCounter` are now fully ported. `TestNamedTuple` was initially tracked
+  as `not_started` here and has since moved to `partial` with direct Rust
+  evidence for the first public namedtuple behavior slice.
+- Added a guarded `TestOneTrickPonyABCs` method audit. It now tracks all 16
+  current methods; `test_registration` and `test_direct_subclassing` are now
+  `ported`, with the remaining methods marked `partial` until their exact
+  helper matrices and mixin edge cases are fully covered.
+- Added a guarded `TestCounter` method audit. It now tracks all 23 current
+  methods as `ported`, including `test_basics`, arithmetic, subclass copying,
+  reentrant update, ordering, helper-function, and rich-comparison semantics.
+- Added `cpython_collections_userdict_public_methods_subset`, adapted from
+  CPython `Lib/test/test_collections.py::TestUserObjects`, covering
+  `test_dict_protocol` and `test_dict_copy` for supported `UserDict`
+  behavior: `dir(UserDict)` includes the current dict protocol surface,
+  item assignment/deletion, lookup, iteration, containment, `get()`, `.data`,
+  `.copy()`, and `copy.copy()` with shallow instance-attribute copying.
+- Added `cpython_collections_userlist_public_methods_subset`, adapted from
+  CPython `Lib/test/test_collections.py::TestUserObjects`, covering
+  `test_list_protocol` and `test_list_copy` for supported `UserList`
+  behavior: `dir(UserList)` includes the current list protocol surface,
+  construction from list/UserList inputs, `.data`, list mutation and iteration,
+  `.copy()`, and `copy.copy()` with shallow instance-attribute copying.
+- Completed the guarded `TestUserObjects` method audit: `test_list_protocol`,
+  `test_dict_protocol`, `test_list_copy`, `test_dict_copy`,
+  `test_str_protocol`, and `test_dict_missing` are all tracked as `ported`.
+  The final slice adds `collections.UserString` protocol visibility and
+  `UserDict` subclass `__missing__` dispatch for subscript lookup while keeping
+  `.get()` independent from `__missing__`.
+- Added `cpython_collections_chainmap_public_methods_subset`, adapted from
+  CPython `Lib/test/test_collections.py::TestChainMap`, covering constructor,
+  bool, first-map assignment/deletion, `maps`, `parents`, `new_child()`,
+  ordering, dict coercion, iteration, views, containment, lookup, `get()`, and
+  shallow copy behavior.
+- Extended the `ChainMap` runtime surface with `maps`, `parents`,
+  `new_child()`, first-map item assignment/deletion, and CPython-style shallow
+  copy of the first map while sharing parent maps.
+- Added `cpython_collections_chainmap_missing_and_first_map_mutation_subset`,
+  adapted from CPython `TestChainMap::test_missing` plus first-map mutation
+  behavior, covering ChainMap subclasses with `__missing__`, `get()` and
+  membership not invoking missing, first-map `pop()`, `popitem()`, `clear()`,
+  and subscript assignment/deletion through subclass storage.
+- Extended ChainMap subclass construction with dedicated storage, plus runtime
+  support for ChainMap subclass lookup, containment, length, truthiness,
+  iteration, mapping coercion, and first-map mutation.
+- Added `cpython_collections_chainmap_iter_does_not_call_getitem_subset`,
+  adapted from CPython `TestChainMap::test_iter_not_calling_getitem_on_maps`,
+  covering UserDict-subclass side effects and proving ChainMap iteration uses
+  mapping keys rather than the underlying map's `__getitem__`.
+- Extended UserDict subclass support with explicit `UserDict.__init__`
+  dispatch, inherited `__init__` method binding, `.data` access through the
+  primary attribute path, and storage reinitialization for subclass instances.
+- Added `cpython_collections_chainmap_union_operators_subset`, adapted from
+  CPython `TestChainMap::test_union_operators`, covering ChainMap/mapping
+  union, in-place union, iterable-pair update, iterable-pair rejection for `|`,
+  and subclass result-type rules including `SubclassRor.__ror__ -> super()`.
+- Extended the ChainMap runtime with `__or__`, `__ror__`, and `__ior__`,
+  including exact ChainMap, ChainMap subclass, `dict | ChainMap`, and
+  first-map in-place update behavior.
+- Extended binary `|` dispatch for exact `ChainMap` left operands so a right
+  ChainMap subclass with an overriding `__ror__` gets CPython-style reflected
+  dispatch before the builtin left operation falls back.
+- Extended `super()` lookup over the builtin `ChainMap` base so
+  `super().__ror__` binds to the existing `ChainMap.__ror__` runtime method.
+- Added `cpython_collections_chainmap_new_child_custom_mapping_subset`, adapted
+  from CPython `TestChainMap::test_new_child`, covering a lowerdict child map
+  whose `__contains__` and `__getitem__` normalize string keys before delegating
+  to `dict.__contains__` / `dict.__getitem__`.
+- Extended ChainMap lookup to use the public mapping protocol for underlying
+  maps, so `__contains__`, `get()`, and subscript lookup honor custom child
+  mappings while iteration still uses mapping keys without calling
+  `__getitem__`.
+- Exposed builtin `dict` type methods such as `dict.__contains__` and
+  `dict.__getitem__` so dict subclasses can delegate to the builtin base in
+  CPython-style method bodies.
+- Added `cpython_collections_chainmap_order_preservation_subset`, adapted from
+  CPython `TestChainMap::test_order_preservation`, covering the OrderedDict
+  multi-map matrix for ChainMap iteration and `items()` order.
+- Exposed a first-pass `collections.OrderedDict` constructor alias over
+  MiniPython's insertion-ordered dict storage. This is enough for the
+  ChainMap order-preservation test, but it is not yet a full OrderedDict
+  runtime surface.
+- Added `cpython_collections_chainmap_copy_pickle_eval_identity_subset`,
+  adapted from CPython `TestChainMap::test_basics`, covering exact repr
+  alternatives, shallow-copy first-map copying plus parent-map sharing, pickle
+  round trips across every exposed protocol, `copy.deepcopy()`,
+  `eval(repr(...))`, and CPython-style object identity expectations.
+- Added a guarded `TestChainMap` method audit: `test_ordering`,
+  `test_constructor`, `test_bool`, `test_missing`, `test_iter_not_calling_getitem_on_maps`,
+  `test_dict_coercion`, `test_new_child`, `test_order_preservation`,
+  `test_basics`, and `test_union_operators` are tracked as `ported`; no
+  `TestChainMap` method remains `partial` or `not_started`.
+- Added `cpython_collections_counter_comparison_subset`, adapted from CPython
+  `TestCounter::test_total`, `::test_invariant_for_the_in_operator`,
+  `::test_eq`, `::test_le`, `::test_lt`, `::test_ge`, and `::test_gt`.
+  MiniPython now treats missing Counter keys as zero for Counter-vs-Counter
+  equality and rich comparisons, while keeping membership tied to stored keys.
+- Added `cpython_collections_counter_subtract_unary_subset`, adapted from
+  CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
+  count subtraction from keyword, Counter, and iterable sources plus unary
+  `+Counter` / `-Counter` positive/negative count filtering.
+- Added `cpython_collections_counter_conversions_subset`, adapted from CPython
+  `TestCounter::test_conversions`, covering `elements()`, Counter iteration,
+  `dict(Counter(...))`, `dict(Counter(...).items())`, and `set(Counter(...))`
+  conversion behavior against the current CPython assertions.
+- Added `cpython_collections_counter_init_update_subset`, adapted from CPython
+  `TestCounter::test_init` and `::test_update`, covering `self=` and
+  `iterable=` keyword names as real Counter keys, `iterable=None` insertion for
+  empty Counter updates, bad source inputs, too many arguments, and unbound
+  method TypeErrors.
+- Updated Counter mapping update semantics so Add-mode updates into an empty
+  Counter directly insert mapping values, matching CPython's
+  `super().update(iterable)` fast path while keeping non-empty updates additive
+  and `subtract()` subtractive.
+- Added `cpython_collections_counter_repr_nonsortable_subset`, adapted from
+  CPython `TestCounter::test_repr_nonsortable`, covering `repr()` behavior when
+  Counter count values are not directly comparable.
+- Added `cpython_collections_counter_copy_subclass_subset`, adapted from
+  CPython `TestCounter::test_copy_subclass`, covering Counter subclass
+  construction, `copy()` preserving the concrete subclass type, `isinstance()`
+  relationships, missing-key zero lookup on the copy, and copy independence
+  after mutation.
+- Added Counter subclass runtime storage so classes deriving from `Counter`
+  construct with Counter counting semantics instead of dict update-sequence
+  semantics, bind Counter methods, and participate in Counter/dict receiver
+  helpers.
+- Added Counter-aware shallow and deep copy support so `copy.copy()`,
+  `copy.deepcopy()`, and the internal pickle payload round trip produce
+  independent Counter objects instead of sharing the original Counter storage.
+- Added `cpython_collections_counter_copying_subset`, adapted from CPython
+  `TestCounter::test_copying`, covering `copy()`, `copy.copy()`,
+  `copy.deepcopy()`, pickle round trips, `eval(repr(...))`, `update(words)`,
+  `Counter(words)`, type preservation, and copy independence after mutation.
+- Added `cpython_collections_counter_order_preservation_subset`, adapted from
+  CPython `TestCounter::test_order_preservation`, covering insertion-order
+  preservation across Counter construction, tied counts, `elements()`, unary
+  plus/minus, binary and in-place multiset operations, `update()`, and
+  `subtract()`.
+- Added a register VM `Positive` instruction so unary plus remains an executable
+  operation for objects like `Counter` instead of being erased by the compiler.
+- Added Counter multiset arithmetic support for `+`, `-`, `|`, `&`, and `^`
+  across binary operators and direct Counter dunder methods, with positive-count
+  result filtering matching CPython.
+- Added Counter in-place arithmetic support for `__iadd__`, `__isub__`,
+  `__ior__`, `__iand__`, and `__ixor__`, preserving the original Counter
+  storage identity for `id()` and `is` checks.
+- Added `cpython_collections_counter_multiset_operations_subset`, adapted from
+  CPython `TestCounter::test_multiset_operations`, covering a deterministic
+  arithmetic slice for zero/negative stripping, representative formula checks,
+  direct dunder dispatch, and positive-count result filtering.
+- Added `cpython_collections_counter_multiset_operations_matrix_subset`,
+  porting the CPython 1000-pair randomized formula matrix with deterministic
+  samples for `+`, `-`, `|`, `&`, and `^`.
+- Added `cpython_collections_counter_inplace_operations_subset`, adapted from
+  CPython `TestCounter::test_inplace_operations`, covering deterministic
+  in-place result parity and identity preservation.
+- Added `cpython_collections_counter_inplace_operations_matrix_subset`,
+  porting the CPython 1000-pair randomized in-place matrix with deterministic
+  samples for all five in-place Counter operations.
+- Added
+  `cpython_collections_counter_multiset_operations_equivalent_to_set_operations_subset`,
+  porting CPython `TestCounter::test_multiset_operations_equivalent_to_set_operations`
+  across the full 64-by-64 zero/one-count Counter matrix.
+- Added `cpython_collections_counter_symmetric_difference_subset`, porting
+  CPython `TestCounter::test_symmetric_difference` across the full 9^4
+  population matrix for `^` and `^=`.
+- Added
+  `cpython_collections_counter_update_reentrant_add_clears_counter_subset`,
+  porting CPython `TestCounter::test_update_reentrant_add_clears_counter`
+  and covering the `_count_elements`-style case where `old + 1` can execute
+  user code that clears the Counter before the computed count is written back.
+- Added `cpython_collections_counter_helper_function_subset`, porting CPython
+  `TestCounter::test_helper_function` for `collections._count_elements()` over
+  exact dicts, OrderedDict insertion order, and Counter subclasses overriding
+  `__setitem__` or `get`.
+- Updated the guarded `TestCounter` method audit: all 23 methods are now
+  `ported`, and no `TestCounter` methods remain `partial` or `not_started`.
+- Added first-pass `collections.namedtuple` runtime support and
+  `cpython_collections_namedtuple_factory_instance_subset`, adapted from
+  CPython `TestNamedTuple::test_factory`, `::test_instance`,
+  `::test_tupleness`, `::test_odd_sizes`, and `::test_match_args`.
+- Moved strict-manifest `TestNamedTuple` from `not_started` to `partial`.
+  Current coverage includes `collections.namedtuple` import/factory behavior,
+  generated type metadata, `_fields`, `__match_args__`, tuple-like
+  construction, positional/keyword/star/double-star calls, field attributes,
+  indexing, iteration, tuple/list conversion, `_make()`, `_replace()`,
+  `_asdict()`, comma/tuple field specs, and zero/one-field namedtuples.
+- Added `cpython_collections_namedtuple_defaults_rename_readonly_subset`,
+  adapted from CPython `TestNamedTuple::test_defaults`, `::test_name_fixer`,
+  `::test_readonly`, `::test_module_parameter`, and `::test_factory_doc_attr`,
+  covering public `defaults=`, `_field_defaults`, generated
+  `__new__.__defaults__`, constructor default filling, tuple/list/iterator
+  defaults, bad defaults, `rename=True` invalid/private/duplicate field
+  normalization, `module=`, class `__doc__` assignment, and readonly
+  field/item mutation rejection.
+- Moved those five `TestNamedTuple` method-audit rows to `ported`; the
+  class-level source group remains `partial` until the remaining namedtuple
+  methods are migrated or explicitly classified.
+- Added `cpython_collections_namedtuple_field_doc_subset`, porting CPython
+  `TestNamedTuple::test_field_doc` for generated field descriptor default docs
+  and per-field `__doc__` mutation.
+- Added `cpython_collections_namedtuple_name_conflicts_subset`, porting CPython
+  `TestNamedTuple::test_name_conflicts` for conflict-prone public field names,
+  the full broader `words` set, positional and keyword construction, `_make()`,
+  `repr()`, `_asdict()`, `_replace()`, `_fields`, and `__getnewargs__()`.
+- Completed the public `TestNamedTuple::test_tupleness` slice in
+  `cpython_collections_namedtuple_factory_instance_subset`, including tuple
+  `isinstance`, tuple-value hash parity, slicing, `count()`, `index()`,
+  negative indexing, and the expected `IndexError` / `ValueError` paths. The
+  VM now exposes tuple/range `count()` and `index()` through the shared
+  immutable-sequence method path, which namedtuple instances forward to as
+  tuple-like objects.
+- Added `cpython_collections_namedtuple_copy_keyword_generic_alias_subset`,
+  porting CPython `TestNamedTuple::test_copy`,
+  `::test_keyword_only_arguments`, and `::test_non_generic_subscript` for
+  shallow/deep copy parity, keyword-only factory option rejection/acceptance,
+  and backward-compatible namedtuple `GenericAlias` subscription.
+- Added namedtuple type `GenericAlias` subscription/call forwarding,
+  `GenericAlias.__parameters__`, and namedtuple type identity equality so
+  alias construction returns instances of the original generated type.
+- Added `cpython_collections_namedtuple_repr_subset`, porting CPython
+  `TestNamedTuple::test_repr` for generated namedtuple repr and subclass-name
+  repr.
+- Added `cpython_collections_namedtuple_subclass_issue_24931_subset`, porting
+  CPython `TestNamedTuple::test_namedtuple_subclass_issue_24931` for
+  subclassing a generated namedtuple type, preserving `_asdict()` equality with
+  ordered mapping values, and allowing writable subclass instance `__dict__`
+  attributes.
+- Added `cpython_collections_namedtuple_match_args_subset`, porting CPython
+  `TestNamedTuple::test_match_args` and extending the evidence to executable
+  class-pattern matching over namedtuple instances. The VM now treats generated
+  namedtuple types as class-like match targets and maps positional subpatterns
+  through generated field metadata, including too-many-positional and duplicate
+  positional/keyword field diagnostics.
+- Added `cpython_collections_namedtuple_large_size_subset`, porting CPython
+  `TestNamedTuple::test_large_size` with deterministic field names for large
+  generated namedtuple construction, `_make()`, generated field access,
+  repr smoke behavior, `_asdict()`, `_replace()`, and `_fields`.
+- Added `cpython_collections_namedtuple_pickle_subset`, porting CPython
+  `TestNamedTuple::test_pickle` over MiniPython's internal pickle payload. This
+  now accepts protocol `-1` as the highest-protocol alias, preserves generated
+  namedtuple type identity and `_fields` through round trips, and recursively
+  copies namedtuple field values so mutable fields are independent after
+  unpickling.
+- Added `cpython_collections_namedtuple_new_builtins_issue_43102_subset`,
+  porting CPython `TestNamedTuple::test_new_builtins_issue_43102` for the
+  generated namedtuple `__new__` public `__globals__['__builtins__']` and
+  `__builtins__` attributes.
+- Completed the remaining public CPython `TestNamedTuple` partial methods by
+  extending `cpython_collections_namedtuple_factory_instance_subset` for
+  `test_factory`, `test_instance`, and `test_odd_sizes`. The added coverage
+  checks inherited `tuple.__getitem__`, invalid type/field-name `ValueError`
+  cases, digit-containing valid names, leading-underscore type names, unicode
+  field reprs, `_make()` arity errors, `__weakref__` exclusion, the full
+  current instance construction/error surface, and the zero/one-field odd-size
+  assertions.
+- Exposed supported immutable-sequence methods on builtin type objects such as
+  `tuple.__getitem__`, reusing the same method table as tuple/string/bytes/range
+  instances so generated namedtuple types inherit the tuple method descriptor
+  surface expected by CPython's public tests.
+- Updated the guarded `TestNamedTuple` method audit: all 20 current public
+  methods are now `ported`; the 3 remaining descriptor reuse/repr tests remain
+  `blocked_by_cpython_internal`.
+- Completed the public namedtuple field descriptor surface needed by the
+  migrated field-doc slice, including default field docstrings, per-field
+  doc mutation, hashing/truthiness/type-name handling, and descriptor identity
+  participation in VM comparisons.
+- Remaining `TestNamedTuple` work is limited to CPython-internal descriptor
+  reuse/repr details that should remain classified rather than copied.
+- Added `cpython_compile_specifics_dont_merge_constants_public_subset`, porting
+  CPython `TestSpecifics::test_dont_merge_constants` public behavior for
+  distinct lambda code-object identities, code-object inequality, return
+  `repr()` parity, and type-sensitive `co_consts` distinctions across signed
+  zero float/complex constants, int-vs-float tuple constants, str-vs-bytes
+  constants, and set-membership constants. The VM now compares code-object
+  metadata namespaces with a strict constant comparator while leaving ordinary
+  `SimpleNamespace` equality on the existing rich-equality path. CPython's
+  peephole-specific `frozenset` constant layout remains outside the MiniPython
+  register-VM contract.
+- Added `code.co_positions()` as a first-pass code-object method exposed through
+  runtime `compile()` objects, and pinned it with
+  `cpython_compile_source_positions_code_positions_first_pass_subset`.
+- Extended runtime-compiled code-object line spans beyond the first executable
+  line by deriving statement-leading source lines from parse-mode lexer spans,
+  pinned by `cpython_compile_source_positions_multistatement_code_lines_subset`.
+- Added first-pass function `__code__` line-table methods and pinned the
+  no-code function body invariant with
+  `cpython_compile_specifics_lineno_after_no_code_first_pass_subset`.
+- Threaded source token function-definition lines through the compiler and VM
+  so source-compiled functions expose real first-line metadata instead of always
+  returning line 1.
+- Extended `cpython_import_sys_modules_cache_subset` for dotted import runtime
+  semantics: direct `__import__('os.path', fromlist=...)` and
+  `__import__('collections.abc', fromlist=...)` now populate/bind parent
+  modules, while polluted non-package parents in `sys.modules` raise
+  CPython-style `ModuleNotFoundError`.
+- Extended builtin `__import__` `fromlist` handling to use Python truthiness
+  rather than only recognizing `None` or empty list/tuple, covering false/true
+  scalar and container values plus user-defined `__bool__` / `__len__` results
+  in `cpython_import_sys_modules_cache_subset`.
+- Added `__import__` `level` argument conversion coverage to
+  `cpython_import_sys_modules_cache_subset`: `False` behaves as level `0`,
+  negative integer levels raise CPython-style `ValueError`, and representative
+  non-integer values now use `__import__`-specific TypeError messages instead
+  of compile-option diagnostics. Positive relative imports now cover package
+  context resolution for MiniPython's builtin stdlib module table, including
+  beyond-top-level error classification.
+- Added a sandbox-oriented virtual source module table behind the VM import
+  loader. Focused language tests now import virtual modules, reuse
+  `sys.modules` cache entries, execute virtual package `__init__` code, bind
+  virtual child modules to their parent package, and run package-relative
+  imports without reading the host filesystem. Import instructions now route
+  `ModuleNotFoundError` / `ImportError` through the VM exception path, and
+  `cpython_import_sys_modules_cache_subset` covers catchable
+  `ModuleNotFoundError`.
+- Added a public sandbox directory loader that scans an approved root into the
+  same virtual source module table before execution. It imports top-level
+  modules and explicit packages, leaves non-package directories invisible,
+  preserves virtual `__file__` names, and rejects invalid module path
+  components plus symlink escapes before VM execution begins.
+- Added a sandbox import policy for builtin stdlib modules. Existing public
+  execution helpers still allow the current builtin stdlib surface by default,
+  while sandbox callers can deny stdlib imports or allow only selected module
+  names. The policy is passed into source-module execution, function/class
+  child VMs, eval/exec code objects, and generator/coroutine resumes; it is
+  also checked before returning non-virtual `sys.modules` cache entries so
+  sandbox code cannot allow `sys` and then smuggle a denied stdlib name through
+  the cache.
+- Added `cpython_type_params_access_core_subset` for the supported CPython
+  `TypeParamsAccessTest` core slice. `Value::TypeParam` now carries VM identity
+  so annotations and alias values can preserve CPython-style `is` relationships
+  with `__type_params__`; builtin `type` and `object` expose empty
+  `__type_params__`; and later type parameters can reference earlier ones in
+  bounds/defaults, covering `Sequence[S]`-style bounds. The strict manifest now
+  records method-level evidence for the ported access methods.
+- Extended `cpython_type_params_access_core_subset` to cover the CPython
+  class/type-alias lambda access methods. `MakeFunction` now accepts hidden
+  closure bindings so lambdas created while evaluating a generic type alias can
+  capture that alias's type parameters without leaking them into module or class
+  locals. Class-body generic type-parameter scopes remain available through the
+  existing class VM closure path, and the strict manifest now marks the four
+  lambda-in-alias access methods as ported.
+- Extended `cpython_type_params_access_core_subset` for generic class base
+  metadata. Generic classes now append the public implicit `typing.Generic` base
+  to normalized `__bases__`, preserve raw subscripted bases in `__orig_bases__`,
+  and expose `types.get_original_bases()` for the supported class surface. This
+  ports CPython `TypeParamsAccessTest.test_class_access_01` and
+  `test_class_scope_interaction_02` without copying CPython's internal typing
+  machinery.
+- Extended `cpython_type_params_access_core_subset` for
+  `TypeParamsAccessTest.test_nested_scope_in_generic_alias`. Type-scoped
+  generator/list comprehensions now run through hidden function scopes: generic
+  aliases capture their own type parameters, while non-generic aliases in class
+  bodies resolve sibling names through globals rather than class locals.
+- Extended `cpython_type_params_access_core_subset` for
+  `TypeParamsAccessTest.test_class_base_containing_lambda`. Lambdas created
+  while evaluating generic class bases can now be observed through
+  `types.get_original_bases()` plus the supported public `typing.get_args()`
+  helper, preserving ordinary outer closures and the class type-parameter
+  identity.
+- Extended `cpython_type_params_access_core_subset` for nested class base and
+  generic method generator-expression access methods. Generator/list
+  comprehensions in nested class bases now capture the enclosing class type
+  parameter while sibling direct base expressions keep class-local lookup; the
+  same split is covered for nested generic classes with their implicit
+  `Generic` base. Generic method generator-expression annotations now capture
+  the enclosing class type parameter while sibling annotations still see the
+  class-local binding.
+- Extended `cpython_type_params_access_core_subset` for the CPython
+  `TypeParamsAccessTest.test_comprehension_01`, `test_comprehension_02`, and
+  `test_comprehension_03` methods. Type parameters are now created before their
+  bounds/defaults are evaluated, so bound and constraint expressions can refer
+  to the current type parameter. The public type-parameter surface now exposes
+  tuple constraints through `__constraints__` while leaving `__bound__` as
+  `None` for constrained type parameters. Alias values, generic-function
+  returns, and type-parameter bounds now preserve the CPython annotation-scope
+  comprehension behavior, including comprehension-target shadowing and lambdas
+  nested inside those comprehensions.
+- Extended `cpython_type_params_access_core_subset` for
+  `TypeParamsAccessTest.test_class_access_02`. Class objects now carry explicit
+  metaclass metadata instead of storing it in the class namespace. Class header
+  `metaclass=` keywords are evaluated in the generic class type-parameter
+  scope, `metaclass=MyMeta[A, B]` uses the generic alias origin as the actual
+  metaclass, and `type(cls)` / `cls.__class__` both return that metaclass while
+  the metaclass and class keep distinct `__type_params__` objects.
+- Added `cpython_type_params_complex_calls_subset` for all current
+  `TypeParamsComplexCallsTest` methods. Generic functions with both positional
+  defaults and keyword-only defaults preserve exact type-parameter annotation
+  identity, class-header non-metaclass keywords are now passed to the first
+  supported base `__init_subclass__`, and generic class bases preserve implicit
+  `Generic` insertion across positional bases, unpacked bases, `**kwargs`, and
+  empty starargs.
+- Added `cpython_type_params_class_scope_first_pass_subset` for the first
+  CPython `TypeParamsClassScopeTest` public methods. The compiler now tracks
+  class names bound before the current type-scope expression separately from
+  names that will be bound later in the same class block, so aliases, generic
+  method bounds, and annotations preserve CPython's split between prior class
+  locals, enclosing nonlocals, future class bindings that force global lookup,
+  and explicit `global` declarations.
+- Added `cpython_type_params_class_scope_lazy_subset` for the remaining current
+  CPython `TypeParamsClassScopeTest` methods. Type-parameter bounds/defaults
+  and type-alias values now use deferred type-scope expressions, so later
+  class/global/nonlocal mutation is visible when `__bound__`, `__default__`, or
+  `__value__` is read, and nested class bases remain distinct from nested
+  class-body free-variable lookups.
+- Added `cpython_type_params_lazy_evaluation_qualname_subset` for
+  `TypeParamsLazyEvaluationTest.test_qualname`. VM execution now carries a
+  qualname prefix through ordinary functions, classes, generators,
+  coroutines, and code-object execution so module-level and function-local
+  generic classes/functions expose CPython-style `__qualname__` values,
+  including `<locals>` for nested definitions.
+- Added `cpython_type_params_lazy_evaluation_bounds_subset` for
+  `TypeParamsLazyEvaluationTest.test_recursive_class` and
+  `test_evaluation_error`. Class/function/type-alias type parameter metadata now
+  stores deferred type-scope bytecode for bounds/defaults, so recursive class
+  references resolve when public metadata is read, missing names are raised at
+  `__bound__` / tuple `__constraints__` access time, non-tuple constraints and
+  tuple bounds avoid premature evaluation, later bindings are re-evaluated, and
+  missing defaults expose the CPython-style `typing.NoDefault` sentinel.
+- Added `cpython_type_params_mangling_subset` for all current
+  `TypeParamsManglingTest` methods. Type-parameter objects keep their public
+  `__name__` spelling while the VM also exposes class-private mangled lookup
+  names inside class bodies, methods, aliases, bounds, class-header base
+  expressions, lambdas, list comprehensions, and generator expressions; module,
+  function, and outer-class mangling contexts are restored after nested generic
+  definitions.
+- Added `cpython_type_params_traditional_typevars_subset` for all current
+  `TypeParamsTraditionalTypeVarsTest` methods. The `typing` stub now exposes a
+  traditional `TypeVar` constructor backed by the existing type-parameter
+  runtime object with explicit variance metadata; PEP 695 generic classes reject
+  explicit `Generic[...]` bases and generic aliases containing undeclared
+  traditional TypeVars, while ordinary annotations can still combine PEP 695
+  type parameters with traditional TypeVars.
+- Added `cpython_type_params_typevar_runtime_subset` and
+  `cpython_type_params_typevartuple_paramspec_runtime_subset` for all current
+  `TypeParamsTypeVarTest`, `TypeParamsTypeVarTupleTest`, and
+  `TypeParamsTypeVarParamSpecTest` methods. PEP 695 type-parameter objects now
+  satisfy `isinstance()` checks against the corresponding `typing` type
+  constructors, expose variance/default metadata, and preserve type-parameter
+  identity through generator and coroutine scopes; the `typing` stub also
+  exposes traditional `TypeVarTuple` and `ParamSpec` constructors.
+- Added `cpython_type_params_runtime_name_error_subset` for
+  `TypeParamsRuntimeTest.test_name_error`. Missing names in nested generic
+  class bases and bounds now have method-level evidence as catchable runtime
+  `NameError`s.
+- Added `cpython_type_params_runtime_class_namespace_subset` for
+  `TypeParamsRuntimeTest.test_broken_class_namespace`. Class creation now calls
+  a custom metaclass `__prepare__`, executes class bodies against supported
+  mapping namespaces, snapshots dict-subclass namespace assignments into class
+  attributes, and lets dict-subclass `__missing__` exceptions surface during
+  nested generic class base lookup.
+- Completed `Lib/test/test_type_params.py::DefaultsTest`. Starred
+  TypeVarTuple defaults now preserve an explicit `Unpack[...]` value, and
+  `GenericAlias.__iter__` yields the same one-shot starred generic alias shape
+  as CPython; the existing default tests also cover invalid starred defaults on
+  non-TypeVarTuple parameters, lazy missing-name errors, successful default
+  caching, and default-expression symbol-table bindings.
+- Completed `Lib/test/test_type_params.py::TestEvaluateFunctions`. MiniPython now
+  exposes `evaluate_value`, `evaluate_bound`, `evaluate_default`, and
+  `evaluate_constraints` callables for the supported alias/type-parameter
+  surface, supports `annotationlib.call_evaluate_function()` for
+  VALUE/FORWARDREF/STRING formats, and classifies `_typing._ConstEvaluator`
+  enough to cover CPython's construction and immutable-type safety regression.
+
 Next:
 
-1. Move from grammar-rule inventory to the broader CPython migration surface:
-   tighten tokenizer rows that are still partial, expand semantic/runtime
-   parity tests for already-parsed syntax, and keep importing CPython test
-   cases by feature rather than wholesale-copying the upstream suite.
+1. Keep expanding the strict CPython migration manifest beyond syntax-adjacent
+   files, starting with modules whose behavior is already partially represented
+   in `tests/cpython_subset.rs`, then convert each partial row into direct
+   method-level evidence before marking it ported.

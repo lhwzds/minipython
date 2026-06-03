@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::rc::Rc;
@@ -15,12 +15,95 @@ pub type TupleRef = Rc<Vec<Value>>;
 pub type SetRef = Rc<RefCell<Vec<Value>>>;
 pub type FrozenSetRef = Rc<Vec<Value>>;
 pub type DictRef = Rc<RefCell<DictStorage>>;
+pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
+pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
+pub type NamedTupleTypeRef = Rc<NamedTupleType>;
+pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
+
+pub const EXCEPTION_TRACEBACK_ATTR: &str = "\0minipython_traceback";
+pub const NAMED_TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_namedtuple_storage";
+
+#[derive(Debug, Clone)]
+pub struct NamedTupleType {
+    pub name: String,
+    pub fields: Vec<String>,
+    pub field_docs: Vec<RefCell<String>>,
+    pub field_defaults: Vec<(String, Value)>,
+    pub new_defaults: Option<Vec<Value>>,
+    pub module: Value,
+    pub doc: RefCell<String>,
+    pub identity: Rc<()>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ByteArrayStorage {
+    bytes: Vec<u8>,
+    exports: usize,
+}
 
 #[derive(Debug)]
 pub struct DictStorage {
     pub entries: Vec<(Value, Value)>,
     pub version: usize,
 }
+
+#[derive(Debug, Clone)]
+pub struct MemoryViewState {
+    pub bytes: ByteArrayRef,
+    pub obj: Value,
+    pub exported_bytearray: Option<ByteArrayRef>,
+    pub hash_cache: Option<Vec<u8>>,
+    pub format: String,
+    pub offset: usize,
+    pub len: usize,
+    pub stride: isize,
+    pub readonly: bool,
+    pub released: bool,
+}
+
+impl ByteArrayStorage {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes, exports: 0 }
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    pub fn has_active_exports(&self) -> bool {
+        self.exports > 0
+    }
+
+    pub fn retain_export(&mut self) {
+        self.exports += 1;
+    }
+
+    pub fn release_export(&mut self) {
+        self.exports = self.exports.saturating_sub(1);
+    }
+}
+
+impl std::ops::Deref for ByteArrayStorage {
+    type Target = Vec<u8>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
+}
+
+impl std::ops::DerefMut for ByteArrayStorage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.bytes
+    }
+}
+
+impl PartialEq for ByteArrayStorage {
+    fn eq(&self, other: &Self) -> bool {
+        self.bytes == other.bytes
+    }
+}
+
+impl Eq for ByteArrayStorage {}
 
 impl DictStorage {
     pub fn new(entries: Vec<(Value, Value)>) -> Self {
@@ -59,6 +142,13 @@ pub enum CodeMode {
     Single,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodeLineSpan {
+    pub start: usize,
+    pub end: usize,
+    pub line: i64,
+}
+
 pub fn list_value(items: Vec<Value>) -> Value {
     Value::List(Rc::new(RefCell::new(items)))
 }
@@ -85,6 +175,90 @@ pub fn frozen_set_value(items: Vec<Value>) -> Value {
 
 pub fn dict_value(entries: Vec<(Value, Value)>) -> Value {
     Value::Dict(Rc::new(RefCell::new(DictStorage::new(entries))))
+}
+
+pub fn byte_array_value(bytes: Vec<u8>) -> Value {
+    Value::ByteArray(Rc::new(RefCell::new(ByteArrayStorage::new(bytes))))
+}
+
+pub fn memory_view_value(bytes: Vec<u8>, readonly: bool) -> Value {
+    let len = bytes.len();
+    let obj = Value::Bytes(bytes.clone());
+    memory_view_from_parts(
+        Rc::new(RefCell::new(ByteArrayStorage::new(bytes))),
+        obj,
+        0,
+        len,
+        1,
+        readonly,
+    )
+}
+
+pub fn memory_view_from_byte_array(bytes: ByteArrayRef, readonly: bool) -> Value {
+    let len = bytes.borrow().len();
+    let obj = Value::ByteArray(bytes.clone());
+    memory_view_from_parts(bytes, obj, 0, len, 1, readonly)
+}
+
+pub fn memory_view_from_parts(
+    bytes: ByteArrayRef,
+    obj: Value,
+    offset: usize,
+    len: usize,
+    stride: isize,
+    readonly: bool,
+) -> Value {
+    memory_view_from_parts_with_format(bytes, obj, offset, len, stride, readonly, "B".to_string())
+}
+
+pub fn memory_view_from_parts_with_format(
+    bytes: ByteArrayRef,
+    obj: Value,
+    offset: usize,
+    len: usize,
+    stride: isize,
+    readonly: bool,
+    format: String,
+) -> Value {
+    let exported_bytearray = match &obj {
+        Value::ByteArray(bytearray) => {
+            bytearray.borrow_mut().retain_export();
+            Some(bytearray.clone())
+        }
+        _ => None,
+    };
+    Value::MemoryView(Rc::new(RefCell::new(MemoryViewState {
+        bytes,
+        obj,
+        exported_bytearray,
+        hash_cache: None,
+        format,
+        offset,
+        len,
+        stride,
+        readonly,
+        released: false,
+    })))
+}
+
+fn memory_view_physical_index(state: &MemoryViewState, logical_index: usize) -> Option<usize> {
+    let offset = isize::try_from(state.offset).ok()?;
+    let logical_index = isize::try_from(logical_index).ok()?;
+    let physical_index = offset.checked_add(logical_index.checked_mul(state.stride)?)?;
+    usize::try_from(physical_index).ok()
+}
+
+fn memory_view_state_bytes(state: &MemoryViewState) -> Option<Vec<u8>> {
+    if state.released {
+        return None;
+    }
+    let bytes = state.bytes.borrow();
+    let mut view = Vec::with_capacity(state.len);
+    for logical_index in 0..state.len {
+        let physical_index = memory_view_physical_index(state, logical_index)?;
+        view.push(*bytes.get(physical_index)?);
+    }
+    Some(view)
 }
 
 pub fn dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
@@ -125,11 +299,15 @@ pub struct GeneratorState {
     pub closure: Vec<Scope>,
     pub current_class: Option<Value>,
     pub first_arg_name: Option<String>,
+    pub qualname_prefix: Option<String>,
     pub exception_handlers: Vec<Vec<ExceptHandler>>,
     pub current_exception: Option<Value>,
     pub pending_exception_after_clear: Option<Value>,
     pub resume_dst: Option<Register>,
     pub done: bool,
+    pub is_iterable_coroutine: bool,
+    pub first_line: usize,
+    pub line_sequence: Vec<usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -143,10 +321,13 @@ pub struct CoroutineState {
     pub closure: Vec<Scope>,
     pub current_class: Option<Value>,
     pub first_arg_name: Option<String>,
+    pub qualname_prefix: Option<String>,
     pub exception_handlers: Vec<Vec<ExceptHandler>>,
     pub current_exception: Option<Value>,
     pub pending_exception_after_clear: Option<Value>,
     pub done: bool,
+    pub first_line: usize,
+    pub line_sequence: Vec<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -155,6 +336,27 @@ pub struct TemplateInterpolation {
     pub expression: String,
     pub conversion: Option<String>,
     pub format_spec: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct DeferredTypeParamExpr {
+    pub body: Vec<Instruction>,
+    pub globals: Scope,
+    pub locals: Option<Scope>,
+    pub type_param_scope: Option<Scope>,
+    pub closure: Vec<Scope>,
+    pub class_name: Option<String>,
+    pub class_value: Rc<RefCell<Option<Value>>>,
+    pub is_constraint_tuple: bool,
+    pub identity: Rc<()>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ConstEvaluatorKind {
+    TypeAliasValue,
+    TypeParamBound,
+    TypeParamConstraints,
+    TypeParamDefault,
 }
 
 #[derive(Debug, Clone)]
@@ -168,13 +370,15 @@ pub enum Value {
     },
     String(String),
     Bytes(Vec<u8>),
-    ByteArray(Vec<u8>),
+    ByteArray(ByteArrayRef),
+    MemoryView(MemoryViewRef),
     Bool(bool),
     List(ListRef),
     Tuple(TupleRef),
     Set(SetRef),
     FrozenSet(FrozenSetRef),
     Dict(DictRef),
+    OrderedDict(DictRef),
     ScopeDict(Scope),
     DictView {
         kind: DictViewKind,
@@ -193,8 +397,33 @@ pub enum Value {
     ChainMap {
         maps: Vec<Value>,
     },
+    Counter {
+        entries: DictRef,
+    },
+    UserList {
+        data: ListRef,
+        attrs: DictRef,
+    },
     UserDict {
         data: DictRef,
+        attrs: DictRef,
+    },
+    NamedTupleType(NamedTupleTypeRef),
+    NamedTuple {
+        typ: NamedTupleTypeRef,
+        values: TupleRef,
+    },
+    NamedTupleFieldDescriptor {
+        typ: NamedTupleTypeRef,
+        index: usize,
+    },
+    NamedTupleTypeMethod {
+        typ: NamedTupleTypeRef,
+        name: String,
+    },
+    NamedTupleInstanceMethod {
+        instance: Box<Value>,
+        name: String,
     },
     SimpleNamespace {
         fields: DictRef,
@@ -210,6 +439,11 @@ pub enum Value {
         mode: CodeMode,
         filename: String,
         instructions: Vec<Instruction>,
+        line_spans: Vec<CodeLineSpan>,
+        identity: Rc<()>,
+    },
+    DeferredTypeParamExpr(DeferredTypeParamExprRef),
+    Traceback {
         identity: Rc<()>,
     },
     Slice {
@@ -246,6 +480,11 @@ pub enum Value {
     BytesIterator {
         bytes: Vec<u8>,
         index: usize,
+    },
+    ByteArrayIterator {
+        bytes: ByteArrayRef,
+        index: usize,
+        exhausted: bool,
     },
     SetIterator {
         items: Vec<Value>,
@@ -315,11 +554,14 @@ pub enum Value {
         keyword_defaults: Vec<(String, Value)>,
         kwarg: Option<String>,
         annotations: Vec<(String, Value)>,
+        doc: Rc<RefCell<Value>>,
         attrs: Scope,
         closure: Vec<Scope>,
         body: Vec<Instruction>,
         is_generator: bool,
         is_async: bool,
+        first_line: usize,
+        line_sequence: Vec<usize>,
         identity: Rc<()>,
         owner_class: Option<Box<Value>>,
     },
@@ -338,6 +580,16 @@ pub enum Value {
         exception: Box<Value>,
     },
     AsyncGeneratorClose(Rc<RefCell<GeneratorState>>),
+    AsyncGeneratorAthrowMixin {
+        typ: Box<Value>,
+        val: Box<Value>,
+        tb: Box<Value>,
+        done: Rc<Cell<bool>>,
+    },
+    AsyncGeneratorAcloseMixin {
+        receiver: Box<Value>,
+        done: Rc<Cell<bool>>,
+    },
     AnextDefault {
         awaitable: Box<Value>,
         default: Box<Value>,
@@ -345,19 +597,28 @@ pub enum Value {
     Class {
         name: String,
         type_params: Vec<Value>,
+        metaclass: Option<Box<Value>>,
         bases: Vec<Value>,
         attrs: Scope,
     },
     TypeParam {
         kind: String,
         name: String,
-        bound: Option<Box<Value>>,
-        default: Option<Box<Value>>,
+        bound: Rc<RefCell<Option<Value>>>,
+        default: Rc<RefCell<Option<Value>>>,
+        infer_variance: bool,
+        covariant: bool,
+        contravariant: bool,
+        identity: Rc<()>,
     },
     TypeAlias {
         name: String,
         type_params: Vec<Value>,
         value: Box<Value>,
+    },
+    ConstEvaluator {
+        kind: ConstEvaluatorKind,
+        target: Box<Value>,
     },
     GenericAlias {
         origin: Box<Value>,
@@ -432,7 +693,11 @@ impl fmt::Display for Value {
             Value::Complex { real, imag } => write!(f, "{}", format_complex(*real, *imag)),
             Value::String(value) => write!(f, "{value}"),
             Value::Bytes(value) => write!(f, "{}", repr_bytes(value)),
-            Value::ByteArray(value) => write!(f, "bytearray({})", repr_bytes(value)),
+            Value::ByteArray(value) => write!(f, "bytearray({})", repr_bytes(&value.borrow())),
+            Value::MemoryView(view) if view.borrow().released => {
+                write!(f, "<released memory at 0x0>")
+            }
+            Value::MemoryView(_) => write!(f, "<memory at 0x0>"),
             Value::Bool(true) => write!(f, "True"),
             Value::Bool(false) => write!(f, "False"),
             Value::List(items) => {
@@ -443,6 +708,9 @@ impl fmt::Display for Value {
             Value::Set(items) => write!(f, "{}", format_set(&items.borrow())),
             Value::FrozenSet(items) => write!(f, "{}", format_frozen_set(items)),
             Value::Dict(entries) => write!(f, "{{{}}}", format_dict(&entries.borrow())),
+            Value::OrderedDict(entries) => {
+                write!(f, "OrderedDict({{{}}})", format_dict(&entries.borrow()))
+            }
             Value::ScopeDict(scope) => write!(f, "{{{}}}", format_scope_dict(scope)),
             Value::DictView { kind, entries } => write!(
                 f,
@@ -465,13 +733,36 @@ impl fmt::Display for Value {
                     .join(", ");
                 write!(f, "ChainMap({rendered})")
             }
-            Value::UserDict { data } => write!(f, "UserDict({{{}}})", format_dict(&data.borrow())),
+            Value::Counter { entries } => write!(f, "{}", format_counter(&entries.borrow())),
+            Value::UserList { data, .. } => {
+                let data = data.borrow();
+                write!(f, "[{}]", format_list_items(&data))
+            }
+            Value::UserDict { data, .. } => {
+                write!(f, "UserDict({{{}}})", format_dict(&data.borrow()))
+            }
+            Value::NamedTupleType(typ) => write!(f, "<class '{}'>", typ.name),
+            Value::NamedTuple { typ, values } => {
+                write!(f, "{}", format_named_tuple(typ, values))
+            }
+            Value::NamedTupleFieldDescriptor { typ, index } => {
+                let field = namedtuple_field_name(typ, *index);
+                write!(f, "<namedtuple field '{field}' of '{}'>", typ.name)
+            }
+            Value::NamedTupleTypeMethod { typ, name } => {
+                write!(f, "<bound method {}.{name}>", typ.name)
+            }
+            Value::NamedTupleInstanceMethod { instance, name } => {
+                write!(f, "<bound method {instance}.{name}>")
+            }
             Value::SimpleNamespace { fields } => write!(f, "{}", format_simple_namespace(fields)),
             Value::PicklePayload(_) => write!(f, "<pickle payload>"),
             Value::AstNode { kind, .. } => write!(f, "<ast.{kind} object>"),
             Value::CodeObject { filename, .. } => {
                 write!(f, "<code object <module>, file \"{filename}\", line 1>")
             }
+            Value::DeferredTypeParamExpr(_) => write!(f, "<deferred type parameter expression>"),
+            Value::Traceback { .. } => write!(f, "<traceback object>"),
             Value::Range { start, stop, step } if *step == 1 => {
                 write!(f, "range({start}, {stop})")
             }
@@ -491,6 +782,7 @@ impl fmt::Display for Value {
             }
             Value::StringIterator { .. } => write!(f, "<str_iterator>"),
             Value::BytesIterator { .. } => write!(f, "<bytes_iterator>"),
+            Value::ByteArrayIterator { .. } => write!(f, "<bytearray_iterator>"),
             Value::SetIterator { .. } => write!(f, "<set_iterator>"),
             Value::DictIterator { .. } => write!(f, "<dict_keyiterator>"),
             Value::ReverseIterator { .. } => write!(f, "<reversed object>"),
@@ -515,16 +807,25 @@ impl fmt::Display for Value {
                 write!(f, "<async_generator_asend object>")
             }
             Value::AsyncGeneratorClose(_) => write!(f, "<async_generator_athrow object>"),
+            Value::AsyncGeneratorAthrowMixin { .. } => {
+                write!(f, "<coroutine object AsyncGenerator.athrow>")
+            }
+            Value::AsyncGeneratorAcloseMixin { .. } => {
+                write!(f, "<coroutine object AsyncGenerator.aclose>")
+            }
             Value::AnextDefault { .. } => write!(f, "<anext_awaitable object>"),
             Value::Class { name, .. } => write!(f, "<class {name}>"),
             Value::TypeParam { name, .. } => write!(f, "{name}"),
             Value::TypeAlias { name, .. } => write!(f, "<type alias {name}>"),
+            Value::ConstEvaluator { kind, target } => {
+                write!(f, "{}", format_const_evaluator(*kind, target))
+            }
             Value::GenericAlias { origin, args } => write!(
                 f,
                 "{}[{}]",
                 format_generic_origin(origin),
                 args.iter()
-                    .map(format_value_repr)
+                    .map(format_generic_alias_arg)
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
@@ -541,7 +842,15 @@ impl fmt::Display for Value {
             Value::TemplateInterpolation(interpolation) => {
                 write!(f, "{}", format_template_interpolation(interpolation))
             }
-            Value::Instance { class_name, .. } => write!(f, "<{class_name} object>"),
+            Value::Instance {
+                class_name, fields, ..
+            } => {
+                if let Some(rendered) = format_named_tuple_subclass(class_name, fields) {
+                    write!(f, "{rendered}")
+                } else {
+                    write!(f, "<{class_name} object>")
+                }
+            }
             Value::Property { .. } => write!(f, "<property object>"),
             Value::MemberDescriptor { name, owner_name } => {
                 write!(f, "<member '{name}' of '{owner_name}' objects>")
@@ -721,7 +1030,9 @@ fn format_value_repr(value: &Value) -> String {
     match value {
         Value::String(value) => repr_string(value),
         Value::Bytes(value) => repr_bytes(value),
-        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(value)),
+        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(&value.borrow())),
+        Value::MemoryView(view) if view.borrow().released => "<released memory at 0x0>".to_string(),
+        Value::MemoryView(_) => "<memory at 0x0>".to_string(),
         Value::List(items) => {
             let items = items.borrow();
             format!("[{}]", format_list_items(&items))
@@ -730,6 +1041,9 @@ fn format_value_repr(value: &Value) -> String {
         Value::Set(items) => format_set(&items.borrow()),
         Value::FrozenSet(items) => format_frozen_set(items),
         Value::Dict(entries) => format!("{{{}}}", format_dict(&entries.borrow())),
+        Value::OrderedDict(entries) => {
+            format!("OrderedDict({{{}}})", format_dict(&entries.borrow()))
+        }
         Value::ScopeDict(scope) => format!("{{{}}}", format_scope_dict(scope)),
         Value::DictView { kind, entries } => {
             format!(
@@ -753,13 +1067,22 @@ fn format_value_repr(value: &Value) -> String {
                 .join(", ");
             format!("ChainMap({rendered})")
         }
-        Value::UserDict { data } => format!("UserDict({{{}}})", format_dict(&data.borrow())),
+        Value::Counter { entries } => format_counter(&entries.borrow()),
+        Value::UserList { data, .. } => {
+            let data = data.borrow();
+            format!("[{}]", format_list_items(&data))
+        }
+        Value::UserDict { data, .. } => {
+            format!("UserDict({{{}}})", format_dict(&data.borrow()))
+        }
         Value::SimpleNamespace { fields } => format_simple_namespace(fields),
         Value::PicklePayload(_) => "<pickle payload>".to_string(),
         Value::AstNode { kind, .. } => format!("<ast.{kind} object>"),
         Value::CodeObject { filename, .. } => {
             format!("<code object <module>, file \"{filename}\", line 1>")
         }
+        Value::DeferredTypeParamExpr(_) => "<deferred type parameter expression>".to_string(),
+        Value::Traceback { .. } => "<traceback object>".to_string(),
         Value::Function { name, .. } => format!("<function {name}>"),
         Value::Generator(state) => format!("<generator object {}>", state.borrow().name),
         Value::Coroutine(state) => format!("<coroutine object {}>", state.borrow().name),
@@ -770,15 +1093,22 @@ fn format_value_repr(value: &Value) -> String {
             "<async_generator_asend object>".to_string()
         }
         Value::AsyncGeneratorClose(_) => "<async_generator_athrow object>".to_string(),
+        Value::AsyncGeneratorAthrowMixin { .. } => {
+            "<coroutine object AsyncGenerator.athrow>".to_string()
+        }
+        Value::AsyncGeneratorAcloseMixin { .. } => {
+            "<coroutine object AsyncGenerator.aclose>".to_string()
+        }
         Value::AnextDefault { .. } => "<anext_awaitable object>".to_string(),
         Value::Class { name, .. } => format!("<class {name}>"),
         Value::TypeParam { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => format!("<type alias {name}>"),
+        Value::ConstEvaluator { kind, target } => format_const_evaluator(*kind, target),
         Value::GenericAlias { origin, args } => format!(
             "{}[{}]",
             format_generic_origin(origin),
             args.iter()
-                .map(format_value_repr)
+                .map(format_generic_alias_arg)
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
@@ -792,8 +1122,15 @@ fn format_value_repr(value: &Value) -> String {
             format_interpolation_tuple(interpolations)
         ),
         Value::TemplateInterpolation(interpolation) => format_template_interpolation(interpolation),
-        Value::Instance { class_name, .. } => format!("<{class_name} object>"),
+        Value::Instance {
+            class_name, fields, ..
+        } => format_named_tuple_subclass(class_name, fields)
+            .unwrap_or_else(|| format!("<{class_name} object>")),
         Value::Property { .. } => "<property object>".to_string(),
+        Value::NamedTupleFieldDescriptor { typ, index } => {
+            let field = namedtuple_field_name(typ, *index);
+            format!("<namedtuple field '{field}' of '{}'>", typ.name)
+        }
         Value::MemberDescriptor { name, owner_name } => {
             format!("<member '{name}' of '{owner_name}' objects>")
         }
@@ -882,8 +1219,198 @@ fn format_generic_origin(origin: &Value) -> String {
     }
 }
 
+fn format_generic_alias_arg(value: &Value) -> String {
+    match value {
+        Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
+            name.clone()
+        }
+        Value::TypeAlias { name, .. } => name.clone(),
+        Value::Unpack(value) => format!("*{}", format_generic_alias_arg(value)),
+        value => format_value_repr(value),
+    }
+}
+
+fn format_const_evaluator(kind: ConstEvaluatorKind, target: &Value) -> String {
+    format!(
+        "<constevaluator {}>",
+        format_const_evaluator_target(kind, target)
+    )
+}
+
+fn format_const_evaluator_target(kind: ConstEvaluatorKind, target: &Value) -> String {
+    let value = match (kind, target) {
+        (ConstEvaluatorKind::TypeAliasValue, Value::TypeAlias { value, .. }) => {
+            Some(value.as_ref().clone())
+        }
+        (ConstEvaluatorKind::TypeParamBound, Value::TypeParam { bound, .. }) => {
+            match bound.borrow().as_ref() {
+                Some(Value::Tuple(_)) | None => Some(Value::None),
+                Some(value) => Some(value.clone()),
+            }
+        }
+        (ConstEvaluatorKind::TypeParamConstraints, Value::TypeParam { bound, .. }) => {
+            match bound.borrow().as_ref() {
+                Some(Value::Tuple(items)) => Some(Value::Tuple(items.clone())),
+                _ => Some(Value::Tuple(Rc::new(Vec::new()))),
+            }
+        }
+        (ConstEvaluatorKind::TypeParamDefault, Value::TypeParam { default, .. }) => {
+            default.borrow().clone()
+        }
+        _ => None,
+    };
+
+    value
+        .as_ref()
+        .map(format_const_evaluator_value)
+        .unwrap_or_else(|| "?".to_string())
+}
+
+fn format_const_evaluator_value(value: &Value) -> String {
+    match value {
+        Value::Builtin(name) => {
+            format!("<class '{}'>", name.strip_prefix("typing.").unwrap_or(name))
+        }
+        Value::Tuple(items) => match items.as_slice() {
+            [] => "()".to_string(),
+            [item] => format!("({},)", format_const_evaluator_value(item)),
+            _ => format!(
+                "({})",
+                items
+                    .iter()
+                    .map(format_const_evaluator_value)
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+        },
+        value => format_value_repr(value),
+    }
+}
+
 fn bool_as_i64(value: bool) -> i64 {
     if value { 1 } else { 0 }
+}
+
+fn simple_namespace_entries_equal(left: &[(Value, Value)], right: &[(Value, Value)]) -> bool {
+    code_metadata_namespace_entries_equal(left, right).unwrap_or(left == right)
+}
+
+fn exception_attrs_equal(left: &[(String, Value)], right: &[(String, Value)]) -> bool {
+    let public_left = left
+        .iter()
+        .filter(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR)
+        .collect::<Vec<_>>();
+    let public_right = right
+        .iter()
+        .filter(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR)
+        .collect::<Vec<_>>();
+    public_left == public_right
+}
+
+pub(crate) fn code_metadata_namespace_entries_equal(
+    left: &[(Value, Value)],
+    right: &[(Value, Value)],
+) -> Option<bool> {
+    let left_consts = code_metadata_consts_field(left)?;
+    let right_consts = code_metadata_consts_field(right)?;
+    Some(
+        string_field_value(left, "co_varnames") == string_field_value(right, "co_varnames")
+            && string_field_value(left, "co_flags") == string_field_value(right, "co_flags")
+            && string_field_value(left, "co_firstlineno")
+                == string_field_value(right, "co_firstlineno")
+            && strict_constant_value_equal(left_consts, right_consts),
+    )
+}
+
+fn code_metadata_consts_field(entries: &[(Value, Value)]) -> Option<&Value> {
+    let consts = string_field_value(entries, "co_consts")?;
+    if string_field_value(entries, "co_varnames").is_some()
+        && string_field_value(entries, "co_flags").is_some()
+    {
+        Some(consts)
+    } else {
+        None
+    }
+}
+
+fn string_field_value<'a>(entries: &'a [(Value, Value)], name: &str) -> Option<&'a Value> {
+    entries.iter().find_map(|(key, value)| match key {
+        Value::String(key) if key == name => Some(value),
+        _ => None,
+    })
+}
+
+fn strict_constant_value_equal(left: &Value, right: &Value) -> bool {
+    match (left, right) {
+        (Value::Number(left), Value::Number(right)) => left == right,
+        (Value::BigInt(left), Value::BigInt(right)) => left == right,
+        (Value::Number(left), Value::BigInt(right))
+        | (Value::BigInt(right), Value::Number(left)) => BigInt::from(*left) == *right,
+        (Value::Float(left), Value::Float(right)) => left.to_bits() == right.to_bits(),
+        (
+            Value::Complex {
+                real: left_real,
+                imag: left_imag,
+            },
+            Value::Complex {
+                real: right_real,
+                imag: right_imag,
+            },
+        ) => {
+            left_real.to_bits() == right_real.to_bits()
+                && left_imag.to_bits() == right_imag.to_bits()
+        }
+        (Value::Bool(left), Value::Bool(right)) => left == right,
+        (Value::String(left), Value::String(right)) => left == right,
+        (Value::Bytes(left), Value::Bytes(right)) => left == right,
+        (Value::None, Value::None) => true,
+        (Value::Ellipsis, Value::Ellipsis) => true,
+        (Value::Tuple(left), Value::Tuple(right)) => {
+            strict_constant_slices_equal(left.as_ref(), right.as_ref())
+        }
+        (Value::FrozenSet(left), Value::FrozenSet(right)) => {
+            strict_constant_sets_equal(left.as_ref(), right.as_ref())
+        }
+        (
+            Value::CodeObject {
+                mode: left_mode,
+                instructions: left_instructions,
+                ..
+            },
+            Value::CodeObject {
+                mode: right_mode,
+                instructions: right_instructions,
+                ..
+            },
+        ) => left_mode == right_mode && left_instructions == right_instructions,
+        _ => false,
+    }
+}
+
+fn strict_constant_slices_equal(left: &[Value], right: &[Value]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right)
+            .all(|(left, right)| strict_constant_value_equal(left, right))
+}
+
+fn strict_constant_sets_equal(left: &[Value], right: &[Value]) -> bool {
+    if left.len() != right.len() {
+        return false;
+    }
+
+    let mut matched = vec![false; right.len()];
+    'left_items: for left_item in left {
+        for (index, right_item) in right.iter().enumerate() {
+            if !matched[index] && strict_constant_value_equal(left_item, right_item) {
+                matched[index] = true;
+                continue 'left_items;
+            }
+        }
+        return false;
+    }
+    true
 }
 
 impl PartialEq for Value {
@@ -937,12 +1464,61 @@ impl PartialEq for Value {
             }
             (Value::String(left), Value::String(right)) => left == right,
             (Value::Bytes(left), Value::Bytes(right)) => left == right,
-            (Value::ByteArray(left), Value::ByteArray(right)) => left == right,
+            (Value::ByteArray(left), Value::ByteArray(right)) => *left.borrow() == *right.borrow(),
+            (Value::MemoryView(left), Value::MemoryView(right)) if Rc::ptr_eq(left, right) => true,
+            (Value::MemoryView(left), Value::MemoryView(right)) => {
+                let left = left.borrow();
+                let right = right.borrow();
+                match (
+                    memory_view_state_bytes(&left),
+                    memory_view_state_bytes(&right),
+                ) {
+                    (Some(left), Some(right)) => left == right,
+                    _ => false,
+                }
+            }
+            (Value::MemoryView(left), Value::Bytes(right))
+            | (Value::Bytes(right), Value::MemoryView(left)) => {
+                let left = left.borrow();
+                memory_view_state_bytes(&left).is_some_and(|left| left == *right)
+            }
+            (Value::MemoryView(left), Value::ByteArray(right))
+            | (Value::ByteArray(right), Value::MemoryView(left)) => {
+                let left = left.borrow();
+                memory_view_state_bytes(&left)
+                    .is_some_and(|left| left.as_slice() == right.borrow().bytes())
+            }
             (Value::Bytes(left), Value::ByteArray(right))
-            | (Value::ByteArray(right), Value::Bytes(left)) => left == right,
+            | (Value::ByteArray(right), Value::Bytes(left)) => {
+                left.as_slice() == right.borrow().bytes()
+            }
             (Value::Bool(left), Value::Bool(right)) => left == right,
             (Value::List(left), Value::List(right)) => *left.borrow() == *right.borrow(),
+            (Value::UserList { data: left, .. }, Value::UserList { data: right, .. }) => {
+                *left.borrow() == *right.borrow()
+            }
+            (Value::List(left), Value::UserList { data: right, .. })
+            | (Value::UserList { data: right, .. }, Value::List(left)) => {
+                *left.borrow() == *right.borrow()
+            }
             (Value::Tuple(left), Value::Tuple(right)) => left.as_ref() == right.as_ref(),
+            (Value::NamedTuple { values: left, .. }, Value::NamedTuple { values: right, .. }) => {
+                left.as_ref() == right.as_ref()
+            }
+            (Value::NamedTuple { values: left, .. }, Value::Tuple(right))
+            | (Value::Tuple(right), Value::NamedTuple { values: left, .. }) => {
+                left.as_ref() == right.as_ref()
+            }
+            (
+                Value::NamedTupleFieldDescriptor {
+                    typ: left_typ,
+                    index: left_index,
+                },
+                Value::NamedTupleFieldDescriptor {
+                    typ: right_typ,
+                    index: right_index,
+                },
+            ) => Rc::ptr_eq(left_typ, right_typ) && left_index == right_index,
             (Value::Set(left), Value::Set(right)) => sets_equal(&left.borrow(), &right.borrow()),
             (Value::FrozenSet(left), Value::FrozenSet(right)) => {
                 sets_equal(left.as_ref(), right.as_ref())
@@ -954,31 +1530,32 @@ impl PartialEq for Value {
             (Value::Dict(left), Value::Dict(right)) => {
                 left.borrow().entries == right.borrow().entries
             }
-            (Value::UserDict { data: left }, Value::UserDict { data: right }) => {
+            (Value::OrderedDict(left), Value::OrderedDict(right)) => {
+                left.borrow().entries == right.borrow().entries
+            }
+            (Value::Dict(left), Value::OrderedDict(right))
+            | (Value::OrderedDict(left), Value::Dict(right)) => {
+                dict_entries_equal(&left.borrow().entries, &right.borrow().entries)
+            }
+            (Value::UserDict { data: left, .. }, Value::UserDict { data: right, .. }) => {
                 left.borrow().entries == right.borrow().entries
             }
             (Value::SimpleNamespace { fields: left }, Value::SimpleNamespace { fields: right }) => {
-                left.borrow().entries == right.borrow().entries
+                simple_namespace_entries_equal(&left.borrow().entries, &right.borrow().entries)
             }
             (Value::PicklePayload(left), Value::PicklePayload(right)) => left == right,
             (
                 Value::CodeObject {
                     mode: left_mode,
-                    filename: left_filename,
                     instructions: left_instructions,
                     ..
                 },
                 Value::CodeObject {
                     mode: right_mode,
-                    filename: right_filename,
                     instructions: right_instructions,
                     ..
                 },
-            ) => {
-                left_mode == right_mode
-                    && left_filename == right_filename
-                    && left_instructions == right_instructions
-            }
+            ) => left_mode == right_mode && left_instructions == right_instructions,
             (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
             (
                 Value::DictView {
@@ -1046,7 +1623,9 @@ impl PartialEq for Value {
                 },
             ) => left_entries.borrow().entries == right_entries.borrow().entries,
             (Value::MappingProxy { entries: left }, Value::Dict(right))
-            | (Value::Dict(right), Value::MappingProxy { entries: left }) => {
+            | (Value::Dict(right), Value::MappingProxy { entries: left })
+            | (Value::MappingProxy { entries: left }, Value::OrderedDict(right))
+            | (Value::OrderedDict(right), Value::MappingProxy { entries: left }) => {
                 left.borrow().entries == right.borrow().entries
             }
             (
@@ -1059,6 +1638,15 @@ impl PartialEq for Value {
             ) => left_mapping == right_mapping,
             (Value::ChainMap { maps: left_maps }, Value::ChainMap { maps: right_maps }) => {
                 left_maps == right_maps
+            }
+            (Value::Counter { entries: left }, Value::Counter { entries: right }) => {
+                dict_entries_equal(&left.borrow().entries, &right.borrow().entries)
+            }
+            (Value::Counter { entries: left }, Value::Dict(right))
+            | (Value::Dict(right), Value::Counter { entries: left })
+            | (Value::Counter { entries: left }, Value::OrderedDict(right))
+            | (Value::OrderedDict(right), Value::Counter { entries: left }) => {
+                dict_entries_equal(&left.borrow().entries, &right.borrow().entries)
             }
             (
                 Value::Slice {
@@ -1148,6 +1736,22 @@ impl PartialEq for Value {
                     index: right_index,
                 },
             ) => left_bytes == right_bytes && left_index == right_index,
+            (
+                Value::ByteArrayIterator {
+                    bytes: left_bytes,
+                    index: left_index,
+                    exhausted: left_exhausted,
+                },
+                Value::ByteArrayIterator {
+                    bytes: right_bytes,
+                    index: right_index,
+                    exhausted: right_exhausted,
+                },
+            ) => {
+                left_bytes.borrow().as_slice() == right_bytes.borrow().as_slice()
+                    && left_index == right_index
+                    && left_exhausted == right_exhausted
+            }
             (
                 Value::SetIterator {
                     items: left_items,
@@ -1308,62 +1912,14 @@ impl PartialEq for Value {
             (Value::Iterator(left), Value::Iterator(right)) => Rc::ptr_eq(left, right),
             (
                 Value::Function {
-                    name: left_name,
-                    type_params: left_type_params,
-                    globals: _,
-                    positional_only: left_positional_only,
-                    params: left_params,
-                    defaults: left_defaults,
-                    vararg: left_vararg,
-                    keyword_only: left_keyword_only,
-                    keyword_defaults: left_keyword_defaults,
-                    kwarg: left_kwarg,
-                    annotations: left_annotations,
-                    attrs: _,
-                    closure: left_closure,
-                    body: left_body,
-                    is_generator: left_is_generator,
-                    is_async: left_is_async,
                     identity: left_identity,
-                    owner_class: _,
+                    ..
                 },
                 Value::Function {
-                    name: right_name,
-                    type_params: right_type_params,
-                    globals: _,
-                    positional_only: right_positional_only,
-                    params: right_params,
-                    defaults: right_defaults,
-                    vararg: right_vararg,
-                    keyword_only: right_keyword_only,
-                    keyword_defaults: right_keyword_defaults,
-                    kwarg: right_kwarg,
-                    annotations: right_annotations,
-                    attrs: _,
-                    closure: right_closure,
-                    body: right_body,
-                    is_generator: right_is_generator,
-                    is_async: right_is_async,
                     identity: right_identity,
-                    owner_class: _,
+                    ..
                 },
-            ) => {
-                Rc::ptr_eq(left_identity, right_identity)
-                    && left_name == right_name
-                    && left_type_params == right_type_params
-                    && left_positional_only == right_positional_only
-                    && left_params == right_params
-                    && left_defaults == right_defaults
-                    && left_vararg == right_vararg
-                    && left_keyword_only == right_keyword_only
-                    && left_keyword_defaults == right_keyword_defaults
-                    && left_kwarg == right_kwarg
-                    && left_annotations == right_annotations
-                    && left_closure == right_closure
-                    && left_body == right_body
-                    && left_is_generator == right_is_generator
-                    && left_is_async == right_is_async
-            }
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::Generator(left), Value::Generator(right)) => Rc::ptr_eq(left, right),
             (Value::Coroutine(left), Value::Coroutine(right)) => Rc::ptr_eq(left, right),
             (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
@@ -1399,6 +1955,22 @@ impl PartialEq for Value {
                 Rc::ptr_eq(left, right)
             }
             (
+                Value::AsyncGeneratorAthrowMixin {
+                    done: left_done, ..
+                },
+                Value::AsyncGeneratorAthrowMixin {
+                    done: right_done, ..
+                },
+            ) => Rc::ptr_eq(left_done, right_done),
+            (
+                Value::AsyncGeneratorAcloseMixin {
+                    done: left_done, ..
+                },
+                Value::AsyncGeneratorAcloseMixin {
+                    done: right_done, ..
+                },
+            ) => Rc::ptr_eq(left_done, right_done),
+            (
                 Value::AnextDefault {
                     awaitable: left_awaitable,
                     default: left_default,
@@ -1410,41 +1982,27 @@ impl PartialEq for Value {
             ) => left_awaitable == right_awaitable && left_default == right_default,
             (
                 Value::Class {
-                    name: left_name,
-                    type_params: left_type_params,
-                    bases: left_bases,
-                    attrs: left_attrs,
+                    attrs: left_attrs, ..
                 },
                 Value::Class {
-                    name: right_name,
-                    type_params: right_type_params,
-                    bases: right_bases,
-                    attrs: right_attrs,
+                    attrs: right_attrs, ..
                 },
-            ) => {
-                left_name == right_name
-                    && left_type_params == right_type_params
-                    && left_bases == right_bases
-                    && left_attrs == right_attrs
+            ) => Rc::ptr_eq(left_attrs, right_attrs),
+            (Value::NamedTupleType(left), Value::NamedTupleType(right)) => {
+                Rc::ptr_eq(&left.identity, &right.identity)
             }
             (
                 Value::TypeParam {
-                    kind: left_kind,
-                    name: left_name,
-                    bound: left_bound,
-                    default: left_default,
+                    identity: left_identity,
+                    ..
                 },
                 Value::TypeParam {
-                    kind: right_kind,
-                    name: right_name,
-                    bound: right_bound,
-                    default: right_default,
+                    identity: right_identity,
+                    ..
                 },
-            ) => {
-                left_kind == right_kind
-                    && left_name == right_name
-                    && left_bound == right_bound
-                    && left_default == right_default
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (Value::DeferredTypeParamExpr(left), Value::DeferredTypeParamExpr(right)) => {
+                Rc::ptr_eq(left, right)
             }
             (
                 Value::TypeAlias {
@@ -1462,6 +2020,16 @@ impl PartialEq for Value {
                     && left_type_params == right_type_params
                     && left_value == right_value
             }
+            (
+                Value::ConstEvaluator {
+                    kind: left_kind,
+                    target: left_target,
+                },
+                Value::ConstEvaluator {
+                    kind: right_kind,
+                    target: right_target,
+                },
+            ) => left_kind == right_kind && left_target == right_target,
             (
                 Value::GenericAlias {
                     origin: left_origin,
@@ -1488,23 +2056,14 @@ impl PartialEq for Value {
             }
             (
                 Value::Instance {
-                    class_name: left_class_name,
                     fields: left_fields,
-                    class_attrs: left_class_attrs,
-                    class_bases: left_class_bases,
+                    ..
                 },
                 Value::Instance {
-                    class_name: right_class_name,
                     fields: right_fields,
-                    class_attrs: right_class_attrs,
-                    class_bases: right_class_bases,
+                    ..
                 },
-            ) => {
-                left_class_name == right_class_name
-                    && left_fields == right_fields
-                    && left_class_attrs == right_class_attrs
-                    && left_class_bases == right_class_bases
-            }
+            ) => Rc::ptr_eq(left_fields, right_fields),
             (
                 Value::Property {
                     fget: left_fget,
@@ -1552,20 +2111,14 @@ impl PartialEq for Value {
             ) => left_function == right_function,
             (
                 Value::Super {
-                    class: left_class,
-                    object: left_object,
                     identity: left_identity,
+                    ..
                 },
                 Value::Super {
-                    class: right_class,
-                    object: right_object,
                     identity: right_identity,
+                    ..
                 },
-            ) => {
-                Rc::ptr_eq(left_identity, right_identity)
-                    && left_class == right_class
-                    && left_object == right_object
-            }
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (
                 Value::BoundMethod {
                     function: left_function,
@@ -1589,15 +2142,21 @@ impl PartialEq for Value {
                 },
             ) => Rc::ptr_eq(left_identity, right_identity),
             (
+                Value::Traceback {
+                    identity: left_identity,
+                },
+                Value::Traceback {
+                    identity: right_identity,
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
                 Value::Module {
-                    name: left_name,
-                    attrs: left_attrs,
+                    attrs: left_attrs, ..
                 },
                 Value::Module {
-                    name: right_name,
-                    attrs: right_attrs,
+                    attrs: right_attrs, ..
                 },
-            ) => left_name == right_name && left_attrs == right_attrs,
+            ) => Rc::ptr_eq(left_attrs, right_attrs),
             (
                 Value::Exception {
                     type_name: left_type_name,
@@ -1629,7 +2188,7 @@ impl PartialEq for Value {
                     && left_type_object == right_type_object
                     && left_message == right_message
                     && left_args == right_args
-                    && left_attrs == right_attrs
+                    && exception_attrs_equal(left_attrs, right_attrs)
                     && left_exceptions == right_exceptions
                     && left_cause == right_cause
                     && left_context == right_context
@@ -1650,6 +2209,42 @@ fn format_tuple(items: &[Value]) -> String {
         [item] => format!("({},)", format_value_repr(item)),
         _ => format!("({})", format_list_items(items)),
     }
+}
+
+fn format_named_tuple(typ: &NamedTupleType, values: &[Value]) -> String {
+    format_named_tuple_with_name(&typ.name, &typ.fields, values)
+}
+
+fn format_named_tuple_with_name(name: &str, fields: &[String], values: &[Value]) -> String {
+    let rendered = fields
+        .iter()
+        .zip(values.iter())
+        .map(|(field, value)| format!("{field}={}", format_value_repr(value)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("{name}({rendered})")
+}
+
+fn format_named_tuple_subclass(class_name: &str, fields: &Scope) -> Option<String> {
+    let storage = fields
+        .borrow()
+        .get(NAMED_TUPLE_SUBCLASS_STORAGE_FIELD)
+        .cloned()?;
+    let Value::NamedTuple { typ, values } = storage else {
+        return None;
+    };
+    Some(format_named_tuple_with_name(
+        class_name,
+        &typ.fields,
+        values.as_ref(),
+    ))
+}
+
+fn namedtuple_field_name(typ: &NamedTupleType, index: usize) -> &str {
+    typ.fields
+        .get(index)
+        .map(String::as_str)
+        .unwrap_or("<unknown>")
 }
 
 fn format_string_tuple(items: &[String]) -> String {
@@ -1786,6 +2381,54 @@ fn format_dict(entries: &[(Value, Value)]) -> String {
         .map(|(key, value)| format!("{}: {}", format_value_repr(key), format_value_repr(value)))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn format_counter(entries: &[(Value, Value)]) -> String {
+    if entries.is_empty() {
+        return "Counter()".to_string();
+    }
+
+    let mut indexed = entries.iter().enumerate().collect::<Vec<_>>();
+    indexed.sort_by(
+        |(left_index, (_, left_value)), (right_index, (_, right_value))| {
+            counter_repr_count(right_value)
+                .cmp(&counter_repr_count(left_value))
+                .then_with(|| left_index.cmp(right_index))
+        },
+    );
+    let rendered = indexed
+        .into_iter()
+        .map(|(_, (key, value))| {
+            format!("{}: {}", format_value_repr(key), format_value_repr(value))
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("Counter({{{rendered}}})")
+}
+
+fn dict_entries_equal(left: &[(Value, Value)], right: &[(Value, Value)]) -> bool {
+    left.len() == right.len()
+        && left.iter().all(|(left_key, left_value)| {
+            right
+                .iter()
+                .find(|(right_key, _)| right_key == left_key)
+                .is_some_and(|(_, right_value)| right_value == left_value)
+        })
+}
+
+fn counter_repr_count(value: &Value) -> i128 {
+    match value {
+        Value::Bool(value) => bool_as_i64(*value) as i128,
+        Value::Number(value) => *value as i128,
+        Value::BigInt(value) => value.to_i128().unwrap_or_else(|| {
+            if value.sign() == num_bigint::Sign::Minus {
+                i128::MIN
+            } else {
+                i128::MAX
+            }
+        }),
+        _ => 0,
+    }
 }
 
 fn format_scope_dict(scope: &Scope) -> String {

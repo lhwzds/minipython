@@ -1,1 +1,4 @@
 /target/
+
+# private e2e issue tracker (not part of the repo)
+issue.md

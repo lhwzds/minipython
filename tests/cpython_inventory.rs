@@ -1,6 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 const INVENTORY: &str = include_str!("cpython_grammar_inventory.md");
+const CPYTHON_GRAMMAR_SOURCE: &str = "/Volumes/samsung/GitHub/cpython/Grammar/python.gram";
 
 #[derive(Debug)]
 struct InventoryRow<'a> {
@@ -71,6 +72,37 @@ fn cpython_grammar_inventory_rows_are_well_formed() {
     }
 }
 
+#[test]
+fn cpython_grammar_inventory_rules_match_current_cpython_grammar() {
+    let inventory_rules = inventory_rows()
+        .into_iter()
+        .map(|row| row.rule)
+        .collect::<BTreeSet<_>>();
+    let grammar = std::fs::read_to_string(CPYTHON_GRAMMAR_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_GRAMMAR_SOURCE}: {error}"));
+    let grammar_rules = cpython_grammar_rules(&grammar);
+
+    assert_eq!(
+        inventory_rules.len(),
+        grammar_rules.len(),
+        "grammar inventory and CPython grammar rule counts differ"
+    );
+
+    let missing = grammar_rules
+        .difference(&inventory_rules)
+        .copied()
+        .collect::<Vec<_>>();
+    let extra = inventory_rules
+        .difference(&grammar_rules)
+        .copied()
+        .collect::<Vec<_>>();
+
+    assert!(
+        missing.is_empty() && extra.is_empty(),
+        "grammar inventory drifted from CPython grammar; missing={missing:?}; extra={extra:?}"
+    );
+}
+
 fn inventory_rows() -> Vec<InventoryRow<'static>> {
     INVENTORY
         .lines()
@@ -88,6 +120,26 @@ fn inventory_rows() -> Vec<InventoryRow<'static>> {
             let kind = strip_backticks(cells[1])?;
             let status = strip_backticks(cells[2])?;
             Some(InventoryRow { rule, kind, status })
+        })
+        .collect()
+}
+
+fn cpython_grammar_rules(source: &str) -> BTreeSet<&str> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let first = line.as_bytes().first()?;
+            if !first.is_ascii_lowercase() {
+                return None;
+            }
+
+            let colon = line.find(':')?;
+            let header = &line[..colon];
+            let name_end = header
+                .find(|ch: char| !(ch.is_ascii_alphanumeric() || ch == '_'))
+                .unwrap_or(header.len());
+            let name = &header[..name_end];
+            if name.is_empty() { None } else { Some(name) }
         })
         .collect()
 }

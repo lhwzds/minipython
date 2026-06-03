@@ -1,4 +1,4 @@
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
@@ -16,6 +16,73 @@ const TABSIZE: usize = 8;
 
 thread_local! {
     static MAX_INT_STR_DIGITS: Cell<usize> = const { Cell::new(DEFAULT_MAX_INT_STR_DIGITS) };
+    static SOURCE_LOCATION_CACHE: RefCell<Option<SourceLocationCache>> = const { RefCell::new(None) };
+}
+
+#[derive(Debug, Clone)]
+struct SourceLocationCache {
+    ptr: usize,
+    len: usize,
+    line_starts: Vec<usize>,
+    byte_offsets: Vec<usize>,
+    byte_line_starts: Vec<usize>,
+}
+
+impl SourceLocationCache {
+    fn new(chars: &[char]) -> Self {
+        let mut byte_offsets = Vec::with_capacity(chars.len() + 1);
+        byte_offsets.push(0);
+        for ch in chars {
+            let next = byte_offsets.last().copied().unwrap_or(0) + ch.len_utf8();
+            byte_offsets.push(next);
+        }
+
+        let mut line_starts = vec![0];
+        let mut byte_line_starts = vec![0];
+        let mut current = 0usize;
+        while current < chars.len() {
+            match chars[current] {
+                '\n' => {
+                    current += 1;
+                    line_starts.push(current);
+                    byte_line_starts.push(byte_offsets[current]);
+                }
+                '\r' => {
+                    current += 1;
+                    if current < chars.len() && chars[current] == '\n' {
+                        current += 1;
+                    }
+                    line_starts.push(current);
+                    byte_line_starts.push(byte_offsets[current]);
+                }
+                _ => current += 1,
+            }
+        }
+
+        Self {
+            ptr: chars.as_ptr() as usize,
+            len: chars.len(),
+            line_starts,
+            byte_offsets,
+            byte_line_starts,
+        }
+    }
+
+    fn char_location(&self, index: usize) -> (usize, usize) {
+        let line_index = self.line_index(index);
+        let column = index.saturating_sub(self.line_starts[line_index]) + 1;
+        (line_index + 1, column)
+    }
+
+    fn byte_location(&self, index: usize) -> (usize, usize) {
+        let line_index = self.line_index(index);
+        let column = self.byte_offsets[index].saturating_sub(self.byte_line_starts[line_index]) + 1;
+        (line_index + 1, column)
+    }
+
+    fn line_index(&self, index: usize) -> usize {
+        self.line_starts.partition_point(|start| *start <= index) - 1
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -298,6 +365,859 @@ pub(crate) fn lex_with_spans_for_parse(
     lex_with_spans_mode(source, LexMode::Parse)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FunctionLineMetadata {
+    token_index: usize,
+    first_line: usize,
+    line_sequence: Vec<usize>,
+}
+
+pub(crate) fn function_definition_start_lines(tokens: &[SpannedToken]) -> Vec<usize> {
+    function_line_metadata(tokens)
+        .into_iter()
+        .map(|metadata| metadata.first_line)
+        .collect()
+}
+
+pub(crate) fn function_definition_line_sequences(tokens: &[SpannedToken]) -> Vec<Vec<usize>> {
+    function_line_metadata(tokens)
+        .into_iter()
+        .map(|metadata| metadata.line_sequence)
+        .collect()
+}
+
+pub(crate) fn generator_expression_line_sequences(
+    tokens: &[SpannedToken],
+) -> Vec<(usize, Vec<usize>)> {
+    generator_expression_line_metadata(tokens)
+        .into_iter()
+        .map(|metadata| (metadata.first_line, metadata.line_sequence))
+        .collect()
+}
+
+fn function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
+    explicit_function_line_metadata(tokens)
+}
+
+fn explicit_function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
+    let mut metadata = Vec::new();
+    let mut at_statement_start = true;
+    let mut pending_decorator_line = None;
+
+    for (index, token) in tokens.iter().enumerate() {
+        match &token.token {
+            Token::Encoding(_)
+            | Token::TypeComment(_)
+            | Token::TypeIgnore(_)
+            | Token::Indent
+            | Token::Dedent
+            | Token::Newline
+            | Token::Semicolon => {
+                at_statement_start = true;
+            }
+            Token::At if at_statement_start => {
+                pending_decorator_line.get_or_insert(token.line);
+                at_statement_start = false;
+            }
+            Token::Def => {
+                let first_line = pending_decorator_line.take().unwrap_or(token.line);
+                let line_sequence = function_body_token_range(tokens, index)
+                    .map(|range| function_body_line_sequence(first_line, &tokens[range]))
+                    .unwrap_or_else(|| vec![first_line]);
+                metadata.push(FunctionLineMetadata {
+                    token_index: index,
+                    first_line,
+                    line_sequence,
+                });
+                at_statement_start = false;
+            }
+            Token::Class if at_statement_start => {
+                pending_decorator_line = None;
+                at_statement_start = false;
+            }
+            Token::Eof => break,
+            _ => {
+                if at_statement_start {
+                    pending_decorator_line = None;
+                }
+                at_statement_start = false;
+            }
+        }
+    }
+
+    metadata
+}
+
+fn generator_expression_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
+    let mut metadata = Vec::new();
+    let mut paren_depth = 0usize;
+
+    for (index, token) in tokens.iter().enumerate() {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => paren_depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            Token::For if paren_depth > 0 => {
+                let Some(left_index) = nearest_unmatched_left_paren(tokens, index) else {
+                    continue;
+                };
+                let Some(in_index) = comprehension_in_index(tokens, index) else {
+                    continue;
+                };
+                let element_line = first_significant_line(&tokens[left_index + 1..index]);
+                let target_line = first_significant_line(&tokens[index + 1..in_index]);
+                let iter_line = first_significant_line(&tokens[in_index + 1..]);
+                if let (Some(element_line), Some(target_line), Some(iter_line)) =
+                    (element_line, target_line, iter_line)
+                {
+                    metadata.push(FunctionLineMetadata {
+                        token_index: index,
+                        first_line: element_line,
+                        line_sequence: vec![
+                            iter_line,
+                            element_line,
+                            iter_line,
+                            target_line,
+                            element_line,
+                            iter_line,
+                        ],
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    metadata
+}
+
+fn nearest_unmatched_left_paren(tokens: &[SpannedToken], before: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().take(before).rev() {
+        match token.token {
+            Token::RightParen | Token::RightBracket | Token::RightBrace => depth += 1,
+            Token::LeftParen => {
+                if depth == 0 {
+                    return Some(index);
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Token::LeftBracket | Token::LeftBrace => {
+                if depth == 0 {
+                    return None;
+                }
+                depth = depth.saturating_sub(1);
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn comprehension_in_index(tokens: &[SpannedToken], for_index: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().skip(for_index + 1) {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                if depth == 0 {
+                    return None;
+                }
+                depth = depth.saturating_sub(1);
+            }
+            Token::In if depth == 0 => return Some(index),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn first_significant_line(tokens: &[SpannedToken]) -> Option<usize> {
+    trim_line_metadata_tokens(tokens).iter().find_map(|token| {
+        if is_line_metadata_ignorable(&token.token) {
+            None
+        } else {
+            Some(token.line)
+        }
+    })
+}
+
+fn function_body_token_range(
+    tokens: &[SpannedToken],
+    def_index: usize,
+) -> Option<std::ops::Range<usize>> {
+    let colon = find_function_header_colon(tokens, def_index)?;
+    let mut start = colon + 1;
+
+    while matches!(
+        tokens.get(start).map(|token| &token.token),
+        Some(Token::TypeComment(_))
+    ) {
+        start += 1;
+    }
+
+    if matches!(
+        tokens.get(start).map(|token| &token.token),
+        Some(Token::Newline)
+    ) {
+        start += 1;
+        if !matches!(
+            tokens.get(start).map(|token| &token.token),
+            Some(Token::Indent)
+        ) {
+            return None;
+        }
+        start += 1;
+
+        let mut depth = 1usize;
+        let mut end = start;
+        while let Some(token) = tokens.get(end) {
+            match token.token {
+                Token::Indent => depth += 1,
+                Token::Dedent => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        return Some(start..end);
+                    }
+                }
+                Token::Eof => return Some(start..end),
+                _ => {}
+            }
+            end += 1;
+        }
+        return Some(start..end);
+    }
+
+    let mut end = start;
+    while let Some(token) = tokens.get(end) {
+        if matches!(token.token, Token::Newline | Token::Dedent | Token::Eof) {
+            break;
+        }
+        end += 1;
+    }
+    Some(start..end)
+}
+
+fn find_function_header_colon(tokens: &[SpannedToken], def_index: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().skip(def_index + 1) {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Colon if depth == 0 => return Some(index),
+            Token::Newline | Token::Eof => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn function_body_line_sequence(first_line: usize, tokens: &[SpannedToken]) -> Vec<usize> {
+    let mut lines = vec![first_line];
+    let sequence = block_line_metadata(tokens, false);
+    lines.extend(sequence.normal);
+    lines.extend(sequence.cold);
+    lines
+}
+
+fn split_function_body_statements(tokens: &[SpannedToken]) -> Vec<&[SpannedToken]> {
+    let mut statements = Vec::new();
+    let mut start = 0usize;
+    let mut paren_depth = 0usize;
+    let mut block_depth = 0usize;
+
+    for (index, token) in tokens.iter().enumerate() {
+        match token.token {
+            Token::Indent => block_depth += 1,
+            Token::Dedent => {
+                block_depth = block_depth.saturating_sub(1);
+                if paren_depth == 0 && block_depth == 0 {
+                    if next_token_continues_compound_statement(tokens, index + 1) {
+                        continue;
+                    }
+                    if start < index {
+                        statements.push(&tokens[start..=index]);
+                    }
+                    start = index + 1;
+                }
+            }
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => paren_depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            Token::Semicolon | Token::Newline if paren_depth == 0 && block_depth == 0 => {
+                if matches!(token.token, Token::Newline)
+                    && matches!(
+                        tokens.get(index + 1).map(|token| &token.token),
+                        Some(Token::Indent)
+                    )
+                {
+                    continue;
+                }
+                if start < index {
+                    statements.push(&tokens[start..index]);
+                }
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+
+    if start < tokens.len() {
+        statements.push(&tokens[start..]);
+    }
+
+    statements
+}
+
+fn next_token_continues_compound_statement(tokens: &[SpannedToken], start: usize) -> bool {
+    tokens
+        .iter()
+        .skip(start)
+        .find(|token| !matches!(token.token, Token::Newline))
+        .is_some_and(|token| {
+            matches!(
+                token.token,
+                Token::Elif | Token::Else | Token::Except | Token::Finally
+            )
+        })
+}
+
+#[derive(Default)]
+struct StatementLineSequence {
+    normal: Vec<usize>,
+    cold: Vec<usize>,
+}
+
+impl StatementLineSequence {
+    fn from_normal(normal: Vec<usize>) -> Self {
+        Self {
+            normal,
+            cold: Vec::new(),
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.normal.is_empty() && self.cold.is_empty()
+    }
+}
+
+fn statement_line_metadata(tokens: &[SpannedToken]) -> StatementLineSequence {
+    let tokens = trim_line_metadata_tokens(tokens);
+    let Some(first) = tokens.first() else {
+        return StatementLineSequence::default();
+    };
+
+    if matches!(
+        first.token,
+        Token::String(_) | Token::FString(_) | Token::TString(_)
+    ) {
+        return StatementLineSequence::default();
+    }
+
+    if matches!(
+        tokens,
+        [
+            SpannedToken {
+                token: Token::Async,
+                ..
+            },
+            SpannedToken {
+                token: Token::For,
+                ..
+            },
+            ..
+        ]
+    ) {
+        return loop_statement_line_metadata(tokens, 1);
+    }
+
+    if matches!(first.token, Token::For | Token::While) {
+        return loop_statement_line_metadata(tokens, 0);
+    }
+
+    if matches!(first.token, Token::If) {
+        return conditional_statement_line_metadata(tokens);
+    }
+
+    if matches!(first.token, Token::Try) {
+        return try_statement_line_metadata(tokens);
+    }
+
+    if is_annotation_only_statement(tokens) {
+        return StatementLineSequence::default();
+    }
+
+    if matches!(first.token, Token::Return) {
+        let expr = trim_line_metadata_tokens(&tokens[1..]);
+        let mut lines = expression_line_sequence(expr);
+        lines.push(first.line);
+        return StatementLineSequence::from_normal(lines);
+    }
+
+    if let Some(index) = top_level_assignment_operator_index(tokens) {
+        let target = trim_line_metadata_tokens(&tokens[..index]);
+        let value = trim_line_metadata_tokens(&tokens[index + 1..]);
+        if matches!(tokens[index].token, Token::Equal) {
+            let mut lines = expression_line_sequence(value);
+            lines.extend(attribute_expression_line_sequence(target));
+            return StatementLineSequence::from_normal(lines);
+        }
+
+        let target_lines = attribute_expression_line_sequence(target);
+        let mut lines = target_lines.clone();
+        lines.extend(expression_line_sequence(value));
+        lines.push(first.line);
+        if let Some(line) = target_lines.last() {
+            lines.push(*line);
+        }
+        return StatementLineSequence::from_normal(lines);
+    }
+
+    StatementLineSequence::from_normal(expression_line_sequence(tokens))
+}
+
+fn loop_statement_line_metadata(
+    tokens: &[SpannedToken],
+    keyword_index: usize,
+) -> StatementLineSequence {
+    let Some(keyword) = tokens.get(keyword_index) else {
+        return StatementLineSequence::default();
+    };
+    let Some(loop_colon) = top_level_colon_index(tokens) else {
+        return StatementLineSequence::default();
+    };
+    let else_index = top_level_loop_else_index(tokens);
+    let body_end = else_index.unwrap_or(tokens.len());
+    let body_sequence = clause_body_line_metadata(tokens, loop_colon, body_end);
+
+    let mut lines = vec![keyword.line];
+    let mut body_lines = body_sequence.normal;
+    drop_nested_compound_backedge_line(&mut body_lines);
+    lines.extend(body_lines);
+
+    let is_while = matches!(keyword.token, Token::While);
+    let has_else = else_index.is_some();
+    if (!is_while || !has_else) && (!is_while || loop_body_can_reach_backedge(&lines, keyword.line))
+    {
+        lines.push(keyword.line);
+    }
+
+    if let Some(else_index) = else_index
+        && let Some(else_colon) =
+            top_level_colon_index(&tokens[else_index..]).map(|index| else_index + index)
+    {
+        let else_body = clause_body_line_metadata(tokens, else_colon, tokens.len());
+        lines.extend(else_body.normal);
+        let mut cold = body_sequence.cold;
+        cold.extend(else_body.cold);
+        if is_while {
+            drop_nested_compound_backedge_line(&mut cold);
+        }
+        return StatementLineSequence {
+            normal: lines,
+            cold,
+        };
+    }
+
+    StatementLineSequence {
+        normal: lines,
+        cold: body_sequence.cold,
+    }
+}
+
+fn top_level_loop_else_index(tokens: &[SpannedToken]) -> Option<usize> {
+    let mut paren_depth = 0usize;
+    let mut block_depth = 0usize;
+
+    for (index, token) in tokens.iter().enumerate().skip(1) {
+        match token.token {
+            Token::Indent => block_depth += 1,
+            Token::Dedent => block_depth = block_depth.saturating_sub(1),
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => paren_depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            Token::Else if paren_depth == 0 && block_depth == 0 => return Some(index),
+            _ => {}
+        }
+    }
+
+    None
+}
+
+fn loop_body_can_reach_backedge(lines: &[usize], loop_line: usize) -> bool {
+    lines
+        .last()
+        .is_some_and(|line| *line != loop_line && lines.len() > 2)
+}
+
+fn drop_nested_compound_backedge_line(lines: &mut Vec<usize>) {
+    if lines.len() > 1 && lines.first() == lines.last() {
+        lines.pop();
+    }
+}
+
+fn conditional_statement_line_metadata(tokens: &[SpannedToken]) -> StatementLineSequence {
+    let Some(keyword) = tokens.first() else {
+        return StatementLineSequence::default();
+    };
+    let mut lines = vec![keyword.line];
+    let body_sequence = compound_body_line_metadata(tokens);
+    lines.extend(body_sequence.normal);
+    lines.push(keyword.line);
+    StatementLineSequence {
+        normal: lines,
+        cold: body_sequence.cold,
+    }
+}
+
+fn try_statement_line_metadata(tokens: &[SpannedToken]) -> StatementLineSequence {
+    let Some(keyword) = tokens.first() else {
+        return StatementLineSequence::default();
+    };
+    let Some(try_colon) = top_level_colon_index(tokens) else {
+        return StatementLineSequence::default();
+    };
+
+    let clause_indices = top_level_try_clause_indices(tokens);
+    let try_body_end = clause_indices.first().copied().unwrap_or(tokens.len());
+    let try_body = clause_body_line_metadata(tokens, try_colon, try_body_end);
+
+    let mut sequence = StatementLineSequence {
+        normal: vec![keyword.line],
+        cold: try_body.cold,
+    };
+    sequence.normal.extend(try_body.normal);
+
+    for (position, clause_index) in clause_indices.iter().copied().enumerate() {
+        let clause_end = clause_indices
+            .get(position + 1)
+            .copied()
+            .unwrap_or(tokens.len());
+        let Some(clause_colon) = top_level_colon_index(&tokens[clause_index..clause_end])
+            .map(|index| clause_index + index)
+        else {
+            continue;
+        };
+        let clause_body = clause_body_line_metadata(tokens, clause_colon, clause_end);
+        let clause_line = tokens[clause_index].line;
+
+        match tokens[clause_index].token {
+            Token::Except => {
+                sequence.cold.push(clause_line);
+                sequence.cold.extend(clause_body.normal);
+                sequence.cold.extend(clause_body.cold);
+                sequence.cold.push(clause_line);
+            }
+            Token::Else | Token::Finally => {
+                sequence.normal.push(clause_line);
+                sequence.normal.extend(clause_body.normal);
+                sequence.cold.extend(clause_body.cold);
+            }
+            _ => {}
+        }
+    }
+
+    sequence
+}
+
+fn top_level_try_clause_indices(tokens: &[SpannedToken]) -> Vec<usize> {
+    let mut indices = Vec::new();
+    let mut paren_depth = 0usize;
+    let mut block_depth = 0usize;
+
+    for (index, token) in tokens.iter().enumerate().skip(1) {
+        match token.token {
+            Token::Indent => block_depth += 1,
+            Token::Dedent => block_depth = block_depth.saturating_sub(1),
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => paren_depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                paren_depth = paren_depth.saturating_sub(1);
+            }
+            Token::Except | Token::Else | Token::Finally
+                if paren_depth == 0 && block_depth == 0 =>
+            {
+                indices.push(index);
+            }
+            _ => {}
+        }
+    }
+
+    indices
+}
+
+fn clause_body_line_metadata(
+    tokens: &[SpannedToken],
+    colon_index: usize,
+    end_index: usize,
+) -> StatementLineSequence {
+    if colon_index + 1 >= end_index {
+        return StatementLineSequence::default();
+    }
+    let body = trim_line_metadata_tokens(&tokens[colon_index + 1..end_index]);
+    block_line_metadata(body, true)
+}
+
+fn compound_body_line_metadata(tokens: &[SpannedToken]) -> StatementLineSequence {
+    let Some(colon) = top_level_colon_index(tokens) else {
+        return StatementLineSequence::default();
+    };
+    let body = trim_line_metadata_tokens(&tokens[colon + 1..]);
+    block_line_metadata(body, true)
+}
+
+fn block_line_metadata(tokens: &[SpannedToken], fallback_empty: bool) -> StatementLineSequence {
+    let mut sequence = StatementLineSequence::default();
+    for statement in split_function_body_statements(tokens) {
+        let statement = trim_line_metadata_tokens(statement);
+        let statement_sequence = statement_line_metadata(statement);
+        if statement_sequence.is_empty() {
+            if let Some(first) = statement.first() {
+                if fallback_empty {
+                    push_line_if_changed(&mut sequence.normal, first.line);
+                }
+            }
+        } else {
+            sequence.normal.extend(statement_sequence.normal);
+            sequence.cold.extend(statement_sequence.cold);
+        }
+    }
+
+    sequence
+}
+
+fn top_level_colon_index(tokens: &[SpannedToken]) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate() {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Colon if depth == 0 => return Some(index),
+            _ => {}
+        }
+    }
+    None
+}
+
+fn trim_line_metadata_tokens(tokens: &[SpannedToken]) -> &[SpannedToken] {
+    let mut start = 0usize;
+    let mut end = tokens.len();
+
+    while start < end && is_line_metadata_ignorable(&tokens[start].token) {
+        start += 1;
+    }
+    while end > start && is_line_metadata_ignorable(&tokens[end - 1].token) {
+        end -= 1;
+    }
+
+    &tokens[start..end]
+}
+
+fn is_line_metadata_ignorable(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Encoding(_)
+            | Token::TypeComment(_)
+            | Token::TypeIgnore(_)
+            | Token::Newline
+            | Token::Indent
+            | Token::Dedent
+            | Token::Eof
+    )
+}
+
+fn is_annotation_only_statement(tokens: &[SpannedToken]) -> bool {
+    let mut depth = 0usize;
+    let mut has_colon = false;
+    for token in tokens {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Colon if depth == 0 => has_colon = true,
+            Token::Equal if depth == 0 => return false,
+            _ => {}
+        }
+    }
+    has_colon
+}
+
+fn top_level_assignment_operator_index(tokens: &[SpannedToken]) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate() {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Equal
+            | Token::PlusEqual
+            | Token::MinusEqual
+            | Token::StarEqual
+            | Token::SlashEqual
+            | Token::DoubleSlashEqual
+            | Token::PercentEqual
+            | Token::AtEqual
+            | Token::DoubleStarEqual
+            | Token::AmpersandEqual
+            | Token::PipeEqual
+            | Token::CaretEqual
+            | Token::LeftShiftEqual
+            | Token::RightShiftEqual
+                if depth == 0 =>
+            {
+                return Some(index);
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn expression_line_sequence(tokens: &[SpannedToken]) -> Vec<usize> {
+    let tokens = trim_line_metadata_tokens(tokens);
+    if tokens.is_empty() {
+        return Vec::new();
+    }
+
+    let call_lines = call_expression_line_sequence(tokens);
+    if !call_lines.is_empty() {
+        return call_lines;
+    }
+
+    let attr_lines = attribute_expression_line_sequence(tokens);
+    if !attr_lines.is_empty() {
+        return attr_lines;
+    }
+
+    token_expression_lines(tokens)
+}
+
+fn call_expression_line_sequence(tokens: &[SpannedToken]) -> Vec<usize> {
+    for (index, token) in tokens.iter().enumerate() {
+        if !matches!(token.token, Token::LeftParen) {
+            continue;
+        }
+
+        let callee = trim_line_metadata_tokens(&tokens[..index]);
+        let callee_lines = attribute_expression_line_sequence(callee);
+        let Some(call_line) = callee_lines.last().copied() else {
+            continue;
+        };
+        let args_end = matching_right_paren_index(tokens, index).unwrap_or(tokens.len());
+        let args = if args_end > index + 1 {
+            &tokens[index + 1..args_end]
+        } else {
+            &[]
+        };
+
+        let mut lines = callee_lines;
+        lines.extend(token_expression_lines(args));
+        lines.push(call_line);
+        return lines;
+    }
+
+    Vec::new()
+}
+
+fn matching_right_paren_index(tokens: &[SpannedToken], left_index: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().skip(left_index) {
+        match token.token {
+            Token::LeftParen => depth += 1,
+            Token::RightParen => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn attribute_expression_line_sequence(tokens: &[SpannedToken]) -> Vec<usize> {
+    let tokens = trim_wrapping_parentheses(trim_line_metadata_tokens(tokens));
+    let mut lines = Vec::new();
+    let mut expect_attribute_name = false;
+
+    for token in tokens {
+        match &token.token {
+            Token::Identifier(_) if !expect_attribute_name && lines.is_empty() => {
+                lines.push(token.line);
+            }
+            Token::Identifier(_) if expect_attribute_name => {
+                lines.push(token.line);
+                expect_attribute_name = false;
+            }
+            Token::Dot if !lines.is_empty() => {
+                expect_attribute_name = true;
+            }
+            Token::LeftParen | Token::RightParen => {}
+            _ => return Vec::new(),
+        }
+    }
+
+    if lines.len() >= 2 { lines } else { Vec::new() }
+}
+
+fn trim_wrapping_parentheses(mut tokens: &[SpannedToken]) -> &[SpannedToken] {
+    loop {
+        let Some(first) = tokens.first() else {
+            return tokens;
+        };
+        if !matches!(first.token, Token::LeftParen) {
+            return tokens;
+        }
+        let Some(last_index) = matching_right_paren_index(tokens, 0) else {
+            return tokens;
+        };
+        if last_index + 1 != tokens.len() {
+            return tokens;
+        }
+        tokens = &tokens[1..last_index];
+    }
+}
+
+fn token_expression_lines(tokens: &[SpannedToken]) -> Vec<usize> {
+    let mut lines = Vec::new();
+    for token in tokens {
+        if matches!(
+            token.token,
+            Token::Identifier(_)
+                | Token::Number(_)
+                | Token::BigInt(_)
+                | Token::Float(_)
+                | Token::Imaginary(_)
+                | Token::String(_)
+                | Token::Bytes(_)
+                | Token::FString(_)
+                | Token::TString(_)
+                | Token::True
+                | Token::False
+                | Token::None
+                | Token::Ellipsis
+        ) {
+            push_line_if_changed(&mut lines, token.line);
+        }
+    }
+    lines
+}
+
+fn push_line_if_changed(lines: &mut Vec<usize>, line: usize) {
+    if lines.last().copied() != Some(line) {
+        lines.push(line);
+    }
+}
+
 pub fn tokenize_with_spans(source: &str) -> Result<Vec<SpannedToken>, LexError> {
     let (tokens, _warnings) = lex_with_spans_mode(source, LexMode::Tokenize)?;
     Ok(tokens)
@@ -306,6 +1226,7 @@ pub fn tokenize_with_spans(source: &str) -> Result<Vec<SpannedToken>, LexError> 
 pub fn tokenize_cpython_with_spans(source: &str) -> Result<Vec<SpannedToken>, LexError> {
     let tokens = tokenize_with_spans(source)?;
     let chars = source.chars().collect::<Vec<_>>();
+    prepare_source_location_cache(&chars);
     let mut expanded = Vec::with_capacity(tokens.len());
 
     for token in tokens {
@@ -758,6 +1679,7 @@ impl LexMode {
 struct Bracket {
     opening: char,
     closing: char,
+    allows_type_comments: bool,
 }
 
 fn lex_with_spans_mode(
@@ -765,6 +1687,7 @@ fn lex_with_spans_mode(
     mode: LexMode,
 ) -> Result<(Vec<SpannedToken>, Vec<LexWarning>), LexError> {
     let chars: Vec<char> = source.chars().collect();
+    prepare_source_location_cache(&chars);
     let mut tokens = Vec::new();
     let mut warnings = Vec::new();
     let mut current = 0;
@@ -776,6 +1699,7 @@ fn lex_with_spans_mode(
     let mut bracket_stack = Vec::new();
     let mut forced_eof_location = None;
     let mut suppress_line_join_blank_newline = false;
+    let mut pending_function_header = false;
 
     while current < chars.len() {
         if at_line_start {
@@ -880,9 +1804,14 @@ fn lex_with_spans_mode(
                 if bracket_stack.len() >= MAX_BRACKET_DEPTH {
                     return Err(lex_error_at(&chars, current, "too many nested parentheses"));
                 }
+                let allows_type_comments = pending_function_header && bracket_stack.is_empty();
+                if allows_type_comments {
+                    pending_function_header = false;
+                }
                 bracket_stack.push(Bracket {
                     opening: '(',
                     closing: ')',
+                    allows_type_comments,
                 });
                 current += 1;
                 push_token(&mut tokens, &chars, Token::LeftParen, token_start, current);
@@ -899,6 +1828,7 @@ fn lex_with_spans_mode(
                 bracket_stack.push(Bracket {
                     opening: '[',
                     closing: ']',
+                    allows_type_comments: false,
                 });
                 current += 1;
                 push_token(
@@ -927,6 +1857,7 @@ fn lex_with_spans_mode(
                 bracket_stack.push(Bracket {
                     opening: '{',
                     closing: '}',
+                    allows_type_comments: false,
                 });
                 current += 1;
                 push_token(&mut tokens, &chars, Token::LeftBrace, token_start, current);
@@ -989,6 +1920,9 @@ fn lex_with_spans_mode(
                     current += 1;
                     push_token(&mut tokens, &chars, Token::ColonEqual, token_start, current);
                 } else {
+                    if bracket_stack.is_empty() {
+                        pending_function_header = false;
+                    }
                     push_token(&mut tokens, &chars, Token::Colon, token_start, current);
                 }
             }
@@ -1250,7 +2184,11 @@ fn lex_with_spans_mode(
                     current += 1;
                 }
 
-                if bracket_stack.is_empty() {
+                let can_emit_type_comment = bracket_stack.is_empty()
+                    || bracket_stack
+                        .last()
+                        .is_some_and(|bracket| bracket.allows_type_comments);
+                if can_emit_type_comment {
                     if let Some(token) = lex_type_comment(&chars[comment_start..current]) {
                         push_token(&mut tokens, &chars, token, token_start, current);
                     }
@@ -1386,6 +2324,9 @@ fn lex_with_spans_mode(
                     "None" => Token::None,
                     _ => Token::Identifier(normalize_identifier(&word)),
                 };
+                if matches!(token, Token::Def) {
+                    pending_function_header = true;
+                }
                 push_token(&mut tokens, &chars, token, start, current);
             }
             _ => {
@@ -3246,63 +4187,37 @@ fn is_unterminated_string_error(message: &str) -> bool {
 }
 
 fn source_location(chars: &[char], index: usize) -> (usize, usize) {
-    let mut line = 1usize;
-    let mut column = 1usize;
-    let mut current = 0usize;
-
-    while current < index && current < chars.len() {
-        match chars[current] {
-            '\n' => {
-                line += 1;
-                column = 1;
-                current += 1;
-            }
-            '\r' => {
-                line += 1;
-                column = 1;
-                current += 1;
-                if current < index && matches!(chars.get(current), Some('\n')) {
-                    current += 1;
-                }
-            }
-            _ => {
-                column += 1;
-                current += 1;
-            }
-        }
-    }
-
-    (line, column)
+    with_source_location_cache(chars, |cache| cache.char_location(index.min(chars.len())))
 }
 
 fn source_byte_location(chars: &[char], index: usize) -> (usize, usize) {
-    let mut line = 1usize;
-    let mut column = 1usize;
-    let mut current = 0usize;
+    with_source_location_cache(chars, |cache| cache.byte_location(index.min(chars.len())))
+}
 
-    while current < index && current < chars.len() {
-        match chars[current] {
-            '\n' => {
-                line += 1;
-                column = 1;
-                current += 1;
-            }
-            '\r' => {
-                line += 1;
-                column = 1;
-                current += 1;
-                if current < index && matches!(chars.get(current), Some('\n')) {
-                    current += 1;
-                }
-            }
-            ch => {
-                column += ch.len_utf8();
-                current += 1;
-            }
+fn prepare_source_location_cache(chars: &[char]) {
+    SOURCE_LOCATION_CACHE.with(|cache| {
+        *cache.borrow_mut() = Some(SourceLocationCache::new(chars));
+    });
+}
+
+fn with_source_location_cache<R>(
+    chars: &[char],
+    callback: impl FnOnce(&SourceLocationCache) -> R,
+) -> R {
+    SOURCE_LOCATION_CACHE.with(|cache| {
+        let ptr = chars.as_ptr() as usize;
+        let len = chars.len();
+        let needs_rebuild = cache
+            .borrow()
+            .as_ref()
+            .is_none_or(|cached| cached.ptr != ptr || cached.len != len);
+        if needs_rebuild {
+            *cache.borrow_mut() = Some(SourceLocationCache::new(chars));
         }
-    }
 
-    (line, column)
+        let borrowed = cache.borrow();
+        callback(borrowed.as_ref().expect("source location cache is set"))
+    })
 }
 
 fn read_unicode_name_escape(
@@ -4510,7 +5425,9 @@ fn validate_explicit_line_join_indentation(
 #[cfg(test)]
 mod tests {
     use super::{
-        MAX_BRACKET_DEPTH, MAX_INDENT_LEVELS, Token, TokenFStringConversion, TokenFStringPart, lex,
+        MAX_BRACKET_DEPTH, MAX_INDENT_LEVELS, Token, TokenFStringConversion, TokenFStringPart,
+        function_definition_line_sequences, generator_expression_line_sequences, lex,
+        lex_with_spans_for_parse,
     };
 
     #[test]
@@ -4545,6 +5462,75 @@ mod tests {
                 Token::Identifier("x".to_string()),
                 Token::Eof,
             ])
+        );
+    }
+
+    #[test]
+    fn tracks_async_for_function_line_sequence() {
+        let (tokens, _warnings) = lex_with_spans_for_parse(
+            "async def test(aseq):\n    async for i in aseq:\n        body",
+        )
+        .unwrap();
+        assert_eq!(
+            function_definition_line_sequences(&tokens),
+            vec![vec![1, 2, 3, 2]]
+        );
+    }
+
+    #[test]
+    fn tracks_if_function_line_sequence() {
+        let (tokens, _warnings) =
+            lex_with_spans_for_parse("def if1(x):\n    x()\n    if TRUE:\n        pass").unwrap();
+        assert_eq!(
+            function_definition_line_sequences(&tokens),
+            vec![vec![1, 2, 3, 4, 3]]
+        );
+    }
+
+    #[test]
+    fn tracks_loop_with_nested_if_function_line_sequence() {
+        let (tokens, _warnings) =
+            lex_with_spans_for_parse("def f():\n    for i in x:\n        if y:\n            pass")
+                .unwrap();
+        assert_eq!(
+            function_definition_line_sequences(&tokens),
+            vec![vec![1, 2, 3, 4, 2]]
+        );
+    }
+
+    #[test]
+    fn tracks_try_except_loop_function_line_sequence() {
+        let (tokens, _warnings) = lex_with_spans_for_parse(
+            "def f():\n    for x in it:\n        try:\n            if C1:\n                yield 2\n        except OSError:\n            pass",
+        )
+        .unwrap();
+        assert_eq!(
+            function_definition_line_sequences(&tokens),
+            vec![vec![1, 2, 3, 4, 5, 4, 2, 6, 7, 6]]
+        );
+    }
+
+    #[test]
+    fn tracks_while_else_try_break_function_line_sequence() {
+        let (tokens, _warnings) = lex_with_spans_for_parse(
+            "def f():\n    while name:\n        try:\n            break\n        except:\n            pass\n    else:\n        1 if 1 else 1",
+        )
+        .unwrap();
+        assert_eq!(
+            function_definition_line_sequences(&tokens),
+            vec![vec![1, 2, 3, 4, 8, 5, 6]]
+        );
+    }
+
+    #[test]
+    fn tracks_generator_expression_line_sequence() {
+        let (tokens, _warnings) = lex_with_spans_for_parse(
+            "def return_genexp():\n    return (1\n            for\n            x\n            in\n            y)",
+        )
+        .unwrap();
+        assert_eq!(
+            generator_expression_line_sequences(&tokens),
+            vec![(2, vec![6, 2, 6, 4, 2, 6])]
         );
     }
 

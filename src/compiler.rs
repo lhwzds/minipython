@@ -10,31 +10,88 @@ use crate::bytecode::{
 };
 use crate::value::{Value, tuple_value};
 use num_bigint::BigInt;
-use std::collections::{BTreeSet, HashSet};
+use std::cell::RefCell;
+use std::collections::{BTreeSet, HashSet, VecDeque};
+use std::rc::Rc;
 
 const MAX_STATIC_BLOCK_DEPTH: usize = 21;
 
+#[derive(Clone, Debug)]
+pub struct CompileOptions {
+    pub optimize: i64,
+    pub function_first_lines: Vec<usize>,
+    pub function_line_sequences: Vec<Vec<usize>>,
+    pub generator_expression_line_sequences: Vec<(usize, Vec<usize>)>,
+}
+
+impl Default for CompileOptions {
+    fn default() -> Self {
+        Self {
+            optimize: -1,
+            function_first_lines: Vec::new(),
+            function_line_sequences: Vec::new(),
+            generator_expression_line_sequences: Vec::new(),
+        }
+    }
+}
+
+impl CompileOptions {
+    pub fn optimized(optimize: i64) -> Self {
+        Self {
+            optimize,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_function_first_lines(mut self, lines: Vec<usize>) -> Self {
+        self.function_first_lines = lines;
+        self
+    }
+
+    pub fn with_function_line_sequences(mut self, sequences: Vec<Vec<usize>>) -> Self {
+        self.function_line_sequences = sequences;
+        self
+    }
+
+    pub fn with_generator_expression_line_sequences(
+        mut self,
+        sequences: Vec<(usize, Vec<usize>)>,
+    ) -> Self {
+        self.generator_expression_line_sequences = sequences;
+        self
+    }
+}
+
 pub fn compile(program: &Program) -> Result<Vec<Instruction>, String> {
+    compile_with_options(program, CompileOptions::default())
+}
+
+pub fn compile_with_options(
+    program: &Program,
+    options: CompileOptions,
+) -> Result<Vec<Instruction>, String> {
     validate_lazy_imports(program)?;
 
-    let mut compiler = Compiler {
-        instructions: Vec::new(),
-        next_register: 0,
-        loop_contexts: Vec::new(),
-        finally_contexts: Vec::new(),
-        function_depth: 0,
-        async_function_depth: 0,
-        global_names: HashSet::new(),
-        nonlocal_names: HashSet::new(),
-        local_names: HashSet::new(),
-        private_class_name: None,
-        enclosing_function_bindings: Vec::new(),
-        outer_scope_store_names: HashSet::new(),
-        static_block_depth: 0,
-    };
+    let mut compiler = Compiler::new_root(options);
     validate_module_scope_declarations(&program.statements)?;
 
-    for stmt in &program.statements {
+    let skip_module_docstring = matches!(
+        program.statements.first(),
+        Some(Stmt::Expr(Expr::String(_)))
+    );
+    if let Some(docstring) = compiler.statement_docstring(program.statements.first()) {
+        let dst = compiler.alloc_register();
+        compiler.instructions.push(Instruction::LoadConst {
+            dst,
+            value: Value::String(docstring),
+        });
+        compiler.emit_store_name("__doc__", dst);
+    }
+
+    for (index, stmt) in program.statements.iter().enumerate() {
+        if index == 0 && skip_module_docstring {
+            continue;
+        }
         compiler.compile_stmt(stmt)?;
     }
     compiler.instructions.push(Instruction::Halt);
@@ -42,24 +99,18 @@ pub fn compile(program: &Program) -> Result<Vec<Instruction>, String> {
     Ok(compiler.instructions)
 }
 
+#[allow(dead_code)]
 pub fn compile_interactive(program: &Program) -> Result<Vec<Instruction>, String> {
+    compile_interactive_with_options(program, CompileOptions::default())
+}
+
+pub fn compile_interactive_with_options(
+    program: &Program,
+    options: CompileOptions,
+) -> Result<Vec<Instruction>, String> {
     validate_lazy_imports(program)?;
 
-    let mut compiler = Compiler {
-        instructions: Vec::new(),
-        next_register: 0,
-        loop_contexts: Vec::new(),
-        finally_contexts: Vec::new(),
-        function_depth: 0,
-        async_function_depth: 0,
-        global_names: HashSet::new(),
-        nonlocal_names: HashSet::new(),
-        local_names: HashSet::new(),
-        private_class_name: None,
-        enclosing_function_bindings: Vec::new(),
-        outer_scope_store_names: HashSet::new(),
-        static_block_depth: 0,
-    };
+    let mut compiler = Compiler::new_root(options);
     validate_module_scope_declarations(&program.statements)?;
 
     for stmt in &program.statements {
@@ -77,21 +128,14 @@ pub fn compile_interactive(program: &Program) -> Result<Vec<Instruction>, String
 }
 
 pub fn compile_eval(expr: &Expr) -> Result<Vec<Instruction>, String> {
-    let mut compiler = Compiler {
-        instructions: Vec::new(),
-        next_register: 0,
-        loop_contexts: Vec::new(),
-        finally_contexts: Vec::new(),
-        function_depth: 0,
-        async_function_depth: 0,
-        global_names: HashSet::new(),
-        nonlocal_names: HashSet::new(),
-        local_names: HashSet::new(),
-        private_class_name: None,
-        enclosing_function_bindings: Vec::new(),
-        outer_scope_store_names: HashSet::new(),
-        static_block_depth: 0,
-    };
+    compile_eval_with_options(expr, CompileOptions::default())
+}
+
+pub fn compile_eval_with_options(
+    expr: &Expr,
+    options: CompileOptions,
+) -> Result<Vec<Instruction>, String> {
+    let mut compiler = Compiler::new_root(options);
 
     let src = compiler.compile_expr(expr)?;
     compiler
@@ -242,9 +286,15 @@ struct Compiler {
     nonlocal_names: HashSet<String>,
     local_names: HashSet<String>,
     private_class_name: Option<String>,
+    class_scope_all_bindings: HashSet<String>,
+    class_scope_prior_bindings: HashSet<String>,
     enclosing_function_bindings: Vec<HashSet<String>>,
     outer_scope_store_names: HashSet<String>,
     static_block_depth: usize,
+    optimize: i64,
+    function_first_lines: Rc<RefCell<VecDeque<usize>>>,
+    function_line_sequences: Rc<RefCell<VecDeque<Vec<usize>>>>,
+    generator_expression_line_sequences: Rc<RefCell<VecDeque<(usize, Vec<usize>)>>>,
 }
 
 struct LoopContext {
@@ -281,7 +331,57 @@ struct MatchBinding {
     src: Register,
 }
 
+#[derive(Clone, Copy)]
+enum TypeParamEvaluation<'a> {
+    Deferred { class_name: Option<&'a str> },
+}
+
 impl Compiler {
+    fn new_root(options: CompileOptions) -> Self {
+        Self {
+            instructions: Vec::new(),
+            next_register: 0,
+            loop_contexts: Vec::new(),
+            finally_contexts: Vec::new(),
+            function_depth: 0,
+            async_function_depth: 0,
+            global_names: HashSet::new(),
+            nonlocal_names: HashSet::new(),
+            local_names: HashSet::new(),
+            private_class_name: None,
+            class_scope_all_bindings: HashSet::new(),
+            class_scope_prior_bindings: HashSet::new(),
+            enclosing_function_bindings: Vec::new(),
+            outer_scope_store_names: HashSet::new(),
+            static_block_depth: 0,
+            optimize: options.optimize,
+            function_first_lines: Rc::new(RefCell::new(VecDeque::from(
+                options.function_first_lines,
+            ))),
+            function_line_sequences: Rc::new(RefCell::new(VecDeque::from(
+                options.function_line_sequences,
+            ))),
+            generator_expression_line_sequences: Rc::new(RefCell::new(VecDeque::from(
+                options.generator_expression_line_sequences,
+            ))),
+        }
+    }
+
+    fn statement_docstring(&self, stmt: Option<&Stmt>) -> Option<String> {
+        if self.optimize >= 2 {
+            return None;
+        }
+
+        let Some(Stmt::Expr(Expr::String(value))) = stmt else {
+            return None;
+        };
+        Some(value.clone())
+    }
+
+    fn should_skip_optimized_docstring(&self, index: usize, stmt: &Stmt) -> bool {
+        self.optimize >= 2 && index == 0 && matches!(stmt, Stmt::Expr(Expr::String(_)))
+    }
+
     fn enter_static_blocks(&mut self, count: usize) -> Result<(), String> {
         if self.static_block_depth + count > MAX_STATIC_BLOCK_DEPTH {
             return Err("too many statically nested blocks".to_string());
@@ -297,13 +397,16 @@ impl Compiler {
 
     fn compile_stmt(&mut self, stmt: &Stmt) -> Result<(), String> {
         match stmt {
-            Stmt::Pass => Ok(()),
+            Stmt::Pass => {
+                self.instructions.push(Instruction::Noop);
+                Ok(())
+            }
             Stmt::Expr(expr) => {
                 let src = self.compile_expr(expr)?;
                 self.instructions.push(Instruction::Pop { src });
                 Ok(())
             }
-            Stmt::Assign { targets, value } => {
+            Stmt::Assign { targets, value, .. } => {
                 let src = self.compile_expr(value)?;
                 for target in targets {
                     self.compile_store_target(target, src)?;
@@ -420,8 +523,8 @@ impl Compiler {
                 else_body,
                 finally_body,
             } => self.compile_try_star_stmt(body, handlers, else_body, finally_body),
-            Stmt::With { items, body } => self.compile_with_stmt(items, body),
-            Stmt::AsyncWith { items, body } => self.compile_async_with_stmt(items, body),
+            Stmt::With { items, body, .. } => self.compile_with_stmt(items, body),
+            Stmt::AsyncWith { items, body, .. } => self.compile_async_with_stmt(items, body),
             Stmt::While {
                 condition,
                 body,
@@ -432,12 +535,14 @@ impl Compiler {
                 iter,
                 body,
                 else_body,
+                ..
             } => self.compile_for_stmt(target, iter, body, else_body),
             Stmt::AsyncFor {
                 target,
                 iter,
                 body,
                 else_body,
+                ..
             } => self.compile_async_for_stmt(target, iter, body, else_body),
             Stmt::Break => self.compile_break_stmt(),
             Stmt::Continue => self.compile_continue_stmt(),
@@ -1980,7 +2085,14 @@ impl Compiler {
         is_async: bool,
     ) -> Result<(), String> {
         let decorators = self.compile_decorator_exprs(decorators)?;
-        let type_params = self.compile_type_params(type_params)?;
+        let type_param_names = type_param_name_set(type_params);
+        let class_name = self.private_class_name.clone();
+        let type_params = self.compile_type_params(
+            type_params,
+            TypeParamEvaluation::Deferred {
+                class_name: class_name.as_deref(),
+            },
+        )?;
         let is_generator = statements_contain_yield(body);
         if is_async && statements_contain_yield_from(body) {
             return Err("'yield from' inside async function".to_string());
@@ -1988,16 +2100,23 @@ impl Compiler {
         if is_async && is_generator && statements_contain_return_value(body) {
             return Err("'return' with value in async generator".to_string());
         }
+        let first_line = self.next_function_first_line();
+        let line_sequence = self.next_function_line_sequence(first_line);
+        let docstring = self.statement_docstring(body.first());
         let (body_instructions, is_generator) =
-            self.compile_function_body(params, body, is_async)?;
+            self.compile_function_body(params, body, is_async, &type_param_names)?;
         let dst = self.compile_function_value(
             name,
             &type_params,
+            &[],
             params,
             returns,
+            docstring,
             body_instructions,
             is_generator,
             is_async,
+            first_line,
+            line_sequence,
         )?;
         let dst = self.apply_decorators(dst, &decorators)?;
         self.emit_store_name(name, dst);
@@ -2011,8 +2130,20 @@ impl Compiler {
         type_params: &[TypeParam],
         value: &Expr,
     ) -> Result<(), String> {
-        let type_params = self.compile_type_params(type_params)?;
-        let value = self.compile_type_scoped_expr(value, &type_params)?;
+        let class_name = self.private_class_name.clone();
+        let type_params = self.compile_type_params(
+            type_params,
+            TypeParamEvaluation::Deferred {
+                class_name: class_name.as_deref(),
+            },
+        )?;
+        let class_name = self.private_class_name.clone();
+        let value = self.compile_deferred_type_param_expr(
+            value,
+            &type_params,
+            class_name.as_deref(),
+            false,
+        )?;
         let dst = self.alloc_register();
         self.instructions.push(Instruction::MakeTypeAlias {
             dst,
@@ -2035,21 +2166,34 @@ impl Compiler {
         decorators: &[Expr],
     ) -> Result<(), String> {
         let decorators = self.compile_decorator_exprs(decorators)?;
-        let type_params = self.compile_type_params(type_params)?;
+        let type_param_names = type_param_name_set(type_params);
+        let type_params = self.compile_type_params(
+            type_params,
+            TypeParamEvaluation::Deferred {
+                class_name: Some(name),
+            },
+        )?;
         let bases = self.compile_type_scoped_call_args(bases, &type_params)?;
         let keywords = self.compile_type_scoped_call_keywords(keywords, &type_params)?;
-        let scope = analyze_class_scope(body, &self.enclosing_function_bindings)?;
+        let scope =
+            analyze_class_scope(body, &self.enclosing_function_bindings, &type_param_names)?;
         let static_attributes = collect_class_static_attributes(body);
         let mut class_compiler = self.new_class_body_compiler();
         class_compiler.global_names = scope.global_names;
         class_compiler.nonlocal_names = scope.nonlocal_names;
+        class_compiler.class_scope_all_bindings = scope.local_bindings;
         class_compiler.private_class_name = Some(name.to_string());
         class_compiler.enclosing_function_bindings = self.enclosing_function_bindings.clone();
 
-        for stmt in body {
+        for (index, stmt) in body.iter().enumerate() {
+            if self.should_skip_optimized_docstring(index, stmt) {
+                continue;
+            }
             class_compiler.compile_stmt(stmt)?;
+            class_compiler.add_class_scope_prior_bindings(stmt);
         }
         class_compiler.instructions.push(Instruction::Halt);
+        let docstring = self.statement_docstring(body.first());
 
         let dst = self.alloc_register();
         self.instructions.push(Instruction::MakeClass {
@@ -2059,6 +2203,7 @@ impl Compiler {
             bases,
             keywords,
             static_attributes,
+            docstring,
             body: class_compiler.instructions,
         });
         let dst = self.apply_decorators(dst, &decorators)?;
@@ -2070,31 +2215,116 @@ impl Compiler {
     fn compile_type_params(
         &mut self,
         type_params: &[TypeParam],
+        evaluation: TypeParamEvaluation<'_>,
     ) -> Result<Vec<(String, Register)>, String> {
-        type_params
-            .iter()
-            .map(|type_param| {
-                let bound = type_param
-                    .bound
-                    .as_ref()
-                    .map(|expr| self.compile_expr(expr))
-                    .transpose()?;
-                let default = type_param
-                    .default
-                    .as_ref()
-                    .map(|expr| self.compile_expr(expr))
-                    .transpose()?;
-                let dst = self.alloc_register();
-                self.instructions.push(Instruction::MakeTypeParam {
-                    dst,
-                    kind: type_param_kind_label(&type_param.kind).to_string(),
-                    name: type_param.name.clone(),
+        let mut compiled = Vec::new();
+
+        for type_param in type_params {
+            let dst = self.alloc_register();
+            self.instructions.push(Instruction::MakeTypeParam {
+                dst,
+                kind: type_param_kind_label(&type_param.kind).to_string(),
+                name: type_param.name.clone(),
+                bound: None,
+                default: None,
+            });
+            compiled.push((type_param.name.clone(), dst));
+
+            let bound = type_param
+                .bound
+                .as_ref()
+                .map(|expr| {
+                    self.compile_type_param_metadata_expr(
+                        expr,
+                        &compiled,
+                        evaluation,
+                        matches!(expr, Expr::Tuple(_)),
+                    )
+                })
+                .transpose()?;
+            let default = type_param
+                .default
+                .as_ref()
+                .map(|expr| {
+                    self.compile_type_param_metadata_expr(expr, &compiled, evaluation, false)
+                })
+                .transpose()?;
+            if bound.is_some() || default.is_some() {
+                self.instructions.push(Instruction::UpdateTypeParam {
+                    target: dst,
                     bound,
                     default,
                 });
-                Ok((type_param.name.clone(), dst))
+            }
+        }
+
+        Ok(compiled)
+    }
+
+    fn compile_type_param_metadata_expr(
+        &mut self,
+        expr: &Expr,
+        type_params: &[(String, Register)],
+        evaluation: TypeParamEvaluation<'_>,
+        is_constraint_tuple: bool,
+    ) -> Result<Register, String> {
+        match evaluation {
+            TypeParamEvaluation::Deferred { class_name } => self.compile_deferred_type_param_expr(
+                expr,
+                type_params,
+                class_name,
+                is_constraint_tuple,
+            ),
+        }
+    }
+
+    fn compile_deferred_type_param_expr(
+        &mut self,
+        expr: &Expr,
+        type_params: &[(String, Register)],
+        class_name: Option<&str>,
+        is_constraint_tuple: bool,
+    ) -> Result<Register, String> {
+        let body = self.compile_deferred_type_scoped_expr_body(expr, type_params)?;
+        let dst = self.alloc_register();
+        self.instructions
+            .push(Instruction::MakeDeferredTypeParamExpr {
+                dst,
+                body,
+                type_params: type_params.iter().map(|(_, register)| *register).collect(),
+                class_name: class_name.map(str::to_string),
+                is_constraint_tuple,
+            });
+        Ok(dst)
+    }
+
+    fn compile_deferred_type_scoped_expr_body(
+        &self,
+        expr: &Expr,
+        type_params: &[(String, Register)],
+    ) -> Result<Vec<Instruction>, String> {
+        let mut compiler = self.new_deferred_type_param_expr_compiler();
+        let deferred_type_params = type_params
+            .iter()
+            .map(|(name, _)| {
+                let dst = compiler.alloc_register();
+                compiler.instructions.push(Instruction::LoadNonlocal {
+                    dst,
+                    name: name.clone(),
+                });
+                (name.clone(), dst)
             })
-            .collect()
+            .collect::<Vec<_>>();
+        let src = match expr {
+            Expr::Starred(value) => {
+                compiler.compile_type_scoped_unpack_expr(value, &deferred_type_params)?
+            }
+            expr => compiler.compile_type_scoped_expr(expr, &deferred_type_params)?,
+        };
+        compiler
+            .instructions
+            .push(Instruction::Return { src: Some(src) });
+        Ok(compiler.instructions)
     }
 
     fn compile_decorator_exprs(&mut self, decorators: &[Expr]) -> Result<Vec<Register>, String> {
@@ -2179,9 +2409,15 @@ impl Compiler {
         params: &FunctionParams,
         body: &[Stmt],
         is_async: bool,
+        type_param_names: &HashSet<String>,
     ) -> Result<(Vec<Instruction>, bool), String> {
         let is_generator = statements_contain_yield(body);
-        let scope = analyze_function_scope(params, body, &self.enclosing_function_bindings)?;
+        let scope = analyze_function_scope(
+            params,
+            body,
+            &self.enclosing_function_bindings,
+            type_param_names,
+        )?;
         let mut function_compiler = self.new_nested_function_compiler();
         if is_generator {
             function_compiler.static_block_depth = 1;
@@ -2196,12 +2432,15 @@ impl Compiler {
             .chain(self.enclosing_function_bindings.iter().cloned())
             .collect();
 
-        for stmt in body {
+        for (index, stmt) in body.iter().enumerate() {
+            if function_compiler.should_skip_optimized_docstring(index, stmt) {
+                continue;
+            }
             function_compiler.compile_stmt(stmt)?;
         }
         function_compiler
             .instructions
-            .push(Instruction::Return { src: None });
+            .push(Instruction::ImplicitReturn);
 
         Ok((function_compiler.instructions, is_generator))
     }
@@ -2210,8 +2449,13 @@ impl Compiler {
         &mut self,
         params: &FunctionParams,
         body: &Expr,
+        closure_bindings: &[(String, Register)],
     ) -> Result<Register, String> {
+        let is_generator = expr_contains_yield(body);
         let mut function_compiler = self.new_nested_function_compiler();
+        if is_generator {
+            function_compiler.static_block_depth = 1;
+        }
         function_compiler.local_names = function_param_names(params);
         let src = function_compiler.compile_expr(body)?;
         function_compiler
@@ -2221,11 +2465,15 @@ impl Compiler {
         self.compile_function_value(
             "<lambda>",
             &[],
+            closure_bindings,
             params,
             None,
+            None,
             function_compiler.instructions,
+            is_generator,
             false,
-            false,
+            1,
+            vec![1],
         )
     }
 
@@ -2233,11 +2481,15 @@ impl Compiler {
         &mut self,
         name: &str,
         type_params: &[(String, Register)],
+        closure_bindings: &[(String, Register)],
         params: &FunctionParams,
         returns: Option<&Expr>,
+        docstring: Option<String>,
         body: Vec<Instruction>,
         is_generator: bool,
         is_async: bool,
+        first_line: usize,
+        line_sequence: Vec<usize>,
     ) -> Result<Register, String> {
         let defaults = params
             .positional_only
@@ -2267,10 +2519,14 @@ impl Compiler {
         let annotations = self.compile_function_annotations(params, returns, type_params)?;
 
         let dst = self.alloc_register();
+        let mut closure_bindings = self.expanded_type_param_closure_bindings(closure_bindings);
+        closure_bindings.extend(self.expanded_type_param_closure_bindings(type_params));
+
         self.instructions.push(Instruction::MakeFunction {
             dst,
             name: name.to_string(),
             type_params: type_params.iter().map(|(_, register)| *register).collect(),
+            closure_bindings,
             positional_only: params
                 .positional_only
                 .iter()
@@ -2297,12 +2553,30 @@ impl Compiler {
                 .as_ref()
                 .map(|name| self.mangle_private_name(name)),
             annotations,
+            docstring,
             body,
             is_generator,
             is_async,
+            first_line,
+            line_sequence,
         });
 
         Ok(dst)
+    }
+
+    fn expanded_type_param_closure_bindings(
+        &self,
+        closure_bindings: &[(String, Register)],
+    ) -> Vec<(String, Register)> {
+        let mut expanded = Vec::new();
+        for (name, register) in closure_bindings {
+            expanded.push((name.clone(), *register));
+            let mangled = self.mangle_private_name(name);
+            if mangled != *name {
+                expanded.push((mangled, *register));
+            }
+        }
+        expanded
     }
 
     fn compile_function_annotations(
@@ -2364,6 +2638,14 @@ impl Compiler {
                     .find(|(type_param_name, _)| type_param_name == name)
                 {
                     return Ok(*register);
+                }
+                if self.name_is_future_class_scope_binding(name) {
+                    let dst = self.alloc_register();
+                    self.instructions.push(Instruction::LoadGlobal {
+                        dst,
+                        name: self.mangle_private_name(name),
+                    });
+                    return Ok(dst);
                 }
                 self.compile_expr(expr)
             }
@@ -2507,6 +2789,13 @@ impl Compiler {
                     keywords,
                 });
                 Ok(dst)
+            }
+            Expr::Lambda { params, body } => self.compile_lambda_expr(params, body, type_params),
+            Expr::ListComp { element, clauses } => {
+                self.compile_type_scoped_list_comp_expr(element, clauses, type_params)
+            }
+            Expr::GeneratorComp { element, clauses } => {
+                self.compile_generator_comp_expr(element, clauses, Some(type_params))
             }
             Expr::Starred(value) => self.compile_type_scoped_expr(value, type_params),
             _ => self.compile_expr(expr),
@@ -2814,9 +3103,15 @@ impl Compiler {
             nonlocal_names: HashSet::new(),
             local_names: HashSet::new(),
             private_class_name: self.private_class_name.clone(),
+            class_scope_all_bindings: HashSet::new(),
+            class_scope_prior_bindings: HashSet::new(),
             enclosing_function_bindings: self.enclosing_function_bindings.clone(),
             outer_scope_store_names: HashSet::new(),
             static_block_depth: 0,
+            optimize: self.optimize,
+            function_first_lines: self.function_first_lines.clone(),
+            function_line_sequences: self.function_line_sequences.clone(),
+            generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
     }
 
@@ -2832,10 +3127,63 @@ impl Compiler {
             nonlocal_names: HashSet::new(),
             local_names: HashSet::new(),
             private_class_name: None,
+            class_scope_all_bindings: HashSet::new(),
+            class_scope_prior_bindings: HashSet::new(),
             enclosing_function_bindings: Vec::new(),
             outer_scope_store_names: HashSet::new(),
             static_block_depth: 0,
+            optimize: self.optimize,
+            function_first_lines: self.function_first_lines.clone(),
+            function_line_sequences: self.function_line_sequences.clone(),
+            generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
+    }
+
+    fn new_deferred_type_param_expr_compiler(&self) -> Compiler {
+        Compiler {
+            instructions: Vec::new(),
+            next_register: 0,
+            loop_contexts: Vec::new(),
+            finally_contexts: Vec::new(),
+            function_depth: 0,
+            async_function_depth: self.async_function_depth,
+            global_names: self.global_names.clone(),
+            nonlocal_names: self.nonlocal_names.clone(),
+            local_names: HashSet::new(),
+            private_class_name: self.private_class_name.clone(),
+            class_scope_all_bindings: self.class_scope_all_bindings.clone(),
+            class_scope_prior_bindings: self.class_scope_prior_bindings.clone(),
+            enclosing_function_bindings: self.enclosing_function_bindings.clone(),
+            outer_scope_store_names: HashSet::new(),
+            static_block_depth: self.static_block_depth,
+            optimize: self.optimize,
+            function_first_lines: self.function_first_lines.clone(),
+            function_line_sequences: self.function_line_sequences.clone(),
+            generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
+        }
+    }
+
+    fn next_function_first_line(&self) -> usize {
+        self.function_first_lines
+            .borrow_mut()
+            .pop_front()
+            .unwrap_or(1)
+    }
+
+    fn next_function_line_sequence(&self, first_line: usize) -> Vec<usize> {
+        self.function_line_sequences
+            .borrow_mut()
+            .pop_front()
+            .filter(|sequence| !sequence.is_empty())
+            .unwrap_or_else(|| vec![first_line])
+    }
+
+    fn next_generator_expression_line_sequence(&self) -> (usize, Vec<usize>) {
+        self.generator_expression_line_sequences
+            .borrow_mut()
+            .pop_front()
+            .filter(|(_, sequence)| !sequence.is_empty())
+            .unwrap_or_else(|| (1, vec![1]))
     }
 
     fn compile_return_stmt(&mut self, value: Option<&Expr>) -> Result<(), String> {
@@ -3017,6 +3365,10 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::InPlaceSubtract { dst, left, right });
             }
+            BinaryOp::Multiply => {
+                self.instructions
+                    .push(Instruction::InPlaceMultiply { dst, left, right });
+            }
             BinaryOp::MatrixMultiply => {
                 self.instructions
                     .push(Instruction::InPlaceMatrixMultiply { dst, left, right });
@@ -3170,7 +3522,7 @@ impl Compiler {
             }
             Expr::Unary { op, operand } => match op {
                 UnaryOp::Not => self.compile_not_expr(operand),
-                UnaryOp::Positive => self.compile_expr(operand),
+                UnaryOp::Positive => self.compile_positive_expr(operand),
                 UnaryOp::Negative => self.compile_negate_expr(operand),
                 UnaryOp::Invert => self.compile_invert_expr(operand),
             },
@@ -3202,7 +3554,7 @@ impl Compiler {
             Expr::FrozenSet(elements) => self.compile_frozen_set_display(elements),
             Expr::SetComp { element, clauses } => self.compile_set_comp_expr(element, clauses),
             Expr::GeneratorComp { element, clauses } => {
-                self.compile_generator_comp_expr(element, clauses)
+                self.compile_generator_comp_expr(element, clauses, None)
             }
             Expr::Tuple(elements) => self.compile_tuple_display(elements, None),
             Expr::Dict(entries) => self.compile_dict_display(entries, None),
@@ -3342,7 +3694,7 @@ impl Compiler {
                 });
                 Ok(dst)
             }
-            Expr::Lambda { params, body } => self.compile_lambda_expr(params, body),
+            Expr::Lambda { params, body } => self.compile_lambda_expr(params, body, &[]),
         }
     }
 
@@ -3497,6 +3849,66 @@ impl Compiler {
         Ok(dst)
     }
 
+    fn compile_type_scoped_list_comp_expr(
+        &mut self,
+        element: &Expr,
+        clauses: &[ComprehensionClause],
+        type_params: &[(String, Register)],
+    ) -> Result<Register, String> {
+        if clauses.is_empty() {
+            return Err("list comprehension requires at least one for clause".to_string());
+        }
+        self.reject_async_comprehension_outside_async_function(clauses)?;
+        self.reject_await_comprehension_outside_async_function(&[element], clauses)?;
+        if comprehension_inner_contains_yield(&[element], clauses) {
+            return Err("yield inside list comprehension".to_string());
+        }
+
+        let first_iter = self.compile_type_scoped_expr(&clauses[0].iter, type_params)?;
+        let mut list_compiler = self.new_nested_function_compiler();
+        list_compiler.local_names.insert(".0".to_string());
+        let list = list_compiler.alloc_register();
+        list_compiler.instructions.push(Instruction::BuildList {
+            dst: list,
+            items: Vec::new(),
+        });
+        list_compiler.compile_list_comp_clause_from_first_iter(list, element, clauses, 0, ".0")?;
+        list_compiler
+            .instructions
+            .push(Instruction::Return { src: Some(list) });
+
+        let params = FunctionParams {
+            positional: vec![Param {
+                name: ".0".to_string(),
+                annotation: None,
+                default: None,
+                type_comment: None,
+            }],
+            ..FunctionParams::default()
+        };
+        let callee = self.compile_function_value(
+            "<listcomp>",
+            &[],
+            type_params,
+            &params,
+            None,
+            None,
+            list_compiler.instructions,
+            false,
+            false,
+            1,
+            vec![1],
+        )?;
+        let dst = self.alloc_register();
+        self.instructions.push(Instruction::Call {
+            dst,
+            callee,
+            args: vec![first_iter],
+        });
+
+        Ok(dst)
+    }
+
     fn reject_async_comprehension_outside_async_function(
         &self,
         clauses: &[ComprehensionClause],
@@ -3642,6 +4054,70 @@ impl Compiler {
         Ok(())
     }
 
+    fn compile_list_comp_clause_from_first_iter(
+        &mut self,
+        list: Register,
+        element: &Expr,
+        clauses: &[ComprehensionClause],
+        index: usize,
+        first_iter_name: &str,
+    ) -> Result<(), String> {
+        let clause = clauses
+            .get(index)
+            .ok_or_else(|| format!("missing list comprehension clause at index {index}"))?;
+        let iterable = if index == 0 {
+            let dst = self.alloc_register();
+            self.emit_load_name(dst, first_iter_name);
+            dst
+        } else {
+            self.compile_expr(&clause.iter)?
+        };
+        let (loop_start, for_iter, item) = self.compile_comprehension_iter(clause, iterable);
+        self.compile_store_target(&clause.target, item)?;
+
+        let mut false_jumps = Vec::new();
+        for condition in &clause.ifs {
+            let condition = self.compile_expr(condition)?;
+            let false_jump = self.instructions.len();
+            self.instructions.push(Instruction::JumpIfFalse {
+                condition,
+                target: usize::MAX,
+            });
+            false_jumps.push(false_jump);
+        }
+
+        if index + 1 == clauses.len() {
+            match element {
+                Expr::Starred(value) => self.compile_list_extend_from_expr(list, value)?,
+                element => {
+                    let item = self.compile_expr(element)?;
+                    self.instructions
+                        .push(Instruction::ListAppend { list, item });
+                }
+            }
+        } else {
+            self.compile_list_comp_clause_from_first_iter(
+                list,
+                element,
+                clauses,
+                index + 1,
+                first_iter_name,
+            )?;
+        }
+
+        let continue_target = self.instructions.len();
+        self.instructions
+            .push(Instruction::Jump { target: loop_start });
+
+        let end_target = self.instructions.len();
+        self.patch_jump_target(for_iter, end_target)?;
+        for false_jump in false_jumps {
+            self.patch_jump_target(false_jump, continue_target)?;
+        }
+
+        Ok(())
+    }
+
     fn compile_set_comp_expr(
         &mut self,
         element: &Expr,
@@ -3745,6 +4221,7 @@ impl Compiler {
         &mut self,
         element: &Expr,
         clauses: &[ComprehensionClause],
+        type_params: Option<&[(String, Register)]>,
     ) -> Result<Register, String> {
         if clauses.is_empty() {
             return Err("generator expression requires at least one for clause".to_string());
@@ -3753,12 +4230,14 @@ impl Compiler {
             return Err("yield inside generator expression".to_string());
         }
         let is_async = generator_comprehension_is_async(element, clauses);
+        let (first_line, line_sequence) = self.next_generator_expression_line_sequence();
 
-        let first_iter = self.compile_expr(&clauses[0].iter)?;
+        let first_iter = self.compile_maybe_type_scoped_expr(&clauses[0].iter, type_params)?;
         let mut generator_compiler = self.new_nested_function_compiler();
         if is_async {
             generator_compiler.async_function_depth = self.async_function_depth + 1;
         }
+        generator_compiler.local_names.insert(".0".to_string());
         for name in comprehension_named_expression_bindings(&[element], clauses) {
             if self.name_is_declared_global(&name) || self.function_depth == 0 {
                 generator_compiler.global_names.insert(name);
@@ -3778,17 +4257,22 @@ impl Compiler {
                 name: ".0".to_string(),
                 annotation: None,
                 default: None,
+                type_comment: None,
             }],
             ..FunctionParams::default()
         };
         let callee = self.compile_function_value(
             "<genexpr>",
             &[],
+            type_params.unwrap_or(&[]),
             &params,
+            None,
             None,
             generator_compiler.instructions,
             true,
             is_async,
+            first_line,
+            line_sequence,
         )?;
         let dst = self.alloc_register();
         self.instructions.push(Instruction::Call {
@@ -4132,9 +4616,27 @@ impl Compiler {
     }
 
     fn compile_negate_expr(&mut self, operand: &Expr) -> Result<Register, String> {
+        if let Some(value) = negated_literal_constant_value(operand)? {
+            return Ok(self.compile_const_value(value));
+        }
+
         let src = self.compile_expr(operand)?;
         let dst = self.alloc_register();
         self.instructions.push(Instruction::Negate { dst, src });
+        Ok(dst)
+    }
+
+    fn compile_const_value(&mut self, value: Value) -> Register {
+        let dst = self.alloc_register();
+        self.instructions
+            .push(Instruction::LoadConst { dst, value });
+        dst
+    }
+
+    fn compile_positive_expr(&mut self, operand: &Expr) -> Result<Register, String> {
+        let src = self.compile_expr(operand)?;
+        let dst = self.alloc_register();
+        self.instructions.push(Instruction::Positive { dst, src });
         Ok(dst)
     }
 
@@ -4303,6 +4805,14 @@ impl Compiler {
     }
 
     fn emit_load_name(&mut self, dst: Register, name: &str) {
+        if name == "__debug__" {
+            self.instructions.push(Instruction::LoadConst {
+                dst,
+                value: Value::Bool(self.optimize <= 0),
+            });
+            return;
+        }
+
         let emitted_name = self.mangle_private_name(name);
         if self.name_is_declared_nonlocal(name) {
             self.instructions.push(Instruction::LoadNonlocal {
@@ -4367,6 +4877,29 @@ impl Compiler {
 
     fn name_is_declared_nonlocal(&self, name: &str) -> bool {
         self.nonlocal_names.contains(name)
+    }
+
+    fn name_is_future_class_scope_binding(&self, name: &str) -> bool {
+        self.private_class_name.is_some()
+            && self.class_scope_all_bindings.contains(name)
+            && !self.class_scope_prior_bindings.contains(name)
+            && !self.name_is_declared_global(name)
+            && !self.name_is_declared_nonlocal(name)
+    }
+
+    fn add_class_scope_prior_bindings(&mut self, stmt: &Stmt) {
+        if self.private_class_name.is_none() {
+            return;
+        }
+
+        let mut bindings = HashSet::new();
+        collect_stmt_bindings(stmt, &mut bindings);
+        bindings.retain(|name| {
+            self.class_scope_all_bindings.contains(name)
+                && !self.name_is_declared_global(name)
+                && !self.name_is_declared_nonlocal(name)
+        });
+        self.class_scope_prior_bindings.extend(bindings);
     }
 
     fn compile_pending_finalizers(&mut self) -> Result<(), String> {
@@ -4565,7 +5098,7 @@ fn collect_static_attributes_from_stmt(stmt: &Stmt, attributes: &mut BTreeSet<St
         | Stmt::Break
         | Stmt::Continue => {}
         Stmt::Expr(expr) => collect_static_attributes_from_expr(expr, attributes),
-        Stmt::Assign { targets, value } => {
+        Stmt::Assign { targets, value, .. } => {
             collect_static_attributes_from_expr(value, attributes);
             for target in targets {
                 collect_static_attributes_from_store_target(target, attributes);
@@ -4697,7 +5230,7 @@ fn collect_static_attributes_from_stmt(stmt: &Stmt, attributes: &mut BTreeSet<St
             collect_static_attributes_from_statements(else_body, attributes);
             collect_static_attributes_from_statements(finally_body, attributes);
         }
-        Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+        Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
             for item in items {
                 collect_static_attributes_from_with_item(item, attributes);
             }
@@ -4717,12 +5250,14 @@ fn collect_static_attributes_from_stmt(stmt: &Stmt, attributes: &mut BTreeSet<St
             iter,
             body,
             else_body,
+            ..
         }
         | Stmt::AsyncFor {
             target,
             iter,
             body,
             else_body,
+            ..
         } => {
             collect_static_attributes_from_store_target(target, attributes);
             collect_static_attributes_from_expr(iter, attributes);
@@ -5131,6 +5666,23 @@ fn parse_big_int_literal(value: &str) -> Result<BigInt, String> {
         .map_err(|_| format!("invalid int literal: {value}"))
 }
 
+fn negated_literal_constant_value(expr: &Expr) -> Result<Option<Value>, String> {
+    let value = match expr {
+        Expr::Number(value) => match value.checked_neg() {
+            Some(value) => Value::Number(value),
+            None => Value::BigInt(-BigInt::from(*value)),
+        },
+        Expr::BigInt(value) => Value::BigInt(-parse_big_int_literal(value)?),
+        Expr::Float(value) => Value::Float(-parse_float_literal(value)?),
+        Expr::Imaginary(value) => Value::Complex {
+            real: -0.0,
+            imag: -parse_float_literal(value)?,
+        },
+        _ => return Ok(None),
+    };
+    Ok(Some(value))
+}
+
 fn f_string_conversion_to_bytecode(conversion: FStringConversion) -> FormatConversion {
     match conversion {
         FStringConversion::Str => FormatConversion::Str,
@@ -5165,6 +5717,7 @@ struct ScopeDeclarationAnalysis {
 struct ScopeDeclarationTracker {
     is_module: bool,
     parameter_names: HashSet<String>,
+    type_parameter_names: HashSet<String>,
     used_names: HashSet<String>,
     assigned_names: HashSet<String>,
     global_names: HashSet<String>,
@@ -5172,7 +5725,7 @@ struct ScopeDeclarationTracker {
 }
 
 fn validate_module_scope_declarations(statements: &[Stmt]) -> Result<(), String> {
-    let mut tracker = ScopeDeclarationTracker::new(HashSet::new(), true);
+    let mut tracker = ScopeDeclarationTracker::new(HashSet::new(), HashSet::new(), true);
     tracker.visit_statements(statements)?;
     if !tracker.nonlocal_names.is_empty() {
         return Err("nonlocal declaration not allowed at module level".to_string());
@@ -5184,9 +5737,11 @@ fn analyze_function_scope(
     params: &FunctionParams,
     statements: &[Stmt],
     enclosing_function_bindings: &[HashSet<String>],
+    type_parameter_names: &HashSet<String>,
 ) -> Result<ScopeDeclarationAnalysis, String> {
     let parameter_names = function_param_names(params);
-    let mut tracker = ScopeDeclarationTracker::new(parameter_names.clone(), false);
+    let mut tracker =
+        ScopeDeclarationTracker::new(parameter_names.clone(), type_parameter_names.clone(), false);
     tracker.visit_statements(statements)?;
     for name in &tracker.nonlocal_names {
         if !enclosing_function_bindings
@@ -5217,8 +5772,10 @@ fn analyze_function_scope(
 fn analyze_class_scope(
     statements: &[Stmt],
     enclosing_function_bindings: &[HashSet<String>],
+    type_parameter_names: &HashSet<String>,
 ) -> Result<ScopeDeclarationAnalysis, String> {
-    let mut tracker = ScopeDeclarationTracker::new(HashSet::new(), false);
+    let mut tracker =
+        ScopeDeclarationTracker::new(HashSet::new(), type_parameter_names.clone(), false);
     tracker.visit_statements(statements)?;
     for name in &tracker.nonlocal_names {
         if !enclosing_function_bindings
@@ -5247,10 +5804,15 @@ fn analyze_class_scope(
 }
 
 impl ScopeDeclarationTracker {
-    fn new(parameter_names: HashSet<String>, is_module: bool) -> Self {
+    fn new(
+        parameter_names: HashSet<String>,
+        type_parameter_names: HashSet<String>,
+        is_module: bool,
+    ) -> Self {
         Self {
             is_module,
             parameter_names,
+            type_parameter_names,
             used_names: HashSet::new(),
             assigned_names: HashSet::new(),
             global_names: HashSet::new(),
@@ -5279,7 +5841,7 @@ impl ScopeDeclarationTracker {
             }
             Stmt::Pass | Stmt::Break | Stmt::Continue => {}
             Stmt::Expr(expr) => self.visit_expr(expr),
-            Stmt::Assign { targets, value } => {
+            Stmt::Assign { targets, value, .. } => {
                 self.visit_expr(value);
                 for target in targets {
                     self.visit_target_assignment(target);
@@ -5437,7 +5999,7 @@ impl ScopeDeclarationTracker {
                 self.visit_statements(else_body)?;
                 self.visit_statements(finally_body)?;
             }
-            Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+            Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
                 for item in items {
                     self.visit_expr(&item.context_expr);
                     if let Some(target) = &item.optional_vars {
@@ -5460,12 +6022,14 @@ impl ScopeDeclarationTracker {
                 iter,
                 body,
                 else_body,
+                ..
             }
             | Stmt::AsyncFor {
                 target,
                 iter,
                 body,
                 else_body,
+                ..
             } => {
                 self.visit_expr(iter);
                 self.visit_target_assignment(target);
@@ -5496,6 +6060,9 @@ impl ScopeDeclarationTracker {
     }
 
     fn declare_nonlocal(&mut self, name: &str) -> Result<(), String> {
+        if self.type_parameter_names.contains(name) {
+            return Err(format!("name '{name}' is type parameter and nonlocal"));
+        }
         if self.parameter_names.contains(name) {
             return Err(format!("name '{name}' is parameter and nonlocal"));
         }
@@ -5839,6 +6406,13 @@ fn function_param_names(params: &FunctionParams) -> HashSet<String> {
     names
 }
 
+fn type_param_name_set(type_params: &[TypeParam]) -> HashSet<String> {
+    type_params
+        .iter()
+        .map(|type_param| type_param.name.clone())
+        .collect()
+}
+
 fn collect_statement_bindings(statements: &[Stmt], names: &mut HashSet<String>) {
     for stmt in statements {
         collect_stmt_bindings(stmt, names);
@@ -5847,7 +6421,7 @@ fn collect_statement_bindings(statements: &[Stmt], names: &mut HashSet<String>) 
 
 fn collect_stmt_bindings(stmt: &Stmt, names: &mut HashSet<String>) {
     match stmt {
-        Stmt::Assign { targets, value } => {
+        Stmt::Assign { targets, value, .. } => {
             collect_expr_bindings(value, names);
             for target in targets {
                 collect_target_bindings(target, names);
@@ -5932,7 +6506,7 @@ fn collect_stmt_bindings(stmt: &Stmt, names: &mut HashSet<String>) {
             collect_statement_bindings(else_body, names);
             collect_statement_bindings(finally_body, names);
         }
-        Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+        Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
             for item in items {
                 if let Some(target) = &item.optional_vars {
                     collect_target_bindings(target, names);
@@ -6530,7 +7104,7 @@ fn stmt_contains_yield(stmt: &Stmt) -> bool {
                 || statements_contain_yield(else_body)
                 || statements_contain_yield(finally_body)
         }
-        Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+        Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
             items.iter().any(|item| {
                 expr_contains_yield(&item.context_expr)
                     || item
@@ -6652,7 +7226,7 @@ fn stmt_contains_yield_from(stmt: &Stmt) -> bool {
                 || statements_contain_yield_from(else_body)
                 || statements_contain_yield_from(finally_body)
         }
-        Stmt::With { items, body } | Stmt::AsyncWith { items, body } => {
+        Stmt::With { items, body, .. } | Stmt::AsyncWith { items, body, .. } => {
             items.iter().any(|item| {
                 expr_contains_yield_from(&item.context_expr)
                     || item
@@ -7785,6 +8359,29 @@ mod tests {
     }
 
     #[test]
+    fn compiles_positive_expression_to_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::Expr(Expr::Unary {
+                op: UnaryOp::Positive,
+                operand: Box::new(Expr::Number(1)),
+            })],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadConst {
+                    dst: 0,
+                    value: Value::Number(1)
+                },
+                Instruction::Positive { dst: 1, src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
     fn compiles_negative_expression_to_bytecode() {
         let program = Program {
             statements: vec![Stmt::Expr(Expr::Unary {
@@ -7798,10 +8395,9 @@ mod tests {
             Ok(vec![
                 Instruction::LoadConst {
                     dst: 0,
-                    value: Value::Number(1)
+                    value: Value::Number(-1)
                 },
-                Instruction::Negate { dst: 1, src: 0 },
-                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 0 },
                 Instruction::Halt,
             ])
         );
@@ -8391,7 +8987,7 @@ mod tests {
                     matches!(instruction, Instruction::Yield { src: Some(_), .. })
                 }));
                 assert!(body.iter().any(|instruction| {
-                    matches!(instruction, Instruction::LoadName { name, .. } if name == ".0")
+                    matches!(instruction, Instruction::LoadLocal { name, .. } if name == ".0")
                 }));
             }
             instructions => panic!("unexpected generator expression bytecode: {instructions:?}"),
@@ -8717,6 +9313,7 @@ mod tests {
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Number(2)),
                 },
+                type_comment: None,
             }],
         };
 
@@ -8751,6 +9348,7 @@ mod tests {
             statements: vec![Stmt::Assign {
                 targets: vec![Target::Name("a".to_string()), Target::Name("b".to_string())],
                 value: Expr::Number(3),
+                type_comment: None,
             }],
         };
 
@@ -8881,6 +9479,41 @@ mod tests {
     }
 
     #[test]
+    fn compiles_multiply_augmented_assignment_to_in_place_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::AugAssign {
+                target: Target::Name("x".to_string()),
+                op: BinaryOp::Multiply,
+                value: Expr::Number(3),
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "x".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(3)
+                },
+                Instruction::InPlaceMultiply {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::StoreName {
+                    name: "x".to_string(),
+                    src: 2
+                },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
     fn compiles_tuple_unpack_assignment_to_bytecode() {
         let program = Program {
             statements: vec![Stmt::Assign {
@@ -8889,6 +9522,7 @@ mod tests {
                     Target::Name("b".to_string()),
                 ])],
                 value: Expr::Tuple(vec![Expr::Number(1), Expr::Number(2)]),
+                type_comment: None,
             }],
         };
 
@@ -8931,6 +9565,7 @@ mod tests {
                     Expr::Number(3),
                     Expr::Number(4),
                 ]),
+                type_comment: None,
             }],
         };
 
@@ -9587,8 +10222,9 @@ mod tests {
                 },
                 Instruction::JumpIfFalse {
                     condition: 0,
-                    target: 3
+                    target: 4
                 },
+                Instruction::Noop,
                 Instruction::Jump { target: 0 },
                 Instruction::Halt,
             ])
@@ -9662,8 +10298,9 @@ mod tests {
                 },
                 Instruction::JumpIfFalse {
                     condition: 0,
-                    target: 3
+                    target: 4
                 },
+                Instruction::Noop,
                 Instruction::Jump { target: 0 },
                 Instruction::LoadName {
                     dst: 1,
@@ -9698,6 +10335,7 @@ mod tests {
                     args: vec![Expr::Name("x".to_string())],
                 })],
                 else_body: Vec::new(),
+                type_comment: None,
             }],
         };
 
@@ -9761,6 +10399,7 @@ mod tests {
                     callee: Box::new(Expr::Name("print".to_string())),
                     args: vec![Expr::String("done".to_string())],
                 })],
+                type_comment: None,
             }],
         };
 
@@ -9784,12 +10423,13 @@ mod tests {
                 Instruction::ForIter {
                     iterator: 3,
                     dst: 4,
-                    target: 7
+                    target: 8
                 },
                 Instruction::StoreName {
                     name: "x".to_string(),
                     src: 4
                 },
+                Instruction::Noop,
                 Instruction::Jump { target: 4 },
                 Instruction::LoadName {
                     dst: 5,
@@ -9811,12 +10451,15 @@ mod tests {
     }
 
     #[test]
-    fn compiles_pass_to_no_bytecode() {
+    fn compiles_pass_to_noop_bytecode() {
         let program = Program {
             statements: vec![Stmt::Pass],
         };
 
-        assert_eq!(compile(&program), Ok(vec![Instruction::Halt]));
+        assert_eq!(
+            compile(&program),
+            Ok(vec![Instruction::Noop, Instruction::Halt])
+        );
     }
 
     #[test]

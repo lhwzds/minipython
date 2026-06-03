@@ -51,6 +51,8 @@ pub enum FormatConversion {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
+    #[allow(dead_code)]
+    Noop,
     LoadConst {
         dst: Register,
         value: Value,
@@ -259,6 +261,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlaceMultiply {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     MatrixMultiply {
         dst: Register,
         left: Register,
@@ -373,6 +380,10 @@ pub enum Instruction {
         dst: Register,
         src: Register,
     },
+    Positive {
+        dst: Register,
+        src: Register,
+    },
     Negate {
         dst: Register,
         src: Register,
@@ -412,6 +423,18 @@ pub enum Instruction {
         bound: Option<Register>,
         default: Option<Register>,
     },
+    UpdateTypeParam {
+        target: Register,
+        bound: Option<Register>,
+        default: Option<Register>,
+    },
+    MakeDeferredTypeParamExpr {
+        dst: Register,
+        body: Vec<Instruction>,
+        type_params: Vec<Register>,
+        class_name: Option<String>,
+        is_constraint_tuple: bool,
+    },
     MakeTypeAlias {
         dst: Register,
         name: String,
@@ -422,6 +445,7 @@ pub enum Instruction {
         dst: Register,
         name: String,
         type_params: Vec<Register>,
+        closure_bindings: Vec<(String, Register)>,
         positional_only: Vec<String>,
         params: Vec<String>,
         defaults: Vec<(String, Register)>,
@@ -430,9 +454,12 @@ pub enum Instruction {
         keyword_defaults: Vec<(String, Register)>,
         kwarg: Option<String>,
         annotations: Vec<(String, Register)>,
+        docstring: Option<String>,
         body: Vec<Instruction>,
         is_generator: bool,
         is_async: bool,
+        first_line: usize,
+        line_sequence: Vec<usize>,
     },
     Await {
         dst: Register,
@@ -450,11 +477,13 @@ pub enum Instruction {
         bases: Vec<CallArgRegister>,
         keywords: Vec<CallKeywordRegister>,
         static_attributes: Vec<String>,
+        docstring: Option<String>,
         body: Vec<Instruction>,
     },
     Return {
         src: Option<Register>,
     },
+    ImplicitReturn,
     Yield {
         src: Option<Register>,
         resume_dst: Option<Register>,
