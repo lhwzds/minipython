@@ -5112,9 +5112,9 @@ fn cpython_compile_literals_with_leading_zeroes_subset() {
 
 // Adapted from CPython grammar NUMBER coverage in
 // Lib/test/test_grammar.py::test_disallow_kwargs_after_starargs and underscore
-// literal coverage in Lib/test/support/numbers.py, plus complex string/repr
+// literal coverage in Lib/test/support/numbers.py, plus complex repr
 // expectations in Lib/test/test_complex.py. MiniPython covers imaginary
-// literals and the basic arithmetic form Python uses to build complex numbers.
+// literals and the arithmetic form Python uses to build complex numbers.
 #[test]
 fn cpython_grammar_imaginary_literals_subset() {
     assert_eval("1j", "1j");
@@ -5130,6 +5130,827 @@ fn cpython_grammar_imaginary_literals_subset() {
         &["10000j 10000.5j 0.14j (12.5+33j) 0.56j"],
     );
     assert_error("1.4j_", "lex error: invalid number: 1.4j_");
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_underscores.
+#[test]
+fn cpython_float_string_underscore_subset() {
+    assert_output(
+        "for lit in ['1_000', '1_000.5', '1.5_0', '1e1_0', '.1_0', '1_0e+2_0']:\n    print(lit, float(lit) == float(lit.replace('_', '')))\nfor lit in ['1__0', '1_', '_1', '1_.0', '1._0', '1e_1', '1e+_1', '_NaN', 'Na_N', 'IN_F', '-_INF', '-INF_']:\n    try:\n        float(lit)\n    except ValueError as error:\n        print(lit, error.__class__.__name__)\ntry:\n    float(b'0_.\\xff9')\nexcept ValueError as error:\n    print('bytes', error.__class__.__name__)",
+        &[
+            "1_000 True",
+            "1_000.5 True",
+            "1.5_0 True",
+            "1e1_0 True",
+            ".1_0 True",
+            "1_0e+2_0 True",
+            "1__0 ValueError",
+            "1_ ValueError",
+            "_1 ValueError",
+            "1_.0 ValueError",
+            "1._0 ValueError",
+            "1e_1 ValueError",
+            "1e+_1 ValueError",
+            "_NaN ValueError",
+            "Na_N ValueError",
+            "IN_F ValueError",
+            "-_INF ValueError",
+            "-INF_ ValueError",
+            "bytes ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testConstants,
+// ::testIsfinite, ::testIsnormal, ::testIssubnormal, ::testIsnan,
+// ::testIsinf, ::test_nan_constant, and ::test_inf_constant.
+#[test]
+fn cpython_math_constants_and_classification_subset() {
+    assert_output(
+        "import math\ntiny = float('2.2250738585072014e-308') / 2\nprint(math.pi)\nprint(math.e)\nprint(math.tau == 2 * math.pi)\nprint(math.isfinite(0.0), math.isfinite(-0.0), math.isfinite(1.0), math.isfinite(-1.0))\nprint(math.isfinite(float('nan')), math.isfinite(float('inf')), math.isfinite(float('-inf')))\nprint(math.isnormal(1.25), math.isnormal(-1.0))\nprint(math.isnormal(0.0), math.isnormal(-0.0), math.isnormal(float('inf')), math.isnormal(float('-inf')), math.isnormal(float('nan')))\nprint(math.isnormal(tiny), math.isnormal(-tiny))\nprint(math.issubnormal(1.25), math.issubnormal(-1.0), math.issubnormal(0.0), math.issubnormal(-0.0))\nprint(math.issubnormal(float('inf')), math.issubnormal(float('-inf')), math.issubnormal(float('nan')))\nprint(math.issubnormal(tiny), math.issubnormal(-tiny))\nprint(math.isnan(float('nan')), math.isnan(float('-nan')), math.isnan(float('inf') * 0.0))\nprint(math.isnan(float('inf')), math.isnan(0.0), math.isnan(1.0))\nprint(math.isinf(float('inf')), math.isinf(float('-inf')), math.isinf(1e400), math.isinf(-1e400))\nprint(math.isinf(float('nan')), math.isinf(0.0), math.isinf(1.0))\nprint(math.isnan(math.nan), math.copysign(1.0, math.nan))\nprint(math.isinf(math.inf), math.inf > 0.0, math.inf == float('inf'), -math.inf == float('-inf'))",
+        &[
+            "3.141592653589793",
+            "2.718281828459045",
+            "True",
+            "True True True True",
+            "False False False",
+            "True True",
+            "False False False False False",
+            "False False",
+            "False False False False",
+            "False False False",
+            "True True",
+            "True True True",
+            "False False False",
+            "True True True True",
+            "False False False",
+            "True 1.0",
+            "True True True True",
+        ],
+    );
+    assert_output(
+        "import math\nfor expr in [lambda: math.isfinite(), lambda: math.isnan(), lambda: math.isinf(), lambda: math.isnormal(), lambda: math.issubnormal(), lambda: math.isfinite(1, 2), lambda: math.isnan('x'), lambda: math.isfinite(1+2j), lambda: math.isnormal(1, 2), lambda: math.issubnormal('x'), lambda: math.isnormal(1+2j), lambda: math.isinf(10**10000), lambda: math.issubnormal(10**10000)]:\n    try:\n        expr()\n    except Exception as error:\n        print(error.__class__.__name__)",
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testCopysign.
+// MiniPython ports the public sign-transfer behavior for zeroes, infinities,
+// NaNs, and catchable argument/type errors.
+#[test]
+fn cpython_math_copysign_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "INF = float('inf')\n",
+            "NINF = float('-inf')\n",
+            "NAN = float('nan')\n",
+            "print(math.copysign(1, 42), math.copysign(0.0, 42))\n",
+            "print(math.copysign(1.0, -42), math.copysign(3, 0.0), math.copysign(4.0, -0.0))\n",
+            "print(math.copysign(1.0, 0.0), math.copysign(1.0, -0.0))\n",
+            "print(math.copysign(INF, 0.0), math.copysign(INF, -0.0))\n",
+            "print(math.copysign(NINF, 0.0), math.copysign(NINF, -0.0))\n",
+            "print(math.copysign(1.0, INF), math.copysign(1.0, NINF))\n",
+            "print(math.copysign(INF, INF), math.copysign(INF, NINF))\n",
+            "print(math.copysign(NINF, INF), math.copysign(NINF, NINF))\n",
+            "print(math.isnan(math.copysign(NAN, 1.0)))\n",
+            "print(math.isnan(math.copysign(NAN, INF)), math.isnan(math.copysign(NAN, NINF)), math.isnan(math.copysign(NAN, NAN)))\n",
+            "print(math.isinf(math.copysign(INF, NAN)), math.fabs(math.copysign(2.0, NAN)))"
+        ),
+        &[
+            "1.0 0.0",
+            "-1.0 3.0 -4.0",
+            "1.0 -1.0",
+            "inf -inf",
+            "inf -inf",
+            "1.0 -1.0",
+            "inf -inf",
+            "inf -inf",
+            "True",
+            "True True True",
+            "True 2.0",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.copysign(), lambda: math.copysign(1), lambda: math.copysign(1, 2, 3), lambda: math.copysign('x', 1), lambda: math.copysign(1, 'x'), lambda: math.copysign(10**10000, 1), lambda: math.copysign(1, 10**10000), lambda: math.copysign(x=1, y=2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_signbit.
+// MiniPython ports the public negative-sign-bit predicate for zeroes, ordinary
+// finite numbers, infinities, and NaNs.
+#[test]
+fn cpython_math_signbit_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "INF = float('inf')\n",
+            "NAN = float('nan')\n",
+            "print(type(math.signbit(1.0)).__name__)\n",
+            "for arg in [0.0, 1.0, INF, NAN]:\n",
+            "    print(math.signbit(arg), math.signbit(-arg))\n",
+            "print(math.signbit(False), math.signbit(True))\n",
+            "print(math.signbit(-0), math.signbit(-1))"
+        ),
+        &[
+            "bool",
+            "False True",
+            "False True",
+            "False True",
+            "False True",
+            "False False",
+            "False True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.signbit(), lambda: math.signbit(1, 2), lambda: math.signbit('1.0'), lambda: math.signbit(1+2j), lambda: math.signbit(10**10000), lambda: math.signbit(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_trunc.
+// MiniPython ports the public numeric truncation behavior and the normal
+// `__trunc__` special-method path; descriptor-specific lookup edge cases remain
+// tracked separately from this math API subset.
+#[test]
+fn cpython_math_trunc_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.trunc(1), math.trunc(-1))\n",
+            "print(type(math.trunc(1)).__name__, type(math.trunc(1.5)).__name__)\n",
+            "print(math.trunc(1.5), math.trunc(-1.5))\n",
+            "print(math.trunc(1.999999), math.trunc(-1.999999))\n",
+            "print(math.trunc(-0.999999), math.trunc(-100.999))\n",
+            "print(math.trunc(False), math.trunc(True), math.trunc(10**30))\n",
+            "print(math.trunc(1e20) == 100000000000000000000)"
+        ),
+        &[
+            "1 -1",
+            "int int",
+            "1 -1",
+            "1 -1",
+            "0 -100",
+            "0 1 1000000000000000000000000000000",
+            "True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class TestTrunc:\n",
+            "    def __trunc__(self):\n",
+            "        return 23\n",
+            "class TestRaises:\n",
+            "    def __trunc__(self):\n",
+            "        raise ValueError('bad trunc')\n",
+            "class FloatTruncResult:\n",
+            "    def __trunc__(self):\n",
+            "        return 23.5\n",
+            "class TestNoTrunc:\n",
+            "    pass\n",
+            "print(math.trunc(TestTrunc()))\n",
+            "print(type(math.trunc(FloatTruncResult())).__name__)\n",
+            "for expr in [lambda: math.trunc(), lambda: math.trunc(1, 2), lambda: math.trunc('1.0'), lambda: math.trunc(1+2j), lambda: math.trunc(float('nan')), lambda: math.trunc(float('inf')), lambda: math.trunc(TestNoTrunc()), lambda: math.trunc(TestRaises()), lambda: math.trunc(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "23",
+            "float",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testCeil.
+// MiniPython ports the public numeric ceiling behavior, normal `__ceil__`
+// dispatch, `__float__` fallback, `__index__` fallback, and catchable errors.
+#[test]
+fn cpython_math_ceil_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.ceil(0.5)).__name__)\n",
+            "print(math.ceil(0.5), math.ceil(1.0), math.ceil(1.5))\n",
+            "print(math.ceil(-0.5), math.ceil(-1.0), math.ceil(-1.5))\n",
+            "print(math.ceil(0.0), math.ceil(-0.0))\n",
+            "print(math.ceil(False), math.ceil(True), math.ceil(10**30) == 10**30)\n",
+            "print(math.ceil(1e20) == 100000000000000000000)"
+        ),
+        &["int", "1 1 2", "0 -1 -1", "0 0", "0 1 True", "True"],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class TestCeil:\n",
+            "    def __ceil__(self):\n",
+            "        return 42\n",
+            "class FloatCeilResult:\n",
+            "    def __ceil__(self):\n",
+            "        return 42.5\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class TestNoCeil:\n",
+            "    pass\n",
+            "print(math.ceil(TestCeil()), type(math.ceil(FloatCeilResult())).__name__)\n",
+            "print(math.ceil(FloatLike(42.5)), math.ceil(FloatLike(+1.0)), math.ceil(FloatLike(-1.0)))\n",
+            "print(math.ceil(IndexLike(7)))\n",
+            "for expr in [lambda: math.ceil(), lambda: math.ceil(1, 2), lambda: math.ceil('1.0'), lambda: math.ceil(1+2j), lambda: math.ceil(float('nan')), lambda: math.ceil(float('inf')), lambda: math.ceil(IndexLike(10**10000)), lambda: math.ceil(TestNoCeil()), lambda: math.ceil(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "42 float",
+            "43 1 -1",
+            "7",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testFloor.
+// MiniPython ports the public numeric floor behavior, normal `__floor__`
+// dispatch, `__float__` fallback, `__index__` fallback, and catchable errors.
+#[test]
+fn cpython_math_floor_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.floor(0.5)).__name__)\n",
+            "print(math.floor(0.5), math.floor(1.0), math.floor(1.5))\n",
+            "print(math.floor(-0.5), math.floor(-1.0), math.floor(-1.5))\n",
+            "print(math.floor(0.0), math.floor(-0.0))\n",
+            "print(math.floor(False), math.floor(True), math.floor(-10**30) == -10**30)\n",
+            "print(math.floor(-1e20) == -100000000000000000000)"
+        ),
+        &["int", "0 1 1", "-1 -1 -2", "0 0", "0 1 True", "True"],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class TestFloor:\n",
+            "    def __floor__(self):\n",
+            "        return 42\n",
+            "class FloatFloorResult:\n",
+            "    def __floor__(self):\n",
+            "        return 41.5\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class TestNoFloor:\n",
+            "    pass\n",
+            "print(math.floor(TestFloor()), type(math.floor(FloatFloorResult())).__name__)\n",
+            "print(math.floor(FloatLike(41.9)), math.floor(FloatLike(+1.0)), math.floor(FloatLike(-1.0)))\n",
+            "print(math.floor(IndexLike(7)))\n",
+            "for expr in [lambda: math.floor(), lambda: math.floor(1, 2), lambda: math.floor('1.0'), lambda: math.floor(1+2j), lambda: math.floor(float('nan')), lambda: math.floor(float('-inf')), lambda: math.floor(IndexLike(10**10000)), lambda: math.floor(TestNoFloor()), lambda: math.floor(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "42 float",
+            "41 1 -1",
+            "7",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testDegrees and
+// ::testRadians. MiniPython ports public angle conversion, float result
+// semantics, non-finite propagation, `__float__` / `__index__` input conversion,
+// and catchable error classes.
+#[test]
+fn cpython_math_degrees_radians_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.degrees(0)).__name__, type(math.radians(0)).__name__)\n",
+            "print(math.degrees(math.pi), math.degrees(math.pi / 2), math.degrees(-math.pi / 4), math.degrees(0))\n",
+            "print(math.radians(180) == math.pi, math.radians(90) == math.pi / 2, math.radians(-45) == -math.pi / 4, math.radians(0))\n",
+            "print(math.isinf(math.degrees(math.inf)), math.degrees(-math.inf) < 0, math.isnan(math.degrees(math.nan)))\n",
+            "print(math.isinf(math.radians(math.inf)), math.radians(-math.inf) < 0, math.isnan(math.radians(math.nan)))"
+        ),
+        &[
+            "float float",
+            "180.0 90.0 -45.0 0.0",
+            "True True True 0.0",
+            "True True True",
+            "True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.degrees(FloatLike(math.pi)), math.radians(FloatLike(180.0)) == math.pi)\n",
+            "print(round(math.degrees(IndexLike(1)), 6), math.radians(IndexLike(180)) == math.pi)\n",
+            "for expr in [lambda: math.degrees(), lambda: math.radians(), lambda: math.degrees(1, 2), lambda: math.radians(1, 2), lambda: math.degrees('1.0'), lambda: math.radians(1+2j), lambda: math.degrees(IndexLike(10**10000)), lambda: math.radians(BadFloat()), lambda: math.degrees(RaisesFloat()), lambda: math.radians(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "180.0 True",
+            "57.29578 True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testCbrt.
+// MiniPython ports public cube-root behavior, float result semantics, signed
+// zero, non-finite propagation, `__float__` / `__index__` input conversion, and
+// catchable error classes.
+#[test]
+fn cpython_math_cbrt_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.cbrt(0)).__name__)\n",
+            "print(math.cbrt(0), math.cbrt(1), math.cbrt(8))\n",
+            "print(math.copysign(1.0, math.cbrt(0.0)), math.copysign(1.0, math.cbrt(-0.0)))\n",
+            "print(round(math.cbrt(1.2), 12), round(math.cbrt(-2.6), 12))\n",
+            "print(math.cbrt(27), math.cbrt(-1), math.cbrt(-27))\n",
+            "print(math.cbrt(math.inf), math.cbrt(-math.inf), math.isnan(math.cbrt(math.nan)))"
+        ),
+        &[
+            "float",
+            "0.0 1.0 2.0",
+            "1.0 -1.0",
+            "1.062658569183 -1.375068867074",
+            "3.0 -1.0 -3.0",
+            "inf -inf True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.cbrt(FloatLike(8.0)), math.cbrt(IndexLike(27)))\n",
+            "for expr in [lambda: math.cbrt(), lambda: math.cbrt(1, 2), lambda: math.cbrt('1.0'), lambda: math.cbrt(1+2j), lambda: math.cbrt(IndexLike(10**10000)), lambda: math.cbrt(BadFloat()), lambda: math.cbrt(RaisesFloat()), lambda: math.cbrt(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "2.0 3.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testFabs.
+// MiniPython ports the public real-number conversion, float result, signed-zero
+// normalization, NaN/inf propagation, and error-class behavior supported by the
+// current runtime.
+#[test]
+fn cpython_math_fabs_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.fabs(-1), math.fabs(0), math.fabs(1))\n",
+            "print(math.fabs(-3.5), math.fabs(3.5), math.fabs(True), math.fabs(False))\n",
+            "print(math.copysign(1.0, math.fabs(-0.0)))\n",
+            "print(math.isinf(math.fabs(float('-inf'))), math.fabs(float('-inf')) > 0)\n",
+            "print(math.isnan(math.fabs(float('nan'))))\n",
+            "print(type(math.fabs(1)).__name__, type(math.fabs(1.0)).__name__)"
+        ),
+        &[
+            "1.0 0.0 1.0",
+            "3.5 3.5 1.0 0.0",
+            "1.0",
+            "True True",
+            "True",
+            "float float",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.fabs(), lambda: math.fabs(1, 2), lambda: math.fabs('x'), lambda: math.fabs(1+2j), lambda: math.fabs(10**10000), lambda: math.fabs(value=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testSqrt and the
+// public huge-integer conversion behavior exercised by math module inputs.
+#[test]
+fn cpython_math_sqrt_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.sqrt(0), math.sqrt(0.0))\n",
+            "print(math.sqrt(2.5))\n",
+            "print(math.sqrt(0.25), math.sqrt(25.25))\n",
+            "print(math.sqrt(1), math.sqrt(4))\n",
+            "print(math.sqrt(math.inf) == math.inf)\n",
+            "print(math.isnan(math.sqrt(math.nan)))\n",
+            "print(type(math.sqrt(4)).__name__)"
+        ),
+        &[
+            "0.0 0.0",
+            "1.5811388300841898",
+            "0.5 5.024937810560445",
+            "1.0 2.0",
+            "True",
+            "True",
+            "float",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.sqrt(), lambda: math.sqrt(1, 2), lambda: math.sqrt('x'), lambda: math.sqrt(1+2j), lambda: math.sqrt(-1), lambda: math.sqrt(float('-inf')), lambda: math.sqrt(10**10000), lambda: math.sqrt(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testGcd. MiniPython
+// ports the public integer, big-integer, variadic, and `__index__` behavior
+// without reproducing CPython internals.
+#[test]
+fn cpython_math_gcd_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "gcd = math.gcd\n",
+            "print(gcd(0, 0), gcd(1, 0), gcd(-1, 0), gcd(0, 1), gcd(0, -1))\n",
+            "print(gcd(7, 1), gcd(7, -1), gcd(-23, 15), gcd(120, 84), gcd(84, -120))\n",
+            "print(gcd(1216342683557601535506311712, 436522681849110124616458784))\n",
+            "x = 434610456570399902378880679233098819019853229470286994367836600566\n",
+            "y = 1064502245825115327754847244914921553977\n",
+            "for c in (652560, 576559230871654959816130551884856912003141446781646602790216406874):\n",
+            "    a = x * c\n",
+            "    b = y * c\n",
+            "    print(gcd(a, b) == c, gcd(b, a) == c, gcd(-a, b) == c, gcd(b, -a) == c)\n",
+            "    print(gcd(a, -b) == c, gcd(-b, a) == c, gcd(-a, -b) == c, gcd(-b, -a) == c)\n",
+            "print(gcd(), gcd(120), gcd(-120), gcd(120, 84, 102), gcd(120, 1, 84))\n",
+            "class MyIndexable:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "print(gcd(MyIndexable(120), MyIndexable(84)))\n",
+            "print(gcd(True, False), gcd(False, False))"
+        ),
+        &[
+            "0 1 1 1 1",
+            "1 1 1 12 12",
+            "32",
+            "True True True True",
+            "True True True True",
+            "True True True True",
+            "True True True True",
+            "0 120 120 6 1",
+            "12",
+            "1 0",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "gcd = math.gcd\n",
+            "class BadIndex:\n",
+            "    def __index__(self):\n",
+            "        return 1.5\n",
+            "class Boom:\n",
+            "    def __index__(self):\n",
+            "        raise RuntimeError('boom')\n",
+            "for expr in [lambda: gcd(120.0), lambda: gcd(120.0, 84), lambda: gcd(120, 84.0), lambda: gcd(120, 1, 84.0), lambda: gcd(1, 1.5), lambda: gcd(BadIndex()), lambda: gcd(Boom())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "RuntimeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_lcm. MiniPython
+// ports the public integer, big-integer, variadic, and `__index__` behavior
+// without reproducing CPython internals.
+#[test]
+fn cpython_math_lcm_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "lcm = math.lcm\n",
+            "print(lcm(0, 0), lcm(1, 0), lcm(-1, 0), lcm(0, 1), lcm(0, -1))\n",
+            "print(lcm(7, 1), lcm(7, -1), lcm(-23, 15), lcm(120, 84), lcm(84, -120))\n",
+            "print(lcm(1216342683557601535506311712, 436522681849110124616458784))\n",
+            "x = 43461045657039990237\n",
+            "y = 10645022458251153277\n",
+            "for c in (652560, 57655923087165495981):\n",
+            "    a = x * c\n",
+            "    b = y * c\n",
+            "    d = x * y * c\n",
+            "    print(lcm(a, b) == d, lcm(b, a) == d, lcm(-a, b) == d, lcm(b, -a) == d)\n",
+            "    print(lcm(a, -b) == d, lcm(-b, a) == d, lcm(-a, -b) == d, lcm(-b, -a) == d)\n",
+            "print(lcm(), lcm(120), lcm(-120), lcm(120, 84, 102), lcm(120, 0, 84))\n",
+            "class MyIndexable:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "print(lcm(MyIndexable(120), MyIndexable(84)))\n",
+            "print(lcm(True, False), lcm(True, True), lcm(False, False))"
+        ),
+        &[
+            "0 0 0 0 0",
+            "7 7 345 840 840",
+            "16592536571065866494401400422922201534178938447014944",
+            "True True True True",
+            "True True True True",
+            "True True True True",
+            "True True True True",
+            "1 120 120 14280 0",
+            "840",
+            "0 1 0",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "lcm = math.lcm\n",
+            "class BadIndex:\n",
+            "    def __index__(self):\n",
+            "        return 1.5\n",
+            "class Boom:\n",
+            "    def __index__(self):\n",
+            "        raise RuntimeError('boom')\n",
+            "for expr in [lambda: lcm(120.0), lambda: lcm(120.0, 84), lambda: lcm(120, 84.0), lambda: lcm(120, 0, 84.0), lambda: lcm(1, 1.5), lambda: lcm(0, 0.5), lambda: lcm(BadIndex()), lambda: lcm(0, Boom())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "RuntimeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_prod. MiniPython
+// ports the public iterable product, keyword-only `start`, integer/float,
+// sequence-repetition, zero, NaN/inf, type-preservation, and error-class
+// behavior supported by the current runtime.
+#[test]
+fn cpython_math_prod_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "prod = math.prod\n",
+            "print(prod([]), prod([], start=5), prod(list(range(2, 8))))\n",
+            "print(prod(iter(list(range(2, 8)))), prod(range(1, 10), start=10))\n",
+            "print(prod([1, 2, 3, 4, 5]))\n",
+            "print(prod([1.0, 2.0, 3.0, 4.0, 5.0]))\n",
+            "print(prod([1, 2, 3, 4.0, 5.0]), prod([1.0, 2.0, 3.0, 4, 5]))\n",
+            "print(prod([1, 1, 2**32, 1, 1]))\n",
+            "print(prod([1.0, 1.0, 2**32, 1, 1]))\n",
+            "print(prod([2, 3], start='ab'))\n",
+            "print(prod([2, 3], start=[1, 2]))\n",
+            "print(prod([], start={2: 3}))\n",
+            "print(prod([0, 1, 2, 3]), prod([1, 0, 2, 3]), prod([1, 2, 3, 0]))\n",
+            "print(math.isnan(prod([1, 2, 3, float('nan'), 2, 3])))\n",
+            "print(math.isnan(prod([1, 0, float('nan'), 2, 3])))\n",
+            "print(math.isnan(prod([1, float('nan'), 0, 3])))\n",
+            "print(math.isinf(prod([1, 2, 3, float('inf'), -3, 4])), prod([1, 2, 3, float('inf'), -3, 4]) < 0)\n",
+            "print(math.isinf(prod([1, 2, 3, float('-inf'), -3, 4])), prod([1, 2, 3, float('-inf'), -3, 4]) > 0)\n",
+            "print(math.isnan(prod([1, 2, 0, float('inf'), -3, 4])))\n",
+            "print(math.isnan(prod([1, 2, 0, float('-inf'), -3, 4])))\n",
+            "print(type(prod([1, 2, 3, 4, 5, 6])).__name__)\n",
+            "print(type(prod([1, 2.0, 3, 4, 5, 6])).__name__)"
+        ),
+        &[
+            "1 5 5040",
+            "5040 3628800",
+            "120",
+            "120.0",
+            "120.0 120.0",
+            "4294967296",
+            "4294967296.0",
+            "abababababab",
+            "[1, 2, 1, 2, 1, 2, 1, 2, 1, 2, 1, 2]",
+            "{2: 3}",
+            "0 0 0",
+            "True",
+            "True",
+            "True",
+            "True True",
+            "True True",
+            "True",
+            "True",
+            "int",
+            "float",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "prod = math.prod\n",
+            "values = [bytearray(b'a'), bytearray(b'b')]\n",
+            "for expr in [lambda: prod(), lambda: prod(42), lambda: prod(['a', 'b', 'c']), lambda: prod(['a', 'b', 'c'], start=''), lambda: prod([b'a', b'c'], start=b''), lambda: prod(values, start=bytearray(b'')), lambda: prod([[1], [2], [3]]), lambda: prod([{2: 3}]), lambda: prod([{2: 3}] * 2, start={2: 3}), lambda: prod([[1], [2], [3]], start=[]), lambda: prod([10, 20], 1), lambda: prod([1], missing=2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
 }
 
 // Adapted from CPython float numeric-protocol coverage in
@@ -12719,7 +13540,7 @@ print(ast.dump(next(iterator)))"#,
 
 #[test]
 fn cpython_ast_node_transformer_first_pass_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import ast
 print(ast.NodeVisitor.__module__, ast.NodeTransformer.__module__)
 print(issubclass(ast.NodeTransformer, ast.NodeVisitor), isinstance(ast.NodeTransformer(), ast.NodeVisitor))
@@ -12791,6 +13612,7 @@ print(type(call.func).__name__, call.func.value.id, call.func.attr, call.keyword
             "log",
             "Attribute logger log debug True",
         ],
+        8 * 1024 * 1024,
     );
 }
 
@@ -13967,6 +14789,24 @@ fn cpython_eval_builtin_subset() {
         "g = {}\nprint(eval('(x := 4)', g, g), g['x'], '__builtins__' in g)\ng = {}\nl = {}\nprint(eval('(x := 5)', g, l), 'x' in g, l['x'])\ng = {}\ntry:\n    eval('(x := 6) / 0', g, g)\nexcept ZeroDivisionError:\n    print(g['x'])",
         &["4 4 True", "5 False 5", "6"],
     );
+    assert_output_with_stack(
+        "class M:\n    def __getitem__(self, key):\n        if key == 'a':\n            return 12\n        raise KeyError\n    def keys(self):\n        return list('xyz')\nm = M()\ng = globals()\nprint(eval('a', g, m))\ntry:\n    eval('b', g, m)\nexcept NameError as error:\n    print(error.__class__.__name__)\nprint(eval('dir()', g, m))\nprint(eval('globals()', g, m) is g, eval('locals()', g, m) is m)\ntry:\n    eval('a', m)\nexcept TypeError as error:\n    print(error.__class__.__name__)\nclass A:\n    pass\ntry:\n    eval('a', g, A())\nexcept TypeError as error:\n    print(error.__class__.__name__)\nclass D(dict):\n    def __getitem__(self, key):\n        if key == 'a':\n            return 12\n        return dict.__getitem__(self, key)\n    def keys(self):\n        return list('xyz')\nd = D()\nprint(eval('a', g, d))\ntry:\n    eval('b', g, d)\nexcept NameError as error:\n    print(error.__class__.__name__)\nprint(eval('dir()', g, d))\nprint(eval('locals()', g, d) is d)\nclass SpreadSheet:\n    _cells = {}\n    def __setitem__(self, key, formula):\n        self._cells[key] = formula\n    def __getitem__(self, key):\n        return eval(self._cells[key], globals(), self)\nss = SpreadSheet()\nss['a1'] = '5'\nss['a2'] = 'a1*6'\nss['a3'] = 'a2*7'\nprint(ss['a3'])\nclass C:\n    def __getitem__(self, item):\n        raise KeyError(item)\n    def keys(self):\n        return 1\ntry:\n    eval('dir()', globals(), C())\nexcept TypeError as error:\n    print(error.__class__.__name__)",
+        &[
+            "12",
+            "NameError",
+            "['x', 'y', 'z']",
+            "True True",
+            "TypeError",
+            "TypeError",
+            "12",
+            "NameError",
+            "['x', 'y', 'z']",
+            "True",
+            "210",
+            "TypeError",
+        ],
+        16 * 1024 * 1024,
+    );
 }
 
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_exec.
@@ -14010,6 +14850,10 @@ fn cpython_exec_builtin_subset() {
     assert_output(
         "g = {}\nexec('x = 1', g, g)\nprint(g['x'], '__builtins__' in g)\ng = {}\nexec('global y\\ny = 2\\nz = 3', g, g)\nprint(g['y'], g['z'])\ng = {}\ntry:\n    exec('x = 4\\n1/0', g, g)\nexcept ZeroDivisionError:\n    print(g['x'])",
         &["1 True", "2 3", "4"],
+    );
+    assert_output(
+        "import sys\nsaved = sys.stdout\nsys.stdout = None\ntry:\n    exec('a')\nexcept NameError as error:\n    sys.stdout = saved\n    print(error.__class__.__name__, 'a' in str(error))\nfinally:\n    sys.stdout = saved",
+        &["NameError True"],
     );
 }
 
@@ -14068,6 +14912,121 @@ fn cpython_eval_exec_builtins_mapping_subset() {
     assert_output(
         "g = {}\nexec('import math\\nname = math.__name__', g)\nprint(g['name'], '__import__' in g['__builtins__'])",
         &["math True"],
+    );
+    assert_output(
+        "import builtins\nclass frozendict_error(Exception):\n    pass\nclass frozendict(dict):\n    def __setitem__(self, key, value):\n        raise frozendict_error('frozendict is readonly')\nfrozen_builtins = frozendict({'__build_class__': builtins.__build_class__, 'print': print})\nprint(hasattr(builtins, '__build_class__'))\ncode = compile(\"__builtins__['superglobal']=2; print(superglobal)\", 'test', 'exec')\ntry:\n    exec(code, {'__builtins__': frozen_builtins, '__name__': 'test'})\nexcept frozendict_error as error:\n    print('builtins-write', error.__class__.__name__, error)\nclass keyfrozendict(dict):\n    def __setitem__(self, key, value):\n        raise frozendict_error('readonly ' + key)\nnamespace = keyfrozendict({'__name__': 'test'})\ncode = compile('x=1', 'test', 'exec')\ntry:\n    exec(code, namespace)\nexcept frozendict_error as error:\n    print('globals-write', error.__class__.__name__, error)\nprint('globals-clean', 'x' in namespace)\ncode = compile('class A: pass', '', 'exec')\ntry:\n    exec(code, {'__builtins__': {}, '__name__': 'test'})\nexcept NameError as error:\n    print('no-build-class', error.__class__.__name__, '__build_class__' in str(error))\ntry:\n    exec(code, {'__builtins__': frozendict(), '__name__': 'test'})\nexcept NameError as error:\n    print('empty-frozen-build-class', error.__class__.__name__, '__build_class__' in str(error))\nns = {'__builtins__': frozen_builtins, '__name__': 'test'}\nexec(code, ns)\nprint('build-class-ok', ns['A'].__name__)",
+        &[
+            "True",
+            "builtins-write frozendict_error frozendict is readonly",
+            "globals-write frozendict_error readonly x",
+            "globals-clean False",
+            "no-build-class NameError True",
+            "empty-frozen-build-class NameError True",
+            "build-class-ok A",
+        ],
+    );
+    assert_output(
+        "from types import MappingProxyType\ncode = compile('x.__reduce__()', 'test', 'eval')\nns = {'__builtins__': MappingProxyType({'iter': iter}), 'x': iter([1, 2])}\nfunc, args, index = eval(code, ns)\nprint(func is iter, args, index)\nns = {'__builtins__': MappingProxyType({'iter': iter}), 'x': iter((1, 2))}\nfunc, args, index = eval(code, ns)\nprint(func is iter, args, index)",
+        &["True ([1, 2],) 0", "True ((1, 2),) 0"],
+    );
+    assert_output(
+        "from types import MappingProxyType\nit = iter([1, 2])\nnext(it)\nfunc, args, index = it.__reduce__()\nprint(func is iter, args, index)\ncode = compile('x.__reduce__()', 'test', 'eval')\ntry:\n    eval(code, {'__builtins__': MappingProxyType({}), 'x': iter([1, 2])})\nexcept AttributeError as error:\n    print(error.__class__.__name__, 'iter' in str(error))",
+        &["True ([1, 2],) 1", "AttributeError True"],
+    );
+    assert_output(
+        "items = [1]\nit = iter(items)\nnext(it)\ntry:\n    next(it)\nexcept StopIteration:\n    print('stopped')\nitems.append(2)\nprint(list(it))\nreduced = it.__reduce__()\nprint(len(reduced), reduced[0] is iter, reduced[1])",
+        &["stopped", "[]", "2 True ([],)"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_exec_closure.
+#[test]
+fn cpython_exec_closure_subset() {
+    assert_output(
+        "from types import CellType\n\ndef outer():\n    result = 0\n    def function_without_closures():\n        return 3 * 5\n    def make_closure_functions():\n        a = 2\n        b = 3\n        c = 5\n        def three_freevars():\n            nonlocal result\n            nonlocal a\n            nonlocal b\n            result = a * b\n        def four_freevars():\n            nonlocal result\n            nonlocal a\n            nonlocal b\n            nonlocal c\n            result = a * b * c\n        return three_freevars, four_freevars\n    three_freevars, four_freevars = make_closure_functions()\n    print(three_freevars.__code__.co_freevars)\n    print([cell.cell_contents for cell in three_freevars.__closure__])\n    exec(three_freevars.__code__, three_freevars.__globals__, closure=three_freevars.__closure__)\n    print(result)\n    my_closure = (CellType(35), CellType(72), three_freevars.__closure__[2])\n    print(isinstance(my_closure[0], CellType), my_closure[0].cell_contents)\n    exec(three_freevars.__code__, three_freevars.__globals__, closure=my_closure)\n    print(result)\n    for expr in [\n        lambda: exec(function_without_closures.__code__, function_without_closures.__globals__, closure=my_closure),\n        lambda: exec(three_freevars.__code__, three_freevars.__globals__, closure=None),\n        lambda: exec(three_freevars.__code__, three_freevars.__globals__, closure=four_freevars.__closure__),\n        lambda: exec(three_freevars.__code__, three_freevars.__globals__, closure=list(my_closure)),\n        lambda: exec('pass', closure=int),\n        lambda: exec('pass', closure=my_closure),\n        lambda: exec(three_freevars.__code__, three_freevars.__globals__, closure=(int, my_closure[1], my_closure[2])),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(error.__class__.__name__)\nouter()",
+        &[
+            "('a', 'b', 'result')",
+            "[2, 3, 0]",
+            "6",
+            "True 35",
+            "2520",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_exec_filter_syntax_warnings_by_module. CPython reads this source from
+// Lib/test/test_import/data/syntax_warnings.py; MiniPython keeps the same
+// warning-producing source inline while preserving `exec()`'s `<string>`
+// filename and globals-derived warning module behavior.
+#[test]
+fn cpython_exec_filter_syntax_warnings_by_module_subset() {
+    assert_output(
+        r##"import warnings
+
+source = r"""# Syntax warnings emitted in different parts of the Python compiler.
+
+# Parser/lexer/lexer.c
+x = 1or 0  # line 4
+
+# Parser/tokenizer/helpers.c
+'\z'  # line 7
+
+# Parser/string_parser.c
+'\400'  # line 10
+
+# _PyCompile_Warn() in Python/codegen.c
+assert(x, 'message')  # line 13
+x is 1  # line 14
+
+# _PyErr_EmitSyntaxWarning() in Python/ast_preprocess.c
+def f():
+    try:
+        pass
+    finally:
+        return 42  # line 21
+"""
+
+def show(wlog):
+    print(sorted([wm.lineno for wm in wlog]))
+    for wm in wlog:
+        print(wm.filename, wm.category is SyntaxWarning)
+
+with warnings.catch_warnings(record=True) as wlog:
+    warnings.simplefilter("error")
+    warnings.filterwarnings("always", module=r"<string>\z")
+    exec(source, {})
+show(wlog)
+
+with warnings.catch_warnings(record=True) as wlog:
+    warnings.simplefilter("error")
+    warnings.filterwarnings("always", module=r"package\.module\z")
+    warnings.filterwarnings("error", module=r"<string>")
+    exec(source, {"__name__": "package.module", "__file__": "test/test_import/data/syntax_warnings.py"})
+show(wlog)"##,
+        &[
+            "[4, 7, 10, 13, 14, 21]",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "[4, 7, 10, 13, 14, 21]",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+            "<string> True",
+        ],
     );
 }
 
@@ -16827,14 +17786,17 @@ fn cpython_isinstance_builtin_subset() {
 #[test]
 fn cpython_attribute_introspection_builtins_subset() {
     assert_output(
-        "import sys\nprint(callable(len), callable('a'), callable(callable))\ndef f():\n    pass\nprint(callable(f))\nclass C1:\n    def meth(self):\n        pass\nc = C1()\nprint(callable(C1), callable(c.meth), callable(c))\nc.__call__ = lambda self: 0\nprint(callable(c))\nclass C2:\n    def __call__(self, value):\n        return value + 1\nc2 = C2()\nprint(callable(c2), c2(4))\nc2.__call__ = None\nprint(callable(c2), c2(5))\nsetattr(sys, 'spam', 1)\nprint(getattr(sys, 'spam'), hasattr(sys, 'spam'))\ndelattr(sys, 'spam')\nprint(hasattr(sys, 'spam'), getattr(sys, 'spam', 'missing'))\nclass Box:\n    pass\nbox = Box()\nsetattr(box, 'value', 3)\nprint(getattr(box, 'value'), hasattr(box, 'value'))\nsetattr(Box, 'label', 'box')\nprint(getattr(box, 'label'), getattr(Box, 'label'))\ndelattr(box, 'value')\nprint(hasattr(box, 'value'), getattr(box, 'value', 42))\ntry:\n    print((1).missing)\nexcept AttributeError:\n    print('caught')",
+        "import sys\nprint(callable(len), callable('a'), callable(callable))\ndef f():\n    pass\nprint(callable(f))\nclass C1:\n    def meth(self):\n        pass\nc = C1()\nprint(callable(C1), callable(c.meth), callable(c))\nc.__call__ = None\nprint(callable(c))\nc.__call__ = lambda self: 0\nprint(callable(c))\ndel c.__call__\nprint(callable(c))\nclass C2:\n    def __call__(self, value):\n        return value + 1\nc2 = C2()\nprint(callable(c2), c2(4))\nc2.__call__ = None\nprint(callable(c2), c2(5))\nclass C3(C2):\n    pass\nc3 = C3()\nprint(callable(c3), c3(6))\nsetattr(sys, 'spam', 1)\nprint(getattr(sys, 'spam'), hasattr(sys, 'spam'))\ndelattr(sys, 'spam')\nprint(hasattr(sys, 'spam'), getattr(sys, 'spam', 'missing'))\nclass Box:\n    pass\nbox = Box()\nsetattr(box, 'value', 3)\nprint(getattr(box, 'value'), hasattr(box, 'value'))\nsetattr(Box, 'label', 'box')\nprint(getattr(box, 'label'), getattr(Box, 'label'))\ndelattr(box, 'value')\nprint(hasattr(box, 'value'), getattr(box, 'value', 42))\ntry:\n    print((1).missing)\nexcept AttributeError:\n    print('caught')",
         &[
             "True False True",
             "True",
             "True True False",
             "False",
+            "False",
+            "False",
             "True 5",
             "True 6",
+            "True 7",
             "1 True",
             "False missing",
             "3 True",
@@ -16864,6 +17826,17 @@ fn cpython_attribute_introspection_builtins_subset() {
             "TypeError",
         ],
     );
+    assert_output(
+        "import sys\nprint(hasattr(sys, 'stdout'), getattr(sys, 'stdout') is sys.stdout)\nfrom sys import stdin, stderr, stdout\nprint(stdin is sys.stdin, stderr is sys.stderr, stdout is sys.stdout)\nprint(hasattr(sys, chr(0x10ffff)))\ntry:\n    getattr(sys, chr(0x10ffff))\nexcept AttributeError as error:\n    print(error.__class__.__name__)\nclass A:\n    def __getattr__(self, what):\n        raise SystemExit('exit')\nclass B:\n    def __getattr__(self, what):\n        raise ValueError('bad')\nfor obj in [A(), B()]:\n    try:\n        hasattr(obj, 'b')\n    except BaseException as error:\n        print(error.__class__.__name__, str(error))",
+        &[
+            "True True",
+            "True True True",
+            "False",
+            "AttributeError",
+            "SystemExit exit",
+            "ValueError bad",
+        ],
+    );
 }
 
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test___ne__`.
@@ -16883,6 +17856,60 @@ fn cpython_builtin_none_ne_direct_subset() {
     assert_output(
         "for expr in [lambda: None.__ne__(), lambda: None.__ne__(0, 1), lambda: object.__eq__(None), lambda: object.__ne__(None, 0, 1)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &["TypeError", "TypeError", "TypeError", "TypeError"],
+    );
+}
+
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_bool_notimplemented`.
+// `NotImplemented` is a sentinel for binary-operation dispatch and must not be
+// consumed as an ordinary truth value.
+#[test]
+fn cpython_builtin_bool_notimplemented_subset() {
+    let expected =
+        "runtime error: TypeError: NotImplemented should not be used in a boolean context";
+    assert_error("bool(NotImplemented)", expected);
+    assert_error("if NotImplemented:\n    pass", expected);
+    assert_error("not NotImplemented", expected);
+}
+
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
+#[test]
+fn cpython_builtin_construct_singletons_subset() {
+    assert_output(
+        "for const in [None, Ellipsis, NotImplemented]:\n    tp = type(const)\n    print(tp.__name__, tp() is const)",
+        &["NoneType True", "ellipsis True", "NotImplementedType True"],
+    );
+    assert_output(
+        "for const in [None, Ellipsis, NotImplemented]:\n    tp = type(const)\n    for expr in [lambda: tp(1, 2), lambda: tp(a=1, b=2)]:\n        try:\n            expr()\n        except TypeError as error:\n            print(tp.__name__, error.__class__.__name__)",
+        &[
+            "NoneType TypeError",
+            "NoneType TypeError",
+            "ellipsis TypeError",
+            "ellipsis TypeError",
+            "NotImplementedType TypeError",
+            "NotImplementedType TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_singleton_attribute_access`.
+#[test]
+fn cpython_builtin_singleton_attribute_access_subset() {
+    assert_output(
+        "for singleton in [NotImplemented, Ellipsis]:\n    print(type(singleton) is singleton.__class__)\n    print(type(singleton).__class__ is type)",
+        &["True", "True", "True", "True"],
+    );
+    assert_output(
+        "for singleton in [NotImplemented, Ellipsis]:\n    for expr in [lambda: setattr(singleton, 'prop', 1), lambda: singleton.prop]:\n        try:\n            expr()\n        except AttributeError as error:\n            print(singleton, error.__class__.__name__)\n    for expr in [lambda: setattr(type(singleton), 'prop', 1), lambda: type(singleton).prop]:\n        try:\n            expr()\n        except (AttributeError, TypeError) as error:\n            print(type(singleton).__name__, error.__class__.__name__)",
+        &[
+            "NotImplemented AttributeError",
+            "NotImplemented AttributeError",
+            "NotImplementedType TypeError",
+            "NotImplementedType AttributeError",
+            "Ellipsis AttributeError",
+            "Ellipsis AttributeError",
+            "ellipsis TypeError",
+            "ellipsis AttributeError",
+        ],
     );
 }
 
@@ -18201,6 +19228,26 @@ fn cpython_import_helper_rules_subset() {
     assert_parse_error("from sys import (path,");
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_import.
+#[test]
+fn cpython_import_builtin_subset() {
+    assert_output(
+        "for module in [__import__('sys'), __import__('time'), __import__('string'), __import__(name='sys'), __import__(name='time', level=0)]:\n    print(module.__name__)\nfor label, fn, fragment in [\n    ('missing', lambda: __import__('spamspam'), 'spamspam'),\n    ('non-str', lambda: __import__(1, 2, 3, 4), 'str'),\n    ('empty', lambda: __import__(''), 'Empty module name'),\n    ('duplicate-name', lambda: __import__('sys', name='sys'), 'name'),\n    ('null', lambda: __import__('string\\x00'), 'string'),\n]:\n    try:\n        fn()\n    except (ModuleNotFoundError, TypeError, ValueError) as error:\n        print(label, error.__class__.__name__, fragment in str(error))",
+        &[
+            "sys",
+            "time",
+            "string",
+            "sys",
+            "time",
+            "missing ModuleNotFoundError True",
+            "non-str TypeError True",
+            "empty ValueError True",
+            "duplicate-name TypeError True",
+            "null ModuleNotFoundError True",
+        ],
+    );
+}
+
 // Adapted from CPython import-system behavior around `sys.modules`: imported
 // modules are cached there, later imports reuse the cached object, and direct
 // `sys.modules` replacement is observable through import.
@@ -19333,7 +20380,7 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "match 1:\n    case object.attr:\n        print(\"attr\")",
-        "runtime error: AttributeError: <builtin object> has no attribute 'attr'",
+        "runtime error: AttributeError: <class 'object'> has no attribute 'attr'",
     );
 }
 
@@ -23725,6 +24772,23 @@ fn cpython_bytes_iterable_constructor_subset() {
 }
 
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_from_mutating_list. The constructors must consume a live list iterator:
+// clearing the source during item conversion stops after the yielded item, while
+// appending during conversion is observed until the list reaches its final size.
+#[test]
+fn cpython_bytes_mutating_list_constructor_subset() {
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    class X:\n        def __index__(self):\n            a.clear()\n            return 42\n    a = [X(), X()]\n    print(ctor(a))\n    class Y:\n        def __index__(self):\n            if len(a) < 1000:\n                a.append(self)\n            return 42\n    a = [Y()]\n    result = ctor(a)\n    print(len(result), result[:5], result[-5:])",
+        &[
+            "b'*'",
+            "1000 b'*****' b'*****'",
+            "bytearray(b'*')",
+            "1000 bytearray(b'*****') bytearray(b'*****')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
 // test_constructor_exceptions. This preserves exceptions raised by __index__
 // and __iter__ during bytes/bytearray construction instead of replacing them
 // with constructor TypeError/ValueError paths.
@@ -24016,6 +25080,17 @@ fn cpython_bytes_join_subset() {
             "TypeError",
             "TypeError",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_bytearray_join_with_misbehaving_iterator and
+// ::test_bytearray_join_with_custom_iterator.
+#[test]
+fn cpython_bytearray_join_reentrant_resize_subset() {
+    assert_output(
+        "array = bytearray(b',')\ndef iterator():\n    yield b'A'\n    yield b'B'\nprint(array.join(iterator()))\narray = bytearray(b',')\ndef resizing_iterator():\n    array.clear()\n    yield b'A'\n    yield b'B'\ntry:\n    array.join(resizing_iterator())\nexcept BufferError as error:\n    print(error.__class__.__name__)",
+        &["bytearray(b'A,B')", "BufferError"],
     );
 }
 
@@ -24485,6 +25560,79 @@ fn cpython_bytes_maketrans_translate_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_bytearray_translate and ::test_bytearray_extend_error.
+#[test]
+fn cpython_builtin_bytearray_translate_extend_errors_subset() {
+    assert_output(
+        "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
+        &["ValueError", "TypeError", "ValueError bytearray(b'')"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_mod and
+// ::test_imod. The slice covers public bytes/bytearray old-style formatting
+// semantics without asserting CPython's exact implementation error messages.
+#[test]
+fn cpython_bytes_percent_format_subset() {
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    fmt = ctor(b'hello, %b!')\n    result = fmt % b'world'\n    print(type(result).__name__, result, fmt == ctor(b'hello, %b!'))\n    fmt = ctor(b'%s / 100 = %d%%')\n    result = fmt % (b'seventy-nine', 79)\n    print(type(result).__name__, result)\n    print(ctor(b'hello,\\x00%b!') % b'world')\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc'})\n    print(ctor(b'...%(f(o)o)b...') % {b'f(o)o': b'abc', b'foo': b'bar'})\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc', b'def': 123})\n    print(ctor(b'%*b') % (5, b'abc'))\n    print(ctor(b'%*b') % (-5, b'abc'))\n    print(ctor(b'%*.*b') % (5, 2, b'abc'))\n    print(ctor(b'%*.*b') % (5, 3, b'abc'))\n    print(ctor(b'%i %*.*b') % (10, 5, 3, b'abc'))\n    print(ctor(b'%i%b %*.*b') % (10, b'3', 5, 3, b'abc'))\n    print(ctor(b'%c') % b'a')\n    print(ctor(b'%d') % 3.14)\n    holder = ctor(b'hello, %b!')\n    alias = holder\n    holder %= b'world'\n    print(type(holder).__name__, holder, alias == ctor(b'hello, %b!'))\n    if isinstance(alias, bytearray):\n        print(holder is alias, alias)\n    for expr in [lambda: ctor(b'%x') % 3.14, lambda: ctor(b'%c') % b'ab', lambda: ctor(b'%c') % 256, lambda: ctor(b'%b') % 'text']:\n        try:\n            expr()\n        except (TypeError, OverflowError, ValueError) as error:\n            print(error.__class__.__name__)",
+        &[
+            "bytes b'hello, world!' True",
+            "bytes b'seventy-nine / 100 = 79%'",
+            "b'hello,\\x00world!'",
+            "b'...abc...'",
+            "b'...abc...'",
+            "b'...abc...'",
+            "b'  abc'",
+            "b'abc  '",
+            "b'   ab'",
+            "b'  abc'",
+            "b'10   abc'",
+            "b'103   abc'",
+            "b'a'",
+            "b'3'",
+            "bytes b'hello, world!' True",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "bytearray bytearray(b'hello, world!') True",
+            "bytearray bytearray(b'seventy-nine / 100 = 79%')",
+            "bytearray(b'hello,\\x00world!')",
+            "bytearray(b'...abc...')",
+            "bytearray(b'...abc...')",
+            "bytearray(b'...abc...')",
+            "bytearray(b'  abc')",
+            "bytearray(b'abc  ')",
+            "bytearray(b'   ab')",
+            "bytearray(b'  abc')",
+            "bytearray(b'10   abc')",
+            "bytearray(b'103   abc')",
+            "bytearray(b'a')",
+            "bytearray(b'3')",
+            "bytearray bytearray(b'hello, world!') True",
+            "False bytearray(b'hello, %b!')",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_rmod.
+// The slice pins the public reflected modulo behavior for bytes and bytearray:
+// unsupported left operands raise TypeError through normal binary dispatch,
+// while direct `__rmod__` calls return NotImplemented.
+#[test]
+fn cpython_bytes_rmod_subset() {
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    try:\n        object() % ctor(b'abc')\n    except TypeError as error:\n        print(error.__class__.__name__)\n    print(ctor(b'abc').__rmod__('%r') is NotImplemented)\n    print(ctor.__rmod__(ctor(b'abc'), '%r') is NotImplemented)",
+        &["TypeError", "True", "True", "TypeError", "True", "True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest mutation behavior.
 // The slice focuses on public bytearray mutating methods, alias-visible
 // in-place updates, bytes-like and integer-iterable extension, index
@@ -24712,6 +25860,50 @@ fn cpython_bytes_bytearray_subclass_basics_subset() {
         &[
             "True True b'ab' 2 False True",
             "True True b'cd' 2 False True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BytesTest::test_bytes_blocking
+// and BaseBytesTest::test_custom. This covers bytes() dispatch to __bytes__,
+// __bytes__ taking precedence over __index__, bytes-subclass result
+// preservation, non-bytes result rejection, and __bytes__ = None blocking
+// fallback conversion for otherwise convertible objects.
+#[test]
+fn cpython_bytes_dunder_bytes_and_blocking_subset() {
+    assert_output(
+        "class B(bytes):\n    pass\nclass WithBytes:\n    def __init__(self, value):\n        self.value = value\n    def __bytes__(self):\n        return self.value\nclass IndexWithBytes:\n    def __bytes__(self):\n        return b'a'\n    def __index__(self):\n        return 42\nclass Iterable:\n    def __iter__(self):\n        return iter([0, 1, 2])\nclass IterableBlocked:\n    __bytes__ = None\n    def __iter__(self):\n        return iter([0, 1, 2])\nclass IntBlocked(int):\n    __bytes__ = None\nclass BytesSubclassBlocked(bytes):\n    __bytes__ = None\nclass BufferBlocked(bytearray):\n    __bytes__ = None\nprint(bytes(WithBytes(b'abc')))\nresult = bytes(WithBytes(B(b'abc')))\nprint(type(result).__name__, result == b'abc')\nprint(bytes(IndexWithBytes()))\nprint(bytes(Iterable()))\nprint(bytes(3), bytes(b'ab'), bytes(bytearray(b'ab')))\nfor expr in [\n    lambda: bytes(WithBytes(bytearray(b'abc'))),\n    lambda: bytes(WithBytes('abc')),\n    lambda: bytes(WithBytes(None)),\n    lambda: bytes(IterableBlocked()),\n    lambda: bytes(IntBlocked(3)),\n    lambda: bytes(BytesSubclassBlocked(b'ab')),\n    lambda: bytes(BufferBlocked(b'ab')),\n    lambda: bytearray(WithBytes(b'abc')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "b'abc'",
+            "B True",
+            "b'a'",
+            "b'\\x00\\x01\\x02'",
+            "b'\\x00\\x00\\x00' b'ab' b'ab'",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BytesTest::test_getitem_error
+// and ByteArrayTest::{test_getitem_error,test_setitem_error,test_nohash}.
+// This pins the public TypeError messages for invalid bytes/bytearray
+// subscript indices and bytearray's unhashable status.
+#[test]
+fn cpython_bytes_bytearray_index_error_and_hash_subset() {
+    assert_output(
+        "for name, expr in [\n    ('bytes-getitem', lambda: b'python'['a']),\n    ('bytearray-getitem', lambda: bytearray(b'python')['a']),\n    ('bytearray-hash', lambda: hash(bytearray())),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(name, str(error))\nb = bytearray(b'python')\ntry:\n    b['a'] = 'python'\nexcept TypeError as error:\n    print('bytearray-setitem', str(error))",
+        &[
+            "bytes-getitem byte indices must be integers or slices, not str",
+            "bytearray-getitem bytearray indices must be integers or slices, not str",
+            "bytearray-hash unhashable type: 'bytearray'",
+            "bytearray-setitem bytearray indices must be integers or slices, not str",
         ],
     );
 }
@@ -25625,8 +26817,21 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
         &["3 x 1.2"],
     );
     assert_output(
+        "print(format(17**13, ''), format(17**13) == str(17**13))\nprint(format(1.0, ''), format(3.1415e104, ''), format(-3.1415e104, ''))\nprint(format(3.1415e-104, ''), format(-3.1415e-104, ''))\nprint(format(object, ''), format(object) == str(object), format(None, ''), format(None) == str(None))",
+        &[
+            "9904578032905937 True",
+            "1.0 3.1415e+104 -3.1415e+104",
+            "3.1415e-104 -3.1415e-104",
+            "<class 'object'> True None True",
+        ],
+    );
+    assert_output(
         "class CustomFormat:\n    def __format__(self, format_spec):\n        return format_spec\nprint(f'{CustomFormat():abc}')\nprint(format(CustomFormat(), 'xyz'))",
         &["abc", "xyz"],
+    );
+    assert_output(
+        "class A(object):\n    def __init__(self, x):\n        self.x = x\n    def __format__(self, format_spec):\n        return str(self.x) + format_spec\nclass DerivedFromA(A):\n    pass\nclass Simple(object):\n    pass\nclass DerivedFromSimple(Simple):\n    def __init__(self, x):\n        self.x = x\n    def __format__(self, format_spec):\n        return str(self.x) + format_spec\nclass DerivedFromSimple2(DerivedFromSimple):\n    pass\nprint(format(A(3), 'spec'))\nprint(format(DerivedFromA(4), 'spec'))\nprint(format(DerivedFromSimple(5), 'abc'))\nprint(format(DerivedFromSimple2(10), 'abcdef'))",
+        &["3spec", "4spec", "5abc", "10abcdef"],
     );
     assert_output(
         "class X:\n    def __init__(self):\n        self.i = 0\n    def __format__(self, spec):\n        self.i += 1\n        return str(self.i) + spec\nx = X()\nprint(f'{x} {x:!}')",
@@ -25649,6 +26854,19 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
         &["<B object> <B object>", "<B object>"],
     );
     assert_output("print(object().__format__('')[:14])", &["<object object"]);
+    assert_output(
+        "class EmptyDelegates:\n    def __format__(self, fmt_str):\n        return format('', fmt_str)\nprint(format(EmptyDelegates()), format(EmptyDelegates(), ''), format(EmptyDelegates(), 's'))",
+        &["  "],
+    );
+    assert_output(
+        "class DerivedFromStr(str):\n    pass\nspec = DerivedFromStr('10')\nprint(str(spec), repr(spec), len(spec), bool(spec), isinstance(spec, str), type(spec).__name__)\nprint(format(0, spec))\nclass ReceivesSpec:\n    def __format__(self, format_spec):\n        return type(format_spec).__name__ + ' ' + str(isinstance(format_spec, str)) + ' ' + repr(format_spec)\nprint(format(ReceivesSpec(), spec))\nprint(object().__format__(DerivedFromStr(''))[:14])",
+        &[
+            "10 '10' 2 True True DerivedFromStr",
+            "         0",
+            "DerivedFromStr True '10'",
+            "<object object",
+        ],
+    );
     assert_error(
         "class B:\n    pass\nprint(format(B(), 's'))",
         "runtime error: TypeError: unsupported format string passed to B.__format__",
@@ -25656,6 +26874,14 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
     assert_error(
         "print(object().__format__(3))",
         "runtime error: TypeError: object.__format__() argument 2 must be str, not int",
+    );
+    assert_output(
+        "for value in [object(), None]:\n    try:\n        object().__format__(value)\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &["TypeError", "TypeError"],
+    );
+    assert_output(
+        "try:\n    format(object(), object())\nexcept TypeError as error:\n    print(error.__class__.__name__)",
+        &["TypeError"],
     );
 }
 
@@ -25669,10 +26895,19 @@ fn cpython_chr_ord_builtin_subset() {
         &["A a", "32 65 97 255", "65 255", "0 32 255 1114111"],
     );
     assert_output(
-        "for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x110000), lambda: ord(), lambda: ord(42), lambda: ord('ab'), lambda: ord(b'ab')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "values = [0x0000ffff, 0x00010000, 0x00010001, 0x000ffffe, 0x000fffff, 0x00100000, 0x00100001, 0x0010fffe, 0x0010ffff]\nprint([ord(chr(value)) for value in values])",
+        &["[65535, 65536, 65537, 1048574, 1048575, 1048576, 1048577, 1114110, 1114111]"],
+    );
+    assert_output(
+        "for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x110000), lambda: chr(1 << 24), lambda: chr(2**32 - 1), lambda: chr(-(2**32)), lambda: chr(2**1000), lambda: chr(-(2**1000)), lambda: ord(), lambda: ord(42), lambda: ord('ab'), lambda: ord(b'ab')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         &[
             "TypeError",
             "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
             "ValueError",
             "ValueError",
             "TypeError",
@@ -25680,6 +26915,15 @@ fn cpython_chr_ord_builtin_subset() {
             "TypeError",
             "TypeError",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_cmp.
+#[test]
+fn cpython_builtin_cmp_absent_subset() {
+    assert_output(
+        "import builtins\nprint(hasattr(builtins, 'cmp'))\ntry:\n    builtins.cmp\nexcept AttributeError as error:\n    print(error.__class__.__name__)",
+        &["False", "AttributeError"],
     );
 }
 
@@ -25720,9 +26964,10 @@ fn cpython_divmod_builtin_subset() {
     );
 }
 
-// Adapted from CPython Lib/test/test_builtin.py::test_round and
-// ::test_bug_27936. This covers the core int/float and `__round__` protocol
-// behavior without pulling in Decimal/Fraction runtime dependencies.
+// Adapted from CPython Lib/test/test_builtin.py::test_round,
+// ::test_round_large, and ::test_bug_27936. This covers the core int/float,
+// `__round__` protocol behavior, and public Decimal/Fraction `round(x, None)`
+// regression shape.
 #[test]
 fn cpython_round_builtin_subset() {
     assert_output(
@@ -25750,8 +26995,21 @@ fn cpython_round_builtin_subset() {
         &["0 8 -8 int", "-10 int", "-8 int", "-8 int", "1234 1235 int"],
     );
     assert_output(
+        "import decimal, fractions\nfor x in [1234, 1234.56, decimal.Decimal('1234.56'), fractions.Fraction(123456, 100)]:\n    a = round(x, None)\n    b = round(x)\n    print(a, b, type(a).__name__, type(b).__name__, a == b, type(a) is type(b))",
+        &[
+            "1234 1234 int int True True",
+            "1235 1235 int int True True",
+            "1235 1235 int int True True",
+            "1235 1235 int int True True",
+        ],
+    );
+    assert_output(
         "print(round(1234.56, 1), round(1234.56, -1))\nprint(round(number=-8.0, ndigits=-1))",
         &["1234.6 1230.0", "-10.0"],
+    );
+    assert_output(
+        "for value in [5e15 - 1, 5e15, 5e15 + 1, 5e15 + 2, 5e15 + 3]:\n    rounded = round(value)\n    print(rounded == value, type(rounded).__name__)",
+        &["True int", "True int", "True int", "True int", "True int"],
     );
     assert_output(
         "class TestRound:\n    def __round__(self):\n        return 23\nclass TestRoundWithDigits:\n    def __round__(self, ndigits):\n        return ndigits\nprint(round(TestRound()))\nprint(round(TestRoundWithDigits(), 4))",
@@ -25821,8 +27079,8 @@ fn cpython_type_builtin_subset() {
 
 // Adapted from CPython Lib/test/test_builtin.py::TestType::test_new_type and
 // ::test_bad_args. This covers the three-argument dynamic class constructor for
-// ordinary MiniPython classes, leaving builtin subclass layout behavior for a
-// later object-model slice.
+// ordinary MiniPython classes plus the public int-subclass layout behavior that
+// CPython exercises through type('C', (B, int), ...).
 #[test]
 fn cpython_type_dynamic_class_subset() {
     assert_output(
@@ -25832,6 +27090,15 @@ fn cpython_type_dynamic_class_subset() {
     assert_output(
         "class B:\n    def ham(self):\n        return 'ham'\nC = type('C', (B,), {'spam': lambda self: 'spam'})\nx = C()\nprint(C.__name__, C.__qualname__, C.__module__)\nprint(C.__bases__[0] is B, C.__base__ is B, 'spam' in C.__dict__, 'ham' in C.__dict__)\nprint(type(x) is C, x.__class__ is C, x.ham(), x.spam())",
         &["C C __main__", "True True True False", "True True ham spam"],
+    );
+    assert_output(
+        "class B:\n    def ham(self):\n        return 'ham'\nC = type('C', (B, int), {'spam': lambda self: 'spam'})\nx = C(42)\nprint(isinstance(x, C), isinstance(x, B), isinstance(x, int), issubclass(C, int))\nprint(C.__bases__[0] is B, C.__bases__[1] is int, type(x) is C, x.__class__ is C)\nprint(x == 42, x + 1, x.ham(), x.spam())\nprint(x.bit_length(), x.as_integer_ratio(), x.to_bytes(1, 'big'))",
+        &[
+            "True True True True",
+            "True True True True",
+            "True 43 ham spam",
+            "6 (42, 1) b'*'",
+        ],
     );
     assert_output(
         "import types\nfor expr in [lambda: type('A', [], {}), lambda: type('A', (), []), lambda: type('A', (), {}, ()), lambda: type('A', (), types.MappingProxyType({})), lambda: type(b'A', (), {}), lambda: type('A\\0B', (), {}), lambda: type('A', (None,), {}), lambda: type('A', (bool,), {}), lambda: type('A', (int, str), {})]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
@@ -26038,6 +27305,250 @@ fn cpython_abs_builtin_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_neg.
+#[test]
+fn cpython_builtin_negation_sys_maxsize_subset() {
+    assert_output(
+        "import sys\nx = -sys.maxsize - 1\nprint(type(x).__name__)\nprint(isinstance(x, int))\nprint(-x == sys.maxsize + 1)\nprint(-x)",
+        &["int", "True", "True", "9223372036854775808"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_max,
+// ::test_min, and ::test_sum.
+#[test]
+fn cpython_min_max_sum_builtin_subset() {
+    assert_output(
+        "print(max('123123'), min('123123'))\nprint(max(1, 2, 3), max((1, 2, 3, 1, 2, 3)), max([1, 2, 3, 1, 2, 3]))\nprint(min(1, 2, 3), min((1, 2, 3, 1, 2, 3)), min([1, 2, 3, 1, 2, 3]))\nprint(max(1, 2, 3.0), max(1, 2.0, 3), max(1.0, 2, 3))\nprint(min(1, 2, 3.0), min(1, 2.0, 3), min(1.0, 2, 3))",
+        &["3 1", "3 3 3", "1 1 1", "3.0 3 3", "1 1 1.0"],
+    );
+    assert_output(
+        "def neg(x):\n    return -x\nprint(max((1,), key=neg), max((1, 2), key=neg), max(1, 2, key=neg))\nprint(min((1,), key=neg), min((1, 2), key=neg), min(1, 2, key=neg))\nprint(max((), default=None), max((1,), default=None), max((1, 2), default=None))\nprint(min((), default=None), min((1,), default=None), min((1, 2), default=None))\nprint(max((), default=1, key=neg), max((1, 2), default=3, key=neg))\nprint(min((), default=1, key=neg), min((1, 2), default=1, key=neg))\nprint(max((1, 2), key=None), min((1, 2), key=None))",
+        &[
+            "1 1 1", "1 2 2", "None 1 2", "None 1 1", "1 1", "1 2", "2 1",
+        ],
+    );
+    assert_output(
+        "class BadSeq:\n    def __getitem__(self, index):\n        raise ValueError('badseq')\nfor expr in [lambda: max(BadSeq()), lambda: min(BadSeq())]:\n    try:\n        expr()\n    except ValueError as error:\n        print(error.__class__.__name__, str(error))",
+        &["ValueError badseq", "ValueError badseq"],
+    );
+    assert_output(
+        "for expr in [lambda: max(), lambda: max(42), lambda: max(()), lambda: max(key=int), lambda: max(default=None), lambda: max(1, 2, default=None), lambda: max(default=None, key=int), lambda: max(1, key=int), lambda: max(1, 2, keystone=int), lambda: max(1, 2, key=int, abc=int), lambda: max(1, 2, key=1), lambda: min(), lambda: min(42), lambda: min(()), lambda: min(1, 2, default=None), lambda: min(1, 2, key=1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        &[
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+    assert_output(
+        "class Squares:\n    def __init__(self, stop):\n        self.stop = stop\n    def __getitem__(self, index):\n        if index < 0 or index >= self.stop:\n            raise IndexError\n        return index * index\nprint(sum([]), sum(list(range(2, 8))), sum(iter(list(range(2, 8)))))\nprint(sum(Squares(10)), sum(iter(Squares(10))))\nprint(sum([[1], [2], [3]], []))\nprint(sum(range(10), 1000), sum(range(10), start=1000))\nprint(sum(range(10), 2**31 - 5), sum(range(10), 2**63 - 5))\nprint(sum(i % 2 != 0 for i in range(10)))\nprint(sum((i % 2 != 0 for i in range(10)), 2**31 - 3))\nprint(sum((i % 2 != 0 for i in range(10)), 2**63 - 3))\nprint(sum([], False) is False)\nprint(sum(i / 2 for i in range(10)))\nprint(sum((i / 2 for i in range(10)), 1000), sum((i / 2 for i in range(10)), 1000.25))\nprint(sum([0.5, 1]), sum([1, 0.5]))",
+        &[
+            "0 27 27",
+            "285 285",
+            "[1, 2, 3]",
+            "1045 1045",
+            "2147483688 9223372036854775848",
+            "5",
+            "2147483650",
+            "9223372036854775810",
+            "True",
+            "22.5",
+            "1022.5 1022.75",
+            "1.5 1.5",
+        ],
+    );
+    assert_output(
+        "import math\nprint(repr(sum([-0.0])))\nprint(repr(sum([-0.0], -0.0)))\nprint(repr(sum([], -0.0)))\nprint(math.isinf(sum([float('inf'), float('inf')])))\nprint(math.isinf(sum([1e308, 1e308])))",
+        &["0.0", "-0.0", "-0.0", "True", "True"],
+    );
+    assert_output(
+        "values = [bytearray(b'a'), bytearray(b'b')]\nfor expr in [lambda: sum(), lambda: sum(42), lambda: sum(['a', 'b', 'c']), lambda: sum(['a', 'b', 'c'], ''), lambda: sum([b'a', b'c'], b''), lambda: sum(values, bytearray(b'')), lambda: sum([[1], [2], [3]]), lambda: sum([{2: 3}]), lambda: sum([{2: 3}] * 2, {2: 3}), lambda: sum([], ''), lambda: sum([], b''), lambda: sum([], bytearray()), lambda: sum([1], start=2, bad=3), lambda: sum([1], 2, start=3)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+    assert_output(
+        "for expr in [lambda: sum([1.0, 10**1000]), lambda: sum([1j, 10**1000])]:\n    try:\n        expr()\n    except OverflowError as error:\n        print(error.__class__.__name__)",
+        &["OverflowError", "OverflowError"],
+    );
+    assert_output(
+        "xs = [complex(0.25, -0.5), complex(-0.75, 0.25), complex(1.5, -0.0)]\nprint(sum(xs))\nprint(complex(sum(z.real for z in xs), sum(z.imag for z in xs)))\nprint(sum(xs) == complex(sum(z.real for z in xs), sum(z.imag for z in xs)))\nfor value in [sum([complex(1, -0.0), 1]), sum([1, complex(1, -0.0)]), sum([complex(1, -0.0), 1.0]), sum([1.0, complex(1, -0.0)])]:\n    print(value)",
+        &[
+            "(1-0.25j)",
+            "(1-0.25j)",
+            "True",
+            "(2-0j)",
+            "(2-0j)",
+            "(2-0j)",
+            "(2-0j)",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_all and
+// ::test_any.
+#[test]
+fn cpython_all_any_builtin_subset() {
+    assert_output(
+        r#"class TestFailingBool:
+    def __bool__(self):
+        raise RuntimeError('bool fail')
+
+class TestFailingIter:
+    def __iter__(self):
+        raise RuntimeError('iter fail')
+
+print(all([2, 4, 6]))
+print(all([2, None, 6]))
+print(all([]))
+print(all([0, TestFailingBool()]))
+print(any([None, None, None]))
+print(any([None, 4, None]))
+print(any([]))
+print(any([1, TestFailingBool()]))
+print(all(x > 42 for x in [50, 60]))
+print(all(x > 42 for x in [50, 40, 60]))
+print(all(x > 42 for x in [50, 40, 60, TestFailingBool()]))
+print(any(x > 42 for x in [40, 60, 30]))
+print(any(x > 42 for x in [40, 60, 30, TestFailingBool()]))
+print(any(x > 42 for x in [10, 20, 30]))"#,
+        &[
+            "True", "False", "True", "False", "False", "True", "False", "True", "True", "False",
+            "False", "True", "True", "False",
+        ],
+    );
+    assert_output(
+        r#"class TestFailingBool:
+    def __bool__(self):
+        raise RuntimeError('bool fail')
+
+class TestFailingIter:
+    def __iter__(self):
+        raise RuntimeError('iter fail')
+
+for expr in [
+    lambda: all([2, TestFailingBool(), 6]),
+    lambda: all(TestFailingIter()),
+    lambda: any([None, TestFailingBool(), 6]),
+    lambda: any(TestFailingIter()),
+]:
+    try:
+        expr()
+    except RuntimeError as error:
+        print(error.__class__.__name__, str(error))"#,
+        &[
+            "RuntimeError bool fail",
+            "RuntimeError iter fail",
+            "RuntimeError bool fail",
+            "RuntimeError iter fail",
+        ],
+    );
+    assert_output(
+        r#"for expr in [
+    lambda: all(10),
+    lambda: all(),
+    lambda: all([2, 4, 6], []),
+    lambda: any(10),
+    lambda: any(),
+    lambda: any([2, 4, 6], []),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython
+// Lib/test/test_builtin.py::BuiltinTest::test_all_any_tuple_list_set_optimization.
+// MiniPython does not expose CPython code-object internals, so this ports the
+// public semantic part: these builtin names are resolved dynamically, including
+// when the global binding and the builtins module are both overwritten.
+#[test]
+fn cpython_builtin_generator_dynamic_lookup_subset() {
+    assert_output(
+        r#"import builtins
+
+def f_all():
+    return all(x - 2 for x in [1, 2, 3])
+
+def f_any():
+    return any(x - 1 for x in [1, 2, 3])
+
+def f_tuple():
+    return tuple(2 * x for x in [1, 2, 3])
+
+def f_list():
+    return list(2 * x for x in [1, 2, 3])
+
+def f_set():
+    return set(2 * x for x in [1, 2, 3])
+
+funcs = [f_all, f_any, f_tuple, f_list, f_set]
+print(f_all(), f_any(), f_tuple(), f_list(), sorted(f_set()))
+saved = all, any, tuple, list, set
+try:
+    all = lambda x: 'all'
+    any = lambda x: 'any'
+    tuple = lambda x: 'tuple'
+    list = lambda x: 'list'
+    set = lambda x: 'set'
+    print([f() for f in funcs])
+finally:
+    all, any, tuple, list, set = saved
+saved = all, any, tuple, list, set
+try:
+    builtins.all = all = lambda x: 'all'
+    builtins.any = any = lambda x: 'any'
+    builtins.tuple = tuple = lambda x: 'tuple'
+    builtins.list = list = lambda x: 'list'
+    builtins.set = set = lambda x: 'set'
+    print([f() for f in funcs])
+finally:
+    all, any, tuple, list, set = saved
+    builtins.all, builtins.any, builtins.tuple, builtins.list, builtins.set = saved"#,
+        &[
+            "False True (2, 4, 6) [2, 4, 6] [2, 4, 6]",
+            "['all', 'any', 'tuple', 'list', 'set']",
+            "['all', 'any', 'tuple', 'list', 'set']",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_hash.
 // MiniPython checks CPython's portable hash invariants rather than randomized
 // process-specific hash values.
@@ -26059,6 +27570,10 @@ fn cpython_hash_builtin_subset() {
             "TypeError",
             "TypeError",
         ],
+    );
+    assert_output(
+        "class IntHash(int):\n    def __hash__(self):\n        return self\nvalue = IntHash(42)\nprint(hash(value) == 42, type(hash(value)).__name__)",
+        &["True int"],
     );
 }
 
@@ -26085,7 +27600,7 @@ fn cpython_len_builtin_subset() {
         &["3 0 4 4", "0 2"],
     );
     assert_output(
-        "class BadSeq:\n    def __len__(self):\n        raise ValueError\nclass InvalidLen:\n    def __len__(self):\n        return None\nclass FloatLen:\n    def __len__(self):\n        return 4.5\nclass NegativeLen:\n    def __len__(self):\n        return -10\nclass HugeLen:\n    def __len__(self):\n        return 2 ** 100\nclass HugeNegativeLen:\n    def __len__(self):\n        return -(2 ** 100)\nclass NoLenMethod:\n    pass\nfor value in [BadSeq(), InvalidLen(), FloatLen(), NegativeLen(), HugeLen(), HugeNegativeLen(), NoLenMethod()]:\n    try:\n        len(value)\n    except Exception as error:\n        print(error.__class__.__name__)\nfor expr in [lambda: len(), lambda: len([], [])]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        "import sys\nclass BadSeq:\n    def __len__(self):\n        raise ValueError\nclass InvalidLen:\n    def __len__(self):\n        return None\nclass FloatLen:\n    def __len__(self):\n        return 4.5\nclass NegativeLen:\n    def __len__(self):\n        return -10\nclass HugeLen:\n    def __len__(self):\n        return sys.maxsize + 1\nclass HugeNegativeLen:\n    def __len__(self):\n        return -sys.maxsize - 10\nclass NoLenMethod:\n    pass\nfor value in [BadSeq(), InvalidLen(), FloatLen(), NegativeLen(), HugeLen(), HugeNegativeLen(), NoLenMethod()]:\n    try:\n        len(value)\n    except Exception as error:\n        print(error.__class__.__name__)\nfor expr in [lambda: len(), lambda: len([], [])]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "ValueError",
             "TypeError",
@@ -26111,6 +27626,190 @@ fn cpython_repr_builtin_subset() {
     assert_output(
         "class Custom:\n    def __repr__(self):\n        return 'custom repr'\nclass Blocked:\n    __repr__ = None\nclass Bad:\n    def __repr__(self):\n        return 42\nprint(repr(Custom()))\nfor value in [Blocked(), Bad()]:\n    try:\n        repr(value)\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &["custom repr", "TypeError", "TypeError"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_int.py::IntTestCases::test_underscores,
+// ::test_int_base_limits, ::test_int_base_bad_types, ::test_int_base_indexable,
+// and the public base-conversion regressions in the main constructor test.
+#[test]
+fn cpython_int_constructor_base_conversion_subset() {
+    assert_output(
+        r#"print(int("1_00", 3), int("0_100"), int(b"1_00"))
+for text in ["_100", "+_100", "1__00", "100_"]:
+    try:
+        int(text)
+    except ValueError as error:
+        print(text, type(error).__name__, "invalid literal" in str(error), repr(text) in str(error))
+pow32 = [
+    ("100000000000000000000000000000000", 2),
+    ("102002022201221111211", 3),
+    ("10000000000000000", 4),
+    ("32244002423141", 5),
+    ("1550104015504", 6),
+    ("211301422354", 7),
+    ("40000000000", 8),
+    ("12068657454", 9),
+    ("4294967296", 10),
+    ("1904440554", 11),
+    ("9ba461594", 12),
+    ("535a79889", 13),
+    ("2ca5b7464", 14),
+    ("1a20dcd81", 15),
+    ("100000000", 16),
+    ("a7ffda91", 17),
+    ("704he7g4", 18),
+    ("4f5aff66", 19),
+    ("3723ai4g", 20),
+    ("281d55i4", 21),
+    ("1fj8b184", 22),
+    ("1606k7ic", 23),
+    ("mb994ag", 24),
+    ("hek2mgl", 25),
+    ("dnchbnm", 26),
+    ("b28jpdm", 27),
+    ("8pfgih4", 28),
+    ("76beigg", 29),
+    ("5qmcpqg", 30),
+    ("4q0jto4", 31),
+    ("4000000", 32),
+    ("3aokq94", 33),
+    ("2qhxjli", 34),
+    ("2br45qb", 35),
+    ("1z141z4", 36),
+]
+print("pow32", len(pow32), all(int(text, base) == 4294967296 for text, base in pow32))
+pow32_plus_1 = [
+    ("100000000000000000000000000000001", 2),
+    ("102002022201221111212", 3),
+    ("10000000000000001", 4),
+    ("32244002423142", 5),
+    ("1550104015505", 6),
+    ("211301422355", 7),
+    ("40000000001", 8),
+    ("12068657455", 9),
+    ("4294967297", 10),
+    ("1904440555", 11),
+    ("9ba461595", 12),
+    ("535a7988a", 13),
+    ("2ca5b7465", 14),
+    ("1a20dcd82", 15),
+    ("100000001", 16),
+    ("a7ffda92", 17),
+    ("704he7g5", 18),
+    ("4f5aff67", 19),
+    ("3723ai4h", 20),
+    ("281d55i5", 21),
+    ("1fj8b185", 22),
+    ("1606k7id", 23),
+    ("mb994ah", 24),
+    ("hek2mgm", 25),
+    ("dnchbnn", 26),
+    ("b28jpdn", 27),
+    ("8pfgih5", 28),
+    ("76beigh", 29),
+    ("5qmcpqh", 30),
+    ("4q0jto5", 31),
+    ("4000001", 32),
+    ("3aokq95", 33),
+    ("2qhxjlj", 34),
+    ("2br45qc", 35),
+    ("1z141z5", 36),
+]
+print("pow32plus1", len(pow32_plus_1), all(int(text, base) == 4294967297 for text, base in pow32_plus_1))
+print([int("0", base=base) for base in range(2, 37)] == [0] * 35)
+for base in [1, 37, -909, -(2**234), 2**234]:
+    try:
+        int("0", base=base)
+    except ValueError as error:
+        print("base", type(error).__name__, "base must" in str(error))
+for base in [5.5, 5.0]:
+    try:
+        int("0", base)
+    except TypeError as error:
+        print("badtype", type(error).__name__, "interpreted as an integer" in str(error))
+class MyIndexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+for base in [2**100, -(2**100), 1, 37]:
+    try:
+        int("43", MyIndexable(base))
+    except ValueError as error:
+        print("index", type(error).__name__, "base must" in str(error))"#,
+        &[
+            "9 100 100",
+            "_100 ValueError True True",
+            "+_100 ValueError True True",
+            "1__00 ValueError True True",
+            "100_ ValueError True True",
+            "pow32 35 True",
+            "pow32plus1 35 True",
+            "True",
+            "base ValueError True",
+            "base ValueError True",
+            "base ValueError True",
+            "base ValueError True",
+            "base ValueError True",
+            "badtype TypeError True",
+            "badtype TypeError True",
+            "index ValueError True",
+            "index ValueError True",
+            "index ValueError True",
+            "index ValueError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_int.py::IntTestCases::test_string_float
+// and ::test_error_message. MiniPython's safe Rust string model cannot carry
+// lone surrogate code points yet, so the surrogate-only CPython rows remain
+// outside this executable slice.
+#[test]
+fn cpython_int_constructor_error_message_subset() {
+    assert_output(
+        r#"def check(label, source, base=None):
+    try:
+        if base is None:
+            int(source)
+        else:
+            int(source, base)
+    except ValueError as error:
+        base_value = 10 if base is None else base
+        expected = "invalid literal for int() with base " + str(base_value) + ": " + repr(source)
+        print(label, type(error).__name__, error.args[0] == expected)
+
+check("float-string", "1.2")
+check("half", chr(0xbd))
+check("prefix-half", "123" + chr(0xbd))
+check("spaces", "  123 456  ")
+check("nul", "123" + chr(0))
+check("nul-base10", "123" + chr(0), 10)
+check("nul-space-base20", "123" + chr(0) + " 245", 20)
+check("nul-space-base16", "123" + chr(0) + " 245", 16)
+check("nul-base20", "123" + chr(0) + "245", 20)
+check("nul-base16", "123" + chr(0) + "245", 16)
+check("bytes-nul", b"123\x00")
+check("bytes-nul-base10", b"123\x00", 10)
+check("bytes-nonutf8", b"123\xbd")
+check("bytes-nonutf8-base10", b"123\xbd", 10)"#,
+        &[
+            "float-string ValueError True",
+            "half ValueError True",
+            "prefix-half ValueError True",
+            "spaces ValueError True",
+            "nul ValueError True",
+            "nul-base10 ValueError True",
+            "nul-space-base20 ValueError True",
+            "nul-space-base16 ValueError True",
+            "nul-base20 ValueError True",
+            "nul-base16 ValueError True",
+            "bytes-nul ValueError True",
+            "bytes-nul-base10 ValueError True",
+            "bytes-nonutf8 ValueError True",
+            "bytes-nonutf8-base10 ValueError True",
+        ],
     );
 }
 
@@ -26330,6 +28029,23 @@ fn cpython_enumerate_zip_sorted_builtin_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_zip_bad_iterable.
+// MiniPython also locks the same public exception-object identity propagation
+// for sibling iterator constructors that obtain iterators at construction time.
+#[test]
+fn cpython_bad_iterable_exception_identity_subset() {
+    assert_output(
+        "exception = TypeError('sentinel')\nclass BadIterable:\n    def __iter__(self):\n        raise exception\nfor label, fn in [('iter', lambda: iter(BadIterable())), ('enumerate', lambda: enumerate(BadIterable())), ('map', lambda: map(lambda x: x, BadIterable())), ('filter', lambda: filter(None, BadIterable())), ('zip', lambda: zip(BadIterable()))]:\n    try:\n        fn()\n    except TypeError as error:\n        print(label, error is exception, id(error) == id(exception), error.__class__.__name__, str(error))",
+        &[
+            "iter True True TypeError sentinel",
+            "enumerate True True TypeError sentinel",
+            "map True True TypeError sentinel",
+            "filter True True TypeError sentinel",
+            "zip True True TypeError sentinel",
         ],
     );
 }
@@ -27220,7 +28936,7 @@ fn cpython_set_reentrant_mutation_subset() {
 // when equality clears both participating sets.
 #[test]
 fn cpython_set_operations_mutating_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "def make_sets():\n",
             "    global enabled, set1, set2\n",
@@ -27281,6 +28997,7 @@ fn cpython_set_operations_mutating_subset() {
             "sym_update ok",
             "update ok",
         ],
+        64 * 1024 * 1024,
     );
 }
 
@@ -27427,7 +29144,7 @@ fn cpython_set_inplace_algebra_methods_subset() {
 // require another set/frozenset operand. Method forms still accept iterables.
 #[test]
 fn cpython_set_only_sets_in_binary_ops_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "def show_type_error(label, fn):\n",
             "    try:\n",
@@ -27634,6 +29351,7 @@ fn cpython_set_only_sets_in_binary_ops_subset() {
             "generator difference_update ok",
             "generator symmetric_difference_update ok",
         ],
+        64 * 1024 * 1024,
     );
 }
 
@@ -27701,6 +29419,702 @@ fn cpython_reversed_builtin_subset() {
     assert_output(
         "class BadReverse:\n    def __reversed__(self):\n        return 42\nfor expr in [lambda: reversed(), lambda: reversed([], a=1), lambda: reversed({1}), lambda: list(reversed(BadReverse()))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &["TypeError", "TypeError", "TypeError", "TypeError"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test_length_hint
+// and Lib/test/test_enumerate.py::TestReversed::test_len. This covers the public
+// operator.length_hint fallback rules plus reversed iterator length hints.
+#[test]
+fn cpython_operator_length_hint_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class X:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __length_hint__(self):\n",
+            "        if type(self.value) is type:\n",
+            "            raise self.value\n",
+            "        return self.value\n",
+            "class Y:\n",
+            "    pass\n",
+            "print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))\n",
+            "print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))\n",
+            "for value in [X('abc'), X(-2), X(LookupError)]:\n",
+            "    try:\n",
+            "        operator.length_hint(value)\n",
+            "    except (TypeError, ValueError, LookupError) as error:\n",
+            "        print(type(error).__name__)\n",
+            "try:\n",
+            "    operator.length_hint(X(2), 'abc')\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__)\n",
+            "lengths = []\n",
+            "for seq in ('hello', tuple('hello'), list('hello'), range(5)):\n",
+            "    rev = reversed(seq)\n",
+            "    lengths.append((operator.length_hint(rev), len(seq)))\n",
+            "    list(rev)\n",
+            "    lengths.append(operator.length_hint(rev))\n",
+            "print(lengths)\n",
+            "class SeqWithWeirdLen:\n",
+            "    called = False\n",
+            "    def __len__(self):\n",
+            "        if not self.called:\n",
+            "            self.called = True\n",
+            "            return 10\n",
+            "        raise ZeroDivisionError\n",
+            "    def __getitem__(self, index):\n",
+            "        return index\n",
+            "try:\n",
+            "    operator.length_hint(reversed(SeqWithWeirdLen()))\n",
+            "except ZeroDivisionError as error:\n",
+            "    print(type(error).__name__)\n",
+        ),
+        &[
+            "0 3",
+            "2 4 12 10",
+            "TypeError",
+            "ValueError",
+            "LookupError",
+            "TypeError",
+            "[(5, 5), 0, (5, 5), 0, (5, 5), 0, (5, 5), 0]",
+            "ZeroDivisionError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase comparison
+// and predicate helper tests. MiniPython uses list aliasing for identity checks
+// instead of relying on CPython string interning details.
+#[test]
+fn cpython_operator_comparison_predicate_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "print(operator.lt(1, 0), operator.lt(1, 1), operator.lt(1, 2))\n",
+            "print(operator.le(1, 0), operator.le(1, 1), operator.le(1, 2))\n",
+            "print(operator.eq(1, 0), operator.eq(1, 1), operator.eq(1, 2))\n",
+            "print(operator.ne(1, 0), operator.ne(1, 1), operator.ne(1, 2))\n",
+            "print(operator.ge(1, 0), operator.ge(1, 1), operator.ge(1, 2))\n",
+            "print(operator.gt(1, 0), operator.gt(1, 1), operator.gt(1, 2))\n",
+            "class EqBoom:\n",
+            "    def __eq__(self, other):\n",
+            "        raise SyntaxError\n",
+            "class NeBoom:\n",
+            "    def __ne__(self, other):\n",
+            "        raise SyntaxError\n",
+            "class TruthBoom:\n",
+            "    def __bool__(self):\n",
+            "        raise SyntaxError\n",
+            "for expr in [lambda: operator.eq(EqBoom(), EqBoom()), lambda: operator.ne(NeBoom(), NeBoom()), lambda: operator.truth(TruthBoom()), lambda: operator.not_(TruthBoom())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except SyntaxError as error:\n",
+            "        print(type(error).__name__)\n",
+            "print(operator.truth(5), operator.truth([0]), operator.truth(0), operator.truth([]))\n",
+            "print(operator.not_(5), operator.not_([0]), operator.not_(0), operator.not_([]))\n",
+            "a = []\n",
+            "b = a\n",
+            "c = []\n",
+            "print(operator.is_(a, b), operator.is_(a, c), operator.is_not(a, b), operator.is_not(a, c))\n",
+            "print(operator.is_none(a), operator.is_none(None), operator.is_not_none(a), operator.is_not_none(None))\n",
+            "for expr in [lambda: operator.lt(), lambda: operator.truth(), lambda: operator.is_none(), lambda: operator.is_()]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "False False True",
+            "False True True",
+            "False True False",
+            "True False True",
+            "True True False",
+            "True False False",
+            "SyntaxError",
+            "SyntaxError",
+            "SyntaxError",
+            "SyntaxError",
+            "True True False False",
+            "False False True True",
+            "True False False True",
+            "False True True False",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase arithmetic
+// and bitwise helper tests. This covers the public operator module functions
+// over MiniPython's existing arithmetic and rich special-method surfaces.
+#[test]
+fn cpython_operator_arithmetic_bitwise_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "print(operator.abs(-1), operator.abs(1))\n",
+            "print(operator.add(3, 4), operator.sub(5, 2), operator.mul(5, 2), operator.floordiv(5, 2), operator.truediv(5, 2), operator.mod(5, 2), operator.pow(3, 5))\n",
+            "print(operator.and_(0xf, 0xa), operator.or_(0xa, 0x5), operator.xor(0xf, 0xa), operator.lshift(5, 1), operator.rshift(5, 1))\n",
+            "print(operator.neg(5), operator.neg(-5), operator.pos(5), operator.pos(-5), operator.inv(4), operator.invert(4))\n",
+            "class M:\n",
+            "    def __matmul__(self, other):\n",
+            "        return other - 1\n",
+            "print(operator.matmul(M(), 42))\n",
+            "class X:\n",
+            "    def __index__(self):\n",
+            "        return 1\n",
+            "print(operator.index(X()), operator.index(0), operator.index(2))\n",
+            "for expr in [lambda: operator.abs(), lambda: operator.abs(None), lambda: operator.add(None, None), lambda: operator.sub(None, None), lambda: operator.truediv(None, None), lambda: operator.pow(1), lambda: operator.pow(1, 2, 3), lambda: operator.neg(None), lambda: operator.pos(None), lambda: operator.invert(None), lambda: operator.matmul(42, 42), lambda: operator.index(1.5)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ValueError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "1 1",
+            "7 3 10 2 2.5 1 243",
+            "10 15 5 10 2",
+            "-5 5 5 -5 -5 -5",
+            "41",
+            "1 0 2",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase sequence
+// helper tests for concat, countOf, indexOf, contains, getitem, setitem, and
+// delitem. The iterator indexOf case preserves the public partial-consumption
+// behavior instead of materializing the whole iterator.
+#[test]
+fn cpython_operator_sequence_member_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class Seq:\n",
+            "    def __init__(self, lst):\n",
+            "        self.lst = lst\n",
+            "    def __len__(self):\n",
+            "        return len(self.lst)\n",
+            "    def __getitem__(self, i):\n",
+            "        return self.lst[i]\n",
+            "    def __add__(self, other):\n",
+            "        return self.lst + other.lst\n",
+            "class BadIterable:\n",
+            "    def __iter__(self):\n",
+            "        raise ZeroDivisionError\n",
+            "print(operator.concat('py', 'thon'))\n",
+            "print(operator.concat([1, 2], [3, 4]))\n",
+            "print(operator.concat(Seq([5, 6]), Seq([7])))\n",
+            "print(operator.countOf([1, 2, 1, 3, 1, 4], 3), operator.countOf([1, 2, 1, 3, 1, 4], 5))\n",
+            "nan = float('nan')\n",
+            "print(operator.countOf([nan, nan, 21], nan), operator.countOf([{}, 1, {}, 2], {}))\n",
+            "print(operator.indexOf([4, 3, 2, 1], 3))\n",
+            "try:\n",
+            "    operator.indexOf([4, 3, 2, 1], 0)\n",
+            "except ValueError as error:\n",
+            "    print(type(error).__name__)\n",
+            "print(operator.indexOf([nan, nan, 21], nan), operator.indexOf([{}, 1, {}, 2], {}))\n",
+            "it = iter('leave the iterator at exactly the position after the match')\n",
+            "print(operator.indexOf(it, 'a'), next(it))\n",
+            "print(operator.contains(range(4), 2), operator.contains(range(4), 5))\n",
+            "a = list(range(4))\n",
+            "print(operator.getitem(a, 2))\n",
+            "print(operator.setitem(a, 0, 9), a)\n",
+            "print(operator.delitem(a, 1), a)\n",
+            "for expr in [lambda: operator.concat(), lambda: operator.concat(None, None), lambda: operator.countOf(), lambda: operator.getitem(), lambda: operator.getitem(a, None), lambda: operator.setitem(a), lambda: operator.delitem(a)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexOf(BadIterable(), 1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ZeroDivisionError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "python",
+            "[1, 2, 3, 4]",
+            "[5, 6, 7]",
+            "1 0",
+            "2 2",
+            "1",
+            "ValueError",
+            "0 0",
+            "2 v",
+            "True False",
+            "2",
+            "None [9, 1, 2, 3]",
+            "None [9, 2, 3]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase public
+// callable helper behavior for call, attrgetter, itemgetter, and methodcaller.
+// This intentionally avoids CPython-specific helper object internals.
+#[test]
+fn cpython_operator_callable_helper_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class A:\n",
+            "    pass\n",
+            "a = A()\n",
+            "a.name = 'arthur'\n",
+            "print(operator.attrgetter('name')(a))\n",
+            "a.child = A()\n",
+            "a.child.name = 'thomas'\n",
+            "print(operator.attrgetter('child.name')(a))\n",
+            "print(operator.attrgetter('name', 'child.name')(a))\n",
+            "for expr in [lambda: operator.attrgetter(), lambda: operator.attrgetter(2), lambda: operator.attrgetter('name')(), lambda: operator.attrgetter('name')(a, 'dent'), lambda: operator.attrgetter('name')(a, surname='dent')]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "for expr in [lambda: operator.attrgetter('rank')(a), lambda: operator.attrgetter('child.')(a), lambda: operator.attrgetter('.child')(a)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except AttributeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "class AttrBoom:\n",
+            "    def __getattr__(self, name):\n",
+            "        raise SyntaxError\n",
+            "try:\n",
+            "    operator.attrgetter('foo')(AttrBoom())\n",
+            "except SyntaxError as error:\n",
+            "    print(type(error).__name__)\n",
+            "data = list(map(str, range(20)))\n",
+            "print(operator.itemgetter(2)(data))\n",
+            "print(operator.itemgetter(2, 10, 5)(data))\n",
+            "d = dict(key='val')\n",
+            "print(operator.itemgetter('key')(d))\n",
+            "print(operator.itemgetter(-1)(tuple('abcde')))\n",
+            "print(operator.itemgetter(slice(2, 4))(tuple('abcde')))\n",
+            "for expr in [lambda: operator.itemgetter(), lambda: operator.itemgetter(2)(), lambda: operator.itemgetter(2)(data, 3), lambda: operator.itemgetter(2)(data, size=3), lambda: operator.itemgetter('name')('ABCDE')]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "for expr in [lambda: operator.itemgetter(10)('ABCDE'), lambda: operator.itemgetter('nonkey')(d)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (IndexError, KeyError) as error:\n",
+            "        print(type(error).__name__)\n",
+            "class GetBoom:\n",
+            "    def __getitem__(self, name):\n",
+            "        raise SyntaxError\n",
+            "try:\n",
+            "    operator.itemgetter(42)(GetBoom())\n",
+            "except SyntaxError as error:\n",
+            "    print(type(error).__name__)\n",
+            "class M:\n",
+            "    def foo(self, *args, **kwds):\n",
+            "        return args[0] + args[1]\n",
+            "    def bar(self, f=42):\n",
+            "        return f\n",
+            "    def baz(*args, **kwds):\n",
+            "        return kwds['name'], kwds['self']\n",
+            "    def return_arguments(self, *args, **kwds):\n",
+            "        return args, kwds\n",
+            "m = M()\n",
+            "print(operator.methodcaller('foo', 1, 2)(m))\n",
+            "print(operator.methodcaller('bar')(m), operator.methodcaller('bar', f=5)(m))\n",
+            "print(operator.methodcaller('baz', name='spam', self='eggs')(m))\n",
+            "print(operator.methodcaller('return_arguments', 0, 1, a=2)(m))\n",
+            "for expr in [lambda: operator.methodcaller(), lambda: operator.methodcaller(12), lambda: operator.methodcaller('foo')(), lambda: operator.methodcaller('foo', 1, 2)(m, 3), lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "def func(*args, **kwargs):\n",
+            "    return args, kwargs\n",
+            "print(operator.call(func))\n",
+            "print(operator.call(func, 0, 1))\n",
+            "print(operator.call(func, a=2, obj=3))\n",
+            "print(operator.call(func, 0, 1, a=2, obj=3))\n",
+            "print(callable(operator.attrgetter('name')), callable(operator.itemgetter(0)), callable(operator.methodcaller('bar')))\n",
+        ),
+        &[
+            "arthur",
+            "thomas",
+            "('arthur', 'thomas')",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "AttributeError",
+            "AttributeError",
+            "AttributeError",
+            "SyntaxError",
+            "2",
+            "('2', '10', '5')",
+            "val",
+            "e",
+            "('c', 'd')",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "IndexError",
+            "KeyError",
+            "SyntaxError",
+            "3",
+            "42 5",
+            "('spam', 'eggs')",
+            "((0, 1), {'a': 2})",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "((), {})",
+            "((0, 1), {})",
+            "((), {'a': 2, 'obj': 3})",
+            "((0, 1), {'a': 2, 'obj': 3})",
+            "True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test_inplace
+// and ::test_iconcat_without_getitem. This covers the public operator.i* helper
+// dispatch surface while leaving CPython's dunder-alias and signature metadata
+// tests outside this behavioral slice.
+#[test]
+fn cpython_operator_inplace_helper_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class C:\n",
+            "    def __iadd__(self, other): return 'iadd'\n",
+            "    def __iand__(self, other): return 'iand'\n",
+            "    def __ifloordiv__(self, other): return 'ifloordiv'\n",
+            "    def __ilshift__(self, other): return 'ilshift'\n",
+            "    def __imod__(self, other): return 'imod'\n",
+            "    def __imul__(self, other): return 'imul'\n",
+            "    def __imatmul__(self, other): return 'imatmul'\n",
+            "    def __ior__(self, other): return 'ior'\n",
+            "    def __ipow__(self, other): return 'ipow'\n",
+            "    def __irshift__(self, other): return 'irshift'\n",
+            "    def __isub__(self, other): return 'isub'\n",
+            "    def __itruediv__(self, other): return 'itruediv'\n",
+            "    def __ixor__(self, other): return 'ixor'\n",
+            "    def __getitem__(self, other): return 5\n",
+            "c = C()\n",
+            "print(operator.iadd(c, 5), operator.iand(c, 5), operator.ifloordiv(c, 5), operator.ilshift(c, 5))\n",
+            "print(operator.imod(c, 5), operator.imul(c, 5), operator.imatmul(c, 5), operator.ior(c, 5))\n",
+            "print(operator.ipow(c, 5), operator.irshift(c, 5), operator.isub(c, 5), operator.itruediv(c, 5), operator.ixor(c, 5))\n",
+            "print(operator.iconcat(c, c))\n",
+            "print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))\n",
+            "print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))\n",
+            "items = [1, 2]\n",
+            "alias = items\n",
+            "result = operator.iadd(items, [3])\n",
+            "print(result, items, result is alias)\n",
+            "items = [4, 5]\n",
+            "alias = items\n",
+            "result = operator.iconcat(items, [6])\n",
+            "print(result, items, result is alias)\n",
+            "print(operator.iconcat('py', 'thon'))\n",
+            "for expr in [lambda: operator.iadd(), lambda: operator.ifloordiv(1), lambda: operator.iconcat(1), lambda: operator.iadd(1, 2, extra=3), lambda: operator.iconcat(1, 0.5)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "iadd iand ifloordiv ilshift",
+            "imod imul imatmul ior",
+            "ipow irshift isub itruediv ixor",
+            "iadd",
+            "7 3 10 2 2.5 1 243",
+            "10 15 7 10 2",
+            "[1, 2, 3] [1, 2, 3] True",
+            "[4, 5, 6] [4, 5, 6] True",
+            "python",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test___all__
+// and ::test_dunder_is_original. This covers public module metadata and alias
+// identity without depending on CPython's `_operator` accelerator.
+#[test]
+fn cpython_operator_module_metadata_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "expected = ['abs', 'add', 'and_', 'attrgetter', 'call', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_none', 'is_not', 'is_not_none', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']\n",
+            "print(operator.__all__ == expected)\n",
+            "computed_all = set()\n",
+            "for name in vars(operator):\n",
+            "    if name.startswith('__'):\n",
+            "        continue\n",
+            "    value = getattr(operator, name)\n",
+            "    if getattr(value, '__module__', None) in ('operator', '_operator'):\n",
+            "        computed_all.add(name)\n",
+            "actual_all = set(operator.__all__)\n",
+            "print(len(actual_all), len(computed_all), computed_all == actual_all)\n",
+            "print(operator.add.__name__, operator.add.__module__)\n",
+            "aliases = []\n",
+            "failures = []\n",
+            "for name in dir(operator):\n",
+            "    if name.startswith('_'):\n",
+            "        continue\n",
+            "    dunder = getattr(operator, '__' + name.strip('_') + '__', None)\n",
+            "    if dunder is not None:\n",
+            "        aliases.append(name)\n",
+            "        if dunder is not getattr(operator, name):\n",
+            "            failures.append(name)\n",
+            "print(len(aliases), failures)\n",
+            "print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat, operator.__call__ is operator.call)\n",
+            "print(hasattr(operator, '__countOf__'), hasattr(operator, '__is_none__'), hasattr(operator, '__length_hint__'))\n",
+        ),
+        &[
+            "True",
+            "57 57 True",
+            "add operator",
+            "46 []",
+            "True True True True",
+            "False False False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorTestCase
+// signature coverage for attrgetter, itemgetter, and methodcaller. MiniPython
+// exposes only the public string form needed for these operator helpers rather
+// than a full inspect.Signature implementation.
+#[test]
+fn cpython_operator_signature_helper_subset() {
+    assert_output(
+        concat!(
+            "import inspect, operator\n",
+            "print(str(inspect.signature(operator.attrgetter)))\n",
+            "print(str(inspect.signature(operator.attrgetter('x', 'z', 'y'))))\n",
+            "print(str(inspect.signature(operator.itemgetter)))\n",
+            "print(str(inspect.signature(operator.itemgetter(2, 3, 5))))\n",
+            "print(str(inspect.signature(operator.methodcaller)))\n",
+            "print(str(inspect.signature(operator.methodcaller('foo', 2, y=3))))\n",
+            "for expr in [lambda: inspect.signature(), lambda: inspect.signature(1), lambda: inspect.signature(operator.add)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "(attr, /, *attrs)",
+            "(obj, /)",
+            "(item, /, *items)",
+            "(obj, /)",
+            "(name, /, *args, **kwargs)",
+            "(obj, /)",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorPickleTestCase repr
+// checks for attrgetter, itemgetter, and methodcaller. This locks the public
+// helper object repr/str shape independently of MiniPython's internal pickle
+// payload format.
+#[test]
+fn cpython_operator_helper_repr_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "helpers = [\n",
+            "    operator.attrgetter('x'),\n",
+            "    operator.attrgetter('x', 'y', 't.u.v'),\n",
+            "    operator.itemgetter(2),\n",
+            "    operator.itemgetter(2, 0, 4),\n",
+            "    operator.itemgetter(slice(2, 4)),\n",
+            "    operator.methodcaller('bar'),\n",
+            "    operator.methodcaller('foo', 1, 2),\n",
+            "    operator.methodcaller('bar', f=5),\n",
+            "    operator.methodcaller('baz', self='eggs', name='spam'),\n",
+            "]\n",
+            "for helper in helpers:\n",
+            "    print(repr(helper))\n",
+            "    print(str(helper) == repr(helper))\n",
+        ),
+        &[
+            "operator.attrgetter('x')",
+            "True",
+            "operator.attrgetter('x', 'y', 't.u.v')",
+            "True",
+            "operator.itemgetter(2)",
+            "True",
+            "operator.itemgetter(2, 0, 4)",
+            "True",
+            "operator.itemgetter(slice(2, 4, None))",
+            "True",
+            "operator.methodcaller('bar')",
+            "True",
+            "operator.methodcaller('foo', 1, 2)",
+            "True",
+            "operator.methodcaller('bar', f=5)",
+            "True",
+            "operator.methodcaller('baz', self='eggs', name='spam')",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_operator.py::OperatorPickleTestCase.
+// MiniPython uses an internal pickle payload instead of CPython's binary pickle
+// stream, so this locks the public round-trip behavior of operator helper
+// objects across every exposed protocol.
+#[test]
+fn cpython_operator_pickle_helper_subset() {
+    assert_output(
+        concat!(
+            "import operator, pickle\n",
+            "class A:\n",
+            "    pass\n",
+            "a = A()\n",
+            "a.x = 'X'\n",
+            "a.y = 'Y'\n",
+            "a.z = 'Z'\n",
+            "a.t = A()\n",
+            "a.t.u = A()\n",
+            "a.t.u.v = 'V'\n",
+            "attr_counts = [0, 0, 0]\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    for index, f in enumerate([operator.attrgetter('x'), operator.attrgetter('x', 'y', 'z'), operator.attrgetter('t.u.v')]):\n",
+            "        f2 = pickle.loads(pickle.dumps(f, proto))\n",
+            "        if repr(f2) == repr(f) and f2(a) == f(a) and f2 is not f:\n",
+            "            attr_counts[index] += 1\n",
+            "print('attrgetter', attr_counts)\n",
+            "item_counts = [0, 0]\n",
+            "data = 'ABCDE'\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    for index, f in enumerate([operator.itemgetter(2), operator.itemgetter(2, 0, 4)]):\n",
+            "        f2 = pickle.loads(pickle.dumps(f, proto))\n",
+            "        if repr(f2) == repr(f) and f2(data) == f(data) and f2 is not f:\n",
+            "            item_counts[index] += 1\n",
+            "print('itemgetter', item_counts)\n",
+            "class M:\n",
+            "    def foo(self, *args, **kwds):\n",
+            "        return args[0] + args[1]\n",
+            "    def bar(self, f=42):\n",
+            "        return f\n",
+            "    def baz(*args, **kwds):\n",
+            "        return kwds['name'], kwds['self']\n",
+            "    def capture(self, values):\n",
+            "        return values\n",
+            "m = M()\n",
+            "method_counts = [0, 0, 0, 0]\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    checks = [operator.methodcaller('bar'), operator.methodcaller('foo', 1, 2), operator.methodcaller('bar', f=5), operator.methodcaller('baz', self='eggs', name='spam')]\n",
+            "    for index, f in enumerate(checks):\n",
+            "        f2 = pickle.loads(pickle.dumps(f, proto))\n",
+            "        if f2(m) == f(m) and f2 is not f and (index == 3 or repr(f2) == repr(f)):\n",
+            "            method_counts[index] += 1\n",
+            "print('methodcaller', method_counts)\n",
+            "stored = [1]\n",
+            "f = operator.methodcaller('capture', stored)\n",
+            "payload = pickle.dumps(f)\n",
+            "stored.append(2)\n",
+            "restored = pickle.loads(payload)\n",
+            "result = restored(m)\n",
+            "result.append(3)\n",
+            "print(stored, result, result is stored)\n",
+        ),
+        &[
+            "attrgetter [6, 6, 6]",
+            "itemgetter [6, 6]",
+            "methodcaller [6, 6, 6, 6]",
+            "[1, 2] [1, 3] False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_enumerate.py::EnumerateTestCase::test_pickle,
+// TestEmpty/TestStart/TestLongStart inherited pickle coverage, and
+// TestReversed::test_pickle. MiniPython's pickle module uses an internal payload
+// rather than CPython's binary pickle byte stream, so this locks the public
+// iterator round-trip semantics across every exposed protocol.
+#[test]
+fn cpython_enumerate_reversed_pickle_subset() {
+    assert_output(
+        concat!(
+            "import pickle, sys\n",
+            "def check_pickle(iterator, expected):\n",
+            "    counts = [0, 0]\n",
+            "    for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "        payload = pickle.dumps(iterator, proto)\n",
+            "        restored = pickle.loads(payload)\n",
+            "        if type(iterator) is type(restored) and list(restored) == expected:\n",
+            "            counts[0] += 1\n",
+            "        restored = pickle.loads(payload)\n",
+            "        try:\n",
+            "            next(restored)\n",
+            "        except StopIteration:\n",
+            "            if expected[1:] == []:\n",
+            "                counts[1] += 1\n",
+            "            continue\n",
+            "        advanced = pickle.loads(pickle.dumps(restored, proto))\n",
+            "        if type(iterator) is type(advanced) and list(advanced) == expected[1:]:\n",
+            "            counts[1] += 1\n",
+            "    return counts\n",
+            "base = sys.maxsize + 1\n",
+            "print('enumerate',\n",
+            "      check_pickle(enumerate('abc'), [(0, 'a'), (1, 'b'), (2, 'c')]),\n",
+            "      check_pickle(enumerate(''), []),\n",
+            "      check_pickle(enumerate('abc', start=11), [(11, 'a'), (12, 'b'), (13, 'c')]),\n",
+            "      check_pickle(enumerate('abc', start=base), [(base, 'a'), (base + 1, 'b'), (base + 2, 'c')]))\n",
+            "reversed_counts = []\n",
+            "for data in ['abc', range(5), tuple(enumerate('abc')), range(1, 17, 5)]:\n",
+            "    reversed_counts.append(check_pickle(reversed(data), list(data)[::-1]))\n",
+            "print('reversed', reversed_counts)\n",
+        ),
+        &[
+            "enumerate [6, 6] [6, 6] [6, 6] [6, 6]",
+            "reversed [[6, 6], [6, 6], [6, 6], [6, 6]]",
+        ],
     );
 }
 
@@ -27794,6 +30208,72 @@ fn cpython_map_strict_builtin_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_filter_pickle,
+// ::test_map_pickle, ::test_map_pickle_strict, ::test_map_pickle_strict_fail,
+// ::test_zip_pickle, ::test_zip_pickle_strict, and ::test_zip_pickle_strict_fail.
+// MiniPython's pickle module uses an internal payload rather than CPython's
+// binary pickle byte stream, so this locks the public iterator round-trip
+// semantics across every exposed protocol.
+#[test]
+fn cpython_builtin_iterator_pickle_subset() {
+    assert_output(
+        concat!(
+            "import pickle\n",
+            "def filter_char(arg):\n",
+            "    return ord(arg) > ord('d')\n",
+            "def map_char(arg):\n",
+            "    return chr(ord(arg) + 1)\n",
+            "def pack(*args):\n",
+            "    return args\n",
+            "def check_iter_pickle(iterator, expected, proto):\n",
+            "    payload = pickle.dumps(iterator, proto)\n",
+            "    restored = pickle.loads(payload)\n",
+            "    ok = type(iterator) is type(restored) and list(restored) == expected\n",
+            "    restored = pickle.loads(payload)\n",
+            "    try:\n",
+            "        next(restored)\n",
+            "    except StopIteration:\n",
+            "        return ok\n",
+            "    advanced = pickle.loads(pickle.dumps(restored, proto))\n",
+            "    return ok and type(iterator) is type(advanced) and list(advanced) == expected[1:]\n",
+            "counts = [0, 0, 0, 0, 0]\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    if check_iter_pickle(filter(filter_char, 'abcdeabcde'), ['e', 'e'], proto):\n",
+            "        counts[0] += 1\n",
+            "    if check_iter_pickle(map(map_char, 'Is'), ['J', 't'], proto):\n",
+            "        counts[1] += 1\n",
+            "    if check_iter_pickle(zip((1, 2, 3), (4, 5, 6)), [(1, 4), (2, 5), (3, 6)], proto):\n",
+            "        counts[2] += 1\n",
+            "    if check_iter_pickle(map(pack, (1, 2, 3), (4, 5, 6), strict=True), [(1, 4), (2, 5), (3, 6)], proto):\n",
+            "        counts[3] += 1\n",
+            "    if check_iter_pickle(zip((1, 2, 3), (4, 5, 6), strict=True), [(1, 4), (2, 5), (3, 6)], proto):\n",
+            "        counts[4] += 1\n",
+            "print('roundtrip', counts, pickle.HIGHEST_PROTOCOL + 1)\n",
+            "def iter_error(iterable):\n",
+            "    values = []\n",
+            "    try:\n",
+            "        for item in iterable:\n",
+            "            values.append(item)\n",
+            "    except ValueError:\n",
+            "        return values\n",
+            "    return ['missing-error']\n",
+            "strict_fail = [0, 0]\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    m = map(pack, (1, 2, 3), (4, 5, 6, 7), strict=True)\n",
+            "    restored_m = pickle.loads(pickle.dumps(m, proto))\n",
+            "    expected = [(1, 4), (2, 5), (3, 6)]\n",
+            "    if iter_error(m) == expected and iter_error(restored_m) == expected:\n",
+            "        strict_fail[0] += 1\n",
+            "    z = zip((1, 2, 3), (4, 5, 6, 7), strict=True)\n",
+            "    restored_z = pickle.loads(pickle.dumps(z, proto))\n",
+            "    if iter_error(z) == expected and iter_error(restored_z) == expected:\n",
+            "        strict_fail[1] += 1\n",
+            "print('strict-fail', strict_fail)\n",
+        ),
+        &["roundtrip [6, 6, 6, 6, 6] 6", "strict-fail [6, 6]"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::test_bin, ::test_oct, and
 // ::test_hex. The custom object checks verify that these builtins use the
 // `__index__` protocol rather than plain `int()` conversion.
@@ -27841,8 +30321,16 @@ fn cpython_pow_builtin_subset() {
         &["1.0 0.0 1.0 1.0", "1024.0 1048576.0 -8.0", "0.5 -0.125"],
     );
     assert_output(
+        "sqrt_minus_one = pow(-1, 0.5)\ncube_root_minus_one = pow(-1, 1/3)\nprint(type(sqrt_minus_one).__name__, abs(sqrt_minus_one - 1j) < 1e-12)\nprint(type(cube_root_minus_one).__name__, abs(cube_root_minus_one - (0.5 + 0.8660254037844386j)) < 1e-12)\nprint(abs(((-1) ** 0.5) - 1j) < 1e-12, abs(((-1) ** (1/3)) - (0.5 + 0.8660254037844386j)) < 1e-12)",
+        &["complex True", "complex True", "True True"],
+    );
+    assert_output(
         "print(pow(2, 10, 1000), pow(-1, -2, 3), pow(5, 2, 14), pow(2, 3, -5), pow(2, -1, 5))\nprint(pow(0, exp=0), pow(base=2, exp=4), pow(base=5, exp=2, mod=14), pow(2, 3, None))",
         &["24 1 11 -2 3", "1 16 11 8"],
+    );
+    assert_output(
+        "from functools import partial\ntwopow = partial(pow, base=2)\nfifth_power = partial(pow, exp=5)\nmod10 = partial(pow, mod=10)\nprint(twopow(exp=5))\nprint(fifth_power(2))\nprint(mod10(2, 6), mod10(exp=6, base=2))\nprint(partial(pow, base=2)(base=3, exp=4))\nprint(type(twopow).__name__, callable(twopow))",
+        &["32", "32", "4 4", "81", "partial True"],
     );
     assert_output(
         "for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2, 0), lambda: pow(2.0, 3, 5), lambda: pow(2, 3.0, 5), lambda: pow(2, 3, 5.0), lambda: pow(2, -1, 4)]:\n    try:\n        expr()\n    except (TypeError, ValueError, ZeroDivisionError) as error:\n        print(error.__class__.__name__)",
@@ -28362,9 +30850,7 @@ fn cpython_format_non_ascii_fill_and_general_float_subset() {
     );
 }
 
-// Adapted from CPython Lib/test/test_format.py::test_precision. MiniPython
-// does not yet expose the `complex()` builtin, so this uses equivalent complex
-// literals while preserving the same formatting semantics.
+// Adapted from CPython Lib/test/test_format.py::test_precision.
 #[test]
 fn cpython_format_float_and_complex_precision_subset() {
     assert_output(
@@ -28372,11 +30858,11 @@ fn cpython_format_float_and_complex_precision_subset() {
         &["1", "1.200"],
     );
     assert_output(
-        "c = 1.2 + 0j\nprint(format(c, '.0f'))\nprint(format(c, '.3f'))\nprint(format(1.2 + 3.4j, '.3f'))\nprint(format(0 + 1.2j, '+.1f'))",
+        "c = complex(1.2, 0.0)\nprint(format(c, '.0f'))\nprint(format(c, '.3f'))\nprint(format(complex(1.2, 3.4), '.3f'))\nprint(format(complex(0, 1.2), '+.1f'))",
         &["1+0j", "1.200+0.000j", "1.200+3.400j", "+0.0+1.2j"],
     );
     assert_output(
-        "print(format(1.2 + 3.4j, '.3g'))\nprint(format(1.2 + 3.4j, '#.3g'))",
+        "print(format(complex(1.2, 3.4), '.3g'))\nprint(format(complex(1.2, 3.4), '#.3g'))",
         &["1.2+3.4j", "1.20+3.40j"],
     );
     assert_output(
@@ -28384,8 +30870,617 @@ fn cpython_format_float_and_complex_precision_subset() {
         &["1.2e+00", "1.2E+00", "1.2"],
     );
     assert_output(
-        "print(format(1.2 + 3.4j, '.1e'))\nprint(format(1.2 + 3.4j, '.1E'))\nprint(format(0 + 1.2j, '+.1e'))",
+        "print(format(complex(1.2, 3.4), '.1e'))\nprint(format(complex(1.2, 3.4), '.1E'))\nprint(format(complex(0, 1.2), '+.1e'))",
         &["1.2e+00+3.4e+00j", "1.2E+00+3.4E+00j", "+0.0e+00+1.2e+00j"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_format.
+// This keeps MiniPython aligned with the public complex formatting contract
+// without copying CPython's internal formatter implementation.
+#[test]
+fn cpython_complex_format_subset() {
+    assert_output(
+        "NAN = float('nan')\nINF = float('inf')\nchecks = [\n    (1+3j, ''),\n    (1.5+3.5j, ''),\n    (3j, ''),\n    (3.2+0j, '-'),\n    (3.2+0j, '<'),\n    (4/7. - 100j/7., '10'),\n    (complex(0.0, 3.0), '2'),\n    (complex(-0.0, 2.0), '3'),\n    (1+3j, 'g'),\n    (3j, 'g'),\n    (1.5+3.5j, '+g'),\n    (1.5-3.5j, ' g'),\n    (-1.5-3.5e-20j, 'g'),\n    (-1.5-3.5j, 'f'),\n    (-1.5-3.5j, '.2e'),\n    (-1.5-3.5j, '.2E'),\n    (1.5+3j, '*<20g'),\n    (1.5+3j, '^20'),\n    (1.123-3.123j, '^20.2'),\n    (1.5+3j, '20.2f'),\n    (1.5e20+3j, '^40,.2f'),\n    (1+1j, '#.0f'),\n    (1.1+1.1j, '#g'),\n    (-1.5+0.5j, '#.0e'),\n    (-1.5+0.5j, '#.0g'),\n    (complex(NAN, NAN), 'f'),\n    (complex(NAN, NAN), 'F'),\n    (complex(1, NAN), 'F'),\n    (complex(INF, -1), 'f'),\n    (complex(INF, -1), 'F'),\n]\nfor value, spec in checks:\n    print(format(value, spec))\nprint((1.5+0.5j).__format__('.1f'))\nprint('__format__' in dir(1+1j), '__format__' in dir(complex))\nprint('*{0:.3f}*'.format(3.14159+2.71828j))\nfor spec in ['b', 'c', 'd', 'o', 'x', 'X']:\n    try:\n        (1.5+0.5j).__format__(spec)\n    except ValueError as error:\n        print(spec, error.__class__.__name__, error)",
+        &[
+            "(1+3j)",
+            "(1.5+3.5j)",
+            "3j",
+            "(3.2+0j)",
+            "(3.2+0j)",
+            "(0.5714285714285714-14.285714285714286j)",
+            "3j",
+            "(-0+2j)",
+            "1+3j",
+            "0+3j",
+            "+1.5+3.5j",
+            " 1.5-3.5j",
+            "-1.5-3.5e-20j",
+            "-1.500000-3.500000j",
+            "-1.50e+00-3.50e+00j",
+            "-1.50E+00-3.50E+00j",
+            "1.5+3j**************",
+            "      (1.5+3j)      ",
+            "     (1.1-3.1j)     ",
+            "          1.50+3.00j",
+            "  150,000,000,000,000,000,000.00+3.00j  ",
+            "1.+1.j",
+            "1.10000+1.10000j",
+            "-2.e+00+5.e-01j",
+            "-2.+0.5j",
+            "nan+nanj",
+            "NAN+NANj",
+            "1.000000+NANj",
+            "inf-1.000000j",
+            "INF-1.000000j",
+            "1.5+0.5j",
+            "True True",
+            "*3.142+2.718j*",
+            "b ValueError Unknown format code 'b' for object of type 'complex'",
+            "c ValueError Unknown format code 'c' for object of type 'complex'",
+            "d ValueError Unknown format code 'd' for object of type 'complex'",
+            "o ValueError Unknown format code 'o' for object of type 'complex'",
+            "x ValueError Unknown format code 'x' for object of type 'complex'",
+            "X ValueError Unknown format code 'X' for object of type 'complex'",
+        ],
+    );
+    assert_error(
+        "(1.5+0.5j).__format__('010f')",
+        "runtime error: ValueError: Zero padding is not allowed in complex format specifier",
+    );
+    assert_error(
+        "(1.5+3j).__format__('=20')",
+        "runtime error: ValueError: '=' alignment flag is not allowed in complex format specifier",
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_constructor_from_string.
+#[test]
+fn cpython_complex_constructor_from_string_subset() {
+    assert_output(
+        "def show(text):\n    z = complex(text)\n    print(type(z) is complex, repr(z.real), repr(z.imag), z)\nfor text in ['1', '1j', '-1', '+1', '1+2j', '(1+2j)', '(1.5+4.25j)', '4.25+1J', ' ( +4.25-6J )', ' ( +4.25-J )', ' ( +4.25+j )', 'J', '( j )', '+J', '( -j)', '1-1j', '1J']:\n    show(text)",
+        &[
+            "True 1.0 0.0 (1+0j)",
+            "True 0.0 1.0 1j",
+            "True -1.0 0.0 (-1+0j)",
+            "True 1.0 0.0 (1+0j)",
+            "True 1.0 2.0 (1+2j)",
+            "True 1.0 2.0 (1+2j)",
+            "True 1.5 4.25 (1.5+4.25j)",
+            "True 4.25 1.0 (4.25+1j)",
+            "True 4.25 -6.0 (4.25-6j)",
+            "True 4.25 -1.0 (4.25-1j)",
+            "True 4.25 1.0 (4.25+1j)",
+            "True 0.0 1.0 1j",
+            "True 0.0 1.0 1j",
+            "True 0.0 1.0 1j",
+            "True 0.0 -1.0 -1j",
+            "True 1.0 -1.0 (1-1j)",
+            "True 0.0 1.0 1j",
+        ],
+    );
+    assert_output(
+        "for text in ['1e-500', '-1e-500j', '1e-500+1e-500j', '-1e-500+1e-500j', '1e-500-1e-500j', '-1e-500-1e-500j']:\n    z = complex(text)\n    print(repr(z.real), repr(z.imag))",
+        &[
+            "0.0 0.0",
+            "0.0 -0.0",
+            "0.0 0.0",
+            "-0.0 0.0",
+            "0.0 -0.0",
+            "-0.0 -0.0",
+        ],
+    );
+    assert_output(
+        "print(type(complex('1' * 500)) is complex)\nprint(complex('\\u2003(\\u20021+1j ) ') == 1 + 1j)",
+        &["True", "True"],
+    );
+    assert_output(
+        "for text in ['1+1j\\0j', '', '\\0', '3\\09', '1+', '1+1j+1j', '--', '(1+2j', '1+2j)', '1+(2j)', '(1+2j)123', 'x', '1j+2', '1e1ej', '1e++1ej', ')1+2j(', '1..1j', '1.11.1j', '1e1.1j', '\\u3053\\u3093\\u306b\\u3061\\u306f']:\n    try:\n        complex(text)\n    except ValueError as error:\n        print(error.__class__.__name__)",
+        &[
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_constructor. This covers the public exact-type constructor surface that
+// does not depend on complex subclass identity or DeprecationWarning behavior.
+#[test]
+fn cpython_complex_constructor_basic_subset() {
+    assert_output(
+        "def show(z):\n    print(type(z) is complex, repr(z.real), repr(z.imag), z)\nfor expr in [lambda: complex(), lambda: complex(10), lambda: complex(4.25), lambda: complex(4.25+0j), lambda: complex(4.25+0.5j), lambda: complex(1, 10), lambda: complex(1, 10.0), lambda: complex(1, 4.25), lambda: complex(1.0, 10), lambda: complex(4.25, 10), lambda: complex(1.0, 10.0), lambda: complex(4.25, 0.5), lambda: complex(real=4.25), lambda: complex(imag=1.5), lambda: complex(real=4.25, imag=1.5), lambda: complex(4.25, imag=1.5)]:\n    show(expr())\nfor x in [1.0, -1.0]:\n    for y in [0.0, -0.0]:\n        show(complex(x, y))\n        show(complex(y, x))",
+        &[
+            "True 0.0 0.0 0j",
+            "True 10.0 0.0 (10+0j)",
+            "True 4.25 0.0 (4.25+0j)",
+            "True 4.25 0.0 (4.25+0j)",
+            "True 4.25 0.5 (4.25+0.5j)",
+            "True 1.0 10.0 (1+10j)",
+            "True 1.0 10.0 (1+10j)",
+            "True 1.0 4.25 (1+4.25j)",
+            "True 1.0 10.0 (1+10j)",
+            "True 4.25 10.0 (4.25+10j)",
+            "True 1.0 10.0 (1+10j)",
+            "True 4.25 0.5 (4.25+0.5j)",
+            "True 4.25 0.0 (4.25+0j)",
+            "True 0.0 1.5 1.5j",
+            "True 4.25 1.5 (4.25+1.5j)",
+            "True 4.25 1.5 (4.25+1.5j)",
+            "True 1.0 0.0 (1+0j)",
+            "True 0.0 1.0 1j",
+            "True 1.0 -0.0 (1-0j)",
+            "True -0.0 1.0 (-0+1j)",
+            "True -1.0 0.0 (-1+0j)",
+            "True 0.0 -1.0 -1j",
+            "True -1.0 -0.0 (-1-0j)",
+            "True -0.0 -1.0 (-0-1j)",
+        ],
+    );
+    assert_output(
+        "for expr in [lambda: complex({}), lambda: complex(None), lambda: complex({1:2}, 0), lambda: complex('1', 0), lambda: complex(0, {1:2}), lambda: complex(0, '1')]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__, error)",
+        &[
+            "TypeError complex() argument must be a string or a number, not dict",
+            "TypeError complex() argument must be a string or a number, not NoneType",
+            "TypeError complex() argument 'real' must be a real number, not dict",
+            "TypeError complex() argument 'real' must be a real number, not str",
+            "TypeError complex() argument 'imag' must be a real number, not dict",
+            "TypeError complex() argument 'imag' must be a real number, not str",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_constructor protocol rows for exact built-in complex construction.
+#[test]
+fn cpython_complex_constructor_protocol_subset() {
+    assert_output(
+        "class WithFloat:\n    def __init__(self, value):\n        self.value = value\n    def __float__(self):\n        return self.value\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\ndef show(z):\n    print(type(z) is complex, repr(z.real), repr(z.imag), z)\nfor expr in [lambda: complex(WithFloat(4.25)), lambda: complex(WithFloat(4.25), 1.5), lambda: complex(1.5, WithFloat(4.25)), lambda: complex(WithIndex(42)), lambda: complex(WithIndex(42), 1.5), lambda: complex(1.5, WithIndex(42))]:\n    show(expr())",
+        &[
+            "True 4.25 0.0 (4.25+0j)",
+            "True 4.25 1.5 (4.25+1.5j)",
+            "True 1.5 4.25 (1.5+4.25j)",
+            "True 42.0 0.0 (42+0j)",
+            "True 42.0 1.5 (42+1.5j)",
+            "True 1.5 42.0 (1.5+42j)",
+        ],
+    );
+    assert_output(
+        "class WithComplex:\n    def __init__(self, value):\n        self.value = value\n    def __complex__(self):\n        return self.value\nclass WithFloat:\n    def __init__(self, value):\n        self.value = value\n    def __float__(self):\n        return self.value\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass MyInt:\n    def __int__(self):\n        return 42\nfor expr in [lambda: complex(WithComplex(1.5)), lambda: complex(WithComplex(1)), lambda: complex(WithComplex(None)), lambda: complex(WithComplex(4.25+0j), object()), lambda: complex(WithFloat(42)), lambda: complex(WithFloat(42), 1.5), lambda: complex(1.5, WithFloat(42)), lambda: complex(WithFloat(None)), lambda: complex(WithFloat(None), 1.5), lambda: complex(1.5, WithFloat(None)), lambda: complex(WithIndex(None)), lambda: complex(WithIndex(None), 1.5), lambda: complex(1.5, WithIndex(None)), lambda: complex(MyInt()), lambda: complex(MyInt(), 1.5), lambda: complex(1.5, MyInt())]:\n    try:\n        expr()\n    except (TypeError, OverflowError) as error:\n        print(error.__class__.__name__)",
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+    assert_output(
+        "class EvilExc(Exception):\n    pass\nclass evilcomplex:\n    def __complex__(self):\n        raise EvilExc\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\ntry:\n    complex({})\nexcept TypeError:\n    print('primed')\ntry:\n    complex(evilcomplex())\nexcept EvilExc:\n    print('EvilExc')\ntry:\n    complex(WithIndex(2**2000))\nexcept OverflowError as error:\n    print(error.__class__.__name__)",
+        &["primed", "EvilExc", "OverflowError"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_from_number for the exact built-in complex type. MiniPython does not yet
+// model complex subclass instances or complex object identity.
+#[test]
+fn cpython_complex_from_number_subset() {
+    assert_output(
+        "def eq(actual, expected):\n    print(actual == expected, type(actual) is complex)\neq(complex.from_number(3.14), 3.14+0j)\neq(complex.from_number(3.14j), 3.14j)\neq(complex.from_number(314), 314.0+0j)\nclass WithComplex:\n    def __complex__(self):\n        return 3.14+2.72j\nclass WithFloat:\n    def __float__(self):\n        return 3.14\nclass WithIndex:\n    def __index__(self):\n        return 314\neq(complex.from_number(WithComplex()), 3.14+2.72j)\neq(complex.from_number(WithFloat()), 3.14+0j)\neq(complex.from_number(WithIndex()), 314.0+0j)\nNAN = float('nan')\ncNAN = complex(NAN, NAN)\nx = complex.from_number(cNAN)\nprint(x != x, type(x) is complex)\nprint('from_number' in dir(complex), 'from_number' in dir(1+1j), (1+1j).from_number(5))",
+        &[
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True (5+0j)",
+        ],
+    );
+    assert_output(
+        "class MyInt:\n    def __init__(self, value):\n        self.value = value\n    def __int__(self):\n        return self.value\nfor expr in [lambda: complex.from_number('3.14'), lambda: complex.from_number(b'3.14'), lambda: complex.from_number(MyInt(314)), lambda: complex.from_number({}), lambda: complex.from_number()]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_conjugate
+// and ::test___complex__.
+#[test]
+fn cpython_complex_method_subset() {
+    assert_output(
+        "z = complex(5.3, 9.8)\nprint(z.conjugate())\nprint(type(z.conjugate()) is complex)\nneg_zero = complex(1, -0.0).conjugate()\nprint(neg_zero, repr(neg_zero.imag))",
+        &["(5.3-9.8j)", "True", "(1+0j) 0.0"],
+    );
+    assert_output(
+        "z = 3 + 4j\nresult = z.__complex__()\nprint(result == z, type(result) is complex)\nprint('__complex__' in dir(z), 'conjugate' in dir(z))",
+        &["True True", "True True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_getnewargs.
+#[test]
+fn cpython_complex_getnewargs_subset() {
+    assert_output(
+        "INF = float('inf')\nfor value in [1+2j, 1-2j, 2j, complex(0, INF), complex(INF, 0)]:\n    print(value.__getnewargs__())\nneg_zero = (-0j).__getnewargs__()\nprint(neg_zero == (0.0, -0.0), repr(neg_zero[1]))",
+        &[
+            "(1.0, 2.0)",
+            "(1.0, -2.0)",
+            "(0.0, 2.0)",
+            "(0.0, inf)",
+            "(inf, 0.0)",
+            "True -0.0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_hash.
+#[test]
+fn cpython_complex_hash_subset() {
+    assert_output(
+        "ok = True\nfor x in range(-30, 30):\n    ok = ok and (hash(x) == hash(complex(x, 0)))\n    y = x / 3.0\n    ok = ok and (hash(y) == hash(complex(y, 0.0)))\nprint(ok)\nz = 2000005 - 1j\nprint(hash(z) != -1, type(hash(z)).__name__)\nprint(hash(3 + 0j) == hash(3), hash(3.5 + 0j) == hash(3.5))\nprint(z.__hash__() == hash(z), '__hash__' in dir(z))",
+        &["True", "True int", "True True", "True True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_richcompare.
+#[test]
+fn cpython_complex_richcompare_subset() {
+    assert_output(
+        "import operator\nprint(complex.__eq__(1+1j, 1 << 10000) is False)\nprint(complex.__lt__(1+1j, None) is NotImplemented)\nprint(complex.__eq__(1+1j, None) is NotImplemented)\nprint(complex.__eq__(1+1j, 1+1j) is True)\nprint(complex.__eq__(1+1j, 2+2j) is False)\nprint(complex.__ne__(1+1j, 1+1j) is False)\nprint(complex.__ne__(1+1j, 2+2j) is True)\nok = True\nfor i in range(1, 100):\n    f = i / 100.0\n    ok = ok and (complex.__eq__(f+0j, f) is True)\n    ok = ok and (complex.__ne__(f+0j, f) is False)\n    ok = ok and (complex.__eq__(complex(f, f), f) is False)\n    ok = ok and (complex.__ne__(complex(f, f), f) is True)\nprint(ok)\nprint(complex.__lt__(1+1j, 2+2j) is NotImplemented)\nprint(complex.__le__(1+1j, 2+2j) is NotImplemented)\nprint(complex.__gt__(1+1j, 2+2j) is NotImplemented)\nprint(complex.__ge__(1+1j, 2+2j) is NotImplemented)\nfor op in [operator.lt, operator.le, operator.gt, operator.ge]:\n    try:\n        op(1+1j, 2+2j)\n    except TypeError as error:\n        print(error.__class__.__name__)\nprint(operator.eq(1+1j, 1+1j) is True)\nprint(operator.eq(1+1j, 2+2j) is False)\nprint(operator.ne(1+1j, 1+1j) is False)\nprint(operator.ne(1+1j, 2+2j) is True)\nprint(operator.eq(1+1j, 2.0) is False)\nprint('__eq__' in dir(1+1j), '__ne__' in dir(1+1j), '__lt__' in dir(1+1j), '__ge__' in dir(1+1j))",
+        &[
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_richcompare_boundaries.
+#[test]
+fn cpython_complex_richcompare_boundaries_subset() {
+    assert_output(
+        "ok = True\nfor power_offset in range(1, 10):\n    pow_value = 52 + power_offset\n    mult = 2 ** power_offset\n    n = 2 ** pow_value\n    for delta in range(1, 101):\n        i = n + delta\n        expected = delta % mult == 0\n        ok = ok and (complex.__eq__(complex(i, 0.0), i) is expected)\n        ok = ok and (complex.__ne__(complex(i, 0.0), i) is (not expected))\n        ok = ok and (complex.__eq__(complex(i, float(power_offset)), i) is False)\nprint(ok)\nok = True\nn = 2 ** 53\nfor delta in range(-100, 0):\n    i = n + delta\n    ok = ok and (complex.__eq__(complex(i, 0.0), i) is True)\n    ok = ok and (complex.__ne__(complex(i, 0.0), i) is False)\nprint(ok)",
+        &["True", "True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_add,
+// ::test_sub, and the stable scalar portions of ::test_mul.
+#[test]
+fn cpython_complex_add_sub_mul_subset() {
+    assert_output(
+        "def show(z):\n    print(z, repr(z.real), repr(z.imag))\nshow(1j + int(+1))\nshow(1j + int(-1))\nshow(complex(-0.0, -0.0) + (-0.0))\nshow((-0.0) + complex(-0.0, -0.0))\nshow(1j - int(+1))\nshow(1j - int(-1))\nshow(complex(-0.0, -0.0) - 0.0)\nshow(-0.0 - complex(0.0, 0.0))\nshow(complex(1, 2) - complex(2, 1))\nshow(complex(2, 1) - complex(1, 2))\nshow(1j * int(20))\nshow(1j * int(-1))",
+        &[
+            "(1+1j) 1.0 1.0",
+            "(-1+1j) -1.0 1.0",
+            "(-0-0j) -0.0 -0.0",
+            "(-0-0j) -0.0 -0.0",
+            "(-1+1j) -1.0 1.0",
+            "(1+1j) 1.0 1.0",
+            "(-0-0j) -0.0 -0.0",
+            "(-0-0j) -0.0 -0.0",
+            "(-1+1j) -1.0 1.0",
+            "(1-1j) 1.0 -1.0",
+            "20j 0.0 20.0",
+            "(-0-1j) -0.0 -1.0",
+        ],
+    );
+    assert_output(
+        "import operator\nfor expr in [lambda: operator.add(1j, 10**1000), lambda: operator.add(1j, None), lambda: operator.add(None, 1j), lambda: operator.sub(1j, 10**1000), lambda: operator.sub(1j, None), lambda: operator.sub(None, 1j), lambda: operator.mul(1j, 10**1000), lambda: operator.mul(1j, None), lambda: operator.mul(None, 1j)]:\n    try:\n        expr()\n    except (OverflowError, TypeError) as error:\n        print(error.__class__.__name__)",
+        &[
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+    assert_output(
+        "INF = float('inf')\nNAN = float('nan')\ndef show(z):\n    print(z, repr(z.real), repr(z.imag))\nfor c in [2, INF, 0, -0.0, NAN]:\n    show(complex(INF, 1) * c)\n    show(c * complex(INF, 1))",
+        &[
+            "(inf+2j) inf 2.0",
+            "(inf+2j) inf 2.0",
+            "(inf+infj) inf inf",
+            "(inf+infj) inf inf",
+            "(nan+0j) nan 0.0",
+            "(nan+0j) nan 0.0",
+            "(nan-0j) nan -0.0",
+            "(nan-0j) nan -0.0",
+            "(nan+nanj) nan nan",
+            "(nan+nanj) nan nan",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_truediv,
+// ::test_truediv_zero_division, ::test_floordiv, ::test_mod, and ::test_divmod.
+#[test]
+fn cpython_complex_division_subset() {
+    assert_output(
+        "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nsimple_real = [float(i) for i in range(-5, 6)]\nsimple_complex = [complex(x, y) for x in simple_real for y in simple_real]\nfor x in simple_complex:\n    for y in simple_complex:\n        z = x * y\n        if x:\n            ok = ok and close(z / x, y)\n        if y:\n            ok = ok and close(z / y, x)\nprint(ok)\nprint(complex.__truediv__(2+0j, 1+1j))\nprint('__truediv__' in dir(1+1j), '__truediv__' in dir(complex))",
+        &["True", "(1-1j)", "True True"],
+    );
+    assert_output(
+        "def show(z):\n    print(z, repr(z.real), repr(z.imag))\nshow((1+1j) / float(2))\nshow(float(1) / (1+2j))\nshow(float(1) / (-1+2j))\nshow(float(1) / (1-2j))\nshow(float(1) / (2+1j))\nshow(float(1) / (-2+1j))\nshow(float(1) / (2-1j))",
+        &[
+            "(0.5+0.5j) 0.5 0.5",
+            "(0.2-0.4j) 0.2 -0.4",
+            "(-0.2-0.4j) -0.2 -0.4",
+            "(0.2+0.4j) 0.2 0.4",
+            "(0.4-0.2j) 0.4 -0.2",
+            "(-0.4-0.2j) -0.4 -0.2",
+            "(0.4+0.2j) 0.4 0.2",
+        ],
+    );
+    assert_output(
+        "NAN = float('nan')\nfor denom_real, denom_imag in [(0, NAN), (NAN, 0), (NAN, NAN)]:\n    for value in [complex(0, 0) / complex(denom_real, denom_imag), float(0) / complex(denom_real, denom_imag)]:\n        print(value != value, repr(value.real), repr(value.imag))",
+        &[
+            "True nan nan",
+            "True nan nan",
+            "True nan nan",
+            "True nan nan",
+            "True nan nan",
+            "True nan nan",
+        ],
+    );
+    assert_output(
+        "import operator\nZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor a, b in ZERO_DIVISION:\n    try:\n        a / b\n    except ZeroDivisionError as error:\n        print(error.__class__.__name__)\nfor expr in [lambda: operator.truediv(1j, None), lambda: operator.truediv(None, 1j), lambda: (1+1j) // (1+0j), lambda: (1+1j) // 1.0, lambda: (1+1j) // 1, lambda: 1.0 // (1+0j), lambda: 1 // (1+0j), lambda: (1+1j) % (1+0j), lambda: (1+1j) % 1.0, lambda: (1+1j) % 1, lambda: 1.0 % (1+0j), lambda: 1 % (1+0j), lambda: divmod(1+1j, 1+0j), lambda: divmod(1+1j, 1.0), lambda: divmod(1+1j, 1), lambda: divmod(1.0, 1+0j), lambda: divmod(1, 1+0j)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_pow.
+#[test]
+fn cpython_complex_pow_subset() {
+    assert_output(
+        "def close(a, b):\n    return abs(a - b) < 1e-12\nprint(close(pow(1+1j, 0+0j), 1.0))\nprint(close(pow(0+0j, 2+0j), 0.0))\nprint(pow(0+0j, 2000+0j))\nprint(pow(0, 0+0j))\nprint(pow(-1, 0+0j))\nprint(close(pow(1j, -1), 1/1j))\nprint(close(pow(1j, 200), 1))\nprint(close(pow(1j, 0.5), 0.7071067811865476+0.7071067811865475j))\nprint(close(pow(1+1j, 1+1j), 0.2739572538301211+0.5837007587586147j))\nprint(complex.__pow__(1+1j, 2))\nprint('__pow__' in dir(1+1j), '__pow__' in dir(complex))",
+        &[
+            "True",
+            "True",
+            "0j",
+            "(1+0j)",
+            "(1+0j)",
+            "True",
+            "True",
+            "True",
+            "True",
+            "2j",
+            "True True",
+        ],
+    );
+    assert_output(
+        "for expr in [lambda: pow(0+0j, 1j), lambda: pow(0+0j, -1000)]:\n    try:\n        expr()\n    except ZeroDivisionError as error:\n        print(error.__class__.__name__, error)\nfor expr in [lambda: pow(1+1j, 1+1j, 1+1j), lambda: pow(1+1j, 1+1j, 0)]:\n    try:\n        expr()\n    except ValueError as error:\n        print(error.__class__.__name__, error)\nfor expr in [lambda: pow(1j, None), lambda: pow(None, 1j)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "ZeroDivisionError 0.0 to a negative or complex power",
+            "ZeroDivisionError 0.0 to a negative or complex power",
+            "ValueError complex modulo",
+            "ValueError complex modulo",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_pow_with_small_integer_exponents.
+#[test]
+fn cpython_complex_pow_small_integer_exponents_subset() {
+    assert_output(
+        "INF = float('inf')\nvalues = [complex(5.0, 12.0), complex(5.0e100, 12.0e100), complex(-4.0, INF), complex(INF, 0.0)]\nexponents = [-19, -5, -3, -2, -1, 0, 1, 2, 3, 5, 19]\nok = True\nfor value in values:\n    for exponent in exponents:\n        try:\n            int_pow = value ** exponent\n        except OverflowError:\n            int_pow = 'overflow'\n        try:\n            float_pow = value ** float(exponent)\n        except OverflowError:\n            float_pow = 'overflow'\n        try:\n            complex_pow = value ** complex(exponent)\n        except OverflowError:\n            complex_pow = 'overflow'\n        ok = ok and str(float_pow) == str(int_pow)\n        ok = ok and str(complex_pow) == str(int_pow)\nprint(ok)\nprint(str(1j ** 2), str(1j ** float(2)), str(1j ** complex(2)))\nprint(str(1j ** -1), str(1j ** float(-1)), str(1j ** complex(-1)))",
+        &["True", "(-1+0j) (-1+0j) (-1+0j)", "-1j -1j -1j"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_abs.
+#[test]
+fn cpython_complex_abs_subset() {
+    assert_output(
+        "ok = True\nfor x in range(-9, 9):\n    for y in range(-9, 9):\n        num = complex(x / 3.0, y / 7.0)\n        expected = (num.real ** 2 + num.imag ** 2) ** 0.5\n        ok = ok and abs(expected - abs(num)) < 1e-12\nprint(ok)\nz = 3 + 4j\nprint(z.__abs__(), complex.__abs__(z), '__abs__' in dir(z))\nDBL_MAX = 1.7976931348623157e308\ntry:\n    abs(complex(DBL_MAX, DBL_MAX))\nexcept OverflowError as error:\n    print(error.__class__.__name__, error)",
+        &[
+            "True",
+            "5.0 5.0 True",
+            "OverflowError absolute value too large",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_repr_str
+// and ::test_negative_zero_repr_str.
+#[test]
+fn cpython_complex_repr_str_subset() {
+    assert_output(
+        "INF = float('inf')\nNAN = float('nan')\ndef show(value):\n    print(repr(value), str(value))\nfor value in [1+6j, 1-6j, complex(1., INF), complex(1., -INF), complex(INF, 1), complex(-INF, INF), complex(NAN, 1), complex(1, NAN), complex(NAN, NAN), complex(-NAN, -NAN), complex(0, INF), complex(0, -INF), complex(0, NAN)]:\n    show(value)\nprint(repr(-(1+0j)) != '(-1+-0j)', str(-(1+0j)) != '(-1+-0j)')\nprint(1-6j == complex(repr(1-6j)))\nprint(1+6j == complex(repr(1+6j)))\nprint(-6j == complex(repr(-6j)))\nprint(6j == complex(repr(6j)))",
+        &[
+            "(1+6j) (1+6j)",
+            "(1-6j) (1-6j)",
+            "(1+infj) (1+infj)",
+            "(1-infj) (1-infj)",
+            "(inf+1j) (inf+1j)",
+            "(-inf+infj) (-inf+infj)",
+            "(nan+1j) (nan+1j)",
+            "(1+nanj) (1+nanj)",
+            "(nan+nanj) (nan+nanj)",
+            "(nan+nanj) (nan+nanj)",
+            "infj infj",
+            "-infj -infj",
+            "nanj nanj",
+            "True True",
+            "True",
+            "True",
+            "True",
+            "True",
+        ],
+    );
+    assert_output(
+        "def show(value):\n    print(repr(value), str(value))\nfor value in [complex(0., 1.), complex(-0., 1.), complex(0., -1.), complex(-0., -1.), complex(0., 0.), complex(0., -0.), complex(-0., 0.), complex(-0., -0.)]:\n    show(value)\nz = 3 + 4j\nprint(z.__repr__(), z.__str__(), complex.__repr__(z), complex.__str__(z))\nprint('__repr__' in dir(z), '__str__' in dir(z))",
+        &[
+            "1j 1j",
+            "(-0+1j) (-0+1j)",
+            "-1j -1j",
+            "(-0-1j) (-0-1j)",
+            "0j 0j",
+            "-0j -0j",
+            "(-0+0j) (-0+0j)",
+            "(-0-0j) (-0-0j)",
+            "(3+4j) (3+4j) (3+4j) (3+4j)",
+            "True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_pos
+// and ::test_neg.
+#[test]
+fn cpython_complex_unary_subset() {
+    assert_output(
+        "z = 1 + 6j\nprint(+z, type(+z) is complex)\nprint(-z)\nprint(z.__pos__(), z.__neg__(), complex.__pos__(z), complex.__neg__(z))\nprint('__pos__' in dir(z), '__neg__' in dir(z))",
+        &[
+            "(1+6j) True",
+            "(-1-6j)",
+            "(1+6j) (-1-6j) (1+6j) (-1-6j)",
+            "True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_overflow.
+#[test]
+fn cpython_complex_overflow_subset() {
+    assert_output(
+        "INF = float('inf')\nprint(complex('1e500') == complex(INF, 0.0))\nprint(complex('-1e500j') == complex(0.0, -INF))\nprint(complex('-1e500+1.8e308j') == complex(-INF, INF))",
+        &["True", "True", "True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_boolcontext, ::test_constructor_special_numbers, and
+// ::test_constructor_negative_nans_from_string. Subclass-specific rows remain
+// outside this exact built-in complex slice.
+#[test]
+fn cpython_complex_bool_and_special_numbers_subset() {
+    assert_output(
+        "from math import copysign\nINF = float('inf')\nNAN = float('nan')\ndef same_float(actual, expected):\n    if actual != actual and expected != expected:\n        return copysign(1.0, actual) == copysign(1.0, expected)\n    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)\nok = True\nfor x in [0.0, -0.0, INF, -INF, NAN]:\n    for y in [0.0, -0.0, INF, -INF, NAN]:\n        z = complex(x, y)\n        ok = ok and same_float(z.real, x) and same_float(z.imag, y)\nprint(ok)\nprint(bool(complex(1e-6, 1e-6)), bool(complex(0.0, 0.0)), bool(1j), (1j).__bool__(), (0j).__bool__())\nprint(copysign(1.0, complex('-nan').real), copysign(1.0, complex('-nanj').imag), copysign(1.0, complex('-nan-nanj').real), copysign(1.0, complex('-nan-nanj').imag))",
+        &["True", "True False True True False", "-1.0 -1.0 -1.0 -1.0"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_underscores,
+// ::test_plus_minus_0j, ::test_negated_imaginary_literal, and
+// ::test_repr_roundtrip.
+#[test]
+fn cpython_complex_string_underscore_and_literal_subset() {
+    assert_output(
+        "for lit in ['1_000', '1_000j', '1_0+2_0j', '1_0e+2_0', '.1_0', '1_0.5_0', '1_0e-2_0j']:\n    print(lit, complex(lit) == complex(lit.replace('_', '')))\nfor lit in ['1__0', '1_', '1_.0', '1._0', '1e_1', '1e+_1', '1_j']:\n    try:\n        complex(lit)\n    except ValueError as error:\n        print(lit, error.__class__.__name__)\nz1, z2 = 0j, -0j\nprint(repr(z1.imag), repr(z2.imag))\nfor z in [-0j, -7j, -1e1000j]:\n    print(repr(z.real), repr(z.imag))",
+        &[
+            "1_000 True",
+            "1_000j True",
+            "1_0+2_0j True",
+            "1_0e+2_0 True",
+            ".1_0 True",
+            "1_0.5_0 True",
+            "1_0e-2_0j True",
+            "1__0 ValueError",
+            "1_ ValueError",
+            "1_.0 ValueError",
+            "1._0 ValueError",
+            "1e_1 ValueError",
+            "1e+_1 ValueError",
+            "1_j ValueError",
+            "0.0 -0.0",
+            "-0.0 -0.0",
+            "-0.0 -7.0",
+            "-0.0 -inf",
+        ],
+    );
+    assert_output(
+        "from math import copysign\nINF = float('inf')\nNAN = float('nan')\ndef same_roundtrip_float(actual, expected):\n    if actual != actual and expected != expected:\n        return True\n    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)\nvals = [0.0, 1e-500, 1e-315, 1e-200, 0.0123, 3.1415, 1e50, INF, NAN]\nvals = vals + [-value for value in vals]\nok = True\nfor x in vals:\n    for y in vals:\n        z = complex(x, y)\n        roundtrip = complex(repr(z))\n        ok = ok and same_roundtrip_float(z.real, roundtrip.real) and same_roundtrip_float(z.imag, roundtrip.imag)\nprint(ok)\ninf = float('inf')\nnan = float('nan')\ninfj = complex(0.0, inf)\nnanj = complex(0.0, nan)\nok = True\nfor x in vals:\n    for y in vals:\n        z = complex(x, y)\n        roundtrip = eval(repr(z))\n        ok = ok and same_roundtrip_float(0.0 + z.real, 0.0 + roundtrip.real) and same_roundtrip_float(0.0 + z.imag, 0.0 + roundtrip.imag)\nprint(ok)",
+        &["True", "True"],
     );
 }
 
@@ -29621,6 +32716,107 @@ fn cpython_collections_abc_mapping_mixin_views_subset() {
             "['red'] ['blue'] [('red', 5)] True False",
             "True ['orange', 'red'] ['blue', 'red'] [5, 7] [('blue', 7), ('red', 5)]",
             "[('orange', 3), ('red', 5)] [('blue', 7), ('green', 9), ('red', 5)]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_collections.py::
+// TestCollectionABCs::test_MutableMapping_subclass. UserDict view objects should
+// satisfy the same ABC relationships as mapping views, and view set operations
+// should return eager set snapshots that are not affected by later mutations.
+#[test]
+fn cpython_collections_abc_userdict_view_snapshot_subset() {
+    assert_output(
+        concat!(
+            "from collections import UserDict\n",
+            "from collections.abc import Collection, ItemsView, KeysView, Set, ValuesView\n",
+            "mymap = UserDict()\n",
+            "mymap['red'] = 5\n",
+            "keys = mymap.keys()\n",
+            "values = mymap.values()\n",
+            "items = mymap.items()\n",
+            "print(isinstance(keys, Set), isinstance(keys, KeysView))\n",
+            "print(isinstance(values, Collection), isinstance(values, ValuesView))\n",
+            "print(isinstance(items, Set), isinstance(items, ItemsView))\n",
+            "z = mymap.keys() | {'orange'}\n",
+            "print(isinstance(z, set), sorted(z))\n",
+            "mymap['blue'] = 7\n",
+            "print(sorted(z))\n",
+            "mymap = UserDict()\n",
+            "mymap['red'] = 5\n",
+            "z = mymap.items() | {('orange', 3)}\n",
+            "print(isinstance(z, set), sorted(z))\n",
+            "mymap['blue'] = 7\n",
+            "print(sorted(z))"
+        ),
+        &[
+            "True True",
+            "True True",
+            "True True",
+            "True ['orange', 'red']",
+            "['orange', 'red']",
+            "True [('orange', 3), ('red', 5)]",
+            "[('orange', 3), ('red', 5)]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_collections.py::
+// TestCollectionABCs::test_issue26915. Container membership and Sequence
+// mixins check object identity before equality, including for NaN floats whose
+// direct equality remains false.
+#[test]
+fn cpython_collections_abc_issue26915_identity_first_object_subset() {
+    assert_output(
+        concat!(
+            "from collections.abc import ItemsView, KeysView, Sequence, ValuesView\n",
+            "class NeverEq:\n",
+            "    def __eq__(self, other):\n",
+            "        raise ValueError('never')\n",
+            "class CustomSequence(Sequence):\n",
+            "    def __init__(self, seq):\n",
+            "        self._seq = seq\n",
+            "    def __getitem__(self, index):\n",
+            "        return self._seq[index]\n",
+            "    def __len__(self):\n",
+            "        return len(self._seq)\n",
+            "nan = float('nan')\n",
+            "other_nan = float('nan')\n",
+            "obj = NeverEq()\n",
+            "seq = CustomSequence([nan, obj, nan])\n",
+            "containers = [seq, ItemsView({1: nan, 2: obj}), KeysView({1: nan, 2: obj}), ValuesView({1: nan, 2: obj})]\n",
+            "print(nan == nan, nan is nan, nan is other_nan)\n",
+            "for container in containers:\n",
+            "    row = []\n",
+            "    for elem in container:\n",
+            "        try:\n",
+            "            row.append(elem in container)\n",
+            "        except Exception as error:\n",
+            "            row.append(error.__class__.__name__)\n",
+            "    print(row)\n",
+            "print(seq.index(nan))\n",
+            "print(seq.index(obj))\n",
+            "print(seq.count(nan))\n",
+            "print(seq.count(obj))\n",
+            "print((1, nan) in ItemsView({1: nan}))\n",
+            "print((1, other_nan) in ItemsView({1: nan}))\n",
+            "print(nan in ValuesView({1: nan}))\n",
+            "print(other_nan in ValuesView({1: nan}))"
+        ),
+        &[
+            "False True False",
+            "[True, True, True]",
+            "[True, True]",
+            "[True, True]",
+            "[True, True]",
+            "0",
+            "1",
+            "2",
+            "1",
+            "True",
+            "False",
+            "True",
+            "False",
         ],
     );
 }
@@ -32079,8 +35275,7 @@ fn cpython_collections_abc_sequence_mixins_subset() {
 
 // Adapted from CPython Lib/test/test_collections.py::test_ByteString and
 // ::test_Buffer. MiniPython does not yet have full memoryview/buffer protocol
-// parity or runtime warning capture, so this pins the supported ABC
-// relationships and structural checks.
+// parity, so this pins the supported ABC relationships and structural checks.
 #[test]
 fn cpython_collections_abc_bytestring_buffer_subset() {
     assert_output(
@@ -32141,22 +35336,76 @@ fn cpython_collections_abc_bytestring_buffer_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::test_ByteString and
+// ::test_ByteString_attribute_access. ByteString is deprecated in CPython, and
+// public import, attribute access, isinstance checks, and subclass creation all
+// emit DeprecationWarning without changing the supported ABC relationships.
+#[test]
+fn cpython_collections_abc_bytestring_deprecation_warnings_subset() {
+    assert_output(
+        concat!(
+            "import sys, warnings\n",
+            "for module in ('collections', '_collections_abc', 'collections.abc'):\n",
+            "    sys.modules.pop(module, None)\n",
+            "with warnings.catch_warnings(record=True) as caught:\n",
+            "    warnings.simplefilter('always')\n",
+            "    from collections.abc import ByteString, Awaitable\n",
+            "print('import', len(caught), caught[0].category is DeprecationWarning, 'ByteString' in str(caught[0].message))\n",
+            "sys.modules.pop('collections.abc', None)\n",
+            "with warnings.catch_warnings(record=True) as caught:\n",
+            "    warnings.simplefilter('always')\n",
+            "    import collections.abc as abc\n",
+            "    attr = abc.ByteString\n",
+            "print('attr', len(caught), attr.__name__, caught[0].category is DeprecationWarning)\n",
+            "with warnings.catch_warnings(record=True) as caught:\n",
+            "    warnings.simplefilter('always')\n",
+            "    results = [isinstance(value, ByteString) for value in [b'', bytearray(), '', [], (), memoryview(b'')]]\n",
+            "print('instance', results, len(caught), [wm.category is DeprecationWarning for wm in caught])\n",
+            "with warnings.catch_warnings(record=True) as caught:\n",
+            "    warnings.simplefilter('always')\n",
+            "    class X(ByteString):\n",
+            "        pass\n",
+            "    class Z(ByteString, Awaitable):\n",
+            "        pass\n",
+            "print('class', issubclass(X, ByteString), issubclass(Z, Awaitable), len(caught), [wm.category is DeprecationWarning for wm in caught])",
+            "\nwith warnings.catch_warnings(record=True) as caught:\n",
+            "    warnings.simplefilter('always')\n",
+            "    C = type('C', (ByteString,), {'__getitem__': lambda self, index: 0, '__len__': lambda self: 0})\n",
+            "    ok_name = type(C()).__name__\n",
+            "    try:\n",
+            "        type('C', (ByteString,), {'__len__': lambda self: 0})()\n",
+            "    except TypeError as error:\n",
+            "        missing_getitem = '__getitem__' in str(error)\n",
+            "print('dynamic', ok_name, missing_getitem, len(caught), [wm.category is DeprecationWarning for wm in caught])",
+        ),
+        &[
+            "import 1 True True",
+            "attr 1 ByteString True",
+            "instance [True, True, False, False, False, False] 6 [True, True, True, True, True, True]",
+            "class True True 2 [True, True]",
+            "dynamic C True 2 [True, True]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::test_MutableSequence and
-// ::test_MutableSequence_mixins. MiniPython does not have deque or array.array
-// yet, so this covers the supported registered built-ins plus explicit ABC
-// subclass mixins.
+// ::test_MutableSequence_mixins. This covers the currently supported registered
+// built-ins plus explicit ABC subclass mixins.
 #[test]
 fn cpython_collections_abc_mutable_sequence_subset() {
     assert_output(
         concat!(
             "from collections.abc import MutableSequence, Sequence, Reversible\n",
             "from collections.abc import Collection, Sized, Iterable, Container\n",
+            "from collections import deque\n",
+            "import array\n",
             "non_samples = [(), '', b'', range(0), {}, set(), None, 42]\n",
             "print([isinstance(value, MutableSequence) for value in non_samples])\n",
             "print(issubclass(tuple, MutableSequence), issubclass(str, MutableSequence), issubclass(bytes, MutableSequence), issubclass(range, MutableSequence))\n",
-            "samples = [[], bytearray()]\n",
+            "samples = [[], bytearray(), deque()]\n",
             "print([isinstance(value, MutableSequence) for value in samples])\n",
             "print([issubclass(type(value), MutableSequence) for value in samples])\n",
+            "print(issubclass(array.array, MutableSequence), issubclass(str, MutableSequence))\n",
             "print(issubclass(MutableSequence, Sequence), issubclass(MutableSequence, Reversible), issubclass(MutableSequence, Collection), issubclass(MutableSequence, Sized), issubclass(MutableSequence, Iterable), issubclass(MutableSequence, Container))\n",
             "class ProtocolOnly:\n",
             "    def __len__(self):\n",
@@ -32207,8 +35456,9 @@ fn cpython_collections_abc_mutable_sequence_subset() {
         &[
             "[False, False, False, False, False, False, False, False]",
             "False False False False",
-            "[True, True]",
-            "[True, True]",
+            "[True, True, True]",
+            "[True, True, True]",
+            "True False",
             "True True True True True True",
             "False False",
             "5 3 [0, 1, 2, 3, 4]",
@@ -32335,6 +35585,44 @@ fn cpython_collections_abc_set_mutable_set_mixins_subset() {
             "[1, 3]",
             "0",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_collections.py::
+// TestCollectionABCs::test_issue16373. This pins the public behavior where Set
+// rich comparisons with a subclass returning NotImplemented fall back without
+// recursive comparison errors.
+#[test]
+fn cpython_collections_abc_set_noncomparable_comparison_subset() {
+    assert_output(
+        concat!(
+            "from collections.abc import Set\n",
+            "class MyComparableSet(Set):\n",
+            "    def __contains__(self, x):\n",
+            "        return False\n",
+            "    def __len__(self):\n",
+            "        return 0\n",
+            "    def __iter__(self):\n",
+            "        return iter([])\n",
+            "class MyNonComparableSet(Set):\n",
+            "    def __contains__(self, x):\n",
+            "        return False\n",
+            "    def __len__(self):\n",
+            "        return 0\n",
+            "    def __iter__(self):\n",
+            "        return iter([])\n",
+            "    def __le__(self, x):\n",
+            "        return NotImplemented\n",
+            "    def __lt__(self, x):\n",
+            "        return NotImplemented\n",
+            "cs = MyComparableSet()\n",
+            "ncs = MyNonComparableSet()\n",
+            "print(ncs < cs)\n",
+            "print(ncs <= cs)\n",
+            "print(ncs > cs)\n",
+            "print(ncs >= cs)"
+        ),
+        &["False", "True", "False", "True"],
     );
 }
 
@@ -32473,12 +35761,14 @@ fn cpython_collections_abc_set_real_set_interoperability_subset() {
 fn cpython_collections_abc_set_hash_matches_frozenset_subset() {
     assert_output(
         concat!(
+            "import sys\n",
             "from collections.abc import Set\n",
             "samples = [\n",
             "    (), (1,), (None,), (-1,), (0.0,), ('abc',), (1, 2, 3),\n",
             "    (10**100, 10**101), ('a', 'b', 'ab', ''), (False, True),\n",
             "    (object(), object(), object()), (float('nan'),), (frozenset(),),\n",
             "    tuple(range(1000)), tuple(x for x in range(1000) if x not in (100, 200, 300)),\n",
+            "    tuple(range(sys.maxsize - 10, sys.maxsize + 10)),\n",
             "]\n",
             "for sample in samples:\n",
             "    fs = frozenset(sample)\n",
@@ -32486,7 +35776,7 @@ fn cpython_collections_abc_set_hash_matches_frozenset_subset() {
         ),
         &[
             "True", "True", "True", "True", "True", "True", "True", "True", "True", "True", "True",
-            "True", "True", "True", "True",
+            "True", "True", "True", "True", "True",
         ],
     );
 }
@@ -33028,9 +36318,140 @@ fn cpython_collections_abc_abstract_methods_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestCollectionABCs
+// validate_abstract_methods calls. This covers direct ABC construction
+// rejection and incomplete explicit subclasses for composite ABCs without
+// copying ABCMeta's internal cache machinery.
+#[test]
+fn cpython_collections_abc_composite_abstract_methods_subset() {
+    assert_output(
+        concat!(
+            "from collections.abc import Buffer, ByteString, Mapping, MutableMapping\n",
+            "from collections.abc import MutableSequence, MutableSet, Sequence, Set\n",
+            "def show_direct(abc):\n",
+            "    try:\n",
+            "        abc()\n",
+            "    except TypeError as error:\n",
+            "        print(abc.__name__, 'direct', str(error))\n",
+            "for abc in [Set, MutableSet, Mapping, MutableMapping, Sequence, MutableSequence, ByteString, Buffer]:\n",
+            "    show_direct(abc)\n",
+            "def show(label, cls):\n",
+            "    try:\n",
+            "        obj = cls()\n",
+            "    except TypeError as error:\n",
+            "        print(label, 'ERR', str(error))\n",
+            "    else:\n",
+            "        print(label, 'OK', isinstance(obj, cls))\n",
+            "class CompleteSet(Set):\n",
+            "    def __contains__(self, x): return False\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "class MissingSet(Set):\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "show('CompleteSet', CompleteSet)\n",
+            "show('MissingSet', MissingSet)\n",
+            "class CompleteMutableSet(MutableSet):\n",
+            "    def __contains__(self, x): return False\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "    def add(self, x): pass\n",
+            "    def discard(self, x): pass\n",
+            "class MissingMutableSet(MutableSet):\n",
+            "    def __contains__(self, x): return False\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "    def add(self, x): pass\n",
+            "show('CompleteMutableSet', CompleteMutableSet)\n",
+            "show('MissingMutableSet', MissingMutableSet)\n",
+            "class CompleteMapping(Mapping):\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, key): raise KeyError(key)\n",
+            "class MissingMapping(Mapping):\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "show('CompleteMapping', CompleteMapping)\n",
+            "show('MissingMapping', MissingMapping)\n",
+            "class CompleteMutableMapping(MutableMapping):\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, key): raise KeyError(key)\n",
+            "    def __setitem__(self, key, value): pass\n",
+            "    def __delitem__(self, key): pass\n",
+            "class MissingMutableMapping(MutableMapping):\n",
+            "    def __iter__(self): return iter([])\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, key): raise KeyError(key)\n",
+            "    def __setitem__(self, key, value): pass\n",
+            "show('CompleteMutableMapping', CompleteMutableMapping)\n",
+            "show('MissingMutableMapping', MissingMutableMapping)\n",
+            "class CompleteSequence(Sequence):\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, index): raise IndexError\n",
+            "class MissingSequence(Sequence):\n",
+            "    def __len__(self): return 0\n",
+            "show('CompleteSequence', CompleteSequence)\n",
+            "show('MissingSequence', MissingSequence)\n",
+            "class CompleteMutableSequence(MutableSequence):\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, index): raise IndexError\n",
+            "    def __setitem__(self, index, value): pass\n",
+            "    def __delitem__(self, index): pass\n",
+            "    def insert(self, index, value): pass\n",
+            "class MissingMutableSequence(MutableSequence):\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, index): raise IndexError\n",
+            "    def __setitem__(self, index, value): pass\n",
+            "    def __delitem__(self, index): pass\n",
+            "show('CompleteMutableSequence', CompleteMutableSequence)\n",
+            "show('MissingMutableSequence', MissingMutableSequence)\n",
+            "class CompleteByteString(ByteString):\n",
+            "    def __len__(self): return 0\n",
+            "    def __getitem__(self, index): raise IndexError\n",
+            "class MissingByteString(ByteString):\n",
+            "    def __len__(self): return 0\n",
+            "show('CompleteByteString', CompleteByteString)\n",
+            "show('MissingByteString', MissingByteString)\n",
+            "class CompleteBuffer(Buffer):\n",
+            "    def __buffer__(self, flags=0): return memoryview(b'')\n",
+            "class MissingBuffer(Buffer):\n",
+            "    pass\n",
+            "show('CompleteBuffer', CompleteBuffer)\n",
+            "show('MissingBuffer', MissingBuffer)"
+        ),
+        &[
+            "Set direct Can't instantiate abstract class Set with abstract methods __contains__, __iter__, __len__",
+            "MutableSet direct Can't instantiate abstract class MutableSet with abstract methods __contains__, __iter__, __len__, add, discard",
+            "Mapping direct Can't instantiate abstract class Mapping with abstract methods __getitem__, __iter__, __len__",
+            "MutableMapping direct Can't instantiate abstract class MutableMapping with abstract methods __delitem__, __getitem__, __iter__, __len__, __setitem__",
+            "Sequence direct Can't instantiate abstract class Sequence with abstract methods __getitem__, __len__",
+            "MutableSequence direct Can't instantiate abstract class MutableSequence with abstract methods __delitem__, __getitem__, __len__, __setitem__, insert",
+            "ByteString direct Can't instantiate abstract class ByteString with abstract methods __getitem__, __len__",
+            "Buffer direct Can't instantiate abstract class Buffer with abstract method __buffer__",
+            "CompleteSet OK True",
+            "MissingSet ERR Can't instantiate abstract class MissingSet with abstract method __contains__",
+            "CompleteMutableSet OK True",
+            "MissingMutableSet ERR Can't instantiate abstract class MissingMutableSet with abstract method discard",
+            "CompleteMapping OK True",
+            "MissingMapping ERR Can't instantiate abstract class MissingMapping with abstract method __getitem__",
+            "CompleteMutableMapping OK True",
+            "MissingMutableMapping ERR Can't instantiate abstract class MissingMutableMapping with abstract method __delitem__",
+            "CompleteSequence OK True",
+            "MissingSequence ERR Can't instantiate abstract class MissingSequence with abstract method __getitem__",
+            "CompleteMutableSequence OK True",
+            "MissingMutableSequence ERR Can't instantiate abstract class MissingMutableSequence with abstract method insert",
+            "CompleteByteString OK True",
+            "MissingByteString ERR Can't instantiate abstract class MissingByteString with abstract method __getitem__",
+            "CompleteBuffer OK True",
+            "MissingBuffer ERR Can't instantiate abstract class MissingBuffer with abstract method __buffer__",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py Generator and
-// AsyncGenerator ABC checks. This keeps the first pass focused on native
-// generator objects and structural method recognition.
+// AsyncGenerator ABC checks. This covers native generator objects and the
+// public structural method-recognition matrix.
 #[test]
 fn cpython_collections_abc_generator_runtime_subset() {
     assert_output(
@@ -33089,10 +36510,37 @@ fn cpython_collections_abc_generator_runtime_subset() {
             "        pass\n",
             "    async def aclose(self):\n",
             "        pass\n",
+            "class NonAGen1:\n",
+            "    def __aiter__(self):\n",
+            "        return self\n",
+            "    def __anext__(self):\n",
+            "        return None\n",
+            "    def aclose(self):\n",
+            "        pass\n",
+            "    def athrow(self, typ, val=None, tb=None):\n",
+            "        pass\n",
+            "class NonAGen2:\n",
+            "    def __aiter__(self):\n",
+            "        return self\n",
+            "    def __anext__(self):\n",
+            "        return None\n",
+            "    def aclose(self):\n",
+            "        pass\n",
+            "    def asend(self, value):\n",
+            "        return value\n",
+            "class NonAGen3:\n",
+            "    def aclose(self):\n",
+            "        pass\n",
+            "    def asend(self, value):\n",
+            "        return value\n",
+            "    def athrow(self, typ, val=None, tb=None):\n",
+            "        pass\n",
             "ag = agen()\n",
             "print(isinstance(ag, AsyncIterator), isinstance(ag, AsyncGenerator), issubclass(type(ag), AsyncGenerator), issubclass(AsyncGenerator, AsyncIterator))\n",
             "print(isinstance(AGenLike(), AsyncGenerator), issubclass(AGenLike, AsyncGenerator))\n",
             "print(isinstance(MissingASend(), AsyncGenerator), issubclass(MissingASend, AsyncGenerator))\n",
+            "for value in [NonAGen1(), NonAGen2(), NonAGen3()]:\n",
+            "    print(type(value).__name__, isinstance(value, AsyncGenerator), issubclass(type(value), AsyncGenerator))\n",
             "class AGenBlocked(AGenLike):\n",
             "    asend = None\n",
             "print(isinstance(AGenBlocked(), AsyncGenerator), issubclass(AGenBlocked, AsyncGenerator))\n",
@@ -33109,6 +36557,9 @@ fn cpython_collections_abc_generator_runtime_subset() {
             "True True True True",
             "True True",
             "False False",
+            "NonAGen1 False False",
+            "NonAGen2 False False",
+            "NonAGen3 False False",
             "False False",
             "True False",
         ],
@@ -35664,9 +39115,9 @@ print("ok")"#,
 }
 
 // Adapted from CPython Lib/test/test_compile.py::TestSourcePositions::
-// test_simple_assignment. This is the first public `code.co_positions()`
-// surface: MiniPython exposes source lines and leaves opcode-level columns as
-// `None` until the register-VM location model is more precise.
+// test_simple_assignment. CPython checks that every non-artificial
+// `co_positions()` line/column value belongs to one of the public AST offsets
+// for the same source; `x = 1` exposes the assignment's statement span.
 #[test]
 fn cpython_compile_source_positions_code_positions_first_pass_subset() {
     assert_output(
@@ -35675,13 +39126,93 @@ positions = list(co.co_positions())
 print(positions)
 print([line for line, end_line, col, end_col in positions])
 print([line == end_line for line, end_line, col, end_col in positions])
-print([col is None and end_col is None for line, end_line, col, end_col in positions])"#,
+print([
+    line == 0
+    or (line == 1 and end_line == 1 and col == 0 and end_col == len("x = 1"))
+    for line, end_line, col, end_col in positions
+])"#,
         &[
-            "[(0, 0, None, None), (1, 1, None, None)]",
+            "[(0, 0, None, None), (1, 1, 0, 5)]",
             "[0, 1]",
             "[True, True]",
             "[True, True]",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_compile.py::TestSourcePositions::
+// test_lambda_return_position. MiniPython does not expose CPython opcode
+// positions, but lambda code-object positions now stay inside the lambda body
+// expression columns for the same public snippets.
+#[test]
+fn cpython_compile_source_positions_lambda_return_position_subset() {
+    assert_output(
+        r#"snippets = [
+    "f = lambda: x",
+    "f = lambda: 42",
+    "f = lambda: 1 + 2",
+    "f = lambda: a + b",
+]
+for snippet in snippets:
+    namespace = {}
+    exec(snippet, namespace)
+    lamb = namespace["f"]
+    positions = list(lamb.__code__.co_positions())
+    code_start = snippet.find(":") + 2
+    code_end = len(snippet)
+    checks = []
+    for i, pos in enumerate(positions):
+        start_line, end_line, start_col, end_col = pos
+        if i == 0 and start_col == end_col == 0:
+            continue
+        checks.append(
+            start_line == 1
+            and end_line == 1
+            and start_col >= code_start
+            and end_col <= code_end
+            and end_col >= start_col
+        )
+    print(snippet, positions, checks)"#,
+        &[
+            "f = lambda: x [(1, 1, 12, 13)] [True]",
+            "f = lambda: 42 [(1, 1, 12, 14)] [True]",
+            "f = lambda: 1 + 2 [(1, 1, 12, 17)] [True]",
+            "f = lambda: a + b [(1, 1, 12, 17)] [True]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_compile.py::TestSourcePositions::
+// test_weird_attribute_position_regressions. CPython added this as a public
+// `co_positions()` safety invariant for unusual multiline attribute chains:
+// every exposed position tuple must have non-None bounds and ordered start/end
+// source coordinates.
+#[test]
+fn cpython_compile_source_positions_weird_attribute_position_regressions_subset() {
+    assert_output(
+        r#"def f():
+    (bar.
+baz)
+    (bar.
+baz(
+))
+    files().setdefault(
+        0
+    ).setdefault(
+        0
+    )
+positions = list(f.__code__.co_positions())
+checks = []
+for line, end_line, column, end_column in positions:
+    checks.append(
+        line is not None
+        and end_line is not None
+        and column is not None
+        and end_column is not None
+        and (line, column) <= (end_line, end_column)
+    )
+print(len(positions), checks)"#,
+        &["10 [True, True, True, True, True, True, True, True, True, True]"],
     );
 }
 
@@ -35695,8 +39226,8 @@ fn cpython_compile_source_positions_multistatement_code_lines_subset() {
 co = compile(source, "test_compile.py", "exec")
 print([line for start, end, line in co.co_lines()])
 print([line for line, end_line, col, end_col in co.co_positions()])
-print([col is None and end_col is None for line, end_line, col, end_col in co.co_positions()])"#,
-        &["[0, 1, 2, 5]", "[0, 1, 2, 5]", "[True, True, True, True]"],
+print([col is not None and end_col is not None for line, end_line, col, end_col in co.co_positions()])"#,
+        &["[0, 1, 2, 5]", "[0, 1, 2, 5]", "[False, True, True, True]"],
     );
 }
 

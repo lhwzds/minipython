@@ -8,7 +8,7 @@ use crate::bytecode::{
     CallArgRegister, CallKeywordRegister, ExceptHandler as BytecodeExceptHandler,
     ExceptHandlerNameBinding, FormatConversion, Instruction, Register, TemplatePartRegister,
 };
-use crate::value::{Value, tuple_value};
+use crate::value::{Value, float_value, tuple_value};
 use num_bigint::BigInt;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashSet, VecDeque};
@@ -21,6 +21,8 @@ pub struct CompileOptions {
     pub optimize: i64,
     pub function_first_lines: Vec<usize>,
     pub function_line_sequences: Vec<Vec<usize>>,
+    pub function_position_columns: Vec<Vec<Option<(usize, usize)>>>,
+    pub function_is_lambdas: Vec<bool>,
     pub generator_expression_line_sequences: Vec<(usize, Vec<usize>)>,
 }
 
@@ -30,6 +32,8 @@ impl Default for CompileOptions {
             optimize: -1,
             function_first_lines: Vec::new(),
             function_line_sequences: Vec::new(),
+            function_position_columns: Vec::new(),
+            function_is_lambdas: Vec::new(),
             generator_expression_line_sequences: Vec::new(),
         }
     }
@@ -50,6 +54,19 @@ impl CompileOptions {
 
     pub fn with_function_line_sequences(mut self, sequences: Vec<Vec<usize>>) -> Self {
         self.function_line_sequences = sequences;
+        self
+    }
+
+    pub fn with_function_position_columns(
+        mut self,
+        columns: Vec<Vec<Option<(usize, usize)>>>,
+    ) -> Self {
+        self.function_position_columns = columns;
+        self
+    }
+
+    pub fn with_function_is_lambdas(mut self, is_lambdas: Vec<bool>) -> Self {
+        self.function_is_lambdas = is_lambdas;
         self
     }
 
@@ -294,6 +311,8 @@ struct Compiler {
     optimize: i64,
     function_first_lines: Rc<RefCell<VecDeque<usize>>>,
     function_line_sequences: Rc<RefCell<VecDeque<Vec<usize>>>>,
+    function_position_columns: Rc<RefCell<VecDeque<Vec<Option<(usize, usize)>>>>>,
+    function_is_lambdas: Rc<RefCell<VecDeque<bool>>>,
     generator_expression_line_sequences: Rc<RefCell<VecDeque<(usize, Vec<usize>)>>>,
 }
 
@@ -361,6 +380,10 @@ impl Compiler {
             function_line_sequences: Rc::new(RefCell::new(VecDeque::from(
                 options.function_line_sequences,
             ))),
+            function_position_columns: Rc::new(RefCell::new(VecDeque::from(
+                options.function_position_columns,
+            ))),
+            function_is_lambdas: Rc::new(RefCell::new(VecDeque::from(options.function_is_lambdas))),
             generator_expression_line_sequences: Rc::new(RefCell::new(VecDeque::from(
                 options.generator_expression_line_sequences,
             ))),
@@ -2102,6 +2125,8 @@ impl Compiler {
         }
         let first_line = self.next_function_first_line();
         let line_sequence = self.next_function_line_sequence(first_line);
+        let position_columns = self.next_function_position_columns();
+        self.next_function_is_lambda();
         let docstring = self.statement_docstring(body.first());
         let (body_instructions, is_generator) =
             self.compile_function_body(params, body, is_async, &type_param_names)?;
@@ -2117,6 +2142,7 @@ impl Compiler {
             is_async,
             first_line,
             line_sequence,
+            position_columns,
         )?;
         let dst = self.apply_decorators(dst, &decorators)?;
         self.emit_store_name(name, dst);
@@ -2462,6 +2488,7 @@ impl Compiler {
             .instructions
             .push(Instruction::Return { src: Some(src) });
 
+        let (first_line, line_sequence, position_columns) = self.next_lambda_position_metadata();
         self.compile_function_value(
             "<lambda>",
             &[],
@@ -2472,8 +2499,9 @@ impl Compiler {
             function_compiler.instructions,
             is_generator,
             false,
-            1,
-            vec![1],
+            first_line,
+            line_sequence,
+            position_columns,
         )
     }
 
@@ -2490,6 +2518,7 @@ impl Compiler {
         is_async: bool,
         first_line: usize,
         line_sequence: Vec<usize>,
+        position_columns: Vec<Option<(usize, usize)>>,
     ) -> Result<Register, String> {
         let defaults = params
             .positional_only
@@ -2559,6 +2588,7 @@ impl Compiler {
             is_async,
             first_line,
             line_sequence,
+            position_columns,
         });
 
         Ok(dst)
@@ -3111,6 +3141,8 @@ impl Compiler {
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
             function_line_sequences: self.function_line_sequences.clone(),
+            function_position_columns: self.function_position_columns.clone(),
+            function_is_lambdas: self.function_is_lambdas.clone(),
             generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
     }
@@ -3135,6 +3167,8 @@ impl Compiler {
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
             function_line_sequences: self.function_line_sequences.clone(),
+            function_position_columns: self.function_position_columns.clone(),
+            function_is_lambdas: self.function_is_lambdas.clone(),
             generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
     }
@@ -3159,6 +3193,8 @@ impl Compiler {
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
             function_line_sequences: self.function_line_sequences.clone(),
+            function_position_columns: self.function_position_columns.clone(),
+            function_is_lambdas: self.function_is_lambdas.clone(),
             generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
     }
@@ -3176,6 +3212,38 @@ impl Compiler {
             .pop_front()
             .filter(|sequence| !sequence.is_empty())
             .unwrap_or_else(|| vec![first_line])
+    }
+
+    fn next_function_position_columns(&self) -> Vec<Option<(usize, usize)>> {
+        self.function_position_columns
+            .borrow_mut()
+            .pop_front()
+            .unwrap_or_default()
+    }
+
+    fn next_function_is_lambda(&self) -> bool {
+        self.function_is_lambdas
+            .borrow_mut()
+            .pop_front()
+            .unwrap_or(false)
+    }
+
+    fn next_lambda_position_metadata(&self) -> (usize, Vec<usize>, Vec<Option<(usize, usize)>>) {
+        if self
+            .function_is_lambdas
+            .borrow()
+            .front()
+            .copied()
+            .unwrap_or(false)
+        {
+            let first_line = self.next_function_first_line();
+            let line_sequence = self.next_function_line_sequence(first_line);
+            let position_columns = self.next_function_position_columns();
+            self.next_function_is_lambda();
+            (first_line, line_sequence, position_columns)
+        } else {
+            (1, vec![1], Vec::new())
+        }
     }
 
     fn next_generator_expression_line_sequence(&self) -> (usize, Vec<usize>) {
@@ -3444,7 +3512,7 @@ impl Compiler {
                 let dst = self.alloc_register();
                 self.instructions.push(Instruction::LoadConst {
                     dst,
-                    value: Value::Float(parse_float_literal(value)?),
+                    value: float_value(parse_float_literal(value)?),
                 });
                 Ok(dst)
             }
@@ -3898,6 +3966,7 @@ impl Compiler {
             false,
             1,
             vec![1],
+            Vec::new(),
         )?;
         let dst = self.alloc_register();
         self.instructions.push(Instruction::Call {
@@ -4273,6 +4342,7 @@ impl Compiler {
             is_async,
             first_line,
             line_sequence,
+            Vec::new(),
         )?;
         let dst = self.alloc_register();
         self.instructions.push(Instruction::Call {
@@ -5060,7 +5130,7 @@ fn compile_time_constant_value(expr: &Expr) -> Option<Value> {
     match expr {
         Expr::Number(value) => Some(Value::Number(*value)),
         Expr::BigInt(value) => parse_big_int_literal(value).ok().map(Value::BigInt),
-        Expr::Float(value) => parse_float_literal(value).ok().map(Value::Float),
+        Expr::Float(value) => parse_float_literal(value).ok().map(float_value),
         Expr::Imaginary(value) => parse_float_literal(value)
             .ok()
             .map(|imag| Value::Complex { real: 0.0, imag }),
@@ -5673,7 +5743,7 @@ fn negated_literal_constant_value(expr: &Expr) -> Result<Option<Value>, String> 
             None => Value::BigInt(-BigInt::from(*value)),
         },
         Expr::BigInt(value) => Value::BigInt(-parse_big_int_literal(value)?),
-        Expr::Float(value) => Value::Float(-parse_float_literal(value)?),
+        Expr::Float(value) => float_value(-parse_float_literal(value)?),
         Expr::Imaginary(value) => Value::Complex {
             real: -0.0,
             imag: -parse_float_literal(value)?,
@@ -8092,7 +8162,7 @@ mod tests {
         ExceptHandler as BytecodeExceptHandler, ExceptHandlerNameBinding, FormatConversion,
         Instruction,
     };
-    use crate::value::{Value, tuple_value};
+    use crate::value::{Value, float_value, tuple_value};
 
     #[test]
     fn compiles_print_number_to_bytecode() {
@@ -8136,7 +8206,7 @@ mod tests {
             Ok(vec![
                 Instruction::LoadConst {
                     dst: 0,
-                    value: Value::Float(1.5)
+                    value: float_value(1.5)
                 },
                 Instruction::Pop { src: 0 },
                 Instruction::Halt,

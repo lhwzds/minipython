@@ -370,6 +370,8 @@ struct FunctionLineMetadata {
     token_index: usize,
     first_line: usize,
     line_sequence: Vec<usize>,
+    position_columns: Vec<Option<(usize, usize)>>,
+    is_lambda: bool,
 }
 
 pub(crate) fn function_definition_start_lines(tokens: &[SpannedToken]) -> Vec<usize> {
@@ -386,6 +388,22 @@ pub(crate) fn function_definition_line_sequences(tokens: &[SpannedToken]) -> Vec
         .collect()
 }
 
+pub(crate) fn function_definition_position_columns(
+    tokens: &[SpannedToken],
+) -> Vec<Vec<Option<(usize, usize)>>> {
+    function_line_metadata(tokens)
+        .into_iter()
+        .map(|metadata| metadata.position_columns)
+        .collect()
+}
+
+pub(crate) fn function_definition_is_lambdas(tokens: &[SpannedToken]) -> Vec<bool> {
+    function_line_metadata(tokens)
+        .into_iter()
+        .map(|metadata| metadata.is_lambda)
+        .collect()
+}
+
 pub(crate) fn generator_expression_line_sequences(
     tokens: &[SpannedToken],
 ) -> Vec<(usize, Vec<usize>)> {
@@ -396,13 +414,16 @@ pub(crate) fn generator_expression_line_sequences(
 }
 
 fn function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
-    explicit_function_line_metadata(tokens)
+    let mut metadata = explicit_function_line_metadata(tokens);
+    metadata.extend(lambda_function_line_metadata(tokens));
+    metadata.sort_by_key(|metadata| metadata.token_index);
+    metadata
 }
 
 fn explicit_function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
     let mut metadata = Vec::new();
     let mut at_statement_start = true;
-    let mut pending_decorator_line = None;
+    let mut pending_decorator_span = None;
 
     for (index, token) in tokens.iter().enumerate() {
         match &token.token {
@@ -416,29 +437,46 @@ fn explicit_function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineM
                 at_statement_start = true;
             }
             Token::At if at_statement_start => {
-                pending_decorator_line.get_or_insert(token.line);
+                pending_decorator_span.get_or_insert((
+                    token.line,
+                    token.column.saturating_sub(1),
+                    token.end_column.saturating_sub(1),
+                ));
                 at_statement_start = false;
             }
             Token::Def => {
-                let first_line = pending_decorator_line.take().unwrap_or(token.line);
-                let line_sequence = function_body_token_range(tokens, index)
-                    .map(|range| function_body_line_sequence(first_line, &tokens[range]))
-                    .unwrap_or_else(|| vec![first_line]);
+                let first_span = pending_decorator_span.take().unwrap_or((
+                    token.line,
+                    token.column.saturating_sub(1),
+                    token.end_column.saturating_sub(1),
+                ));
+                let first_line = first_span.0;
+                let (line_sequence, position_columns) = function_body_token_range(tokens, index)
+                    .map(|range| {
+                        let body_tokens = &tokens[range];
+                        let line_sequence = function_body_line_sequence(first_line, body_tokens);
+                        let position_columns =
+                            function_body_position_columns(first_span, &line_sequence, body_tokens);
+                        (line_sequence, position_columns)
+                    })
+                    .unwrap_or_else(|| (vec![first_line], vec![None]));
                 metadata.push(FunctionLineMetadata {
                     token_index: index,
                     first_line,
                     line_sequence,
+                    position_columns,
+                    is_lambda: false,
                 });
                 at_statement_start = false;
             }
             Token::Class if at_statement_start => {
-                pending_decorator_line = None;
+                pending_decorator_span = None;
                 at_statement_start = false;
             }
             Token::Eof => break,
             _ => {
                 if at_statement_start {
-                    pending_decorator_line = None;
+                    pending_decorator_span = None;
                 }
                 at_statement_start = false;
             }
@@ -446,6 +484,79 @@ fn explicit_function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineM
     }
 
     metadata
+}
+
+fn lambda_function_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
+    let mut metadata = Vec::new();
+    for (index, token) in tokens.iter().enumerate() {
+        if !matches!(token.token, Token::Lambda) {
+            continue;
+        }
+        let Some(colon_index) = lambda_body_colon_index(tokens, index) else {
+            continue;
+        };
+        let Some((start_index, end_index)) = lambda_body_token_bounds(tokens, colon_index) else {
+            continue;
+        };
+        let start = &tokens[start_index];
+        let end = &tokens[end_index];
+        metadata.push(FunctionLineMetadata {
+            token_index: index,
+            first_line: start.line,
+            line_sequence: vec![start.line],
+            position_columns: vec![Some((
+                start.column.saturating_sub(1),
+                end.end_column.saturating_sub(1),
+            ))],
+            is_lambda: true,
+        });
+    }
+    metadata
+}
+
+fn lambda_body_colon_index(tokens: &[SpannedToken], lambda_index: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate().skip(lambda_index + 1) {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Colon if depth == 0 => return Some(index),
+            Token::Newline | Token::Semicolon | Token::Eof if depth == 0 => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
+fn lambda_body_token_bounds(tokens: &[SpannedToken], colon_index: usize) -> Option<(usize, usize)> {
+    let start = tokens
+        .iter()
+        .enumerate()
+        .skip(colon_index + 1)
+        .find_map(|(index, token)| (!is_line_metadata_ignorable(&token.token)).then_some(index))?;
+    let mut depth = 0usize;
+    let mut end = start;
+    for (index, token) in tokens.iter().enumerate().skip(start) {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => {
+                depth += 1;
+                end = index;
+            }
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                if depth == 0 {
+                    break;
+                }
+                depth = depth.saturating_sub(1);
+                end = index;
+            }
+            Token::Comma | Token::Newline | Token::Semicolon | Token::Eof if depth == 0 => break,
+            _ if is_line_metadata_ignorable(&token.token) => {}
+            _ => end = index,
+        }
+    }
+    Some((start, end))
 }
 
 fn generator_expression_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLineMetadata> {
@@ -482,6 +593,8 @@ fn generator_expression_line_metadata(tokens: &[SpannedToken]) -> Vec<FunctionLi
                             element_line,
                             iter_line,
                         ],
+                        position_columns: Vec::new(),
+                        is_lambda: false,
                     });
                 }
             }
@@ -541,6 +654,22 @@ fn first_significant_line(tokens: &[SpannedToken]) -> Option<usize> {
             Some(token.line)
         }
     })
+}
+
+fn significant_token_columns_for_line(
+    tokens: &[SpannedToken],
+    line: usize,
+) -> Option<(usize, usize)> {
+    let mut start = None;
+    let mut end = None;
+    for token in tokens
+        .iter()
+        .filter(|token| token.line == line && !is_line_metadata_ignorable(&token.token))
+    {
+        start.get_or_insert(token.column.saturating_sub(1));
+        end = Some(token.end_column.saturating_sub(1));
+    }
+    start.zip(end)
 }
 
 fn function_body_token_range(
@@ -621,6 +750,28 @@ fn function_body_line_sequence(first_line: usize, tokens: &[SpannedToken]) -> Ve
     lines.extend(sequence.normal);
     lines.extend(sequence.cold);
     lines
+}
+
+fn function_body_position_columns(
+    first_span: (usize, usize, usize),
+    line_sequence: &[usize],
+    tokens: &[SpannedToken],
+) -> Vec<Option<(usize, usize)>> {
+    if line_sequence.len() <= 1 {
+        return vec![None; line_sequence.len()];
+    }
+
+    line_sequence
+        .iter()
+        .enumerate()
+        .map(|(index, line)| {
+            if index == 0 {
+                Some((first_span.1, first_span.2))
+            } else {
+                significant_token_columns_for_line(tokens, *line)
+            }
+        })
+        .collect()
 }
 
 fn split_function_body_statements(tokens: &[SpannedToken]) -> Vec<&[SpannedToken]> {

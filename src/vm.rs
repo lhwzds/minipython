@@ -2,7 +2,7 @@ use crate::ast as syntax;
 use crate::bytecode::ExceptHandlerNameBinding;
 use crate::bytecode::{
     CallArgRegister, CallKeywordRegister, ExceptHandler as BytecodeExceptHandler, FormatConversion,
-    Instruction, Register, TemplatePartRegister,
+    Instruction, Register, TemplatePartRegister, instructions_without_debug_positions,
 };
 use crate::compiler::{
     CompileOptions, compile_eval_with_options, compile_interactive_with_options,
@@ -10,7 +10,8 @@ use crate::compiler::{
 };
 use crate::lexer::{
     LexError, LexWarning, LexWarningCategory, SpannedToken, Token, TokenFStringPart,
-    decode_source_for_parse, function_definition_line_sequences, function_definition_start_lines,
+    decode_source_for_parse, function_definition_is_lambdas, function_definition_line_sequences,
+    function_definition_position_columns, function_definition_start_lines,
     generator_expression_line_sequences, get_int_max_str_digits, lex_for_parse,
     lex_with_spans_for_parse, tokenize_cpython_with_spans,
 };
@@ -30,10 +31,11 @@ use crate::stdlib::{
 use crate::value::{
     ByteArrayRef, CodeLineSpan, CodeMode, ConstEvaluatorKind, CoroutineState,
     DeferredTypeParamExpr, DictRef, DictStorage, DictViewKind, EXCEPTION_TRACEBACK_ATTR,
-    FrozenSetRef, GeneratorState, ListRef, MemoryViewRef, NAMED_TUPLE_SUBCLASS_STORAGE_FIELD,
-    NamedTupleType, NamedTupleTypeRef, Scope, SetRef, TemplateInterpolation, Value,
-    byte_array_value, code_metadata_namespace_entries_equal, dict_value, dict_view_value,
-    dict_view_values, frozen_set_value, list_value, mapping_proxy_value, mapping_view_value,
+    FrozenSetRef, GeneratorState, INT_SUBCLASS_STORAGE_FIELD, ListRef, MemoryViewRef,
+    NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType, NamedTupleTypeRef, Scope, SetRef,
+    TemplateInterpolation, Value, byte_array_value, code_metadata_namespace_entries_equal,
+    dict_value, dict_view_value, dict_view_values, float_value, format_float_display,
+    frozen_set_value, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_format, memory_view_value, set_value,
     tuple_value,
 };
@@ -54,8 +56,11 @@ const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
 const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
 const USER_DICT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_user_dict_storage";
 const CHAIN_MAP_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_chain_map_storage";
+const STR_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_str_storage";
 const BYTES_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_bytes_storage";
 const BYTEARRAY_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_bytearray_storage";
+const DECIMAL_RATIONAL_STORAGE_FIELD: &str = "\0minipython_decimal_rational";
+const FRACTION_RATIONAL_STORAGE_FIELD: &str = "\0minipython_fraction_rational";
 const SCOPE_MAPPING_SOURCE_FIELD: &str = "\0minipython_mapping_source";
 const SCOPE_LOCALS_MAPPING_SOURCE_FIELD: &str = "\0minipython_locals_mapping_source";
 const TYPING_NO_DEFAULT_NAME: &str = "typing.NoDefault";
@@ -784,6 +789,7 @@ struct MiniException {
     context: Option<Box<MiniException>>,
     suppress_context: bool,
     exceptions: Option<Vec<MiniException>>,
+    identity: Rc<()>,
 }
 
 #[derive(Debug, Clone)]
@@ -822,6 +828,9 @@ fn repr_value(value: &Value) -> String {
 fn str_value_checked(value: &Value) -> Result<String, String> {
     match value {
         Value::String(value) => Ok(value.clone()),
+        value if str_subclass_string(value).is_some() => {
+            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
         Value::BigInt(value) => repr_big_int_checked(value),
         value
             if bytes_subclass_bytes(value).is_some()
@@ -850,6 +859,9 @@ fn repr_value_checked(value: &Value) -> Result<String, String> {
 fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
     match value {
         Value::String(value) => Ok(repr_string(value)),
+        value if str_subclass_string(value).is_some() => Ok(repr_string(
+            &str_subclass_string(value).expect("str subclass storage exists after guard"),
+        )),
         Value::Bytes(value) => Ok(repr_bytes(value)),
         Value::ByteArray(value) => Ok(format!("bytearray({})", repr_bytes(&value.borrow()))),
         value if bytes_subclass_bytes(value).is_some() => Ok(repr_bytes(
@@ -1571,6 +1583,27 @@ fn format_body(
 ) -> Result<String, String> {
     match spec.ty {
         None => {
+            if let Value::Complex { real, imag } = value
+                && !converted
+            {
+                validate_complex_format_spec(spec)?;
+                if spec.precision.is_some() || spec.grouping.is_some() || spec.alternate {
+                    return Ok(format_complex_default_parts(
+                        *real,
+                        *imag,
+                        spec,
+                        |value, sign, spec| {
+                            if spec.precision.is_some() {
+                                format_general_float_component(value, spec, sign)
+                            } else {
+                                format_complex_default_component(value, spec, sign)
+                            }
+                        },
+                    ));
+                }
+                return Ok(rendered.to_string());
+            }
+
             if converted || matches!(value, Value::String(_) | Value::Bytes(_)) {
                 reject_grouping_for_type(spec.grouping, 's')?;
                 Ok(apply_string_precision(rendered, spec.precision))
@@ -1641,6 +1674,8 @@ fn format_fixed_float_code(
         Value::Bool(value) if !converted => Ok(format_float_fixed(
             bool_as_i64(*value) as f64,
             precision,
+            spec.ty == Some('F'),
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
@@ -1648,6 +1683,8 @@ fn format_fixed_float_code(
         Value::Number(value) if !converted => Ok(format_float_fixed(
             *value as f64,
             precision,
+            spec.ty == Some('F'),
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
@@ -1658,6 +1695,8 @@ fn format_fixed_float_code(
                 format_float_fixed(
                     value,
                     precision,
+                    spec.ty == Some('F'),
+                    spec.alternate,
                     spec.sign,
                     spec.grouping,
                     spec.negative_zero,
@@ -1665,20 +1704,33 @@ fn format_fixed_float_code(
             })
             .ok_or_else(|| "format code 'f' integer is too large".to_string()),
         Value::Float(value) if !converted => Ok(format_float_fixed(
-            *value,
+            **value,
             precision,
+            spec.ty == Some('F'),
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
         )),
-        Value::Complex { real, imag } if !converted => Ok(format_complex_float_parts(
-            *real,
-            *imag,
-            |value, sign| {
-                format_float_fixed(value, precision, sign, spec.grouping, spec.negative_zero)
-            },
-            spec.sign,
-        )),
+        Value::Complex { real, imag } if !converted => {
+            validate_complex_format_spec(spec)?;
+            Ok(format_complex_float_parts(
+                *real,
+                *imag,
+                |value, sign| {
+                    format_float_fixed(
+                        value,
+                        precision,
+                        spec.ty == Some('F'),
+                        spec.alternate,
+                        sign,
+                        spec.grouping,
+                        spec.negative_zero,
+                    )
+                },
+                spec.sign,
+            ))
+        }
         _ => Err(unsupported_format_code_for_value(
             value,
             converted,
@@ -1699,6 +1751,7 @@ fn format_scientific_float_code(
             bool_as_i64(*value) as f64,
             precision,
             uppercase,
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
@@ -1707,6 +1760,7 @@ fn format_scientific_float_code(
             *value as f64,
             precision,
             uppercase,
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
@@ -1718,6 +1772,7 @@ fn format_scientific_float_code(
                     value,
                     precision,
                     uppercase,
+                    spec.alternate,
                     spec.sign,
                     spec.grouping,
                     spec.negative_zero,
@@ -1725,28 +1780,33 @@ fn format_scientific_float_code(
             })
             .ok_or_else(|| "format code 'e' integer is too large".to_string()),
         Value::Float(value) if !converted => Ok(format_float_scientific(
-            *value,
+            **value,
             precision,
             uppercase,
+            spec.alternate,
             spec.sign,
             spec.grouping,
             spec.negative_zero,
         )),
-        Value::Complex { real, imag } if !converted => Ok(format_complex_float_parts(
-            *real,
-            *imag,
-            |value, sign| {
-                format_float_scientific(
-                    value,
-                    precision,
-                    uppercase,
-                    sign,
-                    spec.grouping,
-                    spec.negative_zero,
-                )
-            },
-            spec.sign,
-        )),
+        Value::Complex { real, imag } if !converted => {
+            validate_complex_format_spec(spec)?;
+            Ok(format_complex_float_parts(
+                *real,
+                *imag,
+                |value, sign| {
+                    format_float_scientific(
+                        value,
+                        precision,
+                        uppercase,
+                        spec.alternate,
+                        sign,
+                        spec.grouping,
+                        spec.negative_zero,
+                    )
+                },
+                spec.sign,
+            ))
+        }
         _ => Err(unsupported_format_code_for_value(
             value,
             converted,
@@ -1766,8 +1826,9 @@ fn format_general_float_code(
         Value::BigInt(value) if !converted => value
             .to_f64()
             .ok_or_else(|| "format code 'g' integer is too large".to_string())?,
-        Value::Float(value) if !converted => *value,
+        Value::Float(value) if !converted => **value,
         Value::Complex { real, imag } if !converted => {
+            validate_complex_format_spec(spec)?;
             return Ok(format_complex_float_parts(
                 *real,
                 *imag,
@@ -1821,7 +1882,7 @@ fn format_percent_float_code(
             })
             .ok_or_else(|| "format code '%' integer is too large".to_string()),
         Value::Float(value) if !converted => Ok(format_float_percent(
-            *value,
+            **value,
             precision,
             spec.sign,
             spec.grouping,
@@ -1838,7 +1899,81 @@ fn format_general_float_component(value: f64, spec: &MiniFormatSpec, sign: Optio
         spec.alternate,
         spec.ty == Some('G'),
     );
+    body = normalize_float_specials(body, spec.ty == Some('G'));
+    if spec.alternate {
+        body = ensure_alternate_float_decimal(body);
+    }
     body = normalize_negative_zero_text(body, spec.negative_zero);
+    if !body.starts_with('-') && matches!(sign, Some('+') | Some(' ')) {
+        body.insert(0, sign.expect("sign was just matched"));
+    }
+    if let Some(grouping) = spec.grouping {
+        body = apply_decimal_grouping(body, grouping);
+    }
+    body
+}
+
+fn validate_complex_format_spec(spec: &MiniFormatSpec) -> Result<(), String> {
+    if spec.fill == '0' {
+        return Err(
+            "ValueError: Zero padding is not allowed in complex format specifier".to_string(),
+        );
+    }
+    if spec.align == Some('=') {
+        return Err(
+            "ValueError: '=' alignment flag is not allowed in complex format specifier".to_string(),
+        );
+    }
+    Ok(())
+}
+
+fn format_complex_default_parts<F>(
+    real: f64,
+    imag: f64,
+    spec: &MiniFormatSpec,
+    mut format_part: F,
+) -> String
+where
+    F: FnMut(f64, Option<char>, &MiniFormatSpec) -> String,
+{
+    if real == 0.0 && !real.is_sign_negative() {
+        return format!("{}j", format_part(imag, spec.sign, spec));
+    }
+
+    let real_text = format_part(real, spec.sign, spec);
+    let imag_text = format_part(imag, None, spec);
+    let (operator, imag_text) = match imag_text.strip_prefix('-') {
+        Some(imag_text) => ('-', imag_text.to_string()),
+        None => ('+', imag_text),
+    };
+    format!("({real_text}{operator}{imag_text}j)")
+}
+
+fn format_complex_default_component(
+    value: f64,
+    spec: &MiniFormatSpec,
+    sign: Option<char>,
+) -> String {
+    let mut body = if value == 0.0 && value.is_sign_negative() {
+        "-0".to_string()
+    } else if value.is_finite()
+        && value.fract() == 0.0
+        && value >= i64::MIN as f64
+        && value <= i64::MAX as f64
+    {
+        format!("{}", value as i64)
+    } else {
+        format_float_display(value)
+    };
+
+    if spec.alternate
+        && value.is_finite()
+        && !body.contains('.')
+        && !body.contains('e')
+        && !body.contains('E')
+    {
+        body.push('.');
+    }
     if !body.starts_with('-') && matches!(sign, Some('+') | Some(' ')) {
         body.insert(0, sign.expect("sign was just matched"));
     }
@@ -1936,7 +2071,7 @@ fn format_char_code(
     reject_grouping_for_type(spec.grouping, 'c')?;
 
     let Some(value) = integer_format_value(value, converted) else {
-        return Err("ValueError: Unknown format code 'c' for object".to_string());
+        return Err(unsupported_format_code_for_value(value, converted, 'c'));
     };
     let Some(code_point) = value.to_u32() else {
         return Err("ValueError: %c arg not in range(0x110000)".to_string());
@@ -2033,11 +2168,17 @@ fn format_integer_prefix(radix: u32, uppercase: bool) -> &'static str {
 fn format_float_fixed(
     value: f64,
     precision: usize,
+    uppercase: bool,
+    alternate: bool,
     sign: Option<char>,
     grouping: Option<char>,
     negative_zero: bool,
 ) -> String {
     let mut body = format!("{value:.precision$}");
+    body = normalize_float_specials(body, uppercase);
+    if alternate {
+        body = ensure_alternate_float_decimal(body);
+    }
     body = normalize_negative_zero_text(body, negative_zero);
     if !body.starts_with('-') && matches!(sign, Some('+') | Some(' ')) {
         body.insert(0, sign.expect("sign was just matched"));
@@ -2052,6 +2193,7 @@ fn format_float_scientific(
     value: f64,
     precision: usize,
     uppercase: bool,
+    alternate: bool,
     sign: Option<char>,
     grouping: Option<char>,
     negative_zero: bool,
@@ -2061,6 +2203,10 @@ fn format_float_scientific(
     } else {
         normalize_float_exponent(format!("{value:.precision$e}"))
     };
+    body = normalize_float_specials(body, uppercase);
+    if alternate {
+        body = ensure_alternate_float_decimal(body);
+    }
     body = normalize_negative_zero_text(body, negative_zero);
     if !body.starts_with('-') && matches!(sign, Some('+') | Some(' ')) {
         body.insert(0, sign.expect("sign was just matched"));
@@ -2078,9 +2224,39 @@ fn format_float_percent(
     grouping: Option<char>,
     negative_zero: bool,
 ) -> String {
-    let mut body = format_float_fixed(value * 100.0, precision, sign, grouping, negative_zero);
+    let mut body = format_float_fixed(
+        value * 100.0,
+        precision,
+        false,
+        false,
+        sign,
+        grouping,
+        negative_zero,
+    );
     body.push('%');
     body
+}
+
+fn normalize_float_specials(text: String, uppercase: bool) -> String {
+    if uppercase {
+        text.replace("NaN", "NAN")
+            .replace("nan", "NAN")
+            .replace("inf", "INF")
+    } else {
+        text.replace("NaN", "nan").replace("INF", "inf")
+    }
+}
+
+fn ensure_alternate_float_decimal(mut text: String) -> String {
+    if text.contains('.') || !text.chars().any(|ch| ch.is_ascii_digit()) {
+        return text;
+    }
+    if let Some(index) = text.find(['e', 'E']) {
+        text.insert(index, '.');
+    } else {
+        text.push('.');
+    }
+    text
 }
 
 fn normalize_negative_zero_text(text: String, negative_zero: bool) -> String {
@@ -2487,6 +2663,46 @@ fn builtin_type_value(name: &str) -> Value {
     Value::Builtin(name.to_string())
 }
 
+fn call_singleton_type_constructor(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !args.is_empty() || !keywords.is_empty() {
+        return Err(format!("TypeError: {name}() takes no arguments"));
+    }
+
+    match name {
+        "NoneType" => Ok(Value::None),
+        "ellipsis" => Ok(Value::Ellipsis),
+        "NotImplementedType" => Ok(Value::NotImplemented),
+        _ => unreachable!("caller filters singleton type constructors"),
+    }
+}
+
+fn call_cell_type_constructor(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: CellType() does not accept keyword arguments".to_string());
+    }
+    if args.len() > 1 {
+        return Err(format!(
+            "TypeError: CellType() expected at most 1 argument, got {}",
+            args.len()
+        ));
+    }
+    Ok(cell_value(
+        "\0minipython_cell_contents".to_string(),
+        args.into_iter().next(),
+    ))
+}
+
+fn is_singleton_type_name(name: &str) -> bool {
+    matches!(name, "NoneType" | "ellipsis" | "NotImplementedType")
+}
+
 fn generic_alias_value(origin: Value, args: Vec<Value>) -> Value {
     Value::GenericAlias {
         origin: Box::new(origin),
@@ -2686,6 +2902,11 @@ impl Vm {
             },
             instructions: self.instructions.clone(),
             line_spans: self.frame_line_spans.clone(),
+            varnames: Vec::new(),
+            consts: function_code_constants(&self.instructions),
+            flags: 0,
+            freevars: Vec::new(),
+            name: "<module>".to_string(),
             identity: Rc::new(()),
         };
         let fields = dict_ref_from_entries(vec![
@@ -3110,8 +3331,8 @@ impl Vm {
                 Instruction::Power { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let value = power_values(left, right)?;
-                    self.write_register(dst, value);
+                    let value = power_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
                 }
                 Instruction::BitOr { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
@@ -3177,7 +3398,7 @@ impl Vm {
                 Instruction::NotEqual { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
-                    let result = self.equal_values(left, right).map(|value| !value);
+                    let result = self.not_equal_values(left, right);
                     if let Some(value) = self.runtime_result_or_raise(result)? {
                         self.write_register(dst, Value::Bool(value));
                     }
@@ -3437,6 +3658,7 @@ impl Vm {
                     is_async,
                     first_line,
                     line_sequence,
+                    position_columns,
                 } => {
                     let type_params = self.collect_register_values(&type_params)?;
                     let defaults = defaults
@@ -3498,6 +3720,7 @@ impl Vm {
                             is_async,
                             first_line,
                             line_sequence,
+                            position_columns,
                             identity: Rc::new(()),
                             owner_class: None,
                         },
@@ -3538,6 +3761,10 @@ impl Vm {
                     docstring,
                     body,
                 } => {
+                    let build_class_lookup = self.require_build_class_builtin();
+                    if self.runtime_result_or_raise(build_class_lookup)?.is_none() {
+                        continue;
+                    }
                     let type_params = self.collect_register_values(&type_params)?;
                     let raw_bases = self.collect_call_args(&bases)?;
                     let keywords = self.collect_call_keywords(None, &keywords)?;
@@ -3644,6 +3871,14 @@ impl Vm {
                     class_attrs
                         .borrow_mut()
                         .insert(CLASS_QUALNAME_ATTR.to_string(), class_qualname_value);
+                    if name != "ByteString" && class_bases_include_builtin(&bases, "ByteString") {
+                        let warning = self
+                            .emit_collections_abc_bytestring_warning()
+                            .map(|_| Value::None);
+                        if self.runtime_result_or_raise(warning)?.is_none() {
+                            continue;
+                        }
+                    }
                     let class_value = Value::Class {
                         name,
                         type_params,
@@ -3707,6 +3942,7 @@ impl Vm {
                                 context: None,
                                 suppress_context: false,
                                 exceptions: None,
+                                identity: Rc::new(()),
                             },
                             true,
                         )?;
@@ -3975,8 +4211,7 @@ impl Vm {
                 }
                 Instruction::GetIter { dst, src } => {
                     let iterable = self.read_register(src)?.clone();
-                    let iterator = self.get_iter(iterable);
-                    if let Some(iterator) = self.runtime_result_or_raise(iterator)? {
+                    if let Some(iterator) = self.get_iter_or_raise(iterable)? {
                         self.write_register(dst, iterator);
                     }
                 }
@@ -4493,9 +4728,17 @@ impl Vm {
     }
 
     fn load_from_closure(&self, name: &str) -> Option<Value> {
-        self.closure
-            .iter()
-            .find_map(|scope| scope.borrow().get(name).cloned())
+        self.closure.iter().find_map(|scope| {
+            let value = scope.borrow().get(name).cloned()?;
+            Some(match value {
+                Value::Cell {
+                    name: cell_name,
+                    scope,
+                    ..
+                } => cell_contents(&cell_name, &scope).ok()?,
+                value => value,
+            })
+        })
     }
 
     fn store_name(&mut self, name: String, value: Value) -> Result<(), String> {
@@ -4521,8 +4764,18 @@ impl Vm {
 
     fn store_nonlocal(&mut self, name: &str, value: Value) -> Result<(), String> {
         for scope in &self.closure {
-            if scope.borrow().contains_key(name) {
-                scope.borrow_mut().insert(name.to_string(), value);
+            let current = scope.borrow().get(name).cloned();
+            if let Some(current) = current {
+                if let Value::Cell {
+                    name: cell_name,
+                    scope,
+                    ..
+                } = current
+                {
+                    set_cell_contents(&cell_name, &scope, value);
+                } else {
+                    scope.borrow_mut().insert(name.to_string(), value);
+                }
                 return Ok(());
             }
         }
@@ -4631,7 +4884,18 @@ impl Vm {
 
     fn delete_nonlocal(&mut self, name: &str) -> Result<(), String> {
         for scope in &self.closure {
-            if scope.borrow_mut().remove(name).is_some() {
+            let current = scope.borrow().get(name).cloned();
+            if let Some(Value::Cell {
+                name: cell_name,
+                scope,
+                ..
+            }) = current
+            {
+                scope.borrow_mut().remove(&cell_name);
+                return Ok(());
+            }
+            if current.is_some() {
+                scope.borrow_mut().remove(name);
                 return Ok(());
             }
         }
@@ -4660,6 +4924,9 @@ impl Vm {
     }
 
     fn import_from_value(&mut self, module: Value, name: &str) -> Result<Value, String> {
+        if is_collections_abc_bytestring_module_attr(&module, name) {
+            self.emit_collections_abc_bytestring_warning()?;
+        }
         match import_from(module.clone(), name) {
             Ok(value) => Ok(value),
             Err(error) => {
@@ -4712,6 +4979,52 @@ impl Vm {
         self.call_value_with_keywords(callee, args, Vec::new())
     }
 
+    fn call_partial(
+        &mut self,
+        function: Value,
+        mut bound_args: Vec<Value>,
+        mut bound_keywords: Vec<(String, Value)>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        bound_args.extend(args);
+        for (keyword, value) in keywords {
+            if let Some((_, bound_value)) = bound_keywords
+                .iter_mut()
+                .find(|(bound_keyword, _)| *bound_keyword == keyword)
+            {
+                *bound_value = value;
+            } else {
+                bound_keywords.push((keyword, value));
+            }
+        }
+        self.call_value_with_keywords(function, bound_args, bound_keywords)
+    }
+
+    fn call_functools_partial(
+        &mut self,
+        mut args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.is_empty() {
+            return Err(
+                "TypeError: type 'functools.partial' takes at least one argument".to_string(),
+            );
+        }
+
+        let function = args.remove(0);
+        if !is_callable_value(&function) {
+            return Err("TypeError: the first argument must be callable".to_string());
+        }
+
+        Ok(Value::Partial {
+            function: Box::new(function),
+            args,
+            keywords,
+            identity: Rc::new(()),
+        })
+    }
+
     fn call_sys_getframe(
         &mut self,
         args: Vec<Value>,
@@ -4761,6 +5074,24 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         match callee {
+            Value::Partial {
+                function,
+                args: bound_args,
+                keywords: bound_keywords,
+                ..
+            } => self.call_partial(*function, bound_args, bound_keywords, args, keywords),
+            Value::OperatorAttrGetter { attrs, .. } => {
+                self.call_operator_attrgetter(attrs, args, keywords)
+            }
+            Value::OperatorItemGetter { items, .. } => {
+                self.call_operator_itemgetter(items, args, keywords)
+            }
+            Value::OperatorMethodCaller {
+                name,
+                args: bound_args,
+                keywords: bound_keywords,
+                ..
+            } => self.call_operator_methodcaller(name, bound_args, bound_keywords, args, keywords),
             Value::Builtin(name) if name == "print" => {
                 if !keywords.is_empty() {
                     return Err(format!("{name}() does not accept keyword arguments"));
@@ -4800,6 +5131,9 @@ impl Vm {
             Value::Builtin(name) if name == "eval" => self.call_eval(args, keywords),
             Value::Builtin(name) if name == "exec" => self.call_exec(args, keywords),
             Value::Builtin(name) if name == "compile" => self.call_compile(args, keywords),
+            Value::Builtin(name) if name == "functools.partial" => {
+                self.call_functools_partial(args, keywords)
+            }
             Value::Builtin(name) if name == "code.co_lines" => call_code_lines(args, keywords),
             Value::Builtin(name) if name == "code.co_positions" => {
                 call_code_positions(args, keywords)
@@ -4815,6 +5149,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "dis.get_instructions" => {
                 call_dis_get_instructions(args, keywords)
+            }
+            Value::Builtin(name) if name == "inspect.signature" => {
+                call_inspect_signature(args, keywords)
             }
             Value::Builtin(name) if name == "warnings.catch_warnings" => {
                 self.call_warnings_catch_warnings(args, keywords)
@@ -4914,6 +5251,18 @@ impl Vm {
             Value::Builtin(name) if name == "Hashable.__hash__" => {
                 call_hashable_hash(args, keywords)
             }
+            Value::Builtin(name) if name == "decimal.Decimal" => {
+                self.call_decimal_constructor(args, keywords)
+            }
+            Value::Builtin(name) if name == "decimal.Decimal.__round__" => {
+                self.call_decimal_round(args, keywords)
+            }
+            Value::Builtin(name) if name == "fractions.Fraction" => {
+                self.call_fraction_constructor(args, keywords)
+            }
+            Value::Builtin(name) if name == "fractions.Fraction.__round__" => {
+                self.call_fraction_round(args, keywords)
+            }
             Value::Builtin(name)
                 if name.starts_with("Iterable.") || name.starts_with("Iterator.") =>
             {
@@ -4938,6 +5287,9 @@ impl Vm {
                 call_int_base_builtin(self, &name, args, keywords)
             }
             Value::Builtin(name) if name == "pow" => self.call_pow(args, keywords),
+            Value::Builtin(name) if name.starts_with("operator.") => {
+                self.call_operator_builtin(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "any" => call_any_builtin(self, args, keywords),
             Value::Builtin(name) if name == "all" => call_all_builtin(self, args, keywords),
             Value::Builtin(name) if name == "sorted" => self.call_sorted(args, keywords),
@@ -4988,9 +5340,19 @@ impl Vm {
             }
             Value::Builtin(name) if name == "ChainMap" => self.call_chain_map(args, keywords),
             Value::Builtin(name) if name == "UserList" => self.call_user_list(args, keywords),
+            Value::Builtin(name) if name == "deque" => self.call_deque(args, keywords),
+            Value::Builtin(name) if name == "array.array" => self.call_array_array(args, keywords),
             Value::Builtin(name) if name == "UserDict" => self.call_user_dict(args, keywords),
+            Value::Builtin(name)
+                if matches!(name.as_str(), "KeysView" | "ItemsView" | "ValuesView") =>
+            {
+                self.call_mapping_view_constructor(&name, args, keywords)
+            }
             Value::Builtin(name) if name == "SimpleNamespace" => {
                 self.call_simple_namespace_constructor(args, keywords)
+            }
+            Value::Builtin(name) if name == "CellType" => {
+                call_cell_type_constructor(args, keywords)
             }
             Value::Builtin(name)
                 if required_abstract_methods_for_collections_abc(&name).is_some() =>
@@ -5074,6 +5436,7 @@ impl Vm {
 
                 self.call_float(args)
             }
+            Value::Builtin(name) if name == "complex" => self.call_complex(args, keywords),
             Value::Builtin(name) if name == "str" => call_str(args, keywords),
             Value::Builtin(name) if name == "slice" => {
                 if !keywords.is_empty() {
@@ -5348,14 +5711,7 @@ impl Vm {
                 call_frozen_set_method(self, &name, args)
             }
             Value::Builtin(name) if name.starts_with("int.") => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
-
-                call_int_method(&name, args)
+                call_int_method(&name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("float.") => {
                 if !keywords.is_empty() {
@@ -5366,6 +5722,19 @@ impl Vm {
                 }
 
                 call_float_method(&name, args)
+            }
+            Value::Builtin(name) if name.starts_with("complex.") => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "{}() does not accept keyword arguments",
+                        method_display_name(&name)
+                    ));
+                }
+
+                if name == "complex.from_number" {
+                    return self.call_complex_from_number(args);
+                }
+                call_complex_method(&name, args)
             }
             Value::Builtin(name) if name == "str.join" => {
                 self.call_str_join_method(&name, args, keywords)
@@ -5438,6 +5807,9 @@ impl Vm {
             }
             Value::Builtin(name) if is_bytes_search_method(&name) => {
                 self.call_bytes_search_method(&name, args, keywords)
+            }
+            Value::Builtin(name) if is_bytes_percent_method(&name) => {
+                call_bytes_percent_method(&name, args, keywords)
             }
             Value::Builtin(name) if is_bytearray_mutation_method(&name) => {
                 self.call_bytearray_mutation_method(&name, args, keywords)
@@ -5628,7 +6000,7 @@ impl Vm {
                     return Err("time() takes no arguments".to_string());
                 }
 
-                Ok(Value::Float(0.0))
+                Ok(float_value(0.0))
             }
             Value::Builtin(name) if name == "sqrt" => {
                 if !keywords.is_empty() {
@@ -5636,6 +6008,153 @@ impl Vm {
                 }
 
                 call_sqrt(args)
+            }
+            Value::Builtin(name) if name == "math.isfinite" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_isfinite(args)
+            }
+            Value::Builtin(name) if name == "math.isinf" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_isinf(args)
+            }
+            Value::Builtin(name) if name == "math.isnan" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_isnan(args)
+            }
+            Value::Builtin(name) if name == "math.isnormal" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_isnormal(args)
+            }
+            Value::Builtin(name) if name == "math.issubnormal" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_issubnormal(args)
+            }
+            Value::Builtin(name) if name == "math.gcd" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_gcd(self, args)
+            }
+            Value::Builtin(name) if name == "math.lcm" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_lcm(self, args)
+            }
+            Value::Builtin(name) if name == "math.prod" => call_math_prod(self, args, keywords),
+            Value::Builtin(name) if name == "math.fabs" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                call_math_fabs(args)
+            }
+            Value::Builtin(name) if name == "math.copysign" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_copysign(args)
+            }
+            Value::Builtin(name) if name == "math.signbit" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_signbit(args)
+            }
+            Value::Builtin(name) if name == "math.trunc" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_trunc(self, args)
+            }
+            Value::Builtin(name) if name == "math.ceil" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_ceil(self, args)
+            }
+            Value::Builtin(name) if name == "math.floor" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_floor(self, args)
+            }
+            Value::Builtin(name) if name == "math.degrees" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_degrees(self, args)
+            }
+            Value::Builtin(name) if name == "math.radians" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_radians(self, args)
+            }
+            Value::Builtin(name) if name == "math.cbrt" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_cbrt(self, args)
+            }
+            Value::Builtin(name) if name == "math.exp" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_exp(self, args)
+            }
+            Value::Builtin(name) if name == "math.exp2" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_exp2(self, args)
             }
             Value::Builtin(name) if name == "string.templatelib.convert" => {
                 if !keywords.is_empty() {
@@ -5656,6 +6175,14 @@ impl Vm {
             Value::Builtin(name) if name == "Template" => call_template_constructor(args, keywords),
             Value::Builtin(name) if name == "Interpolation" => {
                 call_interpolation_constructor(args, keywords)
+            }
+            Value::Builtin(name)
+                if matches!(
+                    name.as_str(),
+                    "NoneType" | "ellipsis" | "NotImplementedType"
+                ) =>
+            {
+                call_singleton_type_constructor(&name, args, keywords)
             }
             Value::Builtin(name) if name == "callable.__call__" => {
                 let [callable, rest @ ..] = args.as_slice() else {
@@ -5727,6 +6254,7 @@ impl Vm {
                 is_async,
                 first_line,
                 line_sequence,
+                position_columns: _,
                 identity,
                 owner_class,
             } => {
@@ -5990,6 +6518,13 @@ impl Vm {
 
     fn emit_deprecation_warning(&mut self, message: String) -> Result<(), String> {
         self.emit_warning(message, builtin_type_value("DeprecationWarning"))
+    }
+
+    fn emit_collections_abc_bytestring_warning(&mut self) -> Result<(), String> {
+        self.emit_deprecation_warning(
+            "'collections.abc.ByteString' is deprecated and slated for removal in Python 3.17"
+                .to_string(),
+        )
     }
 
     fn call_warnings_catch_warnings(
@@ -6551,6 +7086,14 @@ impl Vm {
         };
 
         let attrs = scope_from_type_namespace(&name, namespace)?;
+        if name != "ByteString" && class_bases_include_builtin(&bases, "ByteString") {
+            let warning = self
+                .emit_collections_abc_bytestring_warning()
+                .map(|_| Value::None);
+            if self.runtime_result_or_raise(warning)?.is_none() {
+                return Ok(Value::None);
+            }
+        }
         let class_value = Value::Class {
             name,
             type_params: Vec::new(),
@@ -6649,6 +7192,14 @@ impl Vm {
             return self.call_frozen_set_subclass(name, type_params, attrs, bases, args, keywords);
         }
 
+        if class_bases_include_builtin(&bases, "int") {
+            return self.call_int_subclass(name, attrs, bases, args, keywords);
+        }
+
+        if class_bases_include_builtin(&bases, "str") {
+            return self.call_str_subclass(name, attrs, bases, args, keywords);
+        }
+
         if class_bases_include_builtin(&bases, "bytes") {
             return self.call_bytes_subclass(name, attrs, bases, args, keywords);
         }
@@ -6693,6 +7244,42 @@ impl Vm {
             }
         } else if !args.is_empty() || !keywords.is_empty() {
             return Err(format!("{name}() takes no arguments"));
+        }
+
+        Ok(instance)
+    }
+
+    fn call_int_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let storage = self.call_int(args.clone(), keywords.clone())?;
+        if !matches!(storage, Value::Number(_) | Value::BigInt(_)) {
+            unreachable!("int constructor always returns an integer")
+        }
+
+        let fields = new_scope();
+        fields
+            .borrow_mut()
+            .insert(INT_SUBCLASS_STORAGE_FIELD.to_string(), storage);
+
+        let instance = Value::Instance {
+            class_name: name,
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases,
+        };
+
+        if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
         }
 
         Ok(instance)
@@ -6876,6 +7463,41 @@ impl Vm {
         Ok(instance)
     }
 
+    fn call_str_subclass(
+        &mut self,
+        name: String,
+        attrs: Scope,
+        bases: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let fields = new_scope();
+        let Value::String(storage) = call_str(args.clone(), keywords.clone())? else {
+            unreachable!("str constructor always returns a string")
+        };
+        fields.borrow_mut().insert(
+            STR_SUBCLASS_STORAGE_FIELD.to_string(),
+            Value::String(storage),
+        );
+
+        let instance = Value::Instance {
+            class_name: name,
+            fields,
+            class_attrs: attrs.clone(),
+            class_bases: bases,
+        };
+
+        if let Some(init) = find_class_attr(&attrs, &[], "__init__") {
+            let result =
+                self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
+            if !matches!(result, Value::None) {
+                return Err("__init__() should return None".to_string());
+            }
+        }
+
+        Ok(instance)
+    }
+
     fn call_bytes_subclass(
         &mut self,
         name: String,
@@ -6885,7 +7507,8 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let fields = new_scope();
-        let storage = self.call_bytes_like_constructor(&name, args.clone(), keywords.clone())?;
+        let storage =
+            self.call_bytes_like_constructor(&name, args.clone(), keywords.clone(), true)?;
         fields.borrow_mut().insert(
             BYTES_SUBCLASS_STORAGE_FIELD.to_string(),
             Value::Bytes(storage),
@@ -6918,7 +7541,8 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let fields = new_scope();
-        let storage = self.call_bytes_like_constructor(&name, args.clone(), keywords.clone())?;
+        let storage =
+            self.call_bytes_like_constructor(&name, args.clone(), keywords.clone(), false)?;
         fields.borrow_mut().insert(
             BYTEARRAY_SUBCLASS_STORAGE_FIELD.to_string(),
             byte_array_value(storage),
@@ -7568,6 +8192,10 @@ impl Vm {
                     }
                 }
 
+                if let Some(value) = int_subclass_attribute(instance.clone(), name) {
+                    return Ok(value);
+                }
+
                 if name == "__dir__" {
                     return Ok(object_dir_bound_method(instance));
                 }
@@ -7794,6 +8422,12 @@ impl Vm {
                 type_params,
                 value,
             } => self.load_type_alias_attribute(alias_name, type_params, *value, name),
+            module @ Value::Module { .. } => {
+                if is_collections_abc_bytestring_module_attr(&module, name) {
+                    self.emit_collections_abc_bytestring_warning()?;
+                }
+                load_attribute(module, name)
+            }
             value => load_attribute(value, name),
         }
     }
@@ -9230,6 +9864,13 @@ impl Vm {
                         identity: Rc::new(()),
                     });
                 }
+                if type_name == "complex" && is_builtin_complex_type_method(name) {
+                    return Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("complex.{name}"))),
+                        receiver: Box::new(object.clone()),
+                        identity: Rc::new(()),
+                    });
+                }
                 if type_name == "Hashable" && name == "__hash__" {
                     return Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin("Hashable.__hash__".to_string())),
@@ -9344,7 +9985,7 @@ impl Vm {
             Ok(value) => Ok(Ok(value)),
             Err(message) => {
                 if let Some(exception) =
-                    raised_exception.or_else(|| runtime_exception_from_message(&message))
+                    runtime_exception_from_current_or_message(raised_exception, &message)
                 {
                     Ok(Err(exception))
                 } else {
@@ -9501,9 +10142,9 @@ impl Vm {
         if let Value::ByteArray(bytes) = &object
             && !matches!(index, Value::Slice { .. })
         {
+            let index = normalized_index(index, bytes.borrow().len(), "bytearray")?;
             let byte = self.bytearray_assignment_byte_value(value)?;
             let mut borrowed = bytes.borrow_mut();
-            let index = normalized_index(index, borrowed.len(), "bytearray")?;
             if let Some(slot) = borrowed.get_mut(index) {
                 *slot = byte;
                 return Ok(Value::ByteArray(bytes.clone()));
@@ -9709,6 +10350,7 @@ impl Vm {
             value if chain_map_subclass_maps(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if frozen_set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
+            value if str_subclass_string(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if bytes_subclass_bytes(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if bytearray_subclass_storage(&value).is_some() => {
                 Ok(self.len_value(value)? != 0)
@@ -9762,6 +10404,10 @@ impl Vm {
                     .expect("frozenset subclass items exist after guard")
                     .len())
             }
+            value if str_subclass_string(&value).is_some() => Ok(str_subclass_string(&value)
+                .expect("str subclass storage exists after guard")
+                .chars()
+                .count()),
             value if bytes_subclass_bytes(&value).is_some() => Ok(bytes_subclass_bytes(&value)
                 .expect("bytes subclass storage exists after guard")
                 .len()),
@@ -9781,15 +10427,15 @@ impl Vm {
     }
 
     fn call_format(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let (value, format_spec) = match args.as_slice() {
-            [value] => (value, ""),
-            [value, Value::String(format_spec)] => (value, format_spec.as_str()),
-            [_, format_spec] => {
-                return Err(format!(
-                    "format() argument 2 must be str, not {}",
-                    type_name(format_spec)
-                ));
+        let (value, format_spec, format_spec_object) = match args.as_slice() {
+            [value] => {
+                return self.format_value(value, None, Some("")).map(Value::String);
             }
+            [value, format_spec] => (
+                value,
+                format_spec_string(format_spec, "format()")?,
+                format_spec.clone(),
+            ),
             [] => return Err("format expected at least 1 argument, got 0".to_string()),
             values => {
                 return Err(format!(
@@ -9799,8 +10445,13 @@ impl Vm {
             }
         };
 
-        self.format_value(value, None, Some(format_spec))
-            .map(Value::String)
+        self.format_value_with_spec_object(
+            value,
+            None,
+            Some(&format_spec),
+            Some(format_spec_object),
+        )
+        .map(Value::String)
     }
 
     fn call_compile(
@@ -9970,8 +10621,13 @@ impl Vm {
         Ok(Value::CodeObject {
             mode,
             filename,
+            consts: function_code_constants(&instructions),
             instructions,
             line_spans,
+            varnames: Vec::new(),
+            flags: 0,
+            freevars: Vec::new(),
+            name: "<module>".to_string(),
             identity: Rc::new(()),
         })
     }
@@ -10076,6 +10732,10 @@ impl Vm {
                     .with_function_line_sequences(function_definition_line_sequences(
                         &spanned_tokens,
                     ))
+                    .with_function_position_columns(function_definition_position_columns(
+                        &spanned_tokens,
+                    ))
+                    .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
                     .with_generator_expression_line_sequences(generator_expression_line_sequences(
                         &spanned_tokens,
                     ));
@@ -10102,9 +10762,18 @@ impl Vm {
                     filename,
                     warning_module,
                 )?;
-                let options = options.with_generator_expression_line_sequences(
-                    generator_expression_line_sequences(&spanned_tokens),
-                );
+                let options = options
+                    .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                    .with_function_line_sequences(function_definition_line_sequences(
+                        &spanned_tokens,
+                    ))
+                    .with_function_position_columns(function_definition_position_columns(
+                        &spanned_tokens,
+                    ))
+                    .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
+                    .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                        &spanned_tokens,
+                    ));
                 compile_eval_with_options(&expr, options)
                     .map_err(|message| format!("SyntaxError: {message}"))?
             }
@@ -10129,6 +10798,10 @@ impl Vm {
                     .with_function_line_sequences(function_definition_line_sequences(
                         &spanned_tokens,
                     ))
+                    .with_function_position_columns(function_definition_position_columns(
+                        &spanned_tokens,
+                    ))
+                    .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
                     .with_generator_expression_line_sequences(generator_expression_line_sequences(
                         &spanned_tokens,
                     ));
@@ -10144,7 +10817,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_eval_exec_args("eval", args, keywords)?;
+        let mut values = bind_eval_exec_args("eval", args, keywords, false)?;
         let source = values[0]
             .take()
             .ok_or_else(|| "TypeError: eval() missing required argument 'source'".to_string())?;
@@ -10161,9 +10834,9 @@ impl Vm {
             self.is_module,
         )?;
         let code = compile_eval_argument(source)?;
-        let result = self.run_code_object(code, globals, locals, is_module, true);
+        let result = self.run_code_object(code, globals, locals, is_module, true, None);
 
-        match sync_exec_writebacks(&writebacks) {
+        match self.sync_exec_writebacks(&writebacks) {
             Ok(()) => result,
             Err(writeback_error) if result.is_ok() => Err(writeback_error),
             Err(_) => result,
@@ -10175,10 +10848,12 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_eval_exec_args("exec", args, keywords)?;
+        let mut values = bind_eval_exec_args("exec", args, keywords, true)?;
         let source = values[0]
             .take()
             .ok_or_else(|| "TypeError: exec() missing required argument 'source'".to_string())?;
+        let source_is_code_object = matches!(source, Value::CodeObject { .. });
+        let closure_arg = values[3].take();
         let default_locals = if self.is_module {
             self.globals.clone()
         } else {
@@ -10191,16 +10866,125 @@ impl Vm {
             default_locals,
             self.is_module,
         )?;
-        let code = compile_exec_argument(source)?;
-        let result = self.run_code_object(code, globals.clone(), locals.clone(), is_module, false);
+        let warning_module = if source_is_code_object {
+            None
+        } else {
+            exec_warning_module_from_globals(&globals)
+        };
+        let code = self.compile_exec_argument(source, warning_module)?;
+        let closure = self.exec_closure_for_code(&code, closure_arg, source_is_code_object)?;
+        let result = self.run_code_object(
+            code,
+            globals.clone(),
+            locals.clone(),
+            is_module,
+            false,
+            closure,
+        );
         if result.is_ok() {
             install_exec_annotate_function(&locals, &globals);
         }
-        match sync_exec_writebacks(&writebacks) {
+        match self.sync_exec_writebacks(&writebacks) {
             Ok(()) => result,
             Err(writeback_error) if result.is_ok() => Err(writeback_error),
             Err(_) => result,
         }
+    }
+
+    fn compile_exec_argument(
+        &mut self,
+        value: Value,
+        warning_module: Option<String>,
+    ) -> Result<Value, String> {
+        match value {
+            code @ Value::CodeObject { .. } => Ok(code),
+            Value::String(source) => self.compile_code_object_with_warnings(
+                Value::String(source),
+                "<string>".to_string(),
+                "exec",
+                -1,
+                warning_module,
+            ),
+            Value::Bytes(bytes) => self.compile_code_object_with_warnings(
+                Value::Bytes(bytes),
+                "<string>".to_string(),
+                "exec",
+                -1,
+                warning_module,
+            ),
+            Value::ByteArray(bytes) => self.compile_code_object_with_warnings(
+                Value::ByteArray(bytes),
+                "<string>".to_string(),
+                "exec",
+                -1,
+                warning_module,
+            ),
+            Value::MemoryView(view) => self.compile_code_object_with_warnings(
+                Value::MemoryView(view),
+                "<string>".to_string(),
+                "exec",
+                -1,
+                warning_module,
+            ),
+            value => Err(format!(
+                "TypeError: exec() arg 1 must be a string or code object, not {}",
+                type_name(&value)
+            )),
+        }
+    }
+
+    fn exec_closure_for_code(
+        &self,
+        code: &Value,
+        closure_arg: Option<Value>,
+        source_is_code_object: bool,
+    ) -> Result<Option<Vec<Scope>>, String> {
+        let Value::CodeObject { freevars, .. } = code else {
+            unreachable!("caller passes a code object")
+        };
+        if !source_is_code_object {
+            if closure_arg.is_some() {
+                return Err(
+                    "TypeError: closure can only be used when source is a code object".to_string(),
+                );
+            }
+            return Ok(None);
+        }
+
+        if freevars.is_empty() {
+            return match closure_arg {
+                None | Some(Value::None) => Ok(None),
+                Some(_) => Err("TypeError: cannot use a closure with this code object".to_string()),
+            };
+        }
+
+        let Some(closure) = closure_arg else {
+            return Err(format!(
+                "TypeError: code object requires a closure of exactly length {}",
+                freevars.len()
+            ));
+        };
+        let Value::Tuple(cells) = closure else {
+            return Err("TypeError: closure must be a tuple of cell objects".to_string());
+        };
+        if cells.len() != freevars.len() {
+            return Err(format!(
+                "TypeError: code object requires a closure of exactly length {}",
+                freevars.len()
+            ));
+        }
+
+        let scope = new_scope();
+        {
+            let mut bindings = scope.borrow_mut();
+            for (name, cell) in freevars.iter().zip(cells.iter()) {
+                if !matches!(cell, Value::Cell { .. }) {
+                    return Err("TypeError: closure must be a tuple of cell objects".to_string());
+                }
+                bindings.insert(name.clone(), cell.clone());
+            }
+        }
+        Ok(Some(vec![scope]))
     }
 
     fn run_code_object(
@@ -10210,6 +10994,7 @@ impl Vm {
         locals: Scope,
         is_module: bool,
         value_context: bool,
+        closure_override: Option<Vec<Scope>>,
     ) -> Result<Value, String> {
         let Value::CodeObject {
             mode, instructions, ..
@@ -10221,7 +11006,7 @@ impl Vm {
             instructions,
             globals,
             locals,
-            self.closure.clone(),
+            closure_override.unwrap_or_else(|| self.closure.clone()),
             is_module,
             self.abc_registry.clone(),
             self.module_cache.clone(),
@@ -10265,11 +11050,13 @@ impl Vm {
             };
         }
 
-        match code_vm.run() {
-            Ok(output) => {
+        match code_vm.run_inner() {
+            Ok(ExecutionExit::Halt | ExecutionExit::Return(_)) => {
+                let output = std::mem::take(&mut code_vm.output);
                 self.output.extend(output);
                 Ok(Value::None)
             }
+            Ok(ExecutionExit::Yield { .. }) => Err("yield outside exec".to_string()),
             Err(message) => {
                 self.output.extend(code_vm.output);
                 if let Some(exception) = code_vm.current_exception {
@@ -10491,15 +11278,29 @@ impl Vm {
         conversion: Option<FormatConversion>,
         format_spec: Option<&str>,
     ) -> Result<String, String> {
+        self.format_value_with_spec_object(value, conversion, format_spec, None)
+    }
+
+    fn format_value_with_spec_object(
+        &mut self,
+        value: &Value,
+        conversion: Option<FormatConversion>,
+        format_spec: Option<&str>,
+        format_spec_object: Option<Value>,
+    ) -> Result<String, String> {
         if conversion.is_none()
             && let Some(method) = instance_special_method(value, "__format__")
         {
-            let result = self.call_value(
-                method,
-                vec![Value::String(format_spec.unwrap_or_default().to_string())],
-            )?;
+            let format_spec_value = format_spec_object
+                .clone()
+                .unwrap_or_else(|| Value::String(format_spec.unwrap_or_default().to_string()));
+            let result = self.call_value(method, vec![format_spec_value])?;
             return match result {
                 Value::String(value) => Ok(value),
+                value if str_subclass_string(&value).is_some() => {
+                    Ok(str_subclass_string(&value)
+                        .expect("str subclass storage exists after guard"))
+                }
                 value => Err(format!(
                     "__format__ must return a string, got {}",
                     type_name(&value)
@@ -10507,10 +11308,17 @@ impl Vm {
             };
         }
 
+        if conversion.is_none()
+            && let Some(value) = str_subclass_string(value)
+        {
+            return format_builtin_value(&Value::String(value), conversion, format_spec);
+        }
+
         if conversion.is_none() && matches!(value, Value::Instance { .. }) {
             return call_object_format(vec![
                 value.clone(),
-                Value::String(format_spec.unwrap_or_default().to_string()),
+                format_spec_object
+                    .unwrap_or_else(|| Value::String(format_spec.unwrap_or_default().to_string())),
             ]);
         }
 
@@ -10520,29 +11328,29 @@ impl Vm {
     fn call_range(&mut self, args: Vec<Value>) -> Result<Value, String> {
         let numbers = args
             .into_iter()
-            .map(|arg| self.index_i64(arg, "range() argument"))
+            .map(|arg| self.index_big_int(arg))
             .collect::<Result<Vec<_>, _>>()?;
 
         match numbers.as_slice() {
             [] => Err("range expected at least 1 argument, got 0".to_string()),
             [stop] => Ok(Value::Range {
-                start: 0,
-                stop: *stop,
-                step: 1,
+                start: BigInt::zero(),
+                stop: stop.clone(),
+                step: BigInt::from(1),
             }),
             [start, stop] => Ok(Value::Range {
-                start: *start,
-                stop: *stop,
-                step: 1,
+                start: start.clone(),
+                stop: stop.clone(),
+                step: BigInt::from(1),
             }),
-            [start, stop, 0] => {
+            [start, stop, step] if step.is_zero() => {
                 let _ = (start, stop);
                 Err("range() arg 3 must not be zero".to_string())
             }
             [start, stop, step] => Ok(Value::Range {
-                start: *start,
-                stop: *stop,
-                step: *step,
+                start: start.clone(),
+                stop: stop.clone(),
+                step: step.clone(),
             }),
             values => Err(format!(
                 "range expected at most 3 arguments, got {}",
@@ -10556,8 +11364,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        self.call_bytes_like_constructor("bytes", args, keywords)
-            .map(Value::Bytes)
+        self.call_bytes_constructor(args, keywords)
     }
 
     fn call_bytearray(
@@ -10565,7 +11372,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        self.call_bytes_like_constructor("bytearray", args, keywords)
+        self.call_bytes_like_constructor("bytearray", args, keywords, false)
             .map(byte_array_value)
     }
 
@@ -10990,11 +11797,84 @@ impl Vm {
         self.memoryview_byte_argument(value)
     }
 
+    fn call_bytes_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut slots =
+            constructor_slots("bytes", args, keywords, &["source", "encoding", "errors"])?;
+        let errors = slots[2].take();
+        let encoding = slots[1].take();
+        let source = slots[0].take();
+
+        let Some(source) = source else {
+            reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+            return Ok(Value::Bytes(Vec::new()));
+        };
+
+        match source {
+            Value::String(value) => {
+                if encoding.is_none() {
+                    return Err("TypeError: string argument without an encoding".to_string());
+                }
+                let (encoding, errors) =
+                    codec_options_from_values("bytes", encoding.as_ref(), errors.as_ref())?;
+                encode_text(&value, encoding, errors).map(Value::Bytes)
+            }
+            Value::Bytes(value) => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                Ok(Value::Bytes(value))
+            }
+            Value::ByteArray(value) => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                Ok(Value::Bytes(bytearray_bytes(&value)))
+            }
+            Value::MemoryView(view) => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                memoryview_bytes(&view).map(Value::Bytes)
+            }
+            value => {
+                reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                if let Some(result) = self.call_dunder_bytes_value(&value)? {
+                    return Ok(result);
+                }
+                if let Some(bytes) = bytes_subclass_bytes(&value) {
+                    return Ok(Value::Bytes(bytes));
+                }
+                if let Some(bytes) = bytearray_subclass_bytes(&value) {
+                    return Ok(Value::Bytes(bytes));
+                }
+                match self.maybe_index_integer_value(value.clone())? {
+                    Value::Number(count) => {
+                        if count < 0 {
+                            return Err("negative count".to_string());
+                        }
+                        let count = usize::try_from(count)
+                            .map_err(|_| "bytes() argument is too large".to_string())?;
+                        Ok(Value::Bytes(vec![0; count]))
+                    }
+                    Value::BigInt(count) => {
+                        if count.is_negative() {
+                            return Err("negative count".to_string());
+                        }
+                        let count = count
+                            .to_usize()
+                            .ok_or_else(|| "bytes() argument is too large".to_string())?;
+                        Ok(Value::Bytes(vec![0; count]))
+                    }
+                    _ => self.bytes_from_iterable("bytes", value).map(Value::Bytes),
+                }
+            }
+        }
+    }
+
     fn call_bytes_like_constructor(
         &mut self,
         name: &str,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
+        honor_dunder_bytes: bool,
     ) -> Result<Vec<u8>, String> {
         let mut slots = constructor_slots(name, args, keywords, &["source", "encoding", "errors"])?;
         let errors = slots[2].take();
@@ -11029,6 +11909,9 @@ impl Vm {
             }
             value => {
                 reject_bytes_encoding_without_string(encoding.as_ref(), errors.as_ref())?;
+                if honor_dunder_bytes && let Some(bytes) = self.call_dunder_bytes_bytes(&value)? {
+                    return Ok(bytes);
+                }
                 if let Some(bytes) = bytes_subclass_bytes(&value) {
                     return Ok(bytes);
                 }
@@ -11056,6 +11939,29 @@ impl Vm {
                     _ => self.bytes_from_iterable(name, value),
                 }
             }
+        }
+    }
+
+    fn call_dunder_bytes_value(&mut self, value: &Value) -> Result<Option<Value>, String> {
+        let Some(method) = instance_special_method(value, "__bytes__") else {
+            return Ok(None);
+        };
+        let result = self.call_value(method, Vec::new())?;
+        if matches!(result, Value::Bytes(_)) || bytes_subclass_bytes(&result).is_some() {
+            Ok(Some(result))
+        } else {
+            Err(format!(
+                "TypeError: __bytes__ returned non-bytes (type {})",
+                type_name(&result)
+            ))
+        }
+    }
+
+    fn call_dunder_bytes_bytes(&mut self, value: &Value) -> Result<Option<Vec<u8>>, String> {
+        match self.call_dunder_bytes_value(value)? {
+            Some(Value::Bytes(bytes)) => Ok(Some(bytes)),
+            Some(value) => Ok(bytes_subclass_bytes(&value)),
+            None => Ok(None),
         }
     }
 
@@ -11774,7 +12680,7 @@ impl Vm {
 
     fn call_float(&mut self, args: Vec<Value>) -> Result<Value, String> {
         match args.as_slice() {
-            [] => Ok(Value::Float(0.0)),
+            [] => Ok(float_value(0.0)),
             [value] => self.float_value(value.clone()),
             values => Err(format!(
                 "float() expected at most 1 argument, got {}",
@@ -11785,10 +12691,10 @@ impl Vm {
 
     fn float_value(&mut self, value: Value) -> Result<Value, String> {
         match numeric_bool_value(value) {
-            Value::Number(value) => Ok(Value::Float(value as f64)),
+            Value::Number(value) => Ok(float_value(value as f64)),
             Value::BigInt(value) => value
                 .to_f64()
-                .map(Value::Float)
+                .map(float_value)
                 .ok_or_else(|| "int too large to convert to float".to_string()),
             Value::Float(value) => Ok(Value::Float(value)),
             Value::String(value) => parse_float_string(&value),
@@ -11818,10 +12724,10 @@ impl Vm {
                 if instance_special_method(&value, "__index__").is_some() {
                     let integer = self.index_integer_value(value)?;
                     return match integer {
-                        Value::Number(value) => Ok(Value::Float(value as f64)),
+                        Value::Number(value) => Ok(float_value(value as f64)),
                         Value::BigInt(value) => value
                             .to_f64()
-                            .map(Value::Float)
+                            .map(float_value)
                             .ok_or_else(|| "int too large to convert to float".to_string()),
                         _ => unreachable!("index_integer_value returns an integer"),
                     };
@@ -11831,6 +12737,152 @@ impl Vm {
                 ))
             }
         }
+    }
+
+    fn call_complex(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut slots = constructor_slots("complex", args, keywords, &["real", "imag"])?;
+        let real = slots[0].take();
+        let imag = slots[1].take();
+
+        match (real, imag) {
+            (None, None) => Ok(Value::Complex {
+                real: 0.0,
+                imag: 0.0,
+            }),
+            (Some(real), None) => {
+                let (real, imag) = self.complex_parts_from_single_value(real)?;
+                Ok(Value::Complex { real, imag })
+            }
+            (real, Some(imag)) => {
+                let real = real.unwrap_or(Value::Number(0));
+                let (real_real, real_imag) = self.complex_parts_from_value(real, "real")?;
+                let (imag_real, imag_imag) = self.complex_parts_from_value(imag, "imag")?;
+                Ok(Value::Complex {
+                    real: real_real - imag_imag,
+                    imag: add_complex_zero_preserving(real_imag, imag_real),
+                })
+            }
+        }
+    }
+
+    fn complex_parts_from_single_value(&mut self, value: Value) -> Result<(f64, f64), String> {
+        match value {
+            Value::String(value) => parse_complex_string(&value),
+            value => self.complex_parts_from_numeric(value, |value| {
+                format!(
+                    "TypeError: complex() argument must be a string or a number, not {}",
+                    type_name(value)
+                )
+            }),
+        }
+    }
+
+    fn complex_parts_from_value(
+        &mut self,
+        value: Value,
+        position: &str,
+    ) -> Result<(f64, f64), String> {
+        self.complex_parts_from_numeric(value, |value| {
+            format!(
+                "TypeError: complex() argument '{position}' must be a real number, not {}",
+                type_name(value)
+            )
+        })
+    }
+
+    fn complex_parts_from_number(&mut self, value: Value) -> Result<(f64, f64), String> {
+        self.complex_parts_from_numeric(value, |value| {
+            format!(
+                "TypeError: complex.from_number() argument must be a number, not '{}'",
+                type_name(value)
+            )
+        })
+    }
+
+    fn complex_parts_from_numeric<F>(
+        &mut self,
+        value: Value,
+        type_error: F,
+    ) -> Result<(f64, f64), String>
+    where
+        F: FnOnce(&Value) -> String,
+    {
+        if let Some(method) = instance_special_method(&value, "__complex__") {
+            let result = match self.call_value_catching(method, Vec::new())? {
+                Ok(result) => result,
+                Err(exception) => {
+                    self.raise_exception(exception, true)?;
+                    return Ok((0.0, 0.0));
+                }
+            };
+            return match result {
+                Value::Complex { real, imag } => Ok((real, imag)),
+                result => Err(format!(
+                    "TypeError: {}.__complex__ returned non-complex (type {})",
+                    type_name(&value),
+                    type_name(&result)
+                )),
+            };
+        }
+
+        match numeric_bool_value(value) {
+            Value::Number(value) => Ok((value as f64, 0.0)),
+            Value::BigInt(value) => Ok((big_int_to_float(&value)?, 0.0)),
+            Value::Float(value) => Ok((*value, 0.0)),
+            Value::Complex { real, imag } => Ok((real, imag)),
+            value => {
+                if let Some(method) = instance_special_method(&value, "__float__") {
+                    let result = match self.call_value_catching(method, Vec::new())? {
+                        Ok(result) => result,
+                        Err(exception) => {
+                            self.raise_exception(exception, true)?;
+                            return Ok((0.0, 0.0));
+                        }
+                    };
+                    return match result {
+                        Value::Float(value) => Ok((*value, 0.0)),
+                        result => Err(format!(
+                            "TypeError: {}.__float__ returned non-float (type {})",
+                            type_name(&value),
+                            type_name(&result)
+                        )),
+                    };
+                }
+                if instance_special_method(&value, "__index__").is_some() {
+                    let integer = match self
+                        .call_with_exception_capture(|vm| vm.index_integer_value(value))?
+                    {
+                        Ok(integer) => integer,
+                        Err(exception) => {
+                            self.raise_exception(exception, true)?;
+                            return Ok((0.0, 0.0));
+                        }
+                    };
+                    return match integer {
+                        Value::Number(value) => Ok((value as f64, 0.0)),
+                        Value::BigInt(value) => Ok((big_int_to_float(&value)?, 0.0)),
+                        _ => unreachable!("index_integer_value returns an integer"),
+                    };
+                }
+
+                Err(type_error(&value))
+            }
+        }
+    }
+
+    fn call_complex_from_number(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let [number] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: from_number() expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        let (real, imag) = self.complex_parts_from_number(number.clone())?;
+        Ok(Value::Complex { real, imag })
     }
 
     fn call_round(
@@ -11857,10 +12909,82 @@ impl Vm {
         }
     }
 
+    fn call_decimal_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut slots = constructor_slots("Decimal", args, keywords, &["value"])?;
+        let value = slots[0].take().unwrap_or(Value::Number(0));
+        let (numerator, denominator) = decimal_rational_from_value(value)?;
+        Ok(rational_instance(
+            "Decimal",
+            "decimal.Decimal.__round__",
+            DECIMAL_RATIONAL_STORAGE_FIELD,
+            numerator,
+            denominator,
+        ))
+    }
+
+    fn call_decimal_round(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("Decimal.__round__", &keywords)?;
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "__round__() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let (numerator, denominator) =
+            rational_instance_parts(receiver, DECIMAL_RATIONAL_STORAGE_FIELD, "Decimal")?;
+        Ok(round_rational_to_int(numerator, denominator))
+    }
+
+    fn call_fraction_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut slots =
+            constructor_slots("Fraction", args, keywords, &["numerator", "denominator"])?;
+        let numerator = slots[0].take().unwrap_or(Value::Number(0));
+        let denominator = slots[1].take().unwrap_or(Value::Number(1));
+        let numerator = self.index_big_int(numerator)?;
+        let denominator = self.index_big_int(denominator)?;
+        let (numerator, denominator) = normalize_rational(numerator, denominator)?;
+        Ok(rational_instance(
+            "Fraction",
+            "fractions.Fraction.__round__",
+            FRACTION_RATIONAL_STORAGE_FIELD,
+            numerator,
+            denominator,
+        ))
+    }
+
+    fn call_fraction_round(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("Fraction.__round__", &keywords)?;
+        let [receiver] = args.as_slice() else {
+            return Err(format!(
+                "__round__() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let (numerator, denominator) =
+            rational_instance_parts(receiver, FRACTION_RATIONAL_STORAGE_FIELD, "Fraction")?;
+        Ok(round_rational_to_int(numerator, denominator))
+    }
+
     fn round_without_ndigits(&mut self, number: Value) -> Result<Value, String> {
         match numeric_bool_value(number) {
             value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
-            Value::Float(value) => round_float_to_int(value),
+            Value::Float(value) => round_float_to_int(*value),
             value => Err(format!(
                 "TypeError: type {} doesn't define __round__ method",
                 type_name(&value)
@@ -11878,7 +13002,7 @@ impl Vm {
         match numeric_bool_value(number) {
             Value::Number(value) => Ok(round_big_int_to_ndigits(BigInt::from(value), ndigits)),
             Value::BigInt(value) => Ok(round_big_int_to_ndigits(value, ndigits)),
-            Value::Float(value) => round_float_to_ndigits(value, ndigits).map(Value::Float),
+            Value::Float(value) => round_float_to_ndigits(*value, ndigits).map(float_value),
             value => Err(format!(
                 "TypeError: type {} doesn't define __round__ method",
                 type_name(&value)
@@ -11901,6 +13025,13 @@ impl Vm {
 
         match slots[2].take() {
             None | Some(Value::None) => power_values(base, exponent),
+            Some(modulus)
+                if matches!(&base, Value::Complex { .. })
+                    || matches!(&exponent, Value::Complex { .. })
+                    || matches!(&modulus, Value::Complex { .. }) =>
+            {
+                Err("ValueError: complex modulo".to_string())
+            }
             Some(modulus) => self.call_modular_pow(base, exponent, modulus),
         }
     }
@@ -11946,6 +13077,9 @@ impl Vm {
     }
 
     fn index_integer_value(&mut self, value: Value) -> Result<Value, String> {
+        if let Some(value) = int_subclass_integer(&value) {
+            return Ok(value);
+        }
         match numeric_bool_value(value) {
             value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
             value => {
@@ -11962,6 +13096,9 @@ impl Vm {
     }
 
     fn maybe_index_integer_value(&mut self, value: Value) -> Result<Value, String> {
+        if let Some(value) = int_subclass_integer(&value) {
+            return Ok(value);
+        }
         match numeric_bool_value(value) {
             value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
             value => {
@@ -12066,61 +13203,77 @@ impl Vm {
     }
 
     fn get_iter(&mut self, value: Value) -> Result<Value, String> {
+        match self.get_iter_capturing(value)? {
+            Ok(iterator) => Ok(iterator),
+            Err(exception) => Err(format_exception_error(&exception)),
+        }
+    }
+
+    fn get_iter_or_raise(&mut self, value: Value) -> Result<Option<Value>, String> {
+        match self.get_iter_capturing(value)? {
+            Ok(iterator) => Ok(Some(iterator)),
+            Err(exception) => {
+                self.raise_exception(exception, true)?;
+                Ok(None)
+            }
+        }
+    }
+
+    fn get_iter_capturing(&mut self, value: Value) -> Result<Result<Value, MiniException>, String> {
         if let Some(method) = instance_special_method(&value, "__iter__") {
             let iterator = match self.call_value_catching(method, Vec::new())? {
                 Ok(iterator) => iterator,
-                Err(exception) => return Err(format_exception_error(&exception)),
+                Err(exception) => return Ok(Err(exception)),
             };
             if is_iterator_value(&iterator) {
-                return Ok(iterator);
+                return Ok(Ok(iterator));
             }
             return Err("TypeError: iter() returned non-iterator".to_string());
         }
 
         if let Some(items) = set_subclass_items(&value) {
-            return get_iter(Value::Set(items));
+            return self.call_with_exception_capture(|_| get_iter(Value::Set(items)));
         }
 
         if let Some(items) = frozen_set_subclass_items(&value) {
-            return get_iter(Value::FrozenSet(items));
+            return self.call_with_exception_capture(|_| get_iter(Value::FrozenSet(items)));
         }
 
         if instance_special_method(&value, "__getitem__").is_some() {
-            return Ok(shared_iterator(Value::SequenceIterator {
+            return Ok(Ok(shared_iterator(Value::SequenceIterator {
                 object: Box::new(value),
                 index: 0,
-            }));
+            })));
         }
 
         if let Some(entries) = dict_subclass_entries(&value) {
-            return get_iter(Value::Dict(entries));
+            return self.call_with_exception_capture(|_| get_iter(Value::Dict(entries)));
         }
 
         if let Some(maps) = chain_map_subclass_maps(&value) {
-            return Ok(shared_iterator(Value::ListIterator {
-                items: chain_map_entries(&maps)?
+            return Ok(Ok(list_iterator_from_values(
+                chain_map_entries(&maps)?
                     .into_iter()
                     .map(|(key, _)| key)
                     .collect(),
-                index: 0,
-            }));
+            )));
         }
 
         match value {
-            Value::ChainMap { maps } => Ok(shared_iterator(Value::ListIterator {
-                items: chain_map_entries(&maps)?
+            Value::ChainMap { maps } => Ok(Ok(list_iterator_from_values(
+                chain_map_entries(&maps)?
                     .into_iter()
                     .map(|(key, _)| key)
                     .collect(),
-                index: 0,
-            })),
-            Value::UserDict { data, .. } => get_iter(Value::Dict(data)),
-            Value::MappingProxyObject { mapping } => self.get_iter(*mapping),
-            Value::MappingView { kind, mapping } => Ok(shared_iterator(Value::ListIterator {
-                items: self.mapping_view_values(kind, *mapping)?,
-                index: 0,
-            })),
-            value => get_iter(value),
+            ))),
+            Value::UserDict { data, .. } => {
+                self.call_with_exception_capture(|_| get_iter(Value::Dict(data)))
+            }
+            Value::MappingProxyObject { mapping } => self.get_iter_capturing(*mapping),
+            Value::MappingView { kind, mapping } => Ok(Ok(list_iterator_from_values(
+                self.mapping_view_values(kind, *mapping)?,
+            ))),
+            value => self.call_with_exception_capture(|_| get_iter(value)),
         }
     }
 
@@ -12826,6 +13979,46 @@ impl Vm {
         })
     }
 
+    fn call_mapping_view_constructor(
+        &mut self,
+        name: &str,
+        mut args: Vec<Value>,
+        mut keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let kind = match name {
+            "KeysView" => DictViewKind::Keys,
+            "ItemsView" => DictViewKind::Items,
+            "ValuesView" => DictViewKind::Values,
+            _ => unreachable!("mapping view constructor guard filters names"),
+        };
+
+        if args.len() > 1 {
+            return Err(format!("{name}() expected 1 argument, got {}", args.len()));
+        }
+
+        let keyword_mapping =
+            if let Some(index) = keywords.iter().position(|(key, _)| key == "mapping") {
+                Some(keywords.remove(index).1)
+            } else {
+                None
+            };
+        if let Some((keyword, _)) = keywords.into_iter().next() {
+            return Err(format!(
+                "{name}() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        if !args.is_empty() && keyword_mapping.is_some() {
+            return Err(format!(
+                "{name}() got multiple values for argument 'mapping'"
+            ));
+        }
+
+        let mapping = keyword_mapping
+            .or_else(|| args.pop())
+            .ok_or_else(|| format!("{name}() missing 1 required positional argument: 'mapping'"))?;
+        Ok(mapping_view_value(kind, mapping))
+    }
+
     fn user_dict_constructor_entries(
         &mut self,
         args: Vec<Value>,
@@ -12891,6 +14084,58 @@ impl Vm {
         Ok(Value::UserList {
             data: Rc::new(RefCell::new(values)),
             attrs: dict_ref_from_entries(Vec::new())?,
+        })
+    }
+
+    fn call_deque(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: deque() does not accept keyword arguments".to_string());
+        }
+        if !args.is_empty() {
+            return Err(format!(
+                "TypeError: deque expected at most 0 arguments, got {}",
+                args.len()
+            ));
+        }
+
+        Ok(Value::Instance {
+            class_name: "deque".to_string(),
+            fields: new_scope(),
+            class_attrs: new_scope(),
+            class_bases: vec![Value::Builtin("deque".to_string())],
+        })
+    }
+
+    fn call_array_array(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: array.array() does not accept keyword arguments".to_string());
+        }
+        if args.is_empty() {
+            return Err("TypeError: array.array expected at least 1 argument, got 0".to_string());
+        }
+        if args.len() > 2 {
+            return Err(format!(
+                "TypeError: array.array expected at most 2 arguments, got {}",
+                args.len()
+            ));
+        }
+        if !matches!(args.first(), Some(Value::String(_))) {
+            return Err("TypeError: array.array typecode must be a string".to_string());
+        }
+
+        Ok(Value::Instance {
+            class_name: "array".to_string(),
+            fields: new_scope(),
+            class_attrs: new_scope(),
+            class_bases: vec![Value::Builtin("array.array".to_string())],
         })
     }
 
@@ -13403,7 +14648,10 @@ impl Vm {
 
     fn call_iter(&mut self, args: Vec<Value>) -> Result<Value, String> {
         match args.as_slice() {
-            [value] => self.get_iter(value.clone()),
+            [value] => match self.get_iter_or_raise(value.clone())? {
+                Some(iterator) => Ok(iterator),
+                None => Ok(Value::None),
+            },
             [callable, sentinel] => {
                 if !is_callable_value(callable) {
                     return Err(format!("TypeError: {callable} is not callable"));
@@ -13491,6 +14739,15 @@ impl Vm {
                     ));
                 };
                 self.call_iterator_length_hint(receiver.clone())
+            }
+            "__reduce__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__reduce__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                self.call_iterator_reduce(receiver.clone())
             }
             _ => Err(format!("unknown builtin: {name}")),
         }
@@ -14115,13 +15372,12 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                Ok(shared_iterator(Value::ListIterator {
-                    items: chain_map_entries(&maps)?
+                Ok(list_iterator_from_values(
+                    chain_map_entries(&maps)?
                         .into_iter()
                         .map(|(key, _)| key)
                         .collect(),
-                    index: 0,
-                }))
+                ))
             }
             "__len__" => {
                 reject_method_keywords(name, &keywords)?;
@@ -14532,10 +15788,7 @@ impl Vm {
                         values.extend(std::iter::repeat_n(key.clone(), count as usize));
                     }
                 }
-                Ok(shared_iterator(Value::ListIterator {
-                    items: values,
-                    index: 0,
-                }))
+                Ok(list_iterator_from_values(values))
             }
             "get" => {
                 reject_method_keywords(name, &keywords)?;
@@ -14929,6 +16182,16 @@ impl Vm {
         self.rich_equal_values(&left, &right)
     }
 
+    fn not_equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
+        if let Some(value) = self.call_ne_special(left.clone(), right.clone())? {
+            return Ok(value);
+        }
+        if let Some(value) = self.call_ne_special(right.clone(), left.clone())? {
+            return Ok(value);
+        }
+        self.equal_values(left, right).map(|value| !value)
+    }
+
     fn add_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         if let Some(method) = instance_special_method(&left, "__add__") {
             let result = self.call_value(method, vec![right.clone()])?;
@@ -14944,16 +16207,8 @@ impl Vm {
             }
         }
 
-        let left = if is_int_subclass_instance(&left) {
-            Value::Number(0)
-        } else {
-            left
-        };
-        let right = if is_int_subclass_instance(&right) {
-            Value::Number(0)
-        } else {
-            right
-        };
+        let left = int_subclass_integer(&left).unwrap_or(left);
+        let right = int_subclass_integer(&right).unwrap_or(right);
         add_values(left, right)
     }
 
@@ -15810,7 +17065,7 @@ impl Vm {
     }
 
     fn rich_equal_values(&mut self, left: &Value, right: &Value) -> Result<bool, String> {
-        if is_identical(left, right) {
+        if is_identical(left, right) && !matches!(left, Value::Float(_)) {
             return Ok(true);
         }
 
@@ -15871,6 +17126,12 @@ impl Vm {
         }
         if let Some(value) = self.call_eq_special(right.clone(), left.clone())? {
             return Ok(value);
+        }
+        if let Some(left) = int_subclass_integer(left) {
+            return self.rich_equal_values(&left, right);
+        }
+        if let Some(right) = int_subclass_integer(right) {
+            return self.rich_equal_values(left, &right);
         }
         if matches!(left, Value::Instance { .. }) || matches!(right, Value::Instance { .. }) {
             return Ok(false);
@@ -15964,7 +17225,9 @@ impl Vm {
             return Ok(false);
         }
         for (left_item, right_item) in left.iter().zip(right.iter()) {
-            if !self.rich_equal_values(left_item, right_item)? {
+            if !sequence_items_match(left_item, right_item)
+                && !self.rich_equal_values(left_item, right_item)?
+            {
                 return Ok(false);
             }
         }
@@ -16021,6 +17284,17 @@ impl Vm {
 
     fn call_eq_special(&mut self, left: Value, right: Value) -> Result<Option<bool>, String> {
         let Some(method) = instance_special_method(&left, "__eq__") else {
+            return Ok(None);
+        };
+        let result = self.call_value(method, vec![right])?;
+        if matches!(result, Value::NotImplemented) {
+            return Ok(None);
+        }
+        self.truth_value(result).map(Some)
+    }
+
+    fn call_ne_special(&mut self, left: Value, right: Value) -> Result<Option<bool>, String> {
+        let Some(method) = instance_special_method(&left, "__ne__") else {
             return Ok(None);
         };
         let result = self.call_value(method, vec![right])?;
@@ -16541,6 +17815,544 @@ impl Vm {
         }
     }
 
+    fn call_operator_length_hint(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: length_hint() does not accept keyword arguments".to_string());
+        }
+
+        let (object, default) = match args.as_slice() {
+            [object] => (object.clone(), Value::Number(0)),
+            [object, default] => {
+                operator_length_hint_check_default(default)?;
+                (object.clone(), default.clone())
+            }
+            values => {
+                return Err(format!(
+                    "TypeError: length_hint() expected 1 or 2 arguments, got {}",
+                    values.len()
+                ));
+            }
+        };
+
+        match self.len_value(object.clone()) {
+            Ok(length) => {
+                let length = i64::try_from(length)
+                    .map_err(|_| "OverflowError: len() result is too large".to_string())?;
+                return Ok(Value::Number(length));
+            }
+            Err(message) if is_type_exception_message(&message) => {}
+            Err(message) => return Err(message),
+        }
+
+        let method = match self.load_attribute_catching(object.clone(), "__length_hint__")? {
+            Ok(method) => method,
+            Err(exception) if exception_matches_type_name(&exception, "AttributeError") => {
+                return Ok(default);
+            }
+            Err(exception) => return self.raise_runtime_exception_value(exception),
+        };
+
+        let value = match self.call_value_catching(method, Vec::new())? {
+            Ok(value) => value,
+            Err(exception) if exception_matches_type_name(&exception, "TypeError") => {
+                return Ok(default);
+            }
+            Err(exception) => return self.raise_runtime_exception_value(exception),
+        };
+
+        operator_length_hint_result(value, default)
+    }
+
+    fn call_operator_builtin(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let function = name.strip_prefix("operator.").unwrap_or(name);
+        if function == "length_hint" {
+            return self.call_operator_length_hint(args, keywords);
+        }
+        if function == "call" {
+            let Some((callee, rest)) = args.split_first() else {
+                return Err("TypeError: call() expected at least 1 argument, got 0".to_string());
+            };
+            return self.call_value_with_keywords(callee.clone(), rest.to_vec(), keywords);
+        }
+        if function == "methodcaller" {
+            return self.call_operator_methodcaller_constructor(args, keywords);
+        }
+        if !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {function}() does not accept keyword arguments"
+            ));
+        }
+
+        match function {
+            "lt" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.less_values(left, right)?))
+            }
+            "le" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.less_equal_values(left, right)?))
+            }
+            "eq" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.equal_values(left, right)?))
+            }
+            "ne" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.not_equal_values(left, right)?))
+            }
+            "ge" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.greater_equal_values(left, right)?))
+            }
+            "gt" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.greater_values(left, right)?))
+            }
+            "truth" => {
+                let value = operator_unary_arg(function, args)?;
+                Ok(Value::Bool(self.truth_value(value)?))
+            }
+            "not_" => {
+                let value = operator_unary_arg(function, args)?;
+                Ok(Value::Bool(!self.truth_value(value)?))
+            }
+            "is_" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(is_identical(&left, &right)))
+            }
+            "is_not" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(!is_identical(&left, &right)))
+            }
+            "is_none" => {
+                let value = operator_unary_arg(function, args)?;
+                Ok(Value::Bool(matches!(value, Value::None)))
+            }
+            "is_not_none" => {
+                let value = operator_unary_arg(function, args)?;
+                Ok(Value::Bool(!matches!(value, Value::None)))
+            }
+            "abs" => {
+                let value = operator_unary_arg(function, args)?;
+                self.abs_value(value)
+            }
+            "add" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.add_values(left, right)
+            }
+            "and_" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.bit_and_values(left, right)
+            }
+            "attrgetter" => self.call_operator_attrgetter_constructor(args),
+            "concat" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_concat_values(left, right)
+            }
+            "contains" => {
+                let (haystack, needle) = operator_binary_args(function, args)?;
+                Ok(Value::Bool(self.contains_value(needle, haystack)?))
+            }
+            "countOf" => {
+                let (iterable, needle) = operator_binary_args(function, args)?;
+                self.operator_count_of(iterable, needle)
+            }
+            "delitem" => {
+                let (object, index) = operator_binary_args(function, args)?;
+                self.delete_subscript_value(object, index)?;
+                Ok(Value::None)
+            }
+            "floordiv" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                floor_divide_values(left, right)
+            }
+            "iadd" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_add_values(left, right)
+            }
+            "iand" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_bit_and_values(left, right)
+            }
+            "iconcat" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_iconcat_values(left, right)
+            }
+            "getitem" => {
+                let (object, index) = operator_binary_args(function, args)?;
+                self.load_subscript_value(object, index)
+            }
+            "ifloordiv" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(
+                    left,
+                    right,
+                    "__ifloordiv__",
+                    floor_divide_values,
+                )
+            }
+            "ilshift" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(left, right, "__ilshift__", left_shift_values)
+            }
+            "imatmul" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_matrix_multiply_values(left, right)
+            }
+            "imod" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(left, right, "__imod__", modulo_values)
+            }
+            "imul" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_multiply_values(left, right)
+            }
+            "index" => {
+                let value = operator_unary_arg(function, args)?;
+                self.index_integer_value(value)
+            }
+            "indexOf" => {
+                let (iterable, needle) = operator_binary_args(function, args)?;
+                self.operator_index_of(iterable, needle)
+            }
+            "inv" | "invert" => {
+                let value = operator_unary_arg(function, args)?;
+                invert_value(value)
+            }
+            "itemgetter" => self.call_operator_itemgetter_constructor(args),
+            "ior" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_bit_or_values(left, right)
+            }
+            "ipow" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(left, right, "__ipow__", power_values)
+            }
+            "irshift" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(left, right, "__irshift__", right_shift_values)
+            }
+            "isub" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_subtract_values(left, right)
+            }
+            "itruediv" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.operator_in_place_binary_value(left, right, "__itruediv__", true_divide_values)
+            }
+            "ixor" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.in_place_bit_xor_values(left, right)
+            }
+            "lshift" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                left_shift_values(left, right)
+            }
+            "matmul" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.matrix_multiply_values(left, right)
+            }
+            "mod" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                modulo_values(left, right)
+            }
+            "mul" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                multiply_values(left, right)
+            }
+            "neg" => {
+                let value = operator_unary_arg(function, args)?;
+                negate_value(value)
+            }
+            "or_" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.bit_or_values(left, right)
+            }
+            "pos" => {
+                let value = operator_unary_arg(function, args)?;
+                positive_value(value)
+            }
+            "pow" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                power_values(left, right)
+            }
+            "rshift" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                right_shift_values(left, right)
+            }
+            "setitem" => {
+                let (object, index, value) = operator_ternary_args(function, args)?;
+                self.store_subscript_value(object, index, value)?;
+                Ok(Value::None)
+            }
+            "sub" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.subtract_values(left, right)
+            }
+            "truediv" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                true_divide_values(left, right)
+            }
+            "xor" => {
+                let (left, right) = operator_binary_args(function, args)?;
+                self.bit_xor_values(left, right)
+            }
+            _ => Err(format!("unknown builtin: {name}")),
+        }
+    }
+
+    fn call_operator_attrgetter_constructor(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        if args.is_empty() {
+            return Err("TypeError: attrgetter expected 1 argument, got 0".to_string());
+        }
+
+        let mut attrs = Vec::with_capacity(args.len());
+        for arg in args {
+            match arg {
+                Value::String(name) => attrs.push(name),
+                value => {
+                    return Err(format!(
+                        "TypeError: attribute name must be a string, not '{}'",
+                        type_name(&value)
+                    ));
+                }
+            }
+        }
+
+        Ok(Value::OperatorAttrGetter {
+            attrs,
+            identity: Rc::new(()),
+        })
+    }
+
+    fn call_operator_itemgetter_constructor(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        if args.is_empty() {
+            return Err("TypeError: itemgetter expected 1 argument, got 0".to_string());
+        }
+
+        Ok(Value::OperatorItemGetter {
+            items: args,
+            identity: Rc::new(()),
+        })
+    }
+
+    fn call_operator_methodcaller_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((name, bound_args)) = args.split_first() else {
+            return Err("TypeError: methodcaller expected 1 argument, got 0".to_string());
+        };
+        let Value::String(name) = name else {
+            return Err(format!(
+                "TypeError: method name must be a string, not '{}'",
+                type_name(name)
+            ));
+        };
+
+        Ok(Value::OperatorMethodCaller {
+            name: name.clone(),
+            args: bound_args.to_vec(),
+            keywords,
+            identity: Rc::new(()),
+        })
+    }
+
+    fn call_operator_attrgetter(
+        &mut self,
+        attrs: Vec<String>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: attrgetter() does not accept keyword arguments".to_string());
+        }
+        let object = operator_call_object_arg("attrgetter", args)?;
+        let mut values = Vec::with_capacity(attrs.len());
+        for attr in attrs {
+            values.push(self.operator_attrgetter_value(object.clone(), &attr)?);
+        }
+        Ok(operator_getter_result(values))
+    }
+
+    fn operator_attrgetter_value(&mut self, object: Value, attr: &str) -> Result<Value, String> {
+        let mut value = object;
+        for name in attr.split('.') {
+            value = self.load_attribute_value(value, name)?;
+        }
+        Ok(value)
+    }
+
+    fn call_operator_itemgetter(
+        &mut self,
+        items: Vec<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: itemgetter() does not accept keyword arguments".to_string());
+        }
+        let object = operator_call_object_arg("itemgetter", args)?;
+        let mut values = Vec::with_capacity(items.len());
+        for item in items {
+            values.push(self.load_subscript_value(object.clone(), item)?);
+        }
+        Ok(operator_getter_result(values))
+    }
+
+    fn call_operator_methodcaller(
+        &mut self,
+        name: String,
+        bound_args: Vec<Value>,
+        bound_keywords: Vec<(String, Value)>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: methodcaller() does not accept keyword arguments".to_string());
+        }
+        let object = operator_call_object_arg("methodcaller", args)?;
+        let method = self.load_attribute_value(object, &name)?;
+        self.call_value_with_keywords(method, bound_args, bound_keywords)
+    }
+
+    fn operator_in_place_binary_value(
+        &mut self,
+        left: Value,
+        right: Value,
+        method_name: &str,
+        fallback: fn(Value, Value) -> Result<Value, String>,
+    ) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, method_name)? {
+            return Ok(value);
+        }
+        fallback(left, right)
+    }
+
+    fn operator_concat_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if !operator_concat_operand(&left) {
+            return Err(format!(
+                "TypeError: '{}' object can't be concatenated",
+                type_name(&left)
+            ));
+        }
+        self.add_values(left, right)
+    }
+
+    fn operator_iconcat_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if !operator_concat_operand(&left) {
+            return Err(format!(
+                "TypeError: '{}' object can't be concatenated",
+                type_name(&left)
+            ));
+        }
+        self.in_place_add_values(left, right)
+    }
+
+    fn operator_count_of(&mut self, iterable: Value, needle: Value) -> Result<Value, String> {
+        let mut iterator = self.get_iter(iterable)?;
+        let mut count = 0_i64;
+        loop {
+            match self.advance_owned_iterator_capturing(&mut iterator)? {
+                Ok(IteratorAdvance::Yield(value)) => {
+                    if self.operator_item_matches(&value, &needle)? {
+                        count += 1;
+                    }
+                }
+                Ok(IteratorAdvance::Complete(_)) => return Ok(Value::Number(count)),
+                Ok(IteratorAdvance::Raised) => {
+                    return Err("iterator raised exception".to_string());
+                }
+                Err(exception) => return Err(format_exception_error(&exception)),
+            }
+        }
+    }
+
+    fn operator_index_of(&mut self, iterable: Value, needle: Value) -> Result<Value, String> {
+        let mut iterator = self.get_iter(iterable)?;
+        let mut index = 0_i64;
+        loop {
+            match self.advance_owned_iterator_capturing(&mut iterator)? {
+                Ok(IteratorAdvance::Yield(value)) => {
+                    if self.operator_item_matches(&value, &needle)? {
+                        return Ok(Value::Number(index));
+                    }
+                    index += 1;
+                }
+                Ok(IteratorAdvance::Complete(_)) => {
+                    return Err("ValueError: sequence.index(x): x not in sequence".to_string());
+                }
+                Ok(IteratorAdvance::Raised) => {
+                    return Err("iterator raised exception".to_string());
+                }
+                Err(exception) => return Err(format_exception_error(&exception)),
+            }
+        }
+    }
+
+    fn operator_item_matches(&mut self, left: &Value, right: &Value) -> Result<bool, String> {
+        if is_identical(left, right) {
+            return Ok(true);
+        }
+        self.equal_values(left.clone(), right.clone())
+    }
+
+    fn call_iterator_reduce(&mut self, receiver: Value) -> Result<Value, String> {
+        let (sequence, index) = match receiver {
+            Value::Iterator(state) => {
+                let iterator = state.borrow().clone();
+                return self.call_iterator_reduce(iterator);
+            }
+            Value::ListIterator {
+                items,
+                index,
+                exhausted,
+            } => {
+                if exhausted {
+                    return self.iterator_reduce_result(list_value(Vec::new()), None);
+                } else {
+                    (Value::List(items), Some(index))
+                }
+            }
+            Value::TupleIterator { items, index } => (tuple_value(items), Some(index)),
+            value => {
+                return Err(format!(
+                    "TypeError: copy protocol does not support '{}'",
+                    type_name(&value)
+                ));
+            }
+        };
+        self.iterator_reduce_result(sequence, index)
+    }
+
+    fn iterator_reduce_result(
+        &mut self,
+        sequence: Value,
+        index: Option<usize>,
+    ) -> Result<Value, String> {
+        let iter = self
+            .load_builtin_name("iter")?
+            .ok_or_else(|| "AttributeError: iter".to_string())?;
+        let args = tuple_value(vec![sequence]);
+        let mut items = vec![iter, args];
+        if let Some(index) = index {
+            let index =
+                i64::try_from(index).map_err(|_| "OverflowError: iterator index is too large")?;
+            items.push(Value::Number(index));
+        }
+        Ok(tuple_value(items))
+    }
+
     fn iterator_length_hint(&mut self, receiver: Value) -> Result<Option<usize>, String> {
         match receiver {
             Value::Iterator(state) => {
@@ -16551,10 +18363,19 @@ impl Vm {
                 current,
                 stop,
                 step,
-            } => Ok(Some(range_values(current, stop, step)?.len())),
-            Value::ListIterator { items, index } | Value::TupleIterator { items, index } => {
-                Ok(Some(items.len().saturating_sub(index)))
+            } => Ok(Some(range_len_usize(&current, &stop, &step)?)),
+            Value::ListIterator {
+                items,
+                index,
+                exhausted,
+            } => {
+                if exhausted {
+                    Ok(Some(0))
+                } else {
+                    Ok(Some(items.borrow().len().saturating_sub(index)))
+                }
             }
+            Value::TupleIterator { items, index } => Ok(Some(items.len().saturating_sub(index))),
             Value::SetIterator {
                 items,
                 index,
@@ -16613,13 +18434,16 @@ impl Vm {
                 let index = usize::try_from(index).unwrap_or(usize::MAX);
                 Ok(Some(length.saturating_sub(index)))
             }
-            Value::SequenceReverseIterator { index, .. } => {
+            Value::SequenceReverseIterator { object, index } => {
                 if index < 0 {
                     Ok(Some(0))
                 } else {
-                    usize::try_from(index + 1)
-                        .map(Some)
-                        .map_err(|_| "__length_hint__() result is too large".to_string())
+                    let current = usize::try_from(index + 1)
+                        .map_err(|_| "__length_hint__() result is too large".to_string())?;
+                    let Some(length) = self.sequence_iterator_length(*object)? else {
+                        return Ok(None);
+                    };
+                    Ok(Some(current.min(length)))
                 }
             }
             value => Err(format!(
@@ -16694,7 +18518,9 @@ impl Vm {
 
         let iterable =
             iterable.ok_or_else(|| "TypeError: enumerate() missing iterable".to_string())?;
-        let iterator = self.get_iter(iterable)?;
+        let Some(iterator) = self.get_iter_or_raise(iterable)? else {
+            return Ok(Value::None);
+        };
         Ok(shared_iterator(Value::EnumerateIterator {
             iterator: Box::new(iterator),
             index: self.index_big_int(start.unwrap_or(Value::Number(0)))?,
@@ -16720,7 +18546,10 @@ impl Vm {
 
         let mut iterators = Vec::new();
         for arg in args {
-            iterators.push(self.get_iter(arg)?);
+            let Some(iterator) = self.get_iter_or_raise(arg)? else {
+                return Ok(Value::None);
+            };
+            iterators.push(iterator);
         }
         Ok(shared_iterator(Value::ZipIterator { iterators, strict }))
     }
@@ -16752,7 +18581,10 @@ impl Vm {
             .ok_or_else(|| "TypeError: map() must have at least two arguments".to_string())?;
         let mut iterators = Vec::new();
         for value in values {
-            iterators.push(self.get_iter(value)?);
+            let Some(iterator) = self.get_iter_or_raise(value)? else {
+                return Ok(Value::None);
+            };
+            iterators.push(iterator);
         }
 
         Ok(shared_iterator(Value::MapIterator {
@@ -16770,9 +18602,13 @@ impl Vm {
             ));
         };
 
+        let Some(iterator) = self.get_iter_or_raise(iterable.clone())? else {
+            return Ok(Value::None);
+        };
+
         Ok(shared_iterator(Value::FilterIterator {
             function: Box::new(function.clone()),
-            iterator: Box::new(self.get_iter(iterable.clone())?),
+            iterator: Box::new(iterator),
         }))
     }
 
@@ -16780,8 +18616,8 @@ impl Vm {
         match numeric_bool_value(value) {
             Value::Number(value) => Ok(normalize_big_int(BigInt::from(value).abs())),
             Value::BigInt(value) => Ok(normalize_big_int(value.abs())),
-            Value::Float(value) => Ok(Value::Float(value.abs())),
-            Value::Complex { real, imag } => Ok(Value::Float(real.hypot(imag))),
+            Value::Float(value) => Ok(float_value(value.abs())),
+            Value::Complex { real, imag } => complex_abs_value(real, imag),
             value => {
                 if let Some(method) = instance_special_method(&value, "__abs__") {
                     return match self.call_value_catching(method, Vec::new())? {
@@ -17039,7 +18875,7 @@ impl Vm {
             Ok(advance) => Ok(Ok(advance)),
             Err(message) => {
                 if let Some(exception) =
-                    raised_exception.or_else(|| runtime_exception_from_message(&message))
+                    runtime_exception_from_current_or_message(raised_exception, &message)
                 {
                     Ok(Err(exception))
                 } else {
@@ -17104,6 +18940,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        let _receiver_export = bytearray_export_guard(receiver);
         let (separator, kind) = bytes_method_receiver(receiver, method)?;
         let values = self.collect_iterable_values(iterable.clone())?;
         let mut output = Vec::new();
@@ -17689,6 +19526,7 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             },
             true,
         )?;
@@ -17717,10 +19555,20 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 },
                 true,
             ),
-            Err(message) => Err(message),
+            Err(message) => {
+                if let Some(exception) = runtime_exception_from_current_or_message(
+                    self.current_exception.clone(),
+                    &message,
+                ) {
+                    self.raise_exception(exception, true)
+                } else {
+                    Err(message)
+                }
+            }
         }
     }
 
@@ -17731,7 +19579,10 @@ impl Vm {
         match result {
             Ok(value) => Ok(Some(value)),
             Err(message) => {
-                if let Some(exception) = runtime_exception_from_message(&message) {
+                if let Some(exception) = runtime_exception_from_current_or_message(
+                    self.current_exception.clone(),
+                    &message,
+                ) {
                     self.raise_exception(exception, true)?;
                     Ok(None)
                 } else {
@@ -17809,6 +19660,7 @@ impl Vm {
                         context: None,
                         suppress_context: false,
                         exceptions: None,
+                        identity: Rc::new(()),
                     },
                     true,
                 )?;
@@ -17849,7 +19701,7 @@ impl Vm {
             Ok(value) => Ok(Ok(value)),
             Err(message) => {
                 if let Some(exception) =
-                    raised_exception.or_else(|| runtime_exception_from_message(&message))
+                    runtime_exception_from_current_or_message(raised_exception, &message)
                 {
                     Ok(Err(exception))
                 } else {
@@ -17878,6 +19730,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 },
                 true,
             )?;
@@ -18132,6 +19985,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 },
                 true,
             )?;
@@ -18216,6 +20070,7 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             },
             true,
         )?;
@@ -18235,6 +20090,7 @@ impl Vm {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             },
             true,
         )?;
@@ -18272,6 +20128,7 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
+                            identity: Rc::new(()),
                         },
                         true,
                     )?;
@@ -18384,6 +20241,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 },
                 true,
             )?;
@@ -18465,6 +20323,7 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
+                            identity: Rc::new(()),
                         },
                         true,
                     )?;
@@ -19119,6 +20978,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 };
                 if let Err(message) = coroutine_vm.raise_exception(exception, true) {
                     self.output.extend(coroutine_vm.output);
@@ -19304,6 +21164,7 @@ impl Vm {
                     context: None,
                     suppress_context: false,
                     exceptions: None,
+                    identity: Rc::new(()),
                 };
                 if let Err(message) = generator_vm.raise_exception(exception, true) {
                     self.output.extend(generator_vm.output);
@@ -19383,6 +21244,7 @@ impl Vm {
                             context: None,
                             suppress_context: false,
                             exceptions: None,
+                            identity: Rc::new(()),
                         },
                         true,
                     )?;
@@ -19601,6 +21463,25 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             class_attrs: class_attrs.clone(),
             class_bases: class_bases.clone(),
         }),
+        Value::OperatorAttrGetter { attrs, .. } => Ok(Value::OperatorAttrGetter {
+            attrs: attrs.clone(),
+            identity: Rc::new(()),
+        }),
+        Value::OperatorItemGetter { items, .. } => Ok(Value::OperatorItemGetter {
+            items: items.clone(),
+            identity: Rc::new(()),
+        }),
+        Value::OperatorMethodCaller {
+            name,
+            args,
+            keywords,
+            ..
+        } => Ok(Value::OperatorMethodCaller {
+            name: name.clone(),
+            args: args.clone(),
+            keywords: keywords.clone(),
+            identity: Rc::new(()),
+        }),
         Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
         _ => Ok(value.clone()),
     }
@@ -19745,6 +21626,34 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 class_bases: class_bases.clone(),
             })
         }
+        Value::OperatorAttrGetter { attrs, .. } => Ok(Value::OperatorAttrGetter {
+            attrs: attrs.clone(),
+            identity: Rc::new(()),
+        }),
+        Value::OperatorItemGetter { items, .. } => Ok(Value::OperatorItemGetter {
+            items: items
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            identity: Rc::new(()),
+        }),
+        Value::OperatorMethodCaller {
+            name,
+            args,
+            keywords,
+            ..
+        } => Ok(Value::OperatorMethodCaller {
+            name: name.clone(),
+            args: args
+                .iter()
+                .map(|arg| deep_copy_value(arg, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            keywords: keywords
+                .iter()
+                .map(|(key, value)| Ok((key.clone(), deep_copy_value(value, memo)?)))
+                .collect::<Result<Vec<_>, String>>()?,
+            identity: Rc::new(()),
+        }),
         Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
         _ => Ok(value.clone()),
     }
@@ -19760,17 +21669,29 @@ fn deep_copy_iterator_state(
             stop,
             step,
         } => Ok(Value::RangeIterator {
-            current: *current,
-            stop: *stop,
-            step: *step,
+            current: current.clone(),
+            stop: stop.clone(),
+            step: step.clone(),
         }),
-        Value::ListIterator { items, index } => Ok(Value::ListIterator {
-            items: items
+        Value::ListIterator {
+            items,
+            index,
+            exhausted,
+        } => {
+            let copied_items = items
+                .borrow()
                 .iter()
                 .map(|item| deep_copy_value(item, memo))
-                .collect::<Result<Vec<_>, _>>()?,
-            index: *index,
-        }),
+                .collect::<Result<Vec<_>, _>>()?;
+            let Value::List(items) = list_value(copied_items) else {
+                unreachable!("list_value returns a list")
+            };
+            Ok(Value::ListIterator {
+                items,
+                index: *index,
+                exhausted: *exhausted,
+            })
+        }
         Value::TupleIterator { items, index } => Ok(Value::TupleIterator {
             items: items
                 .iter()
@@ -20363,8 +22284,13 @@ fn compile_code_object(source: Value, filename: String, mode: &str) -> Result<Va
     Ok(Value::CodeObject {
         mode,
         filename,
+        consts: function_code_constants(&instructions),
         instructions,
         line_spans,
+        varnames: Vec::new(),
+        flags: 0,
+        freevars: Vec::new(),
+        name: "<module>".to_string(),
         identity: Rc::new(()),
     })
 }
@@ -20387,6 +22313,10 @@ fn compile_source_code_object(
             let options = CompileOptions::default()
                 .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
                 .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+                .with_function_position_columns(function_definition_position_columns(
+                    &spanned_tokens,
+                ))
+                .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
                 .with_generator_expression_line_sequences(generator_expression_line_sequences(
                     &spanned_tokens,
                 ));
@@ -20402,9 +22332,16 @@ fn compile_source_code_object(
                 .map(|spanned| spanned.token.clone())
                 .collect::<Vec<_>>();
             let expr = parse_eval(&tokens).map_err(|message| format!("SyntaxError: {message}"))?;
-            let options = CompileOptions::default().with_generator_expression_line_sequences(
-                generator_expression_line_sequences(&spanned_tokens),
-            );
+            let options = CompileOptions::default()
+                .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
+                .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+                .with_function_position_columns(function_definition_position_columns(
+                    &spanned_tokens,
+                ))
+                .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
+                .with_generator_expression_line_sequences(generator_expression_line_sequences(
+                    &spanned_tokens,
+                ));
             compile_eval_with_options(&expr, options)
                 .map_err(|message| format!("SyntaxError: {message}"))?
         }
@@ -20420,6 +22357,10 @@ fn compile_source_code_object(
             let options = CompileOptions::default()
                 .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
                 .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+                .with_function_position_columns(function_definition_position_columns(
+                    &spanned_tokens,
+                ))
+                .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
                 .with_generator_expression_line_sequences(generator_expression_line_sequences(
                     &spanned_tokens,
                 ));
@@ -20442,6 +22383,8 @@ fn compile_source_module(name: &str, source: &str) -> Result<Vec<Instruction>, S
     let options = CompileOptions::default()
         .with_function_first_lines(function_definition_start_lines(&spanned_tokens))
         .with_function_line_sequences(function_definition_line_sequences(&spanned_tokens))
+        .with_function_position_columns(function_definition_position_columns(&spanned_tokens))
+        .with_function_is_lambdas(function_definition_is_lambdas(&spanned_tokens))
         .with_generator_expression_line_sequences(generator_expression_line_sequences(
             &spanned_tokens,
         ));
@@ -20454,26 +22397,33 @@ fn default_code_line_spans() -> Vec<CodeLineSpan> {
         start: 0,
         end: 1,
         line: 0,
+        column: None,
+        end_column: None,
     }]
 }
 
 fn code_line_spans_from_source(source: &str, mode: CodeMode) -> Vec<CodeLineSpan> {
-    let lines = executable_source_lines(source, mode)
-        .or_else(|| first_executable_source_line(source, mode).map(|line| vec![line]));
-    let Some(lines) = lines else {
+    let line_spans = executable_source_line_spans(source, mode)
+        .or_else(|| first_executable_source_line(source, mode).map(|line| vec![(line, None)]));
+    let Some(line_spans) = line_spans else {
         return default_code_line_spans();
     };
-    code_line_spans_from_lines(lines)
+    code_line_spans_from_lines(line_spans)
 }
 
-fn code_line_spans_from_lines(lines: Vec<usize>) -> Vec<CodeLineSpan> {
+fn code_line_spans_from_lines(lines: Vec<(usize, Option<(usize, usize)>)>) -> Vec<CodeLineSpan> {
     let mut spans = default_code_line_spans();
-    for line in lines {
+    for (line, columns) in lines {
         let start = spans.len();
+        let (column, end_column) = columns
+            .map(|(start, end)| (Some(start as i64), Some(end as i64)))
+            .unwrap_or((None, None));
         spans.push(CodeLineSpan {
             start,
             end: start + 1,
             line: line as i64,
+            column,
+            end_column,
         });
     }
     spans
@@ -20493,13 +22443,17 @@ fn frame_line_for_ip(line_spans: &[CodeLineSpan], instruction_index: usize) -> i
         .unwrap_or(0)
 }
 
-fn executable_source_lines(source: &str, mode: CodeMode) -> Option<Vec<usize>> {
+fn executable_source_line_spans(
+    source: &str,
+    mode: CodeMode,
+) -> Option<Vec<(usize, Option<(usize, usize)>)>> {
     if mode == CodeMode::Eval {
         return None;
     }
 
     let (tokens, _warnings) = lex_with_spans_for_parse(source).ok()?;
     let mut lines = Vec::new();
+    let mut current = None;
     let mut at_statement_start = true;
 
     for token in tokens {
@@ -20510,21 +22464,45 @@ fn executable_source_lines(source: &str, mode: CodeMode) -> Option<Vec<usize>> {
             | Token::Indent
             | Token::Dedent
             | Token::Newline => {
+                finish_executable_source_line_span(&mut lines, &mut current);
                 at_statement_start = true;
             }
             Token::Semicolon => {
+                finish_executable_source_line_span(&mut lines, &mut current);
                 at_statement_start = true;
             }
-            Token::Eof => break,
+            Token::Eof => {
+                finish_executable_source_line_span(&mut lines, &mut current);
+                break;
+            }
             _ if at_statement_start => {
-                lines.push(token.line);
+                current = Some((
+                    token.line,
+                    token.column.saturating_sub(1),
+                    token.end_column.saturating_sub(1),
+                ));
                 at_statement_start = false;
             }
-            _ => {}
+            _ => {
+                if let Some((line, _, end_column)) = &mut current
+                    && *line == token.line
+                {
+                    *end_column = token.end_column.saturating_sub(1);
+                }
+            }
         }
     }
 
     if lines.is_empty() { None } else { Some(lines) }
+}
+
+fn finish_executable_source_line_span(
+    lines: &mut Vec<(usize, Option<(usize, usize)>)>,
+    current: &mut Option<(usize, usize, usize)>,
+) {
+    if let Some((line, start_column, end_column)) = current.take() {
+        lines.push((line, Some((start_column, end_column))));
+    }
 }
 
 fn first_executable_source_line(source: &str, mode: CodeMode) -> Option<usize> {
@@ -23879,7 +25857,7 @@ fn ast_expr_node(expr: &syntax::Expr) -> Value {
             value
                 .replace('_', "")
                 .parse::<f64>()
-                .map(Value::Float)
+                .map(float_value)
                 .unwrap_or_else(|_| Value::String(value.clone())),
         ),
         syntax::Expr::Imaginary(value) => {
@@ -24173,7 +26151,7 @@ fn ast_expr_constant_value(expr: &syntax::Expr) -> Option<Value> {
                 .map(normalize_big_int)
                 .or_else(|| Some(Value::String(value.clone())))
         }
-        syntax::Expr::Float(value) => value.replace('_', "").parse::<f64>().map(Value::Float).ok(),
+        syntax::Expr::Float(value) => value.replace('_', "").parse::<f64>().map(float_value).ok(),
         syntax::Expr::Imaginary(value) => {
             let text = value.trim_end_matches(['j', 'J']).replace('_', "");
             Some(Value::Complex {
@@ -26512,7 +28490,7 @@ fn ast_negate_match_literal_value(value: &Value) -> Option<Value> {
             .map(Value::Number)
             .or_else(|| Some(Value::BigInt(-BigInt::from(*value)))),
         Value::BigInt(value) => Some(normalize_big_int(-value)),
-        Value::Float(value) => Some(Value::Float(normalize_float_zero(-value))),
+        Value::Float(value) => Some(float_value(normalize_float_zero(-**value))),
         Value::Complex { real, imag } => Some(Value::Complex {
             real: normalize_float_zero(-real),
             imag: normalize_float_zero(-imag),
@@ -26539,7 +28517,7 @@ fn ast_real_constant_to_f64(value: &Value) -> Option<f64> {
     match value {
         Value::Number(value) => Some(*value as f64),
         Value::BigInt(value) => value.to_f64(),
-        Value::Float(value) => Some(*value),
+        Value::Float(value) => Some(**value),
         _ => None,
     }
 }
@@ -28258,7 +30236,7 @@ fn ast_constant_matches_token(value: &Value, token: &Token) -> bool {
         (Value::Float(left), Token::Float(right)) => right
             .replace('_', "")
             .parse::<f64>()
-            .is_ok_and(|right| (*left - right).abs() == 0.0),
+            .is_ok_and(|right| (**left - right).abs() == 0.0),
         (Value::String(left), Token::String(right)) => left == right,
         (Value::Bytes(left), Token::Bytes(right)) => left == right,
         (Value::Bool(true), Token::True) | (Value::Bool(false), Token::False) => true,
@@ -29105,13 +31083,12 @@ fn ast_compare_python_eq(left: &Value, right: &Value) -> bool {
 
 fn call_ast_iter_fields(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
     let node = bind_ast_helper_node_arg("iter_fields", args, keywords)?;
-    Ok(shared_iterator(Value::ListIterator {
-        items: ast_iter_field_pairs(&node)?
+    Ok(list_iterator_from_values(
+        ast_iter_field_pairs(&node)?
             .into_iter()
             .map(|(field, value)| tuple_value(vec![Value::String(field), value]))
             .collect(),
-        index: 0,
-    }))
+    ))
 }
 
 fn call_ast_iter_child_nodes(
@@ -29119,10 +31096,7 @@ fn call_ast_iter_child_nodes(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     let node = bind_ast_helper_node_arg("iter_child_nodes", args, keywords)?;
-    Ok(shared_iterator(Value::ListIterator {
-        items: ast_child_nodes(&node)?,
-        index: 0,
-    }))
+    Ok(list_iterator_from_values(ast_child_nodes(&node)?))
 }
 
 fn call_ast_walk(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
@@ -29135,10 +31109,7 @@ fn call_ast_walk(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Val
         index += 1;
     }
 
-    Ok(shared_iterator(Value::ListIterator {
-        items: queue,
-        index: 0,
-    }))
+    Ok(list_iterator_from_values(queue))
 }
 
 fn call_ast_literal_eval(
@@ -30109,42 +32080,44 @@ fn compile_eval_argument(value: Value) -> Result<Value, String> {
     }
 }
 
-fn compile_exec_argument(value: Value) -> Result<Value, String> {
-    match value {
-        code @ Value::CodeObject { .. } => Ok(code),
-        Value::String(source) => {
-            compile_code_object(Value::String(source), "<string>".to_string(), "exec")
-        }
-        Value::Bytes(bytes) => {
-            compile_code_object(Value::Bytes(bytes), "<string>".to_string(), "exec")
-        }
-        Value::ByteArray(bytes) => {
-            compile_code_object(Value::ByteArray(bytes), "<string>".to_string(), "exec")
-        }
-        Value::MemoryView(view) => {
-            compile_code_object(Value::MemoryView(view), "<string>".to_string(), "exec")
-        }
-        value => Err(format!(
-            "TypeError: exec() arg 1 must be a string or code object, not {}",
-            type_name(&value)
-        )),
-    }
-}
-
 #[derive(Clone)]
 struct ExecScopeWriteback {
     scope: Scope,
-    dict: DictRef,
+    target: ExecScopeWritebackTarget,
+}
+
+#[derive(Clone)]
+enum ExecScopeWritebackTarget {
+    ExactDict(DictRef),
+    DictSubclass { mapping: Value, entries: DictRef },
+}
+
+impl ExecScopeWritebackTarget {
+    fn entries(&self) -> &DictRef {
+        match self {
+            ExecScopeWritebackTarget::ExactDict(entries) => entries,
+            ExecScopeWritebackTarget::DictSubclass { entries, .. } => entries,
+        }
+    }
 }
 
 fn bind_eval_exec_args(
     function_name: &str,
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
+    allow_closure: bool,
 ) -> Result<Vec<Option<Value>>, String> {
-    let mut values = vec![None, None, None];
-    let names = ["source", "globals", "locals"];
-    if args.len() > values.len() {
+    let mut values = if allow_closure {
+        vec![None, None, None, None]
+    } else {
+        vec![None, None, None]
+    };
+    let names = if allow_closure {
+        vec!["source", "globals", "locals", "closure"]
+    } else {
+        vec!["source", "globals", "locals"]
+    };
+    if args.len() > 3 {
         return Err(format!(
             "TypeError: {function_name}() expected 1 to 3 arguments, got {}",
             args.len()
@@ -30243,7 +32216,7 @@ fn eval_scope_argument(
                 scope.clone(),
                 Some(ExecScopeWriteback {
                     scope,
-                    dict: entries.clone(),
+                    target: ExecScopeWritebackTarget::ExactDict(entries.clone()),
                 }),
             ))
         }
@@ -30258,7 +32231,10 @@ fn eval_scope_argument(
                 scope.clone(),
                 Some(ExecScopeWriteback {
                     scope,
-                    dict: entries.clone(),
+                    target: ExecScopeWritebackTarget::DictSubclass {
+                        mapping: value.clone(),
+                        entries: entries.clone(),
+                    },
                 }),
             ))
         }
@@ -30333,7 +32309,7 @@ fn exec_scope_argument(
                 scope.clone(),
                 Some(ExecScopeWriteback {
                     scope,
-                    dict: entries.clone(),
+                    target: ExecScopeWritebackTarget::ExactDict(entries.clone()),
                 }),
             ))
         }
@@ -30348,7 +32324,10 @@ fn exec_scope_argument(
                 scope.clone(),
                 Some(ExecScopeWriteback {
                     scope,
-                    dict: entries.clone(),
+                    target: ExecScopeWritebackTarget::DictSubclass {
+                        mapping: value.clone(),
+                        entries: entries.clone(),
+                    },
                 }),
             ))
         }
@@ -30385,13 +32364,80 @@ fn push_unique_writeback(
     };
     if !writebacks
         .iter()
-        .any(|existing| Rc::ptr_eq(&existing.dict, &writeback.dict))
+        .any(|existing| Rc::ptr_eq(existing.target.entries(), writeback.target.entries()))
     {
         writebacks.push(writeback);
     }
 }
 
 impl Vm {
+    fn sync_exec_writebacks(&mut self, writebacks: &[ExecScopeWriteback]) -> Result<(), String> {
+        for writeback in writebacks {
+            match &writeback.target {
+                ExecScopeWritebackTarget::ExactDict(entries) => {
+                    sync_scope_to_dict(&writeback.scope, entries)?;
+                }
+                ExecScopeWritebackTarget::DictSubclass { mapping, entries } => {
+                    self.sync_scope_to_dict_subclass(&writeback.scope, mapping, entries)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn sync_scope_to_dict_subclass(
+        &mut self,
+        scope: &Scope,
+        mapping: &Value,
+        entries: &DictRef,
+    ) -> Result<(), String> {
+        let scope_entries = scope_dict_entries(scope)
+            .into_iter()
+            .filter_map(|(key, value)| match key {
+                Value::String(name) => Some((name, value)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let scope_names = scope_entries
+            .iter()
+            .map(|(name, _)| name.clone())
+            .collect::<HashSet<_>>();
+        let current_entries = entries
+            .borrow()
+            .iter()
+            .filter_map(|(key, value)| match key {
+                Value::String(name) => Some((name.clone(), value.clone())),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+
+        for (name, _) in &current_entries {
+            if !scope_names.contains(name) {
+                self.delete_locals_mapping_item(mapping.clone(), name)?;
+            }
+        }
+
+        for (name, value) in scope_entries {
+            let unchanged = current_entries.iter().any(|(current_name, current_value)| {
+                current_name == &name && current_value == &value
+            });
+            if !unchanged {
+                self.store_locals_mapping_item(mapping.clone(), name, value)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn require_build_class_builtin(&mut self) -> Result<Value, String> {
+        let Some(builtins) = self.globals.borrow().get("__builtins__").cloned() else {
+            return Ok(Value::None);
+        };
+        self.lookup_builtin_mapping(&builtins, "__build_class__")?
+            .map(|_| Value::None)
+            .ok_or_else(|| "NameError: __build_class__ not found".to_string())
+    }
+
     fn lookup_builtin_mapping(
         &mut self,
         builtins: &Value,
@@ -30618,6 +32664,13 @@ fn dict_to_scope(entries: &DictRef) -> Scope {
     scope
 }
 
+fn exec_warning_module_from_globals(globals: &Scope) -> Option<String> {
+    match globals.borrow().get("__name__") {
+        Some(Value::String(module)) => Some(module.clone()),
+        _ => None,
+    }
+}
+
 fn ensure_scope_has_builtins(scope: &Scope) {
     let mut scope = scope.borrow_mut();
     if !scope.contains_key("__builtins__") {
@@ -30632,13 +32685,6 @@ fn ensure_dict_has_builtins(entries: &DictRef) -> Result<(), String> {
             Value::String("__builtins__".to_string()),
             default_builtins_dict_value(),
         )?;
-    }
-    Ok(())
-}
-
-fn sync_exec_writebacks(writebacks: &[ExecScopeWriteback]) -> Result<(), String> {
-    for writeback in writebacks {
-        sync_scope_to_dict(&writeback.scope, &writeback.dict)?;
     }
     Ok(())
 }
@@ -30687,6 +32733,7 @@ fn exec_annotate_function_value(globals: Scope, annotations: Value) -> Value {
         is_async: false,
         first_line: 1,
         line_sequence: vec![1],
+        position_columns: Vec::new(),
         identity: Rc::new(()),
         owner_class: None,
     }
@@ -30981,6 +33028,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             names.extend(builtin_type_dir_names("int"))
         }
         Value::Float(_) => names.extend(builtin_type_dir_names("float")),
+        Value::Complex { .. } => names.extend(builtin_type_dir_names("complex")),
         Value::Slice { .. } => {
             names.extend(["start", "stop", "step"].into_iter().map(str::to_string))
         }
@@ -31325,6 +33373,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "zfill",
         ],
         "int" | "bool" => &[
+            "__hash__",
             "as_integer_ratio",
             "bit_count",
             "bit_length",
@@ -31333,12 +33382,37 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "imag",
             "numerator",
             "real",
+            "to_bytes",
         ],
         "float" => &[
             "as_integer_ratio",
             "conjugate",
             "imag",
             "is_integer",
+            "real",
+        ],
+        "complex" => &[
+            "__abs__",
+            "__bool__",
+            "__complex__",
+            "__eq__",
+            "__format__",
+            "__ge__",
+            "__getnewargs__",
+            "__gt__",
+            "__hash__",
+            "__le__",
+            "__lt__",
+            "__ne__",
+            "__neg__",
+            "__pos__",
+            "__pow__",
+            "__repr__",
+            "__str__",
+            "__truediv__",
+            "conjugate",
+            "from_number",
+            "imag",
             "real",
         ],
         "slice" => &["start", "stop", "step"],
@@ -31408,6 +33482,7 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             is_async,
             first_line,
             line_sequence,
+            position_columns,
             identity,
             owner_class,
         } => Value::Function {
@@ -31430,6 +33505,7 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             is_async,
             first_line,
             line_sequence,
+            position_columns,
             identity,
             owner_class: owner_class.or_else(|| Some(Box::new(class.clone()))),
         },
@@ -32044,6 +34120,7 @@ fn type_object_for_value(value: &Value) -> Value {
         Value::AstNode { kind, .. } if kind == "Interpolation" => {
             Value::Builtin("ast.Interpolation".to_string())
         }
+        Value::Cell { .. } => Value::Builtin("CellType".to_string()),
         Value::SimpleNamespace { .. } => Value::Builtin("SimpleNamespace".to_string()),
         Value::NamedTuple { typ, .. } => Value::NamedTupleType(typ.clone()),
         Value::NamedTupleType(_) => Value::Builtin("type".to_string()),
@@ -32110,6 +34187,7 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "dict_items"
                 | "mappingproxy"
                 | "code"
+                | "CellType"
                 | "TypeVar"
                 | "TypeVarTuple"
                 | "ParamSpec"
@@ -32475,6 +34553,59 @@ fn frozen_set_subclass_items(value: &Value) -> Option<FrozenSetRef> {
     }
 }
 
+fn str_subclass_string(value: &Value) -> Option<String> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "str") {
+        return None;
+    }
+    match fields.borrow().get(STR_SUBCLASS_STORAGE_FIELD).cloned() {
+        Some(Value::String(value)) => Some(value),
+        _ => None,
+    }
+}
+
+fn int_subclass_integer(value: &Value) -> Option<Value> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !class_bases_include_builtin(class_bases, "int") {
+        return None;
+    }
+    match fields.borrow().get(INT_SUBCLASS_STORAGE_FIELD).cloned() {
+        Some(value @ (Value::Number(_) | Value::BigInt(_))) => Some(value),
+        _ => None,
+    }
+}
+
+fn int_subclass_attribute(value: Value, name: &str) -> Option<Value> {
+    let storage = int_subclass_integer(&value)?;
+    match name {
+        "bit_length" | "bit_count" | "conjugate" | "as_integer_ratio" | "to_bytes" | "__hash__" => {
+            Some(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("int.{name}"))),
+                receiver: Box::new(storage),
+                identity: Rc::new(()),
+            })
+        }
+        "numerator" | "real" => Some(storage),
+        "denominator" => Some(Value::Number(1)),
+        "imag" => Some(Value::Number(0)),
+        _ => None,
+    }
+}
+
 fn bytes_subclass_bytes(value: &Value) -> Option<Vec<u8>> {
     let Value::Instance {
         fields,
@@ -32744,6 +34875,31 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__iter__"
             | "__len__"
             | "__setitem__"
+    )
+}
+
+fn is_builtin_complex_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "__abs__"
+            | "__bool__"
+            | "__complex__"
+            | "__eq__"
+            | "__format__"
+            | "__ge__"
+            | "__getnewargs__"
+            | "__gt__"
+            | "__hash__"
+            | "__le__"
+            | "__lt__"
+            | "__ne__"
+            | "__neg__"
+            | "__pos__"
+            | "__pow__"
+            | "__repr__"
+            | "__str__"
+            | "__truediv__"
+            | "conjugate"
     )
 }
 
@@ -33663,6 +35819,7 @@ fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
                     | "ljust"
                     | "rjust"
                     | "center"
+                    | "__rmod__"
             ))
 }
 
@@ -33686,6 +35843,23 @@ fn length_hint_iterator_protocol_method(
 ) -> Result<Value, String> {
     match name {
         "__iter__" | "__next__" | "__length_hint__" => Ok(Value::BoundMethod {
+            function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+            receiver: Box::new(receiver),
+            identity: Rc::new(()),
+        }),
+        _ => Err(format!(
+            "AttributeError: {type_name} has no attribute '{name}'"
+        )),
+    }
+}
+
+fn list_tuple_iterator_protocol_method(
+    type_name: &str,
+    receiver: Value,
+    name: &str,
+) -> Result<Value, String> {
+    match name {
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
@@ -33872,10 +36046,12 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         annotations,
         doc,
         attrs,
+        closure,
         is_generator,
         is_async,
         first_line,
         line_sequence,
+        position_columns,
         owner_class,
         ..
     } = &function
@@ -33894,6 +36070,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
         "__doc__" => Ok(doc.borrow().clone()),
         "__globals__" => Ok(Value::ScopeDict(globals.clone())),
         "__builtins__" => Ok(function_builtins_value(globals)),
+        "__closure__" => Ok(function_closure_value(body, closure)),
         "__dict__" => Ok(Value::ScopeDict(attrs.clone())),
         "__type_params__" => Ok(type_params_attr_value(attrs, type_params.clone())),
         "__annotations__" => Ok(dict_value(
@@ -33904,6 +36081,7 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
                 .collect(),
         )),
         "__code__" => function_code_object_value(
+            function_name,
             positional_only,
             params,
             vararg.as_ref(),
@@ -33914,6 +36092,8 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
             *is_async,
             *first_line,
             line_sequence,
+            position_columns,
+            closure,
         ),
         "__call__" => Ok(Value::BoundMethod {
             function: Box::new(Value::Builtin("callable.__call__".to_string())),
@@ -33928,7 +36108,87 @@ fn load_function_attribute(function: Value, name: &str) -> Result<Value, String>
     }
 }
 
+fn function_closure_value(body: &[Instruction], closure: &[Scope]) -> Value {
+    let freevars = function_freevar_names(body, Some(closure));
+    if freevars.is_empty() {
+        return Value::None;
+    }
+    tuple_value(
+        freevars
+            .into_iter()
+            .filter_map(|name| closure_cell_for_name(closure, &name))
+            .collect(),
+    )
+}
+
+fn closure_cell_for_name(closure: &[Scope], name: &str) -> Option<Value> {
+    closure.iter().find_map(|scope| {
+        scope.borrow().contains_key(name).then(|| Value::Cell {
+            name: name.to_string(),
+            scope: scope.clone(),
+            identity: Rc::new(()),
+        })
+    })
+}
+
+fn cell_value(name: String, value: Option<Value>) -> Value {
+    let scope = new_scope();
+    if let Some(value) = value {
+        scope.borrow_mut().insert(name.clone(), value);
+    }
+    Value::Cell {
+        name,
+        scope,
+        identity: Rc::new(()),
+    }
+}
+
+fn cell_contents(name: &str, scope: &Scope) -> Result<Value, String> {
+    scope
+        .borrow()
+        .get(name)
+        .cloned()
+        .ok_or_else(|| "ValueError: Cell is empty".to_string())
+}
+
+fn set_cell_contents(name: &str, scope: &Scope, value: Value) {
+    scope.borrow_mut().insert(name.to_string(), value);
+}
+
+fn load_code_object_attribute(code: Value, name: &str) -> Result<Value, String> {
+    let Value::CodeObject {
+        filename,
+        line_spans,
+        varnames,
+        consts,
+        flags,
+        freevars,
+        name: code_name,
+        ..
+    } = &code
+    else {
+        unreachable!("caller passes a code object")
+    };
+    match name {
+        "co_name" => Ok(Value::String(code_name.clone())),
+        "co_filename" => Ok(Value::String(filename.clone())),
+        "co_varnames" => Ok(tuple_value(
+            varnames.iter().cloned().map(Value::String).collect(),
+        )),
+        "co_consts" => Ok(tuple_value(consts.clone())),
+        "co_flags" => Ok(Value::Number(*flags)),
+        "co_freevars" => Ok(tuple_value(
+            freevars.iter().cloned().map(Value::String).collect(),
+        )),
+        "co_firstlineno" => Ok(Value::Number(code_object_firstlineno(filename, line_spans))),
+        "co_lines" => Ok(code_object_bound_method("code.co_lines", code.clone())),
+        "co_positions" => Ok(code_object_bound_method("code.co_positions", code.clone())),
+        _ => Err(format!("AttributeError: code has no attribute '{name}'")),
+    }
+}
+
 fn function_code_object_value(
+    function_name: &str,
     positional_only: &[String],
     params: &[String],
     vararg: Option<&String>,
@@ -33939,66 +36199,48 @@ fn function_code_object_value(
     is_async: bool,
     first_line: usize,
     line_sequence: &[usize],
+    position_columns: &[Option<(usize, usize)>],
+    closure: &[Scope],
 ) -> Result<Value, String> {
-    let mut flags = 0;
-    if is_async && is_generator {
-        flags |= 0x0200;
-    } else if is_async {
-        flags |= 0x0080;
-    } else if is_generator {
-        flags |= 0x0020;
-    }
-
-    let code_object = function_metadata_code_object(body, first_line, line_sequence);
-    Ok(Value::SimpleNamespace {
-        fields: dict_ref_from_entries(vec![
-            (
-                Value::String("co_varnames".to_string()),
-                tuple_value(
-                    function_code_varnames(
-                        positional_only,
-                        params,
-                        vararg,
-                        keyword_only,
-                        kwarg,
-                        body,
-                    )
-                    .into_iter()
-                    .map(Value::String)
-                    .collect(),
-                ),
-            ),
-            (
-                Value::String("co_consts".to_string()),
-                tuple_value(function_code_constants(body)),
-            ),
-            (Value::String("co_flags".to_string()), Value::Number(flags)),
-            (
-                Value::String("co_firstlineno".to_string()),
-                Value::Number(first_line as i64),
-            ),
-            (
-                Value::String("co_lines".to_string()),
-                code_object_bound_method("code.co_lines", code_object.clone()),
-            ),
-            (
-                Value::String("co_positions".to_string()),
-                code_object_bound_method("code.co_positions", code_object),
-            ),
-        ])?,
-    })
+    Ok(function_metadata_code_object(
+        body,
+        function_code_varnames(positional_only, params, vararg, keyword_only, kwarg, body),
+        function_code_flags(is_generator, is_async),
+        function_freevar_names(body, Some(closure)),
+        function_name.to_string(),
+        first_line,
+        line_sequence,
+        position_columns,
+    ))
 }
 
 fn function_metadata_code_object(
     body: &[Instruction],
+    varnames: Vec<String>,
+    flags: i64,
+    freevars: Vec<String>,
+    name: String,
     first_line: usize,
     line_sequence: &[usize],
+    position_columns: &[Option<(usize, usize)>],
 ) -> Value {
+    let instructions = body.to_vec();
+    let consts = function_code_constants(body);
     Value::CodeObject {
         mode: CodeMode::Exec,
         filename: "<function>".to_string(),
-        instructions: body.to_vec(),
-        line_spans: function_code_line_spans(body, first_line, line_sequence),
+        instructions,
+        line_spans: function_code_line_spans_with_columns(
+            body,
+            first_line,
+            line_sequence,
+            position_columns,
+        ),
+        varnames,
+        consts,
+        flags,
+        freevars,
+        name,
         identity: Rc::new(()),
     }
 }
@@ -34008,12 +36250,20 @@ fn function_code_line_spans(
     first_line: usize,
     line_sequence: &[usize],
 ) -> Vec<CodeLineSpan> {
+    function_code_line_spans_with_columns(body, first_line, line_sequence, &[])
+}
+
+fn function_code_line_spans_with_columns(
+    body: &[Instruction],
+    first_line: usize,
+    line_sequence: &[usize],
+    position_columns: &[Option<(usize, usize)>],
+) -> Vec<CodeLineSpan> {
     let lines = if line_sequence.is_empty() {
         vec![first_line]
     } else {
         line_sequence.to_vec()
     };
-
     let mut spans = Vec::with_capacity(lines.len());
     let mut start = 0usize;
     for (index, line) in lines.iter().enumerate() {
@@ -34024,10 +36274,16 @@ fn function_code_line_spans(
         } else {
             next_function_line_span_end(body, start)
         };
+        let (column, end_column) = position_columns
+            .get(index)
+            .and_then(|columns| columns.map(|(start, end)| (Some(start as i64), Some(end as i64))))
+            .unwrap_or((None, None));
         spans.push(CodeLineSpan {
             start,
             end,
             line: *line as i64,
+            column,
+            end_column,
         });
         start = end;
     }
@@ -34087,6 +36343,18 @@ fn code_object_bound_method(name: &str, code_object: Value) -> Value {
     }
 }
 
+fn function_code_flags(is_generator: bool, is_async: bool) -> i64 {
+    let mut flags = 0;
+    if is_async && is_generator {
+        flags |= 0x0200;
+    } else if is_async {
+        flags |= 0x0080;
+    } else if is_generator {
+        flags |= 0x0020;
+    }
+    flags
+}
+
 fn function_code_varnames(
     positional_only: &[String],
     params: &[String],
@@ -34136,19 +36404,65 @@ fn function_code_constants(body: &[Instruction]) -> Vec<Value> {
         match instruction {
             Instruction::LoadConst { value, .. } => constants.push(value.clone()),
             Instruction::MakeFunction {
+                name,
                 body,
+                positional_only,
+                params,
+                vararg,
+                keyword_only,
+                kwarg,
+                is_generator,
+                is_async,
                 first_line,
                 line_sequence,
+                position_columns,
                 ..
             } => constants.push(function_metadata_code_object(
                 body,
+                function_code_varnames(
+                    positional_only,
+                    params,
+                    vararg.as_ref(),
+                    keyword_only,
+                    kwarg.as_ref(),
+                    body,
+                ),
+                function_code_flags(*is_generator, *is_async),
+                function_freevar_names(body, None),
+                name.clone(),
                 *first_line,
                 line_sequence,
+                position_columns,
             )),
             _ => {}
         }
     }
     constants
+}
+
+fn function_freevar_names(body: &[Instruction], closure: Option<&[Scope]>) -> Vec<String> {
+    let mut names = Vec::new();
+    for instruction in body {
+        match instruction {
+            Instruction::LoadNonlocal { name, .. }
+            | Instruction::StoreNonlocal { name, .. }
+            | Instruction::DeleteNonlocal { name } => push_code_varname(name, &mut names),
+            Instruction::LoadName { name, .. } if closure_name_exists(closure, name) => {
+                push_code_varname(name, &mut names)
+            }
+            _ => {}
+        }
+    }
+    names.sort();
+    names
+}
+
+fn closure_name_exists(closure: Option<&[Scope]>, name: &str) -> bool {
+    closure.is_some_and(|closure| {
+        closure
+            .iter()
+            .any(|scope| scope.borrow().contains_key(name))
+    })
 }
 
 fn code_object_firstlineno(filename: &str, line_spans: &[CodeLineSpan]) -> i64 {
@@ -34412,42 +36726,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 })
         }
         function @ Value::Function { .. } => load_function_attribute(function, name),
-        Value::CodeObject {
-            mode,
-            filename,
-            instructions,
-            line_spans,
-            identity,
+        Value::Cell {
+            name: cell_name,
+            scope,
+            ..
         } => match name {
-            "co_filename" => Ok(Value::String(filename)),
-            "co_firstlineno" => Ok(Value::Number(code_object_firstlineno(
-                &filename,
-                &line_spans,
-            ))),
-            "co_lines" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin("code.co_lines".to_string())),
-                receiver: Box::new(Value::CodeObject {
-                    mode,
-                    filename,
-                    instructions,
-                    line_spans,
-                    identity,
-                }),
-                identity: Rc::new(()),
-            }),
-            "co_positions" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin("code.co_positions".to_string())),
-                receiver: Box::new(Value::CodeObject {
-                    mode,
-                    filename,
-                    instructions,
-                    line_spans,
-                    identity,
-                }),
-                identity: Rc::new(()),
-            }),
-            _ => Err(format!("AttributeError: code has no attribute '{name}'")),
+            "cell_contents" => cell_contents(&cell_name, &scope),
+            _ => Err(format!("AttributeError: cell has no attribute '{name}'")),
         },
+        code @ Value::CodeObject { .. } => load_code_object_attribute(code, name),
         Value::Property {
             fget,
             fset,
@@ -34708,13 +36995,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ => Err(format!("AttributeError: slice has no attribute '{name}'")),
         },
         receiver @ (Value::Bool(_) | Value::Number(_) | Value::BigInt(_)) => match name {
-            "bit_length" | "bit_count" | "conjugate" | "as_integer_ratio" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("int.{name}"))),
-                    receiver: Box::new(receiver),
-                    identity: Rc::new(()),
-                })
-            }
+            "bit_length" | "bit_count" | "conjugate" | "as_integer_ratio" | "to_bytes"
+            | "__hash__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("int.{name}"))),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            }),
             "numerator" | "real" => integer_value(receiver),
             "denominator" => Ok(Value::Number(1)),
             "imag" => Ok(Value::Number(0)),
@@ -34722,16 +37008,31 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: {receiver} has no attribute '{name}'"
             )),
         },
-        receiver @ Value::Float(value) => match name {
+        Value::Float(value) => match name {
             "conjugate" | "is_integer" | "as_integer_ratio" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("float.{name}"))),
-                receiver: Box::new(receiver),
+                receiver: Box::new(Value::Float(value.clone())),
                 identity: Rc::new(()),
             }),
             "real" => Ok(Value::Float(value)),
-            "imag" => Ok(Value::Float(0.0)),
+            "imag" => Ok(float_value(0.0)),
             _ => Err(format!(
-                "AttributeError: {receiver} has no attribute '{name}'"
+                "AttributeError: {} has no attribute '{name}'",
+                Value::Float(value.clone())
+            )),
+        },
+        Value::Complex { real, imag } => match name {
+            "from_number" => Ok(Value::Builtin("complex.from_number".to_string())),
+            name if is_builtin_complex_type_method(name) => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("complex.{name}"))),
+                receiver: Box::new(Value::Complex { real, imag }),
+                identity: Rc::new(()),
+            }),
+            "real" => Ok(float_value(real)),
+            "imag" => Ok(float_value(imag)),
+            _ => Err(format!(
+                "AttributeError: {} has no attribute '{name}'",
+                Value::Complex { real, imag }
             )),
         },
         Value::Tuple(items) => immutable_sequence_method("tuple", Value::Tuple(items), name),
@@ -34799,6 +37100,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     | "ljust"
                     | "rjust"
                     | "center"
+                    | "__rmod__"
             ) =>
         {
             Ok(Value::BoundMethod {
@@ -35197,12 +37499,20 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             },
             name,
         ),
-        Value::ListIterator { items, index } => length_hint_iterator_protocol_method(
+        Value::ListIterator {
+            items,
+            index,
+            exhausted,
+        } => list_tuple_iterator_protocol_method(
             "list_iterator",
-            Value::ListIterator { items, index },
+            Value::ListIterator {
+                items,
+                index,
+                exhausted,
+            },
             name,
         ),
-        Value::TupleIterator { items, index } => length_hint_iterator_protocol_method(
+        Value::TupleIterator { items, index } => list_tuple_iterator_protocol_method(
             "tuple_iterator",
             Value::TupleIterator { items, index },
             name,
@@ -35339,11 +37649,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             name,
         ),
         Value::Iterator(state) => {
-            let has_length_hint = {
+            let (has_length_hint, reduce_type_name) = {
                 let iterator = state.borrow();
-                iterator_has_length_hint(&iterator)
+                let reduce_type_name = match &*iterator {
+                    Value::ListIterator { .. } => Some("list_iterator"),
+                    Value::TupleIterator { .. } => Some("tuple_iterator"),
+                    _ => None,
+                };
+                (iterator_has_length_hint(&iterator), reduce_type_name)
             };
-            if has_length_hint {
+            if let Some(type_name) = reduce_type_name {
+                list_tuple_iterator_protocol_method(type_name, Value::Iterator(state), name)
+            } else if has_length_hint {
                 length_hint_iterator_protocol_method("iterator", Value::Iterator(state), name)
             } else {
                 iterator_protocol_method("iterator", Value::Iterator(state), name)
@@ -35557,6 +37874,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "dict" && name == "fromkeys" => {
             Ok(Value::Builtin("dict.fromkeys".to_string()))
         }
+        Value::Builtin(function_name) if name == "__class__" => {
+            if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
+            {
+                Ok(Value::Builtin("type".to_string()))
+            } else {
+                Ok(Value::Builtin("builtin_function_or_method".to_string()))
+            }
+        }
         Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
@@ -35610,6 +37935,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "splitlines"
                         | "rsplit"
                         | "split"
+                        | "__rmod__"
                 ) =>
         {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
@@ -35632,6 +37958,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "Counter" && is_builtin_counter_type_method(name) =>
         {
             Ok(Value::Builtin(format!("Counter.{name}")))
+        }
+        Value::Builtin(function_name) if function_name == "complex" && name == "from_number" => {
+            Ok(Value::Builtin("complex.from_number".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "complex" && is_builtin_complex_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("complex.{name}")))
         }
         Value::Builtin(function_name)
             if is_exception_type_name(&function_name) && name == "__bases__" =>
@@ -35977,7 +38311,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String(function_name))
         }
-        Value::Builtin(function_name) if name == "__name__" => Ok(Value::String(function_name)),
+        Value::Builtin(function_name)
+            if name == "__module__" && function_name.starts_with("operator.") =>
+        {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::Builtin(function_name) if name == "__name__" => {
+            Ok(Value::String(builtin_public_name(&function_name)))
+        }
         Value::Module {
             name: module_name,
             attrs,
@@ -36019,7 +38360,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             cause,
             context,
             suppress_context,
-            ..
+            identity: exception_identity,
         } => match name {
             "__cause__" => Ok(cause.map(|cause| *cause).unwrap_or(Value::None)),
             "__context__" => Ok(context.map(|context| *context).unwrap_or(Value::None)),
@@ -36044,6 +38385,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     cause,
                     context,
                     suppress_context,
+                    identity: exception_identity,
                 }),
                 identity: Rc::new(()),
             }),
@@ -36053,8 +38395,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .find_map(|(attr_name, value)| (attr_name == name).then_some(value))
                 .ok_or_else(|| format!("AttributeError: exception has no attribute '{name}'")),
         },
+        Value::None if name == "__class__" => Ok(Value::Builtin("NoneType".to_string())),
+        Value::NotImplemented if name == "__class__" => {
+            Ok(Value::Builtin("NotImplementedType".to_string()))
+        }
+        Value::Ellipsis if name == "__class__" => Ok(Value::Builtin("ellipsis".to_string())),
         value => Err(format!("AttributeError: {value} has no attribute '{name}'")),
     }
+}
+
+fn builtin_public_name(name: &str) -> String {
+    name.rsplit('.').next().unwrap_or(name).to_string()
 }
 
 fn is_builtin_set_type_method(type_name: &str, name: &str) -> bool {
@@ -36125,6 +38476,11 @@ fn is_builtin_set_type_method(type_name: &str, name: &str) -> bool {
     }
 }
 
+fn is_collections_abc_bytestring_module_attr(module: &Value, attr: &str) -> bool {
+    matches!(module, Value::Module { name, .. } if name == "collections.abc")
+        && attr == "ByteString"
+}
+
 fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String> {
     match object {
         Value::Instance { fields, .. } => {
@@ -36137,6 +38493,14 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 Value::String(name.to_string()),
                 value,
             )?;
+            Ok(())
+        }
+        Value::Cell {
+            name: cell_name,
+            scope,
+            ..
+        } if name == "cell_contents" => {
+            set_cell_contents(&cell_name, &scope, value);
             Ok(())
         }
         Value::UserDict { attrs, .. } => {
@@ -36218,6 +38582,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
                 "TypeError: cannot set '{name}' attribute of immutable type '{CONST_EVALUATOR_TYPE_NAME}'"
             ))
         }
+        Value::Builtin(function_name) if is_singleton_type_name(&function_name) => Err(format!(
+            "TypeError: cannot set '{name}' attribute of immutable type '{function_name}'"
+        )),
         Value::Builtin(function_name)
             if name == "_fields" && ast_builtin_kind(&function_name).is_some() =>
         {
@@ -36320,6 +38687,14 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 Err(format!("AttributeError: object has no attribute '{name}'"))
             }
         }
+        Value::Cell {
+            name: cell_name,
+            scope,
+            ..
+        } if name == "cell_contents" => {
+            scope.borrow_mut().remove(&cell_name);
+            Ok(())
+        }
         Value::AstNode { kind, attrs, .. } => {
             let mut attrs = attrs.borrow_mut();
             if let Some(position) = attrs
@@ -36415,6 +38790,18 @@ fn bind_method(value: Value, receiver: Value) -> Value {
                 identity: Rc::new(()),
             }
         }
+        Value::Builtin(name)
+            if matches!(
+                name.as_str(),
+                "decimal.Decimal.__round__" | "fractions.Fraction.__round__"
+            ) =>
+        {
+            Value::BoundMethod {
+                function: Box::new(Value::Builtin(name)),
+                receiver: Box::new(receiver),
+                identity: Rc::new(()),
+            }
+        }
         value => value,
     }
 }
@@ -36499,6 +38886,7 @@ fn is_builtin_name(name: &str) -> bool {
     matches!(
         name,
         "__import__"
+            | "__build_class__"
             | "print"
             | "format"
             | "eval"
@@ -36560,6 +38948,7 @@ fn is_builtin_name(name: &str) -> bool {
             | "set"
             | "frozenset"
             | "float"
+            | "complex"
             | "bool"
             | "object"
             | "type"
@@ -36595,10 +38984,12 @@ fn is_class_like_builtin(name: &str) -> bool {
             | "bytearray"
             | "memoryview"
             | "list"
+            | "deque"
             | "dict"
             | "tuple"
             | "set"
             | "frozenset"
+            | "array.array"
             | "float"
             | "complex"
             | "bool"
@@ -36749,6 +39140,26 @@ fn required_abstract_methods_for_collections_abc(name: &str) -> Option<&'static 
         "Sized" => Some(&["__len__"]),
         "Container" => Some(&["__contains__"]),
         "Callable" => Some(&["__call__"]),
+        "Set" => Some(&["__contains__", "__iter__", "__len__"]),
+        "MutableSet" => Some(&["__contains__", "__iter__", "__len__", "add", "discard"]),
+        "Mapping" => Some(&["__iter__", "__len__", "__getitem__"]),
+        "MutableMapping" => Some(&[
+            "__iter__",
+            "__len__",
+            "__getitem__",
+            "__setitem__",
+            "__delitem__",
+        ]),
+        "Sequence" => Some(&["__len__", "__getitem__"]),
+        "MutableSequence" => Some(&[
+            "__len__",
+            "__getitem__",
+            "__setitem__",
+            "__delitem__",
+            "insert",
+        ]),
+        "ByteString" => Some(&["__getitem__", "__len__"]),
+        "Buffer" => Some(&["__buffer__"]),
         _ => None,
     }
 }
@@ -36972,6 +39383,7 @@ fn call_exception_constructor_with_hierarchy(
             cause: None,
             context: None,
             suppress_context: false,
+            identity: Rc::new(()),
         });
     }
 
@@ -36987,6 +39399,7 @@ fn call_exception_constructor_with_hierarchy(
         args,
         attrs,
         exceptions: None,
+        identity: Rc::new(()),
         cause: None,
         context: None,
         suppress_context: false,
@@ -37244,6 +39657,7 @@ fn exception_value_with_traceback(receiver: Value, traceback: Value) -> Result<V
         cause,
         context,
         suppress_context,
+        identity,
     } = receiver
     else {
         return Err("with_traceback() receiver must be an exception".to_string());
@@ -37261,6 +39675,7 @@ fn exception_value_with_traceback(receiver: Value, traceback: Value) -> Result<V
         cause,
         context,
         suppress_context,
+        identity,
     })
 }
 
@@ -37333,6 +39748,7 @@ fn type_name(value: &Value) -> &str {
         Value::PicklePayload(_) => "pickle payload",
         Value::AstNode { kind, .. } => kind.as_str(),
         Value::CodeObject { .. } => "code",
+        Value::Cell { .. } => "cell",
         Value::Range { .. } => "range",
         Value::Slice { .. } => "slice",
         Value::RangeIterator { .. } => "range_iterator",
@@ -37385,6 +39801,11 @@ fn type_name(value: &Value) -> &str {
         Value::ClassMethod { .. } => "classmethod",
         Value::Super { .. } => "super",
         Value::BoundMethod { .. } => "method",
+        Value::Partial { .. } => "partial",
+        Value::OperatorAttrGetter { .. } => "operator.attrgetter",
+        Value::OperatorItemGetter { .. } => "operator.itemgetter",
+        Value::OperatorMethodCaller { .. } => "operator.methodcaller",
+        Value::InspectSignature { .. } => "Signature",
         Value::Module { .. } => "module",
         Value::Traceback { .. } => "traceback",
         Value::Exception { type_name, .. } => type_name.as_str(),
@@ -37495,6 +39916,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
             cause,
             context,
             suppress_context,
+            identity,
         } => {
             let cause = cause
                 .map(|cause| exception_from_value(*cause).map(Box::new))
@@ -37521,6 +39943,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
                 context,
                 suppress_context,
                 exceptions,
+                identity,
             })
         }
         Value::Builtin(name) if is_exception_type_name(&name) => {
@@ -37536,6 +39959,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             })
         }
         Value::Class {
@@ -37564,6 +39988,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             })
         }
         Value::Instance {
@@ -37596,6 +40021,7 @@ fn exception_from_value(value: Value) -> Result<MiniException, String> {
                 context: None,
                 suppress_context: false,
                 exceptions: None,
+                identity: Rc::new(()),
             })
         }
         value => Err(format!(
@@ -37639,6 +40065,7 @@ fn value_from_exception(exception: &MiniException) -> Value {
             .map(value_from_exception)
             .map(Box::new),
         suppress_context: exception.suppress_context,
+        identity: exception.identity.clone(),
     }
 }
 
@@ -37654,6 +40081,7 @@ fn type_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     }
 }
 
@@ -37669,6 +40097,7 @@ fn value_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     }
 }
 
@@ -37721,6 +40150,7 @@ fn runtime_error_exception(message: &str) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     }
 }
 
@@ -37927,6 +40357,7 @@ fn exception_group_like(
         context: template.context.clone(),
         suppress_context: template.suppress_context,
         exceptions: Some(exceptions),
+        identity: Rc::new(()),
     })
 }
 
@@ -37945,6 +40376,7 @@ fn wrap_naked_exception_for_except_star(exception: &MiniException) -> MiniExcept
         context: None,
         suppress_context: false,
         exceptions: Some(vec![exception.clone()]),
+        identity: Rc::new(()),
     }
 }
 
@@ -38127,6 +40559,7 @@ fn syntax_error_exception_with_location(
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     }
 }
 
@@ -38161,6 +40594,7 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
             context: None,
             suppress_context: false,
             exceptions: None,
+            identity: Rc::new(()),
         });
     } else if is_value_error_message(message) {
         ("ValueError", message.to_string())
@@ -38185,6 +40619,7 @@ fn runtime_exception_from_message(message: &str) -> Option<MiniException> {
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     })
 }
 
@@ -38205,6 +40640,7 @@ fn is_value_error_message(message: &str) -> bool {
     message.starts_with("not enough values to unpack")
         || message.starts_with("too many values to unpack")
         || message.starts_with("dictionary update sequence element")
+        || message == "negative shift count"
 }
 
 fn is_type_error_message(message: &str) -> bool {
@@ -38223,7 +40659,19 @@ fn is_type_error_message(message: &str) -> bool {
         || message.starts_with("__format__ must return ")
         || message.starts_with("format() argument 2 must be str")
         || message.starts_with("object.__format__() argument 2 must be str")
+        || message.starts_with("complex.__format__() argument 2 must be str")
+        || message.starts_with("cannot apply unary plus ")
+        || message.starts_with("cannot bitwise-")
+        || message.starts_with("cannot divide ")
+        || message.starts_with("cannot floor divide ")
+        || message.starts_with("cannot invert ")
+        || message.starts_with("cannot left-shift ")
+        || message.starts_with("cannot matrix-multiply ")
         || message.starts_with("cannot multiply ")
+        || message.starts_with("cannot negate ")
+        || message.starts_with("cannot power ")
+        || message.starts_with("cannot right-shift ")
+        || message.starts_with("cannot subtract ")
         || message.contains("unsupported operand type(s) for ")
         || message.contains("unsupported format string passed to ")
         || message.contains(" indices must be integers")
@@ -38238,6 +40686,15 @@ fn format_exception_error(exception: &MiniException) -> String {
         Some(message) => format!("{}: {message}", exception.type_name),
         None => exception.type_name.clone(),
     }
+}
+
+fn runtime_exception_from_current_or_message(
+    current_exception: Option<MiniException>,
+    message: &str,
+) -> Option<MiniException> {
+    current_exception
+        .filter(|exception| format_exception_error(exception) == message)
+        .or_else(|| runtime_exception_from_message(message))
 }
 
 fn call_slice(args: Vec<Value>) -> Result<Value, String> {
@@ -38311,7 +40768,8 @@ impl Vm {
 
 fn call_object_format(args: Vec<Value>) -> Result<String, String> {
     match args.as_slice() {
-        [value, Value::String(format_spec)] => {
+        [value, format_spec] => {
+            let format_spec = format_spec_string(format_spec, "object.__format__()")?;
             if format_spec.is_empty() {
                 Ok(value.to_string())
             } else {
@@ -38321,13 +40779,22 @@ fn call_object_format(args: Vec<Value>) -> Result<String, String> {
                 ))
             }
         }
-        [_, format_spec] => Err(format!(
-            "TypeError: object.__format__() argument 2 must be str, not {}",
-            type_name(format_spec)
-        )),
         values => Err(format!(
             "object.__format__ expected 2 arguments, got {}",
             values.len()
+        )),
+    }
+}
+
+fn format_spec_string(value: &Value, function: &str) -> Result<String, String> {
+    match value {
+        Value::String(value) => Ok(value.clone()),
+        value if str_subclass_string(value).is_some() => {
+            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: {function} argument 2 must be str, not {}",
+            type_name(value)
         )),
     }
 }
@@ -38367,6 +40834,169 @@ fn normalize_big_int(value: BigInt) -> Value {
         .to_i64()
         .map(Value::Number)
         .unwrap_or(Value::BigInt(value))
+}
+
+fn rational_instance(
+    class_name: &str,
+    round_method: &str,
+    storage_field: &str,
+    numerator: BigInt,
+    denominator: BigInt,
+) -> Value {
+    let fields = new_scope();
+    fields.borrow_mut().insert(
+        storage_field.to_string(),
+        tuple_value(vec![
+            normalize_big_int(numerator),
+            normalize_big_int(denominator),
+        ]),
+    );
+
+    let attrs = new_scope();
+    attrs.borrow_mut().insert(
+        "__round__".to_string(),
+        Value::Builtin(round_method.to_string()),
+    );
+
+    Value::Instance {
+        class_name: class_name.to_string(),
+        fields,
+        class_attrs: attrs,
+        class_bases: Vec::new(),
+    }
+}
+
+fn rational_instance_parts(
+    value: &Value,
+    storage_field: &str,
+    type_name: &str,
+) -> Result<(BigInt, BigInt), String> {
+    let Value::Instance { fields, .. } = value else {
+        return Err(format!(
+            "TypeError: __round__ expected a {type_name} receiver"
+        ));
+    };
+    let storage = fields
+        .borrow()
+        .get(storage_field)
+        .cloned()
+        .ok_or_else(|| format!("TypeError: __round__ expected a {type_name} receiver"))?;
+    let Value::Tuple(values) = storage else {
+        return Err(format!(
+            "TypeError: __round__ expected a {type_name} receiver"
+        ));
+    };
+    let [numerator, denominator] = values.as_slice() else {
+        return Err(format!(
+            "TypeError: __round__ expected a {type_name} receiver"
+        ));
+    };
+    Ok((
+        bigint_from_integer_storage(numerator)?,
+        bigint_from_integer_storage(denominator)?,
+    ))
+}
+
+fn bigint_from_integer_storage(value: &Value) -> Result<BigInt, String> {
+    match value {
+        Value::Number(value) => Ok(BigInt::from(*value)),
+        Value::BigInt(value) => Ok(value.clone()),
+        _ => Err("TypeError: corrupted rational storage".to_string()),
+    }
+}
+
+fn decimal_rational_from_value(value: Value) -> Result<(BigInt, BigInt), String> {
+    match numeric_bool_value(value) {
+        Value::Number(value) => Ok((BigInt::from(value), BigInt::from(1))),
+        Value::BigInt(value) => Ok((value, BigInt::from(1))),
+        Value::String(value) => parse_decimal_rational(&value),
+        value => Err(format!(
+            "TypeError: Decimal() argument must be a string or integer, got {}",
+            type_name(&value)
+        )),
+    }
+}
+
+fn parse_decimal_rational(value: &str) -> Result<(BigInt, BigInt), String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err("ValueError: invalid Decimal literal".to_string());
+    }
+
+    let (negative, digits) = match trimmed.as_bytes()[0] {
+        b'+' => (false, &trimmed[1..]),
+        b'-' => (true, &trimmed[1..]),
+        _ => (false, trimmed),
+    };
+
+    let mut whole = String::new();
+    let mut fraction = String::new();
+    let mut seen_dot = false;
+    for ch in digits.chars() {
+        match ch {
+            '_' => continue,
+            '.' if !seen_dot => seen_dot = true,
+            '.' => return Err("ValueError: invalid Decimal literal".to_string()),
+            ch if ch.is_ascii_digit() && seen_dot => fraction.push(ch),
+            ch if ch.is_ascii_digit() => whole.push(ch),
+            _ => return Err("ValueError: invalid Decimal literal".to_string()),
+        }
+    }
+
+    if whole.is_empty() && fraction.is_empty() {
+        return Err("ValueError: invalid Decimal literal".to_string());
+    }
+
+    let scale = fraction.len() as u32;
+    whole.push_str(&fraction);
+    let digits = whole.trim_start_matches('0');
+    let mut numerator = if digits.is_empty() {
+        BigInt::from(0)
+    } else {
+        BigInt::parse_bytes(digits.as_bytes(), 10)
+            .ok_or_else(|| "ValueError: invalid Decimal literal".to_string())?
+    };
+    if negative {
+        numerator = -numerator;
+    }
+    let denominator = BigInt::from(10u8).pow(scale);
+    normalize_rational(numerator, denominator)
+}
+
+fn normalize_rational(
+    mut numerator: BigInt,
+    mut denominator: BigInt,
+) -> Result<(BigInt, BigInt), String> {
+    if denominator.is_zero() {
+        return Err("ZeroDivisionError: Fraction(1, 0)".to_string());
+    }
+    if denominator.is_negative() {
+        numerator = -numerator;
+        denominator = -denominator;
+    }
+    let divisor = numerator.gcd(&denominator);
+    Ok((numerator / &divisor, denominator / divisor))
+}
+
+fn round_rational_to_int(numerator: BigInt, denominator: BigInt) -> Value {
+    let negative = numerator.is_negative();
+    let numerator = numerator.abs();
+    let quotient = &numerator / &denominator;
+    let remainder = numerator % &denominator;
+    let doubled_remainder = &remainder * 2;
+    let mut rounded = if doubled_remainder < denominator {
+        quotient
+    } else if doubled_remainder > denominator {
+        quotient + 1
+    } else if quotient.is_even() {
+        quotient
+    } else {
+        quotient + 1
+    };
+    if negative {
+        rounded = -rounded;
+    }
+    normalize_big_int(rounded)
 }
 
 fn parse_int_string_base(value: &str, base: i64) -> Result<Value, String> {
@@ -38526,14 +41156,117 @@ fn int_string_conversion_limit_error(max_digits: usize, digit_count: usize) -> S
 }
 
 fn parse_float_string(value: &str) -> Result<Value, String> {
-    let text = value.trim().replace('_', "");
+    let text = value.trim();
     if text.is_empty() {
         return Err("ValueError: could not convert string to float".to_string());
     }
+    let text = remove_valid_float_underscores(text)
+        .ok_or_else(|| "ValueError: could not convert string to float".to_string())?;
 
     text.parse::<f64>()
-        .map(Value::Float)
+        .map(float_value)
         .map_err(|_| "ValueError: could not convert string to float".to_string())
+}
+
+fn parse_complex_string(value: &str) -> Result<(f64, f64), String> {
+    let mut text = value.trim();
+    if text.is_empty() || text.contains('\0') {
+        return Err(complex_malformed_string_error());
+    }
+
+    let has_open = text.starts_with('(');
+    let has_close = text.ends_with(')');
+    if has_open || has_close {
+        if !(has_open && has_close) {
+            return Err(complex_malformed_string_error());
+        }
+        text = text[1..text.len() - 1].trim();
+        if text.is_empty() {
+            return Err(complex_malformed_string_error());
+        }
+    }
+    if text.chars().any(char::is_whitespace) || text.contains('(') || text.contains(')') {
+        return Err(complex_malformed_string_error());
+    }
+
+    if !(text.ends_with('j') || text.ends_with('J')) {
+        return Ok((parse_complex_float_component(text)?, 0.0));
+    }
+
+    let body = &text[..text.len() - 1];
+    if body.is_empty() || body == "+" {
+        return Ok((0.0, 1.0));
+    }
+    if body == "-" {
+        return Ok((0.0, -1.0));
+    }
+
+    if let Some(index) = complex_real_imag_separator(body) {
+        let (real, imag) = body.split_at(index);
+        return Ok((
+            parse_complex_float_component(real)?,
+            parse_complex_imag_component(imag)?,
+        ));
+    }
+
+    Ok((0.0, parse_complex_imag_component(body)?))
+}
+
+fn complex_real_imag_separator(body: &str) -> Option<usize> {
+    let bytes = body.as_bytes();
+    (1..bytes.len()).rev().find(|index| {
+        matches!(bytes[*index], b'+' | b'-') && !matches!(bytes[index - 1], b'e' | b'E')
+    })
+}
+
+fn parse_complex_imag_component(value: &str) -> Result<f64, String> {
+    match value {
+        "" | "+" => Ok(1.0),
+        "-" => Ok(-1.0),
+        value => parse_complex_float_component(value),
+    }
+}
+
+fn parse_complex_float_component(value: &str) -> Result<f64, String> {
+    let text = remove_valid_float_underscores(value).ok_or_else(complex_malformed_string_error)?;
+    if text.is_empty() {
+        return Err(complex_malformed_string_error());
+    }
+    match text.to_ascii_lowercase().as_str() {
+        "inf" | "+inf" | "infinity" | "+infinity" => Ok(f64::INFINITY),
+        "-inf" | "-infinity" => Ok(f64::NEG_INFINITY),
+        "nan" | "+nan" => Ok(f64::NAN),
+        "-nan" => Ok(-f64::NAN),
+        _ => text
+            .parse::<f64>()
+            .map_err(|_| complex_malformed_string_error()),
+    }
+}
+
+fn remove_valid_float_underscores(value: &str) -> Option<String> {
+    if !value.contains('_') {
+        return Some(value.to_string());
+    }
+
+    let chars: Vec<char> = value.chars().collect();
+    for (index, ch) in chars.iter().enumerate() {
+        if *ch != '_' {
+            continue;
+        }
+        let previous = index.checked_sub(1).and_then(|index| chars.get(index));
+        let next = chars.get(index + 1);
+        if !matches!(previous, Some(ch) if ch.is_ascii_digit())
+            || !matches!(next, Some(ch) if ch.is_ascii_digit())
+        {
+            return None;
+        }
+    }
+
+    Some(chars.into_iter().filter(|ch| *ch != '_').collect())
+}
+
+fn complex_malformed_string_error() -> String {
+    "ValueError: complex() arg is a malformed string".to_string()
 }
 
 fn call_str(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
@@ -38573,6 +41306,41 @@ fn call_str(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, S
     }
 
     str_value_checked(&object).map(Value::String)
+}
+
+fn call_inspect_signature(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: signature() does not accept keyword arguments".to_string());
+    }
+
+    let [target] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: signature() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let text = match target {
+        Value::Builtin(name) if name == "operator.attrgetter" => "(attr, /, *attrs)",
+        Value::Builtin(name) if name == "operator.itemgetter" => "(item, /, *items)",
+        Value::Builtin(name) if name == "operator.methodcaller" => "(name, /, *args, **kwargs)",
+        Value::OperatorAttrGetter { .. }
+        | Value::OperatorItemGetter { .. }
+        | Value::OperatorMethodCaller { .. } => "(obj, /)",
+        value => {
+            return Err(format!(
+                "TypeError: unsupported callable for inspect.signature: {}",
+                type_name(value)
+            ));
+        }
+    };
+
+    Ok(Value::InspectSignature {
+        text: text.to_string(),
+    })
 }
 
 fn explicit_super_value(class: &Value, object: &Value) -> Result<Value, String> {
@@ -38631,12 +41399,16 @@ fn is_callable_value(value: &Value) -> bool {
             | Value::Function { .. }
             | Value::Class { .. }
             | Value::BoundMethod { .. }
+            | Value::Partial { .. }
+            | Value::OperatorAttrGetter { .. }
+            | Value::OperatorItemGetter { .. }
+            | Value::OperatorMethodCaller { .. }
             | Value::ConstEvaluator { .. }
     ) || instance_special_method(value, "__call__").is_some()
 }
 
 impl Vm {
-    fn call_isinstance(&self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_isinstance(&mut self, args: Vec<Value>) -> Result<Value, String> {
         let [subject, classinfo] = args.as_slice() else {
             return Err(format!(
                 "TypeError: isinstance expected 2 arguments, got {}",
@@ -38666,11 +41438,18 @@ impl Vm {
         Ok(Value::Bool(self.class_matches_classinfo(class, classinfo)?))
     }
 
-    fn value_matches_classinfo(&self, subject: &Value, classinfo: &Value) -> Result<bool, String> {
+    fn value_matches_classinfo(
+        &mut self,
+        subject: &Value,
+        classinfo: &Value,
+    ) -> Result<bool, String> {
         match classinfo {
             Value::Builtin(name)
                 if is_builtin_type_object_name(name) || is_exception_type_name(name) =>
             {
+                if name == "ByteString" {
+                    self.emit_collections_abc_bytestring_warning()?;
+                }
                 Ok(self.value_matches_registered_abc(subject, name)
                     || value_matches_builtin_class(subject, name))
             }
@@ -39239,7 +42018,16 @@ fn class_bases_include_unhashable_builtin(bases: &[Value]) -> bool {
 fn is_builtin_unhashable_instance_type_name(name: &str) -> bool {
     matches!(
         name,
-        "bytearray" | "list" | "dict" | "set" | "ChainMap" | "Counter" | "UserList" | "UserDict"
+        "bytearray"
+            | "list"
+            | "deque"
+            | "array.array"
+            | "dict"
+            | "set"
+            | "ChainMap"
+            | "Counter"
+            | "UserList"
+            | "UserDict"
     )
 }
 
@@ -39300,9 +42088,11 @@ fn is_builtin_sized_type_name(name: &str) -> bool {
             | "bytearray"
             | "memoryview"
             | "list"
+            | "deque"
             | "tuple"
             | "set"
             | "frozenset"
+            | "array.array"
             | "dict"
             | "range"
             | "dict_keys"
@@ -39323,9 +42113,11 @@ fn is_builtin_container_type_name(name: &str) -> bool {
             | "bytearray"
             | "memoryview"
             | "list"
+            | "deque"
             | "tuple"
             | "set"
             | "frozenset"
+            | "array.array"
             | "dict"
             | "range"
             | "dict_keys"
@@ -39354,12 +42146,24 @@ fn is_builtin_collection_type_name(name: &str) -> bool {
 fn is_builtin_sequence_type_name(name: &str) -> bool {
     matches!(
         name,
-        "str" | "bytes" | "bytearray" | "memoryview" | "list" | "UserList" | "tuple" | "range"
+        "str"
+            | "bytes"
+            | "bytearray"
+            | "memoryview"
+            | "list"
+            | "deque"
+            | "array.array"
+            | "UserList"
+            | "tuple"
+            | "range"
     )
 }
 
 fn is_builtin_mutable_sequence_type_name(name: &str) -> bool {
-    matches!(name, "list" | "UserList" | "bytearray")
+    matches!(
+        name,
+        "list" | "UserList" | "bytearray" | "deque" | "array.array"
+    )
 }
 
 fn is_builtin_byte_string_type_name(name: &str) -> bool {
@@ -39410,6 +42214,8 @@ fn is_builtin_reversible_type_name(name: &str) -> bool {
             | "bytearray"
             | "memoryview"
             | "list"
+            | "deque"
+            | "array.array"
             | "tuple"
             | "dict"
             | "range"
@@ -39486,6 +42292,8 @@ fn is_builtin_iterable_type_name(name: &str) -> bool {
             | "bytearray"
             | "memoryview"
             | "list"
+            | "deque"
+            | "array.array"
             | "tuple"
             | "set"
             | "frozenset"
@@ -39848,17 +42656,419 @@ fn round_big_int_to_ndigits(value: BigInt, ndigits: i64) -> Value {
 
 fn call_sqrt(args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
-        return Err(format!("sqrt() expected 1 argument, got {}", args.len()));
+        return Err(format!(
+            "TypeError: sqrt() expected 1 argument, got {}",
+            args.len()
+        ));
     };
 
-    let value = number_as_f64(value.clone())
-        .ok_or_else(|| format!("sqrt() argument must be a number, got {}", value))?;
+    let value = math_real_as_f64(value)?;
 
     if value < 0.0 {
-        return Err("math domain error".to_string());
+        return Err(format!(
+            "ValueError: expected a nonnegative input, got {value}"
+        ));
     }
 
-    Ok(Value::Float(value.sqrt()))
+    Ok(float_value(value.sqrt()))
+}
+
+fn call_math_isinf(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: isinf() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_as_f64(value)?;
+    Ok(Value::Bool(value.is_infinite()))
+}
+
+fn call_math_isfinite(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: isfinite() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_as_f64(value)?;
+    Ok(Value::Bool(value.is_finite()))
+}
+
+fn call_math_isnan(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: isnan() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_as_f64(value)?;
+    Ok(Value::Bool(value.is_nan()))
+}
+
+fn call_math_isnormal(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: isnormal() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_as_f64(value)?;
+    Ok(Value::Bool(value.is_normal()))
+}
+
+fn call_math_issubnormal(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: issubnormal() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_as_f64(value)?;
+    Ok(Value::Bool(value.is_subnormal()))
+}
+
+fn call_math_gcd(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    let mut result = BigInt::from(0);
+    for arg in args {
+        let value = match vm.index_integer_value(arg)? {
+            Value::Number(value) => BigInt::from(value),
+            Value::BigInt(value) => value,
+            _ => unreachable!("index_integer_value returns an integer"),
+        };
+        result = result.gcd(&value);
+    }
+
+    Ok(normalize_big_int(result.abs()))
+}
+
+fn call_math_lcm(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    let mut result = BigInt::from(1);
+    for arg in args {
+        let value = match vm.index_integer_value(arg)? {
+            Value::Number(value) => BigInt::from(value),
+            Value::BigInt(value) => value,
+            _ => unreachable!("index_integer_value returns an integer"),
+        };
+        if result.is_zero() || value.is_zero() {
+            result = BigInt::from(0);
+            continue;
+        }
+        let divisor = result.gcd(&value);
+        result = (result / divisor * value).abs();
+    }
+
+    Ok(normalize_big_int(result))
+}
+
+fn call_math_prod(
+    vm: &mut Vm,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    let mut start = None;
+    for (keyword, value) in keywords {
+        if keyword != "start" {
+            return Err(format!(
+                "TypeError: prod() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        if start.is_some() {
+            return Err(
+                "TypeError: prod() got multiple values for keyword argument 'start'".to_string(),
+            );
+        }
+        start = Some(value);
+    }
+
+    let [iterable] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: prod() takes exactly 1 positional argument ({} given)",
+            args.len()
+        ));
+    };
+
+    let mut total = start.unwrap_or(Value::Number(1));
+    let mut iterator = vm.stdlib_iter_value(iterable.clone())?;
+    loop {
+        match vm.advance_owned_iterator(&mut iterator)? {
+            IteratorAdvance::Yield(value) => total = multiply_values(total, value)?,
+            IteratorAdvance::Complete(_) | IteratorAdvance::Raised => return Ok(total),
+        }
+    }
+}
+
+fn call_math_fabs(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: fabs() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    Ok(float_value(math_real_as_f64(value)?.abs()))
+}
+
+fn call_math_copysign(args: Vec<Value>) -> Result<Value, String> {
+    let [magnitude, sign] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: copysign() expected 2 arguments, got {}",
+            args.len()
+        ));
+    };
+
+    let magnitude = math_real_as_f64(magnitude)?;
+    let sign = math_real_as_f64(sign)?;
+    Ok(float_value(magnitude.copysign(sign)))
+}
+
+fn call_math_signbit(args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: signbit() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    Ok(Value::Bool(math_real_as_f64(value)?.is_sign_negative()))
+}
+
+fn call_math_trunc(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: trunc() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    if let Some(method) = instance_special_method(value, "__trunc__") {
+        return vm.call_value(method, Vec::new());
+    }
+
+    if let Some(integer) = int_subclass_integer(value) {
+        return Ok(integer);
+    }
+
+    match numeric_bool_value(value.clone()) {
+        value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
+        Value::Float(value) => trunc_float_to_int(*value),
+        value => Err(format!(
+            "TypeError: type {} doesn't define __trunc__ method",
+            type_name(&value)
+        )),
+    }
+}
+
+fn trunc_float_to_int(value: f64) -> Result<Value, String> {
+    if value.is_nan() {
+        return Err("ValueError: cannot convert float NaN to integer".to_string());
+    }
+    if value.is_infinite() {
+        return Err("OverflowError: cannot convert float infinity to integer".to_string());
+    }
+
+    let integer = float_to_integral_big_int(value.trunc())
+        .expect("finite truncated float values are integral");
+    Ok(normalize_big_int(integer))
+}
+
+fn call_math_ceil(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_integral(vm, args, "ceil", "__ceil__", f64::ceil)
+}
+
+fn call_math_floor(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_integral(vm, args, "floor", "__floor__", f64::floor)
+}
+
+fn call_math_integral(
+    vm: &mut Vm,
+    args: Vec<Value>,
+    function_name: &str,
+    special_method: &str,
+    op: fn(f64) -> f64,
+) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {function_name}() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    if let Some(method) = instance_special_method(value, special_method) {
+        return vm.call_value(method, Vec::new());
+    }
+
+    if let Some(integer) = int_subclass_integer(value) {
+        return Ok(integer);
+    }
+
+    match numeric_bool_value(value.clone()) {
+        value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
+        Value::Float(value) => integral_float_to_int(op(*value)),
+        value => {
+            let value = math_real_protocol_as_f64(vm, value, special_method)?;
+            integral_float_to_int(op(value))
+        }
+    }
+}
+
+fn integral_float_to_int(value: f64) -> Result<Value, String> {
+    if value.is_nan() {
+        return Err("ValueError: cannot convert float NaN to integer".to_string());
+    }
+    if value.is_infinite() {
+        return Err("OverflowError: cannot convert float infinity to integer".to_string());
+    }
+
+    let integer = float_to_integral_big_int(value).expect("finite ceil/floor values are integral");
+    Ok(normalize_big_int(integer))
+}
+
+fn math_real_protocol_as_f64(
+    vm: &mut Vm,
+    value: Value,
+    special_method: &str,
+) -> Result<f64, String> {
+    if let Some(method) = instance_special_method(&value, "__float__") {
+        let result = vm.call_value(method, Vec::new())?;
+        return match result {
+            Value::Float(value) => Ok(*value),
+            result => Err(format!(
+                "TypeError: {}.__float__ returned non-float (type {})",
+                type_name(&value),
+                type_name(&result)
+            )),
+        };
+    }
+
+    if instance_special_method(&value, "__index__").is_some() {
+        return match vm.index_integer_value(value)? {
+            Value::Number(value) => Ok(value as f64),
+            Value::BigInt(value) => big_int_to_float(&value),
+            _ => unreachable!("index_integer_value returns an integer"),
+        };
+    }
+
+    Err(format!(
+        "TypeError: type {} doesn't define {special_method} method",
+        type_name(&value)
+    ))
+}
+
+fn call_math_degrees(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_unary_float(vm, args, "degrees", f64::to_degrees)
+}
+
+fn call_math_radians(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_unary_float(vm, args, "radians", f64::to_radians)
+}
+
+fn call_math_cbrt(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_unary_float(vm, args, "cbrt", f64::cbrt)
+}
+
+fn call_math_exp(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_exponential(vm, args, "exp", f64::exp)
+}
+
+fn call_math_exp2(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_exponential(vm, args, "exp2", f64::exp2)
+}
+
+fn call_math_exponential(
+    vm: &mut Vm,
+    args: Vec<Value>,
+    function_name: &str,
+    op: fn(f64) -> f64,
+) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {function_name}() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_number_as_f64(vm, value.clone())?;
+    let result = op(value);
+    if value.is_finite() && result.is_infinite() {
+        return Err("OverflowError: math range error".to_string());
+    }
+
+    Ok(float_value(result))
+}
+
+fn call_math_unary_float(
+    vm: &mut Vm,
+    args: Vec<Value>,
+    function_name: &str,
+    op: fn(f64) -> f64,
+) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {function_name}() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    Ok(float_value(op(math_real_number_as_f64(vm, value.clone())?)))
+}
+
+fn math_real_number_as_f64(vm: &mut Vm, value: Value) -> Result<f64, String> {
+    if let Some(integer) = int_subclass_integer(&value) {
+        return match integer {
+            Value::Number(value) => Ok(value as f64),
+            Value::BigInt(value) => big_int_to_float(&value),
+            _ => unreachable!("int_subclass_integer returns an integer"),
+        };
+    }
+
+    match numeric_bool_value(value) {
+        Value::Number(value) => Ok(value as f64),
+        Value::BigInt(value) => big_int_to_float(&value),
+        Value::Float(value) => Ok(*value),
+        value => {
+            if let Some(method) = instance_special_method(&value, "__float__") {
+                let result = vm.call_value(method, Vec::new())?;
+                return match result {
+                    Value::Float(value) => Ok(*value),
+                    result => Err(format!(
+                        "TypeError: {}.__float__ returned non-float (type {})",
+                        type_name(&value),
+                        type_name(&result)
+                    )),
+                };
+            }
+            if instance_special_method(&value, "__index__").is_some() {
+                return match vm.index_integer_value(value)? {
+                    Value::Number(value) => Ok(value as f64),
+                    Value::BigInt(value) => big_int_to_float(&value),
+                    _ => unreachable!("index_integer_value returns an integer"),
+                };
+            }
+
+            Err(format!(
+                "TypeError: must be real number, not {}",
+                type_name(&value)
+            ))
+        }
+    }
+}
+
+fn math_real_as_f64(value: &Value) -> Result<f64, String> {
+    match numeric_bool_value(value.clone()) {
+        Value::Number(value) => Ok(value as f64),
+        Value::BigInt(value) => big_int_to_float(&value),
+        Value::Float(value) => Ok(*value),
+        value => Err(format!(
+            "TypeError: must be real number, not {}",
+            type_name(&value)
+        )),
+    }
 }
 
 fn reversed_value(value: Value) -> Result<Value, String> {
@@ -39897,9 +43107,9 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             index: 0,
         })),
         Value::Range { start, stop, step } => Ok(shared_iterator(Value::ReverseIterator {
-            items: range_values(start, stop, step)?
+            items: range_values(&start, &stop, &step)?
                 .into_iter()
-                .map(Value::Number)
+                .map(normalize_big_int)
                 .collect(),
             index: 0,
         })),
@@ -42677,9 +45887,14 @@ fn string_bound_argument(value: &Value, default: i64, method: &str) -> Result<i6
     }
 }
 
-fn call_int_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+fn call_int_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
     match name {
         "int.bit_length" => {
+            reject_int_method_keywords(name, &keywords)?;
             let [receiver] = args.as_slice() else {
                 return Err(format!(
                     "bit_length() expected 0 arguments, got {}",
@@ -42691,6 +45906,7 @@ fn call_int_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
             )))
         }
         "int.bit_count" => {
+            reject_int_method_keywords(name, &keywords)?;
             let [receiver] = args.as_slice() else {
                 return Err(format!(
                     "bit_count() expected 0 arguments, got {}",
@@ -42702,6 +45918,7 @@ fn call_int_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
             )))
         }
         "int.conjugate" => {
+            reject_int_method_keywords(name, &keywords)?;
             let [receiver] = args.as_slice() else {
                 return Err(format!(
                     "conjugate() expected 0 arguments, got {}",
@@ -42711,6 +45928,7 @@ fn call_int_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
             integer_value(receiver.clone())
         }
         "int.as_integer_ratio" => {
+            reject_int_method_keywords(name, &keywords)?;
             let [receiver] = args.as_slice() else {
                 return Err(format!(
                     "as_integer_ratio() expected 0 arguments, got {}",
@@ -42722,11 +45940,164 @@ fn call_int_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 Value::Number(1),
             ]))
         }
+        "int.__hash__" => {
+            reject_int_method_keywords(name, &keywords)?;
+            let [receiver] = args.as_slice() else {
+                return Err(format!(
+                    "__hash__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            integer_value(receiver.clone())
+        }
+        "int.to_bytes" => call_int_to_bytes(args, keywords),
         _ => Err(format!("unknown builtin: {name}")),
     }
 }
 
+fn reject_int_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<(), String> {
+    if keywords.is_empty() {
+        return Ok(());
+    }
+    Err(format!(
+        "{}() does not accept keyword arguments",
+        method_display_name(name)
+    ))
+}
+
+fn call_int_to_bytes(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
+    let Some((receiver, rest)) = args.split_first() else {
+        return Err("to_bytes() expected an int receiver".to_string());
+    };
+    if rest.len() > 2 {
+        return Err(format!(
+            "to_bytes() takes at most 2 positional arguments but {} were given",
+            rest.len()
+        ));
+    }
+
+    let mut length = rest.first().cloned();
+    let mut byteorder = rest.get(1).cloned();
+    let mut signed = None;
+
+    for (name, value) in keywords {
+        match name.as_str() {
+            "length" => assign_int_method_argument(&mut length, "length", value)?,
+            "byteorder" => assign_int_method_argument(&mut byteorder, "byteorder", value)?,
+            "signed" => assign_int_method_argument(&mut signed, "signed", value)?,
+            _ => {
+                return Err(format!(
+                    "to_bytes() got an unexpected keyword argument '{name}'"
+                ));
+            }
+        }
+    }
+
+    let length =
+        integer_value_to_i64(integer_value(length.unwrap_or(Value::Number(1)))?, "length")?;
+    if length < 0 {
+        return Err("ValueError: length argument must be non-negative".to_string());
+    }
+
+    let byteorder = match byteorder.unwrap_or(Value::String("big".to_string())) {
+        Value::String(value) if value == "big" || value == "little" => value,
+        Value::String(_) => {
+            return Err("ValueError: byteorder must be either 'little' or 'big'".to_string());
+        }
+        value => {
+            return Err(format!(
+                "TypeError: byteorder must be str, not {}",
+                type_name(&value)
+            ));
+        }
+    };
+    let signed = signed.as_ref().is_some_and(int_method_truth_value);
+    let value = integer_big_int(receiver.clone())?;
+    let bytes = integer_to_bytes(value, length as usize, byteorder == "little", signed)?;
+    Ok(Value::Bytes(bytes))
+}
+
+fn assign_int_method_argument(
+    slot: &mut Option<Value>,
+    name: &str,
+    value: Value,
+) -> Result<(), String> {
+    if slot.is_some() {
+        return Err(format!(
+            "to_bytes() got multiple values for argument '{name}'"
+        ));
+    }
+    *slot = Some(value);
+    Ok(())
+}
+
+fn int_method_truth_value(value: &Value) -> bool {
+    match value {
+        Value::None => false,
+        Value::Bool(value) => *value,
+        Value::Number(value) => *value != 0,
+        Value::BigInt(value) => !value.is_zero(),
+        Value::Float(value) => **value != 0.0,
+        Value::String(value) => !value.is_empty(),
+        Value::Bytes(value) => !value.is_empty(),
+        Value::ByteArray(value) => !value.borrow().is_empty(),
+        Value::List(value) => !value.borrow().is_empty(),
+        Value::Tuple(value) => !value.is_empty(),
+        Value::Dict(value) => !value.borrow().entries.is_empty(),
+        _ => true,
+    }
+}
+
+fn integer_to_bytes(
+    value: BigInt,
+    length: usize,
+    little_endian: bool,
+    signed: bool,
+) -> Result<Vec<u8>, String> {
+    if length == 0 {
+        if value.is_zero() {
+            return Ok(Vec::new());
+        }
+        return Err("OverflowError: int too big to convert".to_string());
+    }
+
+    let bits = length * 8;
+    let encoded = if signed {
+        let min = -(BigInt::from(1u8) << (bits - 1));
+        let max = (BigInt::from(1u8) << (bits - 1)) - BigInt::from(1u8);
+        if value < min || value > max {
+            return Err("OverflowError: int too big to convert".to_string());
+        }
+        if value.is_negative() {
+            (BigInt::from(1u8) << bits) + value
+        } else {
+            value
+        }
+    } else {
+        if value.is_negative() {
+            return Err("OverflowError: can't convert negative int to unsigned".to_string());
+        }
+        let max = (BigInt::from(1u8) << bits) - BigInt::from(1u8);
+        if value > max {
+            return Err("OverflowError: int too big to convert".to_string());
+        }
+        value
+    };
+
+    let (_, mut bytes) = encoded.to_bytes_be();
+    if bytes.len() > length {
+        return Err("OverflowError: int too big to convert".to_string());
+    }
+    let mut output = vec![0; length - bytes.len()];
+    output.append(&mut bytes);
+    if little_endian {
+        output.reverse();
+    }
+    Ok(output)
+}
+
 fn integer_value(value: Value) -> Result<Value, String> {
+    let value = int_subclass_integer(&value).unwrap_or(value);
     match value {
         Value::Bool(value) => Ok(Value::Number(bool_as_i64(value))),
         value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
@@ -42738,6 +46109,9 @@ fn integer_value(value: Value) -> Result<Value, String> {
 }
 
 fn integer_magnitude(value: &Value) -> Result<num_bigint::BigUint, String> {
+    if let Some(value) = int_subclass_integer(value) {
+        return integer_magnitude(&value);
+    }
     match value {
         Value::Bool(value) => Ok(BigInt::from(bool_as_i64(*value)).magnitude().clone()),
         Value::Number(value) => Ok(BigInt::from(*value).magnitude().clone()),
@@ -42746,6 +46120,14 @@ fn integer_magnitude(value: &Value) -> Result<num_bigint::BigUint, String> {
             "int method receiver must be int, got {}",
             type_name(value)
         )),
+    }
+}
+
+fn integer_big_int(value: Value) -> Result<BigInt, String> {
+    match integer_value(value)? {
+        Value::Number(value) => Ok(BigInt::from(value)),
+        Value::BigInt(value) => Ok(value),
+        _ => unreachable!("integer_value returns an integer"),
     }
 }
 
@@ -42758,7 +46140,7 @@ fn call_float_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            Ok(Value::Float(*value))
+            Ok(Value::Float(value.clone()))
         }
         "float.is_integer" => {
             let [Value::Float(value)] = args.as_slice() else {
@@ -42776,10 +46158,240 @@ fn call_float_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            float_as_integer_ratio(*value)
+            float_as_integer_ratio(**value)
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
+}
+
+fn call_complex_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
+    match name {
+        "complex.__abs__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__abs__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            complex_abs_value(*real, *imag)
+        }
+        "complex.__bool__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__bool__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::Bool(*real != 0.0 || *imag != 0.0))
+        }
+        "complex.__format__" => {
+            let [value @ Value::Complex { .. }, format_spec] = args.as_slice() else {
+                return Err(format!(
+                    "__format__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let format_spec = format_spec_string(format_spec, "complex.__format__()")?;
+            apply_format_spec(value, &value.to_string(), false, Some(&format_spec))
+                .map(Value::String)
+        }
+        "complex.conjugate" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "conjugate() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::Complex {
+                real: *real,
+                imag: -*imag,
+            })
+        }
+        "complex.__complex__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__complex__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::Complex {
+                real: *real,
+                imag: *imag,
+            })
+        }
+        "complex.__getnewargs__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__getnewargs__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(tuple_value(vec![float_value(*real), float_value(*imag)]))
+        }
+        "complex.__hash__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__hash__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            hash_value(&Value::Complex {
+                real: *real,
+                imag: *imag,
+            })
+        }
+        "complex.__eq__" | "complex.__ne__" => {
+            let [Value::Complex { real, imag }, other] = args.as_slice() else {
+                let method = name.strip_prefix("complex.").unwrap_or(name);
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(equal) = complex_numeric_equal(*real, *imag, other) else {
+                return Ok(Value::NotImplemented);
+            };
+            Ok(Value::Bool(if name == "complex.__ne__" {
+                !equal
+            } else {
+                equal
+            }))
+        }
+        "complex.__lt__" | "complex.__le__" | "complex.__gt__" | "complex.__ge__" => {
+            let [Value::Complex { .. }, _] = args.as_slice() else {
+                let method = name.strip_prefix("complex.").unwrap_or(name);
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::NotImplemented)
+        }
+        "complex.__neg__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__neg__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::Complex {
+                real: -*real,
+                imag: -*imag,
+            })
+        }
+        "complex.__pos__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                return Err(format!(
+                    "__pos__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::Complex {
+                real: *real,
+                imag: *imag,
+            })
+        }
+        "complex.__pow__" => {
+            let [left @ Value::Complex { .. }, right] = args.as_slice() else {
+                return Err(format!(
+                    "__pow__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            power_values(left.clone(), right.clone())
+        }
+        "complex.__repr__" | "complex.__str__" => {
+            let [Value::Complex { real, imag }] = args.as_slice() else {
+                let method = name.strip_prefix("complex.").unwrap_or(name);
+                return Err(format!(
+                    "{method}() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            Ok(Value::String(
+                Value::Complex {
+                    real: *real,
+                    imag: *imag,
+                }
+                .to_string(),
+            ))
+        }
+        "complex.__truediv__" => {
+            let [left @ Value::Complex { .. }, right] = args.as_slice() else {
+                return Err(format!(
+                    "__truediv__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            true_divide_values(left.clone(), right.clone())
+        }
+        _ => Err(format!("unknown builtin: {name}")),
+    }
+}
+
+fn complex_abs_value(real: f64, imag: f64) -> Result<Value, String> {
+    let magnitude = real.hypot(imag);
+    if magnitude.is_infinite() && real.is_finite() && imag.is_finite() {
+        return Err("OverflowError: absolute value too large".to_string());
+    }
+    Ok(float_value(magnitude))
+}
+
+fn complex_numeric_equal(real: f64, imag: f64, other: &Value) -> Option<bool> {
+    let other = int_subclass_integer(other).unwrap_or_else(|| other.clone());
+    match other {
+        Value::Bool(value) => {
+            Some(imag == 0.0 && float_equals_integer(real, &bool_as_i64(value).into()))
+        }
+        Value::Number(value) => Some(imag == 0.0 && float_equals_integer(real, &value.into())),
+        Value::BigInt(value) => Some(imag == 0.0 && float_equals_integer(real, &value)),
+        Value::Float(value) => Some(imag == 0.0 && real == *value),
+        Value::Complex {
+            real: other_real,
+            imag: other_imag,
+        } => Some(real == other_real && imag == other_imag),
+        _ => None,
+    }
+}
+
+fn float_equals_integer(value: f64, integer: &BigInt) -> bool {
+    float_to_integral_big_int(value).is_some_and(|value| &value == integer)
+}
+
+fn float_to_integral_big_int(value: f64) -> Option<BigInt> {
+    if !value.is_finite() || value.fract() != 0.0 {
+        return None;
+    }
+
+    let bits = value.to_bits();
+    let negative = (bits >> 63) != 0;
+    let exponent_bits = ((bits >> 52) & 0x7ff) as i32;
+    let mantissa_bits = bits & ((1_u64 << 52) - 1);
+    if exponent_bits == 0 {
+        return if mantissa_bits == 0 {
+            Some(BigInt::from(0))
+        } else {
+            None
+        };
+    }
+
+    let mut integer = BigInt::from(mantissa_bits | (1_u64 << 52));
+    let exponent = exponent_bits - 1023 - 52;
+    if exponent >= 0 {
+        integer <<= exponent as usize;
+    } else {
+        let shift = (-exponent) as usize;
+        let divisor = BigInt::from(1) << shift;
+        if (&integer % &divisor) != BigInt::from(0) {
+            return None;
+        }
+        integer >>= shift;
+    }
+
+    if negative {
+        integer = -integer;
+    }
+    Some(integer)
 }
 
 fn float_as_integer_ratio(value: f64) -> Result<Value, String> {
@@ -42877,7 +46489,10 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                 ));
             };
             Ok(Value::Bool(
-                items.borrow().iter().any(|item| item == needle),
+                items
+                    .borrow()
+                    .iter()
+                    .any(|item| sequence_items_match(item, needle)),
             ))
         }
         "list.__delitem__" => {
@@ -42927,7 +46542,11 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                     method_arg_count(&args)
                 ));
             };
-            let count = items.borrow().iter().filter(|item| *item == needle).count();
+            let count = items
+                .borrow()
+                .iter()
+                .filter(|item| sequence_items_match(item, needle))
+                .count();
             let count =
                 i64::try_from(count).map_err(|_| "count() result is too large".to_string())?;
             Ok(Value::Number(count))
@@ -42951,7 +46570,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
             let (start, stop) = list_search_bounds(rest, len)?;
             let found = items[start..stop]
                 .iter()
-                .position(|item| item == needle)
+                .position(|item| sequence_items_match(item, needle))
                 .map(|index| start + index);
             match found {
                 Some(index) => {
@@ -45069,6 +48688,40 @@ fn is_bytes_partition_method(name: &str) -> bool {
     )
 }
 
+fn is_bytes_percent_method(name: &str) -> bool {
+    matches!(name, "bytes.__rmod__" | "bytearray.__rmod__")
+}
+
+fn call_bytes_percent_method(
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+    let [receiver, _other] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: {}() expected 1 argument, got {}",
+            method_display_name(name),
+            method_arg_count(&args)
+        ));
+    };
+
+    match (name, receiver) {
+        ("bytes.__rmod__", Value::Bytes(_)) | ("bytearray.__rmod__", Value::ByteArray(_)) => {
+            Ok(Value::NotImplemented)
+        }
+        ("bytes.__rmod__", value) => Err(format!(
+            "TypeError: descriptor '__rmod__' requires a 'bytes' object but received a '{}'",
+            type_name(value)
+        )),
+        ("bytearray.__rmod__", value) => Err(format!(
+            "TypeError: descriptor '__rmod__' requires a 'bytearray' object but received a '{}'",
+            type_name(value)
+        )),
+        _ => unreachable!("caller filters bytes percent methods"),
+    }
+}
+
 #[derive(Clone, Copy)]
 enum BytesResultKind {
     Bytes,
@@ -46329,7 +49982,7 @@ fn checked_bytearray_resize_length(length: usize) -> Result<usize, String> {
 fn is_iterator_protocol_method(name: &str) -> bool {
     matches!(
         method_display_name(name),
-        "__iter__" | "__next__" | "__length_hint__"
+        "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
     )
 }
 
@@ -46365,7 +50018,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
         Value::UserDict { data, .. } => Ok(data.borrow().len()),
         Value::ScopeDict(scope) => Ok(scope.borrow().len()),
         Value::DictView { entries, .. } => Ok(entries.borrow().len()),
-        Value::Range { start, stop, step } => Ok(range_values(*start, *stop, *step)?.len()),
+        Value::Range { start, stop, step } => Ok(range_len_usize(start, stop, step)?),
         value => Err(format!(
             "TypeError: object of type '{}' has no len()",
             type_name(value)
@@ -46388,6 +50041,104 @@ fn len_result_from_value(value: Value) -> Result<usize, String> {
             type_name(&value)
         )),
     }
+}
+
+fn operator_length_hint_check_default(default: &Value) -> Result<(), String> {
+    if matches!(
+        default,
+        Value::Bool(_) | Value::Number(_) | Value::BigInt(_)
+    ) || int_subclass_integer(default).is_some()
+    {
+        return Ok(());
+    }
+
+    Err(format!(
+        "TypeError: '{}' object cannot be interpreted as an integer",
+        type_name(default)
+    ))
+}
+
+fn operator_length_hint_result(value: Value, default: Value) -> Result<Value, String> {
+    match value {
+        Value::NotImplemented => Ok(default),
+        Value::Bool(value) => Ok(Value::Bool(value)),
+        Value::Number(value) if value >= 0 => Ok(Value::Number(value)),
+        Value::Number(_) => Err("ValueError: __length_hint__() should return >= 0".to_string()),
+        Value::BigInt(value) if !value.is_negative() => Ok(normalize_big_int(value)),
+        Value::BigInt(_) => Err("ValueError: __length_hint__() should return >= 0".to_string()),
+        value if int_subclass_integer(&value).is_some() => operator_length_hint_result(
+            int_subclass_integer(&value).expect("int subclass value exists after guard"),
+            default,
+        ),
+        value => Err(format!(
+            "TypeError: __length_hint__ must be integer, not {}",
+            type_name(&value)
+        )),
+    }
+}
+
+fn operator_unary_arg(function: &str, args: Vec<Value>) -> Result<Value, String> {
+    let count = args.len();
+    let [value]: [Value; 1] = args.try_into().map_err(|_| {
+        format!("TypeError: {function}() expected 1 positional argument, got {count}")
+    })?;
+    Ok(value)
+}
+
+fn operator_binary_args(function: &str, args: Vec<Value>) -> Result<(Value, Value), String> {
+    let count = args.len();
+    let [left, right]: [Value; 2] = args.try_into().map_err(|_| {
+        format!("TypeError: {function}() expected 2 positional arguments, got {count}")
+    })?;
+    Ok((left, right))
+}
+
+fn operator_ternary_args(
+    function: &str,
+    args: Vec<Value>,
+) -> Result<(Value, Value, Value), String> {
+    let count = args.len();
+    let [first, second, third]: [Value; 3] = args.try_into().map_err(|_| {
+        format!("TypeError: {function}() expected 3 positional arguments, got {count}")
+    })?;
+    Ok((first, second, third))
+}
+
+fn operator_call_object_arg(function: &str, args: Vec<Value>) -> Result<Value, String> {
+    let count = args.len();
+    let [object]: [Value; 1] = args.try_into().map_err(|_| {
+        format!("TypeError: {function}() expected 1 positional argument, got {count}")
+    })?;
+    Ok(object)
+}
+
+fn operator_getter_result(values: Vec<Value>) -> Value {
+    if values.len() == 1 {
+        values
+            .into_iter()
+            .next()
+            .expect("single getter result exists after len check")
+    } else {
+        tuple_value(values)
+    }
+}
+
+fn operator_concat_operand(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::String(_)
+            | Value::Bytes(_)
+            | Value::ByteArray(_)
+            | Value::List(_)
+            | Value::Tuple(_)
+            | Value::Instance { .. }
+    ) || str_subclass_string(value).is_some()
+        || bytes_subclass_bytes(value).is_some()
+        || bytearray_subclass_storage(value).is_some()
+}
+
+fn is_type_exception_message(message: &str) -> bool {
+    message.starts_with("TypeError: ") || is_type_error_message(message)
 }
 
 fn uses_sequence_index_protocol(value: &Value) -> bool {
@@ -46435,22 +50186,30 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             stop,
             step,
         } => {
-            if range_is_exhausted(*current, *stop, *step) {
+            if range_is_exhausted(current, stop, step) {
                 return Ok(IteratorAdvance::Complete(Value::None));
             }
 
-            let value = *current;
-            *current = current
-                .checked_add(*step)
-                .ok_or_else(|| "range iterator overflow".to_string())?;
-            Ok(IteratorAdvance::Yield(Value::Number(value)))
+            let value = current.clone();
+            *current += step.clone();
+            Ok(IteratorAdvance::Yield(normalize_big_int(value)))
         }
-        Value::ListIterator { items, index } => {
-            if *index >= items.len() {
+        Value::ListIterator {
+            items,
+            index,
+            exhausted,
+        } => {
+            if *exhausted {
                 return Ok(IteratorAdvance::Complete(Value::None));
             }
-
-            let value = items[*index].clone();
+            let value = {
+                let items = items.borrow();
+                if *index >= items.len() {
+                    *exhausted = true;
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                items[*index].clone()
+            };
             *index += 1;
             Ok(IteratorAdvance::Yield(value))
         }
@@ -46692,6 +50451,17 @@ fn map_strict_length_error(argument_index: usize, relation: &str) -> String {
 
 fn shared_iterator(iterator: Value) -> Value {
     Value::Iterator(Rc::new(RefCell::new(iterator)))
+}
+
+fn list_iterator_from_values(items: Vec<Value>) -> Value {
+    let Value::List(items) = list_value(items) else {
+        unreachable!("list_value returns a list")
+    };
+    shared_iterator(Value::ListIterator {
+        items,
+        index: 0,
+        exhausted: false,
+    })
 }
 
 fn empty_generator_value(name: &str, globals: Scope) -> Value {
@@ -47090,6 +50860,12 @@ fn instance_hash_method(value: &Value) -> Result<Option<Value>, String> {
 
     if set_subclass_items(value).is_some() {
         Err(format!("TypeError: unhashable type: '{class_name}'"))
+    } else if let Some(value) = int_subclass_integer(value) {
+        Ok(Some(Value::BoundMethod {
+            function: Box::new(Value::Builtin("int.__hash__".to_string())),
+            receiver: Box::new(value),
+            identity: Rc::new(()),
+        }))
     } else if let Some(items) = frozen_set_subclass_items(value) {
         Ok(Some(Value::BoundMethod {
             function: Box::new(Value::Builtin("frozenset.__hash__".to_string())),
@@ -47102,6 +50878,9 @@ fn instance_hash_method(value: &Value) -> Result<Option<Value>, String> {
 }
 
 fn hash_result_from_special_method(value: Value) -> Result<Value, String> {
+    if let Some(value) = int_subclass_integer(&value) {
+        return hash_result_from_special_method(value);
+    }
     match numeric_bool_value(value) {
         Value::Number(value) => Ok(Value::Number(value)),
         Value::BigInt(value) => Ok(normalize_big_int(value)),
@@ -47149,12 +50928,19 @@ fn identity_bits(value: &Value) -> u64 {
             hasher.finish()
         }
         Value::Instance { fields, .. } => scope_identity_bits(fields),
+        Value::Exception { identity, .. } => rc_plain_identity_bits(identity),
         Value::Module { attrs, .. } => scope_identity_bits(attrs),
         Value::Function { identity, .. } => rc_plain_identity_bits(identity),
+        Value::CodeObject { identity, .. } => rc_plain_identity_bits(identity),
+        Value::Cell { identity, .. } => rc_plain_identity_bits(identity),
         Value::TypeParam { identity, .. } => rc_plain_identity_bits(identity),
         Value::DeferredTypeParamExpr(deferred) => rc_plain_identity_bits(&deferred.identity),
         Value::Traceback { identity } => rc_plain_identity_bits(identity),
+        Value::Float(value) => rc_plain_identity_bits(value),
         Value::MemoryView(view) => rc_identity_bits(view),
+        Value::OperatorAttrGetter { identity, .. }
+        | Value::OperatorItemGetter { identity, .. }
+        | Value::OperatorMethodCaller { identity, .. } => rc_plain_identity_bits(identity),
         _ => stable_identity_bits(value),
     }
 }
@@ -47193,12 +50979,12 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             if let Some(value) = value.to_i64() {
                 hash_integer_value(&BigInt::from(value), hasher);
             } else {
-                hash_float_value(*value, hasher);
+                hash_float_value(**value, hasher);
             }
         }
-        Value::Float(value) => hash_float_value(*value, hasher),
+        Value::Float(value) => hash_float_value(**value, hasher),
         Value::Complex { real, imag } if *imag == 0.0 => {
-            hash_value_into(&Value::Float(*real), hasher)?;
+            hash_value_into(&float_value(*real), hasher)?;
         }
         Value::Complex { real, imag } => {
             "complex".hash(hasher);
@@ -47247,7 +51033,11 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         } => {
             "code".hash(hasher);
             mode.hash(hasher);
-            format!("{instructions:?}").hash(hasher);
+            format!("{:?}", instructions_without_debug_positions(instructions)).hash(hasher);
+        }
+        Value::Cell { identity, .. } => {
+            "cell".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
         }
         Value::Range { start, stop, step } => {
             "range".hash(hasher);
@@ -47398,6 +51188,26 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             hash_value_into(function, hasher)?;
             hash_value_into(receiver, hasher)?;
         }
+        Value::Partial { identity, .. } => {
+            "partial".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::OperatorAttrGetter { identity, .. } => {
+            "operator.attrgetter".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::OperatorItemGetter { identity, .. } => {
+            "operator.itemgetter".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::OperatorMethodCaller { identity, .. } => {
+            "operator.methodcaller".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
+        }
+        Value::InspectSignature { text } => {
+            "Signature".hash(hasher);
+            text.hash(hasher);
+        }
         Value::AstNode { identity, .. } => {
             "ast_node".hash(hasher);
             rc_plain_identity_bits(identity).hash(hasher);
@@ -47544,6 +51354,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::Bytes(_)
         | Value::Bool(_)
         | Value::CodeObject { .. }
+        | Value::Cell { .. }
         | Value::Range { .. }
         | Value::Function { .. }
         | Value::Generator(_)
@@ -47577,6 +51388,11 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ClassMethod { .. }
         | Value::Super { .. }
         | Value::BoundMethod { .. }
+        | Value::Partial { .. }
+        | Value::OperatorAttrGetter { .. }
+        | Value::OperatorItemGetter { .. }
+        | Value::OperatorMethodCaller { .. }
+        | Value::InspectSignature { .. }
         | Value::AstNode { .. }
         | Value::Traceback { .. }
         | Value::Module { .. }
@@ -47676,6 +51492,7 @@ fn key_error_exception(key: Value) -> MiniException {
         context: None,
         suppress_context: false,
         exceptions: None,
+        identity: Rc::new(()),
     }
 }
 
@@ -47692,12 +51509,14 @@ fn get_iter(value: Value) -> Result<Value, String> {
             step,
         })),
         Value::List(items) => Ok(shared_iterator(Value::ListIterator {
-            items: items.borrow().clone(),
+            items,
             index: 0,
+            exhausted: false,
         })),
         Value::UserList { data, .. } => Ok(shared_iterator(Value::ListIterator {
-            items: data.borrow().clone(),
+            items: data,
             index: 0,
+            exhausted: false,
         })),
         Value::Tuple(items) => Ok(shared_iterator(Value::TupleIterator {
             items: items.as_ref().clone(),
@@ -47727,10 +51546,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             index: 0,
             exhausted: false,
         })),
-        Value::MemoryView(view) => Ok(shared_iterator(Value::ListIterator {
-            items: memoryview_values(&view)?,
-            index: 0,
-        })),
+        Value::MemoryView(view) => Ok(list_iterator_from_values(memoryview_values(&view)?)),
         Value::GenericAlias { origin, args } => {
             let alias = Value::GenericAlias { origin, args };
             Ok(shared_iterator(Value::TupleIterator {
@@ -47782,13 +51598,12 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 expected_version,
             }))
         }
-        Value::ChainMap { maps } => Ok(shared_iterator(Value::ListIterator {
-            items: chain_map_entries(&maps)?
+        Value::ChainMap { maps } => Ok(list_iterator_from_values(
+            chain_map_entries(&maps)?
                 .into_iter()
                 .map(|(key, _)| key)
                 .collect(),
-            index: 0,
-        })),
+        )),
         Value::ScopeDict(scope) => get_iter(scope_dict_snapshot(&scope)),
         Value::DictView { kind, entries } => {
             let (expected_len, expected_version) = {
@@ -47812,9 +51627,15 @@ fn get_iter(value: Value) -> Result<Value, String> {
             stop,
             step,
         })),
-        Value::ListIterator { items, index } => {
-            Ok(shared_iterator(Value::ListIterator { items, index }))
-        }
+        Value::ListIterator {
+            items,
+            index,
+            exhausted,
+        } => Ok(shared_iterator(Value::ListIterator {
+            items,
+            index,
+            exhausted,
+        })),
         Value::TupleIterator { items, index } => {
             Ok(shared_iterator(Value::TupleIterator { items, index }))
         }
@@ -48037,13 +51858,15 @@ fn value_matches_user_class(
 fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
     match class_name {
         "object" => true,
-        "int" => matches!(
-            subject,
-            Value::Bool(_) | Value::Number(_) | Value::BigInt(_)
-        ),
+        "int" => {
+            matches!(
+                subject,
+                Value::Bool(_) | Value::Number(_) | Value::BigInt(_)
+            ) || int_subclass_integer(subject).is_some()
+        }
         "float" => matches!(subject, Value::Float(_)),
         "complex" => matches!(subject, Value::Complex { .. }),
-        "str" => matches!(subject, Value::String(_)),
+        "str" => matches!(subject, Value::String(_)) || str_subclass_string(subject).is_some(),
         "bytes" => matches!(subject, Value::Bytes(_)) || bytes_subclass_bytes(subject).is_some(),
         "bytearray" => {
             matches!(subject, Value::ByteArray(_)) || bytearray_subclass_storage(subject).is_some()
@@ -48062,6 +51885,13 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "ChainMap" => matches!(subject, Value::ChainMap { .. }),
         "UserList" => matches!(subject, Value::UserList { .. }),
         "UserDict" => matches!(subject, Value::UserDict { .. }),
+        "deque" | "array.array" => {
+            matches!(
+                subject,
+                Value::Instance { class_bases, .. }
+                    if class_bases_include_builtin(class_bases, class_name)
+            )
+        }
         "SimpleNamespace" => is_simple_namespace_value(subject),
         "tuple" => matches!(subject, Value::Tuple(_) | Value::NamedTuple { .. }),
         "set" => matches!(subject, Value::Set(_)) || set_subclass_items(subject).is_some(),
@@ -48074,6 +51904,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "super" => matches!(subject, Value::Super { .. }),
         "staticmethod" => matches!(subject, Value::StaticMethod { .. }),
         "classmethod" => matches!(subject, Value::ClassMethod { .. }),
+        "CellType" => matches!(subject, Value::Cell { .. }),
         "traceback" => matches!(subject, Value::Traceback { .. }),
         "typing.TypeVar" => {
             matches!(subject, Value::TypeParam { kind, .. } if kind == "TypeVar")
@@ -48161,6 +51992,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
                     args: Vec::new(),
                     attrs: Vec::new(),
                     exceptions: None,
+        identity: Rc::new(()),
                     cause: None,
                     context: None,
                     suppress_context: false,
@@ -48419,9 +52251,7 @@ fn sequence_pattern_len(value: &Value) -> Option<usize> {
         Value::UserList { data, .. } => Some(data.borrow().len()),
         Value::Tuple(items) => Some(items.len()),
         Value::NamedTuple { values, .. } => Some(values.len()),
-        Value::Range { start, stop, step } => range_values(*start, *stop, *step)
-            .ok()
-            .map(|values| values.len()),
+        Value::Range { start, stop, step } => range_len_usize(start, stop, step).ok(),
         _ => None,
     }
 }
@@ -48445,9 +52275,9 @@ fn sequence_pattern_values(value: Value) -> Result<Vec<Value>, String> {
         Value::UserList { data, .. } => Ok(data.borrow().clone()),
         Value::Tuple(items) => Ok(items.as_ref().clone()),
         Value::NamedTuple { values, .. } => Ok(values.as_ref().clone()),
-        Value::Range { start, stop, step } => Ok(range_values(start, stop, step)?
+        Value::Range { start, stop, step } => Ok(range_values(&start, &stop, &step)?
             .into_iter()
-            .map(Value::Number)
+            .map(normalize_big_int)
             .collect()),
         value => Err(format!("{value} is not a sequence pattern subject")),
     }
@@ -48515,9 +52345,9 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
             .map(|byte| Value::Number(byte as i64))
             .collect()),
         Value::MemoryView(view) => memoryview_values(&view),
-        Value::Range { start, stop, step } => Ok(range_values(start, stop, step)?
+        Value::Range { start, stop, step } => Ok(range_values(&start, &stop, &step)?
             .into_iter()
-            .map(Value::Number)
+            .map(normalize_big_int)
             .collect()),
         Value::RangeIterator { .. }
         | Value::ListIterator { .. }
@@ -48659,12 +52489,12 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 unbox_slice_part(slice_step),
             ),
             index => {
-                let values = range_values(start, stop, step)?;
+                let values = range_values(&start, &stop, &step)?;
                 let index = normalized_index(index, values.len(), "range")?;
                 values
                     .get(index)
-                    .copied()
-                    .map(Value::Number)
+                    .cloned()
+                    .map(normalize_big_int)
                     .ok_or_else(|| "range object index out of range".to_string())
             }
         },
@@ -48764,9 +52594,9 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
                 value,
             ),
             index => {
+                let index = normalized_index(index, bytes.borrow().len(), "bytearray")?;
                 let byte = bytearray_assignment_byte(value)?;
                 let mut borrowed = bytes.borrow_mut();
-                let index = normalized_index(index, borrowed.len(), "bytearray")?;
                 if let Some(slot) = borrowed.get_mut(index) {
                     *slot = byte;
                     drop(borrowed);
@@ -49294,7 +53124,7 @@ fn load_slice(
             stop: range_stop,
             step: range_step,
         } => {
-            let values = range_values(range_start, range_stop, range_step)?;
+            let values = range_values(&range_start, &range_stop, &range_step)?;
             let start = slice_bound(start)?;
             let stop = slice_bound(stop)?;
             let step = slice_bound(step)?;
@@ -49306,14 +53136,10 @@ fn load_slice(
                     .last()
                     .copied()
                     .expect("nonempty indices has a last index");
-                let new_step = range_step
-                    .checked_mul(slice_step)
-                    .ok_or_else(|| "range slice step overflow".to_string())?;
-                let new_start = values[first_index];
-                let last_value = values[last_index];
-                let new_stop = last_value
-                    .checked_add(new_step)
-                    .ok_or_else(|| "range slice stop overflow".to_string())?;
+                let new_step = range_step * BigInt::from(slice_step);
+                let new_start = values[first_index].clone();
+                let last_value = values[last_index].clone();
+                let new_stop = last_value + &new_step;
 
                 Ok(Value::Range {
                     start: new_start,
@@ -49322,9 +53148,9 @@ fn load_slice(
                 })
             } else {
                 Ok(Value::Range {
-                    start: 0,
-                    stop: 0,
-                    step: 1,
+                    start: BigInt::zero(),
+                    stop: BigInt::zero(),
+                    step: BigInt::from(1),
                 })
             }
         }
@@ -49452,7 +53278,7 @@ fn normalized_index(index: Value, len: usize, type_name: &str) -> Result<usize, 
         Value::BigInt(value) => value
             .to_i64()
             .ok_or_else(|| format!("{type_name} index out of range"))?,
-        value => return Err(format!("{type_name} indices must be integers, got {value}")),
+        value => return Err(sequence_index_type_error(type_name, &value)),
     };
 
     let len = i64::try_from(len).map_err(|_| format!("{type_name} is too large"))?;
@@ -49469,22 +53295,71 @@ fn normalized_index(index: Value, len: usize, type_name: &str) -> Result<usize, 
     usize::try_from(normalized).map_err(|_| format!("{type_name} index out of range"))
 }
 
-fn range_values(start: i64, stop: i64, step: i64) -> Result<Vec<i64>, String> {
-    let mut values = Vec::new();
-    let mut current = start;
+fn sequence_index_type_error(sequence_type: &str, value: &Value) -> String {
+    match sequence_type {
+        "bytes" => format!(
+            "byte indices must be integers or slices, not {}",
+            type_name(value)
+        ),
+        "bytearray" => format!(
+            "bytearray indices must be integers or slices, not {}",
+            type_name(value)
+        ),
+        _ => format!("{sequence_type} indices must be integers, got {value}"),
+    }
+}
 
-    while !range_is_exhausted(current, stop, step) {
-        values.push(current);
-        current = current
-            .checked_add(step)
-            .ok_or_else(|| "range overflow".to_string())?;
+fn range_values(start: &BigInt, stop: &BigInt, step: &BigInt) -> Result<Vec<BigInt>, String> {
+    let len = range_len_usize(start, stop, step)?;
+    let mut values = Vec::with_capacity(len);
+    let mut current = start.clone();
+
+    while !range_is_exhausted(&current, stop, step) {
+        values.push(current.clone());
+        current += step;
     }
 
     Ok(values)
 }
 
-fn range_is_exhausted(current: i64, stop: i64, step: i64) -> bool {
-    if step > 0 {
+fn range_len_usize(start: &BigInt, stop: &BigInt, step: &BigInt) -> Result<usize, String> {
+    range_len_bigint(start, stop, step)
+        .to_usize()
+        .ok_or_else(|| "OverflowError: len() result is too large".to_string())
+}
+
+fn range_len_bigint(start: &BigInt, stop: &BigInt, step: &BigInt) -> BigInt {
+    if range_is_exhausted(start, stop, step) {
+        return BigInt::zero();
+    }
+
+    let one = BigInt::from(1);
+    let distance = if step.is_positive() {
+        stop.clone() - start - &one
+    } else {
+        start.clone() - stop - &one
+    };
+    distance / step.abs() + one
+}
+
+fn range_contains_integer(start: &BigInt, stop: &BigInt, step: &BigInt, needle: &BigInt) -> bool {
+    if range_is_exhausted(start, stop, step) {
+        return false;
+    }
+
+    if step.is_positive() {
+        if needle < start || needle >= stop {
+            return false;
+        }
+    } else if needle > start || needle <= stop {
+        return false;
+    }
+
+    (needle - start).mod_floor(step).is_zero()
+}
+
+fn range_is_exhausted(current: &BigInt, stop: &BigInt, step: &BigInt) -> bool {
+    if step.is_positive() {
         current >= stop
     } else {
         current <= stop
@@ -49506,8 +53381,19 @@ fn numeric_bool_operands(left: Value, right: Value) -> (Value, Value) {
     (numeric_bool_value(left), numeric_bool_value(right))
 }
 
-fn is_int_subclass_instance(value: &Value) -> bool {
-    matches!(value, Value::Instance { class_bases, .. } if class_bases_include_builtin(class_bases, "int"))
+fn big_int_to_float(value: &BigInt) -> Result<f64, String> {
+    match value.to_f64() {
+        Some(value) if value.is_finite() => Ok(value),
+        _ => Err("OverflowError: int too large to convert to float".to_string()),
+    }
+}
+
+fn add_complex_zero_preserving(left: f64, right: f64) -> f64 {
+    if left == 0.0 && right == 0.0 && (left.is_sign_negative() || right.is_sign_negative()) {
+        -0.0
+    } else {
+        left + right
+    }
 }
 
 fn add_values(left: Value, right: Value) -> Result<Value, String> {
@@ -49527,17 +53413,15 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left + BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left + right)),
-        (Value::Number(left), Value::Float(right)) => Ok(Value::Float(left as f64 + right)),
-        (Value::Float(left), Value::Number(right)) => Ok(Value::Float(left + right as f64)),
-        (Value::BigInt(left), Value::Float(right)) => left
-            .to_f64()
-            .map(|left| Value::Float(left + right))
-            .ok_or_else(|| "integer is too large to add to float".to_string()),
-        (Value::Float(left), Value::BigInt(right)) => right
-            .to_f64()
-            .map(|right| Value::Float(left + right))
-            .ok_or_else(|| "integer is too large to add to float".to_string()),
-        (Value::Float(left), Value::Float(right)) => Ok(Value::Float(left + right)),
+        (Value::Number(left), Value::Float(right)) => Ok(float_value(left as f64 + *right)),
+        (Value::Float(left), Value::Number(right)) => Ok(float_value(*left + right as f64)),
+        (Value::BigInt(left), Value::Float(right)) => {
+            Ok(float_value(big_int_to_float(&left)? + *right))
+        }
+        (Value::Float(left), Value::BigInt(right)) => {
+            Ok(float_value(*left + big_int_to_float(&right)?))
+        }
+        (Value::Float(left), Value::Float(right)) => Ok(float_value(*left + *right)),
         (
             Value::Complex {
                 real: left_real,
@@ -49555,30 +53439,24 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             real: real + value as f64,
             imag,
         }),
-        (Value::Complex { real, imag }, Value::BigInt(value)) => value
-            .to_f64()
-            .map(|value| Value::Complex {
-                real: real + value,
-                imag,
-            })
-            .ok_or_else(|| "integer is too large to add to complex".to_string()),
+        (Value::Complex { real, imag }, Value::BigInt(value)) => Ok(Value::Complex {
+            real: real + big_int_to_float(&value)?,
+            imag,
+        }),
         (Value::Complex { real, imag }, Value::Float(value)) => Ok(Value::Complex {
-            real: real + value,
+            real: real + *value,
             imag,
         }),
         (Value::Number(value), Value::Complex { real, imag }) => Ok(Value::Complex {
             real: value as f64 + real,
             imag,
         }),
-        (Value::BigInt(value), Value::Complex { real, imag }) => value
-            .to_f64()
-            .map(|value| Value::Complex {
-                real: value + real,
-                imag,
-            })
-            .ok_or_else(|| "integer is too large to add to complex".to_string()),
+        (Value::BigInt(value), Value::Complex { real, imag }) => Ok(Value::Complex {
+            real: big_int_to_float(&value)? + real,
+            imag,
+        }),
         (Value::Float(value), Value::Complex { real, imag }) => Ok(Value::Complex {
-            real: value + real,
+            real: *value + real,
             imag,
         }),
         (
@@ -49751,17 +53629,15 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left - BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left - right)),
-        (Value::Number(left), Value::Float(right)) => Ok(Value::Float(left as f64 - right)),
-        (Value::Float(left), Value::Number(right)) => Ok(Value::Float(left - right as f64)),
-        (Value::BigInt(left), Value::Float(right)) => left
-            .to_f64()
-            .map(|left| Value::Float(left - right))
-            .ok_or_else(|| "integer is too large to subtract float".to_string()),
-        (Value::Float(left), Value::BigInt(right)) => right
-            .to_f64()
-            .map(|right| Value::Float(left - right))
-            .ok_or_else(|| "integer is too large to subtract from float".to_string()),
-        (Value::Float(left), Value::Float(right)) => Ok(Value::Float(left - right)),
+        (Value::Number(left), Value::Float(right)) => Ok(float_value(left as f64 - *right)),
+        (Value::Float(left), Value::Number(right)) => Ok(float_value(*left - right as f64)),
+        (Value::BigInt(left), Value::Float(right)) => {
+            Ok(float_value(big_int_to_float(&left)? - *right))
+        }
+        (Value::Float(left), Value::BigInt(right)) => {
+            Ok(float_value(*left - big_int_to_float(&right)?))
+        }
+        (Value::Float(left), Value::Float(right)) => Ok(float_value(*left - *right)),
         (
             Value::Complex {
                 real: left_real,
@@ -49779,30 +53655,24 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
             real: real - value as f64,
             imag,
         }),
-        (Value::Complex { real, imag }, Value::BigInt(value)) => value
-            .to_f64()
-            .map(|value| Value::Complex {
-                real: real - value,
-                imag,
-            })
-            .ok_or_else(|| "integer is too large to subtract from complex".to_string()),
+        (Value::Complex { real, imag }, Value::BigInt(value)) => Ok(Value::Complex {
+            real: real - big_int_to_float(&value)?,
+            imag,
+        }),
         (Value::Complex { real, imag }, Value::Float(value)) => Ok(Value::Complex {
-            real: real - value,
+            real: real - *value,
             imag,
         }),
         (Value::Number(value), Value::Complex { real, imag }) => Ok(Value::Complex {
             real: value as f64 - real,
             imag: -imag,
         }),
-        (Value::BigInt(value), Value::Complex { real, imag }) => value
-            .to_f64()
-            .map(|value| Value::Complex {
-                real: value - real,
-                imag: -imag,
-            })
-            .ok_or_else(|| "integer is too large to subtract complex".to_string()),
+        (Value::BigInt(value), Value::Complex { real, imag }) => Ok(Value::Complex {
+            real: big_int_to_float(&value)? - real,
+            imag: -imag,
+        }),
         (Value::Float(value), Value::Complex { real, imag }) => Ok(Value::Complex {
-            real: value - real,
+            real: *value - real,
             imag: -imag,
         }),
         (left, right) => Err(format!("cannot subtract {left} and {right}")),
@@ -49822,17 +53692,15 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left * BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left * right)),
-        (Value::Number(left), Value::Float(right)) => Ok(Value::Float(left as f64 * right)),
-        (Value::Float(left), Value::Number(right)) => Ok(Value::Float(left * right as f64)),
-        (Value::BigInt(left), Value::Float(right)) => left
-            .to_f64()
-            .map(|left| Value::Float(left * right))
-            .ok_or_else(|| "integer is too large to multiply by float".to_string()),
-        (Value::Float(left), Value::BigInt(right)) => right
-            .to_f64()
-            .map(|right| Value::Float(left * right))
-            .ok_or_else(|| "integer is too large to multiply by float".to_string()),
-        (Value::Float(left), Value::Float(right)) => Ok(Value::Float(left * right)),
+        (Value::Number(left), Value::Float(right)) => Ok(float_value(left as f64 * *right)),
+        (Value::Float(left), Value::Number(right)) => Ok(float_value(*left * right as f64)),
+        (Value::BigInt(left), Value::Float(right)) => {
+            Ok(float_value(big_int_to_float(&left)? * *right))
+        }
+        (Value::Float(left), Value::BigInt(right)) => {
+            Ok(float_value(*left * big_int_to_float(&right)?))
+        }
+        (Value::Float(left), Value::Float(right)) => Ok(float_value(*left * *right)),
         (
             Value::Complex {
                 real: left_real,
@@ -49852,17 +53720,17 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
             imag: imag * value as f64,
         }),
         (Value::Complex { real, imag }, Value::BigInt(value))
-        | (Value::BigInt(value), Value::Complex { real, imag }) => value
-            .to_f64()
-            .map(|value| Value::Complex {
+        | (Value::BigInt(value), Value::Complex { real, imag }) => {
+            let value = big_int_to_float(&value)?;
+            Ok(Value::Complex {
                 real: real * value,
                 imag: imag * value,
             })
-            .ok_or_else(|| "integer is too large to multiply by complex".to_string()),
+        }
         (Value::Complex { real, imag }, Value::Float(value))
         | (Value::Float(value), Value::Complex { real, imag }) => Ok(Value::Complex {
-            real: real * value,
-            imag: imag * value,
+            real: real * *value,
+            imag: imag * *value,
         }),
         (Value::List(items), Value::Number(count)) | (Value::Number(count), Value::List(items)) => {
             Ok(list_value(repeat_values(items.borrow().clone(), count)?))
@@ -49994,10 +53862,22 @@ fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
 
 fn true_divide_values(left: Value, right: Value) -> Result<Value, String> {
     let (left, right) = numeric_bool_operands(left, right);
+    if matches!(left, Value::Complex { .. }) || matches!(right, Value::Complex { .. }) {
+        let left_display = left.to_string();
+        let right_display = right.to_string();
+        let Some((left_real, left_imag)) = number_as_complex_parts(left)? else {
+            return Err(format!("cannot divide {left_display} and {right_display}"));
+        };
+        let Some((right_real, right_imag)) = number_as_complex_parts(right)? else {
+            return Err(format!("cannot divide {left_display} and {right_display}"));
+        };
+        return complex_divide_values(left_real, left_imag, right_real, right_imag);
+    }
+
     let (left_display, right_display) = (left.to_string(), right.to_string());
     match (number_as_f64(left), number_as_f64(right)) {
         (Some(_), Some(0.0)) => Err("division by zero".to_string()),
-        (Some(left), Some(right)) => Ok(Value::Float(left / right)),
+        (Some(left), Some(right)) => Ok(float_value(left / right)),
         _ => Err(format!("cannot divide {left_display} and {right_display}")),
     }
 }
@@ -50006,11 +53886,53 @@ fn is_zero_division_error_message(message: &str) -> bool {
     matches!(
         message,
         "division by zero"
+            | "complex division by zero"
             | "integer division or modulo by zero"
             | "float floor division by zero"
             | "float modulo"
             | "0.0 cannot be raised to a negative power"
+            | "0.0 to a negative or complex power"
     )
+}
+
+fn number_as_complex_parts(value: Value) -> Result<Option<(f64, f64)>, String> {
+    match value {
+        Value::Bool(value) => Ok(Some((bool_as_i64(value) as f64, 0.0))),
+        Value::Number(value) => Ok(Some((value as f64, 0.0))),
+        Value::BigInt(value) => Ok(Some((big_int_to_float(&value)?, 0.0))),
+        Value::Float(value) => Ok(Some((*value, 0.0))),
+        Value::Complex { real, imag } => Ok(Some((real, imag))),
+        _ => Ok(None),
+    }
+}
+
+fn complex_divide_values(
+    left_real: f64,
+    left_imag: f64,
+    right_real: f64,
+    right_imag: f64,
+) -> Result<Value, String> {
+    if right_real == 0.0 && right_imag == 0.0 {
+        return Err("complex division by zero".to_string());
+    }
+
+    let (real, imag) = if right_real.abs() >= right_imag.abs() {
+        let ratio = right_imag / right_real;
+        let denom = right_real + right_imag * ratio;
+        (
+            (left_real + left_imag * ratio) / denom,
+            (left_imag - left_real * ratio) / denom,
+        )
+    } else {
+        let ratio = right_real / right_imag;
+        let denom = right_real * ratio + right_imag;
+        (
+            (left_real * ratio + left_imag) / denom,
+            (left_imag * ratio - left_real) / denom,
+        )
+    };
+
+    Ok(Value::Complex { real, imag })
 }
 
 fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
@@ -50044,7 +53966,7 @@ fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
             let (left_display, right_display) = (left.to_string(), right.to_string());
             match (number_as_f64(left), number_as_f64(right)) {
                 (Some(_), Some(0.0)) => Err("float floor division by zero".to_string()),
-                (Some(left), Some(right)) => Ok(Value::Float((left / right).floor())),
+                (Some(left), Some(right)) => Ok(float_value((left / right).floor())),
                 _ => Err(format!(
                     "cannot floor divide {left_display} and {right_display}"
                 )),
@@ -50054,11 +53976,23 @@ fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn modulo_values(left: Value, right: Value) -> Result<Value, String> {
-    if let Value::String(format) = left {
-        return percent_format_string(&format, right).map(Value::String);
+    match left {
+        Value::String(format) => return percent_format_string(&format, right).map(Value::String),
+        Value::Bytes(format) => {
+            return percent_format_bytes(&format, right, BytesResultKind::Bytes);
+        }
+        Value::ByteArray(format) => {
+            let format = bytearray_bytes(&format);
+            return percent_format_bytes(&format, right, BytesResultKind::ByteArray);
+        }
+        left => {
+            let (left, right) = numeric_bool_operands(left, right);
+            return modulo_numeric_values(left, right);
+        }
     }
+}
 
-    let (left, right) = numeric_bool_operands(left, right);
+fn modulo_numeric_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(_), Value::Number(0)) => {
             Err("integer division or modulo by zero".to_string())
@@ -50085,13 +54019,14 @@ fn modulo_values(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left.mod_floor(&right)))
         }
         (left, right) => {
-            let (left_display, right_display) = (left.to_string(), right.to_string());
+            let (left_type, right_type) =
+                (type_name(&left).to_string(), type_name(&right).to_string());
             match (number_as_f64(left), number_as_f64(right)) {
                 (Some(_), Some(0.0)) => Err("float modulo".to_string()),
-                (Some(left), Some(right)) => {
-                    Ok(Value::Float(left - (left / right).floor() * right))
-                }
-                _ => Err(format!("cannot modulo {left_display} and {right_display}")),
+                (Some(left), Some(right)) => Ok(float_value(left - (left / right).floor() * right)),
+                _ => Err(format!(
+                    "TypeError: unsupported operand type(s) for %: '{left_type}' and '{right_type}'"
+                )),
             }
         }
     }
@@ -50170,6 +54105,199 @@ fn percent_format_string(format: &str, value: Value) -> Result<String, String> {
     Ok(output)
 }
 
+fn percent_format_bytes(
+    format: &[u8],
+    value: Value,
+    kind: BytesResultKind,
+) -> Result<Value, String> {
+    let mapping = match &value {
+        Value::Dict(_)
+        | Value::MappingProxy { .. }
+        | Value::ChainMap { .. }
+        | Value::UserDict { .. }
+        | Value::ScopeDict(_) => Some(value.clone()),
+        _ => None,
+    };
+    let args = match value {
+        Value::Tuple(items) => items.as_ref().clone(),
+        value => vec![value],
+    };
+    let mut arg_index = 0;
+    let mut used_mapping = false;
+    let mut output = Vec::new();
+    let format = percent_latin1_text(format);
+    let mut chars = format.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch != '%' {
+            output.push(percent_latin1_char_byte(ch)?);
+            continue;
+        }
+
+        let mut spec = parse_percent_format_spec(&mut chars)?;
+        if spec.is_plain_percent() {
+            output.push(b'%');
+            continue;
+        }
+
+        if spec.mapping_key.is_some() && spec.uses_dynamic_width_or_precision() {
+            return Err(
+                "ValueError: * cannot be used with a parenthesised mapping key".to_string(),
+            );
+        }
+        if spec.mapping_key.is_none() && used_mapping {
+            return Err("ValueError: format requires a parenthesised mapping key".to_string());
+        }
+        resolve_percent_dynamic_spec(&mut spec, &args, &mut arg_index)?;
+
+        let arg = if let Some(key) = &spec.mapping_key {
+            used_mapping = true;
+            let mapping = mapping
+                .as_ref()
+                .ok_or_else(|| "TypeError: format requires a mapping".to_string())?;
+            load_subscript(mapping.clone(), Value::Bytes(percent_latin1_bytes(key)?))?
+        } else {
+            take_percent_arg(&args, &mut arg_index)?
+        };
+
+        let formatted = match spec.specifier {
+            'b' | 's' => percent_format_bytes_text(percent_format_bytes_arg(&arg)?, &spec),
+            'r' => percent_format_bytes_text(
+                percent_ascii_bytes(ascii_repr_value_checked(&arg)?)?,
+                &spec,
+            ),
+            'a' => percent_format_bytes_text(
+                percent_ascii_bytes(ascii_repr_value_checked(&arg)?)?,
+                &spec,
+            ),
+            'd' | 'i' | 'u' => percent_ascii_bytes(percent_format_integer(&arg, &spec)?)?,
+            'x' | 'X' | 'o' => percent_ascii_bytes(percent_format_integer_radix(&arg, &spec)?)?,
+            'c' => percent_format_bytes_text(percent_format_bytes_char(&arg)?, &spec),
+            specifier => {
+                return Err(format!("ValueError: unsupported format %{specifier}"));
+            }
+        };
+        output.extend(formatted);
+    }
+
+    if !used_mapping && arg_index < args.len() {
+        return Err("TypeError: not all arguments converted during bytes formatting".to_string());
+    }
+
+    Ok(bytes_result_value(kind, output))
+}
+
+fn percent_latin1_text(bytes: &[u8]) -> String {
+    bytes.iter().copied().map(char::from).collect()
+}
+
+fn percent_latin1_bytes(text: &str) -> Result<Vec<u8>, String> {
+    text.chars().map(percent_latin1_char_byte).collect()
+}
+
+fn percent_latin1_char_byte(ch: char) -> Result<u8, String> {
+    u8::try_from(ch as u32).map_err(|_| "ValueError: byte format is not latin-1".to_string())
+}
+
+fn percent_ascii_bytes(text: String) -> Result<Vec<u8>, String> {
+    if text.is_ascii() {
+        Ok(text.into_bytes())
+    } else {
+        Err("UnicodeEncodeError: bytes formatter result is not ASCII".to_string())
+    }
+}
+
+fn percent_format_bytes_arg(value: &Value) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) => Ok(value.clone()),
+        Value::ByteArray(value) => Ok(bytearray_bytes(value)),
+        Value::MemoryView(view) => memoryview_bytes(view),
+        value if bytes_subclass_bytes(value).is_some() => {
+            Ok(bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"))
+        }
+        value if bytearray_subclass_bytes(value).is_some() => {
+            Ok(bytearray_subclass_bytes(value)
+                .expect("bytearray subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: %b requires a bytes-like object, or an object that implements __bytes__, not '{}'",
+            type_name(value)
+        )),
+    }
+}
+
+fn percent_format_bytes_text(mut bytes: Vec<u8>, spec: &PercentFormatSpec) -> Vec<u8> {
+    if let Some(precision) = spec.precision {
+        bytes.truncate(precision);
+    }
+    percent_pad_bytes(bytes, spec)
+}
+
+fn percent_pad_bytes(bytes: Vec<u8>, spec: &PercentFormatSpec) -> Vec<u8> {
+    let Some(width) = spec.width else {
+        return bytes;
+    };
+    if bytes.len() >= width {
+        return bytes;
+    }
+    let padding = vec![b' '; width - bytes.len()];
+    if spec.left_align {
+        [bytes, padding].concat()
+    } else {
+        [padding, bytes].concat()
+    }
+}
+
+fn percent_format_bytes_char(value: &Value) -> Result<Vec<u8>, String> {
+    match value {
+        Value::Bytes(value) if value.len() == 1 => Ok(value.clone()),
+        Value::ByteArray(value) if bytearray_bytes(value).len() == 1 => Ok(bytearray_bytes(value)),
+        Value::MemoryView(view) => {
+            let bytes = memoryview_bytes(view)?;
+            if bytes.len() == 1 {
+                Ok(bytes)
+            } else {
+                Err("TypeError: %c requires an integer in range(256) or a single byte".to_string())
+            }
+        }
+        value if bytes_subclass_bytes(value).is_some() => {
+            let bytes =
+                bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard");
+            if bytes.len() == 1 {
+                Ok(bytes)
+            } else {
+                Err("TypeError: %c requires an integer in range(256) or a single byte".to_string())
+            }
+        }
+        value if bytearray_subclass_bytes(value).is_some() => {
+            let bytes = bytearray_subclass_bytes(value)
+                .expect("bytearray subclass storage exists after guard");
+            if bytes.len() == 1 {
+                Ok(bytes)
+            } else {
+                Err("TypeError: %c requires an integer in range(256) or a single byte".to_string())
+            }
+        }
+        Value::Bytes(_) | Value::ByteArray(_) => {
+            Err("TypeError: %c requires an integer in range(256) or a single byte".to_string())
+        }
+        Value::Bool(value) => Ok(vec![bool_as_i64(*value) as u8]),
+        Value::Number(value) => percent_byte_from_big_int(BigInt::from(*value)),
+        Value::BigInt(value) => percent_byte_from_big_int(value.clone()),
+        value => Err(format!(
+            "TypeError: %c requires an integer in range(256) or a single byte, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn percent_byte_from_big_int(value: BigInt) -> Result<Vec<u8>, String> {
+    let Some(byte) = value.to_u8() else {
+        return Err("OverflowError: %c arg not in range(256)".to_string());
+    };
+    Ok(vec![byte])
+}
+
 #[derive(Default)]
 struct PercentFormatSpec {
     mapping_key: Option<String>,
@@ -50213,13 +54341,26 @@ fn parse_percent_format_spec(
     let mut spec = PercentFormatSpec::default();
     if chars.peek().copied() == Some('(') {
         chars.next();
+        let mut depth = 1usize;
         let mut key = String::new();
-        loop {
-            match chars.next() {
-                Some(')') => break,
-                Some(ch) => key.push(ch),
-                None => return Err("ValueError: incomplete format key".to_string()),
+        while let Some(ch) = chars.next() {
+            match ch {
+                '(' => {
+                    depth += 1;
+                    key.push(ch);
+                }
+                ')' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        break;
+                    }
+                    key.push(ch);
+                }
+                ch => key.push(ch),
             }
+        }
+        if depth != 0 {
+            return Err("ValueError: incomplete format key".to_string());
         }
         spec.mapping_key = Some(key);
     }
@@ -50361,7 +54502,7 @@ fn percent_format_integer(value: &Value, spec: &PercentFormatSpec) -> Result<Str
         Value::Bool(value) => BigInt::from(bool_as_i64(*value)),
         Value::Number(value) => BigInt::from(*value),
         Value::BigInt(value) => value.clone(),
-        Value::Float(value) => percent_float_to_integer(*value)?,
+        Value::Float(value) => percent_float_to_integer(**value)?,
         value => Err(format!(
             "TypeError: %d format: a real number is required, not {}",
             type_name(value)
@@ -50519,7 +54660,7 @@ fn percent_float_value(value: &Value, specifier: char) -> Result<f64, String> {
         Value::BigInt(value) => value.to_f64().ok_or_else(|| {
             format!("OverflowError: %{specifier} format: a real number is required")
         }),
-        Value::Float(value) => Ok(*value),
+        Value::Float(value) => Ok(**value),
         value => Err(format!(
             "TypeError: %{specifier} format: a real number is required, not {}",
             type_name(value)
@@ -50640,6 +54781,9 @@ fn percent_pad_numeric_text(text: String, spec: &PercentFormatSpec) -> String {
 
 fn power_values(left: Value, right: Value) -> Result<Value, String> {
     let (left, right) = numeric_bool_operands(left, right);
+    if matches!(&left, Value::Complex { .. }) || matches!(&right, Value::Complex { .. }) {
+        return complex_power_operands(left, right);
+    }
     match (left, right) {
         (Value::Number(left), Value::Number(right)) if right < 0 => {
             negative_integer_power(BigInt::from(left), BigInt::from(right))
@@ -50678,10 +54822,173 @@ fn power_values(left: Value, right: Value) -> Result<Value, String> {
         (left, right) => {
             let (left_display, right_display) = (left.to_string(), right.to_string());
             match (number_as_f64(left), number_as_f64(right)) {
-                (Some(left), Some(right)) => Ok(Value::Float(left.powf(right))),
+                (Some(left), Some(right)) => Ok(real_power_value(left, right)),
                 _ => Err(format!("cannot power {left_display} and {right_display}")),
             }
         }
+    }
+}
+
+fn complex_power_operands(left: Value, right: Value) -> Result<Value, String> {
+    let (left_display, right_display) = (left.to_string(), right.to_string());
+    let Some((base_real, base_imag)) = number_as_complex_parts(left)? else {
+        return Err(format!("cannot power {left_display} and {right_display}"));
+    };
+    if let Some(exponent) = complex_integer_exponent(&right) {
+        return complex_integer_power_value(base_real, base_imag, exponent);
+    }
+    let Some((exponent_real, exponent_imag)) = number_as_complex_parts(right)? else {
+        return Err(format!("cannot power {left_display} and {right_display}"));
+    };
+    complex_power_value(base_real, base_imag, exponent_real, exponent_imag)
+}
+
+fn complex_integer_exponent(value: &Value) -> Option<i64> {
+    match value {
+        Value::Number(value) => Some(*value),
+        Value::BigInt(value) => value.to_i64(),
+        Value::Float(value) => integral_float_exponent(**value),
+        Value::Complex { real, imag } if *imag == 0.0 => integral_float_exponent(*real),
+        _ => None,
+    }
+}
+
+fn integral_float_exponent(value: f64) -> Option<i64> {
+    if value.is_finite()
+        && value.fract() == 0.0
+        && value >= i64::MIN as f64
+        && value <= i64::MAX as f64
+    {
+        Some(value as i64)
+    } else {
+        None
+    }
+}
+
+fn complex_integer_power_value(
+    base_real: f64,
+    base_imag: f64,
+    exponent: i64,
+) -> Result<Value, String> {
+    if exponent == 0 {
+        return Ok(Value::Complex {
+            real: 1.0,
+            imag: 0.0,
+        });
+    }
+    if base_real == 0.0 && base_imag == 0.0 && exponent < 0 {
+        return Err("0.0 to a negative or complex power".to_string());
+    }
+
+    let mut power = exponent.unsigned_abs();
+    let mut factor_real = base_real;
+    let mut factor_imag = base_imag;
+    let mut result_real = 1.0;
+    let mut result_imag = 0.0;
+
+    while power > 0 {
+        if power & 1 == 1 {
+            (result_real, result_imag) =
+                multiply_complex_parts(result_real, result_imag, factor_real, factor_imag);
+        }
+        power >>= 1;
+        if power > 0 {
+            (factor_real, factor_imag) =
+                multiply_complex_parts(factor_real, factor_imag, factor_real, factor_imag);
+        }
+    }
+
+    if exponent < 0 {
+        complex_divide_values(1.0, 0.0, result_real, result_imag)
+    } else if complex_power_overflowed(base_real, base_imag, result_real, result_imag) {
+        Err("OverflowError: complex exponentiation".to_string())
+    } else {
+        Ok(Value::Complex {
+            real: result_real,
+            imag: result_imag,
+        })
+    }
+}
+
+fn multiply_complex_parts(
+    left_real: f64,
+    left_imag: f64,
+    right_real: f64,
+    right_imag: f64,
+) -> (f64, f64) {
+    (
+        left_real * right_real - left_imag * right_imag,
+        left_real * right_imag + left_imag * right_real,
+    )
+}
+
+fn complex_power_value(
+    base_real: f64,
+    base_imag: f64,
+    exponent_real: f64,
+    exponent_imag: f64,
+) -> Result<Value, String> {
+    if exponent_real == 0.0 && exponent_imag == 0.0 {
+        return Ok(Value::Complex {
+            real: 1.0,
+            imag: 0.0,
+        });
+    }
+
+    if base_real == 0.0 && base_imag == 0.0 {
+        if exponent_real < 0.0 || exponent_imag != 0.0 {
+            return Err("0.0 to a negative or complex power".to_string());
+        }
+        return Ok(Value::Complex {
+            real: 0.0,
+            imag: 0.0,
+        });
+    }
+
+    let radius = base_real.hypot(base_imag);
+    let theta = base_imag.atan2(base_real);
+    let log_radius = radius.ln();
+    let magnitude = (exponent_real * log_radius - exponent_imag * theta).exp();
+    let angle = exponent_real * theta + exponent_imag * log_radius;
+    let real = magnitude * angle.cos();
+    let imag = magnitude * angle.sin();
+
+    if base_real.is_finite()
+        && base_imag.is_finite()
+        && exponent_real.is_finite()
+        && exponent_imag.is_finite()
+        && (!real.is_finite() || !imag.is_finite())
+    {
+        return Err("OverflowError: complex exponentiation".to_string());
+    }
+
+    Ok(Value::Complex { real, imag })
+}
+
+fn complex_power_overflowed(
+    base_real: f64,
+    base_imag: f64,
+    result_real: f64,
+    result_imag: f64,
+) -> bool {
+    base_real.is_finite()
+        && base_imag.is_finite()
+        && (!result_real.is_finite() || !result_imag.is_finite())
+}
+
+fn real_power_value(base: f64, exponent: f64) -> Value {
+    if base < 0.0 && exponent.is_finite() && exponent.fract() != 0.0 {
+        return negative_real_fractional_power(base, exponent);
+    }
+    float_value(base.powf(exponent))
+}
+
+fn negative_real_fractional_power(base: f64, exponent: f64) -> Value {
+    let magnitude = (-base).powf(exponent);
+    let angle = std::f64::consts::PI * exponent;
+    Value::Complex {
+        real: magnitude * angle.cos(),
+        imag: magnitude * angle.sin(),
     }
 }
 
@@ -50695,7 +55002,7 @@ fn negative_integer_power(base: BigInt, exponent: BigInt) -> Result<Value, Strin
     let exponent = exponent
         .to_f64()
         .ok_or_else(|| "integer exponent is too large".to_string())?;
-    Ok(Value::Float(base.powf(exponent)))
+    Ok(float_value(base.powf(exponent)))
 }
 
 fn modular_inverse(value: &BigInt, modulus: &BigInt) -> Option<BigInt> {
@@ -51068,7 +55375,7 @@ fn negate_value(value: Value) -> Result<Value, String> {
         Value::Bool(value) => Ok(Value::Number(-bool_as_i64(value))),
         Value::Number(value) => Ok(normalize_big_int(-BigInt::from(value))),
         Value::BigInt(value) => Ok(normalize_big_int(-value)),
-        Value::Float(value) => Ok(Value::Float(-value)),
+        Value::Float(value) => Ok(float_value(-*value)),
         Value::Complex { real, imag } => Ok(Value::Complex {
             real: -real,
             imag: -imag,
@@ -51110,7 +55417,7 @@ fn number_as_f64(value: Value) -> Option<f64> {
         Value::Bool(value) => Some(bool_as_i64(value) as f64),
         Value::Number(value) => Some(value as f64),
         Value::BigInt(value) => value.to_f64(),
-        Value::Float(value) => Some(value),
+        Value::Float(value) => Some(*value),
         _ => None,
     }
 }
@@ -51123,21 +55430,21 @@ fn compare_values(left: Value, right: Value) -> Result<Ordering, String> {
         (Value::BigInt(left), Value::Number(right)) => Ok(left.cmp(&BigInt::from(*right))),
         (Value::BigInt(left), Value::BigInt(right)) => Ok(left.cmp(right)),
         (Value::Number(left), Value::Float(right)) => (*left as f64)
-            .partial_cmp(right)
+            .partial_cmp(&**right)
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
-        (Value::Float(left), Value::Number(right)) => left
+        (Value::Float(left), Value::Number(right)) => (**left)
             .partial_cmp(&(*right as f64))
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
         (Value::BigInt(left), Value::Float(right)) => left
             .to_f64()
-            .and_then(|left| left.partial_cmp(right))
+            .and_then(|left| left.partial_cmp(&**right))
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
         (Value::Float(left), Value::BigInt(right)) => right
             .to_f64()
-            .and_then(|right| left.partial_cmp(&right))
+            .and_then(|right| (**left).partial_cmp(&right))
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
-        (Value::Float(left), Value::Float(right)) => left
-            .partial_cmp(right)
+        (Value::Float(left), Value::Float(right)) => (**left)
+            .partial_cmp(&**right)
             .ok_or_else(|| format!("cannot compare {left} and {right}")),
         (Value::String(left), Value::String(right)) => Ok(left.cmp(right)),
         (Value::Bytes(left), Value::Bytes(right)) => Ok(left.cmp(right)),
@@ -51249,10 +55556,18 @@ fn greater_equal_values(left: Value, right: Value) -> Result<bool, String> {
 
 fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
     match haystack {
-        Value::List(items) => Ok(items.borrow().iter().any(|item| item == &needle)),
-        Value::UserList { data, .. } => Ok(data.borrow().iter().any(|item| item == &needle)),
-        Value::Tuple(items) => Ok(items.iter().any(|item| item == &needle)),
-        Value::NamedTuple { values, .. } => Ok(values.iter().any(|item| item == &needle)),
+        Value::List(items) => Ok(items
+            .borrow()
+            .iter()
+            .any(|item| sequence_items_match(item, &needle))),
+        Value::UserList { data, .. } => Ok(data
+            .borrow()
+            .iter()
+            .any(|item| sequence_items_match(item, &needle))),
+        Value::Tuple(items) => Ok(items.iter().any(|item| sequence_items_match(item, &needle))),
+        Value::NamedTuple { values, .. } => Ok(values
+            .iter()
+            .any(|item| sequence_items_match(item, &needle))),
         Value::Set(items) => {
             ensure_set_lookup_key(&needle)?;
             Ok(items.borrow().iter().any(|item| item == &needle))
@@ -51341,14 +55656,13 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             )),
         },
         Value::Range { start, stop, step } => match needle {
-            Value::Number(needle) => Ok(range_values(start, stop, step)?.contains(&needle)),
-            Value::BigInt(needle) => {
-                if let Some(needle) = needle.to_i64() {
-                    Ok(range_values(start, stop, step)?.contains(&needle))
-                } else {
-                    Ok(false)
-                }
-            }
+            Value::Number(needle) => Ok(range_contains_integer(
+                &start,
+                &stop,
+                &step,
+                &BigInt::from(needle),
+            )),
+            Value::BigInt(needle) => Ok(range_contains_integer(&start, &stop, &step, &needle)),
             _ => Ok(false),
         },
         Value::Dict(entries) | Value::Counter { entries } => {
@@ -51408,10 +55722,14 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                     .iter()
                     .any(|(key, _)| dict_keys_equal(key, &needle)))
             }
-            DictViewKind::Values => Ok(entries.borrow().iter().any(|(_, value)| value == &needle)),
-            DictViewKind::Items => Ok(dict_view_values(kind, &entries)
+            DictViewKind::Values => Ok(entries
+                .borrow()
                 .iter()
-                .any(|item| item == &needle)),
+                .any(|(_, value)| sequence_items_match(value, &needle))),
+            DictViewKind::Items => Ok(entries
+                .borrow()
+                .iter()
+                .any(|(key, value)| dict_view_item_matches(&needle, key, value))),
         },
         Value::PicklePayload(_) => match needle {
             Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => Ok(false),
@@ -51428,6 +55746,19 @@ fn sequence_items_match(left: &Value, right: &Value) -> bool {
     is_identical(left, right) || left == right
 }
 
+fn dict_view_item_matches(needle: &Value, key: &Value, value: &Value) -> bool {
+    match needle {
+        Value::Tuple(items) if items.len() == 2 => {
+            dict_keys_equal(key, &items[0]) && sequence_items_match(value, &items[1])
+        }
+        Value::List(items) if items.borrow().len() == 2 => {
+            let items = items.borrow();
+            dict_keys_equal(key, &items[0]) && sequence_items_match(value, &items[1])
+        }
+        _ => false,
+    }
+}
+
 fn is_identical(left: &Value, right: &Value) -> bool {
     match (left, right) {
         (Value::None, Value::None)
@@ -51436,6 +55767,7 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         | (Value::Bool(true), Value::Bool(true))
         | (Value::Bool(false), Value::Bool(false)) => true,
         (Value::Bytes(left), Value::Bytes(right)) if left.is_empty() && right.is_empty() => true,
+        (Value::Float(left), Value::Float(right)) => Rc::ptr_eq(left, right),
         (Value::List(left), Value::List(right)) => Rc::ptr_eq(left, right),
         (
             Value::UserList {
@@ -51540,6 +55872,16 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             },
         ) => Rc::ptr_eq(left_fields, right_fields),
         (
+            Value::Exception {
+                identity: left_identity,
+                ..
+            },
+            Value::Exception {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
             Value::Module {
                 attrs: left_attrs, ..
             },
@@ -51578,11 +55920,51 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             },
         ) => Rc::ptr_eq(left_identity, right_identity),
         (
+            Value::OperatorAttrGetter {
+                identity: left_identity,
+                ..
+            },
+            Value::OperatorAttrGetter {
+                identity: right_identity,
+                ..
+            },
+        )
+        | (
+            Value::OperatorItemGetter {
+                identity: left_identity,
+                ..
+            },
+            Value::OperatorItemGetter {
+                identity: right_identity,
+                ..
+            },
+        )
+        | (
+            Value::OperatorMethodCaller {
+                identity: left_identity,
+                ..
+            },
+            Value::OperatorMethodCaller {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
             Value::CodeObject {
                 identity: left_identity,
                 ..
             },
             Value::CodeObject {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
+        (
+            Value::Cell {
+                identity: left_identity,
+                ..
+            },
+            Value::Cell {
                 identity: right_identity,
                 ..
             },
@@ -51632,7 +56014,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::Bool(value) => Ok(*value),
         Value::Number(value) => Ok(*value != 0),
         Value::BigInt(value) => Ok(!value.is_zero()),
-        Value::Float(value) => Ok(*value != 0.0),
+        Value::Float(value) => Ok(**value != 0.0),
         Value::Complex { real, imag } => Ok(*real != 0.0 || *imag != 0.0),
         Value::String(value) => Ok(!value.is_empty()),
         Value::Bytes(value) => Ok(!value.is_empty()),
@@ -51662,8 +56044,9 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::AstNode { .. } => Ok(true),
         Value::Traceback { .. } => Ok(true),
         Value::CodeObject { .. } => Ok(true),
+        Value::Cell { .. } => Ok(true),
         Value::Slice { .. } => Ok(true),
-        Value::Range { start, stop, step } => Ok(!range_is_exhausted(*start, *stop, *step)),
+        Value::Range { start, stop, step } => Ok(!range_is_exhausted(start, stop, step)),
         Value::RangeIterator { .. } => Ok(true),
         Value::ListIterator { .. } => Ok(true),
         Value::TupleIterator { .. } => Ok(true),
@@ -51711,10 +56094,17 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ClassMethod { .. } => Ok(true),
         Value::Super { .. } => Ok(true),
         Value::BoundMethod { .. } => Ok(true),
+        Value::Partial { .. } => Ok(true),
+        Value::OperatorAttrGetter { .. } => Ok(true),
+        Value::OperatorItemGetter { .. } => Ok(true),
+        Value::OperatorMethodCaller { .. } => Ok(true),
+        Value::InspectSignature { .. } => Ok(true),
         Value::Module { .. } => Ok(true),
         Value::Exception { .. } => Ok(true),
         Value::Builtin(_) => Ok(true),
-        Value::NotImplemented => Ok(true),
+        Value::NotImplemented => {
+            Err("TypeError: NotImplemented should not be used in a boolean context".to_string())
+        }
         Value::Ellipsis => Ok(true),
         Value::None => Ok(false),
     }
@@ -51724,7 +56114,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
 mod tests {
     use super::Vm;
     use crate::bytecode::{FormatConversion, Instruction};
-    use crate::value::{Value, list_value};
+    use crate::value::{Value, float_value, list_value};
 
     #[test]
     fn runs_print_number_program() {
@@ -52451,7 +56841,7 @@ mod tests {
             },
             Instruction::LoadConst {
                 dst: 1,
-                value: Value::Float(3.14159),
+                value: float_value(3.14159),
             },
             Instruction::LoadConst {
                 dst: 2,

@@ -18,7 +18,8 @@ use compiler::{
     CompileOptions, compile, compile_eval, compile_interactive_with_options, compile_with_options,
 };
 use lexer::{
-    decode_source_for_parse, function_definition_line_sequences, function_definition_start_lines,
+    decode_source_for_parse, function_definition_is_lambdas, function_definition_line_sequences,
+    function_definition_position_columns, function_definition_start_lines,
     generator_expression_line_sequences, lex_for_parse, lex_with_diagnostics,
     lex_with_spans_for_parse, lex_with_warnings_for_parse,
 };
@@ -336,6 +337,8 @@ fn compile_options_for_spanned_tokens(tokens: &[SpannedToken]) -> CompileOptions
     CompileOptions::default()
         .with_function_first_lines(function_definition_start_lines(tokens))
         .with_function_line_sequences(function_definition_line_sequences(tokens))
+        .with_function_position_columns(function_definition_position_columns(tokens))
+        .with_function_is_lambdas(function_definition_is_lambdas(tokens))
         .with_generator_expression_line_sequences(generator_expression_line_sequences(tokens))
 }
 

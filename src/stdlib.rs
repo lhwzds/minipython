@@ -1,7 +1,8 @@
 use crate::bytecode::Instruction;
 use crate::lexer::{get_int_max_str_digits, set_int_max_str_digits};
 use crate::value::{
-    CodeMode, DictRef, DictStorage, DictViewKind, Scope, Value, dict_value, list_value, tuple_value,
+    CodeMode, DictRef, DictStorage, DictViewKind, INT_SUBCLASS_STORAGE_FIELD, Scope, Value,
+    dict_value, float_value, list_value, tuple_value,
 };
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
@@ -95,6 +96,7 @@ pub(crate) const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
     "NotImplemented",
     "__debug__",
     "__import__",
+    "__build_class__",
     "print",
     "format",
     "eval",
@@ -156,6 +158,7 @@ pub(crate) const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
     "set",
     "frozenset",
     "float",
+    "complex",
     "bool",
     "object",
     "type",
@@ -366,6 +369,9 @@ pub(crate) fn create_module(
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
                 ("maxsize", Value::Number(i64::MAX)),
+                ("stdin", stdio_stream_value("stdin")),
+                ("stdout", stdio_stream_value("stdout")),
+                ("stderr", stdio_stream_value("stderr")),
                 ("version", Value::String("minipython".to_string())),
                 (
                     "get_int_max_str_digits",
@@ -389,9 +395,34 @@ pub(crate) fn create_module(
         "math" => Ok(module_value(
             "math",
             vec![
-                ("pi", Value::Float(std::f64::consts::PI)),
-                ("tau", Value::Float(std::f64::consts::TAU)),
+                ("pi", float_value(std::f64::consts::PI)),
+                ("e", float_value(std::f64::consts::E)),
+                ("tau", float_value(std::f64::consts::TAU)),
+                ("inf", float_value(f64::INFINITY)),
+                ("nan", float_value(f64::NAN)),
                 ("sqrt", Value::Builtin("sqrt".to_string())),
+                ("isfinite", Value::Builtin("math.isfinite".to_string())),
+                ("isinf", Value::Builtin("math.isinf".to_string())),
+                ("isnan", Value::Builtin("math.isnan".to_string())),
+                ("isnormal", Value::Builtin("math.isnormal".to_string())),
+                (
+                    "issubnormal",
+                    Value::Builtin("math.issubnormal".to_string()),
+                ),
+                ("gcd", Value::Builtin("math.gcd".to_string())),
+                ("lcm", Value::Builtin("math.lcm".to_string())),
+                ("prod", Value::Builtin("math.prod".to_string())),
+                ("fabs", Value::Builtin("math.fabs".to_string())),
+                ("copysign", Value::Builtin("math.copysign".to_string())),
+                ("signbit", Value::Builtin("math.signbit".to_string())),
+                ("trunc", Value::Builtin("math.trunc".to_string())),
+                ("ceil", Value::Builtin("math.ceil".to_string())),
+                ("floor", Value::Builtin("math.floor".to_string())),
+                ("degrees", Value::Builtin("math.degrees".to_string())),
+                ("radians", Value::Builtin("math.radians".to_string())),
+                ("cbrt", Value::Builtin("math.cbrt".to_string())),
+                ("exp", Value::Builtin("math.exp".to_string())),
+                ("exp2", Value::Builtin("math.exp2".to_string())),
             ],
         )),
         "os" => Ok(module_value(
@@ -413,6 +444,19 @@ pub(crate) fn create_module(
                 ("replace", Value::Builtin("copy.replace".to_string())),
             ],
         )),
+        "functools" => Ok(module_value(
+            "functools",
+            vec![("partial", Value::Builtin("functools.partial".to_string()))],
+        )),
+        "operator" => Ok(operator_module_value()),
+        "decimal" => Ok(module_value(
+            "decimal",
+            vec![("Decimal", Value::Builtin("decimal.Decimal".to_string()))],
+        )),
+        "fractions" => Ok(module_value(
+            "fractions",
+            vec![("Fraction", Value::Builtin("fractions.Fraction".to_string()))],
+        )),
         "pickle" => Ok(module_value(
             "pickle",
             vec![
@@ -424,6 +468,7 @@ pub(crate) fn create_module(
         "inspect" => Ok(module_value(
             "inspect",
             vec![
+                ("signature", Value::Builtin("inspect.signature".to_string())),
                 ("CO_GENERATOR", Value::Number(0x0020)),
                 ("CO_COROUTINE", Value::Number(0x0080)),
                 ("CO_ASYNC_GENERATOR", Value::Number(0x0200)),
@@ -486,6 +531,7 @@ pub(crate) fn create_module(
                     "SimpleNamespace",
                     Value::Builtin("SimpleNamespace".to_string()),
                 ),
+                ("CellType", Value::Builtin("CellType".to_string())),
                 ("coroutine", Value::Builtin("types.coroutine".to_string())),
                 (
                     "get_original_bases",
@@ -506,12 +552,17 @@ pub(crate) fn create_module(
                     "_count_elements",
                     Value::Builtin("collections._count_elements".to_string()),
                 ),
+                ("deque", Value::Builtin("deque".to_string())),
                 ("OrderedDict", Value::Builtin("OrderedDict".to_string())),
                 ("UserList", Value::Builtin("UserList".to_string())),
                 ("UserDict", Value::Builtin("UserDict".to_string())),
                 ("UserString", Value::Builtin("UserString".to_string())),
                 ("abc", import_dependency("collections.abc")?),
             ],
+        )),
+        "array" => Ok(module_value(
+            "array",
+            vec![("array", Value::Builtin("array.array".to_string()))],
         )),
         "collections.abc" => Ok(module_value(
             "collections.abc",
@@ -706,10 +757,7 @@ pub(crate) fn call_code_lines(
             ])
         })
         .collect();
-    Ok(stdlib_shared_iterator(Value::ListIterator {
-        items,
-        index: 0,
-    }))
+    Ok(stdlib_list_iterator_from_values(items))
 }
 
 pub(crate) fn call_code_positions(
@@ -737,15 +785,12 @@ pub(crate) fn call_code_positions(
             tuple_value(vec![
                 Value::Number(span.line),
                 Value::Number(span.line),
-                Value::None,
-                Value::None,
+                span.column.map(Value::Number).unwrap_or(Value::None),
+                span.end_column.map(Value::Number).unwrap_or(Value::None),
             ])
         })
         .collect();
-    Ok(stdlib_shared_iterator(Value::ListIterator {
-        items,
-        index: 0,
-    }))
+    Ok(stdlib_list_iterator_from_values(items))
 }
 
 pub(crate) fn call_collections_count_elements<C: StdlibContext + ?Sized>(
@@ -806,7 +851,10 @@ pub(crate) fn call_any_builtin<C: StdlibContext + ?Sized>(
 ) -> Result<Value, String> {
     reject_stdlib_keywords("any", &keywords)?;
     let [value] = args.as_slice() else {
-        return Err(format!("any() expected 1 argument, got {}", args.len()));
+        return Err(format!(
+            "TypeError: any() expected 1 argument, got {}",
+            args.len()
+        ));
     };
 
     let mut iterator = context.stdlib_iter_value(value.clone())?;
@@ -831,7 +879,10 @@ pub(crate) fn call_all_builtin<C: StdlibContext + ?Sized>(
 ) -> Result<Value, String> {
     reject_stdlib_keywords("all", &keywords)?;
     let [value] = args.as_slice() else {
-        return Err(format!("all() expected 1 argument, got {}", args.len()));
+        return Err(format!(
+            "TypeError: all() expected 1 argument, got {}",
+            args.len()
+        ));
     };
 
     let mut iterator = context.stdlib_iter_value(value.clone())?;
@@ -874,13 +925,15 @@ fn call_minmax_builtin<C: StdlibContext + ?Sized>(
 ) -> Result<Value, String> {
     let options = minmax_options(name, keywords)?;
     if args.is_empty() {
-        return Err(format!("{name} expected at least 1 argument, got 0"));
+        return Err(format!(
+            "TypeError: {name} expected at least 1 argument, got 0"
+        ));
     }
 
     if args.len() > 1 {
         if options.default.is_some() {
             return Err(format!(
-                "Cannot specify a default for {name}() with multiple positional arguments"
+                "TypeError: Cannot specify a default for {name}() with multiple positional arguments"
             ));
         }
         return minmax_values(context, name, args, options, choose_max);
@@ -905,7 +958,7 @@ fn minmax_options(name: &str, keywords: Vec<(String, Value)>) -> Result<MinMaxOp
             "key" => {
                 if options.key.is_some() {
                     return Err(format!(
-                        "{name}() got multiple values for keyword argument 'key'"
+                        "TypeError: {name}() got multiple values for keyword argument 'key'"
                     ));
                 }
                 options.key = Some(value);
@@ -913,14 +966,14 @@ fn minmax_options(name: &str, keywords: Vec<(String, Value)>) -> Result<MinMaxOp
             "default" => {
                 if options.default.is_some() {
                     return Err(format!(
-                        "{name}() got multiple values for keyword argument 'default'"
+                        "TypeError: {name}() got multiple values for keyword argument 'default'"
                     ));
                 }
                 options.default = Some(value);
             }
             _ => {
                 return Err(format!(
-                    "'{keyword}' is an invalid keyword argument for {name}()"
+                    "TypeError: '{keyword}' is an invalid keyword argument for {name}()"
                 ));
             }
         }
@@ -942,7 +995,7 @@ fn minmax_iterable<C: StdlibContext + ?Sized>(
             StdlibIteratorAdvance::Complete | StdlibIteratorAdvance::Raised => {
                 return match options.default {
                     Some(default) => Ok(default),
-                    None => Err(format!("{name}() arg is an empty sequence")),
+                    None => Err(format!("ValueError: {name}() arg is an empty sequence")),
                 };
             }
         }
@@ -976,7 +1029,7 @@ fn minmax_values<C: StdlibContext + ?Sized>(
     let Some(mut best_value) = values.next() else {
         return match options.default {
             Some(default) => Ok(default),
-            None => Err(format!("{name}() arg is an empty sequence")),
+            None => Err(format!("ValueError: {name}() arg is an empty sequence")),
         };
     };
     let mut best_key = minmax_key_value(context, options.key.as_ref(), &best_value)?;
@@ -1021,14 +1074,39 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    reject_stdlib_keywords("sum", &keywords)?;
+    let mut start_keyword = None;
+    for (keyword, value) in keywords {
+        if keyword != "start" {
+            return Err(format!(
+                "TypeError: sum() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        if start_keyword.is_some() {
+            return Err(
+                "TypeError: sum() got multiple values for keyword argument 'start'".to_string(),
+            );
+        }
+        start_keyword = Some(value);
+    }
+
     let (iterable, start) = match args.as_slice() {
-        [] => return Err("sum() takes at least 1 positional argument (0 given)".to_string()),
-        [iterable] => (iterable.clone(), Value::Number(0)),
-        [iterable, start] => (iterable.clone(), start.clone()),
+        [] => {
+            return Err(
+                "TypeError: sum() takes at least 1 positional argument (0 given)".to_string(),
+            );
+        }
+        [iterable] => (iterable.clone(), start_keyword.unwrap_or(Value::Number(0))),
+        [iterable, start] => {
+            if start_keyword.is_some() {
+                return Err(
+                    "TypeError: sum() got multiple values for keyword argument 'start'".to_string(),
+                );
+            }
+            (iterable.clone(), start.clone())
+        }
         values => {
             return Err(format!(
-                "sum() takes at most 2 positional arguments ({} given)",
+                "TypeError: sum() takes at most 2 positional arguments ({} given)",
                 values.len()
             ));
         }
@@ -1042,7 +1120,7 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
         match context.stdlib_advance_iterator(&mut iterator)? {
             StdlibIteratorAdvance::Yield(value) => {
                 if matches!(value, Value::String(_)) {
-                    return Err("sum() can't sum strings".to_string());
+                    return Err("TypeError: sum() can't sum strings".to_string());
                 }
                 total = context.stdlib_add_values(total, value)?;
             }
@@ -1053,10 +1131,14 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
 
 fn reject_sum_start(value: &Value) -> Result<(), String> {
     match value {
-        Value::String(_) => Err("sum() can't sum strings [use ''.join(seq) instead]".to_string()),
-        Value::Bytes(_) => Err("sum() can't sum bytes [use b''.join(seq) instead]".to_string()),
+        Value::String(_) => {
+            Err("TypeError: sum() can't sum strings [use ''.join(seq) instead]".to_string())
+        }
+        Value::Bytes(_) => {
+            Err("TypeError: sum() can't sum bytes [use b''.join(seq) instead]".to_string())
+        }
         Value::ByteArray(_) => {
-            Err("sum() can't sum bytearray [use b''.join(seq) instead]".to_string())
+            Err("TypeError: sum() can't sum bytearray [use b''.join(seq) instead]".to_string())
         }
         _ => Ok(()),
     }
@@ -1087,6 +1169,9 @@ pub(crate) fn call_import_builtin<C: StdlibContext + ?Sized>(
         .map(import_level_argument)
         .transpose()?
         .unwrap_or(0);
+    if level == 0 && name.is_empty() {
+        return Err("ValueError: Empty module name".to_string());
+    }
     let resolved_name = context.stdlib_resolve_import_name_from_globals_value(
         &name,
         level as usize,
@@ -1167,6 +1252,9 @@ pub(crate) fn call_repr_builtin<C: StdlibContext + ?Sized>(
 }
 
 fn hash_result_from_special_method(value: Value) -> Result<Value, String> {
+    if let Some(value) = stdlib_int_subclass_integer(&value) {
+        return hash_result_from_special_method(value);
+    }
     match stdlib_numeric_bool_value(value) {
         Value::Number(value) => Ok(Value::Number(value)),
         Value::BigInt(value) => Ok(normalize_stdlib_big_int(value)),
@@ -1178,6 +1266,38 @@ fn stdlib_numeric_bool_value(value: Value) -> Value {
     match value {
         Value::Bool(value) => Value::Number(i64::from(value)),
         value => value,
+    }
+}
+
+fn stdlib_int_subclass_integer(value: &Value) -> Option<Value> {
+    let Value::Instance {
+        fields,
+        class_bases,
+        ..
+    } = value
+    else {
+        return None;
+    };
+    if !stdlib_class_bases_include_builtin(class_bases, "int") {
+        return None;
+    }
+    match fields.borrow().get(INT_SUBCLASS_STORAGE_FIELD).cloned() {
+        Some(value @ (Value::Number(_) | Value::BigInt(_))) => Some(value),
+        _ => None,
+    }
+}
+
+fn stdlib_class_bases_include_builtin(bases: &[Value], target_name: &str) -> bool {
+    bases
+        .iter()
+        .any(|base| stdlib_class_inherits_builtin(base, target_name))
+}
+
+fn stdlib_class_inherits_builtin(value: &Value, target_name: &str) -> bool {
+    match value {
+        Value::Builtin(name) => name == target_name || (name == "bool" && target_name == "int"),
+        Value::Class { bases, .. } => stdlib_class_bases_include_builtin(bases, target_name),
+        _ => false,
     }
 }
 
@@ -1540,8 +1660,28 @@ fn dis_instruction_value(opcode: i64, argval: Value) -> Result<Value, String> {
     })
 }
 
+fn stdio_stream_value(name: &str) -> Value {
+    Value::SimpleNamespace {
+        fields: stdlib_dict_ref_from_entries(vec![(
+            Value::String("name".to_string()),
+            Value::String(format!("<{name}>")),
+        )]),
+    }
+}
+
 fn stdlib_shared_iterator(iterator: Value) -> Value {
     Value::Iterator(Rc::new(RefCell::new(iterator)))
+}
+
+fn stdlib_list_iterator_from_values(items: Vec<Value>) -> Value {
+    let Value::List(items) = list_value(items) else {
+        unreachable!("list_value returns a list")
+    };
+    stdlib_shared_iterator(Value::ListIterator {
+        items,
+        index: 0,
+        exhausted: false,
+    })
 }
 
 fn format_prefixed_integer(value: &BigInt, prefix: &str, radix: u32) -> String {
@@ -1650,6 +1790,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::PicklePayload(_) => "pickle payload",
         Value::AstNode { kind, .. } => kind.as_str(),
         Value::CodeObject { .. } => "code",
+        Value::Cell { .. } => "cell",
         Value::Range { .. } => "range",
         Value::Slice { .. } => "slice",
         Value::RangeIterator { .. } => "range_iterator",
@@ -1702,6 +1843,11 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::ClassMethod { .. } => "classmethod",
         Value::Super { .. } => "super",
         Value::BoundMethod { .. } => "method",
+        Value::Partial { .. } => "partial",
+        Value::OperatorAttrGetter { .. } => "operator.attrgetter",
+        Value::OperatorItemGetter { .. } => "operator.itemgetter",
+        Value::OperatorMethodCaller { .. } => "operator.methodcaller",
+        Value::InspectSignature { .. } => "Signature",
         Value::Module { .. } => "module",
         Value::Traceback { .. } => "traceback",
         Value::Exception { type_name, .. } => type_name.as_str(),
@@ -1774,6 +1920,139 @@ fn module_value(name: &str, attrs: Vec<(&str, Value)>) -> Value {
         name: name.to_string(),
         attrs: scope,
     }
+}
+
+const OPERATOR_ALL: &[&str] = &[
+    "abs",
+    "add",
+    "and_",
+    "attrgetter",
+    "call",
+    "concat",
+    "contains",
+    "countOf",
+    "delitem",
+    "eq",
+    "floordiv",
+    "ge",
+    "getitem",
+    "gt",
+    "iadd",
+    "iand",
+    "iconcat",
+    "ifloordiv",
+    "ilshift",
+    "imatmul",
+    "imod",
+    "imul",
+    "index",
+    "indexOf",
+    "inv",
+    "invert",
+    "ior",
+    "ipow",
+    "irshift",
+    "is_",
+    "is_none",
+    "is_not",
+    "is_not_none",
+    "isub",
+    "itemgetter",
+    "itruediv",
+    "ixor",
+    "le",
+    "length_hint",
+    "lshift",
+    "lt",
+    "matmul",
+    "methodcaller",
+    "mod",
+    "mul",
+    "ne",
+    "neg",
+    "not_",
+    "or_",
+    "pos",
+    "pow",
+    "rshift",
+    "setitem",
+    "sub",
+    "truediv",
+    "truth",
+    "xor",
+];
+
+const OPERATOR_DUNDER_ALIASES: &[(&str, &str)] = &[
+    ("__lt__", "lt"),
+    ("__le__", "le"),
+    ("__eq__", "eq"),
+    ("__ne__", "ne"),
+    ("__ge__", "ge"),
+    ("__gt__", "gt"),
+    ("__not__", "not_"),
+    ("__abs__", "abs"),
+    ("__add__", "add"),
+    ("__and__", "and_"),
+    ("__call__", "call"),
+    ("__floordiv__", "floordiv"),
+    ("__index__", "index"),
+    ("__inv__", "inv"),
+    ("__invert__", "invert"),
+    ("__lshift__", "lshift"),
+    ("__mod__", "mod"),
+    ("__mul__", "mul"),
+    ("__matmul__", "matmul"),
+    ("__neg__", "neg"),
+    ("__or__", "or_"),
+    ("__pos__", "pos"),
+    ("__pow__", "pow"),
+    ("__rshift__", "rshift"),
+    ("__sub__", "sub"),
+    ("__truediv__", "truediv"),
+    ("__xor__", "xor"),
+    ("__concat__", "concat"),
+    ("__contains__", "contains"),
+    ("__delitem__", "delitem"),
+    ("__getitem__", "getitem"),
+    ("__setitem__", "setitem"),
+    ("__iadd__", "iadd"),
+    ("__iand__", "iand"),
+    ("__iconcat__", "iconcat"),
+    ("__ifloordiv__", "ifloordiv"),
+    ("__ilshift__", "ilshift"),
+    ("__imod__", "imod"),
+    ("__imul__", "imul"),
+    ("__imatmul__", "imatmul"),
+    ("__ior__", "ior"),
+    ("__ipow__", "ipow"),
+    ("__irshift__", "irshift"),
+    ("__isub__", "isub"),
+    ("__itruediv__", "itruediv"),
+    ("__ixor__", "ixor"),
+];
+
+fn operator_builtin(name: &str) -> Value {
+    Value::Builtin(format!("operator.{name}"))
+}
+
+fn operator_module_value() -> Value {
+    let mut attrs = Vec::with_capacity(OPERATOR_ALL.len() + OPERATOR_DUNDER_ALIASES.len() + 1);
+    for name in OPERATOR_ALL {
+        attrs.push((*name, operator_builtin(name)));
+    }
+    attrs.push((
+        "__all__",
+        list_value(
+            OPERATOR_ALL
+                .iter()
+                .map(|name| Value::String((*name).to_string()))
+                .collect(),
+        ),
+    ));
+    for (alias, target) in OPERATOR_DUNDER_ALIASES {
+        attrs.push((*alias, operator_builtin(target)));
+    }
+    module_value("operator", attrs)
 }
 
 fn builtin_type_value(name: &str) -> Value {

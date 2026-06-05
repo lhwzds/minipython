@@ -829,6 +829,11 @@ except SyntaxError as error:
             source: "b = bytearray(b'abc')\nr = b.replace(b'abc', b'cde', 0)\nprint(r, r is b)\nr += b'!'\nprint(b, r)\nt = bytearray([i for i in range(256)])\nx = bytearray(b'')\ny = x.translate(t)\nprint(y, y is x)\ny += b'!'\nprint(x, y)\na, b, c = bytearray(b'x').partition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\na, b, c = bytearray(b'x').partition(b'y')\nprint(b, c)\nb, c, a = bytearray(b'x').rpartition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\nc, b, a = bytearray(b'x').rpartition(b'y')\nprint(b, c)",
         },
         DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_bytearray_translate / ::test_bytearray_extend_error",
+            name: "builtin-bytearray-translate-extend-errors",
+            source: "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
+        },
+        DiffCase {
             origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_length_hint / ::test_repeat_after_setslice",
             name: "bytearray-iterator-length-hint-and-repeat-regressions",
             source: "ba = bytearray(b'ab')\nit = iter(ba)\nprint(next(it), it.__length_hint__())\nba.clear()\nprint(it.__length_hint__(), list(it))\nb = bytearray(b'abc')\nb[:2] = b'x'\nb1 = b * 1\nb3 = b * 3\nprint(b, b1, b1 == b'xc', b1 == b)\nprint(b3)",
@@ -1181,7 +1186,7 @@ except SyntaxError as error:
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
             name: "attribute-introspection-builtins",
-            source: "import sys\nprint(callable(len), callable('a'), callable(callable))\ndef f():\n    pass\nprint(callable(f))\nclass C1:\n    def meth(self):\n        pass\nc = C1()\nprint(callable(C1), callable(c.meth), callable(c))\nc.__call__ = lambda self: 0\nprint(callable(c))\nclass C2:\n    def __call__(self, value):\n        return value + 1\nc2 = C2()\nprint(callable(c2), c2(4))\nc2.__call__ = None\nprint(callable(c2), c2(5))\nsetattr(sys, 'spam', 1)\nprint(getattr(sys, 'spam'), hasattr(sys, 'spam'))\ndelattr(sys, 'spam')\nprint(hasattr(sys, 'spam'), getattr(sys, 'spam', 'missing'))\nclass Box:\n    pass\nbox = Box()\nsetattr(box, 'value', 3)\nprint(getattr(box, 'value'), hasattr(box, 'value'))\nsetattr(Box, 'label', 'box')\nprint(getattr(box, 'label'), getattr(Box, 'label'))\ndelattr(box, 'value')\nprint(hasattr(box, 'value'), getattr(box, 'value', 42))\ntry:\n    print((1).missing)\nexcept AttributeError:\n    print('caught')",
+            source: "import sys\nprint(callable(len), callable('a'), callable(callable))\ndef f():\n    pass\nprint(callable(f))\nclass C1:\n    def meth(self):\n        pass\nc = C1()\nprint(callable(C1), callable(c.meth), callable(c))\nc.__call__ = None\nprint(callable(c))\nc.__call__ = lambda self: 0\nprint(callable(c))\ndel c.__call__\nprint(callable(c))\nclass C2:\n    def __call__(self, value):\n        return value + 1\nc2 = C2()\nprint(callable(c2), c2(4))\nc2.__call__ = None\nprint(callable(c2), c2(5))\nclass C3(C2):\n    pass\nc3 = C3()\nprint(callable(c3), c3(6))\nsetattr(sys, 'spam', 1)\nprint(getattr(sys, 'spam'), hasattr(sys, 'spam'))\ndelattr(sys, 'spam')\nprint(hasattr(sys, 'spam'), getattr(sys, 'spam', 'missing'))\nclass Box:\n    pass\nbox = Box()\nsetattr(box, 'value', 3)\nprint(getattr(box, 'value'), hasattr(box, 'value'))\nsetattr(Box, 'label', 'box')\nprint(getattr(box, 'label'), getattr(Box, 'label'))\ndelattr(box, 'value')\nprint(hasattr(box, 'value'), getattr(box, 'value', 42))\ntry:\n    print((1).missing)\nexcept AttributeError:\n    print('caught')",
         },
         DiffCase {
             origin: "Lib/test/test_descr.py::ClassPropertiesAndMethods::test_getattr_and_setattr_hooks / Lib/test/test_builtin.py::BuiltinTest::test_hasattr",
@@ -2064,11 +2069,35 @@ print('%g %#g' % (1.1, 1.1))"#,
             origin: "Lib/test/test_fstring.py custom __format__ lookup and Lib/test/test_builtin.py::test_format",
             name: "format-builtin-and-custom-dunder-format",
             source: r#"print(format(3, ''), format('x'), format(1.25, '.1f'))
+print(format(17**13, ''), format(17**13) == str(17**13))
+print(format(1.0, ''), format(3.1415e104, ''), format(-3.1415e104, ''))
+print(format(3.1415e-104, ''), format(-3.1415e-104, ''))
+print(format(object, ''), format(object) == str(object), format(None, ''), format(None) == str(None))
 class CustomFormat:
     def __format__(self, format_spec):
         return format_spec
 print(f'{CustomFormat():abc}')
 print(format(CustomFormat(), 'xyz'))
+class A(object):
+    def __init__(self, x):
+        self.x = x
+    def __format__(self, format_spec):
+        return str(self.x) + format_spec
+class DerivedFromA(A):
+    pass
+class Simple(object):
+    pass
+class DerivedFromSimple(Simple):
+    def __init__(self, x):
+        self.x = x
+    def __format__(self, format_spec):
+        return str(self.x) + format_spec
+class DerivedFromSimple2(DerivedFromSimple):
+    pass
+print(format(A(3), 'spec'))
+print(format(DerivedFromA(4), 'spec'))
+print(format(DerivedFromSimple(5), 'abc'))
+print(format(DerivedFromSimple2(10), 'abcdef'))
 class X:
     def __init__(self):
         self.i = 0
@@ -2089,12 +2118,35 @@ class B:
     pass
 b = B()
 print(format(b) != '', b.__format__('') != '')
+class EmptyDelegates:
+    def __format__(self, fmt_str):
+        return format('', fmt_str)
+print(format(EmptyDelegates()), format(EmptyDelegates(), ''), format(EmptyDelegates(), 's'))
+class DerivedFromStr(str):
+    pass
+spec = DerivedFromStr('10')
+print(str(spec), repr(spec), len(spec), bool(spec), isinstance(spec, str), type(spec).__name__)
+print(format(0, spec))
+class ReceivesSpec:
+    def __format__(self, format_spec):
+        return type(format_spec).__name__ + ' ' + str(isinstance(format_spec, str)) + ' ' + repr(format_spec)
+print(format(ReceivesSpec(), spec))
+print(object().__format__(DerivedFromStr(''))[:14])
 try:
     format(b, 's')
 except TypeError as error:
     print(error.__class__.__name__, 'B.__format__' in str(error))
 try:
     object().__format__(3)
+except TypeError as error:
+    print(error.__class__.__name__)
+for value in [object(), None]:
+    try:
+        object().__format__(value)
+    except TypeError as error:
+        print(error.__class__.__name__)
+try:
+    format(object(), object())
 except TypeError as error:
     print(error.__class__.__name__)"#,
         },
@@ -2354,7 +2406,68 @@ g = {}
 try:
     eval('(x := 6) / 0', g, g)
 except ZeroDivisionError:
-    print(g['x'])"#,
+    print(g['x'])
+class M:
+    def __getitem__(self, key):
+        if key == 'a':
+            return 12
+        raise KeyError
+    def keys(self):
+        return list('xyz')
+m = M()
+g = globals()
+print(eval('a', g, m))
+try:
+    eval('b', g, m)
+except NameError as error:
+    print(error.__class__.__name__)
+print(eval('dir()', g, m))
+print(eval('globals()', g, m) is g, eval('locals()', g, m) is m)
+try:
+    eval('a', m)
+except TypeError as error:
+    print(error.__class__.__name__)
+class A:
+    pass
+try:
+    eval('a', g, A())
+except TypeError as error:
+    print(error.__class__.__name__)
+class D(dict):
+    def __getitem__(self, key):
+        if key == 'a':
+            return 12
+        return dict.__getitem__(self, key)
+    def keys(self):
+        return list('xyz')
+d = D()
+print(eval('a', g, d))
+try:
+    eval('b', g, d)
+except NameError as error:
+    print(error.__class__.__name__)
+print(eval('dir()', g, d))
+print(eval('locals()', g, d) is d)
+class SpreadSheet:
+    _cells = {}
+    def __setitem__(self, key, formula):
+        self._cells[key] = formula
+    def __getitem__(self, key):
+        return eval(self._cells[key], globals(), self)
+ss = SpreadSheet()
+ss['a1'] = '5'
+ss['a2'] = 'a1*6'
+ss['a3'] = 'a2*7'
+print(ss['a3'])
+class C:
+    def __getitem__(self, item):
+        raise KeyError(item)
+    def keys(self):
+        return 1
+try:
+    eval('dir()', globals(), C())
+except TypeError as error:
+    print(error.__class__.__name__)"#,
         },
         DiffCase {
             origin: "Lib/test/test_compile.py::TestSpecifics::test_encoding",
@@ -2428,7 +2541,17 @@ g = {}
 try:
     exec('x = 4\n1/0', g, g)
 except ZeroDivisionError:
-    print(g['x'])"#,
+    print(g['x'])
+import sys
+saved = sys.stdout
+sys.stdout = None
+try:
+    exec('a')
+except NameError as error:
+    sys.stdout = saved
+    print(error.__class__.__name__, 'a' in str(error))
+finally:
+    sys.stdout = saved"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec_globals_dict_subclass / ::test_exec_builtins_mapping_import",
@@ -2489,7 +2612,59 @@ exec('z = locals()', g, m)
 print(m.results[0], m.results[1] is m)
 g = {}
 exec('import math\nname = math.__name__', g)
-print(g['name'], '__import__' in g['__builtins__'])"#,
+print(g['name'], '__import__' in g['__builtins__'])
+import builtins
+class frozendict_error(Exception):
+    pass
+class frozendict(dict):
+    def __setitem__(self, key, value):
+        raise frozendict_error('frozendict is readonly')
+frozen_builtins = frozendict({'__build_class__': builtins.__build_class__, 'print': print})
+print(hasattr(builtins, '__build_class__'))
+code = compile("__builtins__['superglobal']=2; print(superglobal)", 'test', 'exec')
+try:
+    exec(code, {'__builtins__': frozen_builtins, '__name__': 'test'})
+except frozendict_error as error:
+    print('builtins-write', error.__class__.__name__, error)
+class keyfrozendict(dict):
+    def __setitem__(self, key, value):
+        raise frozendict_error('readonly ' + key)
+namespace = keyfrozendict({'__name__': 'test'})
+code = compile('x=1', 'test', 'exec')
+try:
+    exec(code, namespace)
+except frozendict_error as error:
+    print('globals-write', error.__class__.__name__, error)
+print('globals-clean', 'x' in namespace)
+code = compile('class A: pass', '', 'exec')
+try:
+    exec(code, {'__builtins__': {}, '__name__': 'test'})
+except NameError as error:
+    print('no-build-class', error.__class__.__name__, '__build_class__' in str(error))
+try:
+    exec(code, {'__builtins__': frozendict(), '__name__': 'test'})
+except NameError as error:
+    print('empty-frozen-build-class', error.__class__.__name__, '__build_class__' in str(error))
+ns = {'__builtins__': frozen_builtins, '__name__': 'test'}
+exec(code, ns)
+print('build-class-ok', ns['A'].__name__)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_import",
+            name: "import-builtin",
+            source: r#"for module in [__import__('sys'), __import__('time'), __import__('string'), __import__(name='sys'), __import__(name='time', level=0)]:
+    print(module.__name__)
+for label, fn, fragment in [
+    ('missing', lambda: __import__('spamspam'), 'spamspam'),
+    ('non-str', lambda: __import__(1, 2, 3, 4), 'str'),
+    ('empty', lambda: __import__(''), 'Empty module name'),
+    ('duplicate-name', lambda: __import__('sys', name='sys'), 'name'),
+    ('null', lambda: __import__('string\x00'), 'string'),
+]:
+    try:
+        fn()
+    except (ModuleNotFoundError, TypeError, ValueError) as error:
+        print(label, error.__class__.__name__, fragment in str(error))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_compile",
@@ -2558,6 +2733,7 @@ for expr in [lambda: id(), lambda: id(1, 2)]:
             name: "len-builtin",
             source: r#"print(len('123'), len(()), len((1, 2, 3, 4)), len([1, 2, 3, 4]))
 print(len({}), len({'a': 1, 'b': 2}))
+import sys
 class BadSeq:
     def __len__(self):
         raise ValueError
@@ -2572,10 +2748,10 @@ class NegativeLen:
         return -10
 class HugeLen:
     def __len__(self):
-        return 2 ** 100
+        return sys.maxsize + 1
 class HugeNegativeLen:
     def __len__(self):
-        return -(2 ** 100)
+        return -sys.maxsize - 10
 class NoLenMethod:
     pass
 for value in [BadSeq(), InvalidLen(), FloatLen(), NegativeLen(), HugeLen(), HugeNegativeLen(), NoLenMethod()]:
@@ -2654,7 +2830,7 @@ for expr in [lambda: divmod(), lambda: divmod(1), lambda: divmod(1, 2, 3), lambd
         print(error.__class__.__name__)"#,
         },
         DiffCase {
-            origin: "Lib/test/test_builtin.py::BuiltinTest::test_round / ::test_bug_27936",
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_round / ::test_round_large / ::test_bug_27936",
             name: "round-builtin",
             source: r#"print(round(0.0), round(1.0), round(10.0), round(1000000000.0), round(1e20))
 print(round(-1.0), round(-10.0), round(-1000000000.0), round(-1e20))
@@ -2673,6 +2849,9 @@ print(round(-8, 1), type(round(-8, 1)).__name__)
 print(round(1234, None), round(1234.56, None), type(round(1234.56, None)).__name__)
 print(round(1234.56, 1), round(1234.56, -1))
 print(round(number=-8.0, ndigits=-1))
+for value in [5e15 - 1, 5e15, 5e15 + 1, 5e15 + 2, 5e15 + 3]:
+    rounded = round(value)
+    print(rounded == value, type(rounded).__name__)
 class TestRound:
     def __round__(self):
         return 23
@@ -2697,11 +2876,26 @@ for expr in [lambda: round(), lambda: round(1, 2, 3), lambda: round(TestNoRound(
             source: r#"print(pow(0, 0), pow(0, 1), pow(1, 0), pow(1, 1))
 print(pow(2, 10), pow(2, 20), pow(2, 30))
 print(pow(-2, 0), pow(-2, 1), pow(-2, 2), pow(-2, 3))
-print(pow(0.0, 0), pow(0.0, 1), pow(1.0, 0), pow(1.0, 1))
-print(pow(2.0, 10), pow(2.0, 20), pow(-2.0, 3))
-print(pow(2, -1), pow(-2, -3))
-print(pow(2, 10, 1000), pow(-1, -2, 3), pow(5, 2, 14), pow(2, 3, -5), pow(2, -1, 5))
-print(pow(0, exp=0), pow(base=2, exp=4), pow(base=5, exp=2, mod=14), pow(2, 3, None))
+if True:
+    print(pow(0.0, 0), pow(0.0, 1), pow(1.0, 0), pow(1.0, 1))
+    print(pow(2.0, 10), pow(2.0, 20), pow(-2.0, 3))
+    print(pow(2, -1), pow(-2, -3))
+    sqrt_minus_one = pow(-1, 0.5)
+    cube_root_minus_one = pow(-1, 1/3)
+    print(type(sqrt_minus_one).__name__, abs(sqrt_minus_one - 1j) < 1e-12)
+    print(type(cube_root_minus_one).__name__, abs(cube_root_minus_one - (0.5 + 0.8660254037844386j)) < 1e-12)
+    print(abs(((-1) ** 0.5) - 1j) < 1e-12, abs(((-1) ** (1/3)) - (0.5 + 0.8660254037844386j)) < 1e-12)
+    print(pow(2, 10, 1000), pow(-1, -2, 3), pow(5, 2, 14), pow(2, 3, -5), pow(2, -1, 5))
+    print(pow(0, exp=0), pow(base=2, exp=4), pow(base=5, exp=2, mod=14), pow(2, 3, None))
+    from functools import partial
+    twopow = partial(pow, base=2)
+    fifth_power = partial(pow, exp=5)
+    mod10 = partial(pow, mod=10)
+    print(twopow(exp=5))
+    print(fifth_power(2))
+    print(mod10(2, 6), mod10(exp=6, base=2))
+    print(partial(pow, base=2)(base=3, exp=4))
+    print(type(twopow).__name__, callable(twopow))
 for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2, 0), lambda: pow(2.0, 3, 5), lambda: pow(2, 3.0, 5), lambda: pow(2, 3, 5.0), lambda: pow(2, -1, 4)]:
     try:
         expr()
@@ -2857,7 +3051,7 @@ except ValueError as error:
         DiffCase {
             origin: "Lib/test/test_builtin.py NotImplemented singleton and Lib/test/test_set.py unsupported set dunders",
             name: "notimplemented-and-unsupported-set-dunders",
-            source: "print(NotImplemented)\nprint(bool(NotImplemented), NotImplemented is NotImplemented, NotImplemented == NotImplemented)\ns = {1}\nprint(s.__or__([2]), s.__and__([1]), s.__sub__([1]), s.__xor__([1]))\nprint(s.__le__([1]), s.__lt__([1]), s.__ge__([1]), s.__gt__([1]))\nprint(s.__eq__([1]), s.__ne__([1]))",
+            source: "print(NotImplemented)\nprint(NotImplemented is NotImplemented, NotImplemented == NotImplemented)\ns = {1}\nprint(s.__or__([2]), s.__and__([1]), s.__sub__([1]), s.__xor__([1]))\nprint(s.__le__([1]), s.__lt__([1]), s.__ge__([1]), s.__gt__([1]))\nprint(s.__eq__([1]), s.__ne__([1]))",
         },
         DiffCase {
             origin: "Lib/test/test_set.py::TestSet.test_rich_compare",
@@ -2908,6 +3102,11 @@ except ValueError as error:
             origin: "Lib/test/test_enumerate.py::EnumerateTestCase and Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted",
             name: "enumerate-zip-sorted-builtins",
             source: "print(list(enumerate([10, 20, 30])))\nprint(list(enumerate([10, 20], 5)))\ne = enumerate(range(3), start=True)\nprint(next(e), next(e), list(e))\nprint(list(enumerate(iterable=[7, 8], start=2)))\nprint(list(zip((1, 2, 3), (4, 5, 6))))\nprint(list(zip((1, 2, 3), [4, 5, 6, 7])))\nprint(list(zip()), list(zip(*[])))\nprint(list(zip(range(5), range(10))))\nprint(list(zip((x for x in range(3)), (10, 11, 12))))\nprint(sorted([3, 1, 2]))\nprint(sorted([1, 2, 3], key=lambda x: -x))\nprint(sorted([3, 1, 2], reverse=True))",
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_zip_bad_iterable and sibling iterator-constructor propagation",
+            name: "bad-iterable-exception-identity",
+            source: "exception = TypeError('sentinel')\nclass BadIterable:\n    def __iter__(self):\n        raise exception\nfor label, fn in [('iter', lambda: iter(BadIterable())), ('enumerate', lambda: enumerate(BadIterable())), ('map', lambda: map(lambda x: x, BadIterable())), ('filter', lambda: filter(None, BadIterable())), ('zip', lambda: zip(BadIterable()))]:\n    try:\n        fn()\n    except TypeError as error:\n        print(label, error is exception, id(error) == id(exception), error.__class__.__name__, str(error))",
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_map / ::test_filter and Lib/test/test_iter.py map/filter iterator coverage",

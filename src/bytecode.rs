@@ -460,6 +460,7 @@ pub enum Instruction {
         is_async: bool,
         first_line: usize,
         line_sequence: Vec<usize>,
+        position_columns: Vec<Option<(usize, usize)>>,
     },
     Await {
         dst: Register,
@@ -604,4 +605,37 @@ pub enum Instruction {
         src: Register,
     },
     Halt,
+}
+
+pub(crate) fn instructions_without_debug_positions(
+    instructions: &[Instruction],
+) -> Vec<Instruction> {
+    instructions
+        .iter()
+        .map(instruction_without_debug_positions)
+        .collect()
+}
+
+fn instruction_without_debug_positions(instruction: &Instruction) -> Instruction {
+    let mut instruction = instruction.clone();
+    match &mut instruction {
+        Instruction::MakeDeferredTypeParamExpr { body, .. }
+        | Instruction::MakeClass { body, .. } => {
+            *body = instructions_without_debug_positions(body);
+        }
+        Instruction::MakeFunction {
+            body,
+            first_line,
+            line_sequence,
+            position_columns,
+            ..
+        } => {
+            *body = instructions_without_debug_positions(body);
+            *first_line = 1;
+            *line_sequence = vec![1];
+            position_columns.clear();
+        }
+        _ => {}
+    }
+    instruction
 }

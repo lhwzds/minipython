@@ -237,12 +237,16 @@ fn prints_not_implemented_builtin_singleton() {
     assert_eq!(
         run_source(
             "print(NotImplemented)\n\
-             print(bool(NotImplemented), NotImplemented is NotImplemented, NotImplemented == NotImplemented)"
+             print(NotImplemented is NotImplemented, NotImplemented == NotImplemented)"
         ),
-        Ok(vec![
-            "NotImplemented".to_string(),
-            "True True True".to_string()
-        ])
+        Ok(vec!["NotImplemented".to_string(), "True True".to_string()])
+    );
+    assert_eq!(
+        run_source("print(bool(NotImplemented))"),
+        Err(
+            "runtime error: TypeError: NotImplemented should not be used in a boolean context"
+                .to_string()
+        )
     );
 }
 
@@ -2070,7 +2074,7 @@ fn keeps_match_and_case_as_soft_keywords() {
 fn reports_unsupported_match_patterns() {
     assert_eq!(
         run_source("match 1:\n    case object.attr:\n        print(\"attr\")"),
-        Err("runtime error: AttributeError: <builtin object> has no attribute 'attr'".to_string())
+        Err("runtime error: AttributeError: <class 'object'> has no attribute 'attr'".to_string())
     );
     assert_eq!(
         run_source(
@@ -3396,6 +3400,85 @@ fn rejects_invalid_custom_numeric_conversion_protocols() {
 }
 
 #[test]
+fn runs_complex_builtin_constructor() {
+    assert_eq!(
+        run_source(concat!(
+            "print(complex(), complex(1), complex(1.5), complex(True), complex(False))\n",
+            "print(complex(1, -0.0), complex(1.5, 2), complex(real=1, imag=-0.0), complex(imag=-0.0))\n",
+            "print(complex(1 + 2j), complex(1 + 2j, 3 + 4j))\n",
+            "class FloatLike:\n",
+            "    def __float__(self):\n",
+            "        return 2.5\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return 7\n",
+            "class ComplexLike:\n",
+            "    def __complex__(self):\n",
+            "        return 1 - 0.0j\n",
+            "print(complex(FloatLike()), complex(IndexLike()), complex(ComplexLike()))\n",
+            "print(complex.from_number(3.14), complex.from_number(3.14j), complex.from_number(314))\n",
+            "print(complex.from_number(FloatLike()), complex.from_number(IndexLike()), complex.from_number(ComplexLike()))\n",
+            "value = complex(1.25, -0.0)\n",
+            "print(value.real, value.imag, 'real' in dir(value), 'imag' in dir(value))\n",
+            "print(complex('1'), complex('1j'), complex('1+2j'), complex(' ( +4.25-6J )'))\n",
+            "z = 3 + 4j\n",
+            "print(type(complex.from_number(z)) is complex, 'from_number' in dir(complex), 'from_number' in dir(z), z.from_number(5))\n",
+            "print(complex(5.3, 9.8).conjugate(), z.__complex__(), type(z.__complex__()) is complex)\n",
+            "print(complex(1, -0.0).conjugate(), repr(complex(1, -0.0).conjugate().imag))\n",
+            "print((1+2j).__getnewargs__(), complex(0, -0.0).__getnewargs__())\n",
+            "print(hash(z) == z.__hash__(), '__hash__' in dir(z))\n",
+            "print(z.__abs__(), complex.__abs__(z), z.__bool__(), (0j).__bool__())\n",
+            "print(z.__pos__(), z.__neg__(), z.__repr__(), z.__str__())\n",
+            "print(z.__eq__(3 + 4j), z.__ne__(3 + 5j), z.__lt__(3 + 4j) is NotImplemented)\n",
+            "print('conjugate' in dir(z), '__complex__' in dir(z), '__getnewargs__' in dir(z))\n",
+            "print('__abs__' in dir(z), '__bool__' in dir(z), '__eq__' in dir(z), '__ne__' in dir(z), '__lt__' in dir(z), '__pos__' in dir(z), '__neg__' in dir(z), '__repr__' in dir(z), '__str__' in dir(z))\n",
+            "underflow = complex('-1e-500-1e-500j')\n",
+            "print(repr(underflow.real), repr(underflow.imag), underflow)",
+        )),
+        Ok(vec![
+            "0j (1+0j) (1.5+0j) (1+0j) 0j".to_string(),
+            "(1-0j) (1.5+2j) (1-0j) -0j".to_string(),
+            "(1+2j) (-3+5j)".to_string(),
+            "(2.5+0j) (7+0j) (1-0j)".to_string(),
+            "(3.14+0j) 3.14j (314+0j)".to_string(),
+            "(2.5+0j) (7+0j) (1-0j)".to_string(),
+            "1.25 -0.0 True True".to_string(),
+            "(1+0j) 1j (1+2j) (4.25-6j)".to_string(),
+            "True True True (5+0j)".to_string(),
+            "(5.3-9.8j) (3+4j) True".to_string(),
+            "(1+0j) 0.0".to_string(),
+            "(1.0, 2.0) (0.0, -0.0)".to_string(),
+            "True True".to_string(),
+            "5.0 5.0 True False".to_string(),
+            "(3+4j) (-3-4j) (3+4j) (3+4j)".to_string(),
+            "True True True".to_string(),
+            "True True True".to_string(),
+            "True True True True True True True True True".to_string(),
+            "-0.0 -0.0 (-0-0j)".to_string(),
+        ])
+    );
+
+    assert_eq!(
+        run_source(
+            "class BadComplex:\n    def __complex__(self):\n        return 1\nDBL_MAX = 1.7976931348623157e308\nfor expr in [lambda: complex(1, 2, 3), lambda: complex([]), lambda: complex(10**1000), lambda: complex(BadComplex()), lambda: complex(''), lambda: complex('1+1j+1j'), lambda: complex('1+2j', 0), lambda: abs(complex(DBL_MAX, DBL_MAX)), lambda: complex.from_number('3.14'), lambda: complex.from_number(b'3.14'), lambda: complex.from_number()]:\n    try:\n        expr()\n    except (OverflowError, TypeError, ValueError) as error:\n        print(error.__class__.__name__)"
+        ),
+        Ok(vec![
+            "TypeError".to_string(),
+            "TypeError".to_string(),
+            "OverflowError".to_string(),
+            "TypeError".to_string(),
+            "ValueError".to_string(),
+            "ValueError".to_string(),
+            "TypeError".to_string(),
+            "OverflowError".to_string(),
+            "TypeError".to_string(),
+            "TypeError".to_string(),
+            "TypeError".to_string(),
+        ])
+    );
+}
+
+#[test]
 fn runs_abs_min_sum_builtins() {
     assert_eq!(
         run_source(
@@ -4449,6 +4532,23 @@ fn runs_for_loop_over_list_variable() {
     assert_eq!(
         run_source("items = [\"a\", \"b\"]\nfor item in items:\n    print(item)"),
         Ok(vec!["a".to_string(), "b".to_string()])
+    );
+}
+
+#[test]
+fn runs_for_loop_over_mutating_list() {
+    assert_eq!(
+        run_source(
+            "items = [1]\nfor item in items:\n    print(item)\n    if len(items) < 3:\n        items.append(len(items) + 1)\nprint(items)\nitems = [1, 2]\nfor item in items:\n    print('clear', item)\n    items.clear()\nprint(items)"
+        ),
+        Ok(vec![
+            "1".to_string(),
+            "2".to_string(),
+            "3".to_string(),
+            "[1, 2, 3]".to_string(),
+            "clear 1".to_string(),
+            "[]".to_string(),
+        ])
     );
 }
 

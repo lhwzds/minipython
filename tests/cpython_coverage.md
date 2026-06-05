@@ -21,6 +21,145 @@ Recent runtime migration notes:
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
+- `NUMBER` also includes CPython `BuiltinTest::test_round_large`, covering
+  integral float `round()` stability across the `5e15 +/- n` boundary.
+- The runtime stdlib surface includes
+  `cpython_math_constants_and_classification_subset`, covering CPython
+  `test_math.py` public `pi` / `e` / `tau` / `inf` / `nan` constants plus
+  `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
+  and `math.isinf()` classification for finite normal/subnormal values, signed
+  zero, infinities, NaNs, argument errors, and huge integer overflow.
+- The bundled `math` module also includes `cpython_math_gcd_subset`, covering
+  CPython `test_math.py::MathTests::testGcd` integer, big-integer, variadic,
+  empty-call, negative-input, `__index__`, and non-integer rejection behavior.
+- The bundled `math` module also includes `cpython_math_lcm_subset`, covering
+  CPython `test_math.py::MathTests::test_lcm` integer, big-integer, variadic,
+  empty-call, zero, negative-input, `__index__`, and non-integer rejection
+  behavior.
+- The bundled `math` module also includes `cpython_math_prod_subset`, covering
+  CPython `test_math.py::MathTests::test_prod` iterable multiplication,
+  keyword-only `start`, integer/float products, sequence repetition, zero,
+  NaN/inf propagation, type preservation, and TypeError cases supported by the
+  current runtime.
+- The bundled `math` module also includes `cpython_math_fabs_subset`, covering
+  CPython `test_math.py::MathTests::testFabs` real-number conversion, float
+  result, signed-zero normalization, NaN/inf propagation, huge-integer overflow,
+  and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_sqrt_subset`, covering
+  CPython `test_math.py::MathTests::testSqrt` zero, positive integer/float,
+  infinity, NaN, float-result, negative-domain `ValueError`, huge-integer
+  overflow, and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_copysign_subset`,
+  covering CPython `test_math.py::MathTests::testCopysign` sign transfer for
+  zeroes, infinities, NaNs, huge-integer overflow, and TypeError cases supported
+  by the current runtime.
+- The bundled `math` module also includes `cpython_math_signbit_subset`,
+  covering CPython `test_math.py::MathTests::test_signbit` negative sign-bit
+  detection for zeroes, finite values, infinities, NaNs, bool/int conversion,
+  huge-integer overflow, and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_trunc_subset`, covering
+  CPython `test_math.py::MathTests::test_trunc` integer/float truncation,
+  bool and big-integer preservation, exact large finite-float integer results,
+  normal `__trunc__` special-method dispatch with direct return-value
+  propagation, propagated exceptions, NaN/inf integer conversion errors, and
+  TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_ceil_subset` and
+  `cpython_math_floor_subset`, covering CPython
+  `test_math.py::MathTests::testCeil` and `::testFloor` public numeric
+  rounding-to-integral behavior, bool and big-integer preservation, exact large
+  finite-float integer results, normal `__ceil__` / `__floor__` dispatch with
+  direct return-value propagation, `__float__` and `__index__` fallback,
+  NaN/inf integer conversion errors, huge-index overflow, and TypeError cases
+  supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_degrees_radians_subset`,
+  covering CPython `test_math.py::MathTests::testDegrees` and `::testRadians`
+  angle conversion, float result semantics, non-finite propagation,
+  `__float__` and `__index__` input conversion, huge-index overflow, propagated
+  conversion exceptions, and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_cbrt_subset`, covering
+  CPython `test_math.py::MathTests::testCbrt` cube-root behavior, float result
+  semantics, signed zero, non-finite propagation, `__float__` and `__index__`
+  input conversion, huge-index overflow, propagated conversion exceptions, and
+  TypeError cases supported by the current runtime.
+- `RUNTIME_BUILTINS` also includes CPython `BuiltinTest::test_zip_bad_iterable`,
+  preserving the exact exception object raised by a failing `__iter__` through
+  `zip()` and the sibling iterator constructors `iter()`, `enumerate()`,
+  `map()`, and `filter()`.
+- `RUNTIME_BUILTINS` also includes `cpython_builtin_iterator_pickle_subset`,
+  covering CPython `BuiltinTest` filter/map/zip iterator pickle round trips,
+  strict map/zip round trips, and strict-length failure preservation over
+  MiniPython's internal pickle payload surface.
+- The `BuiltinTest Iterator Builtins Method Audit` maps the current CPython
+  filter/map/zip/iter methods to direct Rust evidence and explicitly classifies
+  CPython's filter deallocation and zip GC-tracking regressions as
+  implementation-internal rather than MiniPython portability requirements.
+- The `BuiltinTest Attribute/Introspection Method Audit` maps `delattr`,
+  `dir`, `getattr`, `hasattr`, `isinstance`, `issubclass`, `setattr`, `type`,
+  and `vars` to direct Rust evidence, while keeping traceback/slot-dir and
+  lone-surrogate attribute-name edges visible as partial runtime gaps.
+- The `BuiltinTest Aggregate Builtins Method Audit` maps `max`, `min`, and
+  `sum` to direct Rust evidence, including complex-constructor summation and
+  complex signed-zero preservation, while classifying CPython's compensated
+  `sum_accuracy` algorithm test as implementation-internal.
+- `RUNTIME_BUILTINS` also includes `cpython_enumerate_reversed_pickle_subset`,
+  covering CPython `test_enumerate.py` enumerate and reversed iterator pickle
+  round trips, resumed already-advanced iterator pickles, empty enumerate, and
+  ordinary plus large `start` values over MiniPython's internal pickle payload.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
+  covering CPython `test_operator.py::test_length_hint` fallback semantics and
+  `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,
+  including TypeError default fallback and non-TypeError propagation.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_comparison_predicate_subset`, covering CPython
+  `test_operator.py` comparison and predicate helpers `lt/le/eq/ne/ge/gt`,
+  `truth`, `not_`, identity helpers, and None predicates, including custom rich
+  comparison/truth exception propagation.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_arithmetic_bitwise_subset`, covering CPython
+  `test_operator.py` arithmetic and bitwise helpers `abs`, `add`, `sub`, `mul`,
+  `floordiv`, `truediv`, `mod`, `pow`, `and_`, `or_`, `xor`, `lshift`,
+  `rshift`, unary `neg`/`pos`/`invert` aliases, `matmul`, and `index`, including
+  representative TypeError/ValueError classification.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_sequence_member_subset`,
+  covering CPython `test_operator.py` sequence and member helpers `concat`,
+  `countOf`, `indexOf`, `contains`, `getitem`, `setitem`, and `delitem`,
+  including equality-based counting/search, iterator partial-consumption, and
+  representative TypeError/ZeroDivisionError propagation.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset`,
+  covering CPython `test_operator.py` callable helpers `call`, `attrgetter`,
+  `itemgetter`, and `methodcaller`, including dotted attribute traversal,
+  multi-result tuple packing, subscript forwarding, stored method args/keywords,
+  callable forwarding, and public exception propagation.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_inplace_helper_subset`,
+  covering CPython `test_operator.py` in-place helper functions `iadd`, `isub`,
+  `imul`, `imatmul`, `ifloordiv`, `itruediv`, `imod`, `ipow`, `ilshift`,
+  `irshift`, `iand`, `ior`, `ixor`, and `iconcat`, including custom `__i*__`
+  dispatch, numeric fallback behavior, list in-place mutation, and `iconcat`
+  concat-type rejection.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_module_metadata_subset`, covering CPython
+  `test_operator.py::test___all__` and `::test_dunder_is_original` public
+  module metadata: the exported `operator.__all__` names, `operator.*`
+  callable `__module__` / `__name__` introspection, and dunder aliases such as
+  `__add__`, `__not__`, `__iconcat__`, and `__call__` preserving object
+  identity with their public helpers.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_operator_signature_helper_subset`, covering CPython
+  `test_operator.py` signature assertions for `operator.attrgetter`,
+  `itemgetter`, and `methodcaller` constructors plus their helper instances via
+  the public `str(inspect.signature(...))` surface, without claiming full
+  `inspect.Signature` or broad callable signature introspection support.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_helper_repr_subset`,
+  covering the public helper object repr/str shape exercised by CPython
+  `test_operator.py::OperatorPickleTestCase` repr checks for `attrgetter`,
+  `itemgetter`, and `methodcaller`, including dotted attributes, slice
+  arguments, positional method args, and ordered keyword method args.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_pickle_helper_subset`,
+  covering CPython `test_operator.py::OperatorPickleTestCase` public
+  round-trip behavior for `operator.attrgetter`, `itemgetter`, and
+  `methodcaller` helper objects across every exposed pickle protocol, including
+  fresh restored helper identity and deep-copied stored methodcaller arguments
+  over MiniPython's internal pickle payload surface.
 - `ENCODING` also includes the CPython `TestDetectEncoding` latin-1 and UTF-8
   normalization matrices, short BOM-prefixed source with first-line code,
   second-line non-UTF-8 cookie takeover after non-UTF-8 shebang bytes, and
@@ -42,14 +181,60 @@ Recent runtime migration notes:
   non-ASCII fill characters in
   `format()` alignment and `g` / `G` general
   floating-point formatting through `format()` and f-strings, plus float and
-  complex precision formatting via `format()` for `f` / `F`, `e` / `E`, and
-  `g` / `G` format codes, and CPython-style invalid format-specifier
-  `ValueError` messages for `format()`, f-strings, and `str.format()`. It also
+  complex-constructor precision formatting via `format()` for `f` / `F`,
+  `e` / `E`, and `g` / `G` format codes, CPython
+  `test_complex.py::test_format` coverage for complex empty and omitted
+  presentation types, alignment/fill/width, precision, alternate-form
+  formatting, invalid zero-padding / `=` alignment / integer presentation
+  errors, `complex.__format__()`, `str.format()` forwarding, and NaN/Inf
+  casing for `f` / `F`, CPython
+  `test_complex.py::test_constructor_from_string` coverage for real,
+  imaginary, parenthesized, signed-unit-imaginary, Unicode-whitespace,
+  underflow signed-zero, long, and malformed complex strings,
+  `test_complex.py::test_constructor` coverage for exact built-in complex
+  construction from real and imaginary arguments, keyword arguments,
+  signed-zero preservation, `__float__` / `__index__` protocol conversion,
+  `__complex__` / `__float__` / `__index__` rejection paths, custom exception
+  propagation from `__complex__`, and representative public TypeError
+  diagnostics,
+  `test_complex.py::test_boolcontext`,
+  `::test_constructor_special_numbers`,
+  `::test_constructor_negative_nans_from_string`, `::test_underscores`,
+  `::test_plus_minus_0j`, `::test_negated_imaginary_literal`, and
+  `::test_repr_roundtrip` coverage for truthiness, signed zero, infinity, NaN
+  sign preservation through `math.copysign()`, valid and invalid complex-string
+  underscore placement, negated imaginary literal components, and
+  `repr()`/`eval(repr(...))` reconstruction,
+  `test_complex.py::test_conjugate`, `::test___complex__`,
+  `::test_getnewargs`, `::test_from_number`, `::test_add`, `::test_sub`,
+  `::test_mul`, `::test_truediv`, `::test_truediv_zero_division`,
+  `::test_floordiv`, `::test_mod`, `::test_divmod`, `::test_pow`,
+  `::test_pow_with_small_integer_exponents`, `::test_hash`,
+  `::test_richcompare`, `::test_richcompare_boundaries`, `::test_abs`,
+  `::test_repr_str`,
+  `::test_negative_zero_repr_str`, `::test_pos`, `::test_neg`, and
+  `::test_overflow` coverage for public complex methods, hash invariants,
+  numeric conversion, construction, addition/subtraction/multiplication/division/power basics,
+  small integer exponent type parity, unsupported floor/mod/divmod operations,
+  complex modulo rejection, exact integer comparison boundaries, magnitude overflow, special-value
+  representation, and unary operators, and
+  CPython-style invalid format-specifier `ValueError` messages for `format()`,
+  f-strings, and `str.format()`. It also
   covers CPython's `z` negative-zero coercion option for float and complex
   f-string formatting, including `%` percentage presentation, fill-character
   ordering, tiny negative values that round to zero, post-rounding sign
   preservation for values such as `-.09`, and invalid `z` specifier
   positions/types.
+- `STRING_RUNTIME` also includes `cpython_bytes_percent_format_subset`,
+  covering CPython `BaseBytesTest::test_mod` and `::test_imod` public
+  bytes/bytearray old-style `%` formatting for `%b`, `%s`, `%d`, `%i`, `%c`,
+  literal percent escapes, NUL-containing format strings, bytes mapping keys,
+  dynamic `*` width/precision, receiver-driven result types, and representative
+  catchable error classes.
+- `STRING_RUNTIME` also includes `cpython_bytes_rmod_subset`, covering CPython
+  `BaseBytesTest::test_rmod` public reflected modulo behavior: unsupported
+  left operands raise catchable `TypeError`, and bytes/bytearray `__rmod__`
+  returns `NotImplemented` for non-bytes formatting operands.
 - `STRING_RUNTIME` also includes `cpython_bytes_splitlines_methods_subset`,
   covering bytes/bytearray `splitlines()` over CR, LF, and CRLF boundaries,
   `keepends`, receiver-driven result types, bytes-specific non-splitting
@@ -115,11 +300,23 @@ Recent runtime migration notes:
   `bytearray.extend()` over zero-length-hint iterators and catchable
   `float(bytearray())` `ValueError` parsing failures.
 - `STRING_RUNTIME` also includes
+  `cpython_bytes_mutating_list_constructor_subset`, covering CPython
+  `BaseBytesTest::test_from_mutating_list` public behavior where bytes and
+  bytearray constructors consume live list iterators that observe source list
+  clears and appends during item `__index__` conversion.
+- `STRING_RUNTIME` also includes
   `cpython_bytes_bytearray_subclass_basics_subset` and
-  `cpython_bytes_bytearray_subclass_repr_and_compare_subset`, covering public
-  bytes/bytearray subclass construction, repr/str rendering, bytes-like
-  equality against builtin bytes, bytearray, and memoryview values, bytewise
-  ordering for supported bytes-like values, plus
+  `cpython_bytes_dunder_bytes_and_blocking_subset`, covering public
+  bytes/bytearray subclass construction plus `bytes()` `__bytes__` dispatch,
+  bytes-subclass result preservation, non-bytes result rejection, `__bytes__`
+  precedence over `__index__`, and `__bytes__ = None` fallback blocking.
+  `cpython_bytes_bytearray_index_error_and_hash_subset` covers CPython
+  `BytesTest::test_getitem_error` and `ByteArrayTest::test_getitem_error`,
+  `test_setitem_error`, and `test_nohash` public error paths for invalid
+  bytes/bytearray indices and bytearray hashing.
+  `cpython_bytes_bytearray_subclass_repr_and_compare_subset` covers repr/str
+  rendering, bytes-like equality against builtin bytes, bytearray, and
+  memoryview values, bytewise ordering for supported bytes-like values, plus
   `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, covering the
   current CPython `ByteArrayTest::test_hex_use_after_free` behavior where
   bytearray `hex()` keeps the receiver resize-locked while a bytes-subclass
@@ -140,6 +337,19 @@ Recent runtime migration notes:
   `test_partition_bytearray_doesnt_share_nullstring` semantics for independent
   bytearray objects returned by non-mutating operations and absent-separator
   partition/rpartition results.
+- `STRING_RUNTIME` also includes
+  `cpython_bytearray_join_reentrant_resize_subset`, covering CPython
+  `BuiltinTest::test_bytearray_join_with_custom_iterator` and
+  `::test_bytearray_join_with_misbehaving_iterator`: bytearray `join()` accepts
+  custom iterators and keeps the separator resize-locked while consuming the
+  iterable so re-entrant separator resizing raises `BufferError`.
+- `STRING_RUNTIME` also includes
+  `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
+  `BuiltinTest::test_bytearray_translate` and
+  `::test_bytearray_extend_error`: short translation tables raise
+  `ValueError`, non-bytes-like delete arguments raise `TypeError` once the
+  table is valid, and exceptions from `map(int, ...)` propagate out of
+  `bytearray.extend()` without mutating the target array.
 - `STRING_RUNTIME` also includes `cpython_bytes_copy_module_subset`, covering
   CPython `BaseBytesTest::test_copy` for bytes/bytearray through the supported
   `copy.copy()` / `copy.deepcopy()` module surface, including independent
@@ -265,6 +475,9 @@ Recent runtime migration notes:
 	  CPython `ASTOptimizationTests` match-case folding methods by folding signed
 	  numeric and real-plus-imaginary pattern literals in `MatchValue`,
 	  `MatchMapping`, and nested `MatchSequence` only when `optimize > 0`.
+	  The `ASTOptimizationTests` manifest audit now maps all 3 current CPython
+	  methods to those optimization tests and has a drift guard against the local
+	  CPython source.
   `cpython_ast_docstring_optimization_single_node_subset` and
   `cpython_ast_docstring_optimization_multiple_nodes_subset` port CPython's
   `optimize=2` docstring removal for class, function, and async-function
@@ -303,7 +516,9 @@ Recent runtime migration notes:
   CPython `ASTConstructorTests` methods into direct method-level evidence for
   `FunctionDef`, expression contexts, custom subclasses, field metadata,
   attributes, incomplete/malformed fields, implicit defaults, and non-string
-  unpacked keyword handling.
+  unpacked keyword handling. The `ASTConstructorTests` manifest audit now maps
+  those current CPython methods to the direct evidence and has a drift guard
+  against the local CPython source.
   `cpython_ast_copy_replace_first_pass_subset` starts CPython `CopyTests`
   coverage for shallow `copy.replace()` / `__replace__()` over native public
   AST nodes and custom `ast.AST` subclasses, including field replacement,
@@ -322,11 +537,12 @@ Recent runtime migration notes:
   `CopyTests.test_pickling` migration by exposing a minimal `pickle` module
   with `HIGHEST_PROTOCOL`, `dumps()`, and `loads()` and checking public AST
   tree snapshot round-trips across representative statement forms.
-  The `cpython_ast_copy_*_exact_subset` tests now split most current
-  `CopyTests` methods into direct method-level evidence, including AST
-  `__reduce__()` state snapshots for copied location attributes. The custom
-  class field method remains first-pass because MiniPython's `Value::String`
-  does not yet preserve object identity for `is` checks.
+  The `cpython_ast_copy_*_exact_subset` tests now split current `CopyTests`
+  methods into direct method-level evidence, including AST `__reduce__()` state
+  snapshots for copied location attributes. The manifest also has a
+  `CopyTests` method-audit drift guard. The custom class field method remains
+  first-pass because MiniPython's `Value::String` does not yet preserve object
+  identity for `is` checks.
   `cpython_ast_native_abstract_class_hierarchy_subset` aligns the native AST
   class hierarchy with CPython's generated ASDL sum classes for `mod`, `stmt`,
   `expr`, `excepthandler`, `pattern`, `type_ignore`, and `type_param`,
@@ -390,14 +606,19 @@ Recent runtime migration notes:
   `cpython_ast_node_transformer_first_pass_subset` adds first-pass
   `ast.NodeVisitor` / `ast.NodeTransformer` coverage for visitor dispatch,
   generic traversal, single-field removal, list-field removal, list-return
-  replacement, in-place node mutation, and node replacement.
+  replacement, in-place node mutation, and node replacement. The
+  `NodeTransformerTests` manifest audit now maps those five current CPython
+  methods to this evidence and has a drift guard against the local CPython
+  source.
   `cpython_ast_constant_compile_first_pass_subset` ports the current
   `ConstantTests` methods for compiling public `ast.Constant` nodes holding
   supported singleton/value constants, rejecting invalid list constants,
   rejecting `Constant` assignment targets, module docstring lookup, replacing
   `BinOp` operands for `literal_eval()`, preserving supported string-prefix
   `kind` metadata, and observing supported `LOAD_CONST` values through a
-  minimal `dis` module subset.
+  minimal `dis` module subset. The `ConstantTests` manifest audit now maps all
+  8 current CPython methods to this evidence and has a drift guard against the
+  local CPython source.
   `cpython_ast_literal_eval_first_pass_subset` adds first-pass
   `ast.literal_eval()` coverage for safe literal containers, bytes, sets,
   numeric signs, complex literals, AST-node input, and malformed expression
@@ -451,7 +672,17 @@ Recent runtime migration notes:
   `ast.fix_missing_locations()`, and compile from public AST.
   `cpython_compile_source_positions_code_positions_first_pass_subset` adds the
   first public `code.co_positions()` iterator surface for a simple assignment,
-  exposing source line ranges while leaving opcode-level columns as `None`.
+  exposing the real assignment line plus statement-aligned column bounds that
+  satisfy CPython's AST-offset membership invariant.
+  `cpython_compile_source_positions_lambda_return_position_subset` ports
+  CPython's public lambda-return position invariant for the representative
+  `lambda: x`, `lambda: 42`, `lambda: 1 + 2`, and `lambda: a + b` snippets,
+  requiring each exposed lambda `co_positions()` tuple to stay inside the lambda
+  body expression columns.
+  `cpython_compile_source_positions_weird_attribute_position_regressions_subset`
+  ports CPython's public safety invariant for unusual multiline attribute
+  chains by requiring every exposed function `co_positions()` tuple to have
+  non-`None` bounds and ordered start/end source coordinates.
   `cpython_compile_source_positions_multistatement_code_lines_subset` extends
   that first-pass line-span model so runtime `compile(..., "exec")` code
   objects expose every statement-leading source line through both `co_lines()`
@@ -487,6 +718,10 @@ Recent runtime migration notes:
   `cpython_compile_specifics_line_number_genexp_subset` ports CPython's public
   nested generator-expression code-object line table exposed through an outer
   function's `co_consts`.
+  Together these line-table tests provide method-level evidence for the
+  public-compatible `TestSpecifics` line-number methods; the original
+  `co_code` length and `dis.Bytecode(...).positions` opcode assertions are
+  classified as CPython bytecode/debug-position internals.
   `cpython_compile_specifics_big_dict_literal_subset` ports CPython
   `TestSpecifics::test_big_dict_literal` at the public source level by
   evaluating a 0xFFFF+1-entry dict display and preserving the full length.
@@ -783,7 +1018,14 @@ Recent runtime migration notes:
   expressions. `cpython_ast_fstring_end_positions_exact_subset` and
   `cpython_ast_fstring_multi_line_end_positions_exact_subset` split CPython
   `EndPositionTests.test_fstring` and `test_fstring_multi_line` into direct
-  method-level coverage.
+  method-level coverage. The manifest's `EndPositionTests` method audit maps
+  all 28 current methods to direct Rust evidence and has a drift guard against
+  the local CPython source. The `ModuleStateTests` and `CommandLineTests`
+  manifest audits classify all 16 current methods as `blocked_by_ast_module`
+  and guard those classifications against the local CPython source; these tests
+  exercise CPython `_ast` module lifecycle, subinterpreter teardown, and
+  `python -m ast` / `ast.main()` CLI behavior rather than MiniPython language
+  semantics.
   `cpython_ast_dump_plain_first_pass_subset` ports CPython
   `ASTHelpers_Test::test_dump` plain `ast.dump()` rendering for default,
   `annotate_fields=False`, and `include_attributes=True` forms.
@@ -805,7 +1047,9 @@ Recent runtime migration notes:
   `cpython_ast_lazy_import_fields_subset` adds CPython's public
   `Import.is_lazy` and `ImportFrom.is_lazy` fields to `_fields`, `ast.dump()`,
   parsed ordinary/lazy import nodes, AST constructors, and compile-from-public-AST
-  execution.
+  execution. The separate `LazyImportTest::test_lazy_import` method is
+  classified as `blocked_by_runtime` because CPython's current test only checks
+  `ensure_lazy_imports("ast", ...)` child-process import side effects.
   Exact CPython warning behavior,
   subclassing, field validation, full `to_tuple()` snippet coverage, parser
   source-location spans for remaining node families, remaining generated-node
@@ -820,6 +1064,30 @@ Recent runtime migration notes:
   `KeysView` / `ItemsView` / `ValuesView` objects returned by explicit
   `Mapping` mixins, including membership, iteration after mutation, and
   set-like key/item view operators.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_userdict_view_snapshot_subset`, covering CPython
+  `TestCollectionABCs::test_MutableMapping_subclass` for `UserDict`
+  keys/items/values view ABC relationships and eager set-operation snapshots
+  that are not affected by later `UserDict` mutation.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_bytestring_deprecation_warnings_subset`, covering
+  CPython `TestCollectionABCs::test_ByteString` and
+  `::test_ByteString_attribute_access` deprecation warnings for public
+  `ByteString` import, fresh attribute access, `isinstance()`, class-statement
+  subclass creation, and dynamic `type(..., (ByteString,), ...)` subclass
+  creation.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_issue26915_identity_first_object_subset`, covering
+  CPython `TestCollectionABCs::test_issue26915` identity-first membership for
+  `support.NEVER_EQ`-style objects and distinct `float('nan')` objects across
+  `Sequence`, `ItemsView`, `KeysView`, and `ValuesView`, plus
+  `Sequence.index()` / `count()`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_composite_abstract_methods_subset`, covering
+  CPython `TestCollectionABCs` abstract-method rejection behavior for `Set`,
+  `MutableSet`, `Mapping`, `MutableMapping`, `Sequence`, `MutableSequence`,
+  `ByteString`, and `Buffer`, including direct ABC constructor rejection and
+  incomplete explicit-subclass rejection.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_abstract_methods_subset`, covering the public
   `ABCTestCase.validate_abstract_methods` behavior used by CPython's
@@ -857,6 +1125,14 @@ Recent runtime migration notes:
   `cpython_collections_abc_async_generator_core_mixin_subset`, covering
   CPython's `AsyncGenerator` direct-subclass `__aiter__` and `__anext__`
   mixins, including `__anext__` delegation through `asend(None)`.
+- `COLLECTIONS_ABC_RUNTIME` also includes expanded
+  `cpython_collections_abc_generator_runtime_subset` evidence for CPython's
+  `AsyncGenerator` negative protocol matrix, including the exact `NonAGen1`,
+  `NonAGen2`, and `NonAGen3` shapes from `TestOneTrickPonyABCs`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_set_noncomparable_comparison_subset`, covering
+  CPython `TestCollectionABCs::test_issue16373` for `Set` subclass rich
+  comparison fallback when the left operand returns `NotImplemented`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_async_generator_throw_close_mixin_subset`, covering
   CPython's `AsyncGenerator` direct-subclass default `athrow()` and
@@ -1020,6 +1296,47 @@ Recent runtime migration notes:
   empty frozenset subclass identity behavior, basic subclass `__slots__`, and
   Set/MutableSet/Hashable ABC registration.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_all_any_builtin_subset`, covering CPython
+  `BuiltinTest::test_all` and `::test_any` semantics for empty iterables,
+  truthy/falsy lists, generator expressions, short-circuiting before later
+  truthiness failures, RuntimeError propagation from `__bool__` and `__iter__`,
+  non-iterable rejection, and catchable argument-count `TypeError`s.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_builtin_negation_sys_maxsize_subset`, covering CPython
+  `BuiltinTest::test_neg` for the `-sys.maxsize - 1` integer boundary,
+  `isinstance(..., int)`, and negation back to `sys.maxsize + 1`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_len_builtin_subset`, covering CPython `BuiltinTest::test_len`
+  behavior for supported builtin containers and custom `__len__` methods,
+  including propagated exceptions, non-integer and negative return rejection,
+  `sys.maxsize + 1` overflow rejection, large negative return rejection, missing
+  `__len__`, and argument-count `TypeError`s.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_min_max_sum_builtin_subset`, covering CPython
+  `BuiltinTest::test_max`, `::test_min`, and `::test_sum` public aggregate
+  semantics for positional and iterable inputs, `key=None`, callable `key=`,
+  `default=`, `sum(start=...)`, boolean starts, large integer starts, float
+  totals, negative-zero float rendering, infinity results checked through
+  `math.isinf()`, huge-integer float/complex `OverflowError`,
+  complex-constructor summation, complex signed-zero preservation, BadSeq
+  exception propagation, and catchable TypeError/ValueError paths for invalid
+  arguments and string/bytes/bytearray sum starts. CPython's
+  `test_sum_accuracy`
+  compensated-floating algorithm remains treated as implementation-specific
+  rather than a MiniPython portability requirement.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_builtin_cmp_absent_subset`, covering CPython
+  `BuiltinTest::test_cmp` by proving `builtins.cmp` is absent and attribute
+  access raises `AttributeError`.
+- `RUNTIME_BUILTINS` also includes
+  expanded `cpython_attribute_introspection_builtins_subset`, covering CPython
+  `BuiltinTest::test_callable`, `::test_getattr`, and `::test_hasattr` public
+  behavior, including class-level and inherited `__call__` lookup,
+  instance-level `__call__` non-participation in `callable()`, `sys.stdout`
+  attribute lookup, `from sys import stdin, stderr, stdout`, missing high
+  Unicode-name attribute errors, and the rule that `hasattr()` only suppresses
+  `AttributeError` while propagating `SystemExit` and `ValueError`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_compile_builtin_code_object_subset`, covering first-pass
   `compile(source, filename, mode)` for string and bytes sources in `exec`,
   `eval`, and `single` modes, plus feeding the resulting `code` objects through
@@ -1034,6 +1351,11 @@ Recent runtime migration notes:
   `BuiltinTest::test___ne__` direct `None.__ne__` behavior plus the inherited
   `object.__eq__` / `object.__ne__` identity comparison and `NotImplemented`
   fallback for unrelated objects.
+- The `BuiltinTest Core Runtime Method Audit` in `cpython_test_manifest.md`
+  now pins the direct Rust evidence for 27 scalar, representation, and
+  introspection methods that were previously covered only through the broader
+  `BuiltinTest` group prose. It keeps the remaining Unicode lone-surrogate,
+  and CPython optimizer/code-object gaps explicitly classified as `partial`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_specifics_newline_and_indentation_subset`, covering CPython
   `TestSpecifics` compile acceptance for empty string source, missing trailing
@@ -1183,14 +1505,40 @@ Recent runtime migration notes:
   errors, and exec writeback of assignments that happen before runtime
   exceptions. It also covers same-mapping globals/locals behavior for
   `eval(source, g, g)` named-expression writes and `exec(source, g, g)`
-  ordinary/global assignment writes.
+  ordinary/global assignment writes, the supported public
+  `BuiltinTest::test_general_eval` general-mapping locals behavior for
+  `__getitem__`, `keys()` / `dir()`, `globals()`, `locals()`, nested lookups,
+  dict subclasses, and invalid mapping shapes, plus
+  `BuiltinTest::test_exec_redirected` behavior where `sys.stdout = None` still
+  leaves `exec('a')` raising a catchable `NameError`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_eval_exec_builtins_mapping_subset`, covering first-pass
   `globals['__builtins__']` lookup for restricted builtin dictionaries and
   exact-dict `mappingproxy` builtin mappings, default builtins injection into
   supplied eval/exec globals, dict-subclass builtin mappings, custom and default
   `__import__` lookup for import statements, and dict-subclass `__getitem__`
-  exception propagation for globals and builtin mappings.
+  exception propagation for globals and builtin mappings. It also covers the
+  supported public part of `BuiltinTest::test_exec_globals_frozen`:
+  `builtins.__build_class__` is exposed, empty explicit builtins make class
+  creation raise catchable `NameError`, empty read-only dict-subclass builtins
+  take the same `__build_class__` error path, custom read-only builtins can
+  provide `__build_class__`, writes into that builtins mapping call the dict
+  subclass `__setitem__` error path, and read-only dict-subclass globals
+  writeback calls `__setitem__` only for the changed global name. The same
+  subset now covers `BuiltinTest::test_eval_builtins_mapping_reduce` by checking
+  list/tuple iterator `__reduce__()` results and lookup of `iter` through the
+  active mappingproxy builtins.
+- `RUNTIME_BUILTINS` also includes `cpython_exec_closure_subset`, covering
+  CPython `BuiltinTest::test_exec_closure` for executable function `__code__`
+  objects, `co_freevars`, function `__closure__` cells, manual
+  `types.CellType(value)` cells, and `exec(..., closure=...)` validation and
+  nonlocal writeback.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_exec_filter_syntax_warnings_by_module_subset`, covering CPython
+  `BuiltinTest::test_exec_filter_syntax_warnings_by_module` for source executed
+  through `exec()`, six compile-time `SyntaxWarning` records with `<string>`
+  filenames, and warning module filtering driven by explicit globals
+  `__name__`.
 - `IMPORT_RUNTIME` includes `cpython_import_sys_modules_cache_subset`,
   covering `sys.modules` import caching, direct cache replacement, `None`
   import-abort sentinels, dotted-module parent binding, and polluted-parent
@@ -1198,6 +1546,11 @@ Recent runtime migration notes:
   truthiness over false/true scalar and container values plus user-defined
   `__bool__` / `__len__` results, plus `level` argument conversion for false
   bool, negative integers, and representative non-integer error messages.
+  `cpython_import_builtin_subset` covers CPython `BuiltinTest::test_import`
+  ordinary builtin imports for `sys`, `time`, and `string`, keyword `name` /
+  `level` binding, missing-module `ModuleNotFoundError`, non-string name
+  `TypeError`, empty-name `ValueError`, duplicate-name `TypeError`, and embedded
+  null module-name rejection.
   Runtime import errors now flow through the VM exception path, so
   `ModuleNotFoundError` can be caught by `try` / `except`; focused language
   tests also cover sandboxed virtual source modules, package modules, and
@@ -1271,11 +1624,11 @@ names like `from ._threading_handler import ...`.
 | --- | --- | --- |
 | `ENDMARKER` | supported | `lexes_print_number`, `cpython_tokenize_spanned_tokens_subset` including EOF span |
 | `NAME` | supported | `lexes_print_number`, `lexes_unicode_identifiers`, `lexes_underscore_relative_import_module_after_dot`, `cpython_ast_assignment_and_name_load_subset`, `cpython_unicode_identifier_subset`, `cpython_tokenize_spanned_tokens_subset` including keyword/name spans, `cpython_tokenize_formfeed_whitespace_subset` including formfeed-separated name/operator tokens |
-| `NUMBER` | partial | `lexes_float_literals`, `lexes_imaginary_literals`, `lexes_number_separators`, `lexes_large_integer_literals`, `lexes_number_keyword_boundaries`, `rejects_invalid_number_separators`, `lexes_prefixed_integer_literals`, `rejects_invalid_prefixed_integer_literals`, `rejects_nonzero_leading_decimal_zeroes`, `cpython_tokenize_valid_number_token_stream_subset` covering the migrated CPython `test_int`, `test_long`, and `test_float` raw-token text/spans for integer/operator, large-integer, and float forms, including trailing-dot, uppercase exponent, and large exponent float spellings, `cpython_tokenize_underscore_number_token_stream_subset` covering CPython `test_underscore_literals` raw NUMBER text preservation/rejection behavior, `cpython_grammar_prefixed_integer_literals_subset`, `cpython_float_literal_forms_subset`, `cpython_float_exponent_tokenization_subset`, `cpython_end_of_numerical_literals_subset` including adjacent-name, hexadecimal adjacent-name, and fraction-slash spans, `cpython_tokenize_invalid_python_token_stream_subset` including tokenizer-only `2sin(x)` number/name split, `01234`, `0_7`, and `09_99` leading-zero NUMBER tokenization, invalid decimal underscore/exponent token splitting, and CPython `test_invalid_syntax` binary/octal/hex token splitting for invalid digits, invalid underscore suffixes, and missing prefixed-integer digits, `cpython_numeric_literal_warning_subset` including CPython `test_end_of_numerical_literals` keyword-boundary warnings, `test_tokenizer_fstring_warning_in_first_line` binary-boundary warning source `0b1and 2`, and warning-as-error spans for decimal, imaginary, binary, octal, and hexadecimal literals, `cpython_valid_underscore_number_literals_subset`, `cpython_large_integer_literals_subset` including CPython `test_long_integers` prefix-case and huge-literal forms, `cpython_integer_bit_methods_subset`, `cpython_integer_ratio_and_component_methods_subset`, `cpython_float_ratio_and_component_methods_subset`, `cpython_integer_base_builtins_subset`, `cpython_int_max_str_digits_runtime_subset` covering CPython `test_int.py::IntStrDigitLimitsTests` runtime digit-limit behavior for `int()`, `str()`, top-level/container `repr()`, sign/space padding, underscores, and unlimited power-of-two bases, `cpython_int_max_str_digits_formatting_subset` extending that digit-limit coverage to `format()`, f-strings, `str.format()`, and old-style `%s` / `%r` / `%a` / `%d` / `%i` / `%u` decimal formatting while preserving unlimited hexadecimal formatting, `cpython_compile_specifics_int_literals_too_long_subset` covering `compile()`-time decimal integer literal limits, offending-line `SyntaxError.lineno`, and unlimited hexadecimal source literals, `cpython_divmod_builtin_subset`, `cpython_round_builtin_subset`, `cpython_pow_builtin_subset`, `cpython_bad_numerical_literals_subset` including representative bad-literal spans, `cpython_syntax_error_message_parity_subset`, `cpython_grammar_imaginary_literals_subset`, `runs_float_literals`, `runs_imaginary_literals`, `runs_prefixed_integer_literals` |
+| `NUMBER` | partial | `lexes_float_literals`, `lexes_imaginary_literals`, `lexes_number_separators`, `lexes_large_integer_literals`, `lexes_number_keyword_boundaries`, `rejects_invalid_number_separators`, `lexes_prefixed_integer_literals`, `rejects_invalid_prefixed_integer_literals`, `rejects_nonzero_leading_decimal_zeroes`, `cpython_tokenize_valid_number_token_stream_subset` covering the migrated CPython `test_int`, `test_long`, and `test_float` raw-token text/spans for integer/operator, large-integer, and float forms, including trailing-dot, uppercase exponent, and large exponent float spellings, `cpython_tokenize_underscore_number_token_stream_subset` covering CPython `test_underscore_literals` raw NUMBER text preservation/rejection behavior, `cpython_grammar_prefixed_integer_literals_subset`, `cpython_float_literal_forms_subset`, `cpython_float_exponent_tokenization_subset`, `cpython_end_of_numerical_literals_subset` including adjacent-name, hexadecimal adjacent-name, and fraction-slash spans, `cpython_tokenize_invalid_python_token_stream_subset` including tokenizer-only `2sin(x)` number/name split, `01234`, `0_7`, and `09_99` leading-zero NUMBER tokenization, invalid decimal underscore/exponent token splitting, and CPython `test_invalid_syntax` binary/octal/hex token splitting for invalid digits, invalid underscore suffixes, and missing prefixed-integer digits, `cpython_numeric_literal_warning_subset` including CPython `test_end_of_numerical_literals` keyword-boundary warnings, `test_tokenizer_fstring_warning_in_first_line` binary-boundary warning source `0b1and 2`, and warning-as-error spans for decimal, imaginary, binary, octal, and hexadecimal literals, `cpython_valid_underscore_number_literals_subset`, `cpython_large_integer_literals_subset` including CPython `test_long_integers` prefix-case and huge-literal forms, `cpython_integer_bit_methods_subset`, `cpython_integer_ratio_and_component_methods_subset`, `cpython_float_string_underscore_subset`, `cpython_float_ratio_and_component_methods_subset`, `cpython_integer_base_builtins_subset`, `cpython_int_constructor_base_conversion_subset` covering CPython `int()` constructor underscore parsing, base 2-through-36 big-integer conversions for `2**32` and `2**32 + 1`, base-limit errors, non-integer base rejection, and `__index__`-supplied out-of-range base diagnostics, `cpython_int_constructor_error_message_subset` covering CPython `int()` invalid-literal diagnostics for float-looking strings, non-ASCII strings, embedded whitespace/NUL, explicit-base NUL strings, and NUL/non-UTF-8 bytes while leaving lone-surrogate rows outside MiniPython's executable Rust string model, `cpython_int_max_str_digits_runtime_subset` covering CPython `test_int.py::IntStrDigitLimitsTests` runtime digit-limit behavior for `int()`, `str()`, top-level/container `repr()`, sign/space padding, underscores, and unlimited power-of-two bases, `cpython_int_max_str_digits_formatting_subset` extending that digit-limit coverage to `format()`, f-strings, `str.format()`, and old-style `%s` / `%r` / `%a` / `%d` / `%i` / `%u` decimal formatting while preserving unlimited hexadecimal formatting, `cpython_compile_specifics_int_literals_too_long_subset` covering `compile()`-time decimal integer literal limits, offending-line `SyntaxError.lineno`, and unlimited hexadecimal source literals, `cpython_divmod_builtin_subset`, `cpython_round_builtin_subset`, `cpython_pow_builtin_subset`, `cpython_bad_numerical_literals_subset` including representative bad-literal spans, `cpython_syntax_error_message_parity_subset`, `cpython_grammar_imaginary_literals_subset`, `runs_float_literals`, `runs_imaginary_literals`, `runs_prefixed_integer_literals` |
 | `STRING` | partial | `lexes_string`, `lexes_string_line_continuations`, `lexes_string_octal_escapes`, `lexes_unicode_name_escapes`, `lexes_unicode_name_alias_escapes`, `lexes_bytes_literals`, `lexes_bytes_line_continuations`, `lexes_cpython_string_prefix_matrix`, `rejects_non_ascii_bytes_literals`, `rejects_cpython_unterminated_string_forms`, `rejects_cpython_invalid_string_escape_forms`, `rejects_cpython_unterminated_interpolated_string_forms`, `lexes_f_string_parts`, `lexes_f_string_escaped_brace_literals`, `lexes_f_string_backslash_before_doubled_braces`, `lexes_f_string_line_continuations`, `lexes_f_string_format_specs`, `lexes_raw_and_non_raw_f_string_format_spec_escapes`, `lexes_f_string_debug_expressions`, `lexes_raw_f_string_literals_and_empty_format_specs`, `cpython_tokenize_string_span_subset` including quote, embedded quote payloads, ordinary single- and double-quoted string expressions, raw-prefix matrix, `u`/`U` prefixes, `b`/`B` bytes prefixes, single- and double-quoted `br`/`rb` raw-bytes prefix matrix, split string/name/string tokenization, adjacent same-line string tokens before parser concatenation, multiline line-continuation, unicode-prefixed line-continuation, triple-quoted, unicode-prefixed triple-quoted, single-quoted raw bytes, triple-quoted raw bytes, escaped CRLF text inside a string token, and indented non-ASCII triple-quoted source spans, `cpython_string_literal_and_concat_subset`, `cpython_string_startswith_endswith_subset`, `cpython_string_find_index_subset`, `cpython_string_count_case_subset`, `cpython_string_capitalize_title_swapcase_casefold_subset`, `cpython_string_predicate_methods_subset` including the CPython `isascii()` alignment matrix, `cpython_string_identifier_printable_subset`, `cpython_string_expandtabs_subset`, `cpython_string_splitlines_subset`, `cpython_string_replace_subset`, `cpython_string_remove_affix_subset`, `cpython_string_split_rsplit_subset`, `cpython_string_strip_subset`, `cpython_string_alignment_and_zfill_subset`, `cpython_string_partition_rpartition_subset`, `cpython_string_join_subset`, `cpython_string_line_continuation_subset`, `cpython_string_octal_escape_subset`, `cpython_string_escape_warning_subset` including warning-as-error behavior, `cpython_string_invalid_escape_ascii_table_subset`, `cpython_string_escape_warning_location_subset`, `cpython_f_string_escape_warning_subset` including warning-as-error behavior, `cpython_unicode_name_escape_subset`, `cpython_bytes_literal_subset`, `cpython_string_prefix_matrix_subset`, `cpython_invalid_string_prefix_matrix_subset` adapted from CPython `test_invalid_string_prefixes`, `cpython_invalid_string_literal_subset` including CPython `test_invalid_syntax` unterminated ordinary, bytes, one-line triple, and multiline triple-quoted string spans plus non-ASCII bytes literal spans, `cpython_string_and_tstring_helper_rules_subset`, `cpython_f_string_basic_subset`, `cpython_f_string_triple_quoted_expression_subset`, `cpython_f_string_many_expressions_subset`, `cpython_f_string_format_specifier_expressions_subset`, `cpython_f_string_debug_expression_subset`, `cpython_raw_f_string_format_spec_subset`, `cpython_invalid_f_string_syntax_subset`, `cpython_invalid_t_string_syntax_subset`, `runs_python_string_literal_forms`, `runs_python_bytes_literal_forms`, `runs_f_strings`, `runs_f_string_expressions` |
-| `STRING_RUNTIME` | partial | `cpython_ascii_builtin_subset` covers first-pass `ascii()` builtin behavior, CPython-style non-ASCII repr escaping, f-string `!a`, and recursive list/dict repr placeholders; `cpython_chr_ord_builtin_subset` covers first-pass `chr()` and `ord()` builtins for supported Unicode scalar values and one-character/one-byte inputs; `cpython_old_style_string_percent_format_subset` covers first-pass old-style `%` string formatting for `%s`, `%r`, `%a`, `%%`, `%d`, `%i`, `%u`, `%x`, `%X`, `%o`, `%c`, `%f`, `%F`, `%e`, `%E`, `%g`, `%G`, ignored `h` / `l` / `L` length modifiers, tuple argument consumption, `%(key)` mapping arguments, static and dynamic `*` flags/width/precision for text, integer, and float conversions, mapping-to-positional mixing errors, extra-argument errors, non-integer `*` errors, mapping-key `*` errors, non-real float-format errors, isolated/unsupported-format `ValueError` paths, and out-of-range `%c` errors; `cpython_string_format_and_format_map_subset` covers first-pass `str.format()` and `str.format_map()` literal rendering, escaped braces, positional/automatic/keyword/mapping fields, simple attribute and item lookup, conversions, and existing mini-format specs; `cpython_f_string_contextual_runtime_subset` covers f-string truthiness, empty format specs, f-string indexing versus `str.format()` field indexing, loop evaluation, and nested-quote dict subscripts; `cpython_f_string_format_error_subset` covers CPython-style f-string formatting TypeErrors and ValueErrors for unsupported object specs and unknown scalar format codes; `cpython_string_maketrans_translate_subset` covers `str.maketrans()` and `str.translate()` dictionary translation, deletion, integer/string replacements, non-ASCII replacements, and error paths; `cpython_string_bytes_codec_subset` covers first-pass `str.encode()`, `bytes.decode()`, `str(bytes, encoding)`, `bytes(str, encoding)`, `bytearray(str, encoding)`, codec constructor keyword behavior, `encoding_rs` label fallback with `cp1251` and `cp1252`, and CPython-style strict / `ignore` / `replace` behavior for undefined codec bytes; `cpython_bytes_iterable_constructor_subset` and `cpython_bytes_constructor_exception_subset` cover bytes/bytearray construction from supported integer iterables, `__getitem__` sequences, and `__index__` elements, including invalid item classes and propagation of exceptions from `__index__` / `__iter__`; `cpython_bytes_constructor_concat_repeat_contains_subset` covers bytes/bytearray integer-length construction, mixed bytes/bytearray concatenation result types, repetition with zero/negative counts, repeat TypeErrors, and membership over integer and bytes-like needles; `cpython_bytes_compare_slice_reversed_subset` covers bytes/bytearray lexicographic comparisons, comparison against `str`, reversed byte iteration, ordinary slicing, and CPython's extended-slice matrix against list slicing; `cpython_bytes_search_methods_subset` covers bytes/bytearray `count()`, `find()`, `rfind()`, `index()`, and `rindex()` over bytes-like and integer byte needles with start/stop bounds including `None`; `cpython_bytes_search_bounds_index_subset` covers Python-level `__index__` conversion and exception propagation for bytes/bytearray search and prefix/suffix `start` / `stop` bounds; `cpython_bytes_prefix_suffix_methods_subset` covers bytes/bytearray `startswith()` and `endswith()` over bytes-like and tuple prefixes/suffixes with start/stop bounds including `None`; `cpython_bytes_split_rsplit_methods_subset` covers bytes/bytearray `split()` and `rsplit()` over default ASCII whitespace, explicit bytes-like separators, `maxsplit`, keyword arguments, receiver-driven result types, Unicode-whitespace boundary behavior, empty separators, and representative TypeError paths; `cpython_bytes_splitlines_methods_subset` covers bytes/bytearray `splitlines()` over CR, LF, and CRLF boundaries, `keepends`, receiver-driven result types, bytes-specific non-splitting behavior for Unicode text line separators, and representative TypeError paths; `cpython_bytes_ascii_case_predicate_methods_subset` covers bytes/bytearray ASCII case transforms and predicates, non-ASCII byte preservation for case transforms, empty-input predicate behavior, receiver-driven result types, and representative extra-argument TypeErrors; `cpython_bytes_expandtabs_zfill_methods_subset` covers bytes/bytearray `expandtabs()` byte-level tab expansion with `tabsize` and `zfill()` sign-aware zero fill, receiver-driven result types, builtin type `dir()` visibility, and representative TypeErrors; `cpython_bytes_strip_methods_subset` covers bytes/bytearray `strip()`, `lstrip()`, and `rstrip()` over default ASCII whitespace and explicit bytes-like strip sets, preserving receiver-driven result types and representative TypeErrors; `cpython_bytes_alignment_methods_subset` covers bytes/bytearray `center()`, `ljust()`, and `rjust()` width and fill-byte behavior, receiver-driven result types, unchanged-width cases, and representative TypeErrors; `cpython_bytes_maketrans_translate_subset` covers bytes/bytearray `maketrans()` and `translate()` 256-byte tables, `None` identity tables, optional deletion bytes including `delete=`, bytes-like table/delete arguments, class and instance `maketrans()` lookup, receiver-driven result types, and representative TypeError/ValueError paths; `cpython_bytes_remove_affix_methods_subset` covers bytes/bytearray `removeprefix()` and `removesuffix()` over bytes-like affixes, empty receiver/affix behavior, receiver-driven result types, and representative TypeErrors; `cpython_bytes_join_subset` covers bytes/bytearray `join()` receiver-driven result types, list/tuple/iterator inputs, bytes-like items, empty joins/separators, reduced stress joins, and representative TypeErrors; `cpython_bytes_replace_partition_methods_subset` covers bytes/bytearray `replace()`, `partition()`, and `rpartition()` result-type behavior, bytes-like arguments, replacement count handling, empty-needle replacement, empty separators, and representative TypeError/ValueError paths; `cpython_bytearray_mutation_methods_subset` covers bytearray `append()`, `extend()`, `insert()`, `pop()`, `remove()`, `reverse()`, `clear()`, and `copy()` in-place mutation behavior; `cpython_bytearray_extended_slice_assignment_subset` covers bytearray extended slice assignment/deletion, integer-iterable RHS conversion, self-slice assignment, special method dispatch, and saturated large slice bounds; `cpython_bytes_copy_module_subset` covers bytes/bytearray `copy.copy()` and `copy.deepcopy()` type and equality preservation plus independent bytearray copy buffers; `cpython_bytes_hex_fromhex_subset` covers bytes/bytearray `fromhex()` and bytes/bytearray `hex()` with separator grouping; `cpython_templatelib_constructor_subset` covers the supported `string.templatelib.Template` and `Interpolation` constructors, Template `values`, builtin type metadata, and conversion error paths; `cpython_templatelib_final_type_and_iterator_subset` covers final templatelib type inheritance errors plus TemplateIter type metadata, identity iteration, yielded interpolation objects, and repeated exhaustion; `cpython_t_string_raw_concat_and_triple_subset` covers raw t-string literal preservation, Template + Template concatenation, Template/string concatenation TypeErrors, and triple-quoted t-string segments |
+| `STRING_RUNTIME` | partial | `cpython_ascii_builtin_subset` covers first-pass `ascii()` builtin behavior, CPython-style non-ASCII repr escaping, f-string `!a`, and recursive list/dict repr placeholders; `cpython_chr_ord_builtin_subset` covers `chr()` and `ord()` builtins for ordinary and CPython boundary Unicode scalar values, one-character/one-byte inputs, and negative, out-of-range, and very large integer `chr()` `ValueError` paths; `cpython_old_style_string_percent_format_subset` covers first-pass old-style `%` string formatting for `%s`, `%r`, `%a`, `%%`, `%d`, `%i`, `%u`, `%x`, `%X`, `%o`, `%c`, `%f`, `%F`, `%e`, `%E`, `%g`, `%G`, ignored `h` / `l` / `L` length modifiers, tuple argument consumption, `%(key)` mapping arguments, static and dynamic `*` flags/width/precision for text, integer, and float conversions, mapping-to-positional mixing errors, extra-argument errors, non-integer `*` errors, mapping-key `*` errors, non-real float-format errors, isolated/unsupported-format `ValueError` paths, and out-of-range `%c` errors; `cpython_string_format_and_format_map_subset` covers first-pass `str.format()` and `str.format_map()` literal rendering, escaped braces, positional/automatic/keyword/mapping fields, simple attribute and item lookup, conversions, and existing mini-format specs; `cpython_f_string_contextual_runtime_subset` covers f-string truthiness, empty format specs, f-string indexing versus `str.format()` field indexing, loop evaluation, and nested-quote dict subscripts; `cpython_f_string_format_error_subset` covers CPython-style f-string formatting TypeErrors and ValueErrors for unsupported object specs and unknown scalar format codes; `cpython_string_maketrans_translate_subset` covers `str.maketrans()` and `str.translate()` dictionary translation, deletion, integer/string replacements, non-ASCII replacements, and error paths; `cpython_string_bytes_codec_subset` covers first-pass `str.encode()`, `bytes.decode()`, `str(bytes, encoding)`, `bytes(str, encoding)`, `bytearray(str, encoding)`, codec constructor keyword behavior, `encoding_rs` label fallback with `cp1251` and `cp1252`, and CPython-style strict / `ignore` / `replace` behavior for undefined codec bytes; `cpython_bytes_iterable_constructor_subset`, `cpython_bytes_mutating_list_constructor_subset`, and `cpython_bytes_constructor_exception_subset` cover bytes/bytearray construction from supported integer iterables, `__getitem__` sequences, live mutating lists, and `__index__` elements, including invalid item classes, source-list clear/append behavior during item conversion, and propagation of exceptions from `__index__` / `__iter__`; `cpython_bytes_dunder_bytes_and_blocking_subset` covers `bytes()` `__bytes__` dispatch, bytes-subclass result preservation, non-bytes result rejection, `__bytes__` precedence over `__index__`, and `__bytes__ = None` fallback blocking; `cpython_bytes_bytearray_index_error_and_hash_subset` covers invalid-index TypeError messages for bytes and bytearray plus bytearray unhashability; `cpython_bytes_constructor_concat_repeat_contains_subset` covers bytes/bytearray integer-length construction, mixed bytes/bytearray concatenation result types, repetition with zero/negative counts, repeat TypeErrors, and membership over integer and bytes-like needles; `cpython_bytes_compare_slice_reversed_subset` covers bytes/bytearray lexicographic comparisons, comparison against `str`, reversed byte iteration, ordinary slicing, and CPython's extended-slice matrix against list slicing; `cpython_bytes_search_methods_subset` covers bytes/bytearray `count()`, `find()`, `rfind()`, `index()`, and `rindex()` over bytes-like and integer byte needles with start/stop bounds including `None`; `cpython_bytes_search_bounds_index_subset` covers Python-level `__index__` conversion and exception propagation for bytes/bytearray search and prefix/suffix `start` / `stop` bounds; `cpython_bytes_prefix_suffix_methods_subset` covers bytes/bytearray `startswith()` and `endswith()` over bytes-like and tuple prefixes/suffixes with start/stop bounds including `None`; `cpython_bytes_split_rsplit_methods_subset` covers bytes/bytearray `split()` and `rsplit()` over default ASCII whitespace, explicit bytes-like separators, `maxsplit`, keyword arguments, receiver-driven result types, Unicode-whitespace boundary behavior, empty separators, and representative TypeError paths; `cpython_bytes_splitlines_methods_subset` covers bytes/bytearray `splitlines()` over CR, LF, and CRLF boundaries, `keepends`, receiver-driven result types, bytes-specific non-splitting behavior for Unicode text line separators, and representative TypeError paths; `cpython_bytes_ascii_case_predicate_methods_subset` covers bytes/bytearray ASCII case transforms and predicates, non-ASCII byte preservation for case transforms, empty-input predicate behavior, receiver-driven result types, and representative extra-argument TypeErrors; `cpython_bytes_expandtabs_zfill_methods_subset` covers bytes/bytearray `expandtabs()` byte-level tab expansion with `tabsize` and `zfill()` sign-aware zero fill, receiver-driven result types, builtin type `dir()` visibility, and representative TypeErrors; `cpython_bytes_strip_methods_subset` covers bytes/bytearray `strip()`, `lstrip()`, and `rstrip()` over default ASCII whitespace and explicit bytes-like strip sets, preserving receiver-driven result types and representative TypeErrors; `cpython_bytes_alignment_methods_subset` covers bytes/bytearray `center()`, `ljust()`, and `rjust()` width and fill-byte behavior, receiver-driven result types, unchanged-width cases, and representative TypeErrors; `cpython_bytes_maketrans_translate_subset` covers bytes/bytearray `maketrans()` and `translate()` 256-byte tables, `None` identity tables, optional deletion bytes including `delete=`, bytes-like table/delete arguments, class and instance `maketrans()` lookup, receiver-driven result types, and representative TypeError/ValueError paths; `cpython_builtin_bytearray_translate_extend_errors_subset` pins CPython BuiltinTest bytearray translation-table/delete error ordering and `bytearray.extend(map(int, ...))` exception propagation without mutation; `cpython_bytes_remove_affix_methods_subset` covers bytes/bytearray `removeprefix()` and `removesuffix()` over bytes-like affixes, empty receiver/affix behavior, receiver-driven result types, and representative TypeErrors; `cpython_bytes_join_subset` covers bytes/bytearray `join()` receiver-driven result types, list/tuple/iterator inputs, bytes-like items, empty joins/separators, reduced stress joins, and representative TypeErrors; `cpython_bytearray_join_reentrant_resize_subset` covers bytearray `join()` accepting custom iterators while rejecting re-entrant separator resizing with `BufferError`; `cpython_bytes_replace_partition_methods_subset` covers bytes/bytearray `replace()`, `partition()`, and `rpartition()` result-type behavior, bytes-like arguments, replacement count handling, empty-needle replacement, empty separators, and representative TypeError/ValueError paths; `cpython_bytearray_mutation_methods_subset` covers bytearray `append()`, `extend()`, `insert()`, `pop()`, `remove()`, `reverse()`, `clear()`, and `copy()` in-place mutation behavior; `cpython_bytearray_extended_slice_assignment_subset` covers bytearray extended slice assignment/deletion, integer-iterable RHS conversion, self-slice assignment, special method dispatch, and saturated large slice bounds; `cpython_bytes_copy_module_subset` covers bytes/bytearray `copy.copy()` and `copy.deepcopy()` type and equality preservation plus independent bytearray copy buffers; `cpython_bytes_hex_fromhex_subset` covers bytes/bytearray `fromhex()` and bytes/bytearray `hex()` with separator grouping; `cpython_templatelib_constructor_subset` covers the supported `string.templatelib.Template` and `Interpolation` constructors, Template `values`, builtin type metadata, and conversion error paths; `cpython_templatelib_final_type_and_iterator_subset` covers final templatelib type inheritance errors plus TemplateIter type metadata, identity iteration, yielded interpolation objects, and repeated exhaustion; `cpython_t_string_raw_concat_and_triple_subset` covers raw t-string literal preservation, Template + Template concatenation, Template/string concatenation TypeErrors, and triple-quoted t-string segments |
 | `CONTAINER_RUNTIME` | partial | `cpython_sequence_constructor_builtins_subset` covers first-pass list, tuple, and set constructors over builtins, strings, generator expressions, existing tuple identity preservation, keyword rejection, non-iterable rejection, unhashable set elements, exact `set.__init__` reinitialization behavior including self-input clearing and partial mutation before an unhashable element error, plus exact `TestSet` constructor identity, literal equality, left-to-right literal insertion/evaluation order, unhashable set values, and `set.copy()` equality/type/identity; `cpython_set_mutation_methods_subset` covers first-pass `TestSet` mutation method behavior for `clear`, `add`, `remove`, `discard`, `pop`, and `update`, including duplicate-add no-op, unhashable argument errors, missing-key `KeyError`, nested set/frozenset lookup equivalence, pop-until-empty behavior, and update result/error paths; `cpython_set_direct_lookup_and_keyerror_payload_subset` covers direct set-key membership/discard/remove behavior plus preservation of the original missing key in `KeyError.args[0]`; `cpython_set_hash_exception_propagation_subset` covers propagation of exceptions raised by user-defined `__hash__` during set membership, `add`, and `discard`; `cpython_set_bad_comparison_errors_subset` covers hash-collision rich equality and propagation of exceptions raised by user-defined `__eq__` during set construction, membership, `add`, `discard`, and `remove`; `cpython_set_bad_comparison_algebra_errors_subset` covers the same rich-equality exception propagation across set/frozenset equality and ordering checks, relation methods, algebra methods, and `&`, `|`, `-`, and `^`; `cpython_set_iterator_mutation_subset` covers CPython set iterator size-change invalidation and the clear/refill-to-original-size no-crash regression; `cpython_set_reentrant_mutation_subset` covers set updates whose rich equality clears the source set plus hash-collision `set.add()` re-entering the same set from Python-level `__eq__`; `cpython_set_operations_mutating_subset` covers CPython `TestOperationsMutating` stable cases for set equality, ordering, algebra, relation methods, and update methods when element equality clears both participating sets; `cpython_set_rich_compare_reflection_subset` covers CPython set ordering fallback through `NotImplemented` into the right operand's reflected rich-comparison method; `cpython_set_inplace_algebra_methods_subset` covers `TestSet` iterable operand support for `update`, `intersection_update`, `difference_update`, and `symmetric_difference_update`, in-place set operator identity preservation, strict `TypeError` for unhashable iterable operands, and partial mutation before `set.update()` encounters an unhashable element; `cpython_set_only_sets_in_binary_ops_subset` covers CPython `TestOnlySetsInBinaryOps` equality, ordering, binary operator, in-place operator, and method-form iterable behavior for non-set operands including generators; `cpython_dict_constructor_update_fromkeys_subset` covers first-pass dict construction, update, and `fromkeys`; `cpython_dict_view_mappingproxy_subset` covers dict-view `.mapping` read-only `mappingproxy` type identity, live equality, lookup, membership, and item-assignment rejection; `cpython_iter_next_builtin_subset` covers first-pass iterator identity, `next(default)`, callable-sentinel iterator exhaustion, callable-raised `StopIteration`, reentrant callable-sentinel exhaustion, and supported iterator sink-state behavior after exhaustion; `cpython_map_strict_builtin_subset` covers strict `map()` length checks, iterator-consumption side effects, and propagated custom iterator exceptions versus strict-mode `StopIteration` conversion; `cpython_reversed_builtin_subset` covers first-pass reversed iteration over supported sequence, dict, and dict-view values |
-| `COLLECTIONS_ABC_RUNTIME` | partial | `cpython_collections_abc_iterable_iterator_subset` covers the supported `collections.abc.Iterable` and `Iterator` module surface, `isinstance` checks for built-in containers, built-in iterators, `TemplateIter`, non-iterable scalar values, and structural user classes, plus `issubclass` checks for structural user classes and `Iterator` inheriting from `Iterable`; `cpython_collections_abc_core_runtime_subset` covers the supported `Hashable`, `Sized`, `Container`, `Callable`, and `Collection` ABC surface, including built-in container/type relationships, structural user classes, direct ABC subclassing, and CPython-style `None` blocking for special methods; `cpython_collections_abc_registration_subset` covers public `ABC.register()` behavior for `Hashable`, `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`, and `Callable`, including pre-registration rejection, return identity, `issubclass()`, `isinstance()`, and subclass propagation; `cpython_collections_abc_types_coroutine_subset` covers public `types.coroutine()` behavior for generator functions, the CPython distinction that iterable-coroutine generators can be awaited but are not `Awaitable` / `Coroutine` ABC instances, and `Coroutine.register()` propagation through `Awaitable`; `cpython_collections_abc_sequence_subset` covers `Sequence` for supported built-in sequence registrations including `memoryview`, explicit Sequence subclassing, CPython's non-structural Sequence behavior, and Sequence inheritance through Reversible, Collection, Sized, Iterable, and Container; `cpython_collections_abc_sequence_mixins_subset` covers `Sequence` mixins for explicit subclasses, including index parity against native list/str start/stop behavior plus `count`, `__contains__`, `__iter__`, `__reversed__`, membership fallback, and keyword calls; `cpython_collections_abc_bytestring_buffer_subset` covers `ByteString` and `Buffer` for supported bytes/bytearray/memoryview registrations, ByteString inheritance through Sequence, Buffer `__buffer__` structural subclasshook behavior, direct ABC subclassing, `memoryview` exclusion from `ByteString`, and CPython-style `None` blocking for `__buffer__`; `cpython_collections_abc_mutable_sequence_subset` covers `MutableSequence` for supported list/bytearray registrations, inheritance through Sequence/Reversible/Collection/Sized/Iterable/Container, CPython's non-structural protocol behavior, explicit subclass mixins, and self-extension; `cpython_collections_abc_mapping_subset` covers `Mapping` and `MutableMapping` for registered `dict`, ABC inheritance, direct subclassing, and CPython's non-structural mapping behavior; `cpython_collections_abc_mapping_view_subset` covers `MappingView`, `KeysView`, `ItemsView`, and `ValuesView` for built-in dict views, `KeysView`/`ItemsView` set behavior, `ValuesView` collection behavior, ABC inheritance, direct ABC subclassing, and CPython's non-structural view behavior; `cpython_collections_abc_set_mutable_set_mixins_subset` covers `Set` and `MutableSet` registrations for set/frozenset and supported set-like dict views, inheritance through Collection/Sized/Iterable/Container, explicit subclass mixins for comparison, binary set operations, `_hash`, `_from_iterable`, mutable update methods, and self-clearing regressions; `cpython_collections_abc_set_from_iterable_operator_subset` covers CPython `test_Set_from_iterable` operator dispatch through MutableSet mixins, instance `_from_iterable` overrides, and `^=` with a non-Set iterable; `cpython_collections_abc_set_real_set_interoperability_subset` covers CPython `test_Set_interoperability_with_real_sets` for custom Set subclasses interacting with built-in `set` and plain iterables across `&`, `|`, `-`, `^`, ordering, equality, inequality, and TypeError paths for non-Set ordering operands; `cpython_collections_abc_set_hash_matches_frozenset_subset` covers CPython `test_Set_hash_matches_frozenset` for supported hashable samples, including `None`, numbers, strings, booleans, object identities, NaN, nested frozensets, large integers, and range-derived frozensets, with the `sys.maxsize` range stress case still pending MiniPython range-limit work; `cpython_frozenset_basic_subset`, `cpython_set_frozenset_joint_ops_subset`, `cpython_set_frozenset_relationship_matrix_subset`, and `cpython_set_frozenset_algebra_matrix_subset` cover first-pass exact `frozenset` construction, empty singleton identity, no-op exact `frozenset.__init__`, immutable set algebra, equality with `set`, order-independent hashing for hashable elements, dict/set key behavior, shared set/frozenset joint operations from CPython `test_set.py`, the `isdisjoint` constructor matrix, set-of-frozensets uniqueness, non-mutating set algebra constructor matrices, multi-operand union/intersection/difference, and the Issue #6573 empty-set union regression; `cpython_collections_abc_reversible_subset` covers `Reversible` for supported built-in reversible containers/views, non-reversible scalar/container/iterator samples, `Sequence` inheritance, structural `__iter__` + `__reversed__` user classes, direct ABC subclassing, and `None` blocking; `cpython_collections_abc_async_runtime_subset` covers `Awaitable`, `Coroutine`, `AsyncIterable`, and `AsyncIterator` for native coroutine objects, structural user classes, non-samples, ABC inheritance, and `None` blocking; `cpython_collections_abc_generator_runtime_subset` covers `Generator` and `AsyncGenerator` for native generator objects, structural protocol classes, incomplete protocol non-samples, direct ABC subclassing, and `None` blocking |
+| `COLLECTIONS_ABC_RUNTIME` | partial | `cpython_collections_abc_iterable_iterator_subset` covers the supported `collections.abc.Iterable` and `Iterator` module surface, `isinstance` checks for built-in containers, built-in iterators, `TemplateIter`, non-iterable scalar values, and structural user classes, plus `issubclass` checks for structural user classes and `Iterator` inheriting from `Iterable`; `cpython_collections_abc_core_runtime_subset` covers the supported `Hashable`, `Sized`, `Container`, `Callable`, and `Collection` ABC surface, including built-in container/type relationships, structural user classes, direct ABC subclassing, and CPython-style `None` blocking for special methods; `cpython_collections_abc_registration_subset` covers public `ABC.register()` behavior for `Hashable`, `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`, and `Callable`, including pre-registration rejection, return identity, `issubclass()`, `isinstance()`, and subclass propagation; `cpython_collections_abc_types_coroutine_subset` covers public `types.coroutine()` behavior for generator functions, the CPython distinction that iterable-coroutine generators can be awaited but are not `Awaitable` / `Coroutine` ABC instances, and `Coroutine.register()` propagation through `Awaitable`; `cpython_collections_abc_sequence_subset` covers `Sequence` for supported built-in sequence registrations including `memoryview`, explicit Sequence subclassing, CPython's non-structural Sequence behavior, and Sequence inheritance through Reversible, Collection, Sized, Iterable, and Container; `cpython_collections_abc_sequence_mixins_subset` covers `Sequence` mixins for explicit subclasses, including index parity against native list/str start/stop behavior plus `count`, `__contains__`, `__iter__`, `__reversed__`, membership fallback, and keyword calls; `cpython_collections_abc_bytestring_buffer_subset` covers `ByteString` and `Buffer` for supported bytes/bytearray/memoryview registrations, ByteString inheritance through Sequence, Buffer `__buffer__` structural subclasshook behavior, direct ABC subclassing, `memoryview` exclusion from `ByteString`, and CPython-style `None` blocking for `__buffer__`; `cpython_collections_abc_bytestring_deprecation_warnings_subset` covers public `ByteString` import, fresh attribute access, `isinstance()`, and subclass-creation deprecation warnings; `cpython_collections_abc_mutable_sequence_subset` covers `MutableSequence` for list, bytearray, `collections.deque`, and `array.array` registrations, inheritance through Sequence/Reversible/Collection/Sized/Iterable/Container, CPython's non-structural protocol behavior, explicit subclass mixins, and self-extension; `cpython_collections_abc_mapping_subset` covers `Mapping` and `MutableMapping` for registered `dict`, ABC inheritance, direct subclassing, and CPython's non-structural mapping behavior; `cpython_collections_abc_mapping_view_subset` covers `MappingView`, `KeysView`, `ItemsView`, and `ValuesView` for built-in dict views, `KeysView`/`ItemsView` set behavior, `ValuesView` collection behavior, ABC inheritance, direct ABC subclassing, and CPython's non-structural view behavior; `cpython_collections_abc_set_mutable_set_mixins_subset` covers `Set` and `MutableSet` registrations for set/frozenset and supported set-like dict views, inheritance through Collection/Sized/Iterable/Container, explicit subclass mixins for comparison, binary set operations, `_hash`, `_from_iterable`, mutable update methods, and self-clearing regressions; `cpython_collections_abc_set_noncomparable_comparison_subset` covers CPython `test_issue16373` for `Set` subclass comparison fallback when the left operand returns `NotImplemented`; `cpython_collections_abc_set_from_iterable_operator_subset` covers CPython `test_Set_from_iterable` operator dispatch through MutableSet mixins, instance `_from_iterable` overrides, and `^=` with a non-Set iterable; `cpython_collections_abc_set_real_set_interoperability_subset` covers CPython `test_Set_interoperability_with_real_sets` for custom Set subclasses interacting with built-in `set` and plain iterables across `&`, `|`, `-`, `^`, ordering, equality, inequality, and TypeError paths for non-Set ordering operands; `cpython_collections_abc_set_hash_matches_frozenset_subset` covers CPython `test_Set_hash_matches_frozenset` for supported hashable samples, including `None`, numbers, strings, booleans, object identities, NaN, nested frozensets, large integers, range-derived frozensets, and the CPython `sys.maxsize` range stress sample; `cpython_frozenset_basic_subset`, `cpython_set_frozenset_joint_ops_subset`, `cpython_set_frozenset_relationship_matrix_subset`, and `cpython_set_frozenset_algebra_matrix_subset` cover first-pass exact `frozenset` construction, empty singleton identity, no-op exact `frozenset.__init__`, immutable set algebra, equality with `set`, order-independent hashing for hashable elements, dict/set key behavior, shared set/frozenset joint operations from CPython `test_set.py`, the `isdisjoint` constructor matrix, set-of-frozensets uniqueness, non-mutating set algebra constructor matrices, multi-operand union/intersection/difference, and the Issue #6573 empty-set union regression; `cpython_collections_abc_reversible_subset` covers `Reversible` for supported built-in reversible containers/views, non-reversible scalar/container/iterator samples, `Sequence` inheritance, structural `__iter__` + `__reversed__` user classes, direct ABC subclassing, and `None` blocking; `cpython_collections_abc_async_runtime_subset` covers `Awaitable`, `Coroutine`, `AsyncIterable`, and `AsyncIterator` for native coroutine objects, structural user classes, non-samples, ABC inheritance, and `None` blocking; `cpython_collections_abc_generator_runtime_subset` covers `Generator` and `AsyncGenerator` for native generator objects, structural protocol classes, incomplete protocol non-samples, direct ABC subclassing, and `None` blocking |
 | `NEWLINE` | supported | `lexes_newline`, `cpython_compile_crlf_newlines_subset`, `cpython_compile_specifics_newline_and_indentation_subset`, `cpython_tokenize_explicit_line_joining_subset` including continuation-only lines that do not emit statement newlines, token-kind/text parity with the no-continuation spelling, comment backslashes that do not continue, and bad-indentation continuation rejection, `cpython_tokenize_implicit_line_joining_subset` including the logical newline after a bracketed block containing comments and CPython's bracketed tuple/list/dict continuation semantics, `cpython_tokenize_spanned_tokens_subset` including newline span, `cpython_tokenize_trailing_space_without_newline_subset` covering tokenizer-mode preservation of a final whitespace-only physical line and final comment-only physical line, `cpython_tokenize_bytes_encoding_token_subset` covering a synthesized final newline after very long comment-only bytes source without a final newline, and `cpython_tokenize_invalid_python_token_stream_subset` including tokenizer-mode synthetic final newline |
 | `INDENT` | supported | `lexes_if_block_indentation`, `lexes_tabs_in_indentation`, `cpython_tokenize_nested_indentation_subset`, `cpython_tokenize_max_indent_subset`, `cpython_tokenize_unmatched_indentation_subset` including CPython-style tab expansion and inconsistent tab/space indentation rejection, `cpython_tokenize_formfeed_whitespace_subset` including leading-formfeed indentation reset, `cpython_tokenize_explicit_line_joining_subset` including continuation-only lines that suppress unrelated indentation while still allowing a pending post-colon block indent, `cpython_tokenize_spanned_tokens_subset` including indent span |
 | `DEDENT` | supported | `lexes_if_block_indentation`, `cpython_tokenize_nested_indentation_subset`, `cpython_tokenize_max_indent_subset`, `cpython_tokenize_unmatched_indentation_subset` including unmatched-dedent spans, `cpython_tokenize_spanned_tokens_subset` including dedent span |
@@ -1421,7 +1774,7 @@ names like `from ._threading_handler import ...`.
 | `elif_stmt` | supported | `cpython_grammar_elif_subset`, `runs_elif_branch`, `cpython_invalid_control_flow_syntax_subset` |
 | `else_block` | supported | `cpython_grammar_if_else_subset`, `cpython_grammar_while_subset`, `cpython_grammar_for_subset`, `cpython_grammar_raise_and_try_except_subset`, `cpython_invalid_control_flow_syntax_subset`, `cpython_invalid_control_flow_context_subset` |
 | `while_stmt` | supported | `cpython_grammar_while_subset`, `runs_while_else_after_condition_finishes_loop`, `cpython_invalid_control_flow_syntax_subset`, `cpython_compile_control_flow_edge_subset`, `cpython_control_flow_in_finally_override_subset` |
-| `for_stmt` | supported | `cpython_grammar_for_subset`, `cpython_grammar_async_for_subset`, `cpython_builtin_range_for_iteration_subset`, `runs_for_loop_over_list`, `cpython_ast_tuple_unpacking_subset`, `cpython_invalid_assignment_target_subset`, `cpython_invalid_control_flow_syntax_subset`, `cpython_control_flow_in_finally_override_subset`, `cpython_control_flow_inside_except_and_with_subset` including CPython-derived break/continue through `try/finally`, inside `finally`, inside `with`, and inside `async with` |
+| `for_stmt` | supported | `cpython_grammar_for_subset`, `cpython_grammar_async_for_subset`, `cpython_builtin_range_for_iteration_subset`, `runs_for_loop_over_list`, `runs_for_loop_over_mutating_list`, `cpython_ast_tuple_unpacking_subset`, `cpython_invalid_assignment_target_subset`, `cpython_invalid_control_flow_syntax_subset`, `cpython_control_flow_in_finally_override_subset`, `cpython_control_flow_inside_except_and_with_subset` including CPython-derived break/continue through `try/finally`, inside `finally`, inside `with`, and inside `async with` |
 | `async_for_stmt` | supported | `cpython_grammar_async_for_subset` including CPython-derived protocol errors for missing `__aiter__`, missing `__anext__`, non-awaitable `__anext__` results, `__anext__` results whose `__await__` raises while preserving `__cause__`, async-for/async-with nesting with `else`, `__aiter__` exception propagation before loop-body execution, and `StopAsyncIteration` raised while assigning async-for targets propagating instead of ending the loop, `runs_async_for_loop` |
 | `invalid_if_stmt` | supported | Missing `if` colons and missing indented `if` blocks are rejected by `cpython_invalid_control_flow_syntax_subset` |
 | `invalid_elif_stmt` | supported | Top-level `elif`, missing `elif` colons, and missing indented `elif` blocks are rejected by `cpython_invalid_control_flow_syntax_subset` |
@@ -1747,3 +2100,48 @@ Runtime note: `cpython_type_params_runtime_class_namespace_subset` covers
 metaclass `__prepare__` returning a dict subclass as the class namespace,
 including class-body assignment capture and dict-subclass `__missing__`
 exceptions during nested generic class base lookup.
+
+Compile manifest note: `TestBooleanExpression`, `TestStaticAttributes`,
+`TestExpressionStackSize`, and `TestStackSizeStability` now have method-level
+audits in `cpython_test_manifest.md` that map all 52 current CPython methods
+to direct Rust evidence, with drift guards against the local CPython
+`Lib/test/test_compile.py` source. `TestSourcePositions` now has a separate
+method-level audit that classifies all 33 current methods, keeping the direct
+public-AST compile path and first-pass public code-position surfaces as
+`ported`, while exact CPython opcode/debug-range assertions are classified as
+`blocked_by_cpython_internal`.
+`TestInstructionSequence` has a method-level audit that keeps all 3 current
+methods classified as `blocked_by_cpython_internal` because they require
+CPython's `_testinternalcapi` instruction-sequence object and opcode metadata.
+
+Builtin manifest note: `TestBreakpoint`, `PtyTests`, `ShutdownTest`, and
+`ImmortalTests` now have method-level audits that keep all 23 current CPython
+methods classified as runtime or CPython-internal coverage, with drift guards
+against the local `Lib/test/test_builtin.py` source. `TestType` has a separate
+method-level audit that maps all 10 current CPython methods to Rust evidence or
+explicit partial gaps. Eight methods are `ported`; `test_type_name` and
+`test_type_doc` remain `partial` for surrogate-code-point `UnicodeEncodeError`
+branches.
+
+Builtin runtime note: `cpython_builtin_bool_notimplemented_subset` now ports
+`BuiltinTest::test_bool_notimplemented`, rejecting `NotImplemented` in
+`bool()`, `if`, and `not` boolean contexts. The differential harness keeps the
+version-stable singleton identity/equality and unsupported set-dunder
+`NotImplemented` surface separate from the current-source boolean-context
+rejection, because the default system `python3` used by the harness still has
+the older deprecation-warning behavior.
+
+Builtin singleton note: `cpython_builtin_construct_singletons_subset` now ports
+`BuiltinTest::test_construct_singletons`, covering zero-argument construction of
+`NoneType`, `ellipsis`, and `NotImplementedType` back to the existing singleton
+objects and TypeError rejection for positional or keyword constructor
+arguments.
+`cpython_builtin_singleton_attribute_access_subset` now ports
+`BuiltinTest::test_singleton_attribute_access`, covering `__class__` identity
+for `NotImplemented` and `Ellipsis`, their type objects being instances of
+`type`, instance attribute read/write rejection, and class attribute assignment
+rejection for the singleton type objects.
+`cpython_builtin_generator_dynamic_lookup_subset` now ports the public semantic
+part of `BuiltinTest::test_all_any_tuple_list_set_optimization`, covering
+dynamic global and builtins-module lookup for `all`, `any`, `tuple`, `list`,
+and `set` when used around generator expressions.

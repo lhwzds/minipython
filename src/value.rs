@@ -7,13 +7,14 @@ use num_bigint::BigInt;
 use num_traits::ToPrimitive;
 
 use crate::bytecode::Register;
-use crate::bytecode::{ExceptHandler, Instruction};
+use crate::bytecode::{ExceptHandler, Instruction, instructions_without_debug_positions};
 
 pub type Scope = Rc<RefCell<HashMap<String, Value>>>;
 pub type ListRef = Rc<RefCell<Vec<Value>>>;
 pub type TupleRef = Rc<Vec<Value>>;
 pub type SetRef = Rc<RefCell<Vec<Value>>>;
 pub type FrozenSetRef = Rc<Vec<Value>>;
+pub type FloatRef = Rc<f64>;
 pub type DictRef = Rc<RefCell<DictStorage>>;
 pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
 pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
@@ -21,6 +22,7 @@ pub type NamedTupleTypeRef = Rc<NamedTupleType>;
 pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
 
 pub const EXCEPTION_TRACEBACK_ATTR: &str = "\0minipython_traceback";
+pub const INT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_int_storage";
 pub const NAMED_TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_namedtuple_storage";
 
 #[derive(Debug, Clone)]
@@ -147,6 +149,8 @@ pub struct CodeLineSpan {
     pub start: usize,
     pub end: usize,
     pub line: i64,
+    pub column: Option<i64>,
+    pub end_column: Option<i64>,
 }
 
 pub fn list_value(items: Vec<Value>) -> Value {
@@ -155,6 +159,10 @@ pub fn list_value(items: Vec<Value>) -> Value {
 
 pub fn tuple_value(items: Vec<Value>) -> Value {
     Value::Tuple(Rc::new(items))
+}
+
+pub fn float_value(value: f64) -> Value {
+    Value::Float(Rc::new(value))
 }
 
 pub fn set_value(items: Vec<Value>) -> Value {
@@ -363,7 +371,7 @@ pub enum ConstEvaluatorKind {
 pub enum Value {
     Number(i64),
     BigInt(BigInt),
-    Float(f64),
+    Float(FloatRef),
     Complex {
         real: f64,
         imag: f64,
@@ -440,6 +448,16 @@ pub enum Value {
         filename: String,
         instructions: Vec<Instruction>,
         line_spans: Vec<CodeLineSpan>,
+        varnames: Vec<String>,
+        consts: Vec<Value>,
+        flags: i64,
+        freevars: Vec<String>,
+        name: String,
+        identity: Rc<()>,
+    },
+    Cell {
+        name: String,
+        scope: Scope,
         identity: Rc<()>,
     },
     DeferredTypeParamExpr(DeferredTypeParamExprRef),
@@ -452,18 +470,19 @@ pub enum Value {
         step: Option<Box<Value>>,
     },
     Range {
-        start: i64,
-        stop: i64,
-        step: i64,
+        start: BigInt,
+        stop: BigInt,
+        step: BigInt,
     },
     RangeIterator {
-        current: i64,
-        stop: i64,
-        step: i64,
+        current: BigInt,
+        stop: BigInt,
+        step: BigInt,
     },
     ListIterator {
-        items: Vec<Value>,
+        items: ListRef,
         index: usize,
+        exhausted: bool,
     },
     TupleIterator {
         items: Vec<Value>,
@@ -562,6 +581,7 @@ pub enum Value {
         is_async: bool,
         first_line: usize,
         line_sequence: Vec<usize>,
+        position_columns: Vec<Option<(usize, usize)>>,
         identity: Rc<()>,
         owner_class: Option<Box<Value>>,
     },
@@ -662,6 +682,29 @@ pub enum Value {
         receiver: Box<Value>,
         identity: Rc<()>,
     },
+    Partial {
+        function: Box<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        identity: Rc<()>,
+    },
+    OperatorAttrGetter {
+        attrs: Vec<String>,
+        identity: Rc<()>,
+    },
+    OperatorItemGetter {
+        items: Vec<Value>,
+        identity: Rc<()>,
+    },
+    OperatorMethodCaller {
+        name: String,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        identity: Rc<()>,
+    },
+    InspectSignature {
+        text: String,
+    },
     Module {
         name: String,
         attrs: Scope,
@@ -677,6 +720,7 @@ pub enum Value {
         cause: Option<Box<Value>>,
         context: Option<Box<Value>>,
         suppress_context: bool,
+        identity: Rc<()>,
     },
     Builtin(String),
     None,
@@ -689,7 +733,7 @@ impl fmt::Display for Value {
         match self {
             Value::Number(value) => write!(f, "{value}"),
             Value::BigInt(value) => write!(f, "{value}"),
-            Value::Float(value) => write!(f, "{value:?}"),
+            Value::Float(value) => write!(f, "{}", format_float_display(**value)),
             Value::Complex { real, imag } => write!(f, "{}", format_complex(*real, *imag)),
             Value::String(value) => write!(f, "{value}"),
             Value::Bytes(value) => write!(f, "{}", repr_bytes(value)),
@@ -761,9 +805,10 @@ impl fmt::Display for Value {
             Value::CodeObject { filename, .. } => {
                 write!(f, "<code object <module>, file \"{filename}\", line 1>")
             }
+            Value::Cell { .. } => write!(f, "<cell object>"),
             Value::DeferredTypeParamExpr(_) => write!(f, "<deferred type parameter expression>"),
             Value::Traceback { .. } => write!(f, "<traceback object>"),
-            Value::Range { start, stop, step } if *step == 1 => {
+            Value::Range { start, stop, step } if step == &BigInt::from(1) => {
                 write!(f, "range({start}, {stop})")
             }
             Value::Range { start, stop, step } => write!(f, "range({start}, {stop}, {step})"),
@@ -845,7 +890,9 @@ impl fmt::Display for Value {
             Value::Instance {
                 class_name, fields, ..
             } => {
-                if let Some(rendered) = format_named_tuple_subclass(class_name, fields) {
+                if let Some(rendered) = format_int_subclass(fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_named_tuple_subclass(class_name, fields) {
                     write!(f, "{rendered}")
                 } else {
                     write!(f, "<{class_name} object>")
@@ -863,6 +910,22 @@ impl fmt::Display for Value {
             } => {
                 write!(f, "{}", format_bound_method(function, receiver))
             }
+            Value::Partial { .. } => write!(f, "<functools.partial object>"),
+            Value::OperatorAttrGetter { attrs, .. } => {
+                write!(f, "{}", format_operator_attrgetter(attrs))
+            }
+            Value::OperatorItemGetter { items, .. } => {
+                write!(f, "{}", format_operator_itemgetter(items))
+            }
+            Value::OperatorMethodCaller {
+                name,
+                args,
+                keywords,
+                ..
+            } => {
+                write!(f, "{}", format_operator_methodcaller(name, args, keywords))
+            }
+            Value::InspectSignature { text } => write!(f, "{text}"),
             Value::Module { name, .. } => write!(f, "<module {name}>"),
             Value::Exception {
                 message: Some(message),
@@ -898,6 +961,9 @@ impl fmt::Display for Value {
                 exceptions: Some(exceptions),
                 ..
             } => write!(f, "({})", format_subexception_count(exceptions.len())),
+            Value::Builtin(name) if is_builtin_type_display_name(name) => {
+                write!(f, "<class '{}'>", builtin_type_public_name(name))
+            }
             Value::Builtin(name) => write!(f, "<builtin {name}>"),
             Value::None => write!(f, "None"),
             Value::NotImplemented => write!(f, "NotImplemented"),
@@ -912,6 +978,35 @@ fn format_list_items(items: &[Value]) -> String {
         .map(format_value_repr)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn format_operator_attrgetter(attrs: &[String]) -> String {
+    let args = attrs
+        .iter()
+        .map(|attr| repr_string(attr))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("operator.attrgetter({args})")
+}
+
+fn format_operator_itemgetter(items: &[Value]) -> String {
+    format!("operator.itemgetter({})", format_list_items(items))
+}
+
+fn format_operator_methodcaller(
+    name: &str,
+    args: &[Value],
+    keywords: &[(String, Value)],
+) -> String {
+    let mut parts = Vec::with_capacity(1 + args.len() + keywords.len());
+    parts.push(repr_string(name));
+    parts.extend(args.iter().map(format_value_repr));
+    parts.extend(
+        keywords
+            .iter()
+            .map(|(name, value)| format!("{name}={}", format_value_repr(value))),
+    );
+    format!("operator.methodcaller({})", parts.join(", "))
 }
 
 fn format_subexception_count(count: usize) -> String {
@@ -1081,6 +1176,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::CodeObject { filename, .. } => {
             format!("<code object <module>, file \"{filename}\", line 1>")
         }
+        Value::Cell { .. } => "<cell object>".to_string(),
         Value::DeferredTypeParamExpr(_) => "<deferred type parameter expression>".to_string(),
         Value::Traceback { .. } => "<traceback object>".to_string(),
         Value::Function { name, .. } => format!("<function {name}>"),
@@ -1124,7 +1220,8 @@ fn format_value_repr(value: &Value) -> String {
         Value::TemplateInterpolation(interpolation) => format_template_interpolation(interpolation),
         Value::Instance {
             class_name, fields, ..
-        } => format_named_tuple_subclass(class_name, fields)
+        } => format_int_subclass(fields)
+            .or_else(|| format_named_tuple_subclass(class_name, fields))
             .unwrap_or_else(|| format!("<{class_name} object>")),
         Value::Property { .. } => "<property object>".to_string(),
         Value::NamedTupleFieldDescriptor { typ, index } => {
@@ -1140,6 +1237,16 @@ fn format_value_repr(value: &Value) -> String {
         Value::BoundMethod {
             function, receiver, ..
         } => format_bound_method(function, receiver),
+        Value::Partial { .. } => "<functools.partial object>".to_string(),
+        Value::OperatorAttrGetter { attrs, .. } => format_operator_attrgetter(attrs),
+        Value::OperatorItemGetter { items, .. } => format_operator_itemgetter(items),
+        Value::OperatorMethodCaller {
+            name,
+            args,
+            keywords,
+            ..
+        } => format_operator_methodcaller(name, args, keywords),
+        Value::InspectSignature { text } => format!("<Signature {text}>"),
         Value::Module { name, .. } => format!("<module {name}>"),
         Value::Exception {
             type_name,
@@ -1174,7 +1281,9 @@ fn format_complex(real: f64, imag: f64) -> String {
         return format!("{}j", format_complex_part(imag));
     }
 
-    let (sign, imag_abs) = if imag.is_sign_negative() {
+    let (sign, imag_abs) = if imag.is_nan() {
+        ('+', imag)
+    } else if imag.is_sign_negative() {
         ('-', -imag)
     } else {
         ('+', imag)
@@ -1199,7 +1308,108 @@ fn format_complex_part(value: f64) -> String {
         }
     }
 
-    format!("{value:?}")
+    format_float_display(value)
+}
+
+pub(crate) fn format_float_display(value: f64) -> String {
+    if value.is_nan() {
+        return "nan".to_string();
+    }
+    if value == f64::INFINITY {
+        return "inf".to_string();
+    }
+    if value == f64::NEG_INFINITY {
+        return "-inf".to_string();
+    }
+
+    normalize_float_display_exponent(format!("{value:?}"))
+}
+
+fn normalize_float_display_exponent(value: String) -> String {
+    let Some(index) = value.find(['e', 'E']) else {
+        return value;
+    };
+    let (mantissa, exponent) = value.split_at(index);
+    let marker = &exponent[..1];
+    let exponent = exponent[1..].parse::<i32>().unwrap_or(0);
+    let sign = if exponent < 0 { '-' } else { '+' };
+    format!("{mantissa}{marker}{sign}{:02}", exponent.abs())
+}
+
+fn is_builtin_type_display_name(name: &str) -> bool {
+    matches!(
+        name,
+        "object"
+            | "type"
+            | "bool"
+            | "int"
+            | "float"
+            | "complex"
+            | "str"
+            | "bytes"
+            | "bytearray"
+            | "memoryview"
+            | "list"
+            | "tuple"
+            | "dict"
+            | "set"
+            | "frozenset"
+            | "range"
+            | "slice"
+            | "mappingproxy"
+            | "ChainMap"
+            | "Counter"
+            | "OrderedDict"
+            | "UserList"
+            | "UserDict"
+            | "UserString"
+            | "SimpleNamespace"
+            | "property"
+            | "super"
+            | "staticmethod"
+            | "classmethod"
+            | "Generic"
+            | "Template"
+            | "Interpolation"
+            | "TemplateIter"
+            | "Hashable"
+            | "Iterable"
+            | "Iterator"
+            | "Generator"
+            | "Reversible"
+            | "Awaitable"
+            | "Coroutine"
+            | "AsyncIterable"
+            | "AsyncIterator"
+            | "AsyncGenerator"
+            | "Sized"
+            | "Container"
+            | "Callable"
+            | "Collection"
+            | "Buffer"
+            | "Sequence"
+            | "MutableSequence"
+            | "ByteString"
+            | "Mapping"
+            | "MutableMapping"
+            | "MappingView"
+            | "KeysView"
+            | "ItemsView"
+            | "ValuesView"
+            | "MutableSet"
+            | "NodeVisitor"
+            | "NodeTransformer"
+            | "NoneType"
+    ) || name.starts_with("ast.")
+        || name
+            .strip_prefix("typing.")
+            .is_some_and(|name| matches!(name, "TypeVar" | "TypeVarTuple" | "ParamSpec"))
+}
+
+fn builtin_type_public_name(name: &str) -> &str {
+    name.strip_prefix("typing.")
+        .or_else(|| name.strip_prefix("ast."))
+        .unwrap_or(name)
 }
 
 fn format_slice_part(value: &Option<Box<Value>>) -> String {
@@ -1295,18 +1505,6 @@ fn simple_namespace_entries_equal(left: &[(Value, Value)], right: &[(Value, Valu
     code_metadata_namespace_entries_equal(left, right).unwrap_or(left == right)
 }
 
-fn exception_attrs_equal(left: &[(String, Value)], right: &[(String, Value)]) -> bool {
-    let public_left = left
-        .iter()
-        .filter(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR)
-        .collect::<Vec<_>>();
-    let public_right = right
-        .iter()
-        .filter(|(name, _)| name != EXCEPTION_TRACEBACK_ATTR)
-        .collect::<Vec<_>>();
-    public_left == public_right
-}
-
 pub(crate) fn code_metadata_namespace_entries_equal(
     left: &[(Value, Value)],
     right: &[(Value, Value)],
@@ -1331,6 +1529,11 @@ fn code_metadata_consts_field(entries: &[(Value, Value)]) -> Option<&Value> {
     } else {
         None
     }
+}
+
+fn code_object_instructions_equal(left: &[Instruction], right: &[Instruction]) -> bool {
+    left == right
+        || instructions_without_debug_positions(left) == instructions_without_debug_positions(right)
 }
 
 fn string_field_value<'a>(entries: &'a [(Value, Value)], name: &str) -> Option<&'a Value> {
@@ -1375,14 +1578,39 @@ fn strict_constant_value_equal(left: &Value, right: &Value) -> bool {
             Value::CodeObject {
                 mode: left_mode,
                 instructions: left_instructions,
+                consts: left_consts,
+                varnames: left_varnames,
+                flags: left_flags,
+                freevars: left_freevars,
                 ..
             },
             Value::CodeObject {
                 mode: right_mode,
                 instructions: right_instructions,
+                consts: right_consts,
+                varnames: right_varnames,
+                flags: right_flags,
+                freevars: right_freevars,
                 ..
             },
-        ) => left_mode == right_mode && left_instructions == right_instructions,
+        ) => {
+            left_mode == right_mode
+                && code_object_instructions_equal(left_instructions, right_instructions)
+                && strict_constant_slices_equal(left_consts, right_consts)
+                && left_varnames == right_varnames
+                && left_flags == right_flags
+                && left_freevars == right_freevars
+        }
+        (
+            Value::Cell {
+                identity: left_identity,
+                ..
+            },
+            Value::Cell {
+                identity: right_identity,
+                ..
+            },
+        ) => Rc::ptr_eq(left_identity, right_identity),
         _ => false,
     }
 }
@@ -1431,13 +1659,13 @@ impl PartialEq for Value {
                     imag: right_imag,
                 },
             ) => left_real == right_real && left_imag == right_imag,
-            (Value::Number(left), Value::Float(right)) => (*left as f64) == *right,
-            (Value::Float(left), Value::Number(right)) => *left == (*right as f64),
+            (Value::Number(left), Value::Float(right)) => (*left as f64) == **right,
+            (Value::Float(left), Value::Number(right)) => **left == (*right as f64),
             (Value::BigInt(left), Value::Float(right)) => {
-                left.to_f64().is_some_and(|left| left == *right)
+                left.to_f64().is_some_and(|left| left == **right)
             }
             (Value::Float(left), Value::BigInt(right)) => {
-                right.to_f64().is_some_and(|right| *left == right)
+                right.to_f64().is_some_and(|right| **left == right)
             }
             (Value::Number(left), Value::Complex { real, imag })
             | (Value::Complex { real, imag }, Value::Number(left)) => {
@@ -1448,7 +1676,9 @@ impl PartialEq for Value {
                 left.to_f64().is_some_and(|left| left == *real) && *imag == 0.0
             }
             (Value::Float(left), Value::Complex { real, imag })
-            | (Value::Complex { real, imag }, Value::Float(left)) => *left == *real && *imag == 0.0,
+            | (Value::Complex { real, imag }, Value::Float(left)) => {
+                **left == *real && *imag == 0.0
+            }
             (Value::Bool(left), Value::Number(right))
             | (Value::Number(right), Value::Bool(left)) => bool_as_i64(*left) == *right,
             (Value::Bool(left), Value::BigInt(right))
@@ -1456,7 +1686,7 @@ impl PartialEq for Value {
                 BigInt::from(bool_as_i64(*left)) == *right
             }
             (Value::Bool(left), Value::Float(right)) | (Value::Float(right), Value::Bool(left)) => {
-                bool_as_i64(*left) as f64 == *right
+                bool_as_i64(*left) as f64 == **right
             }
             (Value::Bool(left), Value::Complex { real, imag })
             | (Value::Complex { real, imag }, Value::Bool(left)) => {
@@ -1548,14 +1778,39 @@ impl PartialEq for Value {
                 Value::CodeObject {
                     mode: left_mode,
                     instructions: left_instructions,
+                    consts: left_consts,
+                    varnames: left_varnames,
+                    flags: left_flags,
+                    freevars: left_freevars,
                     ..
                 },
                 Value::CodeObject {
                     mode: right_mode,
                     instructions: right_instructions,
+                    consts: right_consts,
+                    varnames: right_varnames,
+                    flags: right_flags,
+                    freevars: right_freevars,
                     ..
                 },
-            ) => left_mode == right_mode && left_instructions == right_instructions,
+            ) => {
+                left_mode == right_mode
+                    && code_object_instructions_equal(left_instructions, right_instructions)
+                    && strict_constant_slices_equal(left_consts, right_consts)
+                    && left_varnames == right_varnames
+                    && left_flags == right_flags
+                    && left_freevars == right_freevars
+            }
+            (
+                Value::Cell {
+                    identity: left_identity,
+                    ..
+                },
+                Value::Cell {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
             (
                 Value::DictView {
@@ -1690,13 +1945,19 @@ impl PartialEq for Value {
                 Value::ListIterator {
                     items: left_items,
                     index: left_index,
+                    exhausted: left_exhausted,
                 },
                 Value::ListIterator {
                     items: right_items,
                     index: right_index,
+                    exhausted: right_exhausted,
                 },
-            )
-            | (
+            ) => {
+                *left_items.borrow() == *right_items.borrow()
+                    && left_index == right_index
+                    && left_exhausted == right_exhausted
+            }
+            (
                 Value::TupleIterator {
                     items: left_items,
                     index: left_index,
@@ -2159,41 +2420,58 @@ impl PartialEq for Value {
             ) => Rc::ptr_eq(left_attrs, right_attrs),
             (
                 Value::Exception {
-                    type_name: left_type_name,
-                    type_hierarchy: left_type_hierarchy,
-                    type_object: left_type_object,
-                    message: left_message,
-                    args: left_args,
-                    attrs: left_attrs,
-                    exceptions: left_exceptions,
-                    cause: left_cause,
-                    context: left_context,
-                    suppress_context: left_suppress_context,
+                    identity: left_identity,
+                    ..
                 },
                 Value::Exception {
-                    type_name: right_type_name,
-                    type_hierarchy: right_type_hierarchy,
-                    type_object: right_type_object,
-                    message: right_message,
-                    args: right_args,
-                    attrs: right_attrs,
-                    exceptions: right_exceptions,
-                    cause: right_cause,
-                    context: right_context,
-                    suppress_context: right_suppress_context,
+                    identity: right_identity,
+                    ..
                 },
-            ) => {
-                left_type_name == right_type_name
-                    && left_type_hierarchy == right_type_hierarchy
-                    && left_type_object == right_type_object
-                    && left_message == right_message
-                    && left_args == right_args
-                    && exception_attrs_equal(left_attrs, right_attrs)
-                    && left_exceptions == right_exceptions
-                    && left_cause == right_cause
-                    && left_context == right_context
-                    && left_suppress_context == right_suppress_context
-            }
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::Partial {
+                    identity: left_identity,
+                    ..
+                },
+                Value::Partial {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::OperatorAttrGetter {
+                    identity: left_identity,
+                    ..
+                },
+                Value::OperatorAttrGetter {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::OperatorItemGetter {
+                    identity: left_identity,
+                    ..
+                },
+                Value::OperatorItemGetter {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::OperatorMethodCaller {
+                    identity: left_identity,
+                    ..
+                },
+                Value::OperatorMethodCaller {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::InspectSignature { text: left_text },
+                Value::InspectSignature { text: right_text },
+            ) => left_text == right_text,
             (Value::Builtin(left), Value::Builtin(right)) => left == right,
             (Value::None, Value::None) => true,
             (Value::NotImplemented, Value::NotImplemented) => true,
@@ -2238,6 +2516,14 @@ fn format_named_tuple_subclass(class_name: &str, fields: &Scope) -> Option<Strin
         &typ.fields,
         values.as_ref(),
     ))
+}
+
+fn format_int_subclass(fields: &Scope) -> Option<String> {
+    match fields.borrow().get(INT_SUBCLASS_STORAGE_FIELD).cloned()? {
+        Value::Number(value) => Some(value.to_string()),
+        Value::BigInt(value) => Some(value.to_string()),
+        _ => None,
+    }
 }
 
 fn namedtuple_field_name(typ: &NamedTupleType, index: usize) -> &str {
