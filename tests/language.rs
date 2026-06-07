@@ -1010,6 +1010,101 @@ fn sandbox_policy_allows_selected_stdlib_imports() {
 }
 
 #[test]
+fn sandbox_policy_allows_selected_stdlib_package_children() {
+    let sandbox = TestSandboxDir::new("allow-stdlib-children");
+    let policy = SandboxPolicy::allow_stdlib_modules(["collections"]).unwrap();
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import collections.abc\nprint(collections.abc.Sequence.__name__)",
+            sandbox.path(),
+            policy.clone(),
+        ),
+        Ok(output_lines(&["Sequence"]))
+    );
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy("import math", sandbox.path(), policy),
+        Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
+    );
+}
+
+#[test]
+fn sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims() {
+    let sandbox = TestSandboxDir::new("allow-extra-stdlib-shim");
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import weakref",
+            sandbox.path(),
+            SandboxPolicy::deny_stdlib(),
+        ),
+        Err("runtime error: ModuleNotFoundError: No module named 'weakref'".to_string())
+    );
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import weakref\nprint(hasattr(weakref, 'ref'))",
+            sandbox.path(),
+            SandboxPolicy::allow_stdlib_modules(["weakref"]).unwrap(),
+        ),
+        Ok(output_lines(&["True"]))
+    );
+}
+
+#[test]
+fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
+    assert_eq!(
+        run_source(
+            "for name in ['open', 'input']:\n    try:\n        eval(name)\n    except NameError as error:\n        print(name, error.__class__.__name__)"
+        ),
+        Ok(output_lines(&["open NameError", "input NameError"]))
+    );
+
+    for module in [
+        "socket",
+        "subprocess",
+        "signal",
+        "pty",
+        "_ssl",
+        "_socket",
+        "_ctypes",
+        "_testcapi",
+        "pdb",
+    ] {
+        assert_eq!(
+            run_source(&format!("import {module}")),
+            Err(format!(
+                "runtime error: ModuleNotFoundError: No module named '{module}'"
+            ))
+        );
+    }
+
+    assert_eq!(
+        run_source(
+            "import sys\nfor name in ['getrefcount', 'gettotalrefcount', 'getallocatedblocks']:\n    print(name, hasattr(sys, name))\ndef f():\n    pass\nfor name in ['co_code', 'co_stacksize']:\n    print(name, hasattr(f.__code__, name))"
+        ),
+        Ok(output_lines(&[
+            "getrefcount False",
+            "gettotalrefcount False",
+            "getallocatedblocks False",
+            "co_code False",
+            "co_stacksize False",
+        ]))
+    );
+
+    assert_eq!(
+        run_source(
+            "import sys\nfor expr in [lambda: breakpoint(), lambda: sys.__breakpointhook__()]:\n    try:\n        expr()\n    except RuntimeError as error:\n        print(str(error))"
+        ),
+        Ok(output_lines(&[
+            "default sys.breakpointhook requires pdb support in MiniPython",
+            "default sys.breakpointhook requires pdb support in MiniPython",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_propagates_into_virtual_modules() {
     assert_eq!(
         run_source_with_virtual_modules_and_policy(

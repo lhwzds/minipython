@@ -18,6 +18,13 @@ Status values:
 
 Recent runtime migration notes:
 
+- Sandbox stdlib coverage is scoped by the `Sandbox Stdlib Manifest` in
+  `tests/cpython_migration.md`. Required modules are `builtins`, `sys`,
+  `types`, `collections` / `collections.abc`, `math` / `math.integer`,
+  `array`, `copy`, `io.BytesIO`, `operator`, `functools`, `itertools`, and
+  `json`. Each required module must keep concrete `cpython_diff` evidence, and
+  partial modules must keep their supported and excluded surfaces documented in
+  that manifest rather than implying full CPython stdlib parity.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.

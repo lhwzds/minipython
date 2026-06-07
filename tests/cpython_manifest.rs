@@ -40,6 +40,14 @@ struct ManifestMethod<'a> {
     status: &'a str,
 }
 
+#[derive(Debug)]
+struct SandboxStdlibRow<'a> {
+    module: String,
+    supported_surface: &'a str,
+    diff_evidence: &'a str,
+    excluded_surface: &'a str,
+}
+
 #[test]
 fn cpython_test_manifest_summary_matches_source_groups() {
     let groups = manifest_groups();
@@ -2041,6 +2049,139 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
 }
 
 #[test]
+fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
+    let rows = sandbox_stdlib_rows();
+    let actual_modules = rows
+        .iter()
+        .map(|row| row.module.as_str())
+        .collect::<BTreeSet<_>>();
+    let expected_modules = [
+        "builtins",
+        "sys",
+        "types",
+        "collections / collections.abc",
+        "math / math.integer",
+        "array",
+        "copy",
+        "io.BytesIO",
+        "operator",
+        "functools",
+        "itertools",
+        "json",
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual_modules, expected_modules,
+        "sandbox stdlib manifest modules drifted"
+    );
+
+    for row in rows {
+        assert!(
+            !row.supported_surface.is_empty(),
+            "sandbox stdlib row `{}` must document its supported surface",
+            row.module
+        );
+        assert!(
+            !row.excluded_surface.is_empty(),
+            "sandbox stdlib row `{}` must document its excluded surface",
+            row.module
+        );
+
+        let evidence_names = backtick_tokens(row.diff_evidence);
+        assert!(
+            !evidence_names.is_empty(),
+            "sandbox stdlib row `{}` must cite concrete cpython_diff evidence",
+            row.module
+        );
+
+        for evidence in evidence_names {
+            let function_name = evidence.replace('-', "_");
+            assert!(
+                !evidence.contains('*'),
+                "sandbox stdlib row `{}` must cite concrete evidence, not wildcard `{evidence}`",
+                row.module
+            );
+            assert!(
+                CPYTHON_DIFF.contains(evidence) || CPYTHON_DIFF.contains(&function_name),
+                "sandbox stdlib row `{}` cites missing cpython_diff evidence `{evidence}`",
+                row.module
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_coverage_links_sandbox_stdlib_scope_to_manifest() {
+    for required in [
+        "Sandbox Stdlib Manifest",
+        "tests/cpython_migration.md",
+        "cpython_diff",
+        "builtins",
+        "sys",
+        "types",
+        "collections",
+        "math",
+        "array",
+        "copy",
+        "io.BytesIO",
+        "operator",
+        "functools",
+        "itertools",
+        "json",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage document must mention sandbox stdlib scope term `{required}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_migration_documents_sandbox_stdlib_allow_list_semantics() {
+    for required in [
+        "Sandbox import policy is allow-list based",
+        "package entries cover",
+        "their child modules",
+        "SandboxPolicy::deny_stdlib()",
+        "must be explicitly allowed",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must mention sandbox allow-list semantic `{required}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_migration_documents_out_of_scope_runtime_stop_line_guard() {
+    for required in [
+        "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
+        "open()",
+        "input()",
+        "socket",
+        "subprocess",
+        "signal",
+        "pty",
+        "_ssl",
+        "_socket",
+        "_ctypes",
+        "_testcapi",
+        "C ABI",
+        "CPython-internal",
+        "co_stacksize",
+        "pdb",
+        "breakpoint",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must mention out-of-scope runtime stop-line term `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_token_tests_method_audit_is_complete() {
     let methods = token_tests_methods();
 
@@ -3042,6 +3183,54 @@ fn manifest_groups() -> Vec<ManifestGroup<'static>> {
             })
         })
         .collect()
+}
+
+fn sandbox_stdlib_rows() -> Vec<SandboxStdlibRow<'static>> {
+    let mut in_section = false;
+    let mut rows = Vec::new();
+
+    for line in CPYTHON_MIGRATION.lines() {
+        if line == "## Sandbox Stdlib Manifest" {
+            in_section = true;
+            continue;
+        }
+
+        if in_section && line.starts_with("## ") {
+            break;
+        }
+
+        if !in_section {
+            continue;
+        }
+
+        let cells = table_cells(line);
+        if cells.len() != 4 {
+            continue;
+        }
+        let module = normalize_markdown_code_cell(cells[0]);
+        if module == "Module" || module.chars().all(|ch| ch == '-') {
+            continue;
+        }
+        rows.push(SandboxStdlibRow {
+            module,
+            supported_surface: cells[1],
+            diff_evidence: cells[2],
+            excluded_surface: cells[3],
+        });
+    }
+
+    rows
+}
+
+fn backtick_tokens(text: &str) -> Vec<&str> {
+    text.split('`')
+        .enumerate()
+        .filter_map(|(index, part)| (index % 2 == 1).then_some(part))
+        .collect()
+}
+
+fn normalize_markdown_code_cell(cell: &'static str) -> String {
+    cell.replace('`', "")
 }
 
 fn token_tests_methods() -> Vec<ManifestMethod<'static>> {

@@ -466,6 +466,68 @@ print(json.dumps(json.loads('"\\ud834\\udd20"')))"#,
 }
 
 #[test]
+fn cpython_math_core_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py public pure-memory core subset",
+        name: "math-core-values",
+        source: r#"import math
+print(round(math.pi, 3), round(math.e, 3), round(math.tau, 3))
+print(math.isfinite(1.0), math.isfinite(math.inf), math.isinf(-math.inf), math.isnan(math.nan))
+print(math.sqrt(9), math.gcd(12, 18), math.lcm(4, 6), math.factorial(5), math.isqrt(17))
+print(math.comb(5, 2), math.perm(5, 2), math.prod([2, 3, 4]), math.isclose(1.0, 1.0 + 1e-10))
+print(math.fabs(-3.5), math.trunc(3.9), math.floor(-1.2), math.ceil(-1.2))
+for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd(1.2), lambda: math.isclose(1.0, 1.1, rel_tol=-1.0)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_pure_memory_stdlib_core_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Pure-memory stdlib public smoke subset",
+        name: "pure-memory-stdlib-core",
+        source: r#"import collections, copy, functools, io, operator
+
+Point = collections.namedtuple('Point', 'x y')
+point = Point(1, 2)
+print(point, point.x, sorted(point._asdict().items()))
+counter = collections.Counter('ababa')
+delta = collections.Counter({'b': -2, 'c': 3})
+print(counter['a'], counter['z'], sorted(counter.items()), sorted((counter + delta).items()))
+
+data = [1, [2]]
+shallow = copy.copy(data)
+deep = copy.deepcopy(data)
+data[1].append(3)
+print(shallow[1], deep[1], shallow is data, deep is data)
+
+bio = io.BytesIO(b'ab')
+print(bio.read(1), bio.write(b'Z'), bio.getvalue())
+
+print(functools.reduce(lambda left, right: left + right, [1, 2, 3]))
+pow2 = functools.partial(pow, 2)
+print(pow2(5), pow2.func is pow, pow2.args)
+def wrapped():
+    return 'value'
+@functools.wraps(wrapped)
+def wrapper():
+    return wrapped()
+print(wrapper.__name__, wrapper())
+
+class Box:
+    pass
+box = Box()
+box.x = 7
+print(operator.add(2, 3), operator.mul('x', 3), operator.itemgetter(1)(['a', 'b']))
+print(operator.attrgetter('x')(box), operator.methodcaller('replace', 'a', 'b')('aardvark'))
+print(operator.truth([]), operator.is_(None, None), operator.contains([1, 2], 2))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count/repeat/chain/islice core subset",

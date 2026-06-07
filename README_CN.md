@@ -4,7 +4,30 @@
 
 ## 目标
 
-实现一个可维护、安全的 Rust Python：完整覆盖 Python 语法前端，逐步实现核心运行时和标准库子集，并按语义迁移 CPython 测试；对 CPython 内部实现测试做分类标记，而不是为了通过它们去复制 CPython。
+实现一个可维护、面向 sandbox 的 Rust Python，而不是完整复制
+CPython。MiniPython 应尽量完整覆盖 Python 语法前端，逐步实现核心运行时
+语义和安全的纯内存标准库子集，并按公共行为迁移 CPython 测试；对 CPython
+内部实现测试做分类标记，而不是为了通过它们去复制 CPython。
+
+## 范围
+
+范围内：
+
+- 尽量兼容 CPython 的语法前端：tokenizer、parser、AST、compile 降级和用户可见的语法/错误分类。
+- 核心运行时语义：对象模型、descriptor、MRO、函数、闭包、generator、async、异常、容器、数字、字符串、bytes、bytearray、array 和 memoryview。
+- 安全纯内存标准库模块：`builtins`、`sys`、`types`、`collections`、`math`、`array`、`copy`、`io.BytesIO`、`operator`、`functools`、`itertools` 和 `json`。
+  为了支持已迁移的 CPython 测试，runtime 可以存在额外的纯内存 compatibility shim；但除非写入 migration manifest 并明确支持面和排除面，否则它们不自动扩大默认产品 scope。
+- 通过可执行 differential tests 迁移 CPython 公共行为。每个 bundled stdlib 模块必须有对应的 `cpython_diff` case，支持面才算完成；如果只做 subset，必须在 migration 和 coverage 记录里写清支持 API 和排除 API。
+
+默认不做：
+
+- 完整 CPython 标准库。
+- 宿主 IO 集成，例如真实 `open()`、file descriptor、TTY、`input()` 和 `pty`。
+- 网络和进程集成，例如 `socket`、`subprocess` 和 `signal`。
+- C ABI 和 C 扩展兼容，例如 `_ssl`、`_socket`、`_ctypes` 和 `_testcapi`。
+- CPython 内部实现契约，例如 refcount、GC tracking、bytecode/opcode identity、解释器 specialization 和精确 `co_stacksize`。
+- 默认 `pdb` 集成和完整 `breakpoint()` 环境变量行为。
+- locale-sensitive 行为，除非后续明确提升为 sandbox runtime 需求。
 
 ## 安装
 

@@ -29,6 +29,72 @@ Every stdlib module added to the sandbox subset should carry a matching
 `cpython_diff` case before it is considered complete. Partial stdlib modules
 must document the supported public surface and the deliberately excluded APIs.
 
+## Sandbox Runtime Scope
+
+MiniPython is a sandbox-focused Rust Python, not a full CPython clone. Migration
+work should make CPython public behavior true for the supported sandbox surface
+without treating CPython implementation internals as product requirements.
+
+The current runtime scope includes:
+
+- CPython-compatible syntax frontend coverage where practical: tokenizer,
+  parser, AST, compiler lowering, and user-visible syntax/error classification.
+- Core runtime semantics: object model, descriptors, MRO, functions, closures,
+  generators, async constructs, exceptions, containers, numbers, strings,
+  bytes, bytearray, array, and memoryview behavior.
+- Safe pure-memory stdlib modules: `builtins`, `sys`, `types`, `collections`,
+  `math`, `array`, `copy`, `io.BytesIO`, `operator`, `functools`, `itertools`,
+  and `json`.
+
+Additional pure-memory compatibility shims may exist to unblock migrated
+CPython public tests, but they do not expand the default product scope unless
+this manifest records their supported surface, excluded surface, and CPython
+diff evidence. Sandbox import policy is allow-list based: package entries cover
+their child modules, but compatibility shims outside the required surface remain
+blocked under `SandboxPolicy::deny_stdlib()` and must be explicitly allowed by
+the embedding host.
+
+The default stop line excludes:
+
+- Full CPython standard library coverage.
+- Host I/O integration: real `open()`, file descriptors, TTY behavior,
+  `input()`, and `pty`.
+- Network and process integration: `socket`, `subprocess`, and `signal`.
+- C ABI and C extension compatibility, including `_ssl`, `_socket`, `_ctypes`,
+  and `_testcapi`.
+- CPython implementation contracts: refcounts, GC tracking, bytecode/opcode
+  identity, interpreter specialization, and exact `co_stacksize`.
+- Default `pdb` integration and full `breakpoint()` environment-variable
+  behavior.
+- Locale-sensitive behavior unless a later migration batch explicitly promotes
+  it into the sandbox runtime requirements.
+
+`out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards the
+host I/O, network, process, C ABI, CPython-internal, and default
+pdb/breakpoint stop line so these surfaces cannot appear in the default runtime
+accidentally.
+
+## Sandbox Stdlib Manifest
+
+This table is the required sandbox stdlib surface. A module can be useful and
+still remain partial; "complete" here means the documented supported surface has
+direct CPython diff evidence, not that the full CPython module has been cloned.
+
+| Module | Supported sandbox surface | CPython diff evidence | Excluded by default |
+| --- | --- | --- | --- |
+| `builtins` | Core constructors, exceptions, descriptors, import hook, `eval()` / `exec()` / `compile()`, iteration helpers, aggregates, numeric helpers, `breakpoint()` custom-hook path. | `globals-locals-builtins`, `exec-builtin`, `compile-code-object-builtin`, `builtin-breakpoint-custom-hook`, `iter-next-builtins`, `map-filter-builtins`. | `open()`, `input()`, host TTY behavior, default pdb-backed breakpoint behavior, and process/environment side effects. |
+| `sys` | In-memory module metadata, `modules`, stdio placeholders, `maxsize`, float/hash info, int digit-limit controls, frame inspection subset, breakpoint hook metadata. | `globals-locals-builtins`, `builtin-breakpoint-custom-hook`, `float-hash-and-sys-info`, `types-frame-locals-proxy-currentframe`. | Real argv/process state, real stdin/stdout/stderr streams, implementation refcount/GC/debug APIs. |
+| `types` | Public type aliases and selected constructors/helpers for module/class creation, mappingproxy, simple namespace, generic alias/union, coroutine helpers, frame/code/traceback aliases. | `types-method-descriptor-types`, `types-frame-locals-proxy-currentframe`, `types-int-dunder-format-matrix`, `types-float-dunder-format-matrix`. | CPython object-layout internals, exact C descriptor types beyond the public aliases, and interpreter lifecycle behavior. |
+| `collections` / `collections.abc` | `namedtuple`, `Counter`, `ChainMap`, `UserDict`, `UserList`, `deque`, selected ABCs and mixins used by the runtime and migrated CPython tests. | `pure-memory-stdlib-core`. | Full deque performance/lifetime internals, thread-safety stress, and unported ABC edge matrices. |
+| `math` / `math.integer` | Constants, classification, elementary functions, integer math, selected IEEE edge behavior, and deterministic public numeric results. | `cpython_math_core_diff_subset`. | Platform/libm implementation quirks and locale-sensitive parsing/formatting. |
+| `array` | Pure-memory `array.array` construction, sequence/mutation methods, bytes conversion, copy/deepcopy, buffer exposure, and `io.BytesIO` backed `tofile()` / `fromfile()` subset. | `cpython_array_module_and_constructor_public_surface_diff_subset`, `cpython_array_one_byte_public_sequence_diff_subset`, `cpython_array_one_byte_public_file_methods_diff_subset`. | Real file descriptors and C buffer/allocator internals. |
+| `copy` | `copy()`, `deepcopy()`, and `replace()` for supported runtime values and AST/simple namespace use cases. | `pure-memory-stdlib-core`, `cpython_array_one_byte_public_copy_byteswap_compare_diff_subset`. | Full pickle protocol byte compatibility and arbitrary extension-object copy hooks. |
+| `io.BytesIO` | In-memory bytes read/write/getvalue behavior used by arrays, memoryview, and byte-oriented tests. | `pure-memory-stdlib-core`, `array-one-byte-public-file-methods`. | Real files, buffering layers, text I/O, file descriptors, and OS-backed stream semantics. |
+| `operator` | Arithmetic/comparison helpers, sequence/member helpers, attrgetter/itemgetter/methodcaller, and selected signature/module metadata. | `pure-memory-stdlib-core`, `operator-precedence-and-associativity`. | Full pickle metadata and every CPython helper edge case until separately migrated. |
+| `functools` | `partial`, `partialmethod`, `reduce`, `cmp_to_key`, wrapper helpers, cache/lru-cache/cached-property, singledispatch, singledispatchmethod, and total_ordering subsets. | `pure-memory-stdlib-core`, `pow-builtin`. | Full CPython cache implementation internals, weakref/lifecycle subtleties, and unsupported descriptor edge cases. |
+| `itertools` | `count()`, `repeat()`, `chain()`, `islice()`, and `pairwise()` pure iterator behavior. | `cpython_itertools_core_diff_subset`; `cpython_itertools_pairwise_diff_subset` is gated for CPython 3.10+ oracles. | Full itertools module, combinatoric iterators, `chain.from_iterable()`, floating `count()` arithmetic, pickling/repr exactness. |
+| `json` | Pure in-memory `loads()` / `dumps()` data model subset for common JSON values, strings/escapes, numbers, bool/null, lists/tuples/dicts, and basic dict-key coercion. | `cpython_json_loads_dumps_diff_subset`. | File APIs, hooks, keyword options, unpaired surrogate storage, and full `JSONDecodeError` compatibility. |
+
 `tests/cpython_test_manifest.md` tracks CPython test modules by source test
 method count. Use it to decide which CPython module or class group is actually
 ported, partial, blocked by runtime/AST-module work, or not started.
