@@ -25,6 +25,10 @@ accepted programs and rejection status for invalid programs. It defaults to
 `python3`; set `MINIPYTHON_CPYTHON=/path/to/python` when validating newer
 syntax against a local CPython checkout.
 
+Every stdlib module added to the sandbox subset should carry a matching
+`cpython_diff` case before it is considered complete. Partial stdlib modules
+must document the supported public surface and the deliberately excluded APIs.
+
 `tests/cpython_test_manifest.md` tracks CPython test modules by source test
 method count. Use it to decide which CPython module or class group is actually
 ported, partial, blocked by runtime/AST-module work, or not started.

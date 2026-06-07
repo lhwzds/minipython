@@ -189,6 +189,27 @@ Recent runtime migration notes:
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.
+- The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`
+  and `cpython_json_loads_dumps_diff_subset`, covering the pure in-memory
+  first-pass `loads()` / `dumps()` public data model for objects, arrays,
+  strings and escapes including paired UTF-16 surrogate escapes, integers,
+  finite floats, booleans, null, and CPython's basic dict-key coercion for
+  `str` / `int` / finite `float` / `bool` / `None`. File APIs,
+  encoder/decoder subclass hooks, keyword options, unpaired surrogate storage,
+  and full `JSONDecodeError` compatibility remain intentionally outside this
+  sandbox subset.
+- The bundled `itertools` module includes
+  `cpython_itertools_count_repeat_chain_subset` and
+  `cpython_itertools_core_diff_subset`, covering the pure in-memory first-pass
+  `count()`, `repeat()`, `chain()`, `islice()`, and `pairwise()` iterator
+  protocol behavior.
+  This subset supports integer `count()` arguments, finite and infinite
+  `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
+  arbitrary supported iterables, and non-negative integer `islice()` windows
+  over finite or infinite iterators, plus adjacent-pair iteration over finite
+  and infinite sources. The broader `itertools` module, floating/non-integer
+  `count()` arithmetic, `chain.from_iterable()`, combinatoric iterators, and
+  pickling/repr edge cases remain open.
 - The bundled `math` module also includes `cpython_math_isclose_subset`,
   covering CPython `test_math.py::IsCloseTests` public relative and absolute
   tolerance behavior, identical values, near-zero comparisons, infinity/NaN

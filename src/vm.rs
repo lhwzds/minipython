@@ -8370,6 +8370,23 @@ impl Vm {
             Value::Builtin(name) if name == "pickle.loads" => {
                 self.call_pickle_loads(args, keywords)
             }
+            Value::Builtin(name) if name == "json.dumps" => self.call_json_dumps(args, keywords),
+            Value::Builtin(name) if name == "json.loads" => self.call_json_loads(args, keywords),
+            Value::Builtin(name) if name == "itertools.count" => {
+                self.call_itertools_count(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.repeat" => {
+                self.call_itertools_repeat(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.chain" => {
+                self.call_itertools_chain(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.islice" => {
+                self.call_itertools_islice(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.pairwise" => {
+                self.call_itertools_pairwise(args, keywords)
+            }
             Value::Builtin(name) if name == "ast.__replace__" => {
                 self.call_ast_replace_method(args, keywords)
             }
@@ -22026,6 +22043,254 @@ impl Vm {
         };
         let mut memo = HashMap::new();
         deep_copy_value(value, &mut memo)
+    }
+
+    fn call_json_loads(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: loads() does not accept keyword arguments".to_string());
+        }
+        let [source] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: loads() expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        let source = match source {
+            Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+            Value::Bytes(bytes) => String::from_utf8(bytes.as_ref().clone())
+                .map_err(|_| "ValueError: json.loads() source must be UTF-8".to_string())?,
+            Value::ByteArray(bytes) => String::from_utf8(bytes.borrow().bytes().to_vec())
+                .map_err(|_| "ValueError: json.loads() source must be UTF-8".to_string())?,
+            value => {
+                return Err(format!(
+                    "TypeError: the JSON object must be str, bytes or bytearray, not {}",
+                    type_name(value)
+                ));
+            }
+        };
+        JsonParser::new(&source).parse()
+    }
+
+    fn call_json_dumps(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: dumps() does not accept keyword arguments".to_string());
+        }
+        let [value] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: dumps() expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        Ok(Value::String(json_dumps_value(value)?))
+    }
+
+    fn call_itertools_count(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = vec![None, None];
+        let names = ["start", "step"];
+        if args.len() > names.len() {
+            return Err(format!(
+                "TypeError: count() expected at most 2 arguments, got {}",
+                args.len()
+            ));
+        }
+        for (index, value) in args.into_iter().enumerate() {
+            values[index] = Some(value);
+        }
+        for (name, value) in keywords {
+            let Some(index) = names.iter().position(|candidate| *candidate == name) else {
+                return Err(format!(
+                    "TypeError: count() got an unexpected keyword argument '{name}'"
+                ));
+            };
+            if values[index].is_some() {
+                return Err(format!(
+                    "TypeError: count() got multiple values for argument '{name}'"
+                ));
+            }
+            values[index] = Some(value);
+        }
+        let current = match values[0].take() {
+            Some(value) => self.index_big_int(value)?,
+            None => BigInt::from(0),
+        };
+        let step = match values[1].take() {
+            Some(value) => self.index_big_int(value)?,
+            None => BigInt::from(1),
+        };
+        Ok(shared_iterator(Value::ItertoolsCount { current, step }))
+    }
+
+    fn call_itertools_repeat(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = vec![None, None];
+        let names = ["object", "times"];
+        if args.len() > names.len() {
+            return Err(format!(
+                "TypeError: repeat() expected 1 or 2 arguments, got {}",
+                args.len()
+            ));
+        }
+        for (index, value) in args.into_iter().enumerate() {
+            values[index] = Some(value);
+        }
+        for (name, value) in keywords {
+            let Some(index) = names.iter().position(|candidate| *candidate == name) else {
+                return Err(format!(
+                    "TypeError: repeat() got an unexpected keyword argument '{name}'"
+                ));
+            };
+            if values[index].is_some() {
+                return Err(format!(
+                    "TypeError: repeat() got multiple values for argument '{name}'"
+                ));
+            }
+            values[index] = Some(value);
+        }
+        let value = values[0]
+            .take()
+            .ok_or_else(|| "TypeError: repeat() missing required argument 'object'".to_string())?;
+        let remaining = match values[1].take() {
+            Some(times) => {
+                let value = self.index_big_int(times)?;
+                if value.is_negative() {
+                    Some(BigInt::from(0))
+                } else {
+                    Some(value)
+                }
+            }
+            None => None,
+        };
+        Ok(shared_iterator(Value::ItertoolsRepeat {
+            value: Box::new(value),
+            remaining,
+        }))
+    }
+
+    fn call_itertools_chain(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: chain() does not accept keyword arguments".to_string());
+        }
+        let iterators = args
+            .into_iter()
+            .map(get_iter)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(shared_iterator(Value::ItertoolsChain {
+            iterators,
+            index: 0,
+        }))
+    }
+
+    fn call_itertools_islice(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: islice() does not accept keyword arguments".to_string());
+        }
+        if !(2..=4).contains(&args.len()) {
+            return Err(format!(
+                "TypeError: islice() expected 2 to 4 arguments, got {}",
+                args.len()
+            ));
+        }
+        let iterator = get_iter(args[0].clone())?;
+        let (start, stop, step) = match args.len() {
+            2 => (
+                0,
+                Some(self.itertools_islice_index(args[1].clone(), "Stop")?),
+                1,
+            ),
+            3 => (
+                self.itertools_islice_index(args[1].clone(), "Start")?,
+                self.itertools_islice_stop(args[2].clone())?,
+                1,
+            ),
+            4 => (
+                self.itertools_islice_index(args[1].clone(), "Start")?,
+                self.itertools_islice_stop(args[2].clone())?,
+                self.itertools_islice_step(args[3].clone())?,
+            ),
+            _ => unreachable!("argument count checked above"),
+        };
+        Ok(shared_iterator(Value::ItertoolsIslice {
+            iterator: Box::new(iterator),
+            position: 0,
+            next_position: start,
+            stop,
+            step,
+        }))
+    }
+
+    fn itertools_islice_stop(&mut self, value: Value) -> Result<Option<i64>, String> {
+        if matches!(value, Value::None) {
+            Ok(None)
+        } else {
+            self.itertools_islice_index(value, "Stop").map(Some)
+        }
+    }
+
+    fn itertools_islice_step(&mut self, value: Value) -> Result<i64, String> {
+        if matches!(value, Value::None) {
+            return Ok(1);
+        }
+        let step = self.itertools_islice_index(value, "Step")?;
+        if step <= 0 {
+            Err("ValueError: Step for islice() must be a positive integer or None".to_string())
+        } else {
+            Ok(step)
+        }
+    }
+
+    fn itertools_islice_index(&mut self, value: Value, name: &str) -> Result<i64, String> {
+        let index = self.index_i64(value, name)?;
+        if index < 0 {
+            Err(format!(
+                "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+            ))
+        } else {
+            Ok(index)
+        }
+    }
+
+    fn call_itertools_pairwise(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: pairwise() does not accept keyword arguments".to_string());
+        }
+        let [iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: pairwise() expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsPairwise {
+            iterator: Box::new(get_iter(iterable.clone())?),
+            previous: None,
+            initialized: false,
+        }))
     }
 
     fn call_ast_replace_method(
@@ -51694,6 +51959,11 @@ fn type_name(value: &Value) -> &str {
         Value::ZipIterator { .. } => "zip",
         Value::MapIterator { .. } => "map",
         Value::FilterIterator { .. } => "filter",
+        Value::ItertoolsCount { .. } => "count",
+        Value::ItertoolsRepeat { .. } => "repeat",
+        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsIslice { .. } => "islice",
+        Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -51802,6 +52072,11 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ZipIterator { .. } => "zip",
         Value::MapIterator { .. } => "map",
         Value::FilterIterator { .. } => "filter",
+        Value::ItertoolsCount { .. } => "count",
+        Value::ItertoolsRepeat { .. } => "repeat",
+        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsIslice { .. } => "islice",
+        Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -52771,6 +53046,367 @@ fn normalize_slice_part(value: Option<Value>) -> Option<Box<Value>> {
 
 fn unbox_slice_part(value: Option<Box<Value>>) -> Option<Value> {
     value.map(|value| *value)
+}
+
+struct JsonParser {
+    chars: Vec<char>,
+    pos: usize,
+}
+
+impl JsonParser {
+    fn new(source: &str) -> Self {
+        Self {
+            chars: source.chars().collect(),
+            pos: 0,
+        }
+    }
+
+    fn parse(&mut self) -> Result<Value, String> {
+        self.skip_whitespace();
+        let value = self.parse_value()?;
+        self.skip_whitespace();
+        if self.pos != self.chars.len() {
+            return self.error("Extra data");
+        }
+        Ok(value)
+    }
+
+    fn parse_value(&mut self) -> Result<Value, String> {
+        match self.peek() {
+            Some('"') => self.parse_string().map(Value::String),
+            Some('{') => self.parse_object(),
+            Some('[') => self.parse_array(),
+            Some('t') => {
+                self.expect_literal("true")?;
+                Ok(Value::Bool(true))
+            }
+            Some('f') => {
+                self.expect_literal("false")?;
+                Ok(Value::Bool(false))
+            }
+            Some('n') => {
+                self.expect_literal("null")?;
+                Ok(Value::None)
+            }
+            Some('-' | '0'..='9') => self.parse_number(),
+            Some(_) | None => self.error("Expecting value"),
+        }
+    }
+
+    fn parse_object(&mut self) -> Result<Value, String> {
+        self.expect_char('{')?;
+        self.skip_whitespace();
+        let mut entries = Vec::new();
+        if self.consume_if('}') {
+            return Ok(dict_value(entries));
+        }
+        loop {
+            self.skip_whitespace();
+            if self.peek() != Some('"') {
+                return self.error("Expecting property name enclosed in double quotes");
+            }
+            let key = self.parse_string()?;
+            self.skip_whitespace();
+            self.expect_char(':')?;
+            self.skip_whitespace();
+            let value = self.parse_value()?;
+            insert_dict_entry(&mut entries, Value::String(key), value)?;
+            self.skip_whitespace();
+            if self.consume_if('}') {
+                break;
+            }
+            self.expect_char(',')?;
+        }
+        Ok(dict_value(entries))
+    }
+
+    fn parse_array(&mut self) -> Result<Value, String> {
+        self.expect_char('[')?;
+        self.skip_whitespace();
+        let mut values = Vec::new();
+        if self.consume_if(']') {
+            return Ok(list_value(values));
+        }
+        loop {
+            self.skip_whitespace();
+            values.push(self.parse_value()?);
+            self.skip_whitespace();
+            if self.consume_if(']') {
+                break;
+            }
+            self.expect_char(',')?;
+        }
+        Ok(list_value(values))
+    }
+
+    fn parse_string(&mut self) -> Result<String, String> {
+        self.expect_char('"')?;
+        let mut value = String::new();
+        loop {
+            let Some(ch) = self.next() else {
+                return self.error("Unterminated string");
+            };
+            match ch {
+                '"' => return Ok(value),
+                '\\' => value.push_str(&self.parse_escape()?),
+                ch if ch <= '\u{1f}' => return self.error("Invalid control character"),
+                ch => value.push(ch),
+            }
+        }
+    }
+
+    fn parse_escape(&mut self) -> Result<String, String> {
+        let Some(ch) = self.next() else {
+            return self.error("Invalid escape");
+        };
+        match ch {
+            '"' => Ok("\"".to_string()),
+            '\\' => Ok("\\".to_string()),
+            '/' => Ok("/".to_string()),
+            'b' => Ok("\u{0008}".to_string()),
+            'f' => Ok("\u{000c}".to_string()),
+            'n' => Ok("\n".to_string()),
+            'r' => Ok("\r".to_string()),
+            't' => Ok("\t".to_string()),
+            'u' => self.parse_unicode_escape(),
+            _ => self.error("Invalid escape"),
+        }
+    }
+
+    fn parse_unicode_escape(&mut self) -> Result<String, String> {
+        let value = self.parse_hex_escape_unit()?;
+        if (0xd800..=0xdbff).contains(&value) {
+            let saved = self.pos;
+            if self.next() == Some('\\') && self.next() == Some('u') {
+                let low = self.parse_hex_escape_unit()?;
+                if (0xdc00..=0xdfff).contains(&low) {
+                    let codepoint = 0x10000 + ((value - 0xd800) << 10) + (low - 0xdc00);
+                    let ch = char::from_u32(codepoint).ok_or_else(|| {
+                        "ValueError: Invalid \\uXXXX escape in json.loads() subset".to_string()
+                    })?;
+                    return Ok(ch.to_string());
+                }
+            }
+            self.pos = saved;
+            return self.error("Unpaired surrogate escape");
+        }
+        if (0xdc00..=0xdfff).contains(&value) {
+            return self.error("Unpaired surrogate escape");
+        }
+        let ch = char::from_u32(value).ok_or_else(|| {
+            "ValueError: Invalid \\uXXXX escape in json.loads() subset".to_string()
+        })?;
+        Ok(ch.to_string())
+    }
+
+    fn parse_hex_escape_unit(&mut self) -> Result<u32, String> {
+        let mut value = 0_u32;
+        for _ in 0..4 {
+            let Some(ch) = self.next() else {
+                return self.error("Invalid \\uXXXX escape");
+            };
+            let Some(digit) = ch.to_digit(16) else {
+                return self.error("Invalid \\uXXXX escape");
+            };
+            value = (value << 4) | digit;
+        }
+        Ok(value)
+    }
+
+    fn parse_number(&mut self) -> Result<Value, String> {
+        let start = self.pos;
+        self.consume_if('-');
+        match self.peek() {
+            Some('0') => {
+                self.pos += 1;
+                if matches!(self.peek(), Some('0'..='9')) {
+                    return self.error("Invalid number");
+                }
+            }
+            Some('1'..='9') => {
+                self.pos += 1;
+                while matches!(self.peek(), Some('0'..='9')) {
+                    self.pos += 1;
+                }
+            }
+            _ => return self.error("Invalid number"),
+        }
+        let mut is_float = false;
+        if self.consume_if('.') {
+            is_float = true;
+            let mut digits = 0;
+            while matches!(self.peek(), Some('0'..='9')) {
+                self.pos += 1;
+                digits += 1;
+            }
+            if digits == 0 {
+                return self.error("Invalid number");
+            }
+        }
+        if matches!(self.peek(), Some('e' | 'E')) {
+            is_float = true;
+            self.pos += 1;
+            if matches!(self.peek(), Some('+' | '-')) {
+                self.pos += 1;
+            }
+            let mut digits = 0;
+            while matches!(self.peek(), Some('0'..='9')) {
+                self.pos += 1;
+                digits += 1;
+            }
+            if digits == 0 {
+                return self.error("Invalid number");
+            }
+        }
+        let text: String = self.chars[start..self.pos].iter().collect();
+        if is_float {
+            let value = text
+                .parse::<f64>()
+                .map_err(|_| "ValueError: Invalid number in json.loads() subset".to_string())?;
+            if !value.is_finite() {
+                return self.error("Invalid number");
+            }
+            Ok(float_value(value))
+        } else {
+            let integer = BigInt::parse_bytes(text.as_bytes(), 10)
+                .ok_or_else(|| "ValueError: Invalid number in json.loads() subset".to_string())?;
+            Ok(normalize_big_int(integer))
+        }
+    }
+
+    fn expect_literal(&mut self, literal: &str) -> Result<(), String> {
+        for expected in literal.chars() {
+            if self.next() != Some(expected) {
+                return self.error("Expecting value");
+            }
+        }
+        Ok(())
+    }
+
+    fn expect_char(&mut self, expected: char) -> Result<(), String> {
+        if self.next() == Some(expected) {
+            Ok(())
+        } else {
+            self.error("Unexpected character")
+        }
+    }
+
+    fn consume_if(&mut self, expected: char) -> bool {
+        if self.peek() == Some(expected) {
+            self.pos += 1;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn skip_whitespace(&mut self) {
+        while matches!(self.peek(), Some(' ' | '\n' | '\r' | '\t')) {
+            self.pos += 1;
+        }
+    }
+
+    fn peek(&self) -> Option<char> {
+        self.chars.get(self.pos).copied()
+    }
+
+    fn next(&mut self) -> Option<char> {
+        let ch = self.peek()?;
+        self.pos += 1;
+        Some(ch)
+    }
+
+    fn error<T>(&self, message: &str) -> Result<T, String> {
+        Err(format!("ValueError: {message} in json.loads() subset"))
+    }
+}
+
+fn json_dumps_value(value: &Value) -> Result<String, String> {
+    match value {
+        Value::None => Ok("null".to_string()),
+        Value::Bool(true) => Ok("true".to_string()),
+        Value::Bool(false) => Ok("false".to_string()),
+        Value::Number(value) => Ok(value.to_string()),
+        Value::BigInt(value) => Ok(value.to_string()),
+        Value::Float(value) if value.is_finite() => Ok(format_float_display(**value)),
+        Value::Float(_) => {
+            Err("ValueError: Out of range float values are not JSON compliant".to_string())
+        }
+        Value::String(value) | Value::IdentityString { value, .. } => {
+            Ok(format!("\"{}\"", json_escape_string(value)))
+        }
+        Value::List(items) => json_dumps_sequence(&items.borrow()),
+        Value::Tuple(items) => json_dumps_sequence(items),
+        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries),
+        value => Err(format!(
+            "TypeError: Object of type {} is not JSON serializable",
+            type_name(value)
+        )),
+    }
+}
+
+fn json_dumps_sequence(items: &[Value]) -> Result<String, String> {
+    let mut parts = Vec::with_capacity(items.len());
+    for item in items {
+        parts.push(json_dumps_value(item)?);
+    }
+    Ok(format!("[{}]", parts.join(", ")))
+}
+
+fn json_dumps_dict(entries: &[(Value, Value)]) -> Result<String, String> {
+    let mut parts = Vec::with_capacity(entries.len());
+    for (key, value) in entries {
+        let key = json_dumps_dict_key(key)?;
+        parts.push(format!(
+            "\"{}\": {}",
+            json_escape_string(&key),
+            json_dumps_value(value)?
+        ));
+    }
+    Ok(format!("{{{}}}", parts.join(", ")))
+}
+
+fn json_dumps_dict_key(key: &Value) -> Result<String, String> {
+    match key {
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        Value::Bool(true) => Ok("true".to_string()),
+        Value::Bool(false) => Ok("false".to_string()),
+        Value::None => Ok("null".to_string()),
+        Value::Number(value) => Ok(value.to_string()),
+        Value::BigInt(value) => Ok(value.to_string()),
+        Value::Float(value) if value.is_finite() => Ok(format_float_display(**value)),
+        Value::Float(_) => {
+            Err("ValueError: Out of range float values are not JSON compliant".to_string())
+        }
+        value => Err(format!(
+            "TypeError: keys must be str, int, float, bool or None, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn json_escape_string(value: &str) -> String {
+    let mut escaped = String::new();
+    for ch in value.chars() {
+        match ch {
+            '"' => escaped.push_str("\\\""),
+            '\\' => escaped.push_str("\\\\"),
+            '\u{0008}' => escaped.push_str("\\b"),
+            '\u{000c}' => escaped.push_str("\\f"),
+            '\n' => escaped.push_str("\\n"),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            ch if ch <= '\u{001f}' => escaped.push_str(&format!("\\u{:04x}", ch as u32)),
+            ch if ch.is_ascii() => escaped.push(ch),
+            ch => {
+                let mut units = [0_u16; 2];
+                for unit in ch.encode_utf16(&mut units) {
+                    escaped.push_str(&format!("\\u{unit:04x}"));
+                }
+            }
+        }
+    }
+    escaped
 }
 
 fn normalize_big_int(value: BigInt) -> Value {
@@ -65206,6 +65842,90 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             }
         }
         Value::ZipIterator { iterators, strict } => advance_plain_zip_iterator(iterators, *strict),
+        Value::ItertoolsCount { current, step } => {
+            let value = current.clone();
+            *current += step.clone();
+            Ok(IteratorAdvance::Yield(normalize_big_int(value)))
+        }
+        Value::ItertoolsRepeat { value, remaining } => {
+            if let Some(remaining) = remaining {
+                if remaining.is_zero() {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                *remaining -= BigInt::from(1);
+            }
+            Ok(IteratorAdvance::Yield(value.as_ref().clone()))
+        }
+        Value::ItertoolsChain { iterators, index } => {
+            while *index < iterators.len() {
+                match advance_plain_iterator(&mut iterators[*index])? {
+                    IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
+                    IteratorAdvance::Complete(_) => *index += 1,
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
+            Ok(IteratorAdvance::Complete(Value::None))
+        }
+        Value::ItertoolsIslice {
+            iterator,
+            position,
+            next_position,
+            stop,
+            step,
+        } => {
+            if stop.is_some_and(|stop| *next_position >= stop) {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            loop {
+                match advance_plain_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => {
+                        let current_position = *position;
+                        *position = position.saturating_add(1);
+                        if current_position == *next_position {
+                            *next_position = next_position.saturating_add(*step);
+                            return Ok(IteratorAdvance::Yield(value));
+                        }
+                    }
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+                if stop.is_some_and(|stop| *position >= stop) {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+            }
+        }
+        Value::ItertoolsPairwise {
+            iterator,
+            previous,
+            initialized,
+        } => {
+            if !*initialized {
+                match advance_plain_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => {
+                        *previous = Some(Box::new(value));
+                        *initialized = true;
+                    }
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
+            match advance_plain_iterator(iterator.as_mut())? {
+                IteratorAdvance::Yield(value) => {
+                    let Some(left) = previous.as_ref() else {
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    };
+                    let pair = tuple_value(vec![left.as_ref().clone(), value.clone()]);
+                    *previous = Some(Box::new(value));
+                    Ok(IteratorAdvance::Yield(pair))
+                }
+                IteratorAdvance::Complete(value) => Ok(IteratorAdvance::Complete(value)),
+                IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
+            }
+        }
         value => Err(format!("TypeError: {value} is not an iterator")),
     }
 }
@@ -66390,6 +67110,11 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ZipIterator { .. }
         | Value::MapIterator { .. }
         | Value::FilterIterator { .. }
+        | Value::ItertoolsCount { .. }
+        | Value::ItertoolsRepeat { .. }
+        | Value::ItertoolsChain { .. }
+        | Value::ItertoolsIslice { .. }
+        | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -66593,6 +67318,11 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ZipIterator { .. }
         | Value::MapIterator { .. }
         | Value::FilterIterator { .. }
+        | Value::ItertoolsCount { .. }
+        | Value::ItertoolsRepeat { .. }
+        | Value::ItertoolsChain { .. }
+        | Value::ItertoolsIslice { .. }
+        | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -66897,6 +67627,37 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 iterator,
             }))
         }
+        Value::ItertoolsCount { current, step } => {
+            Ok(shared_iterator(Value::ItertoolsCount { current, step }))
+        }
+        Value::ItertoolsRepeat { value, remaining } => {
+            Ok(shared_iterator(Value::ItertoolsRepeat { value, remaining }))
+        }
+        Value::ItertoolsChain { iterators, index } => {
+            Ok(shared_iterator(Value::ItertoolsChain { iterators, index }))
+        }
+        Value::ItertoolsIslice {
+            iterator,
+            position,
+            next_position,
+            stop,
+            step,
+        } => Ok(shared_iterator(Value::ItertoolsIslice {
+            iterator,
+            position,
+            next_position,
+            stop,
+            step,
+        })),
+        Value::ItertoolsPairwise {
+            iterator,
+            previous,
+            initialized,
+        } => Ok(shared_iterator(Value::ItertoolsPairwise {
+            iterator,
+            previous,
+            initialized,
+        })),
         Value::CallIterator {
             callable,
             sentinel,
@@ -72664,6 +73425,11 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ZipIterator { .. } => Ok(true),
         Value::MapIterator { .. } => Ok(true),
         Value::FilterIterator { .. } => Ok(true),
+        Value::ItertoolsCount { .. } => Ok(true),
+        Value::ItertoolsRepeat { .. } => Ok(true),
+        Value::ItertoolsChain { .. } => Ok(true),
+        Value::ItertoolsIslice { .. } => Ok(true),
+        Value::ItertoolsPairwise { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

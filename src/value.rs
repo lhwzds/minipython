@@ -635,6 +635,30 @@ pub enum Value {
         function: Box<Value>,
         iterator: Box<Value>,
     },
+    ItertoolsCount {
+        current: BigInt,
+        step: BigInt,
+    },
+    ItertoolsRepeat {
+        value: Box<Value>,
+        remaining: Option<BigInt>,
+    },
+    ItertoolsChain {
+        iterators: Vec<Value>,
+        index: usize,
+    },
+    ItertoolsIslice {
+        iterator: Box<Value>,
+        position: i64,
+        next_position: i64,
+        stop: Option<i64>,
+        step: i64,
+    },
+    ItertoolsPairwise {
+        iterator: Box<Value>,
+        previous: Option<Box<Value>>,
+        initialized: bool,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1037,6 +1061,11 @@ impl fmt::Display for Value {
             Value::ZipIterator { .. } => write!(f, "<zip object>"),
             Value::MapIterator { .. } => write!(f, "<map object>"),
             Value::FilterIterator { .. } => write!(f, "<filter object>"),
+            Value::ItertoolsCount { .. } => write!(f, "count(...)"),
+            Value::ItertoolsRepeat { .. } => write!(f, "repeat(...)"),
+            Value::ItertoolsChain { .. } => write!(f, "<itertools.chain object>"),
+            Value::ItertoolsIslice { .. } => write!(f, "<itertools.islice object>"),
+            Value::ItertoolsPairwise { .. } => write!(f, "<itertools.pairwise object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),

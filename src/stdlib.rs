@@ -570,6 +570,13 @@ pub(crate) fn create_module(
             "re",
             vec![("findall", Value::Builtin("re.findall".to_string()))],
         )),
+        "json" => Ok(module_value(
+            "json",
+            vec![
+                ("loads", Value::Builtin("json.loads".to_string())),
+                ("dumps", Value::Builtin("json.dumps".to_string())),
+            ],
+        )),
         "copy" => Ok(module_value(
             "copy",
             vec![
@@ -669,6 +676,16 @@ pub(crate) fn create_module(
                     Value::Builtin("functools.total_ordering".to_string()),
                 ),
                 ("wraps", Value::Builtin("functools.wraps".to_string())),
+            ],
+        )),
+        "itertools" => Ok(module_value(
+            "itertools",
+            vec![
+                ("chain", Value::Builtin("itertools.chain".to_string())),
+                ("count", Value::Builtin("itertools.count".to_string())),
+                ("islice", Value::Builtin("itertools.islice".to_string())),
+                ("pairwise", Value::Builtin("itertools.pairwise".to_string())),
+                ("repeat", Value::Builtin("itertools.repeat".to_string())),
             ],
         )),
         "operator" => Ok(operator_module_value()),
@@ -2111,6 +2128,11 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::ZipIterator { .. } => "zip",
         Value::MapIterator { .. } => "map",
         Value::FilterIterator { .. } => "filter",
+        Value::ItertoolsCount { .. } => "count",
+        Value::ItertoolsRepeat { .. } => "repeat",
+        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsIslice { .. } => "islice",
+        Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),

@@ -444,6 +444,84 @@ fn cpython_bytes_case_path(name: &str) -> PathBuf {
     path
 }
 
+#[test]
+fn cpython_json_loads_dumps_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads/dumps core data model subset",
+        name: "json-loads-dumps-core-values",
+        source: r#"import json
+source = '{"a": 1, "b": [true, false, null], "c": "x\\ny"}'
+value = json.loads(source)
+print(value)
+print(value['a'], value['b'], repr(value['c']))
+print(json.loads(b'[1, 2.5, -3, 4e2]'))
+for item in [None, True, False, 0, -3, 12, 1.5, 'plain', 'a\nb', [1, True, None], {'a': 1, 'b': [False, None]}]:
+    encoded = json.dumps(item)
+    print(encoded)
+    print(json.loads(encoded) == item)
+print(json.dumps({'quote': '"', 'slash': '\\', 'nonascii': 'é'}))
+print(json.dumps({2: 'two', 4.5: 'float', False: 'no', None: 'nil'}))
+print(json.dumps(json.loads('"\\ud834\\udd20"')))"#,
+    });
+}
+
+#[test]
+fn cpython_itertools_core_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public count/repeat/chain/islice/pairwise core subset",
+        name: "itertools-count-repeat-chain-islice-pairwise-core",
+        source: r#"import itertools
+c = itertools.count(2, 3)
+print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
+ck = itertools.count(start=-1, step=2)
+print(next(ck), next(ck), next(ck))
+r = itertools.repeat('x', 3)
+print(type(r).__name__, iter(r) is r, list(r), list(r))
+print(list(itertools.repeat(object='y', times=2)))
+print(list(itertools.repeat('z', -1)))
+ch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))
+print(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))
+print(list(itertools.islice(range(10), 4)))
+print(list(itertools.islice(range(10), 2, None)))
+print(list(itertools.islice(range(10), 1, 8, 3)))
+print(list(itertools.islice(itertools.count(10), 2, 8, 2)))
+it = iter(range(10))
+print(list(itertools.islice(it, 2, 5)), next(it))
+s = itertools.islice(range(3), 1)
+print(type(s).__name__, iter(s) is s)
+p = itertools.pairwise('abcd')
+print(type(p).__name__, iter(p) is p, list(p), list(p))
+print(list(itertools.pairwise([1])), list(itertools.pairwise([])))
+print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))
+try:
+    itertools.chain(iterable=[1])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.count(0, 1, 2)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.repeat()
+except TypeError as error:
+    print(error.__class__.__name__)
+for expr in [
+    lambda: itertools.islice(range(3)),
+    lambda: itertools.islice(range(3), -1),
+    lambda: itertools.islice(range(3), 1, -1),
+    lambda: itertools.islice(range(3), 1, 2, 0),
+    lambda: itertools.islice(iterable=range(3), stop=2),
+    lambda: itertools.pairwise(),
+    lambda: itertools.pairwise(range(3), range(3)),
+    lambda: itertools.pairwise(iterable=range(3)),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

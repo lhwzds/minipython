@@ -32046,6 +32046,45 @@ fn cpython_bytearray_regexps_subset() {
     );
 }
 
+// MiniPython exposes a sandbox-safe first-pass `json` module: pure in-memory
+// loads/dumps for the core JSON data model, without file APIs or custom hooks.
+#[test]
+fn cpython_json_loads_dumps_basic_subset() {
+    assert_output(
+        "import json\nsource = '{\"a\": 1, \"b\": [true, false, null], \"c\": \"x\\\\ny\"}'\nvalue = json.loads(source)\nprint(value)\nprint(value['a'], value['b'], repr(value['c']))\nprint(json.loads(b'[1, 2.5, -3, 4e2]'))\nfor item in [None, True, False, 0, -3, 12, 1.5, 'plain', 'a\\nb', [1, True, None], {'a': 1, 'b': [False, None]}]:\n    encoded = json.dumps(item)\n    print(encoded)\n    print(json.loads(encoded) == item)\nprint(json.dumps({'quote': '\"', 'slash': '\\\\', 'nonascii': 'é'}))\nprint(json.dumps({2: 'two', 4.5: 'float', False: 'no', None: 'nil'}))\nprint(json.dumps(json.loads('\"\\\\ud834\\\\udd20\"')))",
+        &[
+            "{'a': 1, 'b': [True, False, None], 'c': 'x\\ny'}",
+            "1 [True, False, None] 'x\\ny'",
+            "[1, 2.5, -3, 400.0]",
+            "null",
+            "True",
+            "true",
+            "True",
+            "false",
+            "True",
+            "0",
+            "True",
+            "-3",
+            "True",
+            "12",
+            "True",
+            "1.5",
+            "True",
+            "\"plain\"",
+            "True",
+            "\"a\\nb\"",
+            "True",
+            "[1, true, null]",
+            "True",
+            "{\"a\": 1, \"b\": [false, null]}",
+            "True",
+            "{\"quote\": \"\\\"\", \"slash\": \"\\\\\", \"nonascii\": \"\\u00e9\"}",
+            "{\"2\": \"two\", \"4.5\": \"float\", \"false\": \"no\", \"null\": \"nil\"}",
+            "\"\\ud834\\udd20\"",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray
@@ -34601,6 +34640,43 @@ fn cpython_map_filter_builtin_subset() {
             "TypeError",
             "TypeError",
             "ValueError",
+        ],
+    );
+}
+
+// MiniPython's first-pass `itertools` module covers pure in-memory iterator
+// primitives: integer `count()`, finite/infinite `repeat()`, and `chain()`.
+#[test]
+fn cpython_itertools_count_repeat_chain_subset() {
+    assert_output(
+        "import itertools\nc = itertools.count(2, 3)\nprint(type(c).__name__, iter(c) is c, next(c), next(c), next(c))\nck = itertools.count(start=-1, step=2)\nprint(next(ck), next(ck), next(ck))\nr = itertools.repeat('x', 3)\nprint(type(r).__name__, iter(r) is r, list(r), list(r))\nprint(list(itertools.repeat(object='y', times=2)))\nprint(list(itertools.repeat('z', -1)))\nch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))\nprint(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))\nprint(list(itertools.islice(range(10), 4)))\nprint(list(itertools.islice(range(10), 2, None)))\nprint(list(itertools.islice(range(10), 1, 8, 3)))\nprint(list(itertools.islice(itertools.count(10), 2, 8, 2)))\nit = iter(range(10))\nprint(list(itertools.islice(it, 2, 5)), next(it))\ns = itertools.islice(range(3), 1)\nprint(type(s).__name__, iter(s) is s)\np = itertools.pairwise('abcd')\nprint(type(p).__name__, iter(p) is p, list(p), list(p))\nprint(list(itertools.pairwise([1])), list(itertools.pairwise([])))\nprint(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))\nfor expr in [lambda: itertools.chain(iterable=[1]), lambda: itertools.count(0, 1, 2), lambda: itertools.repeat(), lambda: itertools.islice(range(3)), lambda: itertools.islice(range(3), -1), lambda: itertools.islice(range(3), 1, -1), lambda: itertools.islice(range(3), 1, 2, 0), lambda: itertools.islice(iterable=range(3), stop=2), lambda: itertools.pairwise(), lambda: itertools.pairwise(range(3), range(3)), lambda: itertools.pairwise(iterable=range(3))]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        &[
+            "count True 2 5 8",
+            "-1 1 3",
+            "repeat True ['x', 'x', 'x'] []",
+            "['y', 'y']",
+            "[]",
+            "chain True [1, 2, 'a', 'b', 9, 9] []",
+            "[0, 1, 2, 3]",
+            "[2, 3, 4, 5, 6, 7, 8, 9]",
+            "[1, 4, 7]",
+            "[12, 14, 16]",
+            "[2, 3, 4] 5",
+            "islice True",
+            "pairwise True [('a', 'b'), ('b', 'c'), ('c', 'd')] []",
+            "[] []",
+            "[(5, 6), (6, 7), (7, 8)]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
         ],
     );
 }
