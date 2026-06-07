@@ -5386,7 +5386,7 @@ fn runs_class_inheritance_and_header_arguments() {
     );
     assert_eq!(
         run_source(
-            "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {\"metaclass\": Base}\nclass FromUnpack(*bases, **kwargs):\n    pass\nprint(FromUnpack.__bases__[0].__name__, FromUnpack.label)"
+            "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {\"metaclass\": type}\nclass FromUnpack(*bases, **kwargs):\n    pass\nprint(FromUnpack.__bases__[0].__name__, FromUnpack.label)"
         ),
         Ok(vec!["Base base".to_string()])
     );

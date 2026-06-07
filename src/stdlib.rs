@@ -10,9 +10,62 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-pub(crate) const PYCF_ONLY_AST: i64 = 1024;
+pub(crate) const PYCF_ONLY_AST: i64 = 0x0400;
+pub(crate) const PYCF_ALLOW_TOP_LEVEL_AWAIT: i64 = 0x2000;
+pub(crate) const PYCF_OPTIMIZED_AST: i64 = 0x8000 | PYCF_ONLY_AST;
 pub(crate) const PICKLE_HIGHEST_PROTOCOL: i64 = 5;
 pub(crate) const DIS_LOAD_CONST_OPCODE: i64 = 100;
+pub(crate) const FUNCTOOLS_WRAPPER_ASSIGNMENTS: &[&str] = &[
+    "__module__",
+    "__name__",
+    "__qualname__",
+    "__doc__",
+    "__annotate__",
+    "__type_params__",
+];
+pub(crate) const FUNCTOOLS_WRAPPER_UPDATES: &[&str] = &["__dict__"];
+pub(crate) const TYPES_ALL: &[&str] = &[
+    "AsyncGeneratorType",
+    "BuiltinFunctionType",
+    "BuiltinMethodType",
+    "CapsuleType",
+    "CellType",
+    "ClassMethodDescriptorType",
+    "CodeType",
+    "CoroutineType",
+    "DynamicClassAttribute",
+    "EllipsisType",
+    "FrameLocalsProxyType",
+    "FrameType",
+    "FunctionType",
+    "GeneratorType",
+    "GenericAlias",
+    "GetSetDescriptorType",
+    "LambdaType",
+    "LazyImportType",
+    "MappingProxyType",
+    "MemberDescriptorType",
+    "MethodDescriptorType",
+    "MethodType",
+    "MethodWrapperType",
+    "ModuleType",
+    "NoneType",
+    "NotImplementedType",
+    "SimpleNamespace",
+    "TracebackType",
+    "UnionType",
+    "WrapperDescriptorType",
+    "coroutine",
+    "get_original_bases",
+    "new_class",
+    "prepare_class",
+    "resolve_bases",
+];
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct SysFlags {
+    pub bytes_warning: i64,
+}
 
 pub(crate) trait StdlibContext {
     fn stdlib_abs_value(&mut self, value: Value) -> Result<Value, String>;
@@ -42,7 +95,7 @@ pub(crate) trait StdlibContext {
     fn stdlib_divmod_values(&mut self, left: Value, right: Value)
     -> Result<(Value, Value), String>;
 
-    fn stdlib_hash_value(&self, value: &Value) -> Result<Value, String>;
+    fn stdlib_hash_value(&mut self, value: &Value) -> Result<Value, String>;
 
     fn stdlib_identity_value(&self, value: &Value) -> Value;
 
@@ -102,6 +155,7 @@ pub(crate) const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
     "eval",
     "exec",
     "compile",
+    "breakpoint",
     "range",
     "next",
     "iter",
@@ -354,6 +408,7 @@ pub(crate) const AST_MODULE_TYPE_NAMES: &[&str] = &[
 pub(crate) fn create_module(
     name: &str,
     sys_modules: Value,
+    flags: SysFlags,
     import_dependency: &mut dyn FnMut(&str) -> Result<Value, String>,
 ) -> Result<Value, String> {
     match name {
@@ -369,10 +424,30 @@ pub(crate) fn create_module(
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
                 ("maxsize", Value::Number(i64::MAX)),
+                ("float_repr_style", Value::String("short".to_string())),
+                ("float_info", sys_float_info_value()),
+                ("hash_info", sys_hash_info_value()),
                 ("stdin", stdio_stream_value("stdin")),
                 ("stdout", stdio_stream_value("stdout")),
                 ("stderr", stdio_stream_value("stderr")),
+                (
+                    "__breakpointhook__",
+                    Value::Builtin("sys.__breakpointhook__".to_string()),
+                ),
+                (
+                    "breakpointhook",
+                    Value::Builtin("sys.__breakpointhook__".to_string()),
+                ),
                 ("version", Value::String("minipython".to_string())),
+                (
+                    "flags",
+                    Value::SimpleNamespace {
+                        fields: stdlib_dict_ref_from_entries(vec![(
+                            Value::String("bytes_warning".to_string()),
+                            Value::Number(flags.bytes_warning),
+                        )]),
+                    },
+                ),
                 (
                     "get_int_max_str_digits",
                     Value::Builtin("sys.get_int_max_str_digits".to_string()),
@@ -392,6 +467,10 @@ pub(crate) fn create_module(
                 ("sleep", Value::Builtin("sleep".to_string())),
             ],
         )),
+        "io" => Ok(module_value(
+            "io",
+            vec![("BytesIO", Value::Builtin("io.BytesIO".to_string()))],
+        )),
         "math" => Ok(module_value(
             "math",
             vec![
@@ -403,19 +482,39 @@ pub(crate) fn create_module(
                 ("sqrt", Value::Builtin("sqrt".to_string())),
                 ("isfinite", Value::Builtin("math.isfinite".to_string())),
                 ("isinf", Value::Builtin("math.isinf".to_string())),
+                ("isclose", Value::Builtin("math.isclose".to_string())),
                 ("isnan", Value::Builtin("math.isnan".to_string())),
                 ("isnormal", Value::Builtin("math.isnormal".to_string())),
                 (
                     "issubnormal",
                     Value::Builtin("math.issubnormal".to_string()),
                 ),
+                ("dist", Value::Builtin("math.dist".to_string())),
+                ("comb", Value::Builtin("math.comb".to_string())),
+                ("factorial", Value::Builtin("math.factorial".to_string())),
                 ("gcd", Value::Builtin("math.gcd".to_string())),
+                ("hypot", Value::Builtin("math.hypot".to_string())),
+                ("isqrt", Value::Builtin("math.isqrt".to_string())),
                 ("lcm", Value::Builtin("math.lcm".to_string())),
+                ("perm", Value::Builtin("math.perm".to_string())),
+                ("pow", Value::Builtin("math.pow".to_string())),
                 ("prod", Value::Builtin("math.prod".to_string())),
+                ("sumprod", Value::Builtin("math.sumprod".to_string())),
                 ("fabs", Value::Builtin("math.fabs".to_string())),
+                ("fma", Value::Builtin("math.fma".to_string())),
+                ("fmax", Value::Builtin("math.fmax".to_string())),
+                ("fmin", Value::Builtin("math.fmin".to_string())),
+                ("fmod", Value::Builtin("math.fmod".to_string())),
+                ("frexp", Value::Builtin("math.frexp".to_string())),
+                ("fsum", Value::Builtin("math.fsum".to_string())),
+                ("ldexp", Value::Builtin("math.ldexp".to_string())),
+                ("modf", Value::Builtin("math.modf".to_string())),
+                ("nextafter", Value::Builtin("math.nextafter".to_string())),
+                ("remainder", Value::Builtin("math.remainder".to_string())),
                 ("copysign", Value::Builtin("math.copysign".to_string())),
                 ("signbit", Value::Builtin("math.signbit".to_string())),
                 ("trunc", Value::Builtin("math.trunc".to_string())),
+                ("ulp", Value::Builtin("math.ulp".to_string())),
                 ("ceil", Value::Builtin("math.ceil".to_string())),
                 ("floor", Value::Builtin("math.floor".to_string())),
                 ("degrees", Value::Builtin("math.degrees".to_string())),
@@ -423,6 +522,37 @@ pub(crate) fn create_module(
                 ("cbrt", Value::Builtin("math.cbrt".to_string())),
                 ("exp", Value::Builtin("math.exp".to_string())),
                 ("exp2", Value::Builtin("math.exp2".to_string())),
+                ("log", Value::Builtin("math.log".to_string())),
+                ("log1p", Value::Builtin("math.log1p".to_string())),
+                ("log2", Value::Builtin("math.log2".to_string())),
+                ("log10", Value::Builtin("math.log10".to_string())),
+                ("acos", Value::Builtin("math.acos".to_string())),
+                ("acosh", Value::Builtin("math.acosh".to_string())),
+                ("asin", Value::Builtin("math.asin".to_string())),
+                ("asinh", Value::Builtin("math.asinh".to_string())),
+                ("atan", Value::Builtin("math.atan".to_string())),
+                ("atan2", Value::Builtin("math.atan2".to_string())),
+                ("atanh", Value::Builtin("math.atanh".to_string())),
+                ("cos", Value::Builtin("math.cos".to_string())),
+                ("cosh", Value::Builtin("math.cosh".to_string())),
+                ("sin", Value::Builtin("math.sin".to_string())),
+                ("sinh", Value::Builtin("math.sinh".to_string())),
+                ("tan", Value::Builtin("math.tan".to_string())),
+                ("tanh", Value::Builtin("math.tanh".to_string())),
+            ],
+        )),
+        "math.integer" => Ok(module_value(
+            "math.integer",
+            vec![
+                ("comb", Value::Builtin("math.integer.comb".to_string())),
+                (
+                    "factorial",
+                    Value::Builtin("math.integer.factorial".to_string()),
+                ),
+                ("gcd", Value::Builtin("math.integer.gcd".to_string())),
+                ("isqrt", Value::Builtin("math.integer.isqrt".to_string())),
+                ("lcm", Value::Builtin("math.integer.lcm".to_string())),
+                ("perm", Value::Builtin("math.integer.perm".to_string())),
             ],
         )),
         "os" => Ok(module_value(
@@ -436,6 +566,10 @@ pub(crate) fn create_module(
             "os.path",
             vec![("sep", Value::String("/".to_string()))],
         )),
+        "re" => Ok(module_value(
+            "re",
+            vec![("findall", Value::Builtin("re.findall".to_string()))],
+        )),
         "copy" => Ok(module_value(
             "copy",
             vec![
@@ -444,14 +578,107 @@ pub(crate) fn create_module(
                 ("replace", Value::Builtin("copy.replace".to_string())),
             ],
         )),
+        "weakref" => Ok(module_value(
+            "weakref",
+            vec![
+                ("ref", Value::Builtin("weakref.ref".to_string())),
+                ("proxy", Value::Builtin("weakref.proxy".to_string())),
+                ("ReferenceType", builtin_type_value("weakref.ReferenceType")),
+                ("ProxyType", builtin_type_value("weakref.ProxyType")),
+                (
+                    "CallableProxyType",
+                    builtin_type_value("weakref.CallableProxyType"),
+                ),
+                (
+                    "ProxyTypes",
+                    tuple_value(vec![
+                        builtin_type_value("weakref.ProxyType"),
+                        builtin_type_value("weakref.CallableProxyType"),
+                    ]),
+                ),
+            ],
+        )),
+        "unittest" => Ok(module_value(
+            "unittest",
+            vec![("mock", import_dependency("unittest.mock")?)],
+        )),
+        "unittest.mock" => Ok(module_value(
+            "unittest.mock",
+            vec![(
+                "MagicMock",
+                Value::Builtin("unittest.mock.MagicMock".to_string()),
+            )],
+        )),
+        "_weakref" => Ok(module_value(
+            "_weakref",
+            vec![
+                ("ref", Value::Builtin("weakref.ref".to_string())),
+                ("proxy", Value::Builtin("weakref.proxy".to_string())),
+                ("ReferenceType", builtin_type_value("weakref.ReferenceType")),
+                ("ProxyType", builtin_type_value("weakref.ProxyType")),
+                (
+                    "CallableProxyType",
+                    builtin_type_value("weakref.CallableProxyType"),
+                ),
+            ],
+        )),
         "functools" => Ok(module_value(
             "functools",
-            vec![("partial", Value::Builtin("functools.partial".to_string()))],
+            vec![
+                (
+                    "WRAPPER_ASSIGNMENTS",
+                    string_tuple_value(FUNCTOOLS_WRAPPER_ASSIGNMENTS),
+                ),
+                (
+                    "WRAPPER_UPDATES",
+                    string_tuple_value(FUNCTOOLS_WRAPPER_UPDATES),
+                ),
+                (
+                    "cmp_to_key",
+                    Value::Builtin("functools.cmp_to_key".to_string()),
+                ),
+                ("cache", Value::Builtin("functools.cache".to_string())),
+                (
+                    "cached_property",
+                    Value::Builtin("functools.cached_property".to_string()),
+                ),
+                (
+                    "lru_cache",
+                    Value::Builtin("functools.lru_cache".to_string()),
+                ),
+                ("partial", Value::Builtin("functools.partial".to_string())),
+                (
+                    "partialmethod",
+                    Value::Builtin("functools.partialmethod".to_string()),
+                ),
+                ("reduce", Value::Builtin("functools.reduce".to_string())),
+                (
+                    "singledispatch",
+                    Value::Builtin("functools.singledispatch".to_string()),
+                ),
+                (
+                    "singledispatchmethod",
+                    Value::Builtin("functools.singledispatchmethod".to_string()),
+                ),
+                (
+                    "update_wrapper",
+                    Value::Builtin("functools.update_wrapper".to_string()),
+                ),
+                (
+                    "total_ordering",
+                    Value::Builtin("functools.total_ordering".to_string()),
+                ),
+                ("wraps", Value::Builtin("functools.wraps".to_string())),
+            ],
         )),
         "operator" => Ok(operator_module_value()),
         "decimal" => Ok(module_value(
             "decimal",
             vec![("Decimal", Value::Builtin("decimal.Decimal".to_string()))],
+        )),
+        "enum" => Ok(module_value(
+            "enum",
+            vec![("IntEnum", builtin_type_value("enum.IntEnum"))],
         )),
         "fractions" => Ok(module_value(
             "fractions",
@@ -468,9 +695,14 @@ pub(crate) fn create_module(
         "inspect" => Ok(module_value(
             "inspect",
             vec![
+                (
+                    "currentframe",
+                    Value::Builtin("inspect.currentframe".to_string()),
+                ),
                 ("signature", Value::Builtin("inspect.signature".to_string())),
                 ("CO_GENERATOR", Value::Number(0x0020)),
                 ("CO_COROUTINE", Value::Number(0x0080)),
+                ("CO_ITERABLE_COROUTINE", Value::Number(0x0100)),
                 ("CO_ASYNC_GENERATOR", Value::Number(0x0200)),
             ],
         )),
@@ -510,35 +742,46 @@ pub(crate) fn create_module(
         "typing" => Ok(module_value(
             "typing",
             vec![
+                ("Any", Value::Builtin("typing.Any".to_string())),
                 ("Generic", builtin_type_value("Generic")),
+                ("GenericAlias", builtin_type_value("GenericAlias")),
+                ("Callable", Value::Builtin("typing.Callable".to_string())),
+                ("Hashable", Value::Builtin("typing.Hashable".to_string())),
+                ("BinaryIO", builtin_type_value("typing.BinaryIO")),
+                ("ForwardRef", builtin_type_value("typing.ForwardRef")),
+                ("IO", builtin_type_value("typing.IO")),
+                ("List", Value::Builtin("typing.List".to_string())),
+                ("Literal", Value::Builtin("typing.Literal".to_string())),
+                (
+                    "NamedTuple",
+                    Value::Builtin("typing.NamedTuple".to_string()),
+                ),
+                ("NewType", builtin_type_value("typing.NewType")),
                 ("NoDefault", Value::Builtin("typing.NoDefault".to_string())),
-                ("Tuple", builtin_type_value("tuple")),
+                ("NoReturn", Value::Builtin("typing.NoReturn".to_string())),
+                ("Optional", Value::Builtin("typing.Optional".to_string())),
+                ("Protocol", builtin_type_value("typing.Protocol")),
+                ("TextIO", builtin_type_value("typing.TextIO")),
+                ("Tuple", Value::Builtin("typing.Tuple".to_string())),
+                ("TypedDict", Value::Builtin("typing.TypedDict".to_string())),
+                ("Union", builtin_type_value("Union")),
                 ("TypeVar", builtin_type_value("typing.TypeVar")),
                 ("TypeVarTuple", builtin_type_value("typing.TypeVarTuple")),
                 ("ParamSpec", builtin_type_value("typing.ParamSpec")),
                 ("TypeAliasType", builtin_type_value("typing.TypeAliasType")),
                 ("get_args", Value::Builtin("typing.get_args".to_string())),
-            ],
-        )),
-        "types" => Ok(module_value(
-            "types",
-            vec![
                 (
-                    "MappingProxyType",
-                    Value::Builtin("mappingproxy".to_string()),
+                    "get_type_hints",
+                    Value::Builtin("typing.get_type_hints".to_string()),
                 ),
                 (
-                    "SimpleNamespace",
-                    Value::Builtin("SimpleNamespace".to_string()),
-                ),
-                ("CellType", Value::Builtin("CellType".to_string())),
-                ("coroutine", Value::Builtin("types.coroutine".to_string())),
-                (
-                    "get_original_bases",
-                    Value::Builtin("types.get_original_bases".to_string()),
+                    "get_origin",
+                    Value::Builtin("typing.get_origin".to_string()),
                 ),
             ],
         )),
+        "_types" => Ok(types_accelerator_module()),
+        "types" => Ok(types_module()),
         "collections" => Ok(module_value(
             "collections",
             vec![
@@ -562,7 +805,10 @@ pub(crate) fn create_module(
         )),
         "array" => Ok(module_value(
             "array",
-            vec![("array", Value::Builtin("array.array".to_string()))],
+            vec![
+                ("array", Value::Builtin("array.array".to_string())),
+                ("typecodes", Value::String("bBuwhHiIlLqQfd".to_string())),
+            ],
         )),
         "collections.abc" => Ok(module_value(
             "collections.abc",
@@ -1119,7 +1365,7 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
     loop {
         match context.stdlib_advance_iterator(&mut iterator)? {
             StdlibIteratorAdvance::Yield(value) => {
-                if matches!(value, Value::String(_)) {
+                if matches!(value, Value::String(_) | Value::IdentityString { .. }) {
                     return Err("TypeError: sum() can't sum strings".to_string());
                 }
                 total = context.stdlib_add_values(total, value)?;
@@ -1131,7 +1377,7 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
 
 fn reject_sum_start(value: &Value) -> Result<(), String> {
     match value {
-        Value::String(_) => {
+        Value::String(_) | Value::IdentityString { .. } => {
             Err("TypeError: sum() can't sum strings [use ''.join(seq) instead]".to_string())
         }
         Value::Bytes(_) => {
@@ -1154,7 +1400,7 @@ pub(crate) fn call_import_builtin<C: StdlibContext + ?Sized>(
         .take()
         .ok_or_else(|| "TypeError: __import__() missing required argument 'name'".to_string())?
     {
-        Value::String(name) => name,
+        Value::String(name) | Value::IdentityString { value: name, .. } => name,
         value => {
             return Err(format!(
                 "TypeError: __import__() argument 1 must be str, not {}",
@@ -1180,6 +1426,52 @@ pub(crate) fn call_import_builtin<C: StdlibContext + ?Sized>(
     let return_root = level == 0 && !context.stdlib_truth_value(fromlist)?;
 
     context.stdlib_load_imported_module_value(&resolved_name, return_root)
+}
+
+fn sys_float_info_value() -> Value {
+    Value::SimpleNamespace {
+        fields: stdlib_dict_ref_from_entries(vec![
+            (Value::String("max".to_string()), float_value(f64::MAX)),
+            (Value::String("max_exp".to_string()), Value::Number(1024)),
+            (Value::String("max_10_exp".to_string()), Value::Number(308)),
+            (
+                Value::String("min".to_string()),
+                float_value(f64::MIN_POSITIVE),
+            ),
+            (Value::String("min_exp".to_string()), Value::Number(-1021)),
+            (Value::String("min_10_exp".to_string()), Value::Number(-307)),
+            (Value::String("dig".to_string()), Value::Number(15)),
+            (Value::String("mant_dig".to_string()), Value::Number(53)),
+            (
+                Value::String("epsilon".to_string()),
+                float_value(f64::EPSILON),
+            ),
+            (Value::String("radix".to_string()), Value::Number(2)),
+            (Value::String("rounds".to_string()), Value::Number(1)),
+        ]),
+    }
+}
+
+fn sys_hash_info_value() -> Value {
+    Value::SimpleNamespace {
+        fields: stdlib_dict_ref_from_entries(vec![
+            (Value::String("width".to_string()), Value::Number(64)),
+            (
+                Value::String("modulus".to_string()),
+                Value::Number(2_305_843_009_213_693_951),
+            ),
+            (Value::String("inf".to_string()), Value::Number(314_159)),
+            (Value::String("nan".to_string()), Value::Number(0)),
+            (Value::String("imag".to_string()), Value::Number(1_000_003)),
+            (
+                Value::String("algorithm".to_string()),
+                Value::String("siphash13".to_string()),
+            ),
+            (Value::String("hash_bits".to_string()), Value::Number(64)),
+            (Value::String("seed_bits".to_string()), Value::Number(128)),
+            (Value::String("cutoff".to_string()), Value::Number(0)),
+        ]),
+    }
 }
 
 pub(crate) fn call_abs_builtin<C: StdlibContext + ?Sized>(
@@ -1240,7 +1532,7 @@ pub(crate) fn call_repr_builtin<C: StdlibContext + ?Sized>(
 
     if let Some(result) = context.stdlib_call_repr_method(value)? {
         return match result {
-            Value::String(value) => Ok(Value::String(value)),
+            Value::String(value) | Value::IdentityString { value, .. } => Ok(Value::String(value)),
             value => Err(format!(
                 "TypeError: __repr__ returned non-string (type {})",
                 stdlib_type_name(&value)
@@ -1556,7 +1848,7 @@ pub(crate) fn call_ord(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Resu
     };
 
     let codepoint = match value {
-        Value::String(value) => {
+        Value::String(value) | Value::IdentityString { value, .. } => {
             let mut chars = value.chars();
             let Some(ch) = chars.next() else {
                 return Err(
@@ -1645,10 +1937,17 @@ pub(crate) fn call_types_coroutine<C: StdlibContext + ?Sized>(
     {
         if *is_generator && !*is_async {
             context.stdlib_mark_iterable_coroutine_function(identity);
+            return Ok(function.clone());
+        }
+        if *is_async {
+            return Ok(function.clone());
         }
     }
 
-    Ok(function.clone())
+    Ok(Value::TypesCoroutineFunction {
+        function: Box::new(function.clone()),
+        identity: Rc::new(()),
+    })
 }
 
 fn dis_instruction_value(opcode: i64, argval: Value) -> Result<Value, String> {
@@ -1764,10 +2063,11 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::Number(_) | Value::BigInt(_) => "int",
         Value::Float(_) => "float",
         Value::Complex { .. } => "complex",
-        Value::String(_) => "str",
+        Value::String(_) | Value::IdentityString { .. } => "str",
         Value::Bytes(_) => "bytes",
         Value::ByteArray(_) => "bytearray",
         Value::MemoryView(_) => "memoryview",
+        Value::BytesIO(_) => "_io.BytesIO",
         Value::Bool(_) => "bool",
         Value::List(_) => "list",
         Value::Tuple(_) => "tuple",
@@ -1791,6 +2091,8 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::AstNode { kind, .. } => kind.as_str(),
         Value::CodeObject { .. } => "code",
         Value::Cell { .. } => "cell",
+        Value::Frame { .. } => "frame",
+        Value::FrameLocalsProxy { .. } => "FrameLocalsProxy",
         Value::Range { .. } => "range",
         Value::Slice { .. } => "slice",
         Value::RangeIterator { .. } => "range_iterator",
@@ -1813,7 +2115,19 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),
         Value::Function { .. } => "function",
+        Value::TypesCoroutineFunction { function, .. } => stdlib_type_name(function),
+        Value::MagicMock { .. } => "MagicMock",
+        Value::MockMethod { .. } => "MagicMock",
+        Value::WeakRef { .. } => "ReferenceType",
+        Value::WeakProxy { callable, .. } => {
+            if *callable {
+                "CallableProxyType"
+            } else {
+                "ProxyType"
+            }
+        }
         Value::Generator(_) => "generator",
+        Value::GeneratorWrapper { .. } => "_GeneratorWrapper",
         Value::Coroutine(_) => "coroutine",
         Value::CoroutineAwait(_) => "coroutine_wrapper",
         Value::AwaitIterator(_) => "await_iterator",
@@ -1829,8 +2143,17 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::Class { .. } => "type",
         Value::Builtin(_) => "builtin_function_or_method",
         Value::TypeParam { kind, .. } => kind.as_str(),
+        Value::ParamSpecAccess { is_kwargs, .. } => {
+            if *is_kwargs {
+                "ParamSpecKwargs"
+            } else {
+                "ParamSpecArgs"
+            }
+        }
         Value::DeferredTypeParamExpr(_) => "DeferredTypeParamExpr",
         Value::TypeAlias { .. } => "TypeAliasType",
+        Value::ForwardRef { .. } => "ForwardRef",
+        Value::NewType { .. } => "NewType",
         Value::ConstEvaluator { .. } => "_typing._ConstEvaluator",
         Value::GenericAlias { .. } => "GenericAlias",
         Value::Unpack(_) => "Unpack",
@@ -1842,8 +2165,20 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::StaticMethod { .. } => "staticmethod",
         Value::ClassMethod { .. } => "classmethod",
         Value::Super { .. } => "super",
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(_)) => {
+            "builtin_function_or_method"
+        }
         Value::BoundMethod { .. } => "method",
         Value::Partial { .. } => "partial",
+        Value::PartialMethod { .. } => "partialmethod",
+        Value::PartialMethodCall { .. } => "partial",
+        Value::LruCacheWrapper { .. } => "_lru_cache_wrapper",
+        Value::SingleDispatch { .. }
+        | Value::SingleDispatchRegister { .. }
+        | Value::SingleDispatchMethodCallable { .. } => "function",
+        Value::SingleDispatchMethod { .. } => "singledispatchmethod",
+        Value::CachedProperty { .. } => "cached_property",
+        Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => "functools.KeyWrapper",
         Value::OperatorAttrGetter { .. } => "operator.attrgetter",
         Value::OperatorItemGetter { .. } => "operator.itemgetter",
         Value::OperatorMethodCaller { .. } => "operator.methodcaller",
@@ -1920,6 +2255,122 @@ fn module_value(name: &str, attrs: Vec<(&str, Value)>) -> Value {
         name: name.to_string(),
         attrs: scope,
     }
+}
+
+fn types_module() -> Value {
+    let mut attrs = Vec::from([
+        ("__all__", string_list_value(TYPES_ALL)),
+        ("_GeneratorWrapper", builtin_type_value("_GeneratorWrapper")),
+        ("coroutine", Value::Builtin("types.coroutine".to_string())),
+        (
+            "get_original_bases",
+            Value::Builtin("types.get_original_bases".to_string()),
+        ),
+        ("new_class", Value::Builtin("types.new_class".to_string())),
+        (
+            "prepare_class",
+            Value::Builtin("types.prepare_class".to_string()),
+        ),
+        (
+            "resolve_bases",
+            Value::Builtin("types.resolve_bases".to_string()),
+        ),
+    ]);
+    attrs.extend(types_accelerator_attrs());
+    module_value("types", attrs)
+}
+
+fn types_accelerator_module() -> Value {
+    module_value("_types", types_accelerator_attrs())
+}
+
+fn types_accelerator_attrs() -> Vec<(&'static str, Value)> {
+    vec![
+        ("AsyncGeneratorType", builtin_type_value("async_generator")),
+        (
+            "BuiltinFunctionType",
+            builtin_type_value("builtin_function_or_method"),
+        ),
+        (
+            "BuiltinMethodType",
+            builtin_type_value("builtin_function_or_method"),
+        ),
+        ("CapsuleType", builtin_type_value("PyCapsule")),
+        ("CellType", Value::Builtin("CellType".to_string())),
+        (
+            "ClassMethodDescriptorType",
+            builtin_type_value("classmethod_descriptor"),
+        ),
+        ("CodeType", builtin_type_value("code")),
+        ("CoroutineType", builtin_type_value("coroutine")),
+        (
+            "DynamicClassAttribute",
+            builtin_type_value("DynamicClassAttribute"),
+        ),
+        ("EllipsisType", builtin_type_value("ellipsis")),
+        (
+            "FrameLocalsProxyType",
+            builtin_type_value("FrameLocalsProxy"),
+        ),
+        ("FrameType", builtin_type_value("frame")),
+        ("FunctionType", builtin_type_value("function")),
+        ("GeneratorType", builtin_type_value("generator")),
+        ("GenericAlias", builtin_type_value("GenericAlias")),
+        (
+            "GetSetDescriptorType",
+            builtin_type_value("getset_descriptor"),
+        ),
+        ("LambdaType", builtin_type_value("function")),
+        ("LazyImportType", builtin_type_value("lazy_import")),
+        (
+            "MappingProxyType",
+            Value::Builtin("mappingproxy".to_string()),
+        ),
+        (
+            "MemberDescriptorType",
+            builtin_type_value("member_descriptor"),
+        ),
+        (
+            "MethodDescriptorType",
+            builtin_type_value("method_descriptor"),
+        ),
+        ("MethodType", builtin_type_value("method")),
+        ("MethodWrapperType", builtin_type_value("method-wrapper")),
+        ("ModuleType", builtin_type_value("module")),
+        ("NoneType", builtin_type_value("NoneType")),
+        (
+            "NotImplementedType",
+            builtin_type_value("NotImplementedType"),
+        ),
+        (
+            "SimpleNamespace",
+            Value::Builtin("SimpleNamespace".to_string()),
+        ),
+        ("TracebackType", builtin_type_value("traceback")),
+        ("UnionType", builtin_type_value("UnionType")),
+        (
+            "WrapperDescriptorType",
+            builtin_type_value("wrapper_descriptor"),
+        ),
+    ]
+}
+
+fn string_tuple_value(values: &[&str]) -> Value {
+    tuple_value(
+        values
+            .iter()
+            .map(|value| Value::String((*value).to_string()))
+            .collect(),
+    )
+}
+
+fn string_list_value(values: &[&str]) -> Value {
+    list_value(
+        values
+            .iter()
+            .map(|value| Value::String((*value).to_string()))
+            .collect(),
+    )
 }
 
 const OPERATOR_ALL: &[&str] = &[
@@ -2072,6 +2523,7 @@ fn generic_alias_value(origin: Value, args: Vec<Value>) -> Value {
     Value::GenericAlias {
         origin: Box::new(origin),
         args,
+        union_unhashable_count: 0,
     }
 }
 
@@ -2109,6 +2561,7 @@ fn extend_union_args(args: &mut Vec<Value>, value: Value) {
         Value::GenericAlias {
             origin,
             args: nested,
+            ..
         } if matches!(origin.as_ref(), Value::Builtin(name) if name == "Union") => {
             for value in nested {
                 push_unique_union_arg(args, value);
@@ -2205,7 +2658,7 @@ fn test_typinganndata_package_module(
 
 fn test_typinganndata_ann_module() -> Value {
     let tuple_int_int = generic_alias_value(
-        builtin_type_value("tuple"),
+        Value::Builtin("typing.Tuple".to_string()),
         vec![builtin_type_value("int"), builtin_type_value("int")],
     );
     let int_or_float = union_type_value(builtin_type_value("int"), builtin_type_value("float"));
@@ -2282,7 +2735,12 @@ fn ast_module_entries() -> Vec<(&'static str, Value)> {
         .collect::<Vec<_>>();
     entries.extend([
         ("Set", Value::Builtin("ast.Set".to_string())),
+        (
+            "PyCF_ALLOW_TOP_LEVEL_AWAIT",
+            Value::Number(PYCF_ALLOW_TOP_LEVEL_AWAIT),
+        ),
         ("PyCF_ONLY_AST", Value::Number(PYCF_ONLY_AST)),
+        ("PyCF_OPTIMIZED_AST", Value::Number(PYCF_OPTIMIZED_AST)),
         ("parse", Value::Builtin("ast.parse".to_string())),
         ("dump", Value::Builtin("ast.dump".to_string())),
         ("compare", Value::Builtin("ast.compare".to_string())),

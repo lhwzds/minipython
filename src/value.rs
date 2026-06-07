@@ -16,19 +16,48 @@ pub type SetRef = Rc<RefCell<Vec<Value>>>;
 pub type FrozenSetRef = Rc<Vec<Value>>;
 pub type FloatRef = Rc<f64>;
 pub type DictRef = Rc<RefCell<DictStorage>>;
+pub type BytesRef = Rc<Vec<u8>>;
 pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
 pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
+pub type BytesIORef = Rc<RefCell<BytesIOState>>;
 pub type NamedTupleTypeRef = Rc<NamedTupleType>;
 pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
+pub type MockCallsRef = Rc<RefCell<Vec<Vec<Value>>>>;
+pub type MockSideEffectRef = Rc<RefCell<Option<Value>>>;
 
 pub const EXCEPTION_TRACEBACK_ATTR: &str = "\0minipython_traceback";
 pub const INT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_int_storage";
+pub const INT_ENUM_MEMBER_NAME_FIELD: &str = "\0minipython_int_enum_member_name";
+pub const INT_ENUM_MEMBER_VALUE_FIELD: &str = "\0minipython_int_enum_member_value";
+pub const FLOAT_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_float_storage";
+pub const COMPLEX_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_complex_storage";
 pub const NAMED_TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_namedtuple_storage";
+pub const TUPLE_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_tuple_storage";
+pub const SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_set_storage";
+pub const FROZEN_SET_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_frozenset_storage";
+pub const GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD: &str = "\0minipython_genericalias_storage";
+
+pub fn identity_string_value(value: String) -> Value {
+    Value::IdentityString {
+        value,
+        identity: Rc::new(()),
+    }
+}
+
+pub fn complex_value(real: f64, imag: f64) -> Value {
+    Value::Complex {
+        real,
+        imag,
+        identity: Rc::new(()),
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct NamedTupleType {
     pub name: String,
     pub fields: Vec<String>,
+    pub bases: Vec<Value>,
+    pub original_bases: Option<Value>,
     pub field_docs: Vec<RefCell<String>>,
     pub field_defaults: Vec<(String, Value)>,
     pub new_defaults: Option<Vec<Value>>,
@@ -63,6 +92,21 @@ pub struct MemoryViewState {
     pub released: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct BytesIOState {
+    pub buffer: Vec<u8>,
+    pub position: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct LruCacheState {
+    pub entries: Vec<(Value, Value)>,
+    pub hits: usize,
+    pub misses: usize,
+    pub maxsize: Option<usize>,
+    pub typed: bool,
+}
+
 impl ByteArrayStorage {
     pub fn new(bytes: Vec<u8>) -> Self {
         Self { bytes, exports: 0 }
@@ -82,6 +126,15 @@ impl ByteArrayStorage {
 
     pub fn release_export(&mut self) {
         self.exports = self.exports.saturating_sub(1);
+    }
+}
+
+impl BytesIOState {
+    pub fn new(buffer: Vec<u8>) -> Self {
+        Self {
+            buffer,
+            position: 0,
+        }
     }
 }
 
@@ -189,9 +242,13 @@ pub fn byte_array_value(bytes: Vec<u8>) -> Value {
     Value::ByteArray(Rc::new(RefCell::new(ByteArrayStorage::new(bytes))))
 }
 
+pub fn bytes_value(bytes: Vec<u8>) -> Value {
+    Value::Bytes(Rc::new(bytes))
+}
+
 pub fn memory_view_value(bytes: Vec<u8>, readonly: bool) -> Value {
     let len = bytes.len();
-    let obj = Value::Bytes(bytes.clone());
+    let obj = bytes_value(bytes.clone());
     memory_view_from_parts(
         Rc::new(RefCell::new(ByteArrayStorage::new(bytes))),
         obj,
@@ -249,6 +306,10 @@ pub fn memory_view_from_parts_with_format(
     })))
 }
 
+pub fn bytes_io_value(buffer: Vec<u8>) -> Value {
+    Value::BytesIO(Rc::new(RefCell::new(BytesIOState::new(buffer))))
+}
+
 fn memory_view_physical_index(state: &MemoryViewState, logical_index: usize) -> Option<usize> {
     let offset = isize::try_from(state.offset).ok()?;
     let logical_index = isize::try_from(logical_index).ok()?;
@@ -284,6 +345,10 @@ pub fn mapping_proxy_value(entries: DictRef) -> Value {
     Value::MappingProxy { entries }
 }
 
+pub fn frame_locals_proxy_value(locals: Scope) -> Value {
+    Value::FrameLocalsProxy { locals }
+}
+
 pub fn dict_view_values(kind: DictViewKind, entries: &DictRef) -> Vec<Value> {
     entries
         .borrow()
@@ -299,6 +364,8 @@ pub fn dict_view_values(kind: DictViewKind, entries: &DictRef) -> Vec<Value> {
 #[derive(Debug, Clone)]
 pub struct GeneratorState {
     pub name: String,
+    pub name_value: Value,
+    pub qualname_value: Value,
     pub instructions: Vec<Instruction>,
     pub ip: usize,
     pub registers: Vec<Option<Value>>,
@@ -316,6 +383,9 @@ pub struct GeneratorState {
     pub is_iterable_coroutine: bool,
     pub first_line: usize,
     pub line_sequence: Vec<usize>,
+    pub code_identity: Rc<()>,
+    pub frame_fields: Option<DictRef>,
+    pub yield_from: Option<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -336,6 +406,7 @@ pub struct CoroutineState {
     pub done: bool,
     pub first_line: usize,
     pub line_sequence: Vec<usize>,
+    pub code_identity: Rc<()>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -375,11 +446,17 @@ pub enum Value {
     Complex {
         real: f64,
         imag: f64,
+        identity: Rc<()>,
     },
     String(String),
-    Bytes(Vec<u8>),
+    IdentityString {
+        value: String,
+        identity: Rc<()>,
+    },
+    Bytes(BytesRef),
     ByteArray(ByteArrayRef),
     MemoryView(MemoryViewRef),
+    BytesIO(BytesIORef),
     Bool(bool),
     List(ListRef),
     Tuple(TupleRef),
@@ -452,6 +529,11 @@ pub enum Value {
         consts: Vec<Value>,
         flags: i64,
         freevars: Vec<String>,
+        positional_only: Vec<String>,
+        params: Vec<String>,
+        vararg: Option<String>,
+        keyword_only: Vec<String>,
+        kwarg: Option<String>,
         name: String,
         identity: Rc<()>,
     },
@@ -461,6 +543,12 @@ pub enum Value {
         identity: Rc<()>,
     },
     DeferredTypeParamExpr(DeferredTypeParamExprRef),
+    Frame {
+        fields: DictRef,
+    },
+    FrameLocalsProxy {
+        locals: Scope,
+    },
     Traceback {
         identity: Rc<()>,
     },
@@ -579,13 +667,46 @@ pub enum Value {
         body: Vec<Instruction>,
         is_generator: bool,
         is_async: bool,
+        locals_are_globals: bool,
         first_line: usize,
         line_sequence: Vec<usize>,
         position_columns: Vec<Option<(usize, usize)>>,
         identity: Rc<()>,
         owner_class: Option<Box<Value>>,
     },
+    TypesCoroutineFunction {
+        function: Box<Value>,
+        identity: Rc<()>,
+    },
+    MagicMock {
+        attrs: Scope,
+        methods: Scope,
+        calls: MockCallsRef,
+        side_effect: MockSideEffectRef,
+        identity: Rc<()>,
+    },
+    MockMethod {
+        name: String,
+        calls: MockCallsRef,
+        side_effect: MockSideEffectRef,
+        identity: Rc<()>,
+    },
+    WeakRef {
+        target: Box<Value>,
+        callback: Option<Box<Value>>,
+        identity: Rc<()>,
+    },
+    WeakProxy {
+        target: Box<Value>,
+        callable: bool,
+        identity: Rc<()>,
+    },
     Generator(Rc<RefCell<GeneratorState>>),
+    GeneratorWrapper {
+        wrapped: Box<Value>,
+        exact_generator: bool,
+        identity: Rc<()>,
+    },
     Coroutine(Rc<RefCell<CoroutineState>>),
     CoroutineAwait(Rc<RefCell<CoroutineState>>),
     AwaitIterator(Box<Value>),
@@ -631,10 +752,25 @@ pub enum Value {
         contravariant: bool,
         identity: Rc<()>,
     },
+    ParamSpecAccess {
+        name: String,
+        origin: Box<Value>,
+        is_kwargs: bool,
+        identity: Rc<()>,
+    },
     TypeAlias {
         name: String,
         type_params: Vec<Value>,
         value: Box<Value>,
+    },
+    ForwardRef {
+        arg: String,
+    },
+    NewType {
+        name: String,
+        module: String,
+        supertype: Box<Value>,
+        identity: Rc<()>,
     },
     ConstEvaluator {
         kind: ConstEvaluatorKind,
@@ -643,6 +779,7 @@ pub enum Value {
     GenericAlias {
         origin: Box<Value>,
         args: Vec<Value>,
+        union_unhashable_count: usize,
     },
     Unpack(Box<Value>),
     Template {
@@ -686,6 +823,67 @@ pub enum Value {
         function: Box<Value>,
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    PartialMethod {
+        function: Box<Value>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    PartialMethodCall {
+        function: Box<Value>,
+        receiver: Option<Box<Value>>,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        expects_self_arg: bool,
+        identity: Rc<()>,
+    },
+    LruCacheWrapper {
+        function: Box<Value>,
+        state: Rc<RefCell<LruCacheState>>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    SingleDispatch {
+        function: Box<Value>,
+        registry: Rc<RefCell<Vec<(Value, Value)>>>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    SingleDispatchRegister {
+        dispatcher: Box<Value>,
+        cls: Box<Value>,
+        identity: Rc<()>,
+    },
+    SingleDispatchMethod {
+        dispatcher: Box<Value>,
+        func: Box<Value>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    SingleDispatchMethodCallable {
+        descriptor: Box<Value>,
+        receiver: Option<Box<Value>>,
+        owner: Box<Value>,
+        dispatch_arg_index: usize,
+        identity: Rc<()>,
+    },
+    CachedProperty {
+        function: Box<Value>,
+        attrname: Rc<RefCell<Option<String>>>,
+        attrs: Scope,
+        identity: Rc<()>,
+    },
+    CmpToKey {
+        comparator: Box<Value>,
+        identity: Rc<()>,
+    },
+    CmpToKeyObject {
+        comparator: Box<Value>,
+        object: Rc<RefCell<Value>>,
         identity: Rc<()>,
     },
     OperatorAttrGetter {
@@ -734,14 +932,15 @@ impl fmt::Display for Value {
             Value::Number(value) => write!(f, "{value}"),
             Value::BigInt(value) => write!(f, "{value}"),
             Value::Float(value) => write!(f, "{}", format_float_display(**value)),
-            Value::Complex { real, imag } => write!(f, "{}", format_complex(*real, *imag)),
-            Value::String(value) => write!(f, "{value}"),
+            Value::Complex { real, imag, .. } => write!(f, "{}", format_complex(*real, *imag)),
+            Value::String(value) | Value::IdentityString { value, .. } => write!(f, "{value}"),
             Value::Bytes(value) => write!(f, "{}", repr_bytes(value)),
             Value::ByteArray(value) => write!(f, "bytearray({})", repr_bytes(&value.borrow())),
             Value::MemoryView(view) if view.borrow().released => {
                 write!(f, "<released memory at 0x0>")
             }
             Value::MemoryView(_) => write!(f, "<memory at 0x0>"),
+            Value::BytesIO(_) => write!(f, "<_io.BytesIO object at 0x0>"),
             Value::Bool(true) => write!(f, "True"),
             Value::Bool(false) => write!(f, "False"),
             Value::List(items) => {
@@ -807,6 +1006,8 @@ impl fmt::Display for Value {
             }
             Value::Cell { .. } => write!(f, "<cell object>"),
             Value::DeferredTypeParamExpr(_) => write!(f, "<deferred type parameter expression>"),
+            Value::Frame { .. } => write!(f, "<frame object>"),
+            Value::FrameLocalsProxy { .. } => write!(f, "<frame locals proxy object>"),
             Value::Traceback { .. } => write!(f, "<traceback object>"),
             Value::Range { start, stop, step } if step == &BigInt::from(1) => {
                 write!(f, "range({start}, {stop})")
@@ -841,7 +1042,17 @@ impl fmt::Display for Value {
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
             Value::Iterator(_) => write!(f, "<iterator>"),
             Value::Function { name, .. } => write!(f, "<function {name}>"),
+            Value::TypesCoroutineFunction { function, .. } => write!(f, "{function}"),
+            Value::MagicMock { .. } => write!(f, "<MagicMock object>"),
+            Value::MockMethod { name, .. } => write!(f, "<MagicMock name='{name}'>"),
+            Value::WeakRef {
+                target, identity, ..
+            } => write!(f, "{}", format_weakref_repr(target, identity)),
+            Value::WeakProxy {
+                target, identity, ..
+            } => write!(f, "{}", format_weakproxy_repr(target, identity)),
             Value::Generator(state) => write!(f, "<generator object {}>", state.borrow().name),
+            Value::GeneratorWrapper { .. } => write!(f, "<types._GeneratorWrapper object>"),
             Value::Coroutine(state) => write!(f, "<coroutine object {}>", state.borrow().name),
             Value::CoroutineAwait(_) => write!(f, "<coroutine_wrapper object>"),
             Value::AwaitIterator(_) => write!(f, "<await_iterator object>"),
@@ -861,19 +1072,21 @@ impl fmt::Display for Value {
             Value::AnextDefault { .. } => write!(f, "<anext_awaitable object>"),
             Value::Class { name, .. } => write!(f, "<class {name}>"),
             Value::TypeParam { name, .. } => write!(f, "{name}"),
+            Value::ParamSpecAccess { name, .. } => write!(f, "{name}"),
             Value::TypeAlias { name, .. } => write!(f, "<type alias {name}>"),
+            Value::ForwardRef { arg } => write!(f, "ForwardRef({})", repr_string(arg)),
+            Value::NewType { name, module, .. } => {
+                write!(f, "{}", format_new_type_name(module, name))
+            }
             Value::ConstEvaluator { kind, target } => {
                 write!(f, "{}", format_const_evaluator(*kind, target))
             }
-            Value::GenericAlias { origin, args } => write!(
-                f,
-                "{}[{}]",
-                format_generic_origin(origin),
-                args.iter()
-                    .map(format_generic_alias_arg)
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
+            Value::GenericAlias { origin, args, .. } if is_union_origin(origin) => {
+                write!(f, "{}", format_union_args(args))
+            }
+            Value::GenericAlias { origin, args, .. } => {
+                write!(f, "{}", format_generic_alias(origin, args))
+            }
             Value::Unpack(value) => write!(f, "*{}", format_value_repr(value)),
             Value::Template {
                 strings,
@@ -892,7 +1105,19 @@ impl fmt::Display for Value {
             } => {
                 if let Some(rendered) = format_int_subclass(fields) {
                     write!(f, "{rendered}")
+                } else if let Some(rendered) = format_float_subclass(fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_complex_subclass(fields) {
+                    write!(f, "{rendered}")
                 } else if let Some(rendered) = format_named_tuple_subclass(class_name, fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_tuple_subclass(fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_set_subclass(class_name, fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_frozen_set_subclass(class_name, fields) {
+                    write!(f, "{rendered}")
+                } else if let Some(rendered) = format_generic_alias_subclass(fields) {
                     write!(f, "{rendered}")
                 } else {
                     write!(f, "<{class_name} object>")
@@ -911,6 +1136,25 @@ impl fmt::Display for Value {
                 write!(f, "{}", format_bound_method(function, receiver))
             }
             Value::Partial { .. } => write!(f, "<functools.partial object>"),
+            Value::PartialMethod { .. } => write!(f, "<functools.partialmethod object>"),
+            Value::PartialMethodCall { .. } => write!(f, "<functools.partial object>"),
+            Value::LruCacheWrapper { .. } => {
+                write!(f, "<functools._lru_cache_wrapper object>")
+            }
+            Value::SingleDispatch { .. } => write!(f, "<function singledispatch wrapper>"),
+            Value::SingleDispatchRegister { .. } => {
+                write!(f, "<function singledispatch register>")
+            }
+            Value::SingleDispatchMethod { .. } => {
+                write!(f, "<functools.singledispatchmethod object>")
+            }
+            Value::SingleDispatchMethodCallable { .. } => {
+                write!(f, "<function singledispatchmethod wrapper>")
+            }
+            Value::CachedProperty { .. } => write!(f, "<functools.cached_property object>"),
+            Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
+                write!(f, "<functools.KeyWrapper object>")
+            }
             Value::OperatorAttrGetter { attrs, .. } => {
                 write!(f, "{}", format_operator_attrgetter(attrs))
             }
@@ -961,6 +1205,9 @@ impl fmt::Display for Value {
                 exceptions: Some(exceptions),
                 ..
             } => write!(f, "({})", format_subexception_count(exceptions.len())),
+            Value::Builtin(name) if is_typing_special_form_name(name) => {
+                write!(f, "{name}")
+            }
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
@@ -1123,11 +1370,12 @@ fn bound_method_display_name(function: &Value) -> String {
 
 fn format_value_repr(value: &Value) -> String {
     match value {
-        Value::String(value) => repr_string(value),
+        Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
         Value::Bytes(value) => repr_bytes(value),
         Value::ByteArray(value) => format!("bytearray({})", repr_bytes(&value.borrow())),
         Value::MemoryView(view) if view.borrow().released => "<released memory at 0x0>".to_string(),
         Value::MemoryView(_) => "<memory at 0x0>".to_string(),
+        Value::BytesIO(_) => "<_io.BytesIO object at 0x0>".to_string(),
         Value::List(items) => {
             let items = items.borrow();
             format!("[{}]", format_list_items(&items))
@@ -1178,9 +1426,21 @@ fn format_value_repr(value: &Value) -> String {
         }
         Value::Cell { .. } => "<cell object>".to_string(),
         Value::DeferredTypeParamExpr(_) => "<deferred type parameter expression>".to_string(),
+        Value::Frame { .. } => "<frame object>".to_string(),
+        Value::FrameLocalsProxy { .. } => "<frame locals proxy object>".to_string(),
         Value::Traceback { .. } => "<traceback object>".to_string(),
         Value::Function { name, .. } => format!("<function {name}>"),
+        Value::TypesCoroutineFunction { function, .. } => format_value_repr(function),
+        Value::MagicMock { .. } => "<MagicMock object>".to_string(),
+        Value::MockMethod { name, .. } => format!("<MagicMock name='{name}'>"),
+        Value::WeakRef {
+            target, identity, ..
+        } => format_weakref_repr(target, identity),
+        Value::WeakProxy {
+            target, identity, ..
+        } => format_weakproxy_repr(target, identity),
         Value::Generator(state) => format!("<generator object {}>", state.borrow().name),
+        Value::GeneratorWrapper { .. } => "<types._GeneratorWrapper object>".to_string(),
         Value::Coroutine(state) => format!("<coroutine object {}>", state.borrow().name),
         Value::CoroutineAwait(_) => "<coroutine_wrapper object>".to_string(),
         Value::AwaitIterator(_) => "<await_iterator object>".to_string(),
@@ -1198,16 +1458,16 @@ fn format_value_repr(value: &Value) -> String {
         Value::AnextDefault { .. } => "<anext_awaitable object>".to_string(),
         Value::Class { name, .. } => format!("<class {name}>"),
         Value::TypeParam { name, .. } => name.clone(),
+        Value::ParamSpecAccess { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => format!("<type alias {name}>"),
+        Value::ForwardRef { arg } => format!("ForwardRef({})", repr_string(arg)),
+        Value::Builtin(name) if is_typing_special_form_name(name) => name.clone(),
+        Value::NewType { name, module, .. } => format_new_type_name(module, name),
         Value::ConstEvaluator { kind, target } => format_const_evaluator(*kind, target),
-        Value::GenericAlias { origin, args } => format!(
-            "{}[{}]",
-            format_generic_origin(origin),
-            args.iter()
-                .map(format_generic_alias_arg)
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
+        Value::GenericAlias { origin, args, .. } if is_union_origin(origin) => {
+            format_union_args(args)
+        }
+        Value::GenericAlias { origin, args, .. } => format_generic_alias(origin, args),
         Value::Unpack(value) => format!("*{}", format_value_repr(value)),
         Value::Template {
             strings,
@@ -1220,8 +1480,14 @@ fn format_value_repr(value: &Value) -> String {
         Value::TemplateInterpolation(interpolation) => format_template_interpolation(interpolation),
         Value::Instance {
             class_name, fields, ..
-        } => format_int_subclass(fields)
+        } => format_int_enum_member_repr(class_name, fields)
+            .or_else(|| format_int_subclass(fields))
+            .or_else(|| format_float_subclass(fields))
             .or_else(|| format_named_tuple_subclass(class_name, fields))
+            .or_else(|| format_tuple_subclass(fields))
+            .or_else(|| format_set_subclass(class_name, fields))
+            .or_else(|| format_frozen_set_subclass(class_name, fields))
+            .or_else(|| format_generic_alias_subclass(fields))
             .unwrap_or_else(|| format!("<{class_name} object>")),
         Value::Property { .. } => "<property object>".to_string(),
         Value::NamedTupleFieldDescriptor { typ, index } => {
@@ -1238,6 +1504,19 @@ fn format_value_repr(value: &Value) -> String {
             function, receiver, ..
         } => format_bound_method(function, receiver),
         Value::Partial { .. } => "<functools.partial object>".to_string(),
+        Value::PartialMethod { .. } => "<functools.partialmethod object>".to_string(),
+        Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
+        Value::LruCacheWrapper { .. } => "<functools._lru_cache_wrapper object>".to_string(),
+        Value::SingleDispatch { .. } => "<function singledispatch wrapper>".to_string(),
+        Value::SingleDispatchRegister { .. } => "<function singledispatch register>".to_string(),
+        Value::SingleDispatchMethod { .. } => "<functools.singledispatchmethod object>".to_string(),
+        Value::SingleDispatchMethodCallable { .. } => {
+            "<function singledispatchmethod wrapper>".to_string()
+        }
+        Value::CachedProperty { .. } => "<functools.cached_property object>".to_string(),
+        Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
+            "<functools.KeyWrapper object>".to_string()
+        }
         Value::OperatorAttrGetter { attrs, .. } => format_operator_attrgetter(attrs),
         Value::OperatorItemGetter { items, .. } => format_operator_itemgetter(items),
         Value::OperatorMethodCaller {
@@ -1266,6 +1545,132 @@ fn format_value_repr(value: &Value) -> String {
             type_name, args, ..
         } => format!("{type_name}{}", format_exception_args_repr(args)),
         value => value.to_string(),
+    }
+}
+
+fn format_weakref_repr(target: &Value, identity: &Rc<()>) -> String {
+    format_weak_pointer_repr("weakref", target, identity)
+}
+
+fn format_weakproxy_repr(target: &Value, identity: &Rc<()>) -> String {
+    format_weak_pointer_repr("weakproxy", target, identity)
+}
+
+fn format_weak_pointer_repr(kind: &str, target: &Value, identity: &Rc<()>) -> String {
+    let ref_addr = Rc::as_ptr(identity) as usize;
+    let target_addr = weakref_target_address(target);
+    let (target_type, suffix) = weakref_target_repr_type(target);
+    let suffix = suffix
+        .map(|value| format!(" ({value})"))
+        .unwrap_or_default();
+    format!("<{kind} at 0x{ref_addr:x}; to '{target_type}' at 0x{target_addr:x}{suffix}>")
+}
+
+fn weakref_target_repr_type(target: &Value) -> (&str, Option<String>) {
+    match target {
+        Value::Instance { class_name, .. } => (class_name.as_str(), None),
+        Value::Class { name, .. } => ("type", Some(name.clone())),
+        Value::Function { name, .. } => ("function", Some(name.clone())),
+        Value::TypesCoroutineFunction { function, .. } => weakref_target_repr_type(function),
+        Value::Set(_) => ("set", None),
+        Value::FrozenSet(_) => ("frozenset", None),
+        Value::MemoryView(_) => ("memoryview", None),
+        Value::BytesIO(_) => ("_io.BytesIO", None),
+        Value::Builtin(name) if weakref_builtin_type_name(name).is_some() => {
+            ("type", weakref_builtin_type_name(name).map(str::to_string))
+        }
+        Value::Builtin(name) => ("builtin_function_or_method", Some(name.clone())),
+        Value::TypeParam { kind, .. } => (kind.as_str(), None),
+        Value::ParamSpecAccess { is_kwargs, .. } => {
+            if *is_kwargs {
+                ("ParamSpecKwargs", None)
+            } else {
+                ("ParamSpecArgs", None)
+            }
+        }
+        Value::TypeAlias { .. } => ("TypeAliasType", None),
+        Value::ForwardRef { .. } => ("ForwardRef", None),
+        Value::NewType { .. } => ("NewType", None),
+        Value::GenericAlias { .. } => ("GenericAlias", None),
+        Value::MagicMock { .. } => ("MagicMock", None),
+        Value::MockMethod { .. } => ("MagicMock", None),
+        Value::GeneratorWrapper { .. } => ("_GeneratorWrapper", None),
+        value => (weakref_fallback_target_type(value), None),
+    }
+}
+
+fn weakref_builtin_type_name(name: &str) -> Option<&str> {
+    match name {
+        "object"
+        | "type"
+        | "int"
+        | "bool"
+        | "float"
+        | "complex"
+        | "str"
+        | "bytes"
+        | "bytearray"
+        | "list"
+        | "tuple"
+        | "dict"
+        | "set"
+        | "frozenset"
+        | "range"
+        | "memoryview"
+        | "weakref.ReferenceType"
+        | "weakref.ProxyType"
+        | "weakref.CallableProxyType"
+        | "GenericAlias"
+        | "UnionType" => Some(name.rsplit('.').next().unwrap_or(name)),
+        _ => None,
+    }
+}
+
+fn weakref_fallback_target_type(value: &Value) -> &'static str {
+    match value {
+        Value::Module { .. } => "module",
+        Value::Cell { .. } => "cell",
+        Value::CodeObject { .. } => "code",
+        Value::Frame { .. } => "frame",
+        Value::FrameLocalsProxy { .. } => "FrameLocalsProxy",
+        Value::Traceback { .. } => "traceback",
+        Value::Generator(_) => "generator",
+        Value::Coroutine(_) => "coroutine",
+        Value::AsyncGenerator(_) => "async_generator",
+        _ => "object",
+    }
+}
+
+fn weakref_target_address(value: &Value) -> usize {
+    match value {
+        Value::List(items) => Rc::as_ptr(items) as usize,
+        Value::UserList { data, .. } => Rc::as_ptr(data) as usize,
+        Value::Tuple(items) => Rc::as_ptr(items) as usize,
+        Value::NamedTuple { values, .. } => Rc::as_ptr(values) as usize,
+        Value::ByteArray(bytes) => Rc::as_ptr(bytes) as usize,
+        Value::Set(items) => Rc::as_ptr(items) as usize,
+        Value::FrozenSet(items) => Rc::as_ptr(items) as usize,
+        Value::Dict(entries) | Value::OrderedDict(entries) => Rc::as_ptr(entries) as usize,
+        Value::ScopeDict(scope) => Rc::as_ptr(scope) as usize,
+        Value::UserDict { data, .. } => Rc::as_ptr(data) as usize,
+        Value::SimpleNamespace { fields } => Rc::as_ptr(fields) as usize,
+        Value::Class { attrs, .. } => Rc::as_ptr(attrs) as usize,
+        Value::Instance { fields, .. } => Rc::as_ptr(fields) as usize,
+        Value::Function { identity, .. }
+        | Value::TypesCoroutineFunction { identity, .. }
+        | Value::MagicMock { identity, .. }
+        | Value::MockMethod { identity, .. }
+        | Value::GeneratorWrapper { identity, .. }
+        | Value::TypeParam { identity, .. }
+        | Value::ParamSpecAccess { identity, .. } => Rc::as_ptr(identity) as usize,
+        Value::Generator(state) => Rc::as_ptr(state) as usize,
+        Value::Coroutine(state) | Value::CoroutineAwait(state) => Rc::as_ptr(state) as usize,
+        Value::AsyncGenerator(state) | Value::AsyncGeneratorClose(state) => {
+            Rc::as_ptr(state) as usize
+        }
+        Value::MemoryView(view) => Rc::as_ptr(view) as usize,
+        Value::BytesIO(bytes_io) => Rc::as_ptr(bytes_io) as usize,
+        value => value as *const Value as usize,
     }
 }
 
@@ -1349,6 +1754,7 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "bytes"
             | "bytearray"
             | "memoryview"
+            | "io.BytesIO"
             | "list"
             | "tuple"
             | "dict"
@@ -1368,6 +1774,16 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "super"
             | "staticmethod"
             | "classmethod"
+            | "PyCapsule"
+            | "classmethod_descriptor"
+            | "DynamicClassAttribute"
+            | "FrameLocalsProxy"
+            | "getset_descriptor"
+            | "lazy_import"
+            | "member_descriptor"
+            | "method_descriptor"
+            | "method-wrapper"
+            | "wrapper_descriptor"
             | "Generic"
             | "Template"
             | "Interpolation"
@@ -1401,15 +1817,31 @@ fn is_builtin_type_display_name(name: &str) -> bool {
             | "NodeTransformer"
             | "NoneType"
     ) || name.starts_with("ast.")
-        || name
-            .strip_prefix("typing.")
-            .is_some_and(|name| matches!(name, "TypeVar" | "TypeVarTuple" | "ParamSpec"))
+        || name.strip_prefix("typing.").is_some_and(|name| {
+            matches!(
+                name,
+                "BinaryIO"
+                    | "IO"
+                    | "NewType"
+                    | "ParamSpec"
+                    | "TextIO"
+                    | "TypeVar"
+                    | "TypeVarTuple"
+                    | "Protocol"
+            )
+        })
+        || matches!(name, "ParamSpecArgs" | "ParamSpecKwargs")
+}
+
+fn is_typing_special_form_name(name: &str) -> bool {
+    matches!(name, "typing.Any" | "typing.NoReturn" | "typing.Optional")
 }
 
 fn builtin_type_public_name(name: &str) -> &str {
-    name.strip_prefix("typing.")
-        .or_else(|| name.strip_prefix("ast."))
-        .unwrap_or(name)
+    if name.starts_with("typing.") {
+        return name;
+    }
+    name.strip_prefix("ast.").unwrap_or(name)
 }
 
 fn format_slice_part(value: &Option<Box<Value>>) -> String {
@@ -1429,6 +1861,17 @@ fn format_generic_origin(origin: &Value) -> String {
     }
 }
 
+fn format_generic_alias(origin: &Value, args: &[Value]) -> String {
+    format!(
+        "{}[{}]",
+        format_generic_origin(origin),
+        args.iter()
+            .map(format_generic_alias_arg)
+            .collect::<Vec<_>>()
+            .join(", ")
+    )
+}
+
 fn format_generic_alias_arg(value: &Value) -> String {
     match value {
         Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
@@ -1437,6 +1880,37 @@ fn format_generic_alias_arg(value: &Value) -> String {
         Value::TypeAlias { name, .. } => name.clone(),
         Value::Unpack(value) => format!("*{}", format_generic_alias_arg(value)),
         value => format_value_repr(value),
+    }
+}
+
+fn format_union_args(args: &[Value]) -> String {
+    args.iter()
+        .map(format_union_arg)
+        .collect::<Vec<_>>()
+        .join(" | ")
+}
+
+fn format_union_arg(value: &Value) -> String {
+    match value {
+        Value::Builtin(name) if name == "NoneType" => "None".to_string(),
+        Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
+            name.clone()
+        }
+        Value::TypeAlias { name, .. } => name.clone(),
+        Value::NewType { name, module, .. } => format_new_type_name(module, name),
+        Value::GenericAlias { origin, args, .. } if is_union_origin(origin) => {
+            format_union_args(args)
+        }
+        Value::Unpack(value) => format!("*{}", format_union_arg(value)),
+        value => format_value_repr(value),
+    }
+}
+
+fn format_new_type_name(module: &str, name: &str) -> String {
+    if module.is_empty() {
+        name.to_string()
+    } else {
+        format!("{module}.{name}")
     }
 }
 
@@ -1554,17 +2028,24 @@ fn strict_constant_value_equal(left: &Value, right: &Value) -> bool {
             Value::Complex {
                 real: left_real,
                 imag: left_imag,
+                ..
             },
             Value::Complex {
                 real: right_real,
                 imag: right_imag,
+                ..
             },
         ) => {
             left_real.to_bits() == right_real.to_bits()
                 && left_imag.to_bits() == right_imag.to_bits()
         }
         (Value::Bool(left), Value::Bool(right)) => left == right,
-        (Value::String(left), Value::String(right)) => left == right,
+        (Value::String(left), Value::String(right))
+        | (Value::String(left), Value::IdentityString { value: right, .. })
+        | (Value::IdentityString { value: left, .. }, Value::String(right))
+        | (Value::IdentityString { value: left, .. }, Value::IdentityString { value: right, .. }) => {
+            left == right
+        }
         (Value::Bytes(left), Value::Bytes(right)) => left == right,
         (Value::None, Value::None) => true,
         (Value::Ellipsis, Value::Ellipsis) => true,
@@ -1641,8 +2122,49 @@ fn strict_constant_sets_equal(left: &[Value], right: &[Value]) -> bool {
     true
 }
 
+fn is_union_origin(value: &Value) -> bool {
+    matches!(value, Value::Builtin(name) if name == "Union")
+}
+
+fn is_literal_origin(value: &Value) -> bool {
+    matches!(value, Value::Builtin(name) if name == "typing.Literal")
+}
+
+pub fn generic_alias_subclass_alias(value: &Value) -> Option<Value> {
+    let Value::Instance { fields, .. } = value else {
+        return None;
+    };
+    match fields
+        .borrow()
+        .get(GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD)
+        .cloned()?
+    {
+        alias @ Value::GenericAlias { .. } => Some(alias),
+        _ => None,
+    }
+}
+
+fn literal_args_equal(left: &[Value], right: &[Value]) -> bool {
+    left.len() == right.len()
+        && left
+            .iter()
+            .zip(right.iter())
+            .all(|(left, right)| literal_arg_equal(left, right))
+}
+
+fn literal_arg_equal(left: &Value, right: &Value) -> bool {
+    std::mem::discriminant(left) == std::mem::discriminant(right) && left == right
+}
+
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
+        if let Some(left) = generic_alias_subclass_alias(self) {
+            return left == *other;
+        }
+        if let Some(right) = generic_alias_subclass_alias(other) {
+            return *self == right;
+        }
+
         match (self, other) {
             (Value::Number(left), Value::Number(right)) => left == right,
             (Value::BigInt(left), Value::BigInt(right)) => left == right,
@@ -1653,30 +2175,32 @@ impl PartialEq for Value {
                 Value::Complex {
                     real: left_real,
                     imag: left_imag,
+                    ..
                 },
                 Value::Complex {
                     real: right_real,
                     imag: right_imag,
+                    ..
                 },
             ) => left_real == right_real && left_imag == right_imag,
-            (Value::Number(left), Value::Float(right)) => (*left as f64) == **right,
-            (Value::Float(left), Value::Number(right)) => **left == (*right as f64),
-            (Value::BigInt(left), Value::Float(right)) => {
-                left.to_f64().is_some_and(|left| left == **right)
+            (Value::Number(left), Value::Float(right)) => {
+                float_equals_integer_exact(**right, &BigInt::from(*left))
             }
-            (Value::Float(left), Value::BigInt(right)) => {
-                right.to_f64().is_some_and(|right| **left == right)
+            (Value::Float(left), Value::Number(right)) => {
+                float_equals_integer_exact(**left, &BigInt::from(*right))
             }
-            (Value::Number(left), Value::Complex { real, imag })
-            | (Value::Complex { real, imag }, Value::Number(left)) => {
-                (*left as f64) == *real && *imag == 0.0
+            (Value::BigInt(left), Value::Float(right)) => float_equals_integer_exact(**right, left),
+            (Value::Float(left), Value::BigInt(right)) => float_equals_integer_exact(**left, right),
+            (Value::Number(left), Value::Complex { real, imag, .. })
+            | (Value::Complex { real, imag, .. }, Value::Number(left)) => {
+                *imag == 0.0 && float_equals_integer_exact(*real, &BigInt::from(*left))
             }
-            (Value::BigInt(left), Value::Complex { real, imag })
-            | (Value::Complex { real, imag }, Value::BigInt(left)) => {
-                left.to_f64().is_some_and(|left| left == *real) && *imag == 0.0
+            (Value::BigInt(left), Value::Complex { real, imag, .. })
+            | (Value::Complex { real, imag, .. }, Value::BigInt(left)) => {
+                *imag == 0.0 && float_equals_integer_exact(*real, left)
             }
-            (Value::Float(left), Value::Complex { real, imag })
-            | (Value::Complex { real, imag }, Value::Float(left)) => {
+            (Value::Float(left), Value::Complex { real, imag, .. })
+            | (Value::Complex { real, imag, .. }, Value::Float(left)) => {
                 **left == *real && *imag == 0.0
             }
             (Value::Bool(left), Value::Number(right))
@@ -1688,11 +2212,17 @@ impl PartialEq for Value {
             (Value::Bool(left), Value::Float(right)) | (Value::Float(right), Value::Bool(left)) => {
                 bool_as_i64(*left) as f64 == **right
             }
-            (Value::Bool(left), Value::Complex { real, imag })
-            | (Value::Complex { real, imag }, Value::Bool(left)) => {
+            (Value::Bool(left), Value::Complex { real, imag, .. })
+            | (Value::Complex { real, imag, .. }, Value::Bool(left)) => {
                 bool_as_i64(*left) as f64 == *real && *imag == 0.0
             }
-            (Value::String(left), Value::String(right)) => left == right,
+            (Value::String(left), Value::String(right))
+            | (Value::String(left), Value::IdentityString { value: right, .. })
+            | (Value::IdentityString { value: left, .. }, Value::String(right))
+            | (
+                Value::IdentityString { value: left, .. },
+                Value::IdentityString { value: right, .. },
+            ) => left == right,
             (Value::Bytes(left), Value::Bytes(right)) => left == right,
             (Value::ByteArray(left), Value::ByteArray(right)) => *left.borrow() == *right.borrow(),
             (Value::MemoryView(left), Value::MemoryView(right)) if Rc::ptr_eq(left, right) => true,
@@ -1710,7 +2240,8 @@ impl PartialEq for Value {
             (Value::MemoryView(left), Value::Bytes(right))
             | (Value::Bytes(right), Value::MemoryView(left)) => {
                 let left = left.borrow();
-                memory_view_state_bytes(&left).is_some_and(|left| left == *right)
+                memory_view_state_bytes(&left)
+                    .is_some_and(|left| left.as_slice() == right.as_slice())
             }
             (Value::MemoryView(left), Value::ByteArray(right))
             | (Value::ByteArray(right), Value::MemoryView(left)) => {
@@ -1722,6 +2253,7 @@ impl PartialEq for Value {
             | (Value::ByteArray(right), Value::Bytes(left)) => {
                 left.as_slice() == right.borrow().bytes()
             }
+            (Value::BytesIO(left), Value::BytesIO(right)) => Rc::ptr_eq(left, right),
             (Value::Bool(left), Value::Bool(right)) => left == right,
             (Value::List(left), Value::List(right)) => *left.borrow() == *right.borrow(),
             (Value::UserList { data: left, .. }, Value::UserList { data: right, .. }) => {
@@ -1773,6 +2305,9 @@ impl PartialEq for Value {
             (Value::SimpleNamespace { fields: left }, Value::SimpleNamespace { fields: right }) => {
                 simple_namespace_entries_equal(&left.borrow().entries, &right.borrow().entries)
             }
+            (Value::Frame { fields: left }, Value::Frame { fields: right }) => {
+                Rc::ptr_eq(left, right)
+            }
             (Value::PicklePayload(left), Value::PicklePayload(right)) => left == right,
             (
                 Value::CodeObject {
@@ -1812,6 +2347,10 @@ impl PartialEq for Value {
                 },
             ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
+            (
+                Value::FrameLocalsProxy { locals: left },
+                Value::FrameLocalsProxy { locals: right },
+            ) => Rc::ptr_eq(left, right),
             (
                 Value::DictView {
                     kind: left_kind,
@@ -2181,7 +2720,67 @@ impl PartialEq for Value {
                     ..
                 },
             ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::TypesCoroutineFunction {
+                    identity: left_identity,
+                    ..
+                },
+                Value::TypesCoroutineFunction {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::MagicMock {
+                    identity: left_identity,
+                    ..
+                },
+                Value::MagicMock {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::MockMethod {
+                    identity: left_identity,
+                    ..
+                },
+                Value::MockMethod {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::WeakRef {
+                    identity: left_identity,
+                    ..
+                },
+                Value::WeakRef {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
+                Value::ParamSpecAccess {
+                    identity: left_identity,
+                    ..
+                },
+                Value::ParamSpecAccess {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::Generator(left), Value::Generator(right)) => Rc::ptr_eq(left, right),
+            (
+                Value::GeneratorWrapper {
+                    identity: left_identity,
+                    ..
+                },
+                Value::GeneratorWrapper {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::Coroutine(left), Value::Coroutine(right)) => Rc::ptr_eq(left, right),
             (Value::CoroutineAwait(left), Value::CoroutineAwait(right)) => Rc::ptr_eq(left, right),
             (Value::AwaitIterator(left), Value::AwaitIterator(right)) => left == right,
@@ -2266,6 +2865,16 @@ impl PartialEq for Value {
                 Rc::ptr_eq(left, right)
             }
             (
+                Value::NewType {
+                    identity: left_identity,
+                    ..
+                },
+                Value::NewType {
+                    identity: right_identity,
+                    ..
+                },
+            ) => Rc::ptr_eq(left_identity, right_identity),
+            (
                 Value::TypeAlias {
                     name: left_name,
                     type_params: left_type_params,
@@ -2281,6 +2890,7 @@ impl PartialEq for Value {
                     && left_type_params == right_type_params
                     && left_value == right_value
             }
+            (Value::ForwardRef { arg: left }, Value::ForwardRef { arg: right }) => left == right,
             (
                 Value::ConstEvaluator {
                     kind: left_kind,
@@ -2295,10 +2905,43 @@ impl PartialEq for Value {
                 Value::GenericAlias {
                     origin: left_origin,
                     args: left_args,
+                    ..
                 },
                 Value::GenericAlias {
                     origin: right_origin,
                     args: right_args,
+                    ..
+                },
+            ) if is_union_origin(left_origin) && is_union_origin(right_origin) => {
+                left_args.len() == right_args.len()
+                    && left_args
+                        .iter()
+                        .all(|left| right_args.iter().any(|right| right == left))
+            }
+            (
+                Value::GenericAlias {
+                    origin: left_origin,
+                    args: left_args,
+                    ..
+                },
+                Value::GenericAlias {
+                    origin: right_origin,
+                    args: right_args,
+                    ..
+                },
+            ) if is_literal_origin(left_origin) && is_literal_origin(right_origin) => {
+                literal_args_equal(left_args, right_args)
+            }
+            (
+                Value::GenericAlias {
+                    origin: left_origin,
+                    args: left_args,
+                    ..
+                },
+                Value::GenericAlias {
+                    origin: right_origin,
+                    args: right_args,
+                    ..
                 },
             ) => left_origin == right_origin && left_args == right_args,
             (Value::Unpack(left), Value::Unpack(right)) => left == right,
@@ -2439,6 +3082,106 @@ impl PartialEq for Value {
                 },
             )
             | (
+                Value::LruCacheWrapper {
+                    identity: left_identity,
+                    ..
+                },
+                Value::LruCacheWrapper {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::SingleDispatch {
+                    identity: left_identity,
+                    ..
+                },
+                Value::SingleDispatch {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::SingleDispatchRegister {
+                    identity: left_identity,
+                    ..
+                },
+                Value::SingleDispatchRegister {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::SingleDispatchMethod {
+                    identity: left_identity,
+                    ..
+                },
+                Value::SingleDispatchMethod {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::SingleDispatchMethodCallable {
+                    identity: left_identity,
+                    ..
+                },
+                Value::SingleDispatchMethodCallable {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::PartialMethod {
+                    identity: left_identity,
+                    ..
+                },
+                Value::PartialMethod {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::PartialMethodCall {
+                    identity: left_identity,
+                    ..
+                },
+                Value::PartialMethodCall {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::CachedProperty {
+                    identity: left_identity,
+                    ..
+                },
+                Value::CachedProperty {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::CmpToKey {
+                    identity: left_identity,
+                    ..
+                },
+                Value::CmpToKey {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
+                Value::CmpToKeyObject {
+                    identity: left_identity,
+                    ..
+                },
+                Value::CmpToKeyObject {
+                    identity: right_identity,
+                    ..
+                },
+            )
+            | (
                 Value::OperatorAttrGetter {
                     identity: left_identity,
                     ..
@@ -2481,6 +3224,38 @@ impl PartialEq for Value {
     }
 }
 
+fn float_equals_integer_exact(value: f64, integer: &BigInt) -> bool {
+    if !value.is_finite() || value.fract() != 0.0 {
+        return false;
+    }
+
+    let bits = value.to_bits();
+    let negative = (bits >> 63) != 0;
+    let exponent_bits = ((bits >> 52) & 0x7ff) as i32;
+    let mantissa_bits = bits & ((1_u64 << 52) - 1);
+    if exponent_bits == 0 {
+        return mantissa_bits == 0 && integer == &BigInt::from(0);
+    }
+
+    let mut converted = BigInt::from(mantissa_bits | (1_u64 << 52));
+    let exponent = exponent_bits - 1023 - 52;
+    if exponent >= 0 {
+        converted <<= exponent as usize;
+    } else {
+        let shift = (-exponent) as usize;
+        let divisor = BigInt::from(1) << shift;
+        if (&converted % &divisor) != BigInt::from(0) {
+            return false;
+        }
+        converted >>= shift;
+    }
+
+    if negative {
+        converted = -converted;
+    }
+    &converted == integer
+}
+
 fn format_tuple(items: &[Value]) -> String {
     match items {
         [] => "()".to_string(),
@@ -2518,10 +3293,91 @@ fn format_named_tuple_subclass(class_name: &str, fields: &Scope) -> Option<Strin
     ))
 }
 
+fn format_tuple_subclass(fields: &Scope) -> Option<String> {
+    let storage = fields.borrow().get(TUPLE_SUBCLASS_STORAGE_FIELD).cloned()?;
+    let Value::Tuple(items) = storage else {
+        return None;
+    };
+    Some(format_tuple(items.as_ref()))
+}
+
+fn format_set_subclass(class_name: &str, fields: &Scope) -> Option<String> {
+    let storage = fields.borrow().get(SET_SUBCLASS_STORAGE_FIELD).cloned()?;
+    let Value::Set(items) = storage else {
+        return None;
+    };
+    let items = items.borrow();
+    Some(format_set_subclass_items(class_name, &items))
+}
+
+fn format_frozen_set_subclass(class_name: &str, fields: &Scope) -> Option<String> {
+    let storage = fields
+        .borrow()
+        .get(FROZEN_SET_SUBCLASS_STORAGE_FIELD)
+        .cloned()?;
+    let Value::FrozenSet(items) = storage else {
+        return None;
+    };
+    Some(format_set_subclass_items(class_name, items.as_ref()))
+}
+
+fn format_set_subclass_items(class_name: &str, items: &[Value]) -> String {
+    if items.is_empty() {
+        format!("{class_name}()")
+    } else {
+        format!("{class_name}({{{}}})", format_list_items(items))
+    }
+}
+
+fn format_generic_alias_subclass(fields: &Scope) -> Option<String> {
+    let alias = fields
+        .borrow()
+        .get(GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD)
+        .cloned()?;
+    match alias {
+        Value::GenericAlias { origin, args, .. } if is_union_origin(&origin) => {
+            Some(format_union_args(&args))
+        }
+        Value::GenericAlias { origin, args, .. } => Some(format_generic_alias(&origin, &args)),
+        _ => None,
+    }
+}
+
 fn format_int_subclass(fields: &Scope) -> Option<String> {
     match fields.borrow().get(INT_SUBCLASS_STORAGE_FIELD).cloned()? {
         Value::Number(value) => Some(value.to_string()),
         Value::BigInt(value) => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+fn format_int_enum_member_repr(class_name: &str, fields: &Scope) -> Option<String> {
+    let fields_ref = fields.borrow();
+    let member_name = match fields_ref.get(INT_ENUM_MEMBER_NAME_FIELD)? {
+        Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        _ => return None,
+    };
+    let value = fields_ref.get(INT_ENUM_MEMBER_VALUE_FIELD).cloned()?;
+    Some(format!(
+        "<{class_name}.{member_name}: {}>",
+        format_value_repr(&value)
+    ))
+}
+
+fn format_float_subclass(fields: &Scope) -> Option<String> {
+    match fields.borrow().get(FLOAT_SUBCLASS_STORAGE_FIELD).cloned()? {
+        Value::Float(value) => Some(format_float_display(*value)),
+        _ => None,
+    }
+}
+
+fn format_complex_subclass(fields: &Scope) -> Option<String> {
+    match fields
+        .borrow()
+        .get(COMPLEX_SUBCLASS_STORAGE_FIELD)
+        .cloned()?
+    {
+        Value::Complex { real, imag, .. } => Some(format_complex(real, imag)),
         _ => None,
     }
 }
@@ -2581,7 +3437,7 @@ fn format_template_interpolation(interpolation: &TemplateInterpolation) -> Strin
 
 fn format_template_interpolation_value(value: &Value) -> String {
     match value {
-        Value::String(value) => repr_string(value),
+        Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
         value => format_value_repr(value),
     }
 }

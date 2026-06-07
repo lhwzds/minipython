@@ -1,17 +1,95 @@
 use minipython::{
-    LexWarningCategory, SpannedToken, Token, TokenFStringConversion, TokenFStringPart,
-    ast_dump_eval_source, ast_dump_interactive_source, ast_dump_source, compile_source,
-    detect_source_encoding, eval_source, lex_with_spans, parse_eval_source, parse_func_type_source,
-    parse_interactive_source, parse_source, run_interactive_source, run_source, run_source_bytes,
+    LexWarningCategory, RuntimeOptions, SpannedToken, Token, TokenFStringConversion,
+    TokenFStringPart, ast_dump_eval_source, ast_dump_interactive_source, ast_dump_source,
+    compile_source, detect_source_encoding, eval_source, lex_with_spans, parse_eval_source,
+    parse_func_type_source, parse_interactive_source, parse_source, run_interactive_source,
+    run_source, run_source_bytes, run_source_with_runtime_options,
     run_source_with_warnings_as_errors, source_compile_error_diagnostic,
     source_lex_error_diagnostic, source_parse_error_diagnostic, source_warning_as_error_diagnostic,
     source_warning_diagnostics, source_warnings, tokenize_bytes_with_spans,
     tokenize_cpython_with_spans, tokenize_with_spans,
 };
 
+fn cpython_formatfloat_testfile_source() -> String {
+    let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/formatfloat_testcases.txt";
+    let data = std::fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
+    format!(
+        r#"data = {data:?}
+cases = []
+for line in data.splitlines():
+    line = line.strip()
+    if not line or line.startswith('--'):
+        continue
+    lhs, expected = [part.strip() for part in line.split('->')]
+    fmt, arg = lhs.split()
+    cases.append((fmt, arg, expected))
+
+checks = 0
+failures = 0
+for fmt, arg, expected in cases:
+    value = float(arg)
+    for label, got, wanted in [
+        ('percent', fmt % value, expected),
+        ('percent-neg', fmt % -value, '-' + expected),
+    ]:
+        checks += 1
+        if got != wanted:
+            print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+            failures += 1
+    if fmt != '%r':
+        spec = fmt[1:]
+        for label, got, wanted in [
+            ('format', format(value, spec), expected),
+            ('format-neg', format(-value, spec), '-' + expected),
+        ]:
+            checks += 1
+            if got != wanted:
+                print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+                failures += 1
+print('checked', len(cases), checks, 'failures', failures)"#
+    )
+}
+
+fn cpython_floating_points_repr_source() -> String {
+    let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/floating_points.txt";
+    let data = std::fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
+    format!(
+        r#"import math
+data = {data:?}
+checked = 0
+failures = 0
+for line in data.splitlines():
+    text = line.strip()
+    if not text or text.startswith('#'):
+        continue
+    value = eval(text)
+    rendered = repr(value)
+    roundtrip = eval(rendered)
+    if value != roundtrip:
+        print('mismatch', text, rendered, roundtrip)
+        failures += 1
+    if value == 0.0 and math.copysign(1.0, value) != math.copysign(1.0, roundtrip):
+        print('zero-sign-mismatch', text, rendered)
+        failures += 1
+    checked += 1
+print('checked', checked, 'failures', failures)"#
+    )
+}
+
 fn assert_output(source: &str, expected: &[&str]) {
     let expected = expected.iter().map(|line| line.to_string()).collect();
     assert_eq!(run_source(source), Ok(expected), "source:\n{source}");
+}
+
+fn assert_output_with_runtime_options(source: &str, expected: &[&str], options: RuntimeOptions) {
+    let expected = expected.iter().map(|line| line.to_string()).collect();
+    assert_eq!(
+        run_source_with_runtime_options(source, options),
+        Ok(expected),
+        "source:\n{source}"
+    );
 }
 
 fn assert_output_with_stack(source: &str, expected: &[&str], stack_size: usize) {
@@ -24,6 +102,19 @@ fn assert_output_with_stack(source: &str, expected: &[&str], stack_size: usize) 
         .join()
         .expect("MiniPython test thread panicked");
     assert_eq!(actual, Ok(expected), "source:\n{source}");
+}
+
+fn run_test_with_stack<F>(stack_size: usize, test: F)
+where
+    F: FnOnce() + Send + 'static,
+{
+    let handle = std::thread::Builder::new()
+        .stack_size(stack_size)
+        .spawn(test)
+        .expect("failed to spawn MiniPython test thread");
+    if let Err(payload) = handle.join() {
+        std::panic::resume_unwind(payload);
+    }
 }
 
 fn assert_bytes_output(source: &[u8], expected: &[&str]) {
@@ -5132,6 +5223,106 @@ fn cpython_grammar_imaginary_literals_subset() {
     assert_error("1.4j_", "lex error: invalid number: 1.4j_");
 }
 
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_float,
+// ::test_noargs, ::test_error_message, and the locale-independent assertions
+// from ::test_float_with_comma. The lone-surrogate row is intentionally left
+// out because Rust strings cannot represent isolated surrogate code points.
+#[test]
+fn cpython_float_constructor_core_subset() {
+    assert_output(
+        r#"def show(label, expr):
+    try:
+        value = expr()
+        print(label, repr(value), type(value).__name__)
+    except BaseException as error:
+        print(label, type(error).__name__, error.args[0])
+
+for label, expr in [
+    ('noargs', lambda: float()),
+    ('float-float', lambda: float(3.14)),
+    ('float-int', lambda: float(314)),
+    ('float-spaces', lambda: float('  3.14  ')),
+    ('arabic-digits', lambda: float('  ٣.١٤  ')),
+    ('unicode-space', lambda: float('\u20033.14\u2002')),
+    ('long-bytes', lambda: float(b'.' + b'1' * 1000)),
+    ('long-str', lambda: float('.' + '1' * 1000)),
+    ('comma', lambda: float('  3,14  ')),
+    ('plus-comma', lambda: float('  +3,14  ')),
+    ('minus-comma', lambda: float('  -3,14  ')),
+    ('bad-hex-a', lambda: float('  0x3.1  ')),
+    ('bad-hex-b', lambda: float('  -0x3.p-1  ')),
+    ('bad-hex-c', lambda: float('  +0x3.p-1  ')),
+    ('bad-sign-pp', lambda: float('++3.14')),
+    ('bad-sign-pm', lambda: float('+-3.14')),
+    ('bad-sign-mp', lambda: float('-+3.14')),
+    ('bad-sign-mm', lambda: float('--3.14')),
+    ('bad-dotnan', lambda: float('.nan')),
+    ('bad-dotinf', lambda: float('+.inf')),
+    ('bad-dot', lambda: float('.')),
+    ('bad-negdot', lambda: float('-.')),
+    ('bad-dict', lambda: float({})),
+    ('bad-d-exp', lambda: float('-1.7d29')),
+    ('bad-D-exp', lambda: float('3D-14')),
+    ('bad-japanese', lambda: float('こんにちは')),
+    ('bad-half', lambda: float('½')),
+    ('bad-mixed-half', lambda: float('123½')),
+    ('bad-embedded-space', lambda: float('  123 456  ')),
+    ('bad-bytes-space', lambda: float(b'  123 456  ')),
+    ('bad-empty', lambda: float('')),
+    ('bad-space', lambda: float(' ')),
+    ('bad-whitespace', lambda: float('\t \n')),
+    ('bad-arabic-suffix', lambda: float('٣١٤!')),
+    ('bad-nul-a', lambda: float('123\0')),
+    ('bad-nul-b', lambda: float('123\0 245')),
+    ('bad-nul-c', lambda: float('123\x00245')),
+    ('bad-bytes-nul', lambda: float(b'123\0')),
+    ('bad-bytes-nonutf8', lambda: float(b'123\xa0')),
+]:
+    show(label, expr)"#,
+        &[
+            "noargs 0.0 float",
+            "float-float 3.14 float",
+            "float-int 314.0 float",
+            "float-spaces 3.14 float",
+            "arabic-digits 3.14 float",
+            "unicode-space 3.14 float",
+            "long-bytes 0.1111111111111111 float",
+            "long-str 0.1111111111111111 float",
+            "comma ValueError could not convert string to float: '  3,14  '",
+            "plus-comma ValueError could not convert string to float: '  +3,14  '",
+            "minus-comma ValueError could not convert string to float: '  -3,14  '",
+            "bad-hex-a ValueError could not convert string to float: '  0x3.1  '",
+            "bad-hex-b ValueError could not convert string to float: '  -0x3.p-1  '",
+            "bad-hex-c ValueError could not convert string to float: '  +0x3.p-1  '",
+            "bad-sign-pp ValueError could not convert string to float: '++3.14'",
+            "bad-sign-pm ValueError could not convert string to float: '+-3.14'",
+            "bad-sign-mp ValueError could not convert string to float: '-+3.14'",
+            "bad-sign-mm ValueError could not convert string to float: '--3.14'",
+            "bad-dotnan ValueError could not convert string to float: '.nan'",
+            "bad-dotinf ValueError could not convert string to float: '+.inf'",
+            "bad-dot ValueError could not convert string to float: '.'",
+            "bad-negdot ValueError could not convert string to float: '-.'",
+            "bad-dict TypeError float() argument must be a string or a real number, not 'dict'",
+            "bad-d-exp ValueError could not convert string to float: '-1.7d29'",
+            "bad-D-exp ValueError could not convert string to float: '3D-14'",
+            "bad-japanese ValueError could not convert string to float: 'こんにちは'",
+            "bad-half ValueError could not convert string to float: '½'",
+            "bad-mixed-half ValueError could not convert string to float: '123½'",
+            "bad-embedded-space ValueError could not convert string to float: '  123 456  '",
+            "bad-bytes-space ValueError could not convert string to float: b'  123 456  '",
+            "bad-empty ValueError could not convert string to float: ''",
+            "bad-space ValueError could not convert string to float: ' '",
+            "bad-whitespace ValueError could not convert string to float: '\\t \\n'",
+            "bad-arabic-suffix ValueError could not convert string to float: '٣١٤!'",
+            "bad-nul-a ValueError could not convert string to float: '123\\x00'",
+            "bad-nul-b ValueError could not convert string to float: '123\\x00 245'",
+            "bad-nul-c ValueError could not convert string to float: '123\\x00245'",
+            "bad-bytes-nul ValueError could not convert string to float: b'123\\x00'",
+            "bad-bytes-nonutf8 ValueError could not convert string to float: b'123\\xa0'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
 // test_underscores.
 #[test]
@@ -5158,6 +5349,2070 @@ fn cpython_float_string_underscore_subset() {
             "-_INF ValueError",
             "-INF_ ValueError",
             "bytes ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_non_numeric_input_types and ::test_float_memoryview.
+#[test]
+fn cpython_float_bytes_like_input_types_subset() {
+    assert_output(
+        r#"import array
+class CustomStr(str):
+    pass
+class CustomBytes(bytes):
+    pass
+class CustomByteArray(bytearray):
+    pass
+
+for label, source in [
+    ('bytes', bytes(b' 3.14  ')),
+    ('bytearray', bytearray(b' 3.14  ')),
+    ('CustomStr', CustomStr(' 3.14  ')),
+    ('CustomBytes', CustomBytes(b' 3.14  ')),
+    ('CustomByteArray', CustomByteArray(b' 3.14  ')),
+    ('memoryview', memoryview(b' 3.14  ')),
+    ('arrayB', array.array('B', b' 3.14  ')),
+]:
+    value = float(source)
+    print(label, value, type(value) is float)
+
+for label, source in [
+    ('memoryview-core', memoryview(b'12.3')[1:4]),
+    ('memoryview-nul', memoryview(b'12.3\0')[1:4]),
+    ('memoryview-space', memoryview(b'12.3 ')[1:4]),
+    ('memoryview-letter', memoryview(b'12.3A')[1:4]),
+    ('memoryview-extra', memoryview(b'12.34')[1:4]),
+]:
+    print(label, float(source))
+
+bad_cases = [
+    ('bytes', bytes(b'AAAA'), "could not convert string to float: b'AAAA'"),
+    ('bytearray', bytearray(b'AAAA'), "could not convert string to float: bytearray(b'AAAA')"),
+    ('CustomStr', CustomStr('AAAA'), "could not convert string to float: 'AAAA'"),
+    ('CustomBytes', CustomBytes(b'AAAA'), "could not convert string to float: b'AAAA'"),
+    ('CustomByteArray', CustomByteArray(b'AAAA'), "could not convert string to float: CustomByteArray(b'AAAA')"),
+    ('arrayB', array.array('B', b'AAAA'), "could not convert string to float: array('B', [65, 65, 65, 65])"),
+]
+for label, source, expected in bad_cases:
+    try:
+        float(source)
+    except ValueError as error:
+        print(label, error.__class__.__name__, error.args[0] == expected)
+
+try:
+    float(memoryview(b'AAAA'))
+except ValueError as error:
+    print('memoryview-bad', error.__class__.__name__, error.args[0].startswith('could not convert string to float: <memory at 0x'))
+try:
+    float({})
+except TypeError as error:
+    print('dict-bad', error.__class__.__name__, error.args[0])"#,
+        &[
+            "bytes 3.14 True",
+            "bytearray 3.14 True",
+            "CustomStr 3.14 True",
+            "CustomBytes 3.14 True",
+            "CustomByteArray 3.14 True",
+            "memoryview 3.14 True",
+            "arrayB 3.14 True",
+            "memoryview-core 2.3",
+            "memoryview-nul 2.3",
+            "memoryview-space 2.3",
+            "memoryview-letter 2.3",
+            "memoryview-extra 2.3",
+            "bytes ValueError True",
+            "bytearray ValueError True",
+            "CustomStr ValueError True",
+            "CustomBytes ValueError True",
+            "CustomByteArray ValueError True",
+            "arrayB ValueError True",
+            "memoryview-bad ValueError True",
+            "dict-bad TypeError float() argument must be a string or a real number, not 'dict'",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::test_hash
+// and ::test_hash_nan. Exact identity-hash values are process-local, so this
+// pins the public equality relationships instead of numeric addresses.
+#[test]
+fn cpython_float_hash_and_sys_info_subset() {
+    assert_output(
+        r#"import sys
+ok = True
+for x in range(-30, 30):
+    ok = ok and hash(float(x)) == hash(x)
+print('small-int-float', ok)
+print('minus-one', hash(-1), hash(-1.0))
+print('max', hash(float(sys.float_info.max)) == hash(int(sys.float_info.max)))
+print('inf', hash(float('inf')) == sys.hash_info.inf, hash(float('-inf')) == -sys.hash_info.inf)
+value = float('nan')
+print('nan', hash(value) == object.__hash__(value), isinstance(hash(value), int))
+class H:
+    def __hash__(self):
+        return 42
+class F(float, H):
+    pass
+value = F('nan')
+print('subnan', hash(value) == object.__hash__(value), isinstance(hash(value), int), hash(value) == 42)
+print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds)
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)"#,
+        &[
+            "small-int-float True",
+            "minus-one -2 -2",
+            "max True",
+            "inf True True",
+            "nan True True",
+            "subnan True True False",
+            "sys-float-info 53 2 1",
+            "sys-hash-info 314159 0 1000003",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_issue_gh143006, with adjacent public float/int exact-comparison
+// boundaries. Float/int comparisons must use the stored integer value for
+// int subclasses and must not round arbitrary-precision integers through f64.
+#[test]
+fn cpython_float_int_comparison_boundaries_subset() {
+    assert_output(
+        r#"class EvilInt(int):
+    def __neg__(self):
+        print('bad-neg-called')
+        return ''
+
+i = -1 << 50
+f = float(i) - 0.5
+i = EvilInt(i)
+print('evil', f == i, f != i, f < i, f <= i, f > i, f >= i)
+
+huge = 2 ** 200
+hf = float(huge)
+print('huge-eq', hf == huge, hf == huge + 1, hf == huge - 1, hf != huge + 1)
+print('huge-order', hf < huge + 1, hf > huge - 1, hf <= huge, hf >= huge)
+
+small = 2 ** 60
+sf = float(small)
+print('i64-order', sf == small, sf == small + 1, sf < small + 1, sf > small - 1)
+
+class I(int):
+    pass
+j = I(small + 1)
+print('subclass', sf == j, sf < j, sf <= j, sf > j, sf >= j)
+
+nan = float('nan')
+print('nan-order', nan < 1, nan <= 1, nan > 1, nan >= 1, 1 < nan, 1 <= nan, 1 > nan, 1 >= nan)"#,
+        &[
+            "evil False True True True False False",
+            "huge-eq True False False True",
+            "huge-order True True True True",
+            "i64-order True False True True",
+            "subclass False True True False False",
+            "nan-order False False False False False False False False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatFunctionsTestCase::
+// test_getformat. CPython accepts either endian-specific IEEE spelling or
+// "unknown"; MiniPython reports the target platform's IEEE spelling.
+#[test]
+fn cpython_float_getformat_subset() {
+    assert_output(
+        r#"for name in ['double', 'float']:
+    value = float.__getformat__(name)
+    print(name, value in ['unknown', 'IEEE, big-endian', 'IEEE, little-endian'])
+try:
+    float.__getformat__('chicken')
+except ValueError as error:
+    print('bad-name', error.__class__.__name__, error.args[0])
+try:
+    float.__getformat__(1)
+except TypeError as error:
+    print('bad-type', error.__class__.__name__, error.args[0])
+print('dir', '__getformat__' in dir(float), callable(float.__getformat__))
+print('instance', (1.0).__getformat__('double') == float.__getformat__('double'))
+class F(float):
+    pass
+print('subclass', F.__getformat__('float') == float.__getformat__('float'), F(1.0).__getformat__('float') == float.__getformat__('float'))"#,
+        &[
+            "double True",
+            "float True",
+            "bad-name ValueError __getformat__() argument 1 must be 'double' or 'float'",
+            "bad-type TypeError __getformat__() argument must be str, not int",
+            "dir True True",
+            "instance True",
+            "subclass True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatTestCase::test_format
+// and ::test_issue5864. Empty float presentation with an explicit precision
+// uses general formatting, while no-precision empty presentation remains
+// str-like.
+#[test]
+fn cpython_float_default_precision_format_subset() {
+    assert_output(
+        r#"checks = [
+    ('issue-a', 123.456, '.4'),
+    ('issue-b', 1234.56, '.4'),
+    ('issue-c', 12345.6, '.4'),
+    ('one-p0', 1.0, '.0'),
+    ('one-p1', 1.0, '.1'),
+    ('one-p2', 1.0, '.2'),
+    ('one-p4', 1.0, '.4'),
+    ('sign-plus', 123.456, '+.4'),
+    ('sign-space', 123.456, ' .4'),
+    ('alternate', 123.456, '#.4'),
+    ('nan-sign', float('nan'), '+.4'),
+    ('inf-zero', float('inf'), '010,.2'),
+]
+for label, value, spec in checks:
+    print(label, format(value, spec))
+x = 100 / 7.0
+print('empty-like', format(x, '') == format(x, '-') == format(x, '>') == format(x, '2') == str(x))"#,
+        &[
+            "issue-a 123.5",
+            "issue-b 1.235e+03",
+            "issue-c 1.235e+04",
+            "one-p0 1e+00",
+            "one-p1 1e+00",
+            "one-p2 1.0",
+            "one-p4 1.0",
+            "sign-plus +123.5",
+            "sign-space  123.5",
+            "alternate 123.5",
+            "nan-sign +nan",
+            "inf-zero 0000000inf",
+            "empty-like True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatTestCase::test_format.
+// Precision-side grouping applies to the fractional part of float formatting
+// and composes with integer grouping, width, sign, zero padding, and exponent
+// presentations.
+#[test]
+fn cpython_float_fractional_grouping_format_subset() {
+    assert_output(
+        r#"x = 123_456.123_456
+checks = [
+    ('frac-under-fixed', '._f'),
+    ('frac-comma-fixed', '.,f'),
+    ('both-under-fixed', '_._f'),
+    ('both-comma-fixed', ',.,f'),
+    ('prec-under-fixed', '.10_f'),
+    ('prec-comma-fixed', '.10,f'),
+    ('right-width', '>21._f'),
+    ('left-width', '<21._f'),
+    ('signed-under-exp', '+.11_e'),
+    ('signed-comma-exp', '+.11,e'),
+    ('zero-under-fixed-21', '021_._f'),
+    ('zero-under-fixed-20', '020_._f'),
+    ('signed-zero-under-fixed', '+021_._f'),
+    ('space-width-under-fixed', '21_._f'),
+    ('right-zero-under-fixed', '>021_._f'),
+    ('left-zero-under-fixed', '<021_._f'),
+    ('zero-under-fixed-prec10-23', '023_.10_f'),
+    ('zero-under-fixed-prec10-22', '022_.10_f'),
+    ('signed-zero-under-fixed-prec10', '+023_.10_f'),
+    ('zero-under-fixed-prec9', '023_.9_f'),
+    ('zero-under-exp-21', '021_._e'),
+    ('zero-under-exp-20', '020_._e'),
+    ('signed-zero-under-exp', '+021_._e'),
+    ('zero-under-exp-prec10-23', '023_.10_e'),
+    ('zero-under-exp-prec10-22', '022_.10_e'),
+    ('zero-under-exp-prec9', '023_.9_e'),
+]
+for label, spec in checks:
+    print(label, format(x, spec))
+bad_specs = ['._6f', '.,_f', '.6,_f', '.6_,f', '.6_n', '.6,n']
+for spec in bad_specs:
+    try:
+        format(x, spec)
+    except ValueError as error:
+        print('bad', spec, error.__class__.__name__)"#,
+        &[
+            "frac-under-fixed 123456.123_456",
+            "frac-comma-fixed 123456.123,456",
+            "both-under-fixed 123_456.123_456",
+            "both-comma-fixed 123,456.123,456",
+            "prec-under-fixed 123456.123_456_000_0",
+            "prec-comma-fixed 123456.123,456,000,0",
+            "right-width        123456.123_456",
+            "left-width 123456.123_456       ",
+            "signed-under-exp +1.234_561_234_56e+05",
+            "signed-comma-exp +1.234,561,234,56e+05",
+            "zero-under-fixed-21 0_000_123_456.123_456",
+            "zero-under-fixed-20 0_000_123_456.123_456",
+            "signed-zero-under-fixed +0_000_123_456.123_456",
+            "space-width-under-fixed       123_456.123_456",
+            "right-zero-under-fixed 000000123_456.123_456",
+            "left-zero-under-fixed 123_456.123_456000000",
+            "zero-under-fixed-prec10-23 0_123_456.123_456_000_0",
+            "zero-under-fixed-prec10-22 0_123_456.123_456_000_0",
+            "signed-zero-under-fixed-prec10 +0_123_456.123_456_000_0",
+            "zero-under-fixed-prec9 000_123_456.123_456_000",
+            "zero-under-exp-21 0_000_001.234_561e+05",
+            "zero-under-exp-20 0_000_001.234_561e+05",
+            "signed-zero-under-exp +0_000_001.234_561e+05",
+            "zero-under-exp-prec10-23 0_001.234_561_234_6e+05",
+            "zero-under-exp-prec10-22 0_001.234_561_234_6e+05",
+            "zero-under-exp-prec9 000_001.234_561_235e+05",
+            "bad ._6f ValueError",
+            "bad .,_f ValueError",
+            "bad .6,_f ValueError",
+            "bad .6_,f ValueError",
+            "bad .6_n ValueError",
+            "bad .6,n ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatTestCase::test_issue35560.
+// Zero width should not introduce padding when the rendered float already
+// exceeds the requested width.
+#[test]
+fn cpython_float_zero_width_format_subset() {
+    assert_output(
+        r#"checks = [
+    ('pos-empty-zero-width', 123.0, '00'),
+    ('pos-fixed-zero-width', 123.34, '00f'),
+    ('pos-exp-zero-width', 123.34, '00e'),
+    ('pos-general-zero-width', 123.34, '00g'),
+    ('pos-fixed-precision', 123.34, '00.10f'),
+    ('pos-exp-precision', 123.34, '00.10e'),
+    ('pos-general-precision', 123.34, '00.10g'),
+    ('pos-width-one-fixed', 123.34, '01f'),
+    ('neg-empty-zero-width', -123.0, '00'),
+    ('neg-fixed-zero-width', -123.34, '00f'),
+    ('neg-exp-zero-width', -123.34, '00e'),
+    ('neg-general-zero-width', -123.34, '00g'),
+    ('neg-fixed-precision', -123.34, '00.10f'),
+    ('neg-exp-precision', -123.34, '00.10e'),
+    ('neg-general-precision', -123.34, '00.10g'),
+]
+for label, value, spec in checks:
+    print(label, format(value, spec))"#,
+        &[
+            "pos-empty-zero-width 123.0",
+            "pos-fixed-zero-width 123.340000",
+            "pos-exp-zero-width 1.233400e+02",
+            "pos-general-zero-width 123.34",
+            "pos-fixed-precision 123.3400000000",
+            "pos-exp-precision 1.2334000000e+02",
+            "pos-general-precision 123.34",
+            "pos-width-one-fixed 123.340000",
+            "neg-empty-zero-width -123.0",
+            "neg-fixed-zero-width -123.340000",
+            "neg-exp-zero-width -1.233400e+02",
+            "neg-general-zero-width -123.34",
+            "neg-fixed-precision -123.3400000000",
+            "neg-exp-precision -1.2334000000e+02",
+            "neg-general-precision -123.34",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatTestCase::
+// test_format_testfile. CPython reads mathdata/formatfloat_testcases.txt; this
+// deterministic slice covers f/e/g/r rows and old-style `%` plus format().
+#[test]
+fn cpython_float_format_testfile_subset() {
+    assert_output(
+        r#"data = '''
+%.0f 0 -> 0
+%.1f 0 -> 0.0
+%.50f 0 -> 0.00000000000000000000000000000000000000000000000000
+%.0f 1.5 -> 2
+%.0f 2.5 -> 2
+%.0f 3.5 -> 4
+%.0f 1e49 -> 9999999999999999464902769475481793196872414789632
+%.0f 1e50 -> 100000000000000007629769841091887003294964970946560
+%.1f 0.06 -> 0.1
+%.1f 0.25 -> 0.2
+%.1f 0.75 -> 0.8
+%.2f 0.125 -> 0.12
+%.2f 0.375 -> 0.38
+%.2f 1234567.8912 -> 1234567.89
+%#.0f 0 -> 0.
+%#.1f 0 -> 0.0
+%#.0f 1.5 -> 2.
+%#.0f 2.5 -> 2.
+%#.0f 10.1 -> 10.
+%#.0f 1234.56 -> 1235.
+%#.1f 1.4 -> 1.4
+%#.2f 0.375 -> 0.38
+%f 0 -> 0.000000
+%f 1.23456789 -> 1.234568
+%f 0.0000005001 -> 0.000001
+%f 0.0000004999 -> 0.000000
+%.0e 0 -> 0e+00
+%.50e 0 -> 0.00000000000000000000000000000000000000000000000000e+00
+%.0e 0.01 -> 1e-02
+%.0e 1 -> 1e+00
+%.0e 123.456 -> 1e+02
+%.0e 0.5 -> 5e-01
+%.0e 1.4 -> 1e+00
+%.0e 6.5 -> 6e+00
+%.1e 0.0001 -> 1.0e-04
+%#.0e 0.01 -> 1.e-02
+%#.0e 0.1 -> 1.e-01
+%#.0e 1 -> 1.e+00
+%#.0e 10 -> 1.e+01
+%#.0e 100 -> 1.e+02
+%#.0e 0.012 -> 1.e-02
+%#.0e 0.12 -> 1.e-01
+%#.0e 1.2 -> 1.e+00
+%#.0e 12 -> 1.e+01
+%#.0e 120 -> 1.e+02
+%#.0e 123.456 -> 1.e+02
+%#.0e 0.000123456 -> 1.e-04
+%#.0e 123456000 -> 1.e+08
+%#.0e 0.5 -> 5.e-01
+%#.0e 1.4 -> 1.e+00
+%#.0e 1.5 -> 2.e+00
+%#.0e 1.6 -> 2.e+00
+%#.0e 2.4999999 -> 2.e+00
+%#.0e 2.5 -> 2.e+00
+%#.0e 2.5000001 -> 3.e+00
+%#.0e 3.499999999999 -> 3.e+00
+%#.0e 3.5 -> 4.e+00
+%#.0e 4.5 -> 4.e+00
+%#.0e 5.5 -> 6.e+00
+%#.0e 6.5 -> 6.e+00
+%#.0e 7.5 -> 8.e+00
+%#.0e 8.5 -> 8.e+00
+%#.0e 9.4999 -> 9.e+00
+%#.0e 9.5 -> 1.e+01
+%#.0e 10.5 -> 1.e+01
+%#.0e 14.999 -> 1.e+01
+%#.0e 15 -> 2.e+01
+%#.1e 123.4 -> 1.2e+02
+%#.2e 0.0001357 -> 1.36e-04
+%.0g 0 -> 0
+%.100g 0 -> 0
+%.0g 1000 -> 1e+03
+%.0g 1 -> 1
+%.0g 1e-3 -> 0.001
+%.0g 1e-5 -> 1e-05
+%.0g 0.12 -> 0.1
+%.1g 1e-6 -> 1e-06
+%.1g 0.0012 -> 0.001
+%.2g 1e-6 -> 1e-06
+%.2g 0.00123 -> 0.0012
+%#.0g 0 -> 0.
+%#.1g 0 -> 0.
+%#.2g 0 -> 0.0
+%#.3g 0 -> 0.00
+%#.4g 0 -> 0.000
+%#.0g 0.2 -> 0.2
+%#.1g 0.2 -> 0.2
+%#.2g 0.2 -> 0.20
+%#.3g 0.2 -> 0.200
+%#.4g 0.2 -> 0.2000
+%#.10g 0.2 -> 0.2000000000
+%#.0g 2 -> 2.
+%#.1g 2 -> 2.
+%#.2g 2 -> 2.0
+%#.3g 2 -> 2.00
+%#.4g 2 -> 2.000
+%#.0g 20 -> 2.e+01
+%#.1g 20 -> 2.e+01
+%#.2g 20 -> 20.
+%#.3g 20 -> 20.0
+%#.4g 20 -> 20.00
+%#.0g 234.56 -> 2.e+02
+%#.1g 234.56 -> 2.e+02
+%#.2g 234.56 -> 2.3e+02
+%#.3g 234.56 -> 235.
+%#.4g 234.56 -> 234.6
+%#.5g 234.56 -> 234.56
+%#.6g 234.56 -> 234.560
+%r 0 -> 0.0
+%r 1 -> 1.0
+%r 1e15 -> 1000000000000000.0
+%r 9999999999999999 -> 1e+16
+%r 1e16 -> 1e+16
+%r 1.000000000000001e-4 -> 0.0001000000000000001
+%r 0.9999999999999999e-4 -> 9.999999999999999e-05
+%r 1e-5 -> 1e-05
+'''
+cases = []
+for line in data.splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    lhs, expected = [part.strip() for part in line.split('->')]
+    fmt, arg = lhs.split()
+    cases.append((fmt, arg, expected))
+
+checks = 0
+for fmt, arg, expected in cases:
+    value = float(arg)
+    for label, got, wanted in [
+        ('percent', fmt % value, expected),
+        ('percent-neg', fmt % -value, '-' + expected),
+    ]:
+        checks += 1
+        if got != wanted:
+            print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+    if fmt != '%r':
+        spec = fmt[1:]
+        for label, got, wanted in [
+            ('format', format(value, spec), expected),
+            ('format-neg', format(-value, spec), '-' + expected),
+        ]:
+            checks += 1
+            if got != wanted:
+                print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+print('checked', len(cases), checks)"#,
+        &["checked 116 448"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::FormatTestCase::
+// test_format_testfile. This runs the complete local CPython
+// mathdata/formatfloat_testcases.txt dataset instead of the deterministic
+// representative slice above.
+#[test]
+fn cpython_float_format_testfile_full_subset() {
+    let source = cpython_formatfloat_testfile_source();
+    assert_output(&source, &["checked 292 1114 failures 0"]);
+}
+
+// Adapted from CPython Lib/test/test_float.py::ReprTestCase::test_repr.
+// CPython reads mathdata/floating_points.txt; this fixed representative slice
+// covers the same public repr -> eval round-trip invariant.
+#[test]
+fn cpython_float_repr_roundtrip_subset() {
+    assert_output(
+        r#"import math
+texts = '''
+0E0 -0E0 1E0 15E-1 125E-2 1125E-3 10625E-4
+103125E-5 1015625E-6 10078125E-7 100390625E-8
+1001953125E-9 10009765625E-10 100048828125E-11
+1000244140625E-12 10001220703125E-13 100006103515625E-14
+1000030517578125E-15 10000152587890625E-16 +8E153 -1E153
++9E306 -2E153 +7E-304 -3E-49 +7E-303 +50609263E157
++2572981889477453E142 -33584377202279118724E-252
++36992084760177624177E-318 -73984169520355248354E-318
++99257763227713890244E-115 -87336362425182547697E-280 -87E-274
+-9821613080E121 -82783038381290406E165 +67536228609141569109E-133
+-35620497849450218807E-306 +66550376797582521751E-126 +1721E-17
+-68384463429E25 +76E-23 +134976318E25 -2739849386524269E26
++5479698773048538E26 +6124568318523113E-25 -1139777988171071E-24
++6322612303128019E-27 -2955864564844617E-25 -9994029144998961E25
+-2971238324022087E27 -1656055679333934E-27 -1445488709150234E-26
++55824717499885172E27 -69780896874856465E26 +84161538867545199E25
+-27912358749942586E27 +24711112462926331E-25 -12645224606256038E-27
+-12249136637046226E-25 +74874448287465757E27 -35642836832753303E24
+-71285673665506606E24 +43723334984997307E-26 +10182419849537963E-24
+-93501703572661982E-26 2183167012312112312312.23538020374420446192e-370
+0.99999999999999999999999999999999999999999e+23
+'''.split()
+checked = 0
+for text in texts:
+    value = eval(text)
+    rendered = repr(value)
+    roundtrip = eval(rendered)
+    if value != roundtrip:
+        print('mismatch', text, rendered, roundtrip)
+    if value == 0.0 and math.copysign(1.0, value) != math.copysign(1.0, roundtrip):
+        print('zero-sign-mismatch', text, rendered)
+    if str(value) != rendered:
+        print('str-repr-mismatch', text, str(value), rendered)
+    checked += 1
+print('checked', checked, repr(eval(texts[0])), repr(eval(texts[-1])))"#,
+        &["checked 68 0.0 1e+23"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::ReprTestCase::test_repr.
+// This runs the complete local CPython mathdata/floating_points.txt dataset
+// rather than the deterministic representative slice above.
+#[test]
+fn cpython_float_repr_roundtrip_full_subset() {
+    let source = cpython_floating_points_repr_source();
+    assert_output(&source, &["checked 1016 failures 0"]);
+}
+
+// Adapted from CPython Lib/test/test_float.py::ReprTestCase::test_short_repr.
+// MiniPython exposes CPython's public short-repr marker and pins the finite
+// float repr/str round-tripping rows used by the test.
+#[test]
+fn cpython_float_short_repr_subset() {
+    assert_output(
+        r#"import sys
+test_strings = [
+    '0.0',
+    '1.0',
+    '0.01',
+    '0.02',
+    '0.03',
+    '0.04',
+    '0.05',
+    '1.23456789',
+    '10.0',
+    '100.0',
+    '1000000000000000.0',
+    '9999999999999990.0',
+    '1e+16',
+    '1e+17',
+    '0.001',
+    '0.001001',
+    '0.00010000000000001',
+    '0.0001',
+    '9.999999999999e-05',
+    '1e-05',
+    '8.72293771110361e+25',
+    '7.47005307342313e+26',
+    '2.86438000439698e+28',
+    '8.89142905246179e+28',
+    '3.08578087079232e+35',
+]
+checked = 0
+for text in test_strings:
+    for candidate in (text, '-' + text):
+        value = float(candidate)
+        checked += 1
+        if repr(value) != candidate:
+            print('repr-mismatch', candidate, repr(value))
+        if str(value) != repr(value):
+            print('str-mismatch', candidate, str(value), repr(value))
+        if eval(repr(value)) != value:
+            print('roundtrip-mismatch', candidate, repr(value))
+print('style', sys.float_repr_style)
+print('checked', checked)"#,
+        &["style short", "checked 50"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::RoundTestCase. This focuses
+// on the public float `round(x, ndigits)` behavior around IEEE specials,
+// extreme decimal exponents, signed zero, overflow, and historical
+// round-half-even bug cases.
+#[test]
+fn cpython_float_round_specials_subset() {
+    assert_output(
+        r#"import math
+def show(label, fn):
+    try:
+        value = fn()
+        if isinstance(value, float):
+            if math.isnan(value):
+                print(label, 'nan', math.copysign(1.0, value), repr(value))
+            else:
+                print(label, repr(value), math.copysign(1.0, value))
+        else:
+            print(label, repr(value), type(value).__name__)
+    except BaseException as error:
+        print(label, type(error).__name__, error.args[0])
+
+INF = float('inf')
+NAN = float('nan')
+for label, fn in [
+    ('round-inf', lambda: round(INF)),
+    ('round-ninf', lambda: round(-INF)),
+    ('round-nan', lambda: round(NAN)),
+    ('round-inf-bad-ndigits', lambda: round(INF, 0.0)),
+    ('round-nan-bad-ndigits', lambda: round(NAN, "ceci n\\'est pas un integer")),
+    ('round-negzero-complex-ndigits', lambda: round(-0.0, 1j)),
+    ('round-inf-0', lambda: round(INF, 0)),
+    ('round-ninf-0', lambda: round(-INF, 0)),
+    ('round-nan-0', lambda: round(NAN, 0)),
+    ('round-large-324', lambda: round(123.456, 324)),
+    ('round-large-307', lambda: round(1e300, 307)),
+    ('round-subnormal-315', lambda: round(1.4e-315, 315)),
+    ('round-small-neg308', lambda: round(-123.456, -308)),
+    ('round-small-neg309', lambda: round(-123.456, -309)),
+    ('round-overflow-pos', lambda: round(1.6e308, -308)),
+    ('round-overflow-neg', lambda: round(-1.7e308, -308)),
+    ('round-prev-a', lambda: round(562949953421312.5, 1)),
+    ('round-prev-b', lambda: round(56294995342131.5, 3)),
+    ('round-half-25', lambda: round(25.0, -1)),
+    ('round-half-35', lambda: round(35.0, -1)),
+    ('round-half-45', lambda: round(45.0, -1)),
+    ('round-half-55', lambda: round(55.0, -1)),
+    ('round-none-pos', lambda: round(1.23, None)),
+    ('round-none-kw', lambda: round(1.78, ndigits=None)),
+    ('round-large-big', lambda: round(123.456, 2**100)),
+    ('round-small-big', lambda: round(-123.456, -2**100)),
+]:
+    show(label, fn)
+
+def identical(x, y):
+    return x == y and (x != 0.0 or math.copysign(1.0, x) == math.copysign(1.0, y))
+
+large_ok = True
+large_count = 0
+for n in [324, 325, 400, 2**31-1, 2**31, 2**32, 2**100]:
+    for value in [123.456, -123.456, 1e300, 1e-320]:
+        large_count += 1
+        if round(value, n) != value:
+            large_ok = False
+for value, n, expected in [
+    (1e150, 300, 1e150),
+    (1e300, 307, 1e300),
+    (-3.1415, 308, -3.1415),
+    (1e150, 309, 1e150),
+    (1.4e-315, 315, 1e-315),
+]:
+    large_count += 1
+    if round(value, n) != expected:
+        large_ok = False
+
+small_ok = True
+small_count = 0
+for n in [-308, -309, -400, 1-2**31, -2**31, -2**31-1, -2**100]:
+    for value, expected in [
+        (123.456, 0.0),
+        (-123.456, -0.0),
+        (1e300, 0.0),
+        (1e-320, 0.0),
+    ]:
+        small_count += 1
+        if not identical(round(value, n), expected):
+            small_ok = False
+print('large-grid', large_ok, large_count)
+print('small-grid', small_ok, small_count)"#,
+        &[
+            "round-inf OverflowError cannot convert float infinity to integer",
+            "round-ninf OverflowError cannot convert float infinity to integer",
+            "round-nan ValueError cannot convert float NaN to integer",
+            "round-inf-bad-ndigits TypeError 'float' object cannot be interpreted as an integer",
+            "round-nan-bad-ndigits TypeError 'str' object cannot be interpreted as an integer",
+            "round-negzero-complex-ndigits TypeError 'complex' object cannot be interpreted as an integer",
+            "round-inf-0 inf 1.0",
+            "round-ninf-0 -inf -1.0",
+            "round-nan-0 nan 1.0 nan",
+            "round-large-324 123.456 1.0",
+            "round-large-307 1e+300 1.0",
+            "round-subnormal-315 1e-315 1.0",
+            "round-small-neg308 -0.0 -1.0",
+            "round-small-neg309 -0.0 -1.0",
+            "round-overflow-pos OverflowError rounded value too large to represent",
+            "round-overflow-neg OverflowError rounded value too large to represent",
+            "round-prev-a 562949953421312.5 1.0",
+            "round-prev-b 56294995342131.5 1.0",
+            "round-half-25 20.0 1.0",
+            "round-half-35 40.0 1.0",
+            "round-half-45 40.0 1.0",
+            "round-half-55 60.0 1.0",
+            "round-none-pos 1 int",
+            "round-none-kw 2 int",
+            "round-large-big 123.456 1.0",
+            "round-small-big -0.0 -1.0",
+            "large-grid True 33",
+            "small-grid True 28",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::RoundTestCase::
+// test_round_with_none_arg_direct_call. This checks direct float.__round__
+// descriptor calls in addition to bound-method calls.
+#[test]
+fn cpython_float_round_dunder_none_subset() {
+    assert_output(
+        r#"def show(label, fn):
+    try:
+        value = fn()
+        print(label, repr(value), type(value).__name__, type(value) is int, type(value) is float)
+    except BaseException as error:
+        print(label, type(error).__name__)
+
+class MyFloat(float):
+    pass
+
+for label, fn in [
+    ('bound-noarg', lambda: (1.0).__round__()),
+    ('bound-none', lambda: (1.0).__round__(None)),
+    ('bound-zero', lambda: (1.25).__round__(0)),
+    ('bound-one', lambda: (1.25).__round__(1)),
+    ('bound-big-pos', lambda: (123.456).__round__(2**100)),
+    ('bound-big-neg', lambda: (-123.456).__round__(-2**100)),
+    ('bound-bad', lambda: (1.25).__round__(1.0)),
+    ('bound-kw', lambda: (1.25).__round__(ndigits=1)),
+    ('desc-none', lambda: float.__round__(1.25, None)),
+    ('desc-one', lambda: float.__round__(1.25, 1)),
+    ('desc-bad-receiver', lambda: float.__round__(1)),
+    ('subclass-none', lambda: MyFloat(1.75).__round__(None)),
+    ('subclass-one', lambda: MyFloat(1.75).__round__(1)),
+]:
+    show(label, fn)
+print('has-dir', '__round__' in dir(1.0), '__round__' in dir(float))"#,
+        &[
+            "bound-noarg 1 int True False",
+            "bound-none 1 int True False",
+            "bound-zero 1.0 float False True",
+            "bound-one 1.2 float False True",
+            "bound-big-pos 123.456 float False True",
+            "bound-big-neg -0.0 float False True",
+            "bound-bad TypeError",
+            "bound-kw TypeError",
+            "desc-none 1 int True False",
+            "desc-one 1.2 float False True",
+            "desc-bad-receiver TypeError",
+            "subclass-none 2 int True False",
+            "subclass-one 1.8 float False True",
+            "has-dir True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::RoundTestCase::
+// test_matches_float_format. This checks the public relationship between
+// round(x, n) and fixed-point float formatting.
+#[test]
+fn cpython_float_round_matches_format_subset() {
+    assert_output(
+        r#"def check(label, values):
+    checked = 0
+    for x in values:
+        for ndigits in range(4):
+            formatted = float(format(x, '.' + str(ndigits) + 'f'))
+            rounded = round(x, ndigits)
+            if formatted != rounded:
+                print('mismatch', label, repr(x), ndigits, repr(formatted), repr(rounded))
+            checked += 1
+    print(label, checked)
+
+check('thousandths', [i / 1000.0 for i in range(500)])
+check('half-cent-grid', [i / 1000.0 for i in range(5, 5000, 10)])
+check('deterministic-random-like', [((i * 1103515245 + 12345) % 1000000) / 1000000.0 for i in range(500)])"#,
+        &[
+            "thousandths 2000",
+            "half-cent-grid 2000",
+            "deterministic-random-like 2000",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::RoundTestCase::
+// test_format_specials. This checks both old-style percent formatting and
+// format() for inf/nan spelling and explicit sign handling.
+#[test]
+fn cpython_float_format_specials_subset() {
+    assert_output(
+        r#"INF = float('inf')
+NAN = float('nan')
+formats = ['%e', '%f', '%g', '%.0e', '%.6f', '%.20g',
+           '%#e', '%#f', '%#g', '%#.20e', '%#.15f', '%#.3g']
+rows = []
+for fmt in formats:
+    for label, value, expected in [
+        ('inf', INF, 'inf'),
+        ('ninf', -INF, '-inf'),
+        ('nan', NAN, 'nan'),
+        ('nnan', -NAN, 'nan'),
+    ]:
+        rows.append((fmt, label, value, expected))
+    pfmt = '%+' + fmt[1:]
+    for label, value, expected in [
+        ('p-inf', INF, '+inf'),
+        ('p-ninf', -INF, '-inf'),
+        ('p-nan', NAN, '+nan'),
+        ('p-nnan', -NAN, '+nan'),
+    ]:
+        rows.append((pfmt, label, value, expected))
+    sfmt = '% ' + fmt[1:]
+    for label, value, expected in [
+        ('s-inf', INF, ' inf'),
+        ('s-ninf', -INF, '-inf'),
+        ('s-nan', NAN, ' nan'),
+        ('s-nnan', -NAN, ' nan'),
+    ]:
+        rows.append((sfmt, label, value, expected))
+
+checked = 0
+for fmt, label, value, expected in rows:
+    percent_value = fmt % value
+    format_value = format(value, fmt[1:])
+    if percent_value != expected:
+        print('percent-mismatch', fmt, label, repr(percent_value), repr(expected))
+    if format_value != expected:
+        print('format-mismatch', fmt[1:], label, repr(format_value), repr(expected))
+    checked += 2
+print('checked', checked)"#,
+        &["checked 288"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::InfNanTest. This covers
+// portable string parsing/display and sign behavior for infinities and NaNs.
+#[test]
+fn cpython_float_inf_nan_string_subset() {
+    assert_output(
+        r#"import math
+def show_float(label, expr):
+    try:
+        value = expr()
+        print(label, math.isinf(value), math.isnan(value), repr(value), str(value), math.copysign(1.0, value))
+    except BaseException as error:
+        print(label, type(error).__name__, error.args[0])
+
+for text in ['inf', '+inf', '-inf', 'infinity', '+infinity', '-infinity', 'INF', '+Inf', '-iNF', 'Infinity', '+iNfInItY', '-INFINITY']:
+    show_float('parse-inf ' + text, lambda text=text: float(text))
+for text in ['info', '+info', '-info', 'in', '+in', '-in', 'infinit', '+Infin', '-INFI', 'infinitys', '++Inf', '-+inf', '+-infinity', '--Infinity']:
+    show_float('bad-inf ' + text, lambda text=text: float(text))
+for text in ['nan', '+nan', '-nan', 'NAN', '+NAn', '-NaN']:
+    show_float('parse-nan ' + text, lambda text=text: float(text))
+for text in ['nana', '+nana', '-nana', 'na', '+na', '-na', '++nan', '-+NAN', '+-NaN', '--nAn']:
+    show_float('bad-nan ' + text, lambda text=text: float(text))
+for label, value in [
+    ('inf-as-repr', 1e300 * 1e300),
+    ('ninf-as-repr', -1e300 * 1e300),
+    ('nan-as-repr', 1e300 * 1e300 * 0),
+    ('neg-nan-as-repr', -1e300 * 1e300 * 0),
+]:
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+print('sign-inf', math.copysign(1.0, float('inf')), math.copysign(1.0, float('-inf')))
+print('sign-nan', math.copysign(1.0, float('nan')), math.copysign(1.0, float('-nan')))"#,
+        &[
+            "parse-inf inf True False inf inf 1.0",
+            "parse-inf +inf True False inf inf 1.0",
+            "parse-inf -inf True False -inf -inf -1.0",
+            "parse-inf infinity True False inf inf 1.0",
+            "parse-inf +infinity True False inf inf 1.0",
+            "parse-inf -infinity True False -inf -inf -1.0",
+            "parse-inf INF True False inf inf 1.0",
+            "parse-inf +Inf True False inf inf 1.0",
+            "parse-inf -iNF True False -inf -inf -1.0",
+            "parse-inf Infinity True False inf inf 1.0",
+            "parse-inf +iNfInItY True False inf inf 1.0",
+            "parse-inf -INFINITY True False -inf -inf -1.0",
+            "bad-inf info ValueError could not convert string to float: 'info'",
+            "bad-inf +info ValueError could not convert string to float: '+info'",
+            "bad-inf -info ValueError could not convert string to float: '-info'",
+            "bad-inf in ValueError could not convert string to float: 'in'",
+            "bad-inf +in ValueError could not convert string to float: '+in'",
+            "bad-inf -in ValueError could not convert string to float: '-in'",
+            "bad-inf infinit ValueError could not convert string to float: 'infinit'",
+            "bad-inf +Infin ValueError could not convert string to float: '+Infin'",
+            "bad-inf -INFI ValueError could not convert string to float: '-INFI'",
+            "bad-inf infinitys ValueError could not convert string to float: 'infinitys'",
+            "bad-inf ++Inf ValueError could not convert string to float: '++Inf'",
+            "bad-inf -+inf ValueError could not convert string to float: '-+inf'",
+            "bad-inf +-infinity ValueError could not convert string to float: '+-infinity'",
+            "bad-inf --Infinity ValueError could not convert string to float: '--Infinity'",
+            "parse-nan nan False True nan nan 1.0",
+            "parse-nan +nan False True nan nan 1.0",
+            "parse-nan -nan False True nan nan -1.0",
+            "parse-nan NAN False True nan nan 1.0",
+            "parse-nan +NAn False True nan nan 1.0",
+            "parse-nan -NaN False True nan nan -1.0",
+            "bad-nan nana ValueError could not convert string to float: 'nana'",
+            "bad-nan +nana ValueError could not convert string to float: '+nana'",
+            "bad-nan -nana ValueError could not convert string to float: '-nana'",
+            "bad-nan na ValueError could not convert string to float: 'na'",
+            "bad-nan +na ValueError could not convert string to float: '+na'",
+            "bad-nan -na ValueError could not convert string to float: '-na'",
+            "bad-nan ++nan ValueError could not convert string to float: '++nan'",
+            "bad-nan -+NAN ValueError could not convert string to float: '-+NAN'",
+            "bad-nan +-NaN ValueError could not convert string to float: '+-NaN'",
+            "bad-nan --nAn ValueError could not convert string to float: '--nAn'",
+            "inf-as-repr inf inf True False 1.0",
+            "ninf-as-repr -inf -inf True False -1.0",
+            "nan-as-repr nan nan False True 1.0",
+            "neg-nan-as-repr nan nan False True 1.0",
+            "sign-inf 1.0 -1.0",
+            "sign-nan 1.0 -1.0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_floatconversion. The warning assertions around float-subclass
+// `__float__` results are represented here by the public result type/value.
+#[test]
+fn cpython_float_conversion_protocol_subset() {
+    assert_output_with_stack(
+        r#"class FloatSubclass(float):
+    pass
+class OtherFloatSubclass(float):
+    pass
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class Foo2(float):
+    def __float__(self):
+        return 42.0
+class Foo3(float):
+    def __new__(cls, value=0.0):
+        return float.__new__(cls, 2 * value)
+    def __float__(self):
+        return self
+class Foo4(float):
+    def __float__(self):
+        return 42
+class FooStr(str):
+    def __float__(self):
+        return float(str(self)) + 1
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value, type(value).__name__, type(value) is float, type(value) is FloatSubclass)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+show('floatlike', lambda: float(FloatLike(42.0)))
+show('foo2', lambda: float(Foo2()))
+show('foo3', lambda: float(Foo3(21)))
+show('foostr', lambda: float(FooStr('8')))
+show('subclass-return', lambda: float(FloatLike(OtherFloatSubclass(42.0))))
+show('subclass-ctor', lambda: FloatSubclass(FloatLike(OtherFloatSubclass(42.0))))
+show('bad', lambda: float(Foo4(42)))"#,
+        &[
+            "floatlike 42.0 float True False",
+            "foo2 42.0 float True False",
+            "foo3 42.0 float True False",
+            "foostr 9.0 float True False",
+            "subclass-return 42.0 float True False",
+            "subclass-ctor 42.0 FloatSubclass False True",
+            "bad TypeError Foo4.__float__ returned non-float (type int)",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_from_number and test_from_number_subclass.
+#[test]
+fn cpython_float_from_number_subset() {
+    assert_output(
+        r#"class FloatSubclass(float):
+    pass
+class OtherFloatSubclass(float):
+    pass
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class MyIndex:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class MyInt:
+    def __init__(self, value):
+        self.value = value
+    def __int__(self):
+        return self.value
+
+def show(label, value, typ):
+    print(label, value, type(value) is typ)
+
+show('float-float', float.from_number(3.14), float)
+show('float-int', float.from_number(314), float)
+show('float-subclass-input', float.from_number(OtherFloatSubclass(3.14)), float)
+show('float-like', float.from_number(FloatLike(3.14)), float)
+show('float-like-subclass-result', float.from_number(FloatLike(OtherFloatSubclass(2.5))), float)
+show('float-index', float.from_number(MyIndex(314)), float)
+show('subclass-float', FloatSubclass.from_number(3.14), FloatSubclass)
+show('subclass-index', FloatSubclass.from_number(MyIndex(314)), FloatSubclass)
+print('dir', 'from_number' in dir(float), 'from_number' in dir(1.0), 'from_number' in dir(FloatSubclass), 'from_number' in dir(FloatSubclass(1.0)))
+print('instance-call', type((1.0).from_number(2.0)) is float, type(FloatSubclass(1.0).from_number(2.0)) is FloatSubclass)
+NAN = float('nan')
+x = float.from_number(NAN)
+print('nan', x != x, type(x) is float, x is NAN)
+y = FloatSubclass.from_number(NAN)
+print('subclass-nan', y != y, type(y) is FloatSubclass)
+for label, expr in [
+    ('str', lambda: float.from_number('3.14')),
+    ('bytes', lambda: float.from_number(b'3.14')),
+    ('complex', lambda: float.from_number(3.14j)),
+    ('myint', lambda: float.from_number(MyInt(314))),
+    ('dict', lambda: float.from_number({})),
+    ('none', lambda: float.from_number()),
+    ('many', lambda: float.from_number(1, 2)),
+    ('kw', lambda: float.from_number(x=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+try:
+    float.from_number(MyIndex(2**2000))
+except OverflowError as error:
+    print('huge-index', error.__class__.__name__)"#,
+        &[
+            "float-float 3.14 True",
+            "float-int 314.0 True",
+            "float-subclass-input 3.14 True",
+            "float-like 3.14 True",
+            "float-like-subclass-result 2.5 True",
+            "float-index 314.0 True",
+            "subclass-float 3.14 True",
+            "subclass-index 314.0 True",
+            "dir True True True True",
+            "instance-call True True",
+            "nan True True True",
+            "subclass-nan True True",
+            "str TypeError",
+            "bytes TypeError",
+            "complex TypeError",
+            "myint TypeError",
+            "dict TypeError",
+            "none TypeError",
+            "many TypeError",
+            "kw TypeError",
+            "huge-index OverflowError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_keywords_in_subclass. This covers float subclass construction,
+// keyword forwarding to user `__init__` / `__new__`, and inherited
+// `float.__new__` lookup through `super()`.
+#[test]
+fn cpython_float_keywords_in_subclass_subset() {
+    assert_output(
+        r#"class subclass(float):
+    pass
+u = subclass(2.5)
+print('plain', type(u) is subclass, float(u), repr(u))
+try:
+    subclass(x=0)
+except TypeError as error:
+    print('keyword', error.__class__.__name__, str(error))
+
+class subclass_with_init(float):
+    def __init__(self, arg, newarg=None):
+        self.newarg = newarg
+u = subclass_with_init(2.5, newarg=3)
+print('init', type(u) is subclass_with_init, float(u), u.newarg)
+
+class subclass_with_new(float):
+    def __new__(cls, arg, newarg=None):
+        self = super().__new__(cls, arg)
+        self.newarg = newarg
+        return self
+u = subclass_with_new(2.5, newarg=3)
+print('new', type(u) is subclass_with_new, float(u), u.newarg)"#,
+        &[
+            "plain True 2.5 2.5",
+            "keyword TypeError float() takes no keyword arguments",
+            "init True 2.5 3",
+            "new True 2.5 3",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_float_containment. Hash containers must find an identical NaN object
+// even though ordinary float equality keeps NaN unequal to itself.
+#[test]
+fn cpython_float_containment_subset() {
+    assert_output(
+        r#"INF = float('inf')
+NAN = float('nan')
+floats = (INF, -INF, 0.0, 1.0, NAN)
+for label, value in [('inf', INF), ('-inf', -INF), ('0.0', 0.0), ('1.0', 1.0), ('nan', NAN)]:
+    print('contains', label, value in [value], value in (value,), value in {value}, value in {value: None}, [value].count(value), value in floats)
+for label, value in [('inf', INF), ('-inf', -INF), ('0.0', 0.0), ('1.0', 1.0), ('nan', NAN)]:
+    l, t, s, d = [value], (value,), {value}, {value: None}
+    print('selfeq', label, [value] == [value], (value,) == (value,), {value} == {value}, {value: None} == {value: None}, l == l, t == t, s == s, d == d)
+other_nan = float('nan')
+print('distinct-nan', NAN == other_nan, NAN is other_nan, other_nan in {NAN}, {NAN} == {other_nan})"#,
+        &[
+            "contains inf True True True True 1 True",
+            "contains -inf True True True True 1 True",
+            "contains 0.0 True True True True 1 True",
+            "contains 1.0 True True True True 1 True",
+            "contains nan True True True True 1 True",
+            "selfeq inf True True True True True True True True",
+            "selfeq -inf True True True True True True True True",
+            "selfeq 0.0 True True True True True True True True",
+            "selfeq 1.0 True True True True True True True True",
+            "selfeq nan True True True True True True True True",
+            "distinct-nan False False False False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_float_floor and test_float_ceil.
+#[test]
+fn cpython_float_floor_ceil_subset() {
+    assert_output(
+        r#"class FloatSubclass(float):
+    pass
+for method in ['__floor__', '__ceil__']:
+    print('dir', method, method in dir(float), method in dir(1.0), method in dir(FloatSubclass), method in dir(FloatSubclass(1.0)))
+    for value in [0.5, 1.0, 1.5, -0.5, -1.0, -1.5, 1.23e20, -1.23e20]:
+        result = getattr(value, method)()
+        unbound = getattr(float, method)(value)
+        subclass_result = getattr(FloatSubclass(value), method)()
+        print(method, repr(value), result, type(result).__name__, result == unbound, result == subclass_result)
+    for value in [float('nan'), float('inf'), float('-inf')]:
+        try:
+            getattr(value, method)()
+        except Exception as error:
+            print(method, repr(value), error.__class__.__name__, str(error))
+    for expr in [lambda: getattr(1.0, method)(1), lambda: getattr(float, method)(), lambda: getattr(float, method)('1.0')]:
+        try:
+            expr()
+        except TypeError as error:
+            print(method, 'typeerror', error.__class__.__name__)"#,
+        &[
+            "dir __floor__ True True True True",
+            "__floor__ 0.5 0 int True True",
+            "__floor__ 1.0 1 int True True",
+            "__floor__ 1.5 1 int True True",
+            "__floor__ -0.5 -1 int True True",
+            "__floor__ -1.0 -1 int True True",
+            "__floor__ -1.5 -2 int True True",
+            "__floor__ 1.23e+20 123000000000000000000 int True True",
+            "__floor__ -1.23e+20 -123000000000000000000 int True True",
+            "__floor__ nan ValueError cannot convert float NaN to integer",
+            "__floor__ inf OverflowError cannot convert float infinity to integer",
+            "__floor__ -inf OverflowError cannot convert float infinity to integer",
+            "__floor__ typeerror TypeError",
+            "__floor__ typeerror TypeError",
+            "__floor__ typeerror TypeError",
+            "dir __ceil__ True True True True",
+            "__ceil__ 0.5 1 int True True",
+            "__ceil__ 1.0 1 int True True",
+            "__ceil__ 1.5 2 int True True",
+            "__ceil__ -0.5 0 int True True",
+            "__ceil__ -1.0 -1 int True True",
+            "__ceil__ -1.5 -1 int True True",
+            "__ceil__ 1.23e+20 123000000000000000000 int True True",
+            "__ceil__ -1.23e+20 -123000000000000000000 int True True",
+            "__ceil__ nan ValueError cannot convert float NaN to integer",
+            "__ceil__ inf OverflowError cannot convert float infinity to integer",
+            "__ceil__ -inf OverflowError cannot convert float infinity to integer",
+            "__ceil__ typeerror TypeError",
+            "__ceil__ typeerror TypeError",
+            "__ceil__ typeerror TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_float_mod. The key public behavior is that a zero float remainder keeps
+// the divisor's sign.
+#[test]
+fn cpython_float_mod_signed_zero_subset() {
+    assert_output(
+        r#"import math
+import operator
+
+def same_float(actual, expected):
+    if actual == expected:
+        if actual != 0.0:
+            return True
+        return math.copysign(1.0, actual) == math.copysign(1.0, expected)
+    return False
+
+cases = [
+    (-1.0, 1.0, 0.0),
+    (-1e-100, 1.0, 1.0),
+    (-0.0, 1.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (1e-100, 1.0, 1e-100),
+    (1.0, 1.0, 0.0),
+    (-1.0, -1.0, -0.0),
+    (-1e-100, -1.0, -1e-100),
+    (-0.0, -1.0, -0.0),
+    (0.0, -1.0, -0.0),
+    (1e-100, -1.0, -1.0),
+    (1.0, -1.0, -0.0),
+]
+ok = True
+for left, right, expected in cases:
+    ok = ok and same_float(left % right, expected)
+    ok = ok and same_float(operator.mod(left, right), expected)
+print('mod-signs', ok, len(cases), repr((-1.0) % -1.0), math.copysign(1.0, (-1.0) % -1.0), repr((1e-100) % -1.0))"#,
+        &["mod-signs True 12 -0.0 -1.0 -1.0"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::GeneralFloatCases::
+// test_float_pow. This locks public IEEE-754 behavior for special float
+// powers across the active C99 F.9.4.4 matrix.
+#[test]
+fn cpython_float_pow_special_cases_subset() {
+    assert_output(
+        r#"import math
+import operator
+
+def same_float(actual, expected):
+    if type(expected).__name__ == 'float' and math.isnan(expected):
+        return type(actual).__name__ == 'float' and math.isnan(actual)
+    if actual == expected:
+        if type(expected).__name__ == 'float' and expected == 0.0:
+            return math.copysign(1.0, actual) == math.copysign(1.0, expected)
+        return True
+    return False
+
+def apply_pow(base, exponent, op):
+    if op == 0:
+        return base ** exponent
+    if op == 1:
+        return pow(base, exponent)
+    return operator.pow(base, exponent)
+
+INF = float('inf')
+NAN = float('nan')
+nan_cases = [
+    (-INF, NAN),
+    (-2.0, NAN),
+    (-1.0, NAN),
+    (-0.5, NAN),
+    (-0.0, NAN),
+    (0.0, NAN),
+    (0.5, NAN),
+    (2.0, NAN),
+    (INF, NAN),
+    (NAN, NAN),
+    (NAN, -INF),
+    (NAN, -2.0),
+    (NAN, -1.0),
+    (NAN, -0.5),
+    (NAN, 0.5),
+    (NAN, 1.0),
+    (NAN, 2.0),
+    (NAN, INF),
+]
+float_cases = [
+    (-0.0, 1.0, -0.0),
+    (0.0, 1.0, 0.0),
+    (-0.0, 0.5, 0.0),
+    (-0.0, 2.0, 0.0),
+    (0.0, 0.5, 0.0),
+    (0.0, 2.0, 0.0),
+    (-1.0, -INF, 1.0),
+    (-1.0, INF, 1.0),
+    (1.0, -INF, 1.0),
+    (1.0, -2.0, 1.0),
+    (1.0, -1.0, 1.0),
+    (1.0, -0.5, 1.0),
+    (1.0, -0.0, 1.0),
+    (1.0, 0.0, 1.0),
+    (1.0, 0.5, 1.0),
+    (1.0, 1.0, 1.0),
+    (1.0, 2.0, 1.0),
+    (1.0, INF, 1.0),
+    (1.0, NAN, 1.0),
+    (-INF, 0.0, 1.0),
+    (-2.0, 0.0, 1.0),
+    (-1.0, 0.0, 1.0),
+    (-0.5, 0.0, 1.0),
+    (-0.0, 0.0, 1.0),
+    (0.0, 0.0, 1.0),
+    (0.5, 0.0, 1.0),
+    (1.0, 0.0, 1.0),
+    (2.0, 0.0, 1.0),
+    (INF, 0.0, 1.0),
+    (NAN, 0.0, 1.0),
+    (-INF, -0.0, 1.0),
+    (-2.0, -0.0, 1.0),
+    (-1.0, -0.0, 1.0),
+    (-0.5, -0.0, 1.0),
+    (-0.0, -0.0, 1.0),
+    (0.0, -0.0, 1.0),
+    (0.5, -0.0, 1.0),
+    (1.0, -0.0, 1.0),
+    (2.0, -0.0, 1.0),
+    (INF, -0.0, 1.0),
+    (NAN, -0.0, 1.0),
+    (-0.5, -INF, INF),
+    (-0.0, -INF, INF),
+    (0.0, -INF, INF),
+    (0.5, -INF, INF),
+    (-INF, -INF, 0.0),
+    (-2.0, -INF, 0.0),
+    (2.0, -INF, 0.0),
+    (INF, -INF, 0.0),
+    (-0.5, INF, 0.0),
+    (-0.0, INF, 0.0),
+    (0.0, INF, 0.0),
+    (0.5, INF, 0.0),
+    (-INF, INF, INF),
+    (-2.0, INF, INF),
+    (2.0, INF, INF),
+    (INF, INF, INF),
+    (-INF, -1.0, -0.0),
+    (-INF, -0.5, 0.0),
+    (-INF, -2.0, 0.0),
+    (-INF, 1.0, -INF),
+    (-INF, 0.5, INF),
+    (-INF, 2.0, INF),
+    (INF, 0.5, INF),
+    (INF, 1.0, INF),
+    (INF, 2.0, INF),
+    (INF, -2.0, 0.0),
+    (INF, -1.0, 0.0),
+    (INF, -0.5, 0.0),
+    (-2.0, -2.0, 0.25),
+    (-2.0, -1.0, -0.5),
+    (-2.0, -0.0, 1.0),
+    (-2.0, 0.0, 1.0),
+    (-2.0, 1.0, -2.0),
+    (-2.0, 2.0, 4.0),
+    (-1.0, -2.0, 1.0),
+    (-1.0, -1.0, -1.0),
+    (-1.0, -0.0, 1.0),
+    (-1.0, 0.0, 1.0),
+    (-1.0, 1.0, -1.0),
+    (-1.0, 2.0, 1.0),
+    (2.0, -2.0, 0.25),
+    (2.0, -1.0, 0.5),
+    (2.0, -0.0, 1.0),
+    (2.0, 0.0, 1.0),
+    (2.0, 1.0, 2.0),
+    (2.0, 2.0, 4.0),
+    (1.0, -1e100, 1.0),
+    (1.0, 1e100, 1.0),
+    (-1.0, -1e100, 1.0),
+    (-1.0, 1e100, 1.0),
+    (-2.0, -2000.0, 0.0),
+    (-2.0, -2001.0, -0.0),
+    (2.0, -2000.0, 0.0),
+    (2.0, -2000.5, 0.0),
+    (2.0, -2001.0, 0.0),
+    (-0.5, 2000.0, 0.0),
+    (-0.5, 2001.0, -0.0),
+    (0.5, 2000.0, 0.0),
+    (0.5, 2000.5, 0.0),
+    (0.5, 2001.0, 0.0),
+]
+zero_error_cases = [
+    (-0.0, -1.0),
+    (0.0, -1.0),
+    (-0.0, -2.0),
+    (-0.0, -0.5),
+    (0.0, -2.0),
+    (0.0, -0.5),
+]
+complex_type_cases = [
+    (-2.0, -0.5),
+    (-2.0, 0.5),
+    (-1.0, -0.5),
+    (-1.0, 0.5),
+    (-0.5, -0.5),
+    (-0.5, 0.5),
+    (-2.0, -2000.5),
+    (-0.5, 2000.5),
+]
+complex_value_cases = [
+    (-2.0, 0.5, complex(0.0, 1.4142135623730951)),
+    (-2.0, -0.5, complex(0.0, -0.7071067811865476)),
+]
+
+ok_nan = True
+nan_checked = 0
+for base, exponent in nan_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        nan_checked += 1
+        ok_nan = ok_nan and type(result).__name__ == 'float' and math.isnan(result)
+print('pow-nan-values', ok_nan, len(nan_cases), nan_checked)
+
+ok_float = True
+float_checked = 0
+for base, exponent, expected in float_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        float_checked += 1
+        ok_float = ok_float and same_float(result, expected)
+print('pow-float-values', ok_float, len(float_cases), float_checked)
+
+zero_errors = 0
+for base, exponent in zero_error_cases:
+    for op in range(3):
+        try:
+            apply_pow(base, exponent, op)
+        except ZeroDivisionError:
+            zero_errors += 1
+print('pow-zero-errors', zero_errors == len(zero_error_cases) * 3, zero_errors)
+
+ok_complex_type = True
+complex_type_checked = 0
+for base, exponent in complex_type_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        complex_type_checked += 1
+        ok_complex_type = ok_complex_type and type(result) is complex
+print('pow-complex-types', ok_complex_type, len(complex_type_cases), complex_type_checked)
+
+ok_complex_value = True
+complex_value_checked = 0
+for base, exponent, expected in complex_value_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        complex_value_checked += 1
+        ok_complex_value = ok_complex_value and type(result) is complex and abs(result - expected) < 1e-12
+print('pow-complex-values', ok_complex_value, len(complex_value_cases), complex_value_checked)"#,
+        &[
+            "pow-nan-values True 18 54",
+            "pow-float-values True 101 303",
+            "pow-zero-errors True 18",
+            "pow-complex-types True 8 24",
+            "pow-complex-values True 2 6",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase.
+// This ports the public exact-float hex rendering/parsing boundary without
+// CPython's full randomized stress loop.
+#[test]
+fn cpython_float_hex_fromhex_first_pass_subset() {
+    assert_output(
+        "import math\nvalues = ['inf', '+Inf', '-INF', 'Infinity', '+INFINITY', '-infinity', 'nan', '-NaN', '1', '+1', '1.', '1.0', '01', '0x1', '0x1p0', '0X1P0', '0x.1p4', '0xap0', '0xB.Ep4', '0x.0BEp12', '0x1.921fb54442d18p1', '0x0.0000000000001p-1022', '0x1p-1076', '0x3p-1076', '-0x3p-1076', '0x0.fffffffffffff7p0', '0x0.fffffffffffffcp0', '0x1.fffffffffffffp+1023']\nfor text in values:\n    value = float.fromhex(text)\n    if value != value:\n        print(text, 'nan', math.copysign(1.0, value))\n    else:\n        print(text, value.hex(), math.copysign(1.0, value))\nprint((1.5).hex(), float.hex(1.5), (-0.0).hex(), float('inf').hex(), float('-inf').hex(), float('nan').hex())\ninvalids = [('infi', 'infi'), ('++inf', '++inf'), ('+ 0x1.0p0', '+ 0x1.0p0'), ('0x.p0', '0x.p0'), ('0x1pa', '0x1pa'), ('0x1p0 \\\\n 0x2p0', '0x1p0 \\n 0x2p0'), ('0x1p0\\\\x00 0x1p0', '0x1p0\\0 0x1p0'), ('0x1.0.p0', '0x1.0.p0'), ('0x1p+', '0x1p+')]\nfor label, text in invalids:\n    try:\n        float.fromhex(text)\n    except ValueError as error:\n        print(label, error.__class__.__name__)\nfor text in ['0x1p1024', '-0x1p1024', '0X1p123456789123456789']:\n    try:\n        float.fromhex(text)\n    except OverflowError as error:\n        print(text, error.__class__.__name__)",
+        &[
+            "inf inf 1.0",
+            "+Inf inf 1.0",
+            "-INF -inf -1.0",
+            "Infinity inf 1.0",
+            "+INFINITY inf 1.0",
+            "-infinity -inf -1.0",
+            "nan nan 1.0",
+            "-NaN nan -1.0",
+            "1 0x1.0000000000000p+0 1.0",
+            "+1 0x1.0000000000000p+0 1.0",
+            "1. 0x1.0000000000000p+0 1.0",
+            "1.0 0x1.0000000000000p+0 1.0",
+            "01 0x1.0000000000000p+0 1.0",
+            "0x1 0x1.0000000000000p+0 1.0",
+            "0x1p0 0x1.0000000000000p+0 1.0",
+            "0X1P0 0x1.0000000000000p+0 1.0",
+            "0x.1p4 0x1.0000000000000p+0 1.0",
+            "0xap0 0x1.4000000000000p+3 1.0",
+            "0xB.Ep4 0x1.7c00000000000p+7 1.0",
+            "0x.0BEp12 0x1.7c00000000000p+7 1.0",
+            "0x1.921fb54442d18p1 0x1.921fb54442d18p+1 1.0",
+            "0x0.0000000000001p-1022 0x0.0000000000001p-1022 1.0",
+            "0x1p-1076 0x0.0p+0 1.0",
+            "0x3p-1076 0x0.0000000000001p-1022 1.0",
+            "-0x3p-1076 -0x0.0000000000001p-1022 -1.0",
+            "0x0.fffffffffffff7p0 0x1.fffffffffffffp-1 1.0",
+            "0x0.fffffffffffffcp0 0x1.0000000000000p+0 1.0",
+            "0x1.fffffffffffffp+1023 0x1.fffffffffffffp+1023 1.0",
+            "0x1.8000000000000p+0 0x1.8000000000000p+0 -0x0.0p+0 inf -inf nan",
+            "infi ValueError",
+            "++inf ValueError",
+            "+ 0x1.0p0 ValueError",
+            "0x.p0 ValueError",
+            "0x1pa ValueError",
+            "0x1p0 \\n 0x2p0 ValueError",
+            "0x1p0\\x00 0x1p0 ValueError",
+            "0x1.0.p0 ValueError",
+            "0x1p+ ValueError",
+            "0x1p1024 OverflowError",
+            "-0x1p1024 OverflowError",
+            "0X1p123456789123456789 OverflowError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_from_hex.
+// This covers accepted input spellings and equivalent point-shifted hex
+// spellings for pi.
+#[test]
+fn cpython_float_fromhex_accepted_variants_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "INF = float('inf')\n",
+            "NAN = float('nan')\n",
+            "def identical(x, y):\n",
+            "    if x != x or y != y:\n",
+            "        return x != x and y != y\n",
+            "    if x == y:\n",
+            "        if x != 0.0:\n",
+            "            return True\n",
+            "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+            "    return False\n",
+            "variant_cases = [\n",
+            "    ('inf', INF), ('+Inf', INF), ('-INF', -INF), ('iNf', INF),\n",
+            "    ('Infinity', INF), ('+INFINITY', INF), ('-infinity', -INF), ('-iNFiNitY', -INF),\n",
+            "    ('nan', NAN), ('+NaN', NAN), ('-NaN', NAN), ('-nAN', NAN),\n",
+            "    ('1', 1.0), ('+1', 1.0), ('1.', 1.0), ('1.0', 1.0), ('1.0p0', 1.0),\n",
+            "    ('01', 1.0), ('01.', 1.0), ('0x1', 1.0), ('0x1.', 1.0), ('0x1.0', 1.0),\n",
+            "    ('+0x1.0', 1.0), ('0x1p0', 1.0), ('0X1p0', 1.0), ('0X1P0', 1.0), ('0x1P0', 1.0),\n",
+            "    ('0x1.p0', 1.0), ('0x1.0p0', 1.0), ('0x.1p4', 1.0), ('0x.1p04', 1.0),\n",
+            "    ('0x.1p004', 1.0), ('0x1p+0', 1.0), ('0x1P-0', 1.0), ('+0x1p0', 1.0),\n",
+            "    ('0x01p0', 1.0), ('0x1p00', 1.0), (' 0x1p0 ', 1.0), ('\\n 0x1p0', 1.0),\n",
+            "    ('0x1p0 \\t', 1.0), ('0xap0', 10.0), ('0xAp0', 10.0), ('0xaP0', 10.0),\n",
+            "    ('0xAP0', 10.0), ('0xbep0', 190.0), ('0xBep0', 190.0), ('0xbEp0', 190.0),\n",
+            "    ('0XBE0P-4', 190.0), ('0xBEp0', 190.0), ('0xB.Ep4', 190.0), ('0x.BEp8', 190.0),\n",
+            "    ('0x.0BEp12', 190.0),\n",
+            "]\n",
+            "ok = True\n",
+            "for text, expected in variant_cases:\n",
+            "    ok = ok and identical(float.fromhex(text), expected)\n",
+            "print('variants', ok, len(variant_cases), float.fromhex('0x.BEp8').hex(), float.fromhex('-iNFiNitY'))\n",
+            "pi = float.fromhex('0x1.921fb54442d18p1')\n",
+            "pi_spellings = [\n",
+            "    '0x.006487ed5110b46p11', '0x.00c90fdaa22168cp10', '0x.01921fb54442d18p9',\n",
+            "    '0x.03243f6a8885a3p8', '0x.06487ed5110b46p7', '0x.0c90fdaa22168cp6',\n",
+            "    '0x.1921fb54442d18p5', '0x.3243f6a8885a3p4', '0x.6487ed5110b46p3',\n",
+            "    '0x.c90fdaa22168cp2', '0x1.921fb54442d18p1', '0x3.243f6a8885a3p0',\n",
+            "    '0x6.487ed5110b46p-1', '0xc.90fdaa22168cp-2', '0x19.21fb54442d18p-3',\n",
+            "    '0x32.43f6a8885a3p-4', '0x64.87ed5110b46p-5', '0xc9.0fdaa22168cp-6',\n",
+            "    '0x192.1fb54442d18p-7', '0x324.3f6a8885a3p-8', '0x648.7ed5110b46p-9',\n",
+            "    '0xc90.fdaa22168cp-10', '0x1921.fb54442d18p-11', '0x1921fb54442d1.8p-47',\n",
+            "    '0x3243f6a8885a3p-48', '0x6487ed5110b46p-49', '0xc90fdaa22168cp-50',\n",
+            "    '0x1921fb54442d18p-51', '0x3243f6a8885a30p-52', '0x6487ed5110b460p-53',\n",
+            "    '0xc90fdaa22168c0p-54', '0x1921fb54442d180p-55',\n",
+            "]\n",
+            "ok = True\n",
+            "for text in pi_spellings:\n",
+            "    ok = ok and identical(float.fromhex(text), pi)\n",
+            "print('pi-shifts', ok, len(pi_spellings), pi.hex(), float.fromhex(pi_spellings[0]).hex(), float.fromhex(pi_spellings[-1]).hex())",
+        ),
+        &[
+            "variants True 52 0x1.7c00000000000p+7 -inf",
+            "pi-shifts True 32 0x1.921fb54442d18p+1 0x1.921fb54442d18p+1 0x1.921fb54442d18p+1",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_from_hex.
+// This covers finite overflow, round-to-max, signed zero, and
+// underflow/subnormal boundary groups.
+#[test]
+fn cpython_float_fromhex_overflow_zero_underflow_subset() {
+    assert_output(
+        r#"import math
+MAX = float.fromhex('0x.fffffffffffff8p+1024')
+TINY = float.fromhex('0x0.0000000000001p-1022')
+
+def identical(x, y):
+    if x != x or y != y:
+        return x != x and y != y
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+overflow_inputs = [
+    '-0x1p1024', '0x1p+1025', '+0X1p1030', '-0x1p+1100', '0X1p123456789123456789',
+    '+0X.8p+1025', '+0x0.8p1025', '-0x0.4p1026', '0X2p+1023', '0x2.p1023',
+    '-0x2.0p+1023', '+0X4p+1022', '0x1.ffffffffffffffp+1023',
+    '-0X1.fffffffffffff9p1023', '0X1.fffffffffffff8p1023', '+0x3.fffffffffffffp1022',
+    '0x3fffffffffffffp+970', '0x10000000000000000p960', '-0Xffffffffffffffffp960',
+]
+ok = True
+overflows = 0
+wrong = []
+for index, text in enumerate(overflow_inputs):
+    try:
+        float.fromhex(text)
+    except OverflowError:
+        overflows += 1
+    except Exception as error:
+        ok = False
+        wrong.append((index, error.__class__.__name__))
+    else:
+        ok = False
+        wrong.append((index, 'accepted'))
+print('overflow', ok, overflows, len(overflow_inputs), len(wrong))
+
+round_to_max = [
+    ('+0x1.fffffffffffffp+1023', MAX),
+    ('-0X1.fffffffffffff7p1023', -MAX),
+    ('0X1.fffffffffffff7fffffffffffffp1023', MAX),
+]
+ok = True
+for text, expected in round_to_max:
+    ok = ok and identical(float.fromhex(text), expected)
+print('round-to-max', ok, len(round_to_max), float.fromhex(round_to_max[2][0]).hex())
+
+zero_cases = [
+    ('0x0p0', 0.0), ('0x0p1000', 0.0), ('-0x0p1023', -0.0), ('0X0p1024', 0.0),
+    ('-0x0p1025', -0.0), ('0X0p2000', 0.0), ('0x0p123456789123456789', 0.0),
+    ('-0X0p-0', -0.0), ('-0X0p-1000', -0.0), ('0x0p-1023', 0.0),
+    ('-0X0p-1024', -0.0), ('-0x0p-1025', -0.0), ('-0x0p-1072', -0.0),
+    ('0X0p-1073', 0.0), ('-0x0p-1074', -0.0), ('0x0p-1075', 0.0),
+    ('0X0p-1076', 0.0), ('-0X0p-2000', -0.0), ('-0x0p-123456789123456789', -0.0),
+]
+ok = True
+for text, expected in zero_cases:
+    ok = ok and identical(float.fromhex(text), expected)
+print('zeros', ok, len(zero_cases), float.fromhex(zero_cases[2][0]).hex(), float.fromhex(zero_cases[-1][0]).hex())
+
+underflow_cases = [
+    ('0X1p-1075', 0.0), ('-0X1p-1075', -0.0), ('-0x1p-123456789123456789', -0.0),
+    ('0x1.00000000000000001p-1075', TINY), ('-0x1.1p-1075', -TINY),
+    ('0x1.fffffffffffffffffp-1075', TINY),
+]
+ok = True
+for text, expected in underflow_cases:
+    ok = ok and identical(float.fromhex(text), expected)
+print('underflow', ok, len(underflow_cases), float.fromhex(underflow_cases[3][0]).hex(), float.fromhex(underflow_cases[4][0]).hex())"#,
+        &[
+            "overflow True 19 19 0",
+            "round-to-max True 3 0x1.fffffffffffffp+1023",
+            "zeros True 19 -0x0.0p+0 -0x0.0p+0",
+            "underflow True 6 0x0.0000000000001p-1022 -0x0.0000000000001p-1022",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_from_hex.
+// This covers round-half-even boundaries near zero, MIN, and 1.0.
+#[test]
+fn cpython_float_fromhex_rounding_boundaries_subset() {
+    assert_output(
+        r#"import math
+MIN = float.fromhex('0x1p-1022')
+TINY = float.fromhex('0x0.0000000000001p-1022')
+EPS = float.fromhex('0x0.0000000000001p0')
+
+def identical(x, y):
+    if x != x or y != y:
+        return x != x and y != y
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+def check_group(name, cases):
+    ok = True
+    bad = []
+    for index, (text, expected) in enumerate(cases):
+        value = float.fromhex(text)
+        if not identical(value, expected):
+            ok = False
+            bad.append((index, value.hex(), expected.hex()))
+    print(name, ok, len(cases), float.fromhex(cases[0][0]).hex(), float.fromhex(cases[-1][0]).hex(), len(bad))
+    if bad:
+        print(name + '-bad', bad[:3])
+
+near_zero = [
+    ('0x1p-1076', 0.0), ('0X2p-1076', 0.0), ('0X3p-1076', TINY),
+    ('0x4p-1076', TINY), ('0X5p-1076', TINY), ('0X6p-1076', 2*TINY),
+    ('0x7p-1076', 2*TINY), ('0X8p-1076', 2*TINY), ('0X9p-1076', 2*TINY),
+    ('0xap-1076', 2*TINY), ('0Xbp-1076', 3*TINY), ('0xcp-1076', 3*TINY),
+    ('0Xdp-1076', 3*TINY), ('0Xep-1076', 4*TINY), ('0xfp-1076', 4*TINY),
+    ('0x10p-1076', 4*TINY), ('-0x1p-1076', -0.0), ('-0X2p-1076', -0.0),
+    ('-0x3p-1076', -TINY), ('-0X4p-1076', -TINY), ('-0x5p-1076', -TINY),
+    ('-0x6p-1076', -2*TINY), ('-0X7p-1076', -2*TINY), ('-0X8p-1076', -2*TINY),
+    ('-0X9p-1076', -2*TINY), ('-0Xap-1076', -2*TINY), ('-0xbp-1076', -3*TINY),
+    ('-0xcp-1076', -3*TINY), ('-0Xdp-1076', -3*TINY), ('-0xep-1076', -4*TINY),
+    ('-0Xfp-1076', -4*TINY), ('-0X10p-1076', -4*TINY),
+]
+near_min = [
+    ('0x0.ffffffffffffd6p-1022', MIN-3*TINY), ('0x0.ffffffffffffd8p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffdap-1022', MIN-2*TINY), ('0x0.ffffffffffffdcp-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffdep-1022', MIN-2*TINY), ('0x0.ffffffffffffe0p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffe2p-1022', MIN-2*TINY), ('0x0.ffffffffffffe4p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffe6p-1022', MIN-2*TINY), ('0x0.ffffffffffffe8p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffeap-1022', MIN-TINY), ('0x0.ffffffffffffecp-1022', MIN-TINY),
+    ('0x0.ffffffffffffeep-1022', MIN-TINY), ('0x0.fffffffffffff0p-1022', MIN-TINY),
+    ('0x0.fffffffffffff2p-1022', MIN-TINY), ('0x0.fffffffffffff4p-1022', MIN-TINY),
+    ('0x0.fffffffffffff6p-1022', MIN-TINY), ('0x0.fffffffffffff8p-1022', MIN),
+    ('0x0.fffffffffffffap-1022', MIN), ('0x0.fffffffffffffcp-1022', MIN),
+    ('0x0.fffffffffffffep-1022', MIN), ('0x1.00000000000000p-1022', MIN),
+    ('0x1.00000000000002p-1022', MIN), ('0x1.00000000000004p-1022', MIN),
+    ('0x1.00000000000006p-1022', MIN), ('0x1.00000000000008p-1022', MIN),
+    ('0x1.0000000000000ap-1022', MIN+TINY), ('0x1.0000000000000cp-1022', MIN+TINY),
+    ('0x1.0000000000000ep-1022', MIN+TINY), ('0x1.00000000000010p-1022', MIN+TINY),
+    ('0x1.00000000000012p-1022', MIN+TINY), ('0x1.00000000000014p-1022', MIN+TINY),
+    ('0x1.00000000000016p-1022', MIN+TINY), ('0x1.00000000000018p-1022', MIN+2*TINY),
+]
+near_one = [
+    ('0x0.fffffffffffff0p0', 1.0-EPS), ('0x0.fffffffffffff1p0', 1.0-EPS),
+    ('0X0.fffffffffffff2p0', 1.0-EPS), ('0x0.fffffffffffff3p0', 1.0-EPS),
+    ('0X0.fffffffffffff4p0', 1.0-EPS), ('0X0.fffffffffffff5p0', 1.0-EPS/2),
+    ('0X0.fffffffffffff6p0', 1.0-EPS/2), ('0x0.fffffffffffff7p0', 1.0-EPS/2),
+    ('0x0.fffffffffffff8p0', 1.0-EPS/2), ('0X0.fffffffffffff9p0', 1.0-EPS/2),
+    ('0X0.fffffffffffffap0', 1.0-EPS/2), ('0x0.fffffffffffffbp0', 1.0-EPS/2),
+    ('0X0.fffffffffffffcp0', 1.0), ('0x0.fffffffffffffdp0', 1.0),
+    ('0X0.fffffffffffffep0', 1.0), ('0x0.ffffffffffffffp0', 1.0),
+    ('0X1.00000000000000p0', 1.0), ('0X1.00000000000001p0', 1.0),
+    ('0x1.00000000000002p0', 1.0), ('0X1.00000000000003p0', 1.0),
+    ('0x1.00000000000004p0', 1.0), ('0X1.00000000000005p0', 1.0),
+    ('0X1.00000000000006p0', 1.0), ('0X1.00000000000007p0', 1.0),
+    ('0x1.00000000000007ffffffffffffffffffffp0', 1.0), ('0x1.00000000000008p0', 1.0),
+    ('0x1.00000000000008000000000000000001p0', 1+EPS), ('0X1.00000000000009p0', 1.0+EPS),
+    ('0x1.0000000000000ap0', 1.0+EPS), ('0x1.0000000000000bp0', 1.0+EPS),
+    ('0X1.0000000000000cp0', 1.0+EPS), ('0x1.0000000000000dp0', 1.0+EPS),
+    ('0x1.0000000000000ep0', 1.0+EPS), ('0X1.0000000000000fp0', 1.0+EPS),
+    ('0x1.00000000000010p0', 1.0+EPS), ('0X1.00000000000011p0', 1.0+EPS),
+    ('0x1.00000000000012p0', 1.0+EPS), ('0X1.00000000000013p0', 1.0+EPS),
+    ('0X1.00000000000014p0', 1.0+EPS), ('0x1.00000000000015p0', 1.0+EPS),
+    ('0x1.00000000000016p0', 1.0+EPS), ('0X1.00000000000017p0', 1.0+EPS),
+    ('0x1.00000000000017ffffffffffffffffffffp0', 1.0+EPS), ('0x1.00000000000018p0', 1.0+2*EPS),
+    ('0X1.00000000000018000000000000000001p0', 1.0+2*EPS), ('0x1.00000000000019p0', 1.0+2*EPS),
+    ('0X1.0000000000001ap0', 1.0+2*EPS), ('0X1.0000000000001bp0', 1.0+2*EPS),
+    ('0x1.0000000000001cp0', 1.0+2*EPS), ('0x1.0000000000001dp0', 1.0+2*EPS),
+    ('0x1.0000000000001ep0', 1.0+2*EPS), ('0X1.0000000000001fp0', 1.0+2*EPS),
+    ('0x1.00000000000020p0', 1.0+2*EPS),
+]
+check_group('near-zero', near_zero)
+check_group('near-min', near_min)
+check_group('near-one', near_one)"#,
+        &[
+            "near-zero True 32 0x0.0p+0 -0x0.0000000000004p-1022 0",
+            "near-min True 34 0x0.ffffffffffffdp-1022 0x1.0000000000002p-1022 0",
+            "near-one True 53 0x1.ffffffffffffep-1 0x1.0000000000002p+0 0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_from_hex.
+// This covers the bpo-44954 subnormal rounding corner-case regression.
+#[test]
+fn cpython_float_fromhex_bpo44954_regression_subset() {
+    assert_output(
+        r#"import math
+TINY = float.fromhex('0x0.0000000000001p-1022')
+
+def identical(x, y):
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+cases = [
+    ('0x.8p-1074', 0.0), ('0x.80p-1074', 0.0), ('0x.81p-1074', TINY),
+    ('0x8p-1078', 0.0), ('0x8.0p-1078', 0.0), ('0x8.1p-1078', TINY),
+    ('0x80p-1082', 0.0), ('0x81p-1082', TINY), ('.8p-1074', 0.0),
+    ('8p-1078', 0.0), ('-.8p-1074', -0.0), ('+8p-1078', 0.0),
+]
+ok = True
+bad = []
+for index, (text, expected) in enumerate(cases):
+    value = float.fromhex(text)
+    if not identical(value, expected):
+        ok = False
+        bad.append((index, value.hex(), expected.hex()))
+print('bpo-44954', ok, len(cases), float.fromhex(cases[0][0]).hex(), float.fromhex(cases[-1][0]).hex(), len(bad))"#,
+        &["bpo-44954 True 12 0x0.0p+0 0x0.0p+0 0"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_invalid_inputs.
+#[test]
+fn cpython_float_hex_fromhex_invalid_inputs_subset() {
+    assert_output(
+        concat!(
+            "invalid_inputs = [\n",
+            "    'infi',\n",
+            "    '-Infinit',\n",
+            "    '++inf',\n",
+            "    '-+Inf',\n",
+            "    '--nan',\n",
+            "    '+-NaN',\n",
+            "    'snan',\n",
+            "    'NaNs',\n",
+            "    'nna',\n",
+            "    'an',\n",
+            "    'nf',\n",
+            "    'nfinity',\n",
+            "    'inity',\n",
+            "    'iinity',\n",
+            "    '0xnan',\n",
+            "    '',\n",
+            "    ' ',\n",
+            "    'x1.0p0',\n",
+            "    '0xX1.0p0',\n",
+            "    '+ 0x1.0p0',\n",
+            "    '- 0x1.0p0',\n",
+            "    '0 x1.0p0',\n",
+            "    '0x 1.0p0',\n",
+            "    '0x1 2.0p0',\n",
+            "    '+0x1 .0p0',\n",
+            "    '0x1. 0p0',\n",
+            "    '-0x1.0 1p0',\n",
+            "    '-0x1.0 p0',\n",
+            "    '+0x1.0p +0',\n",
+            "    '0x1.0p -0',\n",
+            "    '0x1.0p 0',\n",
+            "    '+0x1.0p+ 0',\n",
+            "    '-0x1.0p- 0',\n",
+            "    '++0x1.0p-0',\n",
+            "    '--0x1.0p0',\n",
+            "    '+-0x1.0p+0',\n",
+            "    '-+0x1.0p0',\n",
+            "    '0x1.0p++0',\n",
+            "    '+0x1.0p+-0',\n",
+            "    '-0x1.0p-+0',\n",
+            "    '0x1.0p--0',\n",
+            "    '0x1.0.p0',\n",
+            "    '0x.p0',\n",
+            "    '0x1,p0',\n",
+            "    '0x1pa',\n",
+            "    '0x1p\\uff10',\n",
+            "    '\\uff10x1p0',\n",
+            "    '0x\\uff11p0',\n",
+            "    '0x1.\\uff10p0',\n",
+            "    '0x1p0 \\n 0x2p0',\n",
+            "    '0x1p0\\0 0x1p0',\n",
+            "]\n",
+            "ok = True\n",
+            "value_errors = 0\n",
+            "accepted = []\n",
+            "wrong = []\n",
+            "for index, text in enumerate(invalid_inputs):\n",
+            "    try:\n",
+            "        result = float.fromhex(text)\n",
+            "    except ValueError:\n",
+            "        value_errors += 1\n",
+            "    except Exception as error:\n",
+            "        ok = False\n",
+            "        wrong.append((index, error.__class__.__name__))\n",
+            "    else:\n",
+            "        ok = False\n",
+            "        accepted.append((index, repr(result)))\n",
+            "print('invalid-inputs', ok, value_errors, len(invalid_inputs), len(accepted), len(wrong))\n",
+            "print('sample', repr(invalid_inputs[0]), repr(invalid_inputs[15]), repr(invalid_inputs[-1]))",
+        ),
+        &[
+            "invalid-inputs True 51 51 0 0",
+            "sample 'infi' '' '0x1p0\\x00 0x1p0'",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_ends
+// and ::test_whitespace.
+#[test]
+fn cpython_float_hex_fromhex_ends_whitespace_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "INF = float('inf')\n",
+            "NAN = float('nan')\n",
+            "MAX = float.fromhex('0x.fffffffffffff8p+1024')\n",
+            "MIN = float.fromhex('0x1p-1022')\n",
+            "TINY = float.fromhex('0x0.0000000000001p-1022')\n",
+            "EPS = float.fromhex('0x0.0000000000001p0')\n",
+            "def identical(x, y):\n",
+            "    if x != x or y != y:\n",
+            "        return x != x and y != y\n",
+            "    if x == y:\n",
+            "        if x != 0.0:\n",
+            "            return True\n",
+            "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+            "    return False\n",
+            "ends = [\n",
+            "    ('MIN', MIN, math.ldexp(1.0, -1022)),\n",
+            "    ('TINY', TINY, math.ldexp(1.0, -1074)),\n",
+            "    ('EPS', EPS, math.ldexp(1.0, -52)),\n",
+            "    ('MAX', MAX, 2.0 * (math.ldexp(1.0, 1023) - math.ldexp(1.0, 970))),\n",
+            "]\n",
+            "for name, actual, expected in ends:\n",
+            "    print(name, actual.hex(), expected.hex(), identical(actual, expected))\n",
+            "value_pairs = [('inf', INF), ('-Infinity', -INF), ('nan', NAN), ('1.0', 1.0), ('-0x.2', -0.125), ('-0.0', -0.0)]\n",
+            "whitespace = ['', ' ', '\\t', '\\n', '\\n \\t', '\\f', '\\v', '\\r']\n",
+            "ok = True\n",
+            "count = 0\n",
+            "for text, expected in value_pairs:\n",
+            "    for lead in whitespace:\n",
+            "        for trail in whitespace:\n",
+            "            got = float.fromhex(lead + text + trail)\n",
+            "            ok = ok and identical(got, expected)\n",
+            "            count += 1\n",
+            "print('whitespace', ok, count)\n",
+            "for text in ['\\f-0.0\\v', '\\rnan\\n', '\\n \\t-0x.2\\f']:\n",
+            "    value = float.fromhex(text)\n",
+            "    if value != value:\n",
+            "        print(repr(text), 'nan')\n",
+            "    else:\n",
+            "        print(repr(text), value.hex(), math.copysign(1.0, value))",
+        ),
+        &[
+            "MIN 0x1.0000000000000p-1022 0x1.0000000000000p-1022 True",
+            "TINY 0x0.0000000000001p-1022 0x0.0000000000001p-1022 True",
+            "EPS 0x1.0000000000000p-52 0x1.0000000000000p-52 True",
+            "MAX 0x1.fffffffffffffp+1023 0x1.fffffffffffffp+1023 True",
+            "whitespace True 384",
+            "'\\x0c-0.0\\x0b' -0x0.0p+0 -1.0",
+            "'\\rnan\\n' nan",
+            "'\\n \\t-0x.2\\x0c' -0x1.0000000000000p-3 -1.0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_roundtrip.
+// CPython uses randomized exponent/mantissa samples here; MiniPython keeps the
+// same public invariant but uses a 10,000-row deterministic sweep so the Rust
+// test is repeatable.
+#[test]
+fn cpython_float_hex_fromhex_roundtrip_matrix_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "NAN = float('nan')\n",
+            "INF = float('inf')\n",
+            "MAX = float.fromhex('0x1.fffffffffffffp+1023')\n",
+            "MIN = float.fromhex('0x1p-1022')\n",
+            "TINY = float.fromhex('0x0.0000000000001p-1022')\n",
+            "def identical(x, y):\n",
+            "    if x != x or y != y:\n",
+            "        return x != x and y != y\n",
+            "    if x == y:\n",
+            "        if x != 0.0:\n",
+            "            return True\n",
+            "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+            "    return False\n",
+            "def roundtrip(x):\n",
+            "    return float.fromhex(x.hex())\n",
+            "for x in [NAN, INF, MAX, MIN, MIN - TINY, TINY, 0.0]:\n",
+            "    print(x.hex(), identical(x, roundtrip(x)), (-x).hex(), identical(-x, roundtrip(-x)))\n",
+            "ok = True\n",
+            "count = 0\n",
+            "skipped = 0\n",
+            "for i in range(10000):\n",
+            "    exponent = ((i * 1543 + 17) % 2400) - 1200\n",
+            "    mantissa_bits = (i * 6364136223846793005 + 1442695040888963407) % (2 ** 53)\n",
+            "    mantissa = mantissa_bits / float(2 ** 53)\n",
+            "    sign = -1.0 if ((i * 1103515245 + 12345) % 2) else 1.0\n",
+            "    try:\n",
+            "        x = sign * math.ldexp(mantissa, exponent)\n",
+            "    except OverflowError:\n",
+            "        skipped += 1\n",
+            "    else:\n",
+            "        count += 1\n",
+            "        if not identical(x, roundtrip(x)):\n",
+            "            print('mismatch', i, exponent, mantissa_bits, x.hex(), roundtrip(x).hex())\n",
+            "            ok = False\n",
+            "print('deterministic-sweep', ok, count, skipped)\n",
+            "print(roundtrip(-0.0).hex(), identical(-0.0, roundtrip(-0.0)))",
+        ),
+        &[
+            "nan True nan True",
+            "inf True -inf True",
+            "0x1.fffffffffffffp+1023 True -0x1.fffffffffffffp+1023 True",
+            "0x1.0000000000000p-1022 True -0x1.0000000000000p-1022 True",
+            "0x0.fffffffffffffp-1022 True -0x0.fffffffffffffp-1022 True",
+            "0x0.0000000000001p-1022 True -0x0.0000000000001p-1022 True",
+            "0x0.0p+0 True -0x0.0p+0 True",
+            "deterministic-sweep True 9275 725",
+            "-0x0.0p+0 True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_float.py::HexFloatTestCase::test_subclass.
+#[test]
+fn cpython_float_hex_fromhex_subclass_subset() {
+    assert_output(
+        "class F(float):\n    def __new__(cls, value):\n        return float.__new__(cls, value + 1)\nf = F.fromhex((1.5).hex())\nprint(type(f) is F, f, f == 2.5, isinstance(f, float), issubclass(F, float), f.hex())\nprint(float.__new__(F, 1.5), type(float.__new__(F, 1.5)) is F)\nclass F2(float):\n    def __init__(self, value):\n        self.foo = 'bar'\nf = F2.fromhex((1.5).hex())\nprint(type(f) is F2, f, f == 1.5, getattr(f, 'foo', 'none'), bool(F2(0.0)), bool(F2(0.25)))",
+        &[
+            "True 2.5 True True True 0x1.4000000000000p+1",
+            "1.5 True",
+            "True 1.5 True bar False True",
         ],
     );
 }
@@ -5205,6 +7460,277 @@ fn cpython_math_constants_and_classification_subset() {
             "TypeError",
             "OverflowError",
             "OverflowError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math_integer.py::IntMathTests and
+// ::MathTests. MiniPython ports the public integer math surface exposed through
+// `math` and `math.integer`: factorial, integer square root, combinations,
+// permutations, gcd/lcm re-export, bool/int-subclass/`__index__` conversion,
+// exact integer results, negative-domain errors, and catchable TypeError cases.
+#[test]
+fn cpython_math_integer_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "import math.integer as mi\n",
+            "print(mi.__name__, mi.factorial.__module__, mi.gcd.__module__, mi.comb.__name__)\n",
+            "print(mi.factorial(5), mi.isqrt(1729), mi.comb(5, 2), mi.perm(5, 2), mi.gcd(120, 84), mi.lcm(120, 84))\n",
+            "print(math.factorial(0), math.factorial(1), math.factorial(5), math.factorial(20))\n",
+            "total = 1\n",
+            "ok = True\n",
+            "for i in range(1, 50):\n",
+            "    total *= i\n",
+            "    ok = ok and math.factorial(i) == total\n",
+            "print(ok)\n",
+            "class IntSubclass(int):\n",
+            "    pass\n",
+            "class MyIndexable:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "print(math.factorial(False), math.factorial(True), math.factorial(IntSubclass(5)), math.factorial(MyIndexable(6)), type(math.factorial(IntSubclass(5))).__name__)\n",
+            "values = [0, 1, 2, 3, 4, 15, 16, 17, 10**50, 3**99]\n",
+            "ok = True\n",
+            "for value in values:\n",
+            "    root = math.isqrt(value)\n",
+            "    ok = ok and root * root <= value and value < (root + 1) * (root + 1) and type(root).__name__ == 'int'\n",
+            "print(ok)\n",
+            "print(math.isqrt(True), math.isqrt(False), math.isqrt(MyIndexable(1729)), type(math.isqrt(MyIndexable(1729))).__name__)\n",
+            "ok = True\n",
+            "for n in range(12):\n",
+            "    for k in range(n + 1):\n",
+            "        ok = ok and math.comb(n, k) == math.factorial(n) // (math.factorial(k) * math.factorial(n - k))\n",
+            "        ok = ok and math.perm(n, k) == math.factorial(n) // math.factorial(n - k)\n",
+            "print(ok)\n",
+            "print(math.comb(5, 0), math.comb(5, 1), math.comb(5, 2), math.comb(5, 4), math.comb(5, 5), math.comb(1, 2))\n",
+            "print(math.perm(5, 0), math.perm(5, 1), math.perm(5, 2), math.perm(5, 5), math.perm(5), math.perm(5, None), math.perm(1, 2))\n",
+            "n = 2**80\n",
+            "print(math.comb(n, 0), math.comb(n, 1), math.comb(n, 2))\n",
+            "print(math.perm(n, 0), math.perm(n, 1), math.perm(n, 2))\n",
+            "print(math.comb(True, False), math.comb(IntSubclass(5), IntSubclass(2)), math.comb(MyIndexable(5), MyIndexable(2)), type(math.comb(MyIndexable(5), MyIndexable(2))).__name__)\n",
+            "print(math.perm(True, False), math.perm(IntSubclass(5), IntSubclass(2)), math.perm(MyIndexable(5), MyIndexable(2)), type(math.perm(MyIndexable(5), MyIndexable(2))).__name__)"
+        ),
+        &[
+            "math.integer math.integer math.integer comb",
+            "120 41 10 20 12 840",
+            "1 1 120 2432902008176640000",
+            "True",
+            "1 1 120 720 int",
+            "True",
+            "1 0 41 int",
+            "True",
+            "1 5 10 5 1 0",
+            "1 5 20 120 120 120 0",
+            "1 1208925819614629174706176 730750818665451459101841811895231702513378918400",
+            "1 1208925819614629174706176 1461501637330902918203683623790463405026757836800",
+            "1 10 10 int",
+            "1 20 20 int",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.factorial(), lambda: math.factorial(1, 2), lambda: math.factorial(5.0), lambda: math.factorial('5'), lambda: math.factorial(-1), lambda: math.factorial(-10**1000), lambda: math.factorial(n=5), lambda: math.isqrt(), lambda: math.isqrt(1, 2), lambda: math.isqrt(3.5), lambda: math.isqrt(3+0j), lambda: math.isqrt(-1), lambda: math.comb(), lambda: math.comb(1), lambda: math.comb(1, 2, 3), lambda: math.comb(10.0, 1), lambda: math.comb(10, 1.0), lambda: math.comb(-1, 1), lambda: math.comb(1, -1), lambda: math.comb(n=1, k=1), lambda: math.perm(), lambda: math.perm(1, 2, 3), lambda: math.perm(10.0, 1), lambda: math.perm(10, 1.0), lambda: math.perm(-1, 1), lambda: math.perm(1, -1), lambda: math.perm(n=1, k=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::IsCloseTests.
+// MiniPython ports public relative/absolute tolerance behavior, identity,
+// near-zero, infinity/NaN handling, keyword-only tolerances, real-number
+// conversion, negative tolerance rejection, and catchable error classes.
+#[test]
+fn cpython_math_isclose_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.isclose(2.0, 2.0, rel_tol=0.0, abs_tol=0.0), math.isclose(0.1e200, 0.1e200, rel_tol=0.0, abs_tol=0.0), math.isclose(1.123e-300, 1.123e-300, rel_tol=0.0, abs_tol=0.0), math.isclose(12345, 12345.0, rel_tol=0.0, abs_tol=0.0), math.isclose(0.0, -0.0, rel_tol=0.0, abs_tol=0.0))\n",
+            "print(math.isclose(1.0000000001, 1.0), math.isclose(1.00000001, 1.0), math.isclose(1e8, 1e8 + 1, rel_tol=1e-8), math.isclose(1e8, 1e8 + 1, rel_tol=1e-9), math.isclose(-1e-8, -1.000000009e-8, rel_tol=1e-8), math.isclose(1.12345678, 1.12345679, rel_tol=1e-8), math.isclose(1.12345678, 1.12345679, rel_tol=1e-9))\n",
+            "print(math.isclose(1e-9, 0.0, rel_tol=0.9), math.isclose(-1e-9, 0.0, rel_tol=0.9), math.isclose(-1e-150, 0.0, rel_tol=0.9), math.isclose(1e-9, 0.0, abs_tol=1e-8), math.isclose(-1e-9, 0.0, abs_tol=1e-8), math.isclose(-1e-150, 0.0, abs_tol=1e-8))\n",
+            "print(math.isclose(math.inf, math.inf), math.isclose(-math.inf, -math.inf), math.isclose(math.nan, math.nan), math.isclose(math.nan, 1e-100), math.isclose(math.inf, math.nan), math.isclose(math.inf, -math.inf), math.isclose(math.inf, 1.0), math.isclose(1e308, math.inf))\n",
+            "print(math.isclose(1.0, 1.0, rel_tol=0.0), math.isclose(1.0, 1.000000000000001, rel_tol=0.0), math.isclose(0.99999999999999, 1.0, rel_tol=0.0), math.isclose(1.0e200, .999999999999999e200, rel_tol=0.0), math.isclose(9, 10, rel_tol=0.1), math.isclose(10, 9, rel_tol=0.1), math.isclose(100000001, 100000000, rel_tol=1e-8), math.isclose(100000001, 100000000, rel_tol=1e-9))\n",
+            "print(math.isclose(a=1, b=1), math.isclose(1, b=1), math.isclose(1, 1, rel_tol=0.0, abs_tol=0.0), math.isclose(1, 2, rel_tol=1.0, abs_tol=0.0))"
+        ),
+        &[
+            "True True True True True",
+            "True False True False True True False",
+            "False False False True True True",
+            "True True False False False False False False",
+            "True False False False True True True False",
+            "True True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.isclose(FloatLike(1.0), FloatLike(1.0)), math.isclose(IndexLike(100000001), IndexLike(100000000), rel_tol=1e-8), math.isclose(True, 1), math.isclose(False, 0))\n",
+            "for expr in [lambda: math.isclose(), lambda: math.isclose(1), lambda: math.isclose(1, 1, 1e-9), lambda: math.isclose(1, 1, spam=1), lambda: math.isclose(b=1), lambda: math.isclose(1, a=1), lambda: math.isclose(1, 1, rel_tol=-1e-100), lambda: math.isclose(1, 1, abs_tol=-1e10), lambda: math.isclose(1, 1, rel_tol='x'), lambda: math.isclose('x', 1), lambda: math.isclose(1+2j, 1), lambda: math.isclose(IndexLike(10**10000), 1), lambda: math.isclose(BadFloat(), 1), lambda: math.isclose(RaisesFloat(), 1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "True True True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testHypot and
+// ::testDist. MiniPython ports public Euclidean norm/distance behavior,
+// variadic hypot(), iterable dist() inputs, real-number conversion,
+// signed-zero normalization, NaN/inf propagation, large/small-value scaling,
+// dimension validation, and catchable error classes.
+#[test]
+fn cpython_math_hypot_dist_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.hypot(), math.hypot(3, 4), math.hypot(3, 4, 12))\n",
+            "print(math.hypot(0.75, -1), math.hypot(-1, 0.75), math.hypot(-10.5))\n",
+            "print(math.hypot(True, False, True, True, True))\n",
+            "print(math.copysign(1.0, math.hypot(-0.0)))\n",
+            "print(math.hypot(math.inf), math.hypot(math.nan, math.inf), math.hypot(-math.inf, -math.inf))\n",
+            "print(math.isnan(math.hypot(math.nan)), math.isnan(math.hypot(10, math.nan)))\n",
+            "print(math.hypot(1e308, 1e308) > 1e308, math.isinf(math.hypot(1e308, 1e308)))\n",
+            "scale = 2.2250738585072014e-308 / 2\n",
+            "print(math.hypot(4 * scale, 3 * scale) == 5 * scale)\n",
+            "print(math.dist((1.0, 2.0, 3.0), (4.0, 2.0, -1.0)))\n",
+            "print(math.dist([1, 2, 3], [4, 2, -1]), math.dist(iter([1, 2, 3]), iter([4, 2, -1])))\n",
+            "print(math.dist((), ()), math.dist((True, True, False, False, True, True), (True, False, True, False, False, False)))\n",
+            "print(math.copysign(1.0, math.dist((-0.0,), (0.0,))), math.copysign(1.0, math.dist((0.0,), (-0.0,))))\n",
+            "print(math.dist((1e308, 1e308), (0.0, 0.0)) > 1e308, math.isinf(math.dist((1e308, 1e308), (0.0, 0.0))))\n",
+            "print(math.dist((math.inf,), (-math.inf,)), math.isnan(math.dist((math.nan,), (math.inf,))), math.isnan(math.dist((10,), (math.nan,))))"
+        ),
+        &[
+            "0.0 5.0 13.0",
+            "1.25 1.25 10.5",
+            "2.0",
+            "1.0",
+            "inf inf inf",
+            "True True",
+            "True False",
+            "True",
+            "5.0",
+            "5.0 5.0",
+            "0.0 2.0",
+            "1.0 1.0",
+            "True False",
+            "inf True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.hypot(FloatLike(-1.0), 0.75), math.hypot(IndexLike(3), 4))\n",
+            "print(math.dist((FloatLike(14.0), 1), (2, -4)), math.dist((11, 1), (FloatLike(-1.0), -4)))\n",
+            "for expr in [lambda: math.hypot(x=1), lambda: math.hypot(1.1, 'string', 2.2), lambda: math.hypot(1, 10**10000), lambda: math.hypot(BadFloat()), lambda: math.hypot(RaisesFloat()), lambda: math.dist(), lambda: math.dist((1, 2)), lambda: math.dist((1,), (2,), (3,)), lambda: math.dist(p=(1,), q=(2,)), lambda: math.dist((1,), (1, 2)), lambda: math.dist('a', 'b'), lambda: math.dist((1, 'x'), (2, 3)), lambda: math.dist((1,), (10**10000,)), lambda: math.dist((BadFloat(),), (0,)), lambda: math.dist((RaisesFloat(),), (0,)), lambda: math.dist((1,), 2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "1.25 5.0",
+            "13.0 13.0",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
         ],
     );
 }
@@ -5639,6 +8165,321 @@ fn cpython_math_cbrt_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py::MathTests::testExp and
+// ::testExp2. MiniPython ports public exponential behavior, float result
+// semantics, non-finite propagation, finite-input overflow errors, `__float__`
+// / `__index__` conversion, and catchable error classes.
+#[test]
+fn cpython_math_exp_exp2_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.exp(0)).__name__, type(math.exp2(0)).__name__)\n",
+            "print(round(math.exp(-1), 12), math.exp(0), math.exp(1) == math.e)\n",
+            "print(math.exp(math.inf), math.exp(-math.inf), math.isnan(math.exp(math.nan)))\n",
+            "print(math.exp2(-1), math.exp2(0), math.exp2(1), round(math.exp2(2.3), 12))\n",
+            "print(math.exp2(math.inf), math.exp2(-math.inf), math.isnan(math.exp2(math.nan)))"
+        ),
+        &[
+            "float float",
+            "0.367879441171 1.0 True",
+            "inf 0.0 True",
+            "0.5 1.0 2.0 4.92457765338",
+            "inf 0.0 True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.exp(FloatLike(1.0)) == math.e, math.exp2(FloatLike(2.0)))\n",
+            "print(math.exp(IndexLike(1)) == math.e, math.exp2(IndexLike(2)))\n",
+            "for expr in [lambda: math.exp(), lambda: math.exp2(), lambda: math.exp(1, 2), lambda: math.exp2(1, 2), lambda: math.exp('1.0'), lambda: math.exp2(1+2j), lambda: math.exp(1000000), lambda: math.exp2(1000000), lambda: math.exp(IndexLike(10**10000)), lambda: math.exp2(BadFloat()), lambda: math.exp(RaisesFloat()), lambda: math.exp2(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "True 4.0",
+            "True 4.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testLog,
+// ::testLog1p, ::testLog2, ::testLog2Exact, and ::testLog10. MiniPython ports
+// public logarithm behavior, optional-base division, non-finite propagation,
+// large-integer logarithms that avoid float-conversion overflow, `__index__`
+// conversion, CPython's OverflowError-to-__index__ log fallback, and catchable
+// error classes.
+#[test]
+fn cpython_math_log_family_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.log(1)).__name__, type(math.log1p(0)).__name__, type(math.log2(1)).__name__, type(math.log10(1)).__name__)\n",
+            "print(round(math.log(1 / math.e), 12), math.log(1), math.log(math.e))\n",
+            "print(math.log(32, 2), round(math.log(10**40, 10), 12), round(math.log(10**2000, 10**1000), 12))\n",
+            "print(round(math.log(10**1000), 12), math.log2(2**2000), math.log10(10**1000))\n",
+            "print(round(math.log1p(2), 12), round(math.log1p(2**90), 12) == round(math.log1p(float(2**90)), 12), round(math.log1p(2**300), 12) == round(math.log1p(float(2**300)), 12))\n",
+            "print(math.log(math.inf), math.log2(math.inf), math.log10(math.inf), math.log1p(math.inf))\n",
+            "print(math.isnan(math.log(math.nan)), math.isnan(math.log2(math.nan)), math.isnan(math.log10(math.nan)), math.isnan(math.log1p(math.nan)))"
+        ),
+        &[
+            "float float float float",
+            "-1.0 0.0 1.0",
+            "5.0 40.0 2.0",
+            "2302.585092994046 2000.0 1000.0",
+            "1.098612288668 True True",
+            "inf inf inf inf",
+            "True True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class OverflowThenIndex:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        raise OverflowError()\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "print(math.log(IndexLike(32), IndexLike(2)), math.log2(IndexLike(4)), math.log10(IndexLike(10)))\n",
+            "print(round(math.log(IndexLike(10**1000)), 12), math.log2(IndexLike(2**2000)), math.log10(IndexLike(10**1000)))\n",
+            "print(math.log(FloatLike(math.e)), math.log2(FloatLike(8.0)), math.log10(FloatLike(100.0)))\n",
+            "print(round(math.log(OverflowThenIndex(10**1000)), 12), math.log2(OverflowThenIndex(2**2000)), math.log10(OverflowThenIndex(10**1000)))\n",
+            "for expr in [lambda: math.log(), lambda: math.log(1, 2, 3), lambda: math.log(0), lambda: math.log(-1), lambda: math.log(10, -10), lambda: math.log(-math.inf), lambda: math.log(10, 1), lambda: math.log('1'), lambda: math.log(BadFloat()), lambda: math.log1p(), lambda: math.log1p(-1), lambda: math.log1p(-math.inf), lambda: math.log2(0), lambda: math.log2(-1), lambda: math.log10(0), lambda: math.log10(-1), lambda: math.log2(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "5.0 2.0 1.0",
+            "2302.585092994046 2000.0 1000.0",
+            "1.0 3.0 2.0",
+            "2302.585092994046 2000.0 1000.0",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ZeroDivisionError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testAcos,
+// ::testAsin, ::testAtan, ::testAtan2, ::testCos, ::testSin, and ::testTan.
+// MiniPython ports public trigonometric behavior, domain errors, signed-zero
+// atan2 behavior, non-finite propagation/rejection, `__float__` / `__index__`
+// input conversion, huge-index overflow, propagated conversion exceptions, and
+// catchable error classes.
+#[test]
+fn cpython_math_trig_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(round(math.acos(-1), 12) == round(math.pi, 12), round(math.acos(0), 12) == round(math.pi / 2, 12), math.acos(1))\n",
+            "print(round(math.asin(-1), 12) == round(-math.pi / 2, 12), math.asin(0), round(math.asin(1), 12) == round(math.pi / 2, 12))\n",
+            "print(round(math.atan(-1), 12) == round(-math.pi / 4, 12), math.atan(0), round(math.atan(1), 12) == round(math.pi / 4, 12))\n",
+            "print(round(math.atan(math.inf), 12) == round(math.pi / 2, 12), round(math.atan(-math.inf), 12) == round(-math.pi / 2, 12))\n",
+            "print(round(math.atan2(-1, 0), 12) == round(-math.pi / 2, 12), round(math.atan2(1, -1), 12) == round(3 * math.pi / 4, 12))\n",
+            "print(math.atan2(0.0, -0.0) == math.pi, math.copysign(1.0, math.atan2(-0.0, 0.0)))\n",
+            "print(round(math.cos(0), 12), round(math.cos(math.pi), 12), round(math.sin(math.pi / 2), 12), round(math.sin(-math.pi / 2), 12))\n",
+            "print(round(math.tan(math.pi / 4), 12), round(math.tan(-math.pi / 4), 12), math.tan(0))\n",
+            "print(math.isnan(math.acos(math.nan)), math.isnan(math.asin(math.nan)), math.isnan(math.atan(math.nan)), math.isnan(math.atan2(math.nan, 1)))\n",
+            "print(math.isnan(math.cos(math.nan)), math.isnan(math.sin(math.nan)), math.isnan(math.tan(math.nan)))"
+        ),
+        &[
+            "True True 0.0",
+            "True 0.0 True",
+            "True 0.0 True",
+            "True True",
+            "True True",
+            "True -1.0",
+            "1.0 -1.0 1.0 -1.0",
+            "1.0 -1.0 0.0",
+            "True True True True",
+            "True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.acos(FloatLike(1.0)), round(math.sin(IndexLike(1)), 12), round(math.atan2(IndexLike(1), IndexLike(1)), 12) == round(math.pi / 4, 12))\n",
+            "for expr in [lambda: math.acos(), lambda: math.asin(1, 2), lambda: math.atan2(1), lambda: math.atan2(1, 2, 3), lambda: math.acos(1.1), lambda: math.asin(-1.1), lambda: math.cos(math.inf), lambda: math.sin(-math.inf), lambda: math.tan(math.inf), lambda: math.acos('x'), lambda: math.sin(1+2j), lambda: math.tan(IndexLike(10**10000)), lambda: math.cos(BadFloat()), lambda: math.atan(RaisesFloat()), lambda: math.atan2(x=1, y=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "0.0 0.841470984808 True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testAcosh,
+// ::testAsinh, ::testAtanh, ::testCosh, ::testSinh, ::testTanh, and
+// ::testTanhSign. MiniPython ports public hyperbolic behavior, domain errors,
+// finite-input overflow errors, non-finite propagation, signed-zero tanh
+// behavior, `__float__` / `__index__` input conversion, huge-index overflow,
+// propagated conversion exceptions, and catchable error classes.
+#[test]
+fn cpython_math_hyperbolic_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.acosh(1), round(math.acosh(2), 12), math.acosh(math.inf))\n",
+            "print(math.asinh(0), round(math.asinh(1), 12), round(math.asinh(-1), 12), math.asinh(math.inf), math.asinh(-math.inf))\n",
+            "print(math.atanh(0), round(math.atanh(0.5), 12), round(math.atanh(-0.5), 12))\n",
+            "print(math.cosh(0), round(math.cosh(2) - 2 * math.cosh(1) ** 2, 12), math.cosh(math.inf), math.cosh(-math.inf))\n",
+            "print(math.sinh(0), round(math.sinh(1) ** 2 - math.cosh(1) ** 2, 12), round(math.sinh(1) + math.sinh(-1), 12), math.sinh(math.inf), math.sinh(-math.inf))\n",
+            "print(math.tanh(0), round(math.tanh(1) + math.tanh(-1), 12), math.tanh(math.inf), math.tanh(-math.inf))\n",
+            "print(math.copysign(1.0, math.tanh(-0.0)), math.isnan(math.acosh(math.nan)), math.isnan(math.asinh(math.nan)), math.isnan(math.atanh(math.nan)), math.isnan(math.cosh(math.nan)), math.isnan(math.sinh(math.nan)), math.isnan(math.tanh(math.nan)))"
+        ),
+        &[
+            "0.0 1.316957896925 inf",
+            "0.0 0.88137358702 -0.88137358702 inf -inf",
+            "0.0 0.549306144334 -0.549306144334",
+            "1.0 -1.0 inf inf",
+            "0.0 -1.0 0.0 inf -inf",
+            "0.0 0.0 1.0 -1.0",
+            "-1.0 True True True True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.acosh(FloatLike(1.0)), round(math.sinh(IndexLike(1)), 12), math.tanh(IndexLike(0)))\n",
+            "for expr in [lambda: math.acosh(), lambda: math.asinh(1, 2), lambda: math.acosh(0), lambda: math.acosh(-math.inf), lambda: math.atanh(1), lambda: math.atanh(-1), lambda: math.atanh(math.inf), lambda: math.cosh(1000000), lambda: math.sinh(1000000), lambda: math.cosh('x'), lambda: math.sinh(1+2j), lambda: math.tanh(IndexLike(10**10000)), lambda: math.cosh(BadFloat()), lambda: math.asinh(RaisesFloat()), lambda: math.tanh(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "0.0 1.175201193644 0.0",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testFabs.
 // MiniPython ports the public real-number conversion, float result, signed-zero
 // normalization, NaN/inf propagation, and error-class behavior supported by the
@@ -5680,6 +8521,686 @@ fn cpython_math_fabs_subset() {
             "TypeError",
             "OverflowError",
             "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::FMATests. MiniPython ports public
+// fused multiply-add behavior, including single-round examples, signed-zero
+// results, NaN propagation, infinity invalid-operation cases, finite overflow,
+// real-number conversion, and catchable error classes.
+#[test]
+fn cpython_math_fma_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.fma(2.0, 3.0, 4.0), math.fma(-2.0, 3.0, 4.0), math.fma(2, 3, 4))\n",
+            "a = 2.0 ** -50\n",
+            "print(math.fma(a - 1.0, a + 1.0, 1.0) == a * a, math.fma(2.0 ** 512, 2.0 ** 512, -(2.0 ** 1023)) == 2.0 ** 1023)\n",
+            "print(math.copysign(1.0, math.fma(2.0, 2.0, -4.0)), math.copysign(1.0, math.fma(0.0, -2.3, -0.0)), math.copysign(1.0, math.fma(1e-300, -1e-300, 0.0)))\n",
+            "print(math.isnan(math.fma(math.nan, 2.0, 3.0)), math.isnan(math.fma(2.0, math.nan, 3.0)), math.isnan(math.fma(2.0, 3.0, math.nan)), math.isnan(math.fma(0.0, math.inf, math.nan)))\n",
+            "print(math.fma(math.inf, 2.0, 3.0), math.fma(-math.inf, 2.0, 3.0), math.fma(2.0, math.inf, math.inf), math.fma(2.0, -math.inf, -math.inf))\n",
+            "print(math.fma(2.0, 3.0, math.inf), math.fma(2.0, 3.0, -math.inf))\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "print(math.fma(FloatLike(2.0), FloatLike(3.0), FloatLike(4.0)), math.fma(IndexLike(2), IndexLike(3), IndexLike(4)), math.fma(True, False, True))"
+        ),
+        &[
+            "10.0 -2.0 10.0",
+            "True True",
+            "1.0 -1.0 -1.0",
+            "True True True True",
+            "inf -inf inf -inf",
+            "inf -inf",
+            "10.0 10.0 1.0",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "for expr in [lambda: math.fma(), lambda: math.fma(1), lambda: math.fma(1, 2), lambda: math.fma(1, 2, 3, 4), lambda: math.fma(x=1, y=2, z=3), lambda: math.fma('x', 1, 1), lambda: math.fma(1+2j, 1, 1), lambda: math.fma(10**10000, 1, 1), lambda: math.fma(math.inf, 0.0, 1.0), lambda: math.fma(0.0, -math.inf, 0.0), lambda: math.fma(math.inf, 2.0, -math.inf), lambda: math.fma(1e308, 1e308, 0.0), lambda: math.fma(BadFloat(), 1, 1), lambda: math.fma(RaisesFloat(), 1, 1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_fmax,
+// ::test_fmax_nans, ::test_fmin, and ::test_fmin_nans. MiniPython ports public
+// two-argument min/max floating behavior, NaN elision, infinity handling,
+// real-number conversion, and catchable error classes.
+#[test]
+fn cpython_math_fmax_fmin_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.fmax(0., 0.), math.fmax(1., 2.), math.fmax(2., 1.))\n",
+            "print(math.fmax(+1., +0.) == 1., math.fmax(+0., +1.) == 1., math.fmax(+1., -0.) == 1., math.fmax(-0., +1.) == 1.)\n",
+            "print(math.fmax(-1., +0.) == 0., math.fmax(+0., -1.) == 0., math.fmax(-1., -0.) == 0., math.fmax(-0., -1.) == 0.)\n",
+            "print(math.fmax(math.inf, -1.), math.fmax(-1., math.inf), math.fmax(-math.inf, -1.), math.fmax(-1., -math.inf))\n",
+            "print(math.isnan(math.fmax(math.nan, 1.)), math.fmax(math.nan, 1.), math.isnan(math.fmax(1., math.nan)), math.fmax(1., math.nan), math.isnan(math.fmax(math.nan, math.nan)))\n",
+            "print(math.fmin(0., 0.), math.fmin(1., 2.), math.fmin(2., 1.))\n",
+            "print(math.fmin(+1., +0.) == 0., math.fmin(+0., +1.) == 0., math.fmin(+1., -0.) == 0., math.fmin(-0., +1.) == 0.)\n",
+            "print(math.fmin(-1., +0.) == -1., math.fmin(+0., -1.) == -1., math.fmin(-1., -0.) == -1., math.fmin(-0., -1.) == -1.)\n",
+            "print(math.fmin(math.inf, -1.), math.fmin(-1., math.inf), math.fmin(-math.inf, -1.), math.fmin(-1., -math.inf))\n",
+            "print(math.isnan(math.fmin(math.nan, 1.)), math.fmin(math.nan, 1.), math.isnan(math.fmin(1., math.nan)), math.fmin(1., math.nan), math.isnan(math.fmin(math.nan, math.nan)))"
+        ),
+        &[
+            "0.0 2.0 2.0",
+            "True True True True",
+            "True True True True",
+            "inf inf -1.0 -1.0",
+            "False 1.0 False 1.0 True",
+            "0.0 1.0 1.0",
+            "True True True True",
+            "True True True True",
+            "-1.0 -1.0 -inf -inf",
+            "False 1.0 False 1.0 True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.fmax(FloatLike(1.25), FloatLike(2.5)), math.fmin(IndexLike(-1), IndexLike(3)), math.fmax(True, False), math.fmin(True, False))\n",
+            "for expr in [lambda: math.fmax(), lambda: math.fmin(1), lambda: math.fmax(1, 2, 3), lambda: math.fmax(x=1, y=2), lambda: math.fmin('x', 1), lambda: math.fmax(1+2j, 1), lambda: math.fmin(IndexLike(10**10000), 1), lambda: math.fmax(BadFloat(), 1), lambda: math.fmin(RaisesFloat(), 1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "2.5 -1.0 1.0 0.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testFmod and
+// ::testRemainder. MiniPython ports public floating remainder behavior,
+// sign-preserving fmod(), IEEE-style nearest-even remainder(), NaN propagation,
+// infinity/zero-domain errors, `__float__` / `__index__` input conversion,
+// huge-index overflow, propagated conversion exceptions, and catchable error
+// classes.
+#[test]
+fn cpython_math_fmod_remainder_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.fmod(10, 1), math.fmod(10, 0.5), math.fmod(10, 1.5))\n",
+            "print(math.fmod(-10, 1), math.copysign(1.0, math.fmod(-10, 1)), math.fmod(-10, 1.5))\n",
+            "print(math.fmod(10, -1.5), math.fmod(-10, -1.5))\n",
+            "print(math.fmod(3.0, math.inf), math.fmod(-3.0, math.inf), math.fmod(3.0, -math.inf), math.fmod(0.0, -math.inf))\n",
+            "print(math.isnan(math.fmod(math.nan, 1.0)), math.isnan(math.fmod(1.0, math.nan)), math.isnan(math.fmod(math.nan, math.nan)))\n",
+            "print(math.remainder(10, 1), math.remainder(10, 0.5), math.remainder(10, 1.5))\n",
+            "print(math.remainder(10, 3), math.remainder(-10, 3), math.remainder(7, 2))\n",
+            "print(math.remainder(6, 4), math.copysign(1.0, math.remainder(6, 4)), math.remainder(6, -4), math.copysign(1.0, math.remainder(6, -4)))\n",
+            "print(math.remainder(-4.0, 1.0), math.copysign(1.0, math.remainder(-4.0, 1.0)))\n",
+            "print(math.remainder(2.3, math.inf), math.remainder(-2.3, -math.inf), math.remainder(0.0, math.inf))\n",
+            "print(math.isnan(math.remainder(math.nan, 1.0)), math.isnan(math.remainder(1.0, math.nan)))"
+        ),
+        &[
+            "0.0 0.0 1.0",
+            "-0.0 -1.0 -1.0",
+            "1.0 -1.0",
+            "3.0 -3.0 3.0 0.0",
+            "True True True",
+            "0.0 0.0 -0.5",
+            "1.0 -1.0 -1.0",
+            "-2.0 -1.0 -2.0 -1.0",
+            "-0.0 -1.0",
+            "2.3 -2.3 0.0",
+            "True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.fmod(FloatLike(10.0), FloatLike(1.5)), math.remainder(IndexLike(10), IndexLike(3)))\n",
+            "for expr in [lambda: math.fmod(), lambda: math.remainder(1), lambda: math.fmod(1.0, 0.0), lambda: math.fmod(math.inf, 1.0), lambda: math.fmod(math.inf, math.inf), lambda: math.remainder(1.0, 0.0), lambda: math.remainder(math.inf, 1.0), lambda: math.remainder(-math.inf, -0.0), lambda: math.fmod('x', 1), lambda: math.remainder(1+2j, 1), lambda: math.fmod(IndexLike(10**10000), 1), lambda: math.fmod(BadFloat(), 1), lambda: math.remainder(RaisesFloat(), 1), lambda: math.fmod(x=1, y=2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "1.0 1.0",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testFrexp,
+// ::testLdexp, ::testLdexp_denormal, and ::testModf. MiniPython ports public
+// floating decomposition/scaling behavior, signed-zero preservation,
+// NaN/inf propagation, denormal ldexp() output, real-number input conversion,
+// ldexp()'s strict integer exponent rule, overflow/underflow behavior, and
+// catchable error classes.
+#[test]
+fn cpython_math_frexp_ldexp_modf_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.frexp(-1), math.frexp(0), math.frexp(1), math.frexp(2))\n",
+            "m, e = math.frexp(-0.0)\n",
+            "print(m, e, math.copysign(1.0, m))\n",
+            "print(math.frexp(math.inf)[0], math.frexp(-math.inf)[0], math.isnan(math.frexp(math.nan)[0]), math.frexp(math.inf)[1], math.frexp(math.nan)[1])\n",
+            "print(math.ldexp(0, 1), math.ldexp(1, 1), math.ldexp(1, -1), math.ldexp(-1, 1))\n",
+            "print(math.ldexp(1.0, -1000000), math.ldexp(-1.0, -1000000), math.copysign(1.0, math.ldexp(-1.0, -1000000)))\n",
+            "print(math.ldexp(math.inf, 30), math.ldexp(-math.inf, -213), math.isnan(math.ldexp(math.nan, 0)))\n",
+            "print(math.ldexp(6993274598585239, -1126))\n",
+            "print(math.ldexp(1.5, True), math.ldexp(1.5, False))\n",
+            "print(math.modf(1.5), math.modf(-1.5))\n",
+            "part, whole = math.modf(-1.0)\n",
+            "print(part, whole, math.copysign(1.0, part))\n",
+            "part, whole = math.modf(-0.0)\n",
+            "print(part, whole, math.copysign(1.0, part), math.copysign(1.0, whole))\n",
+            "print(math.modf(math.inf), math.modf(-math.inf), math.copysign(1.0, math.modf(-math.inf)[0]))\n",
+            "print(math.isnan(math.modf(math.nan)[0]), math.isnan(math.modf(math.nan)[1]))"
+        ),
+        &[
+            "(-0.5, 1) (0.0, 0) (0.5, 1) (0.5, 2)",
+            "-0.0 0 -1.0",
+            "inf -inf True 0 0",
+            "0.0 2.0 0.5 -2.0",
+            "0.0 -0.0 -1.0",
+            "inf -inf True",
+            "1e-323",
+            "3.0 1.5",
+            "(0.5, 1.0) (-0.5, -1.0)",
+            "-0.0 -1.0 -1.0",
+            "-0.0 -0.0 -1.0 -1.0",
+            "(0.0, inf) (-0.0, -inf) -1.0",
+            "True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "class RaisesIndex:\n",
+            "    def __index__(self):\n",
+            "        raise ValueError('bad index')\n",
+            "print(math.frexp(FloatLike(8.0)), math.modf(IndexLike(3)))\n",
+            "print(math.ldexp(FloatLike(1.5), 2), math.ldexp(IndexLike(3), 2))\n",
+            "for expr in [lambda: math.frexp(), lambda: math.frexp(1, 2), lambda: math.frexp('x'), lambda: math.frexp(1+2j), lambda: math.frexp(IndexLike(10**10000)), lambda: math.frexp(BadFloat()), lambda: math.frexp(RaisesFloat()), lambda: math.frexp(x=1), lambda: math.modf(), lambda: math.modf(1, 2), lambda: math.modf('x'), lambda: math.modf(1+2j), lambda: math.modf(IndexLike(10**10000)), lambda: math.modf(BadFloat()), lambda: math.modf(RaisesFloat()), lambda: math.modf(x=1), lambda: math.ldexp(), lambda: math.ldexp(1), lambda: math.ldexp(1, 2, 3), lambda: math.ldexp(2.0, 1.1), lambda: math.ldexp(1.0, IndexLike(2)), lambda: math.ldexp(1.0, RaisesIndex()), lambda: math.ldexp(1.0, 1000000), lambda: math.ldexp(-1.0, 1000000), lambda: math.ldexp(IndexLike(10**10000), 1), lambda: math.ldexp(1.0, 10**10000), lambda: math.ldexp(x=1.0, i=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "(0.5, 4) (0.0, 3.0)",
+            "6.0 12.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testFsum.
+// MiniPython ports public full-precision summation behavior, including
+// cancellation-sensitive inputs, half-even rounding boundaries, iterable input
+// conversion, NaN/inf handling, finite overflow detection, propagated iterator
+// exceptions, `__float__` / `__index__` conversion, and catchable error classes.
+#[test]
+fn cpython_math_fsum_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.fsum([]), math.fsum([0.0]), math.fsum([1, 2, 3]))\n",
+            "print(math.fsum([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]))\n",
+            "print(math.fsum([1e100, 1.0, -1e100]))\n",
+            "print(math.fsum([1e100, 1.0, -1e100, 1e-100, 1e50, -1.0, -1e50]))\n",
+            "print(math.fsum([2.0**53, -0.5, -2.0**-54]))\n",
+            "print(math.fsum([2.0**53, 1.0, 2.0**-100]))\n",
+            "print(math.fsum([2.0**53 + 10.0, 1.0, 2.0**-100]))\n",
+            "print(math.fsum([2.0**53 - 4.0, 0.5, 2.0**-54]))\n",
+            "print(math.fsum([1e16, 1.0, 1e-16]))\n",
+            "print(math.fsum([1e16 - 2.0, 1.0 - 2.0**-53, -(1e16 - 2.0), -(1.0 - 2.0**-53)]))\n",
+            "print(math.copysign(1.0, math.fsum([-0.0])), math.copysign(1.0, math.fsum([0.0, -0.0])))\n",
+            "print(math.fsum([1.0, math.inf]), math.fsum([1.0, -math.inf]), math.isnan(math.fsum([math.nan, 1.0])), math.isnan(math.fsum([math.inf, math.nan])))"
+        ),
+        &[
+            "0.0 0.0 6.0",
+            "1.0",
+            "1.0",
+            "1e-100",
+            "9007199254740991.0",
+            "9007199254740994.0",
+            "9007199254741004.0",
+            "9007199254740989.0",
+            "1.0000000000000002e+16",
+            "0.0",
+            "1.0 1.0",
+            "inf -inf True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "def bad_iter():\n",
+            "    yield 1.0\n",
+            "    1 / 0\n",
+            "print(math.fsum([FloatLike(1.25), FloatLike(2.75)]), math.fsum([IndexLike(2), IndexLike(3)]), math.fsum([True, False, True]))\n",
+            "for expr in [lambda: math.fsum(), lambda: math.fsum([], []), lambda: math.fsum(iterable=[]), lambda: math.fsum(1), lambda: math.fsum(['spam']), lambda: math.fsum([1+2j]), lambda: math.fsum([IndexLike(10**10000)]), lambda: math.fsum([BadFloat()]), lambda: math.fsum([RaisesFloat()]), lambda: math.fsum([1e308, 1e308]), lambda: math.fsum([math.inf, -math.inf]), lambda: math.fsum(bad_iter())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "4.0 5.0 2.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "OverflowError",
+            "ValueError",
+            "ZeroDivisionError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testSumProd
+// and selected public accuracy checks. MiniPython ports the built-in numeric
+// behavior supported by the current runtime: strict paired iteration, exact int
+// results, float/mixed numeric dot products, full-precision float summation,
+// NaN/inf handling, huge-integer float overflow, and catchable error classes.
+#[test]
+fn cpython_math_sumprod_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "sumprod = math.sumprod\n",
+            "print(sumprod(iter([10, 20, 30]), (1, 2, 3)), type(sumprod(iter([10, 20, 30]), (1, 2, 3))).__name__)\n",
+            "print(sumprod([1.5, 2.5], [3.5, 4.5]), type(sumprod([1.5, 2.5], [3.5, 4.5])).__name__)\n",
+            "print(sumprod([], []), type(sumprod([], [])).__name__)\n",
+            "print(sumprod([-1], [1.]), sumprod([1.], [-1]), type(sumprod([-1], [1.])).__name__, type(sumprod([1.], [-1])).__name__)\n",
+            "print(sumprod([10**20], [1]), type(sumprod([10**20], [1])).__name__)\n",
+            "print(sumprod([1], [10**20]), type(sumprod([1], [10**20])).__name__)\n",
+            "print(sumprod([10**10], [10**10]), type(sumprod([10**10], [10**10])).__name__)\n",
+            "print(sumprod([0.1] * 10, [1] * 10))\n",
+            "print(sumprod([0.1] * 20, [True, False] * 10), sumprod([True, False] * 10, [0.1] * 20))\n",
+            "print(sumprod([1.0, 10E100, 1.0, -10E100], [1.0] * 4))\n",
+            "print(sumprod([10.1, math.inf], [20.2, 30.3]), sumprod([10.1, -math.inf], [20.2, 30.3]))\n",
+            "print(math.isnan(sumprod([10.1, math.inf], [-math.inf, math.inf])))\n",
+            "print(math.isnan(sumprod([10.1, math.nan], [20.2, 30.3])), math.isnan(sumprod([10.1, math.inf], [math.nan, 30.3])), math.isnan(sumprod([10.1, math.inf], [20.3, math.nan])))"
+        ),
+        &[
+            "140 int",
+            "16.5 float",
+            "0 int",
+            "-1.0 -1.0 float float",
+            "100000000000000000000 int",
+            "100000000000000000000 int",
+            "100000000000000000000 int",
+            "1.0",
+            "1.0 1.0",
+            "2.0",
+            "inf -inf",
+            "True",
+            "True True True",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "sumprod = math.sumprod\n",
+            "for expr in [lambda: sumprod(), lambda: sumprod([]), lambda: sumprod([], [], []), lambda: sumprod(None, []), lambda: sumprod([], None), lambda: sumprod(['x'], [1.0]), lambda: sumprod([1], [1, 2]), lambda: sumprod([1, 2], [1]), lambda: sumprod([10**1000], [1.0]), lambda: sumprod([1.0], [10**1000]), lambda: sumprod(p=[], q=[])]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "ValueError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_nextafter
+// and ::test_ulp. MiniPython ports public IEEE-754 adjacent-float behavior,
+// `steps`, signed-zero/subnormal transitions, infinity and NaN cases, ULP
+// magnitudes, real-number conversion, and catchable error classes.
+#[test]
+fn cpython_math_nextafter_ulp_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.nextafter(4503599627370496.0, -math.inf), math.nextafter(4503599627370496.0, math.inf))\n",
+            "print(math.nextafter(9223372036854775808.0, 0.0), math.nextafter(-9223372036854775808.0, 0.0))\n",
+            "print(math.nextafter(1.0, -math.inf), math.nextafter(1.0, math.inf))\n",
+            "print(math.nextafter(1.0, -math.inf, steps=3), math.nextafter(1.0, math.inf, steps=3))\n",
+            "print(math.nextafter(2.0, 2.0), math.copysign(1.0, math.nextafter(-0.0, +0.0)), math.copysign(1.0, math.nextafter(+0.0, -0.0)))\n",
+            "print(math.nextafter(+0.0, math.inf), math.nextafter(-0.0, math.inf), math.nextafter(+0.0, -math.inf), math.nextafter(-0.0, -math.inf))\n",
+            "smallest = float('2.2250738585072014e-308') * 2.220446049250313e-16\n",
+            "print(math.copysign(1.0, math.nextafter(smallest, +0.0)), math.copysign(1.0, math.nextafter(-smallest, +0.0)), math.copysign(1.0, math.nextafter(smallest, -0.0)), math.copysign(1.0, math.nextafter(-smallest, -0.0)))\n",
+            "print(math.nextafter(math.inf, 0.0), math.nextafter(-math.inf, 0.0))\n",
+            "largest = float('1.7976931348623157e+308')\n",
+            "print(math.nextafter(largest, math.inf), math.nextafter(-largest, -math.inf))\n",
+            "print(math.isnan(math.nextafter(math.nan, 1.0)), math.isnan(math.nextafter(1.0, math.nan)), math.isnan(math.nextafter(math.nan, math.nan)), math.nextafter(1.0, math.inf, steps=0))\n",
+            "print(math.ulp(1.0), math.ulp(2 ** 52), math.ulp(2 ** 53), math.ulp(2 ** 64))\n",
+            "print(math.ulp(0.0), math.ulp(largest))\n",
+            "print(math.ulp(math.inf), math.isnan(math.ulp(math.nan)))\n",
+            "print(math.ulp(-0.0), math.ulp(-1.0), math.ulp(-(2 ** 64)), math.ulp(-math.inf))"
+        ),
+        &[
+            "4503599627370495.5 4503599627370497.0",
+            "9.223372036854775e+18 -9.223372036854775e+18",
+            "0.9999999999999999 1.0000000000000002",
+            "0.9999999999999997 1.0000000000000007",
+            "2.0 1.0 -1.0",
+            "5e-324 5e-324 -5e-324 -5e-324",
+            "1.0 -1.0 1.0 -1.0",
+            "1.7976931348623157e+308 -1.7976931348623157e+308",
+            "inf -inf",
+            "True True True 1.0",
+            "2.220446049250313e-16 1.0 2.0 4096.0",
+            "5e-324 1.99584030953472e+292",
+            "inf True",
+            "5e-324 2.220446049250313e-16 4096.0 inf",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "class BadIndex:\n",
+            "    def __index__(self):\n",
+            "        return 1.0\n",
+            "class RaisesIndex:\n",
+            "    def __index__(self):\n",
+            "        raise ValueError('bad index')\n",
+            "print(math.nextafter(FloatLike(1.0), FloatLike(2.0)), math.nextafter(1.0, math.inf, steps=IndexLike(2)), math.nextafter(1.0, math.inf, steps=True), math.nextafter(1.0, math.inf, steps=False), math.nextafter(1.0, math.inf, steps=None), math.ulp(FloatLike(1.0)), math.ulp(IndexLike(2**64)))\n",
+            "for expr in [lambda: math.nextafter(), lambda: math.nextafter(1), lambda: math.nextafter(1, 2, 3), lambda: math.nextafter(1, 2, 3, 4), lambda: math.nextafter(x=1, y=2), lambda: math.nextafter(1, 2, steps=-1), lambda: math.nextafter(1, 2, steps=1.0), lambda: math.nextafter(1, 2, steps=BadIndex()), lambda: math.nextafter(1, 2, steps=RaisesIndex()), lambda: math.nextafter('x', 1), lambda: math.nextafter(1+2j, 1), lambda: math.nextafter(IndexLike(10**10000), 1), lambda: math.nextafter(BadFloat(), 1), lambda: math.nextafter(RaisesFloat(), 1), lambda: math.ulp(), lambda: math.ulp(1, 2), lambda: math.ulp(x=1), lambda: math.ulp('x'), lambda: math.ulp(1+2j), lambda: math.ulp(IndexLike(10**10000)), lambda: math.ulp(BadFloat()), lambda: math.ulp(RaisesFloat())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "1.0000000000000002 1.0000000000000004 1.0000000000000002 1.0 1.0000000000000002 2.220446049250313e-16 4096.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_math.py::MathTests::testPow.
+// MiniPython ports public floating power behavior, including float-result
+// conversion, NaN/inf special cases, zero and signed-zero semantics, negative
+// base domain errors for non-integral exponents, finite overflow handling,
+// `__float__` / `__index__` input conversion, and catchable error classes.
+#[test]
+fn cpython_math_pow_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(math.pow(0, 1), math.pow(1, 0), math.pow(2, 1), math.pow(2, -1))\n",
+            "print(math.pow(math.inf, 1), math.pow(-math.inf, 1), math.pow(1, math.inf), math.pow(1, -math.inf))\n",
+            "print(math.isnan(math.pow(math.nan, 1)), math.isnan(math.pow(2, math.nan)), math.isnan(math.pow(0, math.nan)), math.pow(1, math.nan))\n",
+            "print(math.pow(0.0, math.inf), math.pow(0.0, 3.0), math.pow(0.0, 2.3), math.pow(0.0, 0.0), math.pow(0.0, -math.inf))\n",
+            "print(math.pow(math.inf, math.inf), math.pow(math.inf, -2.0), math.pow(math.inf, -math.inf), math.isnan(math.pow(math.inf, math.nan)))\n",
+            "print(math.pow(-0.0, math.inf), math.pow(-0.0, 2.3), math.pow(-0.0, 2.0), math.pow(-0.0, -math.inf), math.isnan(math.pow(-0.0, math.nan)))\n",
+            "print(math.pow(-0.0, 3.0), math.copysign(1.0, math.pow(-0.0, 3.0)))\n",
+            "print(math.pow(-math.inf, math.inf), math.pow(-math.inf, 3.0), math.pow(-math.inf, 2.3), math.pow(-math.inf, 2.0))\n",
+            "print(math.pow(-math.inf, -3.0), math.copysign(1.0, math.pow(-math.inf, -3.0)), math.pow(-math.inf, -math.inf), math.isnan(math.pow(-math.inf, math.nan)))\n",
+            "print(math.pow(-1.0, math.inf), math.pow(-1.0, 3.0), math.pow(-1.0, 2.0), math.pow(-1.0, -3.0), math.pow(-1.0, -math.inf), math.isnan(math.pow(-1.0, math.nan)))\n",
+            "print(math.pow(1.9, -math.inf), math.pow(0.9, -math.inf), math.pow(-0.9, -math.inf), math.pow(-1.9, -math.inf))\n",
+            "print(math.pow(1.9, math.inf), math.pow(0.9, math.inf), math.pow(-0.9, math.inf), math.pow(-1.9, math.inf))\n",
+            "print(math.pow(-2.0, 3.0), math.pow(-2.0, 2.0), math.pow(-2.0, -1.0), math.pow(-2.0, -2.0), math.pow(-2.0, -3.0))"
+        ),
+        &[
+            "0.0 1.0 2.0 0.5",
+            "inf -inf 1.0 1.0",
+            "True True True 1.0",
+            "0.0 0.0 0.0 1.0 inf",
+            "inf 0.0 0.0 True",
+            "0.0 0.0 0.0 inf True",
+            "-0.0 -1.0",
+            "inf -inf inf inf",
+            "-0.0 -1.0 0.0 True",
+            "1.0 -1.0 1.0 -1.0 1.0 True",
+            "0.0 inf inf 0.0",
+            "inf 0.0 0.0 inf",
+            "-8.0 4.0 -0.5 0.25 -0.125",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(math.pow(FloatLike(2.0), FloatLike(3.0)), math.pow(IndexLike(2), IndexLike(-1)))\n",
+            "for expr in [lambda: math.pow(), lambda: math.pow(1), lambda: math.pow(1, 2, 3), lambda: math.pow(x=1, y=2), lambda: math.pow('x', 2), lambda: math.pow(1+2j, 2), lambda: math.pow(10**10000, 2), lambda: math.pow(BadFloat(), 2), lambda: math.pow(RaisesFloat(), 2), lambda: math.pow(1e100, 1e100), lambda: math.pow(0.0, -2.0), lambda: math.pow(-0.0, -3.0), lambda: math.pow(-1.0, 2.3), lambda: math.pow(-15.0, -3.1), lambda: math.pow(-2.0, 0.5), lambda: math.pow(-2.0, -0.5)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "8.0 0.5",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "OverflowError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
         ],
     );
 }
@@ -6414,183 +9935,185 @@ fn cpython_named_expression_helper_rules_subset() {
 // iteration variables for list/set/dict comprehensions and filters.
 #[test]
 fn cpython_assignment_expression_comprehension_subset() {
-    assert_output(
-        "values = [(seen := x + 1) for x in [1, 2, 3]]\nprint(values, seen)",
-        &["[2, 3, 4] 4"],
-    );
-    assert_output(
-        "values = [x for x in [1, 2, 3] if (keep := x > 1)]\nprint(values, keep)",
-        &["[2, 3] True"],
-    );
-    assert_output(
-        "pairs = {x: (seen := x + 10) for x in [1, 2]}\nprint(pairs, seen)",
-        &["{1: 11, 2: 12} 12"],
-    );
-    assert_output(
-        "x = None\ng = (x := i for i in range(3))\nprint(x)\nprint(list(g), x)",
-        &["None", "[0, 1, 2] 2"],
-    );
-    assert_output(
-        "def collect():\n    g = (x := i for i in range(3))\n    return list(g), x\nprint(collect())",
-        &["([0, 1, 2], 2)"],
-    );
-    assert_output(
-        "contains_one = any((last_num := num) == 1 for num in [1, 2, 3])\nprint(contains_one, last_num)",
-        &["True 1"],
-    );
-    assert_output(
-        "seen = None\nprint(any((seen := value) for value in [0, \"\", 5, 6]), seen)",
-        &["True 5"],
-    );
-    assert_output(
-        "total = 0\npartial_sums = [total := total + v for v in range(5)]\nprint(partial_sums, total)",
-        &["[0, 1, 3, 6, 10] 10"],
-    );
-    assert_output(
-        "def spam(a):\n    return a\nres = [[y := spam(x), x / y] for x in range(1, 5)]\nprint(res, y)",
-        &["[[1, 1.0], [2, 1.0], [3, 1.0], [4, 1.0]] 4"],
-    );
-    assert_output(
-        "def spam(a):\n    return a\ninput_data = [1, 2, 3]\nres = [(x, y, x / y) for x in input_data if (y := spam(x)) > 0]\nprint(res, y)",
-        &["[(1, 1, 1.0), (2, 2, 1.0), (3, 3, 1.0)] 3"],
-    );
-    assert_output(
-        "res = [[spam := i for i in range(3)] for j in range(2)]\nprint(res, spam)",
-        &["[[0, 1, 2], [0, 1, 2]] 2"],
-    );
-    assert_output(
-        "length = len(lines := [1, 2])\nprint(length, lines)",
-        &["2 [1, 2]"],
-    );
-    assert_output(
-        "def spam(a):\n    return a\ndef eggs(b):\n    return b * 2\nres = [spam(a := eggs(b := h)) for h in range(2)]\nprint(res, a, b)",
-        &["[0, 2] 2 1"],
-    );
-    assert_output(
-        "def spam(a):\n    return a\ndef eggs(b):\n    return b * 2\nres = [spam(a := eggs(a := h)) for h in range(2)]\nprint(res, a)",
-        &["[0, 2] 2"],
-    );
-    assert_output(
-        "res = [b := [a := 1 for i in range(2)] for j in range(2)]\nprint(res, a, b)",
-        &["[[1, 1], [1, 1]] 1 [1, 1]"],
-    );
-    assert_output(
-        "res = [j := i for i in range(5)]\nprint(res, j)",
-        &["[0, 1, 2, 3, 4] 4"],
-    );
-    assert_output(
-        "b = 0\nres = [b := i + b for i in range(5)]\nprint(res, b)",
-        &["[0, 1, 3, 6, 10] 10"],
-    );
-    assert_output(
-        "marker = \"module\"\ndef update():\n    global marker\n    [marker := \"global\" for _ in range(1)]\n    print(marker)\nupdate()\nprint(marker)",
-        &["global", "global"],
-    );
-    assert_output(
-        "marker = \"module\"\ndef update():\n    global marker\n    g = (marker := value for value in ['global'])\n    print(marker)\n    print(list(g), marker)\nupdate()\nprint(marker)",
-        &["module", "['global'] global", "global"],
-    );
-    assert_output(
-        "def outer():\n    marker = \"outer\"\n    def update():\n        nonlocal marker\n        [marker := \"nonlocal\" for _ in range(1)]\n    update()\n    print(marker)\nouter()",
-        &["nonlocal"],
-    );
-    assert_output(
-        "def outer():\n    marker = \"outer\"\n    def update():\n        nonlocal marker\n        g = (marker := value for value in ['nonlocal'])\n        print(marker)\n        print(list(g), marker)\n    update()\n    print(marker)\nouter()",
-        &["outer", "['nonlocal'] nonlocal", "nonlocal"],
-    );
-    assert_output(
-        "def outer():\n    marker = \"outer\"\n    def update():\n        g = (marker := value for value in ['local'])\n        print(list(g), marker)\n    update()\n    print(marker)\nouter()",
-        &["['local'] local", "outer"],
-    );
+    run_test_with_stack(32 * 1024 * 1024, || {
+        assert_output(
+            "values = [(seen := x + 1) for x in [1, 2, 3]]\nprint(values, seen)",
+            &["[2, 3, 4] 4"],
+        );
+        assert_output(
+            "values = [x for x in [1, 2, 3] if (keep := x > 1)]\nprint(values, keep)",
+            &["[2, 3] True"],
+        );
+        assert_output(
+            "pairs = {x: (seen := x + 10) for x in [1, 2]}\nprint(pairs, seen)",
+            &["{1: 11, 2: 12} 12"],
+        );
+        assert_output(
+            "x = None\ng = (x := i for i in range(3))\nprint(x)\nprint(list(g), x)",
+            &["None", "[0, 1, 2] 2"],
+        );
+        assert_output(
+            "def collect():\n    g = (x := i for i in range(3))\n    return list(g), x\nprint(collect())",
+            &["([0, 1, 2], 2)"],
+        );
+        assert_output(
+            "contains_one = any((last_num := num) == 1 for num in [1, 2, 3])\nprint(contains_one, last_num)",
+            &["True 1"],
+        );
+        assert_output(
+            "seen = None\nprint(any((seen := value) for value in [0, \"\", 5, 6]), seen)",
+            &["True 5"],
+        );
+        assert_output(
+            "total = 0\npartial_sums = [total := total + v for v in range(5)]\nprint(partial_sums, total)",
+            &["[0, 1, 3, 6, 10] 10"],
+        );
+        assert_output(
+            "def spam(a):\n    return a\nres = [[y := spam(x), x / y] for x in range(1, 5)]\nprint(res, y)",
+            &["[[1, 1.0], [2, 1.0], [3, 1.0], [4, 1.0]] 4"],
+        );
+        assert_output(
+            "def spam(a):\n    return a\ninput_data = [1, 2, 3]\nres = [(x, y, x / y) for x in input_data if (y := spam(x)) > 0]\nprint(res, y)",
+            &["[(1, 1, 1.0), (2, 2, 1.0), (3, 3, 1.0)] 3"],
+        );
+        assert_output(
+            "res = [[spam := i for i in range(3)] for j in range(2)]\nprint(res, spam)",
+            &["[[0, 1, 2], [0, 1, 2]] 2"],
+        );
+        assert_output(
+            "length = len(lines := [1, 2])\nprint(length, lines)",
+            &["2 [1, 2]"],
+        );
+        assert_output(
+            "def spam(a):\n    return a\ndef eggs(b):\n    return b * 2\nres = [spam(a := eggs(b := h)) for h in range(2)]\nprint(res, a, b)",
+            &["[0, 2] 2 1"],
+        );
+        assert_output(
+            "def spam(a):\n    return a\ndef eggs(b):\n    return b * 2\nres = [spam(a := eggs(a := h)) for h in range(2)]\nprint(res, a)",
+            &["[0, 2] 2"],
+        );
+        assert_output(
+            "res = [b := [a := 1 for i in range(2)] for j in range(2)]\nprint(res, a, b)",
+            &["[[1, 1], [1, 1]] 1 [1, 1]"],
+        );
+        assert_output(
+            "res = [j := i for i in range(5)]\nprint(res, j)",
+            &["[0, 1, 2, 3, 4] 4"],
+        );
+        assert_output(
+            "b = 0\nres = [b := i + b for i in range(5)]\nprint(res, b)",
+            &["[0, 1, 3, 6, 10] 10"],
+        );
+        assert_output(
+            "marker = \"module\"\ndef update():\n    global marker\n    [marker := \"global\" for _ in range(1)]\n    print(marker)\nupdate()\nprint(marker)",
+            &["global", "global"],
+        );
+        assert_output(
+            "marker = \"module\"\ndef update():\n    global marker\n    g = (marker := value for value in ['global'])\n    print(marker)\n    print(list(g), marker)\nupdate()\nprint(marker)",
+            &["module", "['global'] global", "global"],
+        );
+        assert_output(
+            "def outer():\n    marker = \"outer\"\n    def update():\n        nonlocal marker\n        [marker := \"nonlocal\" for _ in range(1)]\n    update()\n    print(marker)\nouter()",
+            &["nonlocal"],
+        );
+        assert_output(
+            "def outer():\n    marker = \"outer\"\n    def update():\n        nonlocal marker\n        g = (marker := value for value in ['nonlocal'])\n        print(marker)\n        print(list(g), marker)\n    update()\n    print(marker)\nouter()",
+            &["outer", "['nonlocal'] nonlocal", "nonlocal"],
+        );
+        assert_output(
+            "def outer():\n    marker = \"outer\"\n    def update():\n        g = (marker := value for value in ['local'])\n        print(list(g), marker)\n    update()\n    print(marker)\nouter()",
+            &["['local'] local", "outer"],
+        );
 
-    assert_error(
-        "[i := 0 for i in range(5)]",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
-    );
-    assert_error(
-        "{i := 0 for i in range(5)}",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
-    );
-    assert_error(
-        "{(i := 0): 1 for i in range(5)}",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
-    );
-    assert_error(
-        "[i + 1 for i in range(5) if (i := 0)]",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
-    );
-    assert_error(
-        "[i for i in range(5) if (j := 0) for j in range(5)]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'j'",
-    );
-    assert_error(
-        "[i for i in (j := range(5))]",
-        "parse error: assignment expression cannot be used in a comprehension iterable expression",
-    );
-    assert_error(
-        "[i for i in [2, 3, j := range(5)]]",
-        "parse error: assignment expression cannot be used in a comprehension iterable expression",
-    );
-    assert_error(
-        "[x for a[b:=0] in [1]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for a[(b:=0)] in [1]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for a[:(b:=0)] in [1]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for (b, a[(b:=0)]) in [(1, 2)]]",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'b'",
-    );
-    assert_error(
-        "[x for (a[(b:=0)], b) in [(1, 2)]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for i in [1] if (b := 1) for a[b] in [2]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for i in [1] if (a := []) for a.b in [2]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'a'",
-    );
-    assert_error(
-        "[x for i in [1] if (b := 1) for a[[b]] in [2]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "[x for i in [1] if (j:=0) for (a[(b:=0)], j) in [(1, 2)]]",
-        "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
-    );
-    assert_error(
-        "class C:\n    a = [0]\n    [x for a[(b:=0)] in [1]]",
-        "parse error: assignment expression within a comprehension cannot be used in a class body",
-    );
-    assert_error(
-        "class C:\n    [x for i in [1] if (b := 1) for a[b] in [2]]",
-        "parse error: assignment expression within a comprehension cannot be used in a class body",
-    );
-    assert_error(
-        "class C:\n    [(lambda y=(b:=0): y) for x in [1]]",
-        "parse error: assignment expression within a comprehension cannot be used in a class body",
-    );
-    assert_error(
-        "class C:\n    [x for x in [1] if (lambda y=(b:=0): y)]",
-        "parse error: assignment expression within a comprehension cannot be used in a class body",
-    );
-    assert_error(
-        "class C:\n    [x for a[(lambda y=(b:=0): y)] in [1]]",
-        "parse error: assignment expression within a comprehension cannot be used in a class body",
-    );
-    assert_error(
-        "class C:\n    [x for b in [1] for a[(b:=0)] in [2]]",
-        "parse error: assignment expression cannot rebind comprehension iteration variable 'b'",
-    );
+        assert_error(
+            "[i := 0 for i in range(5)]",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
+        );
+        assert_error(
+            "{i := 0 for i in range(5)}",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
+        );
+        assert_error(
+            "{(i := 0): 1 for i in range(5)}",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
+        );
+        assert_error(
+            "[i + 1 for i in range(5) if (i := 0)]",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'i'",
+        );
+        assert_error(
+            "[i for i in range(5) if (j := 0) for j in range(5)]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'j'",
+        );
+        assert_error(
+            "[i for i in (j := range(5))]",
+            "parse error: assignment expression cannot be used in a comprehension iterable expression",
+        );
+        assert_error(
+            "[i for i in [2, 3, j := range(5)]]",
+            "parse error: assignment expression cannot be used in a comprehension iterable expression",
+        );
+        assert_error(
+            "[x for a[b:=0] in [1]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for a[(b:=0)] in [1]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for a[:(b:=0)] in [1]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for (b, a[(b:=0)]) in [(1, 2)]]",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'b'",
+        );
+        assert_error(
+            "[x for (a[(b:=0)], b) in [(1, 2)]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for i in [1] if (b := 1) for a[b] in [2]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for i in [1] if (a := []) for a.b in [2]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'a'",
+        );
+        assert_error(
+            "[x for i in [1] if (b := 1) for a[[b]] in [2]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "[x for i in [1] if (j:=0) for (a[(b:=0)], j) in [(1, 2)]]",
+            "parse error: comprehension inner loop cannot rebind assignment expression target 'b'",
+        );
+        assert_error(
+            "class C:\n    a = [0]\n    [x for a[(b:=0)] in [1]]",
+            "parse error: assignment expression within a comprehension cannot be used in a class body",
+        );
+        assert_error(
+            "class C:\n    [x for i in [1] if (b := 1) for a[b] in [2]]",
+            "parse error: assignment expression within a comprehension cannot be used in a class body",
+        );
+        assert_error(
+            "class C:\n    [(lambda y=(b:=0): y) for x in [1]]",
+            "parse error: assignment expression within a comprehension cannot be used in a class body",
+        );
+        assert_error(
+            "class C:\n    [x for x in [1] if (lambda y=(b:=0): y)]",
+            "parse error: assignment expression within a comprehension cannot be used in a class body",
+        );
+        assert_error(
+            "class C:\n    [x for a[(lambda y=(b:=0): y)] in [1]]",
+            "parse error: assignment expression within a comprehension cannot be used in a class body",
+        );
+        assert_error(
+            "class C:\n    [x for b in [1] for a[(b:=0)] in [2]]",
+            "parse error: assignment expression cannot rebind comprehension iteration variable 'b'",
+        );
+    });
 }
 
 // Adapted from CPython's `invalid_named_expression` grammar rule and related
@@ -12450,7 +15973,7 @@ print(state["id"], state["ctx"] is node.ctx, state["lineno"] is lineno)"#,
 }
 
 #[test]
-fn cpython_ast_copy_replace_accept_known_custom_class_fields_first_pass_subset() {
+fn cpython_ast_copy_replace_accept_known_custom_class_fields_exact_subset() {
     assert_output(
         r#"import ast
 import copy
@@ -12462,10 +15985,10 @@ name = "name"
 data = object()
 node = MyNode(name, data)
 repl = copy.replace(node)
-print(node.name == name, node.data is data, repl.name == name, repl.data is data)
+print(node.name is name, node.data is data, repl.name is name, repl.data is data)
 repl_data = object()
 repl = copy.replace(node, data=repl_data)
-print(node.name == name, node.data is data, repl.name == node.name, repl.data is repl_data)"#,
+print(node.name is name, node.data is data, repl.name is node.name, repl.data is repl_data)"#,
         &["True True True True", "True True True True"],
     );
 }
@@ -16064,18 +19587,22 @@ fn cpython_compile_specifics_null_terminated_memoryview_subset() {
 #[test]
 fn cpython_memoryview_minimal_runtime_subset() {
     assert_output(
-        "print(bool(memoryview(b'x')), bool(memoryview(object=b'x')))\nprint(list(memoryview(b'abc')))\nprint(memoryview(b'abcdef') == b'abcdef', memoryview(bytearray(b'abcdef')) == bytearray(b'abcdef'))\nprint(memoryview(b'abcde') == b'abcdef', memoryview(b'abcdef') != b'abcde')\nprint(hash(memoryview(b'abcdef')) == hash(b'abcdef'))\ntry:\n    hash(memoryview(bytearray(b'abcdef')))\nexcept ValueError as error:\n    print(error.__class__.__name__)\nfor expr in [lambda: memoryview(), lambda: memoryview(b'x', b'y'), lambda: memoryview(argument=b'x'), lambda: memoryview(b'x', object=b'y')]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        "for source in [b'x', bytearray(b'x'), memoryview(b'x')]:\n    print(type(source).__name__, bool(memoryview(source)), bool(memoryview(object=source)), memoryview(source).tolist())\nprint(list(memoryview(b'abc')))\nprint(memoryview(b'abcdef') == b'abcdef', memoryview(bytearray(b'abcdef')) == bytearray(b'abcdef'))\nprint(memoryview(b'abcde') == b'abcdef', memoryview(b'abcdef') != b'abcde')\nprint(hash(memoryview(b'abcdef')) == hash(b'abcdef'))\ntry:\n    hash(memoryview(bytearray(b'abcdef')))\nexcept ValueError as error:\n    print(error.__class__.__name__)\nfor label, expr in [('missing', lambda: memoryview()), ('two-pos', lambda: memoryview(b'x', b'y')), ('bad-kw', lambda: memoryview(argument=b'x')), ('two-kw', lambda: memoryview(object=b'x', argument=True)), ('pos-object-kw', lambda: memoryview(b'x', object=b'y')), ('pos-bad-kw', lambda: memoryview(b'x', argument=True))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
         &[
-            "True True",
+            "bytes True True [120]",
+            "bytearray True True [120]",
+            "memoryview True True [120]",
             "[97, 98, 99]",
             "True True",
             "False True",
             "True",
             "ValueError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
+            "missing TypeError memoryview() missing required argument 'object' (pos 1)",
+            "two-pos TypeError memoryview() takes at most 1 argument (2 given)",
+            "bad-kw TypeError memoryview() missing required argument 'object' (pos 1)",
+            "two-kw TypeError memoryview() takes at most 1 keyword argument (2 given)",
+            "pos-object-kw TypeError memoryview() takes at most 1 argument (2 given)",
+            "pos-bad-kw TypeError memoryview() takes at most 1 argument (2 given)",
         ],
     );
     assert_output(
@@ -16131,6 +19658,70 @@ fn cpython_memoryview_minimal_runtime_subset() {
 }
 
 // Adapted from CPython Lib/test/test_memoryview.py::AbstractMemoryTests::
+// test_tobytes, test_tolist, test_attributes_readonly,
+// test_attributes_writable, test_contextmanager, test_release, and
+// test_toreadonly for the supported one-dimensional bytes-like surface.
+#[test]
+fn cpython_memoryview_basic_methods_and_release_subset() {
+    assert_output(
+        "for source in [b'abcdef', bytearray(b'abcdef')]:\n    m = memoryview(source)\n    print(type(source).__name__, m.tobytes(), type(m.tobytes()).__name__, m.tolist())\n    print(type(source).__name__, m.format, m.itemsize, m.ndim, m.shape, len(m), m.strides, m.suboffsets, m.readonly)\n    for name in ['format', 'itemsize', 'ndim', 'shape', 'strides', 'suboffsets', 'readonly']:\n        try:\n            setattr(m, name, 'x')\n        except Exception as error:\n            print(type(source).__name__, name, error.__class__.__name__)\nbase = bytearray(b'abcdef')\nm = memoryview(base)\nreadonly = m.toreadonly()\nprint('readonly', readonly.readonly, memoryview(readonly).readonly, readonly.tolist() == m.tolist())\nreadonly.release()\nprint('base-alive', m.tolist())\nfor source in [b'abc', bytearray(b'abc')]:\n    m = memoryview(source)\n    with m as cm:\n        print('ctx', type(source).__name__, cm is m, cm.tobytes())\n    for expr in [lambda m=m: m.tobytes(), lambda m=m: m.tolist(), lambda m=m: m.nbytes]:\n        try:\n            expr()\n        except Exception as error:\n            print('ctx-released', type(source).__name__, error.__class__.__name__)\n    m.release()\n    print('ctx-release-again', type(source).__name__, m.release())\nm = memoryview(b'abc')\nm.release()\nfor expr in [lambda: m.tobytes(), lambda: m.tolist(), lambda: m.nbytes]:\n    try:\n        expr()\n    except Exception as error:\n        print('released', error.__class__.__name__)\nprint('released-second', m.release())",
+        &[
+            "bytes b'abcdef' bytes [97, 98, 99, 100, 101, 102]",
+            "bytes B 1 1 (6,) 6 (1,) () True",
+            "bytes format AttributeError",
+            "bytes itemsize AttributeError",
+            "bytes ndim AttributeError",
+            "bytes shape AttributeError",
+            "bytes strides AttributeError",
+            "bytes suboffsets AttributeError",
+            "bytes readonly AttributeError",
+            "bytearray b'abcdef' bytes [97, 98, 99, 100, 101, 102]",
+            "bytearray B 1 1 (6,) 6 (1,) () False",
+            "bytearray format AttributeError",
+            "bytearray itemsize AttributeError",
+            "bytearray ndim AttributeError",
+            "bytearray shape AttributeError",
+            "bytearray strides AttributeError",
+            "bytearray suboffsets AttributeError",
+            "bytearray readonly AttributeError",
+            "readonly True True True",
+            "base-alive [97, 98, 99, 100, 101, 102]",
+            "ctx bytes True b'abc'",
+            "ctx-released bytes ValueError",
+            "ctx-released bytes ValueError",
+            "ctx-released bytes ValueError",
+            "ctx-release-again bytes None",
+            "ctx bytearray True b'abc'",
+            "ctx-released bytearray ValueError",
+            "ctx-released bytearray ValueError",
+            "ctx-released bytearray ValueError",
+            "ctx-release-again bytearray None",
+            "released ValueError",
+            "released ValueError",
+            "released ValueError",
+            "released-second None",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py::AbstractMemoryTests::
+// test_getbuf_fail. Non-buffer objects should be rejected by the memoryview
+// constructor with catchable TypeError.
+#[test]
+fn cpython_memoryview_getbuf_fail_subset() {
+    assert_output(
+        "for value in [{}, [], object(), 42, 'abc']:\n    try:\n        memoryview(value)\n    except Exception as error:\n        print(type(value).__name__, error.__class__.__name__)",
+        &[
+            "dict TypeError",
+            "list TypeError",
+            "object TypeError",
+            "int TypeError",
+            "str TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py::AbstractMemoryTests::
 // test_setitem_readonly, test_setitem_writable, and test_delitem for the
 // supported one-dimensional bytearray-backed memoryview subset.
 #[test]
@@ -16165,6 +19756,30 @@ fn cpython_memoryview_writable_setitem_subset() {
             "ValueError",
             "ValueError",
             "bytearray(b'abcdef')",
+        ],
+    );
+    assert_output(
+        "base = bytearray(b'abcdef')\nm = memoryview(base)\nfor label, key in [('get-empty', ()), ('get-scalar', (0,)), ('get-bool', (True,)), ('get-oob', (99,)), ('get-one-slice', (slice(0, 1, 1),)), ('get-two-slice', (slice(0, 1, 1), slice(0, 1, 1))), ('get-slice-int', (slice(0, 1, 1), 0)), ('get-int-slice', (0, slice(0, 1, 1))), ('get-two-int', (0, 0)), ('get-float', (0.0,))]:\n    try:\n        result = m.__getitem__(key)\n        print(label, result)\n    except (TypeError, IndexError, NotImplementedError) as error:\n        print(label, error.__class__.__name__)\nbase = bytearray(b'abcdef')\nm = memoryview(base)\nfor label, key, value in [('set-scalar', (0,), 90), ('set-empty', (), 90), ('set-one-slice', (slice(0, 1, 1),), b'Z'), ('set-two-slice', (slice(0, 1, 1), slice(0, 1, 1)), b'Z'), ('set-slice-int', (slice(0, 1, 1), 0), b'Z'), ('set-int-slice', (0, slice(0, 1, 1)), b'Z'), ('set-two-int', (0, 0), 90), ('set-float', (0.0,), 90), ('set-bytes-scalar', (0,), b'Z')]:\n    try:\n        result = m.__setitem__(key, value)\n        print(label, result, base)\n    except (TypeError, IndexError, NotImplementedError) as error:\n        print(label, error.__class__.__name__, base)",
+        &[
+            "get-empty NotImplementedError",
+            "get-scalar 97",
+            "get-bool 98",
+            "get-oob IndexError",
+            "get-one-slice NotImplementedError",
+            "get-two-slice NotImplementedError",
+            "get-slice-int TypeError",
+            "get-int-slice TypeError",
+            "get-two-int TypeError",
+            "get-float TypeError",
+            "set-scalar None bytearray(b'Zbcdef')",
+            "set-empty NotImplementedError bytearray(b'Zbcdef')",
+            "set-one-slice NotImplementedError bytearray(b'Zbcdef')",
+            "set-two-slice NotImplementedError bytearray(b'Zbcdef')",
+            "set-slice-int TypeError bytearray(b'Zbcdef')",
+            "set-int-slice TypeError bytearray(b'Zbcdef')",
+            "set-two-int TypeError bytearray(b'Zbcdef')",
+            "set-float TypeError bytearray(b'Zbcdef')",
+            "set-bytes-scalar TypeError bytearray(b'Zbcdef')",
         ],
     );
 }
@@ -16212,6 +19827,1240 @@ fn cpython_memoryview_public_buffer_attributes_subset() {
             "ValueError True",
             "ValueError True",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py array-backed exporter
+// coverage. MiniPython currently supports the array('B') one-byte writable
+// buffer surface; non-byte array formats remain classified as migration gaps.
+#[test]
+fn cpython_memoryview_array_b_buffer_subset() {
+    assert_output(
+        "import array\narr = array.array('B', [97, 98, 99])\nm = memoryview(arr)\nprint(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.readonly, m.tolist(), m.tobytes(), m.obj is arr)\nm[0] = ord('z')\nprint(arr, repr(arr), bytes(arr), m.tolist())\nm[1:3] = b'XY'\nprint(arr, bytes(arr), m.tobytes())\nsub = m[::2]\nprint(sub.tolist(), sub.strides, sub.obj is arr)\nreadonly = m.toreadonly()\nprint(readonly.readonly, readonly.obj is arr, readonly.tolist())",
+        &[
+            "B 1 1 (3,) (1,) False [97, 98, 99] b'abc' True",
+            "array('B', [122, 98, 99]) array('B', [122, 98, 99]) b'zbc' [122, 98, 99]",
+            "array('B', [122, 88, 89]) b'zXY' b'zXY'",
+            "[122, 89] (2,) True",
+            "True True [122, 88, 89]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py array-backed exporter
+// coverage for the signed one-byte array format.
+#[test]
+fn cpython_memoryview_array_signed_byte_buffer_subset() {
+    assert_output(
+        "import array\n\ndef show(label, expr):\n    try:\n        value = expr()\n        print(label, value)\n    except Exception as error:\n        print(label, error.__class__.__name__, str(error))\n\nfor source in [b'\\xff\\x00\\x7f', bytearray(b'\\xff\\x00\\x7f'), [-1, 0, 127], memoryview(array.array('b', [-1, 2])), memoryview(b'\\xff')]:\n    show('init-' + type(source).__name__, lambda source=source: (repr(array.array('b', source)), bytes(array.array('b', source)), list(array.array('b', source))))\narr = array.array('b', [-1, 0, 127])\nm = memoryview(arr)\nprint('view', m.format, m.itemsize, m.ndim, m.shape, m.strides, m.readonly, m.tolist(), m.tobytes(), m.obj is arr, m[0])\nm[0] = -2\nprint('set', repr(arr), m.tolist(), m.tobytes())\nshow('set-high', lambda: m.__setitem__(1, 128))\nshow('set-type', lambda: m.__setitem__(1, b'X'))\nm[1:3] = memoryview(array.array('b', [3, -4]))\nprint('slice-ok', repr(arr), m.tolist(), m.tobytes())\nfor label, rhs in [('bytes', b'\\x01\\x02'), ('B-view', memoryview(array.array('B', [1, 2]))), ('list', [1, 2])]:\n    show('slice-' + label, lambda rhs=rhs: m.__setitem__(slice(0, 2), rhs))",
+        &[
+            "init-bytes (\"array('b', [-1, 0, 127])\", b'\\xff\\x00\\x7f', [-1, 0, 127])",
+            "init-bytearray (\"array('b', [-1, 0, 127])\", b'\\xff\\x00\\x7f', [-1, 0, 127])",
+            "init-list (\"array('b', [-1, 0, 127])\", b'\\xff\\x00\\x7f', [-1, 0, 127])",
+            "init-memoryview (\"array('b', [-1, 2])\", b'\\xff\\x02', [-1, 2])",
+            "init-memoryview OverflowError signed char is greater than maximum",
+            "view b 1 1 (3,) (1,) False [-1, 0, 127] b'\\xff\\x00\\x7f' True -1",
+            "set array('b', [-2, 0, 127]) [-2, 0, 127] b'\\xfe\\x00\\x7f'",
+            "set-high ValueError memoryview: invalid value for format 'b'",
+            "set-type TypeError memoryview: invalid type for format 'b'",
+            "slice-ok array('b', [-2, 3, -4]) [-2, 3, -4] b'\\xfe\\x03\\xfc'",
+            "slice-bytes ValueError memoryview assignment: lvalue and rvalue have different structures",
+            "slice-B-view ValueError memoryview assignment: lvalue and rvalue have different structures",
+            "slice-list TypeError a bytes-like object is required, not 'list'",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public array module and
+// constructor behavior.
+#[test]
+fn cpython_array_module_and_constructor_public_surface_subset() {
+    assert_output(
+        r#"import array
+class S(str):
+    pass
+def show(label, expr):
+    try:
+        print(label, repr(expr()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+print('module', isinstance(array.typecodes, str), array.typecodes, all(tc in array.typecodes for tc in 'bBuhHiIlLqQfd'), 'w' in array.typecodes)
+print('constructors', array.array('B').typecode, array.array(S('b')).typecode)
+print('roundtrip-typecodes', ''.join(array.array(tc).typecode for tc in array.typecodes))
+show('bad-x', lambda: array.array('x'))
+show('bad-empty', lambda: array.array(''))
+show('bad-bytes', lambda: array.array(b'B'))
+show('bad-int', lambda: array.array(65))
+show('bad-none', lambda: array.array(None))
+show('bad-arity0', lambda: array.array())
+show('bad-arity3', lambda: array.array('B', [], 3))
+show('bad-keyword', lambda: array.array(spam=42))
+a = array.array('B')
+a[:] = a
+print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
+        &[
+            "module True bBuwhHiIlLqQfd True True",
+            "constructors B b",
+            "roundtrip-typecodes bBuwhHiIlLqQfd",
+            "bad-x ValueError bad typecode (must be b, B, u, w, h, H, i, I, l, L, q, Q, f or d)",
+            "bad-empty TypeError array() argument 1 must be a unicode character, not a string of length 0",
+            "bad-bytes TypeError array() argument 1 must be a unicode character, not bytes",
+            "bad-int TypeError array() argument 1 must be a unicode character, not int",
+            "bad-none TypeError array() argument 1 must be a unicode character, not None",
+            "bad-arity0 TypeError array() takes at least 1 argument (0 given)",
+            "bad-arity3 TypeError array() takes at most 2 arguments (3 given)",
+            "bad-keyword TypeError array.array() takes no keyword arguments",
+            "empty 0 0 0 0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public array subclass behavior.
+// This covers construction, inherited storage-backed methods, custom
+// __init__/__new__, and direct array.array.__new__ allocation.
+#[test]
+fn cpython_array_subclass_public_construction_subset() {
+    assert_output(
+        r#"import array, copy
+class A(array.array):
+    pass
+class AInit(array.array):
+    def __init__(self, typecode, source=()):
+        self.seen = (typecode, list(source) if not isinstance(source, str) else source)
+class ANew(array.array):
+    def __new__(cls, typecode, source=()):
+        self = array.array.__new__(cls, typecode, source)
+        self.flag = 'new'
+        return self
+def show(label, expr):
+    try:
+        print(label, repr(expr()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for T in [A, AInit, ANew]:
+    a = T('B', [1, 2])
+    print('sub', T.__name__, type(a).__name__, isinstance(a, array.array), issubclass(T, array.array), a.typecode, a.itemsize, a.tolist(), a.tobytes(), repr(a), getattr(a, 'seen', None), getattr(a, 'flag', None))
+    print('methods', a.append(3), a.tolist(), a.pop(), a.tolist(), list(reversed(a)))
+    a.x = 10
+    copied = copy.copy(a)
+    print('copy', type(copied).__name__, isinstance(copied, array.array), copied.tolist(), getattr(copied, 'x', None), copied is a)
+show('new-exact', lambda: (lambda a: (type(a).__name__, a.typecode, a.tolist()))(array.array.__new__(array.array, 'B', [4])))
+show('new-sub', lambda: (lambda a: (type(a).__name__, a.typecode, a.tolist()))(array.array.__new__(A, 'B', [5])))
+show('new-bad-class', lambda: array.array.__new__(list, 'B'))
+print('visible', hasattr(array.array, '__new__'), hasattr(A, '__new__'))"#,
+        &[
+            "sub A A True True B 1 [1, 2] b'\\x01\\x02' A('B', [1, 2]) None None",
+            "methods None [1, 2, 3] 3 [1, 2] [2, 1]",
+            "copy array True [1, 2] None False",
+            "sub AInit AInit True True B 1 [1, 2] b'\\x01\\x02' AInit('B', [1, 2]) ('B', [1, 2]) None",
+            "methods None [1, 2, 3] 3 [1, 2] [2, 1]",
+            "copy array True [1, 2] None False",
+            "sub ANew ANew True True B 1 [1, 2] b'\\x01\\x02' ANew('B', [1, 2]) None new",
+            "methods None [1, 2, 3] 3 [1, 2] [2, 1]",
+            "copy array True [1, 2] None False",
+            "new-exact ('array', 'B', [4])",
+            "new-sub ('A', 'B', [5])",
+            "new-bad-class TypeError array.array.__new__(list): list is not a subtype of array.array",
+            "visible True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py and the public array sequence
+// surface used by bytes and memoryview tests. MiniPython currently covers the
+// supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_sequence_subset() {
+    assert_output(
+        "import array\nfor tc, vals in [('B', [1, 255]), ('b', [-1, 0, 127])]:\n    a = array.array(tc, vals)\n    print(tc, a.typecode, a.itemsize, len(a), bool(a), a.tolist(), a.tobytes(), a[0], a[-1], a[1:], list(reversed(a)))\n    print(a.__len__(), a.__getitem__(slice(0, 2)), list(a.__iter__()), a.__contains__(vals[0]), a.__contains__(999))\nprint(bool(array.array('B')))",
+        &[
+            "B B 1 2 True [1, 255] b'\\x01\\xff' 1 255 array('B', [255]) [255, 1]",
+            "2 array('B', [1, 255]) [1, 255] True False",
+            "b b 1 3 True [-1, 0, 127] b'\\xff\\x00\\x7f' -1 127 array('b', [0, 127]) [127, 0, -1]",
+            "3 array('b', [-1, 0]) [-1, 0, 127] True False",
+            "False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public integer-array behavior.
+// This extends the shared array storage beyond one-byte elements to the
+// supported native-endian signed and unsigned short typecodes.
+#[test]
+fn cpython_array_short_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('h', [1, -2, 32767], [-32769, 32768]), ('H', [0, 7, 65535], [-1, 65536])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'x'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('B', array.array('b', [-1])), ('b', array.array('B', [255])), ('h', memoryview(b'\xff')), ('h', b'\x01\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc h"#,
+            r#"basic (2, 2, 3, [1, -2, 32767], b'\x01\x00\xfe\xff\xff\x7f', "array('h', [1, -2, 32767])")"#,
+            r#"from-index [7]"#,
+            r#"ctor-bad--32769 OverflowError signed short integer is less than minimum"#,
+            r#"ctor-bad-32768 OverflowError signed short integer is greater than maximum"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (1, 32767, [-2, 32767], [32767, -2, 1], [1, -2, 32767], [32767, -2, 1], b'\x01\x00\xfe\xff\xff\x7f')"#,
+            r#"setitem (None, [1, 7, 32767], b'\x01\x00\x07\x00\xff\x7f')"#,
+            r#"append-insert (None, None, [32767, 1, -2, 32767, 7], b'\xff\x7f\x01\x00\xfe\xff\xff\x7f\x07\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00')"#,
+            r#"frombytes-exact (None, [1, -2, 32767], b'\x01\x00\xfe\xff\xff\x7f')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x01\xff\xfe\x7f\xff', [256, -257, -129])"#,
+            r#"pop-count-index (1, 2, 32767, [1, -2], b'\x01\x00\xfe\xff')"#,
+            r#"repeat-add ([1, -2, 32767, 1], [1, -2, 32767, 1, -2, 32767])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"tc H"#,
+            r#"basic (2, 2, 3, [0, 7, 65535], b'\x00\x00\x07\x00\xff\xff', "array('H', [0, 7, 65535])")"#,
+            r#"from-index [7]"#,
+            r#"ctor-bad--1 OverflowError unsigned short is less than minimum"#,
+            r#"ctor-bad-65536 OverflowError unsigned short is greater than maximum"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (0, 65535, [7, 65535], [65535, 7, 0], [0, 7, 65535], [65535, 7, 0], b'\x00\x00\x07\x00\xff\xff')"#,
+            r#"setitem (None, [0, 7, 65535], b'\x00\x00\x07\x00\xff\xff')"#,
+            r#"append-insert (None, None, [65535, 0, 7, 65535, 7], b'\xff\xff\x00\x00\x07\x00\xff\xff\x07\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00')"#,
+            r#"frombytes-exact (None, [0, 7, 65535], b'\x00\x00\x07\x00\xff\xff')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x07\xff\xff', [0, 1792, 65535])"#,
+            r#"pop-count-index (1, 2, 65535, [0, 7], b'\x00\x00\x07\x00')"#,
+            r#"repeat-add ([0, 7, 65535, 0], [0, 7, 65535, 0, 7, 65535])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"ctor-source-B-array OverflowError unsigned byte integer is less than minimum"#,
+            r#"ctor-source-b-array OverflowError signed char is greater than maximum"#,
+            r#"ctor-source-h-memoryview ([255], b'\xff\x00')"#,
+            r#"ctor-source-h-bytes ([1], b'\x01\x00')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public integer-array behavior.
+// This extends fixed-width native-endian signed and unsigned int typecodes.
+#[test]
+fn cpython_array_int_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('i', [1, -2, 2147483647], [-2147483649, 2147483648]), ('I', [0, 7, 4294967295], [-1, 4294967296])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'xyz'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('h', array.array('i', [-32769])), ('H', array.array('I', [65536])), ('i', memoryview(b'\xff')), ('i', b'\x01\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc i"#,
+            r#"basic (4, 4, 3, [1, -2, 2147483647], b'\x01\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\x7f', "array('i', [1, -2, 2147483647])")"#,
+            r#"from-index [7]"#,
+            r#"ctor-bad--2147483649 OverflowError signed integer is less than minimum"#,
+            r#"ctor-bad-2147483648 OverflowError signed integer is greater than maximum"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (1, 2147483647, [-2, 2147483647], [2147483647, -2, 1], [1, -2, 2147483647], [2147483647, -2, 1], b'\x01\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"setitem (None, [1, 7, 2147483647], b'\x01\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\x7f')"#,
+            r#"append-insert (None, None, [2147483647, 1, -2, 2147483647, 7], b'\xff\xff\xff\x7f\x01\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\x7f\x07\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [1, -2, 2147483647], b'\x01\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x01\xff\xff\xff\xfe\x7f\xff\xff\xff', [16777216, -16777217, -129])"#,
+            r#"pop-count-index (1, 2, 2147483647, [1, -2], b'\x01\x00\x00\x00\xfe\xff\xff\xff')"#,
+            r#"repeat-add ([1, -2, 2147483647, 1], [1, -2, 2147483647, 1, -2, 2147483647])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"tc I"#,
+            r#"basic (4, 4, 3, [0, 7, 4294967295], b'\x00\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\xff', "array('I', [0, 7, 4294967295])")"#,
+            r#"from-index [7]"#,
+            r#"ctor-bad--1 OverflowError can't convert negative value to unsigned int"#,
+            r#"ctor-bad-4294967296 OverflowError unsigned int is greater than maximum"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (0, 4294967295, [7, 4294967295], [4294967295, 7, 0], [0, 7, 4294967295], [4294967295, 7, 0], b'\x00\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\xff')"#,
+            r#"setitem (None, [0, 7, 4294967295], b'\x00\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\xff')"#,
+            r#"append-insert (None, None, [4294967295, 0, 7, 4294967295, 7], b'\xff\xff\xff\xff\x00\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\xff\x07\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [0, 7, 4294967295], b'\x00\x00\x00\x00\x07\x00\x00\x00\xff\xff\xff\xff')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x00\x00\x00\x00\x07\xff\xff\xff\xff', [0, 117440512, 4294967295])"#,
+            r#"pop-count-index (1, 2, 4294967295, [0, 7], b'\x00\x00\x00\x00\x07\x00\x00\x00')"#,
+            r#"repeat-add ([0, 7, 4294967295, 0], [0, 7, 4294967295, 0, 7, 4294967295])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"ctor-source-h-array OverflowError signed short integer is less than minimum"#,
+            r#"ctor-source-H-array OverflowError unsigned short is greater than maximum"#,
+            r#"ctor-source-i-memoryview ([255], b'\xff\x00\x00\x00')"#,
+            r#"ctor-source-i-bytes ([1], b'\x01\x00\x00\x00')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public integer-array behavior.
+// This extends fixed-width native-endian signed and unsigned long long
+// typecodes, including unsigned values that require MiniPython BigInt storage.
+#[test]
+fn cpython_array_long_long_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class BigI:
+    def __index__(self):
+        return 2**63
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('q', [1, -2, 9223372036854775807], [-9223372036854775809, 9223372036854775808]), ('Q', [0, 7, 18446744073709551615], [-1, 18446744073709551616])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('from-big-index', lambda tc=tc: array.array(tc, [BigI()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abcdefg'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00\x00\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('i', array.array('q', [-2147483649])), ('I', array.array('Q', [4294967296])), ('q', memoryview(b'\xff')), ('q', b'\x01\x00\x00\x00\x00\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc q"#,
+            r#"basic (8, 8, 3, [1, -2, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f', "array('q', [1, -2, 9223372036854775807])")"#,
+            r#"from-index [7]"#,
+            r#"from-big-index OverflowError int too big to convert"#,
+            r#"ctor-bad--9223372036854775809 OverflowError int too big to convert"#,
+            r#"ctor-bad-9223372036854775808 OverflowError int too big to convert"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (1, 9223372036854775807, [-2, 9223372036854775807], [9223372036854775807, -2, 1], [1, -2, 9223372036854775807], [9223372036854775807, -2, 1], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"setitem (None, [1, 7, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"append-insert (None, None, [9223372036854775807, 1, -2, 9223372036854775807, 7], b'\xff\xff\xff\xff\xff\xff\xff\x7f\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [1, -2, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x00\x00\x00\x00\x01\xff\xff\xff\xff\xff\xff\xff\xfe\x7f\xff\xff\xff\xff\xff\xff\xff', [72057594037927936, -72057594037927937, -129])"#,
+            r#"pop-count-index (1, 2, 9223372036854775807, [1, -2], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"repeat-add ([1, -2, 9223372036854775807, 1], [1, -2, 9223372036854775807, 1, -2, 9223372036854775807])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"tc Q"#,
+            r#"basic (8, 8, 3, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff', "array('Q', [0, 7, 18446744073709551615])")"#,
+            r#"from-index [7]"#,
+            r#"from-big-index [9223372036854775808]"#,
+            r#"ctor-bad--1 OverflowError can't convert negative int to unsigned"#,
+            r#"ctor-bad-18446744073709551616 OverflowError int too big to convert"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (0, 18446744073709551615, [7, 18446744073709551615], [18446744073709551615, 7, 0], [0, 7, 18446744073709551615], [18446744073709551615, 7, 0], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"setitem (None, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"append-insert (None, None, [18446744073709551615, 0, 7, 18446744073709551615, 7], b'\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\xff\xff\xff\xff\xff\xff\xff\xff', [0, 504403158265495552, 18446744073709551615])"#,
+            r#"pop-count-index (1, 2, 18446744073709551615, [0, 7], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"repeat-add ([0, 7, 18446744073709551615, 0], [0, 7, 18446744073709551615, 0, 7, 18446744073709551615])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"ctor-source-i-array OverflowError signed integer is less than minimum"#,
+            r#"ctor-source-I-array OverflowError unsigned int is greater than maximum"#,
+            r#"ctor-source-q-memoryview ([255], b'\xff\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"ctor-source-q-bytes ([1], b'\x01\x00\x00\x00\x00\x00\x00\x00')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public integer-array behavior.
+// This extends platform-native C long typecodes. The fixed expected oracle is
+// for 64-bit Unix-like platforms where C long is eight bytes.
+#[test]
+fn cpython_array_native_long_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class BigI:
+    def __index__(self):
+        return 2**63
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('l', [1, -2, 9223372036854775807], [-9223372036854775809, 9223372036854775808]), ('L', [0, 7, 18446744073709551615], [-1, 18446744073709551616])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('from-big-index', lambda tc=tc: array.array(tc, [BigI()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abcdefg'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00\x00\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('i', array.array('l', [-2147483649])), ('I', array.array('L', [4294967296])), ('l', memoryview(b'\xff')), ('l', b'\x01\x00\x00\x00\x00\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc l"#,
+            r#"basic (8, 8, 3, [1, -2, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f', "array('l', [1, -2, 9223372036854775807])")"#,
+            r#"from-index [7]"#,
+            r#"from-big-index OverflowError Python int too large to convert to C long"#,
+            r#"ctor-bad--9223372036854775809 OverflowError Python int too large to convert to C long"#,
+            r#"ctor-bad-9223372036854775808 OverflowError Python int too large to convert to C long"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (1, 9223372036854775807, [-2, 9223372036854775807], [9223372036854775807, -2, 1], [1, -2, 9223372036854775807], [9223372036854775807, -2, 1], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"setitem (None, [1, 7, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"append-insert (None, None, [9223372036854775807, 1, -2, 9223372036854775807, 7], b'\xff\xff\xff\xff\xff\xff\xff\x7f\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [1, -2, 9223372036854775807], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x7f')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x00\x00\x00\x00\x01\xff\xff\xff\xff\xff\xff\xff\xfe\x7f\xff\xff\xff\xff\xff\xff\xff', [72057594037927936, -72057594037927937, -129])"#,
+            r#"pop-count-index (1, 2, 9223372036854775807, [1, -2], b'\x01\x00\x00\x00\x00\x00\x00\x00\xfe\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"repeat-add ([1, -2, 9223372036854775807, 1], [1, -2, 9223372036854775807, 1, -2, 9223372036854775807])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"tc L"#,
+            r#"basic (8, 8, 3, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff', "array('L', [0, 7, 18446744073709551615])")"#,
+            r#"from-index [7]"#,
+            r#"from-big-index [9223372036854775808]"#,
+            r#"ctor-bad--1 OverflowError can't convert negative value to unsigned int"#,
+            r#"ctor-bad-18446744073709551616 OverflowError Python int too large to convert to C unsigned long"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"sequence (0, 18446744073709551615, [7, 18446744073709551615], [18446744073709551615, 7, 0], [0, 7, 18446744073709551615], [18446744073709551615, 7, 0], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"setitem (None, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"append-insert (None, None, [18446744073709551615, 0, 7, 18446744073709551615, 7], b'\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"fromlist (None, [7], b'\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"frombytes-exact (None, [0, 7, 18446744073709551615], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x07\xff\xff\xff\xff\xff\xff\xff\xff', [0, 504403158265495552, 18446744073709551615])"#,
+            r#"pop-count-index (1, 2, 18446744073709551615, [0, 7], b'\x00\x00\x00\x00\x00\x00\x00\x00\x07\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"repeat-add ([0, 7, 18446744073709551615, 0], [0, 7, 18446744073709551615, 0, 7, 18446744073709551615])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"ctor-source-i-array OverflowError signed integer is less than minimum"#,
+            r#"ctor-source-I-array OverflowError unsigned int is greater than maximum"#,
+            r#"ctor-source-l-memoryview ([255], b'\xff\x00\x00\x00\x00\x00\x00\x00')"#,
+            r#"ctor-source-l-bytes ([1], b'\x01\x00\x00\x00\x00\x00\x00\x00')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public floating-array behavior.
+// This extends native-endian float and double typecodes through the existing
+// shared array storage path.
+#[test]
+fn cpython_array_float_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+class F:
+    def __float__(self):
+        return 7.25
+class I:
+    def __index__(self):
+        return 7
+class BadFloat:
+    def __float__(self):
+        return 'x'
+class BadIndex:
+    def __index__(self):
+        return 'x'
+class FloatRaises:
+    def __float__(self):
+        raise RuntimeError('float boom')
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('f', [1.5, -2.25, 3.5]), ('d', [1.5, -2.25, 3.5])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-float', lambda tc=tc: array.array(tc, [F()]).tolist())
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('ctor-bad-float-result', lambda tc=tc: array.array(tc, [BadFloat()]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [BadIndex()]))
+    show('ctor-float-raises', lambda tc=tc: array.array(tc, [FloatRaises()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, F()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(F()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([F()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abc'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    payload = b'\x00' * array.array(tc).itemsize
+    show('fromfile-short-count', lambda tc=tc, payload=payload: (lambda a: (a.fromfile(io.BytesIO(payload), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('f', array.array('d', [1.5])), ('d', array.array('f', [1.5])), ('f', memoryview(b'\x00')), ('f', b'\x00\x00\xc0?'), ('d', b'\x00\x00\x00\x00\x00\x00\xf8?')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc f"#,
+            r#"basic (4, 4, 3, [1.5, -2.25, 3.5], b'\x00\x00\xc0?\x00\x00\x10\xc0\x00\x00`@', "array('f', [1.5, -2.25, 3.5])")"#,
+            r#"from-float [7.25]"#,
+            r#"from-index [7.0]"#,
+            r#"ctor-bad-float-result TypeError BadFloat.__float__ returned non-float (type str)"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"ctor-float-raises RuntimeError float boom"#,
+            r#"sequence (1.5, 3.5, [-2.25, 3.5], [3.5, -2.25, 1.5], [1.5, -2.25, 3.5], [3.5, -2.25, 1.5], b'\x00\x00\xc0?\x00\x00\x10\xc0\x00\x00`@')"#,
+            r#"setitem (None, [1.5, 7.25, 3.5], b'\x00\x00\xc0?\x00\x00\xe8@\x00\x00`@')"#,
+            r#"append-insert (None, None, [3.5, 1.5, -2.25, 3.5, 7.25], b'\x00\x00`@\x00\x00\xc0?\x00\x00\x10\xc0\x00\x00`@\x00\x00\xe8@')"#,
+            r#"fromlist (None, [7.25], b'\x00\x00\xe8@')"#,
+            r#"frombytes-exact (None, [1.5, -2.25, 3.5], b'\x00\x00\xc0?\x00\x00\x10\xc0\x00\x00`@')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'?\xc0\x00\x00\xc0\x10\x00\x00@`\x00\x00', [6.896490392174587e-41, 6.008767815024816e-42, 3.4527994160963493e-41])"#,
+            r#"pop-count-index (1, 2, 3.5, [1.5, -2.25], b'\x00\x00\xc0?\x00\x00\x10\xc0')"#,
+            r#"repeat-add ([1.5, -2.25, 3.5, 1.5], [1.5, -2.25, 3.5, 1.5, -2.25, 3.5])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"tc d"#,
+            r#"basic (8, 8, 3, [1.5, -2.25, 3.5], b'\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x02\xc0\x00\x00\x00\x00\x00\x00\x0c@', "array('d', [1.5, -2.25, 3.5])")"#,
+            r#"from-float [7.25]"#,
+            r#"from-index [7.0]"#,
+            r#"ctor-bad-float-result TypeError BadFloat.__float__ returned non-float (type str)"#,
+            r#"ctor-bad-index-result TypeError __index__ returned non-int (type str)"#,
+            r#"ctor-float-raises RuntimeError float boom"#,
+            r#"sequence (1.5, 3.5, [-2.25, 3.5], [3.5, -2.25, 1.5], [1.5, -2.25, 3.5], [3.5, -2.25, 1.5], b'\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x02\xc0\x00\x00\x00\x00\x00\x00\x0c@')"#,
+            r#"setitem (None, [1.5, 7.25, 3.5], b'\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x1d@\x00\x00\x00\x00\x00\x00\x0c@')"#,
+            r#"append-insert (None, None, [3.5, 1.5, -2.25, 3.5, 7.25], b'\x00\x00\x00\x00\x00\x00\x0c@\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x02\xc0\x00\x00\x00\x00\x00\x00\x0c@\x00\x00\x00\x00\x00\x00\x1d@')"#,
+            r#"fromlist (None, [7.25], b'\x00\x00\x00\x00\x00\x00\x1d@')"#,
+            r#"frombytes-exact (None, [1.5, -2.25, 3.5], b'\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x02\xc0\x00\x00\x00\x00\x00\x00\x0c@')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"byteswap (None, b'?\xf8\x00\x00\x00\x00\x00\x00\xc0\x02\x00\x00\x00\x00\x00\x00@\x0c\x00\x00\x00\x00\x00\x00', [3.13984e-319, 3.48e-321, 1.5494e-320])"#,
+            r#"pop-count-index (1, 2, 3.5, [1.5, -2.25], b'\x00\x00\x00\x00\x00\x00\xf8?\x00\x00\x00\x00\x00\x00\x02\xc0')"#,
+            r#"repeat-add ([1.5, -2.25, 3.5, 1.5], [1.5, -2.25, 3.5, 1.5, -2.25, 3.5])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"ctor-source-f-array ([1.5], b'\x00\x00\xc0?')"#,
+            r#"ctor-source-d-array ([1.5], b'\x00\x00\x00\x00\x00\x00\xf8?')"#,
+            r#"ctor-source-f-memoryview ([0.0], b'\x00\x00\x00\x00')"#,
+            r#"ctor-source-f-bytes ([1.5], b'\x00\x00\xc0?')"#,
+            r#"ctor-source-d-bytes ([1.5], b'\x00\x00\x00\x00\x00\x00\xf8?')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public unicode-array behavior.
+// This covers the valid public surface for the Unicode typecodes `u` and `w`.
+#[test]
+fn cpython_array_unicode_public_sequence_and_mutation_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc in ['u', 'w']:
+    print('tc', tc)
+    show('empty', lambda tc=tc: (array.array(tc).typecode, array.array(tc).itemsize, len(array.array(tc)), array.array(tc).tolist(), array.array(tc).tobytes(), repr(array.array(tc)), array.array(tc).tounicode()))
+    for text in ['Az', 'éΩ', '😀']:
+        show('basic-' + text, lambda tc=tc, text=text: (array.array(tc, text).itemsize, len(array.array(tc, text)), array.array(tc, text).tolist(), array.array(tc, text).tobytes(), repr(array.array(tc, text)), array.array(tc, text).tounicode()))
+    show('fromunicode', lambda tc=tc: (lambda a: (a.fromunicode('A😀'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tounicode(), a.tobytes()))(array.array(tc)))(array.array(tc, 'Az')))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abc'))(array.array(tc)))
+    a = array.array(tc, 'Az')
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc: (lambda a: (a.__setitem__(1, 'Ω'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc, 'Az')))
+    show('append-insert', lambda tc=tc: (lambda a: (a.append('😀'), a.insert(-99, 'Ω'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc, 'Az')))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist(['A', 'Ω']), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc)))
+    show('byteswap', lambda tc=tc: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, 'Az')))
+    show('pop-count-index', lambda a=a: (a.count('A'), a.index('z'), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc: ((array.array(tc, 'Az') + array.array(tc, 'A')).tolist(), (array.array(tc, 'Az') * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    payload = b'\x00' * array.array(tc).itemsize
+    show('fromfile-short-count', lambda tc=tc, payload=payload: (lambda a: (a.fromfile(io.BytesIO(payload), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+    for value in ['AB', b'A', 65, None, '']:
+        show('append-bad-' + type(value).__name__ + '-' + repr(value), lambda tc=tc, value=value: array.array(tc).append(value))
+    show('fromunicode-type', lambda tc=tc: array.array(tc).fromunicode(b'A'))
+    show('constructor-list', lambda tc=tc: array.array(tc, ['A', 'Ω']).tolist())
+    show('constructor-bytes', lambda tc=tc: array.array(tc, array.array(tc, 'A').tobytes()).tolist())
+for dst, src in [('u', array.array('w', 'A')), ('w', array.array('u', 'A'))]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+        &[
+            r#"tc u"#,
+            r#"empty ('u', 4, 0, [], b'', "array('u')", '')"#,
+            r#"basic-Az (4, 2, ['A', 'z'], b'A\x00\x00\x00z\x00\x00\x00', "array('u', 'Az')", 'Az')"#,
+            r#"basic-éΩ (4, 2, ['é', 'Ω'], b'\xe9\x00\x00\x00\xa9\x03\x00\x00', "array('u', 'éΩ')", 'éΩ')"#,
+            r#"basic-😀 (4, 1, ['😀'], b'\x00\xf6\x01\x00', "array('u', '😀')", '😀')"#,
+            r#"fromunicode (None, ['A', '😀'], b'A\x00\x00\x00\x00\xf6\x01\x00', 'A😀')"#,
+            r#"frombytes-exact (None, ['A', 'z'], 'Az', b'A\x00\x00\x00z\x00\x00\x00')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"sequence ('A', 'z', ['z'], ['z', 'A'], ['A', 'z'], ['z', 'A'], b'A\x00\x00\x00z\x00\x00\x00')"#,
+            r#"setitem (None, ['A', 'Ω'], b'A\x00\x00\x00\xa9\x03\x00\x00', 'AΩ')"#,
+            r#"append-insert (None, None, ['Ω', 'A', 'z', '😀'], b'\xa9\x03\x00\x00A\x00\x00\x00z\x00\x00\x00\x00\xf6\x01\x00', 'ΩAz😀')"#,
+            r#"fromlist (None, ['A', 'Ω'], b'A\x00\x00\x00\xa9\x03\x00\x00', 'AΩ')"#,
+            r#"byteswap ValueError chr() arg not in range(0x110000)"#,
+            r#"pop-count-index (1, 1, 'z', ['A'], b'A\x00\x00\x00')"#,
+            r#"repeat-add (['A', 'z', 'A'], ['A', 'z', 'A', 'z'])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"append-bad-str-'AB' TypeError array item must be a unicode character, not a string of length 2"#,
+            r#"append-bad-bytes-b'A' TypeError array item must be a unicode character, not bytes"#,
+            r#"append-bad-int-65 TypeError array item must be a unicode character, not int"#,
+            r#"append-bad-NoneType-None TypeError array item must be a unicode character, not NoneType"#,
+            r#"append-bad-str-'' TypeError array item must be a unicode character, not a string of length 0"#,
+            r#"fromunicode-type TypeError fromunicode() argument must be str, not bytes"#,
+            r#"constructor-list ['A', 'Ω']"#,
+            r#"constructor-bytes ['A']"#,
+            r#"tc w"#,
+            r#"empty ('w', 4, 0, [], b'', "array('w')", '')"#,
+            r#"basic-Az (4, 2, ['A', 'z'], b'A\x00\x00\x00z\x00\x00\x00', "array('w', 'Az')", 'Az')"#,
+            r#"basic-éΩ (4, 2, ['é', 'Ω'], b'\xe9\x00\x00\x00\xa9\x03\x00\x00', "array('w', 'éΩ')", 'éΩ')"#,
+            r#"basic-😀 (4, 1, ['😀'], b'\x00\xf6\x01\x00', "array('w', '😀')", '😀')"#,
+            r#"fromunicode (None, ['A', '😀'], b'A\x00\x00\x00\x00\xf6\x01\x00', 'A😀')"#,
+            r#"frombytes-exact (None, ['A', 'z'], 'Az', b'A\x00\x00\x00z\x00\x00\x00')"#,
+            r#"frombytes-short ValueError bytes length not a multiple of item size"#,
+            r#"sequence ('A', 'z', ['z'], ['z', 'A'], ['A', 'z'], ['z', 'A'], b'A\x00\x00\x00z\x00\x00\x00')"#,
+            r#"setitem (None, ['A', 'Ω'], b'A\x00\x00\x00\xa9\x03\x00\x00', 'AΩ')"#,
+            r#"append-insert (None, None, ['Ω', 'A', 'z', '😀'], b'\xa9\x03\x00\x00A\x00\x00\x00z\x00\x00\x00\x00\xf6\x01\x00', 'ΩAz😀')"#,
+            r#"fromlist (None, ['A', 'Ω'], b'A\x00\x00\x00\xa9\x03\x00\x00', 'AΩ')"#,
+            r#"byteswap ValueError chr() arg not in range(0x110000)"#,
+            r#"pop-count-index (1, 1, 'z', ['A'], b'A\x00\x00\x00')"#,
+            r#"repeat-add (['A', 'z', 'A'], ['A', 'z', 'A', 'z'])"#,
+            r#"fromfile-short-item ValueError bytes length not a multiple of item size"#,
+            r#"fromfile-short-count EOFError read() didn't return enough bytes"#,
+            r#"append-bad-str-'AB' TypeError array item must be a unicode character, not a string of length 2"#,
+            r#"append-bad-bytes-b'A' TypeError array item must be a unicode character, not bytes"#,
+            r#"append-bad-int-65 TypeError array item must be a unicode character, not int"#,
+            r#"append-bad-NoneType-None TypeError array item must be a unicode character, not NoneType"#,
+            r#"append-bad-str-'' TypeError array item must be a unicode character, not a string of length 0"#,
+            r#"fromunicode-type TypeError fromunicode() argument must be str, not bytes"#,
+            r#"constructor-list ['A', 'Ω']"#,
+            r#"constructor-bytes ['A']"#,
+            r#"ctor-source-u-array (['A'], b'A\x00\x00\x00')"#,
+            r#"ctor-source-w-array (['A'], b'A\x00\x00\x00')"#,
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py and the public mutable array
+// sequence behavior for the supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_mutation_methods_subset() {
+    assert_output(
+        r#"import array
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'copy' in dir(a), 'insert' in dir(a), 'clear' in dir(a))
+    print('append-insert', tc, a.append(vals[-1]), a.insert(1, vals[0]), repr(a), a.tolist(), bytes(a))
+    print('extend', tc, a.extend(vals), repr(a), a.tolist(), bytes(a))
+    print('pop-reverse', tc, a.pop(), a.reverse(), repr(a), a.tolist())
+    print('count-index-contains', tc, a.count(vals[0]), a.index(vals[0]), vals[0] in a, float(vals[0]) in a)
+    show('index-missing-' + tc, lambda a=a: a.index(999))
+    print('remove', tc, a.remove(vals[0]), repr(a), a.tolist())
+    print('fromlist-frombytes', tc, a.fromlist(vals), a.frombytes(b'\xff\x02'), repr(a), a.tolist(), bytes(a))
+    print('clear', tc, a.clear(), repr(a), bool(a), len(a))
+for tc, bad in [('B', -1), ('B', 256), ('b', -129), ('b', 128)]:
+    a = array.array(tc, [0])
+    show('append-bad-' + tc + '-' + str(bad), lambda a=a, bad=bad: a.append(bad))
+    print('state', repr(a))
+for tc in ['B', 'b']:
+    a = array.array(tc)
+    show('pop-empty-' + tc, lambda a=a: a.pop())
+    a = array.array(tc, [0])
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    show('extend-other-' + tc, lambda a=a, other=other: a.extend(other))
+    print('state', repr(a))
+    show('fromlist-type-' + tc, lambda a=a: a.fromlist((1, 2)))
+    show('frombytes-type-' + tc, lambda a=a: a.frombytes([1]))"#,
+        &[
+            "methods B False True True",
+            "append-insert B None None array('B', [1, 1, 2, 2]) [1, 1, 2, 2] b'\\x01\\x01\\x02\\x02'",
+            "extend B None array('B', [1, 1, 2, 2, 1, 2]) [1, 1, 2, 2, 1, 2] b'\\x01\\x01\\x02\\x02\\x01\\x02'",
+            "pop-reverse B 2 None array('B', [1, 2, 2, 1, 1]) [1, 2, 2, 1, 1]",
+            "count-index-contains B 3 0 True True",
+            "index-missing-B ValueError array.index(x): x not in array",
+            "remove B None array('B', [2, 2, 1, 1]) [2, 2, 1, 1]",
+            "fromlist-frombytes B None None array('B', [2, 2, 1, 1, 1, 2, 255, 2]) [2, 2, 1, 1, 1, 2, 255, 2] b'\\x02\\x02\\x01\\x01\\x01\\x02\\xff\\x02'",
+            "clear B None array('B') False 0",
+            "methods b False True True",
+            "append-insert b None None array('b', [-1, -1, 2, 2]) [-1, -1, 2, 2] b'\\xff\\xff\\x02\\x02'",
+            "extend b None array('b', [-1, -1, 2, 2, -1, 2]) [-1, -1, 2, 2, -1, 2] b'\\xff\\xff\\x02\\x02\\xff\\x02'",
+            "pop-reverse b 2 None array('b', [-1, 2, 2, -1, -1]) [-1, 2, 2, -1, -1]",
+            "count-index-contains b 3 0 True True",
+            "index-missing-b ValueError array.index(x): x not in array",
+            "remove b None array('b', [2, 2, -1, -1]) [2, 2, -1, -1]",
+            "fromlist-frombytes b None None array('b', [2, 2, -1, -1, -1, 2, -1, 2]) [2, 2, -1, -1, -1, 2, -1, 2] b'\\x02\\x02\\xff\\xff\\xff\\x02\\xff\\x02'",
+            "clear b None array('b') False 0",
+            "append-bad-B--1 OverflowError unsigned byte integer is less than minimum",
+            "state array('B', [0])",
+            "append-bad-B-256 OverflowError unsigned byte integer is greater than maximum",
+            "state array('B', [0])",
+            "append-bad-b--129 OverflowError signed char is less than minimum",
+            "state array('b', [0])",
+            "append-bad-b-128 OverflowError signed char is greater than maximum",
+            "state array('b', [0])",
+            "pop-empty-B IndexError pop from empty array",
+            "extend-other-B TypeError can only extend with array of same kind",
+            "state array('B', [0])",
+            "fromlist-type-B TypeError arg must be list",
+            "frombytes-type-B TypeError a bytes-like object is required, not 'list'",
+            "pop-empty-b IndexError pop from empty array",
+            "extend-other-b TypeError can only extend with array of same kind",
+            "state array('b', [0])",
+            "fromlist-type-b TypeError arg must be list",
+            "frombytes-type-b TypeError a bytes-like object is required, not 'list'",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public subscript mutation
+// behavior for the supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_subscript_mutation_subset() {
+    assert_output(
+        r#"import array
+class I:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('B', [1, 2, 3, 4]), ('b', [-1, 2, 3, 4])]:
+    a = array.array(tc, vals)
+    a[0] = vals[1]
+    a[-1] = vals[0]
+    a[I(1)] = vals[1]
+    print('scalar', tc, repr(a), a.tolist(), bytes(a))
+    show('scalar-bounds-' + tc, lambda a=a: a.__setitem__(99, vals[0]))
+    show('scalar-type-' + tc, lambda a=a: a.__setitem__(0, 'x'))
+    b = array.array(tc, vals)
+    print('dunder-set', tc, b.__setitem__(0, vals[1]), repr(b))
+    b[1:3] = array.array(tc, vals[:1])
+    print('slice-shrink', tc, repr(b), b.tolist(), bytes(b))
+    b[1:2] = array.array(tc, vals[1:4])
+    print('slice-grow', tc, repr(b), b.tolist(), bytes(b))
+    show('slice-list-' + tc, lambda b=b: b.__setitem__(slice(0, 1), [vals[0]]))
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    show('slice-other-' + tc, lambda b=b, other=other: b.__setitem__(slice(0, 1), other))
+    c = array.array(tc, vals)
+    c[::2] = array.array(tc, vals[:2])
+    print('ext-slice', tc, repr(c), c.tolist(), bytes(c))
+    show('ext-len-' + tc, lambda c=c: c.__setitem__(slice(None, None, 2), array.array(tc, vals[:1])))
+    d = array.array(tc, vals)
+    print('dunder-del', tc, d.__delitem__(1), repr(d), d.tolist(), bytes(d))
+    del d[::2]
+    print('del-ext', tc, repr(d), d.tolist(), bytes(d))
+    e = array.array(tc, vals)
+    del e[1:3]
+    print('del-contig', tc, repr(e), e.tolist(), bytes(e))
+    show('del-bounds-' + tc, lambda e=e: e.__delitem__(99))"#,
+        &[
+            "scalar B array('B', [2, 2, 3, 1]) [2, 2, 3, 1] b'\\x02\\x02\\x03\\x01'",
+            "scalar-bounds-B IndexError array assignment index out of range",
+            "scalar-type-B TypeError 'str' object cannot be interpreted as an integer",
+            "dunder-set B None array('B', [2, 2, 3, 4])",
+            "slice-shrink B array('B', [2, 1, 4]) [2, 1, 4] b'\\x02\\x01\\x04'",
+            "slice-grow B array('B', [2, 2, 3, 4, 4]) [2, 2, 3, 4, 4] b'\\x02\\x02\\x03\\x04\\x04'",
+            "slice-list-B TypeError can only assign array (not \"list\") to array slice",
+            "slice-other-B TypeError bad argument type for built-in operation",
+            "ext-slice B array('B', [1, 2, 2, 4]) [1, 2, 2, 4] b'\\x01\\x02\\x02\\x04'",
+            "ext-len-B ValueError attempt to assign array of size 1 to extended slice of size 2",
+            "dunder-del B None array('B', [1, 3, 4]) [1, 3, 4] b'\\x01\\x03\\x04'",
+            "del-ext B array('B', [3]) [3] b'\\x03'",
+            "del-contig B array('B', [1, 4]) [1, 4] b'\\x01\\x04'",
+            "del-bounds-B IndexError array assignment index out of range",
+            "scalar b array('b', [2, 2, 3, -1]) [2, 2, 3, -1] b'\\x02\\x02\\x03\\xff'",
+            "scalar-bounds-b IndexError array assignment index out of range",
+            "scalar-type-b TypeError 'str' object cannot be interpreted as an integer",
+            "dunder-set b None array('b', [2, 2, 3, 4])",
+            "slice-shrink b array('b', [2, -1, 4]) [2, -1, 4] b'\\x02\\xff\\x04'",
+            "slice-grow b array('b', [2, 2, 3, 4, 4]) [2, 2, 3, 4, 4] b'\\x02\\x02\\x03\\x04\\x04'",
+            "slice-list-b TypeError can only assign array (not \"list\") to array slice",
+            "slice-other-b TypeError bad argument type for built-in operation",
+            "ext-slice b array('b', [-1, 2, 2, 4]) [-1, 2, 2, 4] b'\\xff\\x02\\x02\\x04'",
+            "ext-len-b ValueError attempt to assign array of size 1 to extended slice of size 2",
+            "dunder-del b None array('b', [-1, 3, 4]) [-1, 3, 4] b'\\xff\\x03\\x04'",
+            "del-ext b array('b', [3]) [3] b'\\x03'",
+            "del-contig b array('b', [-1, 4]) [-1, 4] b'\\xff\\x04'",
+            "del-bounds-b IndexError array assignment index out of range",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public copy, byteswap, and rich
+// comparison behavior for the supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_copy_byteswap_compare_subset() {
+    assert_output(
+        r#"import array, copy
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [1, 2, 3]), ('b', [-1, 2, 3])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'copy' in dir(a), '__copy__' in dir(a), '__deepcopy__' in dir(a), 'byteswap' in dir(a))
+    shallow = copy.copy(a)
+    deep = copy.deepcopy(a)
+    direct = a.__copy__()
+    direct_deep = a.__deepcopy__({})
+    print('copies', tc, repr(shallow), repr(deep), repr(direct), repr(direct_deep), shallow is a, deep is a, direct is a, direct_deep is a)
+    shallow[0] = vals[-1]
+    deep[1] = vals[0]
+    direct[-1] = vals[0]
+    direct_deep[0] = vals[-1]
+    print('copy-independent', tc, repr(a), repr(shallow), repr(deep), repr(direct), repr(direct_deep))
+    print('byteswap', tc, a.byteswap(), repr(a), bytes(a))
+    show('deepcopy-arity0-' + tc, lambda a=a: a.__deepcopy__())
+    show('deepcopy-arity2-' + tc, lambda a=a: a.__deepcopy__({}, {}))
+base = array.array('B', [1, 2])
+for label, other in [
+    ('sameB', array.array('B', [1, 2])),
+    ('greaterB', array.array('B', [1, 3])),
+    ('shortB', array.array('B', [1])),
+    ('sameb', array.array('b', [1, 2])),
+    ('signed-low', array.array('b', [-1, 2])),
+    ('list', [1, 2]),
+    ('bytes', b'\x01\x02'),
+]:
+    print('eq', label, base == other, base != other, base.__eq__(other), base.__ne__(other))
+    print('dunder-order', label, base.__lt__(other), base.__le__(other), base.__gt__(other), base.__ge__(other))
+    show('op-lt-' + label, lambda other=other: base < other)
+    show('op-le-' + label, lambda other=other: base <= other)
+    show('op-gt-' + label, lambda other=other: base > other)
+    show('op-ge-' + label, lambda other=other: base >= other)"#,
+        &[
+            "methods B False True True True",
+            "copies B array('B', [1, 2, 3]) array('B', [1, 2, 3]) array('B', [1, 2, 3]) array('B', [1, 2, 3]) False False False False",
+            "copy-independent B array('B', [1, 2, 3]) array('B', [3, 2, 3]) array('B', [1, 1, 3]) array('B', [1, 2, 1]) array('B', [3, 2, 3])",
+            "byteswap B None array('B', [1, 2, 3]) b'\\x01\\x02\\x03'",
+            "deepcopy-arity0-B TypeError",
+            "deepcopy-arity2-B TypeError",
+            "methods b False True True True",
+            "copies b array('b', [-1, 2, 3]) array('b', [-1, 2, 3]) array('b', [-1, 2, 3]) array('b', [-1, 2, 3]) False False False False",
+            "copy-independent b array('b', [-1, 2, 3]) array('b', [3, 2, 3]) array('b', [-1, -1, 3]) array('b', [-1, 2, -1]) array('b', [3, 2, 3])",
+            "byteswap b None array('b', [-1, 2, 3]) b'\\xff\\x02\\x03'",
+            "deepcopy-arity0-b TypeError",
+            "deepcopy-arity2-b TypeError",
+            "eq sameB True False True False",
+            "dunder-order sameB False True False True",
+            "op-lt-sameB False",
+            "op-le-sameB True",
+            "op-gt-sameB False",
+            "op-ge-sameB True",
+            "eq greaterB False True False True",
+            "dunder-order greaterB True True False False",
+            "op-lt-greaterB True",
+            "op-le-greaterB True",
+            "op-gt-greaterB False",
+            "op-ge-greaterB False",
+            "eq shortB False True False True",
+            "dunder-order shortB False False True True",
+            "op-lt-shortB False",
+            "op-le-shortB False",
+            "op-gt-shortB True",
+            "op-ge-shortB True",
+            "eq sameb True False True False",
+            "dunder-order sameb False True False True",
+            "op-lt-sameb False",
+            "op-le-sameb True",
+            "op-gt-sameb False",
+            "op-ge-sameb True",
+            "eq signed-low False True False True",
+            "dunder-order signed-low False False True True",
+            "op-lt-signed-low False",
+            "op-le-signed-low False",
+            "op-gt-signed-low True",
+            "op-ge-signed-low True",
+            "eq list False True NotImplemented NotImplemented",
+            "dunder-order list NotImplemented NotImplemented NotImplemented NotImplemented",
+            "op-lt-list TypeError",
+            "op-le-list TypeError",
+            "op-gt-list TypeError",
+            "op-ge-list TypeError",
+            "eq bytes False True NotImplemented NotImplemented",
+            "dunder-order bytes NotImplemented NotImplemented NotImplemented NotImplemented",
+            "op-lt-bytes TypeError",
+            "op-le-bytes TypeError",
+            "op-gt-bytes TypeError",
+            "op-ge-bytes TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public concatenation and repeat
+// behavior for the supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_concat_repeat_subset() {
+    assert_output(
+        r#"import array
+class I:
+    def __index__(self):
+        return 3
+class BadIndex:
+    def __index__(self):
+        return 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, 'tolist'):
+            print(label, repr(value), value.tolist(), value.tobytes())
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+def inplace_add(tc, vals):
+    a = array.array(tc, vals)
+    alias = a
+    a += array.array(tc, vals[::-1])
+    print('iadd-op', tc, repr(a), a.tolist(), a is alias)
+def inplace_mul(tc, vals, count):
+    a = array.array(tc, vals)
+    alias = a
+    a *= count
+    print('imul-op', tc, count.__class__.__name__, repr(a), a.tolist(), a is alias)
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    same = array.array(tc, vals[::-1])
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    print('methods', tc, '__add__' in dir(a), '__iadd__' in dir(a), '__mul__' in dir(a), '__rmul__' in dir(a), '__imul__' in dir(a))
+    show('add-' + tc, lambda a=a, same=same: a + same)
+    show('dunder-add-' + tc, lambda a=a, same=same: a.__add__(same))
+    show('add-other-' + tc, lambda a=a, other=other: a + other)
+    show('add-list-' + tc, lambda a=a: a + [1])
+    show('dunder-iadd-list-' + tc, lambda a=a: a.__iadd__([1]))
+    show('mul2-' + tc, lambda a=a: a * 2)
+    show('rmul2-' + tc, lambda a=a: 2 * a)
+    show('mul-index-' + tc, lambda a=a: a * I())
+    show('mul0-' + tc, lambda a=a: a * 0)
+    show('mulneg-' + tc, lambda a=a: a * -1)
+    show('mul-bad-' + tc, lambda a=a: a * 'x')
+    show('dunder-mul-bad-' + tc, lambda a=a: a.__mul__('x'))
+    show('mul-bad-index-' + tc, lambda a=a: a * BadIndex())
+    d = array.array(tc, vals)
+    direct = d.__iadd__(same)
+    print('iadd-dunder', tc, repr(d), d.tolist(), direct is d)
+    inplace_add(tc, vals)
+    for count in [3, 0, -1, False, True, I()]:
+        inplace_mul(tc, vals, count)
+    d = array.array(tc, vals)
+    direct = d.__imul__(2)
+    print('imul-dunder', tc, repr(d), d.tolist(), direct is d)
+    show('imul-bad-' + tc, lambda tc=tc, vals=vals: array.array(tc, vals).__imul__('x'))"#,
+        &[
+            "methods B True True True True True",
+            "add-B array('B', [1, 2, 2, 1]) [1, 2, 2, 1] b'\\x01\\x02\\x02\\x01'",
+            "dunder-add-B array('B', [1, 2, 2, 1]) [1, 2, 2, 1] b'\\x01\\x02\\x02\\x01'",
+            "add-other-B TypeError bad argument type for built-in operation",
+            "add-list-B TypeError can only append array (not \"list\") to array",
+            "dunder-iadd-list-B TypeError can only extend array with array (not \"list\")",
+            "mul2-B array('B', [1, 2, 1, 2]) [1, 2, 1, 2] b'\\x01\\x02\\x01\\x02'",
+            "rmul2-B array('B', [1, 2, 1, 2]) [1, 2, 1, 2] b'\\x01\\x02\\x01\\x02'",
+            "mul-index-B array('B', [1, 2, 1, 2, 1, 2]) [1, 2, 1, 2, 1, 2] b'\\x01\\x02\\x01\\x02\\x01\\x02'",
+            "mul0-B array('B') [] b''",
+            "mulneg-B array('B') [] b''",
+            "mul-bad-B TypeError can't multiply sequence by non-int of type 'str'",
+            "dunder-mul-bad-B TypeError 'str' object cannot be interpreted as an integer",
+            "mul-bad-index-B TypeError __index__ returned non-int (type str)",
+            "iadd-dunder B array('B', [1, 2, 2, 1]) [1, 2, 2, 1] True",
+            "iadd-op B array('B', [1, 2, 2, 1]) [1, 2, 2, 1] True",
+            "imul-op B int array('B', [1, 2, 1, 2, 1, 2]) [1, 2, 1, 2, 1, 2] True",
+            "imul-op B int array('B') [] True",
+            "imul-op B int array('B') [] True",
+            "imul-op B bool array('B') [] True",
+            "imul-op B bool array('B', [1, 2]) [1, 2] True",
+            "imul-op B I array('B', [1, 2, 1, 2, 1, 2]) [1, 2, 1, 2, 1, 2] True",
+            "imul-dunder B array('B', [1, 2, 1, 2]) [1, 2, 1, 2] True",
+            "imul-bad-B TypeError 'str' object cannot be interpreted as an integer",
+            "methods b True True True True True",
+            "add-b array('b', [-1, 2, 2, -1]) [-1, 2, 2, -1] b'\\xff\\x02\\x02\\xff'",
+            "dunder-add-b array('b', [-1, 2, 2, -1]) [-1, 2, 2, -1] b'\\xff\\x02\\x02\\xff'",
+            "add-other-b TypeError bad argument type for built-in operation",
+            "add-list-b TypeError can only append array (not \"list\") to array",
+            "dunder-iadd-list-b TypeError can only extend array with array (not \"list\")",
+            "mul2-b array('b', [-1, 2, -1, 2]) [-1, 2, -1, 2] b'\\xff\\x02\\xff\\x02'",
+            "rmul2-b array('b', [-1, 2, -1, 2]) [-1, 2, -1, 2] b'\\xff\\x02\\xff\\x02'",
+            "mul-index-b array('b', [-1, 2, -1, 2, -1, 2]) [-1, 2, -1, 2, -1, 2] b'\\xff\\x02\\xff\\x02\\xff\\x02'",
+            "mul0-b array('b') [] b''",
+            "mulneg-b array('b') [] b''",
+            "mul-bad-b TypeError can't multiply sequence by non-int of type 'str'",
+            "dunder-mul-bad-b TypeError 'str' object cannot be interpreted as an integer",
+            "mul-bad-index-b TypeError __index__ returned non-int (type str)",
+            "iadd-dunder b array('b', [-1, 2, 2, -1]) [-1, 2, 2, -1] True",
+            "iadd-op b array('b', [-1, 2, 2, -1]) [-1, 2, 2, -1] True",
+            "imul-op b int array('b', [-1, 2, -1, 2, -1, 2]) [-1, 2, -1, 2, -1, 2] True",
+            "imul-op b int array('b') [] True",
+            "imul-op b int array('b') [] True",
+            "imul-op b bool array('b') [] True",
+            "imul-op b bool array('b', [-1, 2]) [-1, 2] True",
+            "imul-op b I array('b', [-1, 2, -1, 2, -1, 2]) [-1, 2, -1, 2, -1, 2] True",
+            "imul-dunder b array('b', [-1, 2, -1, 2]) [-1, 2, -1, 2] True",
+            "imul-bad-b TypeError 'str' object cannot be interpreted as an integer",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public buffer_info behavior for
+// the supported one-byte B/b typecodes. The raw address is implementation
+// specific, so this pins the portable tuple shape, integer address type, and
+// element count instead of the exact pointer value.
+#[test]
+fn cpython_array_one_byte_public_buffer_info_subset() {
+    assert_output(
+        r#"import array
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [1, 2, 3]), ('b', [-1, 0, 127])]:
+    a = array.array(tc, vals)
+    info = a.buffer_info()
+    print('info', tc, 'buffer_info' in dir(a), type(info).__name__, len(info), type(info[0]).__name__, info[0] == 0, info[1], len(a), a.itemsize)
+    a.append(vals[0])
+    info2 = a.buffer_info()
+    print('after', tc, info2[1], len(a), type(info2[0]).__name__, info2[0] == 0)
+    print('dunder', tc, getattr(a, 'buffer_info')().__class__.__name__)
+    show('arity-' + tc, lambda a=a: a.buffer_info(1))"#,
+        &[
+            "info B True tuple 2 int False 3 3 1",
+            "after B 4 4 int False",
+            "dunder B tuple",
+            "arity-B TypeError",
+            "info b True tuple 2 int False 3 3 1",
+            "after b 4 4 int False",
+            "dunder b tuple",
+            "arity-b TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public Unicode helper methods.
+// MiniPython does not yet support unicode array storage, but B/b arrays should
+// still expose the methods and reject calls with CPython's public error order.
+#[test]
+fn cpython_array_one_byte_public_unicode_method_rejection_subset() {
+    assert_output(
+        r#"import array
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('B', [65, 66]), ('b', [65, -1])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'fromunicode' in dir(a), 'tounicode' in dir(a))
+    show('tounicode-' + tc, lambda a=a: a.tounicode())
+    show('fromunicode-' + tc, lambda a=a: a.fromunicode('AZ'))
+    print('state', tc, repr(a), a.tolist(), bytes(a))
+    show('fromunicode-arity0-' + tc, lambda a=a: a.fromunicode())
+    show('fromunicode-arity2-' + tc, lambda a=a: a.fromunicode('A', 'B'))
+    show('fromunicode-type-' + tc, lambda a=a: a.fromunicode(b'A'))
+    show('tounicode-arity-' + tc, lambda a=a: a.tounicode(1))"#,
+        &[
+            "methods B True True",
+            "tounicode-B ValueError tounicode() may only be called on unicode type arrays ('u' or 'w')",
+            "fromunicode-B ValueError fromunicode() may only be called on unicode type arrays ('u' or 'w')",
+            "state B array('B', [65, 66]) [65, 66] b'AB'",
+            "fromunicode-arity0-B TypeError array.fromunicode() takes exactly one argument (0 given)",
+            "fromunicode-arity2-B TypeError array.fromunicode() takes exactly one argument (2 given)",
+            "fromunicode-type-B TypeError fromunicode() argument must be str, not bytes",
+            "tounicode-arity-B TypeError array.tounicode() takes no arguments (1 given)",
+            "methods b True True",
+            "tounicode-b ValueError tounicode() may only be called on unicode type arrays ('u' or 'w')",
+            "fromunicode-b ValueError fromunicode() may only be called on unicode type arrays ('u' or 'w')",
+            "state b array('b', [65, -1]) [65, -1] b'A\\xff'",
+            "fromunicode-arity0-b TypeError array.fromunicode() takes exactly one argument (0 given)",
+            "fromunicode-arity2-b TypeError array.fromunicode() takes exactly one argument (2 given)",
+            "fromunicode-type-b TypeError fromunicode() argument must be str, not bytes",
+            "tounicode-arity-b TypeError array.tounicode() takes no arguments (1 given)",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
+// and the in-memory io.BytesIO methods needed to exercise it without host file
+// I/O. MiniPython currently supports the one-byte B/b array storage cases.
+#[test]
+fn cpython_array_one_byte_public_file_methods_subset() {
+    assert_output_with_stack(
+        r#"import array, io
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+bio = io.BytesIO(b'abc')
+print('bytesio-methods', hasattr(bio, 'read'), hasattr(bio, 'write'), hasattr(bio, 'getvalue'))
+print('bytesio-read', bio.read(1), bio.read(None), bio.read())
+bio = io.BytesIO(b'abc')
+print('bytesio-write', bio.write(b'XY'), bio.getvalue(), bio.read(), bio.write(bytearray(b'Z')), bio.getvalue())
+show('bytesio-write-type', lambda: io.BytesIO().write('x'))
+show('bytesio-read-arity', lambda: io.BytesIO().read(1, 2))
+show('bytesio-getvalue-arity', lambda: io.BytesIO().getvalue(1))
+
+class TextRead:
+    def read(self, n):
+        return 'abc'
+class ByteArrayRead:
+    def read(self, n):
+        return bytearray(b'ab')
+
+for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
+    a = array.array(tc, vals)
+    target = io.BytesIO()
+    print('methods', tc, 'tofile' in dir(a), 'fromfile' in dir(a))
+    print('tofile', tc, a.tofile(target), target.getvalue(), a.tolist())
+    print('append-write', tc, target.write(b'!'), target.getvalue())
+    src = io.BytesIO(target.getvalue() + b'Z')
+    c = array.array(tc)
+    print('fromfile1', tc, c.fromfile(src, 2), c.tolist(), c.tobytes())
+    show('fromfile-short-' + tc, lambda c=c, src=src: c.fromfile(src, 10))
+    print('after-short', tc, c.tolist(), c.tobytes())
+    z = array.array(tc, [vals[0]])
+    zero = io.BytesIO(b'Q')
+    print('fromfile-zero', tc, z.fromfile(zero, 0), z.tolist(), zero.read())
+    show('tofile-arity0-' + tc, lambda a=a: a.tofile())
+    show('tofile-arity2-' + tc, lambda a=a: a.tofile(io.BytesIO(), 1))
+    show('fromfile-arity0-' + tc, lambda tc=tc: array.array(tc).fromfile())
+    show('fromfile-arity1-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO()))
+    show('fromfile-arity3-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 1, 2))
+    show('fromfile-neg-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), -1))
+    show('fromfile-nonint-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 'x'))
+    show('fromfile-textread-' + tc, lambda tc=tc: array.array(tc).fromfile(TextRead(), 2))
+    show('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))"#,
+        &[
+            "bytesio-methods True True True",
+            "bytesio-read b'a' b'bc' b''",
+            "bytesio-write 2 b'XYc' b'c' 1 b'XYcZ'",
+            "bytesio-write-type TypeError a bytes-like object is required, not 'str'",
+            "bytesio-read-arity TypeError read expected at most 1 argument, got 2",
+            "bytesio-getvalue-arity TypeError BytesIO.getvalue() takes no arguments (1 given)",
+            "methods B True True",
+            "tofile B None b'ABC' [65, 66, 67]",
+            "append-write B 1 b'ABC!'",
+            "fromfile1 B None [65, 66] b'AB'",
+            "fromfile-short-B EOFError read() didn't return enough bytes",
+            "after-short B [65, 66, 67, 33, 90] b'ABC!Z'",
+            "fromfile-zero B None [65] b'Q'",
+            "tofile-arity0-B TypeError tofile() takes exactly 1 positional argument (0 given)",
+            "tofile-arity2-B TypeError tofile() takes at most 1 argument (2 given)",
+            "fromfile-arity0-B TypeError fromfile() takes exactly 2 positional arguments (0 given)",
+            "fromfile-arity1-B TypeError fromfile() takes exactly 2 positional arguments (1 given)",
+            "fromfile-arity3-B TypeError fromfile() takes at most 2 arguments (3 given)",
+            "fromfile-neg-B ValueError negative count",
+            "fromfile-nonint-B TypeError 'str' object cannot be interpreted as an integer",
+            "fromfile-textread-B TypeError read() didn't return bytes",
+            "fromfile-bytearrayread-B TypeError read() didn't return bytes",
+            "methods b True True",
+            "tofile b None b'A\\xff\\x00' [65, -1, 0]",
+            "append-write b 1 b'A\\xff\\x00!'",
+            "fromfile1 b None [65, -1] b'A\\xff'",
+            "fromfile-short-b EOFError read() didn't return enough bytes",
+            "after-short b [65, -1, 0, 33, 90] b'A\\xff\\x00!Z'",
+            "fromfile-zero b None [65] b'Q'",
+            "tofile-arity0-b TypeError tofile() takes exactly 1 positional argument (0 given)",
+            "tofile-arity2-b TypeError tofile() takes at most 1 argument (2 given)",
+            "fromfile-arity0-b TypeError fromfile() takes exactly 2 positional arguments (0 given)",
+            "fromfile-arity1-b TypeError fromfile() takes exactly 2 positional arguments (1 given)",
+            "fromfile-arity3-b TypeError fromfile() takes at most 2 arguments (3 given)",
+            "fromfile-neg-b ValueError negative count",
+            "fromfile-nonint-b TypeError 'str' object cannot be interpreted as an integer",
+            "fromfile-textread-b TypeError read() didn't return bytes",
+            "fromfile-bytearrayread-b TypeError read() didn't return bytes",
+        ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -16316,6 +21165,18 @@ fn cpython_memoryview_hex_separator_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_memoryview.py::
+// AbstractMemoryTests.test_hex_use_after_free.
+// memoryview.hex() must keep a bytearray exporter resize-locked while
+// converting a Python-level separator object.
+#[test]
+fn cpython_memoryview_hex_reentrant_release_subset() {
+    assert_output(
+        "m = memoryview(b'abc')\nm.release()\ntry:\n    m.hex()\nexcept ValueError as error:\n    print(error.__class__.__name__, 'released' in str(error))\nba = bytearray(b'A' * 8)\nmv = memoryview(ba)\nclass S(bytes):\n    def __len__(self):\n        mv.release()\n        ba.clear()\n        return 1\ntry:\n    mv.hex(S(b':'))\nexcept BufferError as error:\n    print(error.__class__.__name__, ba)\nelse:\n    print('accepted', ba)",
+        &["ValueError True", "BufferError bytearray(b'AAAAAAAA')"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryview.py::OtherTest::test_copy.
 // Memoryview copying is intentionally rejected instead of duplicating or
 // aliasing a view object.
@@ -16355,7 +21216,7 @@ fn cpython_memoryview_hash_release_cache_subset() {
 // behavior where `__index__` re-enters and releases the source view.
 #[test]
 fn cpython_memoryview_release_during_index_subset() {
-    assert_output(
+    assert_output_with_stack(
         "size = 8\nba = None\ndef release():\n    global m, ba\n    m.release()\n    ba = bytearray(size)\nclass MyIndex:\n    def __index__(self):\n        release()\n        return 4\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m[MyIndex()]\nexcept ValueError as error:\n    print('getitem', error.__class__.__name__, 'released' in str(error))\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\nprint('slice-stop', list(m[:MyIndex()]), ba is not None)\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\nprint('slice-start', list(m[MyIndex():8]), ba is not None)\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m.__getitem__(MyIndex())\nexcept ValueError as error:\n    print('getitem-method', error.__class__.__name__, 'released' in str(error))\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\nprint('slice-method', list(m.__getitem__(slice(None, MyIndex()))), ba is not None)\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m[MyIndex()] = 42\nexcept ValueError as error:\n    print('setitem-index', error.__class__.__name__, 'released' in str(error), ba[:8])\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m[:MyIndex()] = b'spam'\nexcept ValueError as error:\n    print('setslice-stop', error.__class__.__name__, 'released' in str(error), ba[:8])\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m[MyIndex():8] = b'spam'\nexcept ValueError as error:\n    print('setslice-start', error.__class__.__name__, 'released' in str(error), ba[:8])\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m[0] = MyIndex()\nexcept ValueError as error:\n    print('setitem-value', error.__class__.__name__, 'released' in str(error), ba[:8])\n\nba = None\nm = memoryview(bytearray(b'\\xff' * size))\ntry:\n    m.__setitem__(MyIndex(), 42)\nexcept ValueError as error:\n    print('setitem-method', error.__class__.__name__, 'released' in str(error), ba[:8])",
         &[
             "getitem ValueError True",
@@ -16368,6 +21229,247 @@ fn cpython_memoryview_release_during_index_subset() {
             "setslice-start ValueError True bytearray(b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00')",
             "setitem-value ValueError True bytearray(b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00')",
             "setitem-method ValueError True bytearray(b'\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00')",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py::AbstractMemoryTests::
+// test_writable_readonly and the public read-only target check from
+// Lib/test/test_bytes.py::BytesTest::test_buffer_is_readonly. MiniPython covers
+// the in-memory `io.BytesIO` readinto behavior without host file I/O or the
+// full buffer protocol surface.
+#[test]
+fn cpython_memoryview_bytesio_readinto_subset() {
+    assert_output(
+        "import io\nfor target in [bytearray(b'abc'), memoryview(bytearray(b'abc'))]:\n    bio = io.BytesIO(b'XYZW')\n    n = bio.readinto(target)\n    print(type(target).__name__, n, bytes(target))\nfor target in [b'abc', memoryview(b'abc')]:\n    bio = io.BytesIO(b'XYZW')\n    try:\n        bio.readinto(target)\n    except TypeError as error:\n        print(type(target).__name__, error.__class__.__name__, str(error))\nbio = io.BytesIO(b'XYZW')\nba = bytearray(b'abc')\nprint(bio.readinto(ba), ba, bio.readinto(ba), ba, bio.readinto(ba), ba)\nfor source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:\n    bio = io.BytesIO() if source is None else io.BytesIO(source)\n    target = bytearray(4)\n    print(type(bio).__name__, bio.readinto(target), target)\nfor label, callback in [('int', lambda: io.BytesIO(123)), ('two', lambda: io.BytesIO(b'a', b'b')), ('kw', lambda: io.BytesIO(initial_bytes=b'ab')), ('dup', lambda: io.BytesIO(b'a', initial_bytes=b'b'))]:\n    try:\n        obj = callback()\n        target = bytearray(3)\n        print(label, 'ok', obj.readinto(target), target)\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "bytearray 3 b'XYZ'",
+            "memoryview 3 b'XYZ'",
+            "bytes TypeError readinto() argument must be read-write bytes-like object, not bytes",
+            "memoryview TypeError readinto() argument must be read-write bytes-like object, not memoryview",
+            "3 bytearray(b'WYZ') 1 bytearray(b'WYZ') 0 bytearray(b'WYZ')",
+            "BytesIO 0 bytearray(b'\\x00\\x00\\x00\\x00')",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00')",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00')",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00')",
+            "int TypeError a bytes-like object is required, not 'int'",
+            "two TypeError BytesIO() takes at most 1 argument (2 given)",
+            "kw ok 2 bytearray(b'ab\\x00')",
+            "dup TypeError BytesIO() takes at most 1 argument (2 given)",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryview.py::
+// AbstractMemoryTests.test_weakref. This covers the live weakref surface for
+// supported memoryview exporters; collection-time clearing and callback
+// invocation depend on broader GC weakref semantics.
+#[test]
+fn cpython_memoryview_weakref_live_subset() {
+    assert_output(
+        "import weakref\nfor source in [b'abcdef', bytearray(b'abcdef')]:\n    m = memoryview(source)\n    seen = []\n    def callback(wr, source=source):\n        seen.append(source)\n    refs = [weakref.ref(m), weakref.ref(m, callback), weakref.ref(m, None)]\n    print(type(source).__name__, all(ref() is m for ref in refs), all(callable(ref) for ref in refs), all(isinstance(ref, weakref.ReferenceType) for ref in refs), len(seen))",
+        &["bytes True True True 0", "bytearray True True True 0"],
+    );
+}
+
+// Adapted from CPython public weakref.ref() construction behavior. This pins
+// which supported objects are weak-referenceable at construction time without
+// asserting collection-time clearing or callback invocation.
+#[test]
+fn cpython_weakref_ref_supported_target_matrix_subset() {
+    assert_output(
+        "import weakref\nrejects = [None, True, 1, 1.2, 'x', b'x', bytearray(b'x'), [], {}, (), range(1), object()]\nfor obj in rejects:\n    try:\n        weakref.ref(obj)\n    except TypeError as error:\n        print(type(obj).__name__, error.__class__.__name__)\n    else:\n        print(type(obj).__name__, 'accepted')\n\ndef f():\n    pass\nclass C:\n    pass\nclass SNoWeak:\n    __slots__ = ()\nclass SWeak:\n    __slots__ = ('__weakref__',)\nallows = [('function', f), ('class', C), ('instance', C()), ('weak-slot', SWeak()), ('set', set()), ('frozenset', frozenset()), ('memoryview', memoryview(b'x')), ('int-type', int), ('list-type', list)]\nfor name, obj in allows:\n    ref = weakref.ref(obj)\n    print(name, ref() is obj, isinstance(ref, weakref.ReferenceType))\ntry:\n    weakref.ref(SNoWeak())\nexcept TypeError as error:\n    print('slot-instance', error.__class__.__name__)\nfor expr in [lambda: weakref.ref(object=C()), lambda: weakref.ref(C(), callback=None), lambda: weakref.ref(object=C(), callback=None)]:\n    try:\n        expr()\n    except TypeError as error:\n        print('keyword', error.__class__.__name__)",
+        &[
+            "NoneType TypeError",
+            "bool TypeError",
+            "int TypeError",
+            "float TypeError",
+            "str TypeError",
+            "bytes TypeError",
+            "bytearray TypeError",
+            "list TypeError",
+            "dict TypeError",
+            "tuple TypeError",
+            "range TypeError",
+            "object TypeError",
+            "function True True",
+            "class True True",
+            "instance True True",
+            "weak-slot True True",
+            "set True True",
+            "frozenset True True",
+            "memoryview True True",
+            "int-type True True",
+            "list-type True True",
+            "slot-instance TypeError",
+            "keyword TypeError",
+            "keyword TypeError",
+            "keyword TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython public weakref.ref.__callback__ behavior. This covers
+// construction-time callback metadata without requiring dead-reference GC.
+#[test]
+fn cpython_weakref_ref_callback_attribute_subset() {
+    assert_output(
+        "import weakref\nclass C:\n    pass\nc = C()\ndef cb(wr):\n    pass\nfor ref in [weakref.ref(c), weakref.ref(c, cb), weakref.ref(c, None)]:\n    callback = ref.__callback__\n    print(callback is cb, callback is None, type(callback).__name__)\ntry:\n    weakref.ref(c).__callback__ = cb\nexcept AttributeError as error:\n    print(error.__class__.__name__)",
+        &[
+            "False True NoneType",
+            "True False function",
+            "False True NoneType",
+            "AttributeError",
+        ],
+    );
+}
+
+// Adapted from CPython public weakref.ReferenceType identity behavior.
+#[test]
+fn cpython_weakref_ref_type_identity_subset() {
+    assert_output(
+        "import weakref\nclass C:\n    pass\nref = weakref.ref(C())\nprint(type(ref) is weakref.ReferenceType, ref.__class__ is weakref.ReferenceType, object.__getattribute__(ref, '__class__') is weakref.ReferenceType)\nprint(isinstance(ref, type(ref)), isinstance(ref, weakref.ReferenceType), type(ref).__name__, weakref.ReferenceType.__name__, type(weakref.ReferenceType) is type)",
+        &[
+            "True True True",
+            "True True ReferenceType ReferenceType True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_weakref.py::ModuleTestCase::test_names
+// and the public _weakref C-module aliases. Proxy object behavior remains a
+// larger weakref runtime slice; this pins the exported proxy type metadata.
+#[test]
+fn cpython_weakref_proxy_type_aliases_subset() {
+    assert_output(
+        "import weakref, _weakref\nfor cls in [weakref.ReferenceType, weakref.ProxyType, weakref.CallableProxyType]:\n    print(cls.__module__, cls.__name__, cls.__qualname__, type(cls) is type)\nprint(isinstance(weakref.ProxyTypes, tuple), len(weakref.ProxyTypes), weakref.ProxyTypes[0] is weakref.ProxyType, weakref.ProxyTypes[1] is weakref.CallableProxyType)\nprint(_weakref.ProxyType is weakref.ProxyType, _weakref.CallableProxyType is weakref.CallableProxyType, hasattr(_weakref, 'ProxyTypes'))",
+        &[
+            "weakref ReferenceType ReferenceType True",
+            "weakref ProxyType ProxyType True",
+            "weakref CallableProxyType CallableProxyType True",
+            "True 2 True True",
+            "True True False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_weakref.py::ReferencesTestCase
+// live proxy behavior. Dead proxy ReferenceError, reuse, registries, and
+// callback invocation remain tied to future GC weakref support.
+#[test]
+fn cpython_weakref_proxy_live_forwarding_subset() {
+    assert_output(
+        "import weakref, _weakref, operator\nclass C:\n    def method(self):\n        return self.value + 1\n    def __hash__(self):\n        return 42\nclass Indexable:\n    result = None\n    def __getitem__(self, key):\n        return key + 1\n    def __setitem__(self, key, value):\n        self.result = (key, value)\n    def __delitem__(self, key):\n        self.result = key\n    def __index__(self):\n        return 10\nclass BytesLike:\n    def __str__(self):\n        return 'string'\n    def __bytes__(self):\n        return b'bytes'\nclass Div:\n    def __floordiv__(self, other):\n        return 42\n    def __ifloordiv__(self, other):\n        return 21\nclass Mat:\n    def __matmul__(self, other):\n        return 1729\n    def __rmatmul__(self, other):\n        return -163\n    def __imatmul__(self, other):\n        return 561\nclass Iterable:\n    def __iter__(self):\n        return iter([4, 5, 6])\nclass Reversible:\n    def __len__(self):\n        return 3\n    def __reversed__(self):\n        return iter('cba')\nclass Truth:\n    def __bool__(self):\n        return False\nclass Callable:\n    def __call__(self, x=0):\n        self.bar = x\n        return x + 1\nc = C()\nc.value = 4\np = weakref.proxy(c)\nprint('plain-type', type(p) is weakref.ProxyType, isinstance(p, weakref.ProxyType), isinstance(p, weakref.ProxyTypes), isinstance(p, weakref.CallableProxyType), p.__class__ is C)\nprint('plain-attr', p.value, p.method())\np.extra = 7\nprint('plain-set', c.extra, p.extra)\ndel p.extra\nprint('plain-del', hasattr(c, 'extra'))\ntry:\n    hash(p)\nexcept TypeError as error:\n    print('plain-hash', error.__class__.__name__)\nprint('none-callback', weakref.proxy(c, None).value, type(_weakref.proxy(c)) is weakref.ProxyType)\nindexed = Indexable()\nr = weakref.proxy(indexed)\nprint('item-get', r[4])\nr[5] = 9\nprint('item-set', indexed.result, r.result)\ndel r[7]\nprint('item-del', indexed.result, r.result)\nprint('item-index', operator.index(r), r.__index__())\nbytes_obj = BytesLike()\ns = weakref.proxy(bytes_obj)\nprint('bytes', '__bytes__' in dir(s), s.__dir__() == bytes_obj.__dir__(), bytes(s))\ndiv_obj = Div()\ndiv = weakref.proxy(div_obj)\nprint('floordiv', div // 5)\ndiv //= 5\nprint('ifloordiv', div)\nmat_obj = Mat()\nmat = weakref.proxy(mat_obj)\nprint('matmul', mat @ 5, 5 @ mat)\nmat @= 5\nprint('imatmul', mat)\niter_obj = Iterable()\nprint('iter', list(weakref.proxy(iter_obj)))\nrev_obj = Reversible()\nprint('reversed', ''.join(reversed(weakref.proxy(rev_obj))))\ntruth_obj = Truth()\nprint('bool', bool(weakref.proxy(truth_obj)))\ncallable_obj = Callable()\nq = weakref.proxy(callable_obj)\nprint('call-type', type(q) is weakref.CallableProxyType, isinstance(q, weakref.CallableProxyType), isinstance(q, weakref.ProxyTypes), q.__class__ is Callable)\nprint('call-pos', q(4), callable_obj.bar)\nprint('call-kw', q(x=8), callable_obj.bar)\nfor expr in [lambda: weakref.proxy(object=c), lambda: weakref.proxy(c, callback=None), lambda: weakref.proxy(object=c, callback=None)]:\n    try:\n        expr()\n    except TypeError as error:\n        print('kw', error.__class__.__name__)",
+        &[
+            "plain-type True True True False True",
+            "plain-attr 4 5",
+            "plain-set 7 7",
+            "plain-del False",
+            "plain-hash TypeError",
+            "none-callback 4 True",
+            "item-get 5",
+            "item-set (5, 9) (5, 9)",
+            "item-del 7 7",
+            "item-index 10 10",
+            "bytes True True b'bytes'",
+            "floordiv 42",
+            "ifloordiv 21",
+            "matmul 1729 -163",
+            "imatmul 561",
+            "iter [4, 5, 6]",
+            "reversed cba",
+            "bool False",
+            "call-type True True True True",
+            "call-pos 5 4",
+            "call-kw 9 8",
+            "kw TypeError",
+            "kw TypeError",
+            "kw TypeError",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import weakref\n",
+            "class ListSubclass(list):\n",
+            "    pass\n",
+            "items = ListSubclass()\n",
+            "proxy = weakref.proxy(items)\n",
+            "print('list-type', proxy.__class__ is ListSubclass, isinstance(proxy, weakref.ProxyType))\n",
+            "print('list-empty', bool(proxy), len(proxy), list(proxy))\n",
+            "proxy.append(12)\n",
+            "print('list-append', bool(proxy), len(items), len(proxy), 12 in proxy, proxy[0], list(proxy))\n",
+            "proxy[:] = [2, 3]\n",
+            "print('list-slice-set', len(items), len(proxy), proxy[:], 3 in proxy)\n",
+            "proxy[1] = 5\n",
+            "print('list-item-set', items[1], proxy[1], list(proxy))\n",
+            "print('list-reversed', list(reversed(proxy)))",
+        ),
+        &[
+            "list-type True True",
+            "list-empty False 0 []",
+            "list-append True 1 1 True 12 [12]",
+            "list-slice-set 2 2 [2, 3] True",
+            "list-item-set 5 5 [2, 5]",
+            "list-reversed [5, 2]",
+        ],
+    );
+}
+
+// Adapted from CPython public live weakref.ref repr behavior. The exact memory
+// addresses are intentionally not asserted.
+#[test]
+fn cpython_weakref_ref_live_repr_subset() {
+    assert_output(
+        "import weakref\nclass C:\n    pass\ndef f():\n    pass\ndef show(label, obj):\n    ref = weakref.ref(obj)\n    text = repr(ref)\n    print(label, str(ref) == text, text.startswith('<weakref at 0x'), '; to ' in text, (\"'\" + type(obj).__name__ + \"'\") in text, text.endswith('>'))\nfor label, obj in [('instance', C()), ('class', C), ('function', f), ('set', set()), ('frozenset', frozenset())]:\n    show(label, obj)",
+        &[
+            "instance True True True True True",
+            "class True True True True True",
+            "function True True True True True",
+            "set True True True True True",
+            "frozenset True True True True True",
+        ],
+    );
+}
+
+// Adapted from CPython public weakref.ref dunder method access. This pins the
+// direct method surface without depending on CPython's method-wrapper type.
+#[test]
+fn cpython_weakref_ref_dunder_methods_subset() {
+    assert_output(
+        "import weakref\nclass C:\n    pass\nc = C()\nref = weakref.ref(c)\nref2 = weakref.ref(c)\nfor name in ['__repr__', '__str__', '__hash__', '__call__', '__eq__', '__ne__']:\n    print('has', name, hasattr(ref, name), callable(getattr(ref, name)))\nprint('repr', ref.__repr__() == repr(ref), ref.__str__() == repr(ref))\nprint('hash-call', ref.__hash__() == hash(ref))\nprint('call', ref.__call__() is c)\nprint('eq-ne', ref.__eq__(ref2), ref.__ne__(ref2), ref.__eq__(c) is NotImplemented, ref.__ne__(c) is NotImplemented)\nfor expr in [lambda: ref.__repr__(1), lambda: ref.__hash__(1), lambda: ref.__call__(1), lambda: ref.__eq__(), lambda: ref.__ne__(ref2, ref2)]:\n    try:\n        expr()\n    except TypeError as error:\n        print('arg', error.__class__.__name__)",
+        &[
+            "has __repr__ True True",
+            "has __str__ True True",
+            "has __hash__ True True",
+            "has __call__ True True",
+            "has __eq__ True True",
+            "has __ne__ True True",
+            "repr True True",
+            "hash-call True",
+            "call True",
+            "eq-ne True False True True",
+            "arg TypeError",
+            "arg TypeError",
+            "arg TypeError",
+            "arg TypeError",
+            "arg TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython public weakref.ref comparison and hashing behavior for
+// live referents. Dead-reference comparison and callback invocation are GC work.
+#[test]
+fn cpython_weakref_ref_live_compare_hash_subset() {
+    assert_output(
+        "import weakref\nclass EqHash:\n    def __init__(self, value):\n        self.value = value\n    def __eq__(self, other):\n        return isinstance(other, EqHash) and self.value == other.value\n    def __hash__(self):\n        return hash(self.value)\na = EqHash(1)\nb = EqHash(1)\nc = EqHash(2)\nra1 = weakref.ref(a)\nra2 = weakref.ref(a)\nra_cb = weakref.ref(a, lambda wr: None)\nrb = weakref.ref(b)\nrc = weakref.ref(c)\nprint('eq', ra1 == ra2, ra1 == ra_cb, ra1 == rb, ra1 == rc, ra1 == a)\nprint('ne', ra1 != ra2, ra1 != rc, ra1 != a)\nprint('hash', hash(ra1) == hash(a), hash(ra1) == hash(ra2), hash(ra1) == hash(rb), hash(ra1) == hash(rc))\nprint('dict', {ra1: 'target'}[ra2])\nprint('set', len({ra1, ra2, ra_cb, rb, rc}))",
+        &[
+            "eq True True True False False",
+            "ne False True True",
+            "hash True True True False",
+            "dict target",
+            "set 2",
         ],
     );
 }
@@ -16396,6 +21498,169 @@ fn cpython_compile_builtin_code_object_subset() {
     assert_output(
         "code = compile(source='a + b', filename='tmp', mode='eval')\nprint(eval(code, {'a': 2}, {'b': 5}))\ncompile('pass', '?', dont_inherit=True, mode='exec')\ncompile(dont_inherit=False, filename='tmp', source='0', mode='eval')\nfor expr in [lambda: compile(), lambda: compile('print(42)', '<string>', 'badmode'), lambda: compile('x =', '<string>', 'exec'), lambda: compile('pass', '?', 'exec', mode='eval', source='0', filename='tmp')]:\n    try:\n        expr()\n    except (TypeError, ValueError, SyntaxError) as error:\n        print(error.__class__.__name__)",
         &["7", "TypeError", "ValueError", "SyntaxError", "TypeError"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_compile_ast.
+// This pins the public `ast.PyCF_OPTIMIZED_AST` flag path for source and
+// public-AST inputs without depending on CPython's internal AST optimizer.
+#[test]
+fn cpython_builtin_compile_optimized_ast_subset() {
+    assert_output(
+        "import ast\nprint(ast.PyCF_ONLY_AST, ast.PyCF_OPTIMIZED_AST, (ast.PyCF_OPTIMIZED_AST & ast.PyCF_ONLY_AST) == ast.PyCF_ONLY_AST)\nargs = ('a*__debug__', 'f.py', 'exec')\nraw = compile(*args, flags=ast.PyCF_ONLY_AST).body[0]\nopt1 = compile(*args, flags=ast.PyCF_OPTIMIZED_AST).body[0]\nopt2 = compile(ast.parse(args[0]), *args[1:], flags=ast.PyCF_OPTIMIZED_AST).body[0]\nopt3 = compile(*args, flags=ast.PyCF_OPTIMIZED_AST, optimize=1).body[0]\nprint(type(raw.value).__name__, type(raw.value.op).__name__, type(raw.value.left).__name__, raw.value.left.id)\nprint(type(raw.value.right).__name__, raw.value.right.id)\nfor opt in [opt1, opt2, opt3]:\n    print(type(opt.value).__name__, type(opt.value.right).__name__, opt.value.right.value)\nraw2 = compile(*args, flags=ast.PyCF_ONLY_AST, optimize=2).body[0]\nprint(type(raw2.value.right).__name__, raw2.value.right.id)",
+        &[
+            "1024 33792 True",
+            "BinOp Mult Name a",
+            "Name __debug__",
+            "BinOp Constant True",
+            "BinOp Constant True",
+            "BinOp Constant False",
+            "Name __debug__",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_compile_top_level_await_no_coro. Accepting the public top-level-await
+// flag must not mark ordinary non-awaiting module code as a coroutine.
+#[test]
+fn cpython_builtin_compile_top_level_await_no_coro_subset() {
+    assert_output(
+        "import ast, inspect\nprint(ast.PyCF_ALLOW_TOP_LEVEL_AWAIT, inspect.CO_COROUTINE)\nsamples = ['def f():\\n    pass\\n', '[x for x in l]', '{x for x in l}', '(x for x in l)', '{x:x for x in l}']\nfor mode in ['single', 'exec']:\n    for source in samples:\n        code = compile(source, '?', mode, flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)\n        print(mode, bool(code.co_flags & inspect.CO_COROUTINE), code.co_flags)",
+        &[
+            "8192 128",
+            "single False 0",
+            "single False 0",
+            "single False 0",
+            "single False 0",
+            "single False 0",
+            "exec False 0",
+            "exec False 0",
+            "exec False 0",
+            "exec False 0",
+            "exec False 0",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_compile_top_level_await. Top-level async code must require the public
+// flag, compile to a coroutine code object, and execute through FunctionType
+// and eval() with module-code globals semantics.
+#[test]
+fn cpython_builtin_compile_top_level_await_subset() {
+    let source = r#"import ast, inspect, types
+class YieldOnce:
+    def __init__(self, result=None):
+        self.result = result
+    def __await__(self):
+        yield None
+        return self.result
+async def sleep(delay, result=None):
+    assert delay == 0
+    return await YieldOnce(result)
+async def arange(n):
+    for i in range(n):
+        yield i
+class Lock:
+    async def __aenter__(self):
+        return self
+    async def __aexit__(self, *exc_info):
+        pass
+def drive(coro):
+    while True:
+        try:
+            coro.send(None)
+        except StopIteration:
+            return
+samples = [
+    '''a = await sleep(0, result=1)''',
+    '''async for i in arange(1):
+       a = 1''',
+    '''async with Lock() as l:
+       a = 1''',
+    '''a = [x async for x in arange(2)][1]''',
+    '''a = 1 in {x async for x in arange(2)}''',
+    '''a = {x:1 async for x in arange(1)}[0]''',
+    '''a = [x async for x in arange(2) async for x in arange(2)][1]''',
+    '''a = [x async for x in (x async for x in arange(5))][1]''',
+    '''a, = [1 for x in {x async for x in arange(1)}]''',
+    '''a = [await sleep(0, x) async for x in arange(2)][1]''',
+    '''assert not await sleep(0); a = 1''',
+    '''assert [x async for x in arange(1)]; a = 1''',
+    '''assert {x async for x in arange(1)}; a = 1''',
+    '''assert {x: x async for x in arange(1)}; a = 1''',
+    '''if (a := 1) and __debug__:
+    async with Lock() as l:
+        pass''',
+    '''if (a := 1) and __debug__:
+    async for x in arange(2):
+        pass''',
+]
+checks = 0
+for mode in ['single', 'exec']:
+    for sample in samples:
+        for optimize in [-1, 0, 1, 2]:
+            try:
+                compile(sample, '?', mode, optimize=optimize)
+            except SyntaxError:
+                checks += 1
+            co = compile(sample, '?', mode,
+                         flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                         optimize=optimize)
+            if co.co_flags & inspect.CO_COROUTINE:
+                checks += 1
+            for label in ['function', 'eval']:
+                glob = {'Lock': Lock, 'a': 0, 'arange': arange, 'sleep': sleep}
+                coro = types.FunctionType(co, glob)() if label == 'function' else eval(co, glob)
+                drive(coro)
+                if glob['a'] == 1:
+                    checks += 1
+print('checks', checks)"#;
+
+    assert_output_with_stack(source, &["checks 512"], 64 * 1024 * 1024);
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_compile_top_level_await_invalid_cases. The public top-level-await flag
+// must not make nested ordinary functions accept async-only constructs.
+#[test]
+fn cpython_builtin_compile_top_level_await_invalid_cases_subset() {
+    assert_output(
+        "import ast\nsamples = [\n    'def f():  await arange(10)\\n',\n    'def f():  [x async for x in arange(10)]\\n',\n    'def f():  [await x async for x in arange(10)]\\n',\n    'def f():\\n    async for i in arange(1):\\n        a = 1\\n',\n    'def f():\\n    async with Lock() as l:\\n        a = 1\\n',\n]\nfor mode in ['single', 'exec']:\n    for source in samples:\n        for flags in [0, ast.PyCF_ALLOW_TOP_LEVEL_AWAIT]:\n            try:\n                compile(source, '?', mode, flags=flags)\n            except SyntaxError:\n                print(mode, flags, 'SyntaxError')",
+        &[
+            "single 0 SyntaxError",
+            "single 8192 SyntaxError",
+            "single 0 SyntaxError",
+            "single 8192 SyntaxError",
+            "single 0 SyntaxError",
+            "single 8192 SyntaxError",
+            "single 0 SyntaxError",
+            "single 8192 SyntaxError",
+            "single 0 SyntaxError",
+            "single 8192 SyntaxError",
+            "exec 0 SyntaxError",
+            "exec 8192 SyntaxError",
+            "exec 0 SyntaxError",
+            "exec 8192 SyntaxError",
+            "exec 0 SyntaxError",
+            "exec 8192 SyntaxError",
+            "exec 0 SyntaxError",
+            "exec 8192 SyntaxError",
+            "exec 0 SyntaxError",
+            "exec 8192 SyntaxError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
+// test_compile_async_generator. The top-level-await flag must not turn an async
+// generator function into a coroutine.
+#[test]
+fn cpython_builtin_compile_async_generator_flag_subset() {
+    assert_output(
+        "import ast, types\ncode = 'async def ticker():\\n    for i in range(10):\\n        yield i\\n        await sleep(0)'\nco = compile(code, '?', 'exec', flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)\nglob = {}\nexec(co, glob)\nagen = glob['ticker']()\nprint(type(agen).__name__, type(agen) is types.AsyncGeneratorType, isinstance(agen, types.AsyncGeneratorType))",
+        &["async_generator True True"],
     );
 }
 
@@ -17839,6 +23104,125 @@ fn cpython_attribute_introspection_builtins_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
+// dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
+// hook-loss errors; the default pdb-backed hook remains runtime integration work.
+#[test]
+fn cpython_builtin_breakpoint_custom_hook_subset() {
+    assert_output(
+        "import builtins, sys\nprint(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))\nprint(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)\ndef hook(*args, **kwargs):\n    print('hook', args, kwargs)\n    return 'ret'\nsaved = sys.breakpointhook\nsys.breakpointhook = hook\nprint('call0', breakpoint())\nprint('callargs', breakpoint(1, 'x', key=3))\nprint('module-call', builtins.breakpoint())\ndel sys.breakpointhook\ntry:\n    breakpoint()\nexcept RuntimeError as error:\n    print('lost', type(error).__name__, str(error))\nfinally:\n    sys.breakpointhook = saved\nprint('reset-same', sys.breakpointhook is sys.__breakpointhook__)",
+        &[
+            "True True",
+            "True True True",
+            "hook () {}",
+            "call0 ret",
+            "hook (1, 'x') {'key': 3}",
+            "callargs ret",
+            "hook () {}",
+            "module-call ret",
+            "lost RuntimeError lost sys.breakpointhook",
+            "reset-same True",
+        ],
+    );
+}
+
+// Adapted from CPython `Lib/test/test_builtin.py` object representation
+// behavior. MiniPython keeps this focused on direct inherited `object`
+// descriptor calls rather than CPython's address-bearing repr payload.
+#[test]
+fn cpython_object_repr_str_direct_subset() {
+    assert_output(
+        "class Plain:\n    pass\nclass Custom:\n    def __str__(self):\n        return 'custom-str'\n    def __repr__(self):\n        return 'custom-repr'\nclass BadRepr:\n    def __repr__(self):\n        return 1\nclass L(list):\n    pass\nclass T(tuple):\n    pass\nclass D(dict):\n    pass\nclass S(set):\n    pass\nclass F(frozenset):\n    pass\nplain = Plain()\ncustom = Custom()\nprint(hasattr(object, '__repr__'), hasattr(object, '__str__'), callable(object.__repr__), callable(object.__str__))\nprint(hasattr(plain, '__repr__'), hasattr(plain, '__str__'), callable(plain.__repr__), callable(plain.__str__))\nobj_repr = object.__repr__(custom)\nprint(obj_repr.startswith('<'), 'Custom object' in obj_repr, obj_repr.endswith('>'), obj_repr != repr(custom))\nprint(object.__str__(custom), object.__str__(custom) == repr(custom))\nbad = object.__str__(BadRepr())\nprint(type(bad).__name__, bad)\nprint(object.__str__(L([1])), object.__str__(T([1])), object.__str__(D({'a': 1})))\nprint(object.__str__(S([1])), object.__str__(F([1])))\nfor expr in [lambda: object.__repr__(), lambda: object.__repr__(plain, plain), lambda: object.__str__(), lambda: object.__str__(plain, plain), lambda: object.__repr__(object=plain), lambda: object.__str__(object=plain)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        &[
+            "True True True True",
+            "True True True True",
+            "True True True True",
+            "custom-repr True",
+            "int 1",
+            "[1] (1,) {'a': 1}",
+            "S({1}) F({1})",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython `Lib/test/test_builtin.py` public str/format behavior.
+// This covers ordinary `str()` conversion paths separately from direct
+// `object.__str__` descriptor calls above.
+#[test]
+fn cpython_str_builtin_custom_dunder_subset() {
+    assert_output(
+        r#"class Custom:
+    def __str__(self):
+        return 'custom-str'
+    def __repr__(self):
+        return 'custom-repr'
+custom = Custom()
+print(str(custom), f'{custom}', f'{custom!s}', '%s' % custom)
+print('print-call', custom)
+print(object.__str__(custom), object.__str__(custom) == repr(custom))
+print(object.__format__(custom, ''), format(custom, ''))
+class Bad:
+    def __str__(self):
+        return 1
+for label, expr in [('str-bad', lambda: str(Bad())), ('format-bad', lambda: f'{Bad()}'), ('percent-bad', lambda: '%s' % Bad())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, '__str__ returned non-string' in str(error))
+class Raises:
+    def __str__(self):
+        raise ValueError('boom')
+try:
+    str(Raises())
+except ValueError as error:
+    print('raises', type(error).__name__, str(error))
+class InstanceOnly:
+    pass
+instance_only = InstanceOnly()
+instance_only.__str__ = lambda: 'instance-str'
+instance_value = str(instance_only)
+print('instance-only', instance_value.startswith('<'), 'InstanceOnly object' in instance_value)
+class Blocked:
+    __str__ = None
+try:
+    str(Blocked())
+except TypeError as error:
+    print('blocked', type(error).__name__)
+class WithFormat:
+    def __str__(self):
+        return 'str-value'
+    def __format__(self, spec):
+        return 'format-' + spec
+formatted = WithFormat()
+print('format-priority', f'{formatted}', format(formatted, 'x'), str(formatted))
+class StrSub(str):
+    def __str__(self):
+        return 'sub-str'
+sub = StrSub('base')
+print('str-sub', str(sub), f'{sub}', '%s' % sub, format(sub, '>6'))"#,
+        &[
+            "custom-str custom-str custom-str custom-str",
+            "print-call custom-str",
+            "custom-repr True",
+            "custom-str custom-str",
+            "str-bad TypeError True",
+            "format-bad TypeError True",
+            "percent-bad TypeError True",
+            "raises ValueError boom",
+            "instance-only True True",
+            "blocked TypeError",
+            "format-priority format- format-x str-value",
+            "str-sub sub-str sub-str sub-str   base",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test___ne__`.
 // `NoneType` inherits these methods from `object`; the public behavior is direct
 // method-call identity comparison, returning `NotImplemented` for unrelated
@@ -18610,7 +23994,7 @@ fn cpython_grammar_class_def_subset() {
         &["Base base 4"],
     );
     assert_output(
-        "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {'metaclass': Base}\nclass FromUnpack(*bases, **kwargs):\n    pass\nprint(FromUnpack.__bases__[0].__name__, FromUnpack.label)",
+        "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {'metaclass': type}\nclass FromUnpack(*bases, **kwargs):\n    pass\nprint(FromUnpack.__bases__[0].__name__, FromUnpack.label)",
         &["Base base"],
     );
 }
@@ -18690,7 +24074,7 @@ fn cpython_class_def_raw_helper_rules_subset() {
         &["Child T Base base"],
     );
     assert_output(
-        "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {'metaclass': Base}\nclass FromArgs[T](*bases, **kwargs):\n    pass\nprint(FromArgs.__name__, FromArgs.__type_params__[0].__name__, FromArgs.__bases__[0].__name__, FromArgs.label)",
+        "class Base:\n    label = \"base\"\nbases = (Base,)\nkwargs = {'metaclass': type}\nclass FromArgs[T](*bases, **kwargs):\n    pass\nprint(FromArgs.__name__, FromArgs.__type_params__[0].__name__, FromArgs.__bases__[0].__name__, FromArgs.label)",
         &["FromArgs T Base base"],
     );
     assert_error(
@@ -24397,9 +29781,10 @@ fn cpython_string_maketrans_translate_subset() {
 }
 
 // Adapted from CPython's Lib/test/test_str.py::test_codecs and
-// Lib/test/test_bytes.py::test_encoding / ::test_decode. MiniPython covers the
-// first codec slice for str.encode(), bytes.decode(), str(bytes, encoding),
-// bytes(str, encoding), bytearray(str, encoding), and representative errors.
+// Lib/test/test_bytes.py::BaseBytesTest::test_encoding / ::test_decode.
+// MiniPython covers the first codec slice for str.encode(), bytes.decode(),
+// str(bytes, encoding), bytes(str, encoding), bytearray(str, encoding), and
+// representative errors.
 #[test]
 fn cpython_string_bytes_codec_subset() {
     assert_output(
@@ -24463,21 +29848,93 @@ fn cpython_string_bytes_codec_subset() {
             "TypeError",
         ],
     );
+    assert_output(
+        "sample = 'Hello world\\n\\u1234\\u5678\\u9abc'\nfor ctor in [bytes, bytearray]:\n    for enc in ['utf-8', 'utf-16']:\n        b = ctor(sample, enc)\n        print(ctor.__name__, enc, b == ctor(sample.encode(enc)), b.decode(enc) == sample, len(b))\n    try:\n        ctor(sample, 'latin-1')\n    except UnicodeEncodeError as error:\n        print(ctor.__name__, 'latin-1-encode', error.__class__.__name__)\n    print(ctor.__name__, 'latin-1-ignore', ctor(sample, 'latin-1', 'ignore'))\n    sample2 = 'Hello world\\n\\x80\\x81\\xfe\\xff'\n    b = ctor(sample2, 'latin-1')\n    try:\n        b.decode('utf-8')\n    except UnicodeDecodeError as error:\n        print(ctor.__name__, 'utf8-decode', error.__class__.__name__)\n    print(ctor.__name__, 'utf8-ignore', b.decode('utf-8', 'ignore'))\n    print(ctor.__name__, 'utf8-ignore-kw', b.decode(errors='ignore', encoding='utf-8'))\n    print(ctor.__name__, 'default-decode', ctor(b'\\xe2\\x98\\x83').decode())",
+        &[
+            "bytes utf-8 True True 21",
+            "bytes utf-16 True True 32",
+            "bytes latin-1-encode UnicodeEncodeError",
+            "bytes latin-1-ignore b'Hello world\\n'",
+            "bytes utf8-decode UnicodeDecodeError",
+            "bytes utf8-ignore Hello world\n",
+            "bytes utf8-ignore-kw Hello world\n",
+            "bytes default-decode ☃",
+            "bytearray utf-8 True True 21",
+            "bytearray utf-16 True True 32",
+            "bytearray latin-1-encode UnicodeEncodeError",
+            "bytearray latin-1-ignore bytearray(b'Hello world\\n')",
+            "bytearray utf8-decode UnicodeDecodeError",
+            "bytearray utf8-ignore Hello world\n",
+            "bytearray utf8-ignore-kw Hello world\n",
+            "bytearray default-decode ☃",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_check_encoding_errors. CPython only eagerly validates invalid `errors`
+// handlers under `-X dev`; MiniPython currently validates the supported codec
+// surface eagerly, so this ports the dev-mode public LookupError behavior.
+#[test]
+fn cpython_bytes_check_encoding_errors_devmode_subset() {
+    assert_output(
+        "invalid = 'Boom, Shaka Laka, Boom!'\nencodings = ('ascii', 'utf8', 'latin1')\nfor ctor in [bytes, bytearray]:\n    for data in ('', 'short string'):\n        try:\n            ctor(data, encoding=invalid)\n        except LookupError as error:\n            print(ctor.__name__, repr(data), 'bad-encoding', error.__class__.__name__)\n        for encoding in encodings:\n            try:\n                ctor(data, encoding=encoding, errors=invalid)\n            except LookupError as error:\n                print(ctor.__name__, repr(data), encoding, 'bad-errors', error.__class__.__name__)\n    for data in (b'', b'short string'):\n        data = ctor(data)\n        try:\n            data.decode(encoding=invalid)\n        except LookupError as error:\n            print(ctor.__name__, repr(data), 'decode-bad-encoding', error.__class__.__name__)\n        try:\n            data.decode(errors=invalid)\n        except LookupError as error:\n            print(ctor.__name__, repr(data), 'decode-bad-errors', error.__class__.__name__)\n        for encoding in encodings:\n            try:\n                data.decode(encoding=encoding, errors=invalid)\n            except LookupError as error:\n                print(ctor.__name__, repr(data), encoding, 'decode-bad-errors', error.__class__.__name__)",
+        &[
+            "bytes '' bad-encoding LookupError",
+            "bytes '' ascii bad-errors LookupError",
+            "bytes '' utf8 bad-errors LookupError",
+            "bytes '' latin1 bad-errors LookupError",
+            "bytes 'short string' bad-encoding LookupError",
+            "bytes 'short string' ascii bad-errors LookupError",
+            "bytes 'short string' utf8 bad-errors LookupError",
+            "bytes 'short string' latin1 bad-errors LookupError",
+            "bytes b'' decode-bad-encoding LookupError",
+            "bytes b'' decode-bad-errors LookupError",
+            "bytes b'' ascii decode-bad-errors LookupError",
+            "bytes b'' utf8 decode-bad-errors LookupError",
+            "bytes b'' latin1 decode-bad-errors LookupError",
+            "bytes b'short string' decode-bad-encoding LookupError",
+            "bytes b'short string' decode-bad-errors LookupError",
+            "bytes b'short string' ascii decode-bad-errors LookupError",
+            "bytes b'short string' utf8 decode-bad-errors LookupError",
+            "bytes b'short string' latin1 decode-bad-errors LookupError",
+            "bytearray '' bad-encoding LookupError",
+            "bytearray '' ascii bad-errors LookupError",
+            "bytearray '' utf8 bad-errors LookupError",
+            "bytearray '' latin1 bad-errors LookupError",
+            "bytearray 'short string' bad-encoding LookupError",
+            "bytearray 'short string' ascii bad-errors LookupError",
+            "bytearray 'short string' utf8 bad-errors LookupError",
+            "bytearray 'short string' latin1 bad-errors LookupError",
+            "bytearray bytearray(b'') decode-bad-encoding LookupError",
+            "bytearray bytearray(b'') decode-bad-errors LookupError",
+            "bytearray bytearray(b'') ascii decode-bad-errors LookupError",
+            "bytearray bytearray(b'') utf8 decode-bad-errors LookupError",
+            "bytearray bytearray(b'') latin1 decode-bad-errors LookupError",
+            "bytearray bytearray(b'short string') decode-bad-encoding LookupError",
+            "bytearray bytearray(b'short string') decode-bad-errors LookupError",
+            "bytearray bytearray(b'short string') ascii decode-bad-errors LookupError",
+            "bytearray bytearray(b'short string') utf8 decode-bad-errors LookupError",
+            "bytearray bytearray(b'short string') latin1 decode-bad-errors LookupError",
+        ],
+    );
 }
 
 // Adapted from CPython's Lib/test/test_bytes.py::test_fromhex, ::test_hex,
 // and the hex separator tests. MiniPython covers bytes/bytearray class
-// fromhex constructors, ASCII whitespace skipping, invalid hex paths, and
-// common bytes.hex separator grouping.
+// fromhex constructors, bytes-like input, ASCII whitespace skipping, invalid
+// hex paths, and common bytes.hex separator grouping.
 #[test]
 fn cpython_bytes_hex_fromhex_subset() {
     assert_output(
-        "print(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30 '), bytes.fromhex(b' 1A\\n2B\\t30 '))\nprint(bytes.fromhex('0000'))",
+        "import array\nprint(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30\\v'), bytes.fromhex(b' 1A\\n2B\\t30\\v'))\nprint(bytes.fromhex(bytearray(b' 1A 2B 30 ')), bytes.fromhex(memoryview(b' 1A 2B 30 ')), bytes.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytearray.fromhex(bytearray(b' 1A 2B 30 ')), bytearray.fromhex(memoryview(b' 1A 2B 30 ')), bytearray.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytes.fromhex('0000'))",
         &[
             "b'' bytearray(b'')",
             "b'\\x1a+0'",
             "bytearray(b'\\x1a+0')",
             "b'\\x1a+0' b'\\x1a+0'",
+            "b'\\x1a+0' b'\\x1a+0' b'\\x1a+0'",
+            "bytearray(b'\\x1a+0') bytearray(b'\\x1a+0') bytearray(b'\\x1a+0')",
             "b'\\x00\\x00'",
         ],
     );
@@ -24496,7 +29953,7 @@ fn cpython_bytes_hex_fromhex_subset() {
         ],
     );
     assert_output(
-        "for expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex(()), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: bytes.fromhex('\\x00'), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex('Ā'), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "for expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex(()), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: bytes.fromhex('\\x00'), lambda: bytes.fromhex('\\u0085'), lambda: bytes.fromhex('\\u00a0'), lambda: bytes.fromhex(bytes([30, 31, 128])), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex('Ā'), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         &[
             "TypeError",
             "TypeError",
@@ -24505,12 +29962,139 @@ fn cpython_bytes_hex_fromhex_subset() {
             "ValueError",
             "ValueError",
             "ValueError",
+            "ValueError",
+            "ValueError",
+            "ValueError",
             "TypeError",
             "ValueError",
             "ValueError",
             "ValueError",
             "ValueError",
             "TypeError",
+        ],
+    );
+    assert_output(
+        "checks = [\n    ('odd-one', 'a', 'fromhex() arg must contain an even number of hexadecimal digits'),\n    ('odd-three', 'aaa', 'fromhex() arg must contain an even number of hexadecimal digits'),\n    ('odd-after-space', 'aa a', 'fromhex() arg must contain an even number of hexadecimal digits'),\n    ('half-space', 'a ', 'non-hexadecimal number found in fromhex() arg at position 1'),\n    ('spaced-half', ' aa a ', 'non-hexadecimal number found in fromhex() arg at position 5'),\n    ('separated-half', ' aa a a ', 'non-hexadecimal number found in fromhex() arg at position 5'),\n    ('bad-second', '12 3x 56', 'non-hexadecimal number found in fromhex() arg at position 4'),\n    ('non-ascii', '12 3\\xff 56', 'non-hexadecimal number found in fromhex() arg at position 4'),\n]\nfor ctor in [bytes, bytearray]:\n    for label, text, expected in checks:\n        try:\n            ctor.fromhex(text)\n        except ValueError as error:\n            print(ctor.__name__, label, error.args[0] == expected)\nbytes_like_checks = [\n    ('bytes-non-ascii', bytes([30, 31, 128]), 'non-hexadecimal number found in fromhex() arg at position 2'),\n    ('bytearray-non-ascii', bytearray([30, 31, 128]), 'non-hexadecimal number found in fromhex() arg at position 2'),\n]\nfor label, source, expected in bytes_like_checks:\n    try:\n        bytes.fromhex(source)\n    except ValueError as error:\n        print(label, error.args[0] == expected)",
+        &[
+            "bytes odd-one True",
+            "bytes odd-three True",
+            "bytes odd-after-space True",
+            "bytes half-space True",
+            "bytes spaced-half True",
+            "bytes separated-half True",
+            "bytes bad-second True",
+            "bytes non-ascii True",
+            "bytearray odd-one True",
+            "bytearray odd-three True",
+            "bytearray odd-after-space True",
+            "bytearray half-space True",
+            "bytearray spaced-half True",
+            "bytearray separated-half True",
+            "bytearray bad-second True",
+            "bytearray non-ascii True",
+            "bytes-non-ascii True",
+            "bytearray-non-ascii True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public hex()
+// descriptor error behavior. Bound hex() output is covered above; this pins
+// the unbound receiver diagnostics for bytes and bytearray.
+#[test]
+fn cpython_bytes_hex_descriptor_error_messages_subset() {
+    assert_output(
+        "checks = [\n    ('bytes.unbound', lambda: bytes.hex(), 'unbound method bytes.hex() needs an argument'),\n    ('bytearray.unbound', lambda: bytearray.hex(), 'unbound method bytearray.hex() needs an argument'),\n    ('bytes.int-receiver', lambda: bytes.hex(1), \"descriptor 'hex' for 'bytes' objects doesn't apply to a 'int' object\"),\n    ('bytearray.int-receiver', lambda: bytearray.hex(1), \"descriptor 'hex' for 'bytearray' objects doesn't apply to a 'int' object\"),\n    ('bytes.bytearray-receiver', lambda: bytes.hex(bytearray(b'a')), \"descriptor 'hex' for 'bytes' objects doesn't apply to a 'bytearray' object\"),\n    ('bytearray.bytes-receiver', lambda: bytearray.hex(b'a'), \"descriptor 'hex' for 'bytearray' objects doesn't apply to a 'bytes' object\"),\n]\nfor label, expr, expected in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.args[0] == expected)\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nprint('subclass-ok', bytes.hex(B(b'a')), bytearray.hex(BA(b'a')))",
+        &[
+            "bytes.unbound True",
+            "bytearray.unbound True",
+            "bytes.int-receiver True",
+            "bytearray.int-receiver True",
+            "bytes.bytearray-receiver True",
+            "bytearray.bytes-receiver True",
+            "subclass-ok 61 61",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_hex_separator_basics, test_hex_separator_five_bytes, and
+// test_hex_separator_six_bytes, plus the current CPython main public-output
+// rows test_hex_simd_boundaries and test_hex_nibble_boundaries. This pins
+// separator-byte boundary handling, C-int conversion for bytes_per_sep,
+// __index__ grouping arguments, and length/nibble boundary hex output.
+#[test]
+fn cpython_bytes_hex_separator_boundaries_subset() {
+    assert_output(
+        "class Indexable:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nfor ctor in [bytes, bytearray]:\n    three = ctor(b'\\xb9\\x01\\xef')\n    print(ctor.__name__, repr(three.hex(b'\\x00')), repr(three.hex('\\x00')))\n    print(ctor.__name__, repr(three.hex(b'\\x7f')), repr(three.hex('\\x7f')), three.hex(b'$'))\n    print(ctor.__name__, three.hex(':', 3), three.hex(':', -3), three.hex(':', 2**31 - 1), three.hex(':', -(2**31 - 1)), three.hex(':', -2**31))\n    print(ctor.__name__, three.hex(':', Indexable(2)), three.hex(':', True), three.hex(':', False))\n    for n in [2**31, -2**31 - 1, 2**1000, -2**1000]:\n        try:\n            three.hex(':', n)\n        except OverflowError as error:\n            print(ctor.__name__, 'overflow', n.bit_length(), error.__class__.__name__)\n    six = ctor(x * 3 for x in range(1, 7))\n    print(ctor.__name__, six.hex(':', 5), six.hex(b'@', -5), six.hex(':', -6), six.hex(' ', -95))\nfive = bytes(range(90, 95))\nprint('five', five.hex())\nvalue = b'{s\\005\\000\\000\\000worldi\\002\\000\\000\\000s\\005\\000\\000\\000helloi\\001\\000\\000\\0000'\nprint('long', value.hex('.', 8))",
+        &[
+            "bytes 'b9\\x0001\\x00ef' 'b9\\x0001\\x00ef'",
+            "bytes 'b9\\x7f01\\x7fef' 'b9\\x7f01\\x7fef' b9$01$ef",
+            "bytes b901ef b901ef b901ef b901ef b901ef",
+            "bytes b9:01ef b9:01:ef b901ef",
+            "bytes overflow 32 OverflowError",
+            "bytes overflow 32 OverflowError",
+            "bytes overflow 1001 OverflowError",
+            "bytes overflow 1001 OverflowError",
+            "bytes 03:06090c0f12 0306090c0f@12 0306090c0f12 0306090c0f12",
+            "bytearray 'b9\\x0001\\x00ef' 'b9\\x0001\\x00ef'",
+            "bytearray 'b9\\x7f01\\x7fef' 'b9\\x7f01\\x7fef' b9$01$ef",
+            "bytearray b901ef b901ef b901ef b901ef b901ef",
+            "bytearray b9:01ef b9:01:ef b901ef",
+            "bytearray overflow 32 OverflowError",
+            "bytearray overflow 32 OverflowError",
+            "bytearray overflow 1001 OverflowError",
+            "bytearray overflow 1001 OverflowError",
+            "bytearray 03:06090c0f12 0306090c0f@12 0306090c0f12 0306090c0f12",
+            "five 5a5b5c5d5e",
+            "long 7b7305000000776f.726c646902000000.730500000068656c.6c6f690100000030",
+        ],
+    );
+
+    assert_output(
+        "boundary_bytes = bytes([0x09, 0x0a, 0x90, 0x99, 0x9a, 0xa0, 0xa9, 0xaa, 0x00, 0xff])\nfull = bytes(range(65)).hex()\nfor ctor in [bytes, bytearray]:\n    ok = True\n    for length in (14, 15, 16, 17, 31, 32, 33, 64, 65):\n        data = ctor(bytes(range(length)))\n        if data.hex() != full[:length * 2]:\n            ok = False\n    boundary = ctor(boundary_bytes)\n    print(ctor.__name__, ok, boundary.hex(), (boundary * 2).hex() == '090a90999aa0a9aa00ff' * 2)",
+        &[
+            "bytes True 090a90999aa0a9aa00ff True",
+            "bytearray True 090a90999aa0a9aa00ff True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::AssortedBytesTest::
+// test_format. Empty bytes/bytearray format specs delegate to str/repr output,
+// but non-empty specs are rejected by the bytes-specific __format__ methods
+// unless an explicit !s/!r/!a conversion has already produced a string.
+#[test]
+fn cpython_bytes_format_method_subset() {
+    assert_output(
+        "for value in [b'abc', bytearray(b'abc')]:\n    print(type(value).__name__, format(value), format(value, ''), value.__format__(''))\n    print(f'{value!s:>18}')\n    for spec in ['s', '>8', '.2s']:\n        try:\n            format(value, spec)\n        except TypeError as error:\n            print(type(value).__name__, spec, error.__class__.__name__, type(value).__name__ in str(error))\n    try:\n        value.__format__('s')\n    except TypeError as error:\n        print(type(value).__name__, 'dunder', error.__class__.__name__, type(value).__name__ in str(error))",
+        &[
+            "bytes b'abc' b'abc' b'abc'",
+            "            b'abc'",
+            "bytes s TypeError True",
+            "bytes >8 TypeError True",
+            "bytes .2s TypeError True",
+            "bytes dunder TypeError True",
+            "bytearray bytearray(b'abc') bytearray(b'abc') bytearray(b'abc')",
+            " bytearray(b'abc')",
+            "bytearray s TypeError True",
+            "bytearray >8 TypeError True",
+            "bytearray .2s TypeError True",
+            "bytearray dunder TypeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::AssortedBytesTest::test_doc.
+// The public contract is that bytes and bytearray expose non-empty type
+// docstrings beginning with their constructor signatures.
+#[test]
+fn cpython_bytes_bytearray_type_doc_subset() {
+    assert_output(
+        "for typ, prefix in [(bytes, 'bytes('), (bytearray, 'bytearray(')]:\n    doc = typ.__doc__\n    print(typ.__name__, doc is not None, doc.startswith(prefix), doc.splitlines()[0], '__doc__' in dir(typ))",
+        &[
+            "bytes True True bytes(iterable_of_ints) -> bytes True",
+            "bytearray True True bytearray(iterable_of_ints) -> bytearray True",
         ],
     );
 }
@@ -24727,23 +30311,114 @@ fn cpython_bytes_literal_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_basics and
+// ::test_ord. Empty bytes/bytearray construction must expose the exact builtin
+// type through both type() and __class__, and one-byte slices must be accepted
+// by ord() across the full byte-value boundary sample.
+#[test]
+fn cpython_bytes_basics_and_ord_subset() {
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    b = ctor()\n    print(ctor.__name__, type(b) is ctor, b.__class__ is ctor, object.__getattribute__(b, '__class__') is ctor)\n    b = ctor(b'\\0A\\x7f\\x80\\xff')\n    print(ctor.__name__, [ord(b[i:i+1]) for i in range(len(b))])",
+        &[
+            "bytes True True True",
+            "bytes [0, 65, 127, 128, 255]",
+            "bytearray True True True",
+            "bytearray [0, 65, 127, 128, 255]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_empty_sequence. Empty bytes and bytearray objects should normalize every
+// in-range, overflow-sized, and huge positive/negative subscript miss to
+// IndexError rather than leaking integer-conversion details.
+#[test]
+fn cpython_bytes_empty_sequence_index_subset() {
+    assert_output(
+        "import sys\nindices = [0, 1, sys.maxsize, sys.maxsize + 1, 10**100, -1, -2, -sys.maxsize, -sys.maxsize - 1, -sys.maxsize - 2, -10**100]\nfor ctor in [bytes, bytearray]:\n    b = ctor()\n    results = []\n    for index in indices:\n        try:\n            b[index]\n            results.append('ok')\n        except Exception as error:\n            results.append(error.__class__.__name__)\n    print(ctor.__name__, len(b), results)",
+        &[
+            "bytes 0 ['IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError']",
+            "bytearray 0 ['IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError', 'IndexError']",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_from_int
+// and ::test_from_ssize. The length constructor path should produce ordinary
+// zero-filled bytes, use string/buffer sources unchanged, and raise catchable
+// ValueError/OverflowError for CPython's signed ssize_t boundary cases.
+#[test]
+fn cpython_bytes_length_constructor_boundary_subset() {
+    assert_output(
+        "import sys\nclass Indexable:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nfor ctor in [bytes, bytearray]:\n    print(ctor(0), ctor(1), len(ctor(5)))\n    print(ctor('0', 'ascii'), ctor(b'0'))\n    for label, expr in [('neg1', lambda ctor=ctor: ctor(-1)), ('index-neg1', lambda ctor=ctor: ctor(Indexable(-1))), ('min-neg', lambda ctor=ctor: ctor(-sys.maxsize - 1)), ('underflow', lambda ctor=ctor: ctor(-sys.maxsize - 2)), ('overflow', lambda ctor=ctor: ctor(sys.maxsize + 1)), ('huge-pos', lambda ctor=ctor: ctor(10**100)), ('huge-neg', lambda ctor=ctor: ctor(-10**100))]:\n        try:\n            expr()\n        except Exception as error:\n            print(ctor.__name__, label, error.__class__.__name__)",
+        &[
+            "b'' b'\\x00' 5",
+            "b'0' b'0'",
+            "bytes neg1 ValueError",
+            "bytes index-neg1 ValueError",
+            "bytes min-neg ValueError",
+            "bytes underflow OverflowError",
+            "bytes overflow OverflowError",
+            "bytes huge-pos OverflowError",
+            "bytes huge-neg OverflowError",
+            "bytearray(b'') bytearray(b'\\x00') 5",
+            "bytearray(b'0') bytearray(b'0')",
+            "bytearray neg1 ValueError",
+            "bytearray index-neg1 ValueError",
+            "bytearray min-neg ValueError",
+            "bytearray underflow OverflowError",
+            "bytearray overflow OverflowError",
+            "bytearray huge-pos OverflowError",
+            "bytearray huge-neg OverflowError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_constructor_overflow. CPython accepts either OverflowError or
+// MemoryError for address-space-sized constructor lengths; MiniPython keeps the
+// same public safety contract with sandbox-safe allocation guards.
+#[test]
+fn cpython_bytes_constructor_overflow_guard_subset() {
+    assert_output(
+        "import sys\nfor ctor in [bytes, bytearray]:\n    for label, value in [('max', sys.maxsize), ('max-minus-4', sys.maxsize - 4), ('overflow', sys.maxsize + 1), ('huge', 10**100)]:\n        try:\n            ctor(value)\n        except (OverflowError, MemoryError) as error:\n            print(ctor.__name__, label, value.bit_length(), error.__class__.__name__)",
+        &[
+            "bytes max 63 MemoryError",
+            "bytes max-minus-4 63 MemoryError",
+            "bytes overflow 64 OverflowError",
+            "bytes huge 333 OverflowError",
+            "bytearray max 63 MemoryError",
+            "bytearray max-minus-4 63 MemoryError",
+            "bytearray overflow 64 OverflowError",
+            "bytearray huge 333 OverflowError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_from_iterable,
 // ::test_from_tuple, ::test_from_list, ::test_from_index,
 // ::test_constructor_type_errors, and ::test_constructor_value_errors. This
-// pins bytes/bytearray construction from integer iterables and __index__ items.
+// pins bytes/bytearray construction from integer iterables, including sets and
+// generators without __length_hint__, plus __index__ items.
 #[test]
 fn cpython_bytes_iterable_constructor_subset() {
     assert_output(
-        "class Indexable:\n    def __init__(self, value=0):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass S:\n    def __getitem__(self, index):\n        return (1, 2, 3)[index]\nfor ctor in [bytes, bytearray]:\n    print(ctor(range(5)))\n    print(list(ctor(iter(range(5)))))\n    print(ctor([1, 2, 3]))\n    print(ctor((1, 2, 3)))\n    print(ctor(S()))\n    print(list(ctor([Indexable(), Indexable(1), Indexable(254), Indexable(255)])))",
+        "class Indexable:\n    def __init__(self, value=0):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass S:\n    def __getitem__(self, index):\n        return (1, 2, 3)[index]\nfor ctor in [bytes, bytearray]:\n    print(ctor(range(5)))\n    print(list(ctor(iter(range(5)))))\n    print(ctor({42}))\n    print(sorted(list(ctor({43, 45}))))\n    odd = ctor(i for i in range(10) if i % 2)\n    print(len(odd), list(odd))\n    print(ctor([1, 2, 3]))\n    print(ctor((1, 2, 3)))\n    print(ctor(S()))\n    print(list(ctor([Indexable(), Indexable(1), Indexable(254), Indexable(255)])))",
         &[
             "b'\\x00\\x01\\x02\\x03\\x04'",
             "[0, 1, 2, 3, 4]",
+            "b'*'",
+            "[43, 45]",
+            "5 [1, 3, 5, 7, 9]",
             "b'\\x01\\x02\\x03'",
             "b'\\x01\\x02\\x03'",
             "b'\\x01\\x02\\x03'",
             "[0, 1, 254, 255]",
             "bytearray(b'\\x00\\x01\\x02\\x03\\x04')",
             "[0, 1, 2, 3, 4]",
+            "bytearray(b'*')",
+            "[43, 45]",
+            "5 [1, 3, 5, 7, 9]",
             "bytearray(b'\\x01\\x02\\x03')",
             "bytearray(b'\\x01\\x02\\x03')",
             "bytearray(b'\\x01\\x02\\x03')",
@@ -24767,6 +30442,91 @@ fn cpython_bytes_iterable_constructor_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+        ],
+    );
+    assert_output(
+        "import sys\nclass C:\n    pass\ncases = [('encoding-only', lambda ctor: ctor(encoding='ascii')), ('errors-only', lambda ctor: ctor(errors='ignore')), ('int-encoding', lambda ctor: ctor(0, 'ascii')), ('bytes-encoding', lambda ctor: ctor(b'', 'ascii')), ('int-errors', lambda ctor: ctor(0, errors='ignore')), ('bytes-errors', lambda ctor: ctor(b'', errors='ignore')), ('empty-str', lambda ctor: ctor('')), ('empty-str-errors', lambda ctor: ctor('', errors='ignore')), ('encoding-bytes', lambda ctor: ctor('', b'ascii')), ('errors-bytes', lambda ctor: ctor('', 'ascii', b'ignore')), ('min-item', lambda ctor: ctor([-sys.maxsize])), ('min1-item', lambda ctor: ctor([-sys.maxsize - 1])), ('underflow-item', lambda ctor: ctor([-sys.maxsize - 2])), ('huge-neg-item', lambda ctor: ctor([-10**100])), ('257-item', lambda ctor: ctor([257])), ('max-item', lambda ctor: ctor([sys.maxsize])), ('overflow-item', lambda ctor: ctor([sys.maxsize + 1])), ('huge-pos-item', lambda ctor: ctor([10**100]))]\nfor ctor in [bytes, bytearray]:\n    for label, factory in cases:\n        try:\n            factory(ctor)\n        except (TypeError, ValueError) as error:\n            print(ctor.__name__, label, error.__class__.__name__)",
+        &[
+            "bytes encoding-only TypeError",
+            "bytes errors-only TypeError",
+            "bytes int-encoding TypeError",
+            "bytes bytes-encoding TypeError",
+            "bytes int-errors TypeError",
+            "bytes bytes-errors TypeError",
+            "bytes empty-str TypeError",
+            "bytes empty-str-errors TypeError",
+            "bytes encoding-bytes TypeError",
+            "bytes errors-bytes TypeError",
+            "bytes min-item ValueError",
+            "bytes min1-item ValueError",
+            "bytes underflow-item ValueError",
+            "bytes huge-neg-item ValueError",
+            "bytes 257-item ValueError",
+            "bytes max-item ValueError",
+            "bytes overflow-item ValueError",
+            "bytes huge-pos-item ValueError",
+            "bytearray encoding-only TypeError",
+            "bytearray errors-only TypeError",
+            "bytearray int-encoding TypeError",
+            "bytearray bytes-encoding TypeError",
+            "bytearray int-errors TypeError",
+            "bytearray bytes-errors TypeError",
+            "bytearray empty-str TypeError",
+            "bytearray empty-str-errors TypeError",
+            "bytearray encoding-bytes TypeError",
+            "bytearray errors-bytes TypeError",
+            "bytearray min-item ValueError",
+            "bytearray min1-item ValueError",
+            "bytearray underflow-item ValueError",
+            "bytearray huge-neg-item ValueError",
+            "bytearray 257-item ValueError",
+            "bytearray max-item ValueError",
+            "bytearray overflow-item ValueError",
+            "bytearray huge-pos-item ValueError",
+        ],
+    );
+}
+
+// Adapted from the portable public part of CPython
+// Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer. This covers
+// bytes-like constructor sources, array-backed byte buffers, and the fallback
+// from __index__ TypeError to bytes-like construction for bytes subclasses.
+#[test]
+fn cpython_bytes_buffer_constructor_subset() {
+    assert_output(
+        "import array\nclass B(bytes):\n    def __index__(self):\n        raise TypeError\nfor ctor in [bytes, bytearray]:\n    for source in [b'\\x01\\x02\\x03', bytearray(b'\\x01\\x02\\x03'), memoryview(b'\\x01\\x02\\x03'), B(b'foobar')]:\n        value = ctor(source)\n        print(ctor.__name__, type(source).__name__, type(value).__name__, value == source, value)\n    source = array.array('B', [1, 2, 3])\n    value = ctor(source)\n    print(ctor.__name__, type(source).__name__, type(value).__name__, value == b'\\x01\\x02\\x03', value)",
+        &[
+            "bytes bytes bytes True b'\\x01\\x02\\x03'",
+            "bytes bytearray bytes True b'\\x01\\x02\\x03'",
+            "bytes memoryview bytes True b'\\x01\\x02\\x03'",
+            "bytes B bytes True b'foobar'",
+            "bytes array bytes True b'\\x01\\x02\\x03'",
+            "bytearray bytes bytearray True bytearray(b'\\x01\\x02\\x03')",
+            "bytearray bytearray bytearray True bytearray(b'\\x01\\x02\\x03')",
+            "bytearray memoryview bytearray True bytearray(b'\\x01\\x02\\x03')",
+            "bytearray B bytearray True bytearray(b'foobar')",
+            "bytearray array bytearray True bytearray(b'\\x01\\x02\\x03')",
+        ],
+    );
+}
+
+// Adapted from CPython's bytes-like buffer behavior as exercised by
+// Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer and ::test_fromhex.
+// The slice pins array.array('B') as a byte buffer without treating array
+// instances as bytes for equality or ordering.
+#[test]
+fn cpython_bytes_array_array_buffer_subset() {
+    assert_output(
+        "import array\narr = array.array('B', [97, 98])\nprint(bytes(arr), bytearray(arr), bytes.fromhex(array.array('B', b' 61 62 ')))\nprint(b'abc'.find(array.array('B', b'b')), b'abc'.replace(array.array('B', b'b'), b'X'))\nprint(b'a' + array.array('B', b'b'), bytearray(b'a') + array.array('B', b'b'))\nprint(array.array('B', b'a') in b'abc', array.array('B', b'a') in bytearray(b'abc'))\nprint(b'ab' == arr)\ntry:\n    print(b'ab' < arr)\nexcept TypeError as error:\n    print(error.__class__.__name__)\nba = bytearray(b'x')\nba += arr\nprint(ba)\nba[1:] = array.array('B', b'YZ')\nprint(ba)",
+        &[
+            "b'ab' bytearray(b'ab') b'ab'",
+            "1 b'aXc'",
+            "b'ab' bytearray(b'ab')",
+            "True True",
+            "False",
+            "TypeError",
+            "bytearray(b'xab')",
+            "bytearray(b'xYZ')",
         ],
     );
 }
@@ -24808,9 +30568,12 @@ fn cpython_bytes_constructor_exception_subset() {
 }
 
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_count,
-// ::test_find, ::test_rfind, ::test_index, and ::test_rindex. This pins the
-// public bytes/bytearray substring search surface, including integer byte
-// needles, bytes-like needles, start/stop bounds, and missing-value behavior.
+// ::test_find, ::test_rfind, ::test_index, ::test_rindex, and
+// ::test_integer_arguments_out_of_byte_range. This pins the public
+// bytes/bytearray substring search surface, including integer byte needles,
+// bytes-like needles, start/stop bounds, the search/count slice of
+// ::test_none_arguments, missing-value behavior, and out-of-byte-range integer
+// rejection.
 #[test]
 fn cpython_bytes_search_methods_subset() {
     assert_output(
@@ -24850,14 +30613,42 @@ fn cpython_bytes_search_methods_subset() {
     );
 
     assert_output(
-        "b = b'mississippi'\nfor expr in [lambda: b.count(-1), lambda: b.find(256), lambda: b.rfind(300), lambda: b.index(b'w'), lambda: b.rindex(b'w'), lambda: b.find('i')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "for ctor in [bytes, bytearray]:\n    b = ctor(b'mississippi')\n    for method_name in ['count', 'find', 'index', 'rfind', 'rindex']:\n        method = getattr(b, method_name)\n        errors = []\n        for value in [-1, 256, 9999]:\n            try:\n                method(value)\n            except (TypeError, ValueError) as error:\n                errors.append(error.__class__.__name__)\n        print(ctor.__name__, method_name, errors)\n    for expr in [lambda: b.index(b'w'), lambda: b.rindex(b'w'), lambda: b.find('i')]:\n        try:\n            expr()\n        except (TypeError, ValueError) as error:\n            print(ctor.__name__, error.__class__.__name__)",
         &[
-            "ValueError",
-            "ValueError",
-            "ValueError",
-            "ValueError",
-            "ValueError",
-            "TypeError",
+            "bytes count ['ValueError', 'ValueError', 'ValueError']",
+            "bytes find ['ValueError', 'ValueError', 'ValueError']",
+            "bytes index ['ValueError', 'ValueError', 'ValueError']",
+            "bytes rfind ['ValueError', 'ValueError', 'ValueError']",
+            "bytes rindex ['ValueError', 'ValueError', 'ValueError']",
+            "bytes ValueError",
+            "bytes ValueError",
+            "bytes TypeError",
+            "bytearray count ['ValueError', 'ValueError', 'ValueError']",
+            "bytearray find ['ValueError', 'ValueError', 'ValueError']",
+            "bytearray index ['ValueError', 'ValueError', 'ValueError']",
+            "bytearray rfind ['ValueError', 'ValueError', 'ValueError']",
+            "bytearray rindex ['ValueError', 'ValueError', 'ValueError']",
+            "bytearray ValueError",
+            "bytearray ValueError",
+            "bytearray TypeError",
+        ],
+    );
+
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    b = ctor(b'hello')\n    l = ctor(b'l')\n    h = ctor(b'h')\n    x = ctor(b'x')\n    print(ctor.__name__)\n    print('find', b.find(l, None), b.find(l, -2, None), b.find(l, None, -2), b.find(h, None, None))\n    print('rfind', b.rfind(l, None), b.rfind(l, -2, None), b.rfind(l, None, -2), b.rfind(h, None, None))\n    print('index', b.index(l, None), b.index(l, -2, None), b.index(l, None, -2), b.index(h, None, None))\n    print('rindex', b.rindex(l, None), b.rindex(l, -2, None), b.rindex(l, None, -2), b.rindex(h, None, None))\n    print('count', b.count(l, None), b.count(l, -2, None), b.count(l, None, -2), b.count(x, None, None))",
+        &[
+            "bytes",
+            "find 2 3 2 0",
+            "rfind 3 3 2 0",
+            "index 2 3 2 0",
+            "rindex 3 3 2 0",
+            "count 2 1 1 0",
+            "bytearray",
+            "find 2 3 2 0",
+            "rfind 3 3 2 0",
+            "index 2 3 2 0",
+            "rindex 3 3 2 0",
+            "count 2 1 1 0",
         ],
     );
 }
@@ -24893,17 +30684,18 @@ fn cpython_bytes_search_bounds_index_subset() {
 
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_compare,
 // ::test_compare_to_str, ::test_reversed, ::test_getslice, and
-// ::test_extended_getslice. The extended slicing loop mirrors CPython by
-// comparing every tested bytes/bytearray slice against list slicing.
+// ::test_extended_getslice. The compare-to-str rows cover CPython's expected
+// byte-order shapes; the extended slicing loop mirrors CPython by comparing
+// every tested bytes/bytearray slice against list slicing.
 #[test]
 fn cpython_bytes_compare_slice_reversed_subset() {
     assert_output(
-        "import sys\nfor ctor in [bytes, bytearray]:\n    b1 = ctor([1, 2, 3])\n    b2 = ctor([1, 2, 3])\n    b3 = ctor([1, 3])\n    print(b1 == b2, b2 != b3, b1 <= b2, b1 <= b3, b1 < b3)\n    print(b1 >= b2, b3 >= b2, b3 > b2)\n    print(b1 != b2, b2 == b3, b1 > b2, b1 > b3, b1 >= b3, b1 < b2, b3 < b2, b3 <= b2)\n    print(ctor(b'\\0a\\0b\\0c') == 'abc', ctor(b'a\\0b\\0c\\0') == 'abc', ctor() == str(), ctor() != str())\n    input_values = list(map(ord, 'Hello'))\n    b = ctor(input_values)\n    output = list(reversed(b))\n    input_values.reverse()\n    print(output == input_values)\n    def by(text):\n        return ctor(map(ord, text))\n    b = by('Hello, world')\n    print(b[:5] == by('Hello'), b[1:5] == by('ello'), b[5:7] == by(', '), b[7:] == by('world'), b[7:12] == by('world'), b[7:12] == by('world'), b[7:100] == by('world'))\n    print(b[:-7] == by('Hello'), b[-11:-7] == by('ello'), b[-7:-5] == by(', '), b[-5:] == by('world'), b[-5:12] == by('world'), b[-5:100] == by('world'), b[-100:5] == by('Hello'))\n    L = list(range(255))\n    b = ctor(L)\n    indices = (0, None, 1, 3, 19, 100, sys.maxsize, -1, -2, -31, -100)\n    ok = True\n    for start in indices:\n        for stop in indices:\n            for step in indices[1:]:\n                if b[start:stop:step] != ctor(L[start:stop:step]):\n                    ok = False\n    print(ok)",
+        "import sys\nfor ctor in [bytes, bytearray]:\n    b1 = ctor([1, 2, 3])\n    b2 = ctor([1, 2, 3])\n    b3 = ctor([1, 3])\n    print(b1 == b2, b2 != b3, b1 <= b2, b1 <= b3, b1 < b3)\n    print(b1 >= b2, b3 >= b2, b3 > b2)\n    print(b1 != b2, b2 == b3, b1 > b2, b1 > b3, b1 >= b3, b1 < b2, b3 < b2, b3 <= b2)\n    print(ctor(b'\\0a\\0b\\0c') == 'abc', ctor(b'\\0\\0\\0a\\0\\0\\0b\\0\\0\\0c') == 'abc', ctor(b'a\\0b\\0c\\0') == 'abc', ctor(b'a\\0\\0\\0b\\0\\0\\0c\\0\\0\\0') == 'abc', ctor() == str(), ctor() != str())\n    input_values = list(map(ord, 'Hello'))\n    b = ctor(input_values)\n    output = list(reversed(b))\n    input_values.reverse()\n    print(output == input_values)\n    def by(text):\n        return ctor(map(ord, text))\n    b = by('Hello, world')\n    print(b[:5] == by('Hello'), b[1:5] == by('ello'), b[5:7] == by(', '), b[7:] == by('world'), b[7:12] == by('world'), b[7:12] == by('world'), b[7:100] == by('world'))\n    print(b[:-7] == by('Hello'), b[-11:-7] == by('ello'), b[-7:-5] == by(', '), b[-5:] == by('world'), b[-5:12] == by('world'), b[-5:100] == by('world'), b[-100:5] == by('Hello'))\n    L = list(range(255))\n    b = ctor(L)\n    indices = (0, None, 1, 3, 19, 100, sys.maxsize, -1, -2, -31, -100)\n    ok = True\n    for start in indices:\n        for stop in indices:\n            for step in indices[1:]:\n                if b[start:stop:step] != ctor(L[start:stop:step]):\n                    ok = False\n    print(ok)",
         &[
             "True True True True True",
             "True True True",
             "False False False False False False False False",
-            "False False False True",
+            "False False False False False True",
             "True",
             "True True True True True True True",
             "True True True True True True True",
@@ -24911,7 +30703,7 @@ fn cpython_bytes_compare_slice_reversed_subset() {
             "True True True True True",
             "True True True",
             "False False False False False False False False",
-            "False False False True",
+            "False False False False False True",
             "True",
             "True True True True True True True",
             "True True True True True True True",
@@ -25037,6 +30829,61 @@ fn cpython_bytes_prefix_suffix_methods_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest
+// startswith/endswith TypeError rows. Top-level invalid prefixes/suffixes use
+// the first-argument diagnostic, while invalid tuple candidates use the
+// generic bytes-like diagnostic.
+#[test]
+fn cpython_bytes_prefix_suffix_typeerror_messages_subset() {
+    assert_output(
+        "def check(label, expr, expected):\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.args[0] == expected)\nfor ctor in [bytes, bytearray]:\n    b = ctor(b'abc')\n    prefix = ctor.__name__\n    for method, good in [('startswith', b'z'), ('endswith', b'z')]:\n        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)('a'), method + ' first arg must be bytes or a tuple of bytes, not str')\n        check(prefix + '.' + method + '.list', lambda b=b, method=method: getattr(b, method)([b'a']), method + ' first arg must be bytes or a tuple of bytes, not list')\n        check(prefix + '.' + method + '.tuple-str', lambda b=b, method=method, good=good: getattr(b, method)((good, 'a')), \"a bytes-like object is required, not 'str'\")\n        check(prefix + '.' + method + '.tuple-list', lambda b=b, method=method, good=good: getattr(b, method)((good, [b'a'])), \"a bytes-like object is required, not 'list'\")",
+        &[
+            "bytes.startswith.str True",
+            "bytes.startswith.list True",
+            "bytes.startswith.tuple-str True",
+            "bytes.startswith.tuple-list True",
+            "bytes.endswith.str True",
+            "bytes.endswith.list True",
+            "bytes.endswith.tuple-str True",
+            "bytes.endswith.tuple-list True",
+            "bytearray.startswith.str True",
+            "bytearray.startswith.list True",
+            "bytearray.startswith.tuple-str True",
+            "bytearray.startswith.tuple-list True",
+            "bytearray.endswith.str True",
+            "bytearray.endswith.list True",
+            "bytearray.endswith.tuple-str True",
+            "bytearray.endswith.tuple-list True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::
+// test_find_etc_raise_correct_error_messages. This pins the public
+// Argument-Clinic-shaped TypeError text for extra search/prefix/suffix args.
+#[test]
+fn cpython_bytes_search_prefix_suffix_error_messages_subset() {
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    b = ctor(b'hello')\n    x = ctor(b'x')\n    for method_name in ['find', 'rfind', 'index', 'rindex', 'count', 'startswith', 'endswith']:\n        expected = method_name + ' expected at most 3 arguments, got 4'\n        try:\n            getattr(b, method_name)(x, None, None, None)\n        except TypeError as error:\n            print(ctor.__name__, method_name, error.args[0] == expected)",
+        &[
+            "bytes find True",
+            "bytes rfind True",
+            "bytes index True",
+            "bytes rindex True",
+            "bytes count True",
+            "bytes startswith True",
+            "bytes endswith True",
+            "bytearray find True",
+            "bytearray rfind True",
+            "bytearray index True",
+            "bytearray rindex True",
+            "bytearray count True",
+            "bytearray startswith True",
+            "bytearray endswith True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_join.
 // The CPython stress loops are reduced in size, but the port keeps the same
 // public semantics: receiver-driven result type, bytes-like sequence items,
@@ -25083,6 +30930,37 @@ fn cpython_bytes_join_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public
+// join/translate/maketrans TypeError rows. This pins descriptor arity,
+// bound-method arity, and non-iterable join diagnostics for bytes and
+// bytearray.
+#[test]
+fn cpython_bytes_join_translate_maketrans_typeerror_messages_subset() {
+    assert_output(
+        "def check(label, expr, expected):\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.args[0] == expected)\nfor ctor in [bytes, bytearray]:\n    name = ctor.__name__\n    check(name + '.join.unbound', lambda ctor=ctor: ctor.join(), 'unbound method ' + name + '.join() needs an argument')\n    check(name + '.join.bound-missing', lambda ctor=ctor: ctor(b',').join(), name + '.join() takes exactly one argument (0 given)')\n    check(name + '.join.descriptor-missing', lambda ctor=ctor: ctor.join(ctor(b',')), name + '.join() takes exactly one argument (0 given)')\n    check(name + '.join.bound-too-many', lambda ctor=ctor: ctor(b',').join([b'a'], [b'b']), name + '.join() takes exactly one argument (2 given)')\n    check(name + '.join.noniter', lambda ctor=ctor: ctor(b',').join(3), 'can only join an iterable')\n    check(name + '.translate.unbound', lambda ctor=ctor: ctor.translate(), 'unbound method ' + name + '.translate() needs an argument')\n    check(name + '.translate.missing-table', lambda ctor=ctor: ctor(b'abc').translate(), 'translate() takes at least 1 positional argument (0 given)')\n    check(name + '.translate.descriptor-missing-table', lambda ctor=ctor: ctor.translate(ctor(b'abc')), 'translate() takes at least 1 positional argument (0 given)')\n    check(name + '.maketrans.no-args', lambda ctor=ctor: ctor.maketrans(), 'maketrans expected 2 arguments, got 0')",
+        &[
+            "bytes.join.unbound True",
+            "bytes.join.bound-missing True",
+            "bytes.join.descriptor-missing True",
+            "bytes.join.bound-too-many True",
+            "bytes.join.noniter True",
+            "bytes.translate.unbound True",
+            "bytes.translate.missing-table True",
+            "bytes.translate.descriptor-missing-table True",
+            "bytes.maketrans.no-args True",
+            "bytearray.join.unbound True",
+            "bytearray.join.bound-missing True",
+            "bytearray.join.descriptor-missing True",
+            "bytearray.join.bound-too-many True",
+            "bytearray.join.noniter True",
+            "bytearray.translate.unbound True",
+            "bytearray.translate.missing-table True",
+            "bytearray.translate.descriptor-missing-table True",
+            "bytearray.maketrans.no-args True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::
 // test_bytearray_join_with_misbehaving_iterator and
 // ::test_bytearray_join_with_custom_iterator.
@@ -25095,10 +30973,12 @@ fn cpython_bytearray_join_reentrant_resize_subset() {
 }
 
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_replace,
+// ::test_replace_count_keyword,
 // ::test_replace_int_error, ::test_partition, ::test_rpartition,
 // ::test_partition_string_error, and ::test_partition_int_error. The slice
-// checks bytes/bytearray result types, bytes-like arguments, count handling,
-// empty-needle replacement, empty separators, and representative TypeErrors.
+// checks bytes/bytearray result types, bytes-like arguments, positional and
+// keyword count handling, empty-needle replacement, empty separators, and
+// representative TypeErrors.
 #[test]
 fn cpython_bytes_replace_partition_methods_subset() {
     assert_output(
@@ -25139,6 +31019,26 @@ fn cpython_bytes_replace_partition_methods_subset() {
             "TypeError",
             "ValueError",
             "ValueError",
+        ],
+    );
+
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    b = ctor(b'aa')\n    for count in [0, 1, 2, 3]:\n        print(ctor.__name__, count, b.replace(b'a', b'b', count=count))\n    for expr in [lambda: b.replace(b'a', b'b', 1, count=2), lambda: b.replace(b'a', b'b', spam=1), lambda: b.replace(b'a', b'b', count='x')]:\n        try:\n            expr()\n        except TypeError as error:\n            print(ctor.__name__, error.__class__.__name__)",
+        &[
+            "bytes 0 b'aa'",
+            "bytes 1 b'ba'",
+            "bytes 2 b'bb'",
+            "bytes 3 b'bb'",
+            "bytes TypeError",
+            "bytes TypeError",
+            "bytes TypeError",
+            "bytearray 0 bytearray(b'aa')",
+            "bytearray 1 bytearray(b'ba')",
+            "bytearray 2 bytearray(b'bb')",
+            "bytearray 3 bytearray(b'bb')",
+            "bytearray TypeError",
+            "bytearray TypeError",
+            "bytearray TypeError",
         ],
     );
 }
@@ -25510,6 +31410,178 @@ fn cpython_bytes_alignment_methods_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest
+// error-message rows for split/partition/strip/alignment argument validation.
+// This pins public TypeError text for non-bytes-like arguments and fill-byte
+// length checks without depending on CPython C internals.
+#[test]
+fn cpython_bytes_method_typeerror_messages_subset() {
+    assert_output(
+        "def check(label, expr, expected):\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.args[0] == expected)\nfor ctor in [bytes, bytearray]:\n    b = ctor(b'a b')\n    prefix = ctor.__name__\n    for method in ['split', 'rsplit']:\n        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)(' '), \"a bytes-like object is required, not 'str'\")\n        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), \"a bytes-like object is required, not 'int'\")\n    for method in ['partition', 'rpartition']:\n        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)(' '), \"a bytes-like object is required, not 'str'\")\n        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), \"a bytes-like object is required, not 'int'\")\n    for method in ['strip', 'lstrip', 'rstrip']:\n        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)('ac'), \"a bytes-like object is required, not 'str'\")\n        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), \"a bytes-like object is required, not 'int'\")\n    b = ctor(b'abc')\n    for method in ['center', 'ljust', 'rjust']:\n        check(prefix + '.' + method + '.int-fill', lambda b=b, method=method: getattr(b, method)(7, 32), method + '() argument 2 must be a byte string of length 1, not int')\n        check(prefix + '.' + method + '.empty-bytes-fill', lambda b=b, method=method: getattr(b, method)(7, b''), method + '(): argument 2 must be a byte string of length 1, not a bytes object of length 0')\n        check(prefix + '.' + method + '.long-bytearray-fill', lambda b=b, method=method: getattr(b, method)(7, bytearray(b'--')), method + '(): argument 2 must be a byte string of length 1, not a bytearray object of length 2')\n        check(prefix + '.' + method + '.memoryview-fill', lambda b=b, method=method: getattr(b, method)(7, memoryview(b'-')), method + '() argument 2 must be a byte string of length 1, not memoryview')",
+        &[
+            "bytes.split.str True",
+            "bytes.split.int True",
+            "bytes.rsplit.str True",
+            "bytes.rsplit.int True",
+            "bytes.partition.str True",
+            "bytes.partition.int True",
+            "bytes.rpartition.str True",
+            "bytes.rpartition.int True",
+            "bytes.strip.str True",
+            "bytes.strip.int True",
+            "bytes.lstrip.str True",
+            "bytes.lstrip.int True",
+            "bytes.rstrip.str True",
+            "bytes.rstrip.int True",
+            "bytes.center.int-fill True",
+            "bytes.center.empty-bytes-fill True",
+            "bytes.center.long-bytearray-fill True",
+            "bytes.center.memoryview-fill True",
+            "bytes.ljust.int-fill True",
+            "bytes.ljust.empty-bytes-fill True",
+            "bytes.ljust.long-bytearray-fill True",
+            "bytes.ljust.memoryview-fill True",
+            "bytes.rjust.int-fill True",
+            "bytes.rjust.empty-bytes-fill True",
+            "bytes.rjust.long-bytearray-fill True",
+            "bytes.rjust.memoryview-fill True",
+            "bytearray.split.str True",
+            "bytearray.split.int True",
+            "bytearray.rsplit.str True",
+            "bytearray.rsplit.int True",
+            "bytearray.partition.str True",
+            "bytearray.partition.int True",
+            "bytearray.rpartition.str True",
+            "bytearray.rpartition.int True",
+            "bytearray.strip.str True",
+            "bytearray.strip.int True",
+            "bytearray.lstrip.str True",
+            "bytearray.lstrip.int True",
+            "bytearray.rstrip.str True",
+            "bytearray.rstrip.int True",
+            "bytearray.center.int-fill True",
+            "bytearray.center.empty-bytes-fill True",
+            "bytearray.center.long-bytearray-fill True",
+            "bytearray.center.memoryview-fill True",
+            "bytearray.ljust.int-fill True",
+            "bytearray.ljust.empty-bytes-fill True",
+            "bytearray.ljust.long-bytearray-fill True",
+            "bytearray.ljust.memoryview-fill True",
+            "bytearray.rjust.int-fill True",
+            "bytearray.rjust.empty-bytes-fill True",
+            "bytearray.rjust.long-bytearray-fill True",
+            "bytearray.rjust.memoryview-fill True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public
+// TypeError-message rows for bytes/bytearray method descriptors and argument
+// converters. This pins method arity and integer-conversion diagnostics for
+// ASCII case/predicate, splitlines, expandtabs, zfill, and remove-affix methods.
+#[test]
+fn cpython_bytes_more_method_typeerror_messages_subset() {
+    assert_output(
+        "def check(label, expr, expected):\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.args[0] == expected)\nfor ctor in [bytes, bytearray]:\n    name = ctor.__name__\n    sample = ctor(b'abc')\n    for method in ['lower', 'upper', 'capitalize', 'title', 'swapcase']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(1), name + '.' + method + '() takes no arguments (1 given)')\n    for method in ['islower', 'isupper', 'istitle', 'isspace', 'isalpha', 'isalnum', 'isdigit', 'isascii']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(1), name + '.' + method + '() takes no arguments (1 given)')\n    check(name + '.expandtabs.unbound', lambda ctor=ctor: ctor.expandtabs(), 'unbound method ' + name + '.expandtabs() needs an argument')\n    check(name + '.expandtabs.extra', lambda sample=sample: sample.expandtabs(1, 2), 'expandtabs() takes at most 1 argument (2 given)')\n    check(name + '.expandtabs.bad-tabsize', lambda sample=sample: sample.expandtabs('x'), \"'str' object cannot be interpreted as an integer\")\n    check(name + '.splitlines.unbound', lambda ctor=ctor: ctor.splitlines(), 'unbound method ' + name + '.splitlines() needs an argument')\n    check(name + '.splitlines.extra', lambda sample=sample: sample.splitlines(False, 1), 'splitlines() takes at most 1 argument (2 given)')\n    check(name + '.zfill.unbound', lambda ctor=ctor: ctor.zfill(), 'unbound method ' + name + '.zfill() needs an argument')\n    check(name + '.zfill.missing', lambda sample=sample: sample.zfill(), name + '.zfill() takes exactly one argument (0 given)')\n    check(name + '.zfill.extra', lambda sample=sample: sample.zfill(4, 0), name + '.zfill() takes exactly one argument (2 given)')\n    check(name + '.zfill.bad-width', lambda sample=sample: sample.zfill('x'), \"'str' object cannot be interpreted as an integer\")\n    for method in ['removeprefix', 'removesuffix']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), name + '.' + method + '() takes exactly one argument (0 given)')\n        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), name + '.' + method + '() takes exactly one argument (2 given)')",
+        &[
+            "bytes.lower.unbound True",
+            "bytes.lower.extra True",
+            "bytes.upper.unbound True",
+            "bytes.upper.extra True",
+            "bytes.capitalize.unbound True",
+            "bytes.capitalize.extra True",
+            "bytes.title.unbound True",
+            "bytes.title.extra True",
+            "bytes.swapcase.unbound True",
+            "bytes.swapcase.extra True",
+            "bytes.islower.unbound True",
+            "bytes.islower.extra True",
+            "bytes.isupper.unbound True",
+            "bytes.isupper.extra True",
+            "bytes.istitle.unbound True",
+            "bytes.istitle.extra True",
+            "bytes.isspace.unbound True",
+            "bytes.isspace.extra True",
+            "bytes.isalpha.unbound True",
+            "bytes.isalpha.extra True",
+            "bytes.isalnum.unbound True",
+            "bytes.isalnum.extra True",
+            "bytes.isdigit.unbound True",
+            "bytes.isdigit.extra True",
+            "bytes.isascii.unbound True",
+            "bytes.isascii.extra True",
+            "bytes.expandtabs.unbound True",
+            "bytes.expandtabs.extra True",
+            "bytes.expandtabs.bad-tabsize True",
+            "bytes.splitlines.unbound True",
+            "bytes.splitlines.extra True",
+            "bytes.zfill.unbound True",
+            "bytes.zfill.missing True",
+            "bytes.zfill.extra True",
+            "bytes.zfill.bad-width True",
+            "bytes.removeprefix.unbound True",
+            "bytes.removeprefix.missing True",
+            "bytes.removeprefix.extra True",
+            "bytes.removesuffix.unbound True",
+            "bytes.removesuffix.missing True",
+            "bytes.removesuffix.extra True",
+            "bytearray.lower.unbound True",
+            "bytearray.lower.extra True",
+            "bytearray.upper.unbound True",
+            "bytearray.upper.extra True",
+            "bytearray.capitalize.unbound True",
+            "bytearray.capitalize.extra True",
+            "bytearray.title.unbound True",
+            "bytearray.title.extra True",
+            "bytearray.swapcase.unbound True",
+            "bytearray.swapcase.extra True",
+            "bytearray.islower.unbound True",
+            "bytearray.islower.extra True",
+            "bytearray.isupper.unbound True",
+            "bytearray.isupper.extra True",
+            "bytearray.istitle.unbound True",
+            "bytearray.istitle.extra True",
+            "bytearray.isspace.unbound True",
+            "bytearray.isspace.extra True",
+            "bytearray.isalpha.unbound True",
+            "bytearray.isalpha.extra True",
+            "bytearray.isalnum.unbound True",
+            "bytearray.isalnum.extra True",
+            "bytearray.isdigit.unbound True",
+            "bytearray.isdigit.extra True",
+            "bytearray.isascii.unbound True",
+            "bytearray.isascii.extra True",
+            "bytearray.expandtabs.unbound True",
+            "bytearray.expandtabs.extra True",
+            "bytearray.expandtabs.bad-tabsize True",
+            "bytearray.splitlines.unbound True",
+            "bytearray.splitlines.extra True",
+            "bytearray.zfill.unbound True",
+            "bytearray.zfill.missing True",
+            "bytearray.zfill.extra True",
+            "bytearray.zfill.bad-width True",
+            "bytearray.removeprefix.unbound True",
+            "bytearray.removeprefix.missing True",
+            "bytearray.removeprefix.extra True",
+            "bytearray.removesuffix.unbound True",
+            "bytearray.removesuffix.missing True",
+            "bytearray.removesuffix.extra True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public
+// TypeError-message rows for the remaining supported bytes/bytearray core
+// methods. This pins descriptor arity, bound arity, and integer-converter
+// diagnostics without depending on CPython internals.
+#[test]
+fn cpython_bytes_core_method_typeerror_messages_subset() {
+    assert_output(
+        "failures = []\ndef check(label, expr, expected):\n    try:\n        expr()\n    except TypeError as error:\n        actual = error.args[0] if error.args else ''\n        if actual != expected:\n            failures.append(label + ' -> ' + actual)\n    except BaseException as error:\n        failures.append(label + ' raised ' + type(error).__name__)\n    else:\n        failures.append(label + ' did not raise')\nfor ctor in [bytes, bytearray]:\n    name = ctor.__name__\n    sample = ctor(b'a b a')\n    for method in ['split', 'rsplit']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b' ', 1, 2), method + '() takes at most 2 arguments (3 given)')\n        check(name + '.' + method + '.bad-maxsplit', lambda sample=sample, method=method: getattr(sample, method)(b' ', 'x'), \"'str' object cannot be interpreted as an integer\")\n    for method in ['strip', 'lstrip', 'rstrip']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), method + ' expected at most 1 argument, got 2')\n    for method in ['count', 'find', 'rfind', 'index', 'rindex']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')\n        check(name + '.' + method + '.bad-start', lambda sample=sample, method=method: getattr(sample, method)(b'a', 'x'), 'slice indices must be integers or None or have an __index__ method')\n    for method in ['startswith', 'endswith']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')\n        check(name + '.' + method + '.bad-start', lambda sample=sample, method=method: getattr(sample, method)(b'a', 'x'), 'slice indices must be integers or None or have an __index__ method')\n    for method in ['center', 'ljust', 'rjust']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')\n        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(5, b' ', b' '), method + ' expected at most 2 arguments, got 3')\n        check(name + '.' + method + '.bad-width', lambda sample=sample, method=method: getattr(sample, method)('x'), \"'str' object cannot be interpreted as an integer\")\n    for method in ['partition', 'rpartition']:\n        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')\n        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), name + '.' + method + '() takes exactly one argument (0 given)')\n        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), name + '.' + method + '() takes exactly one argument (2 given)')\n    check(name + '.replace.unbound', lambda ctor=ctor: ctor.replace(), 'unbound method ' + name + '.replace() needs an argument')\n    check(name + '.replace.missing-old', lambda sample=sample: sample.replace(), 'replace expected at least 2 arguments, got 0')\n    check(name + '.replace.missing-new', lambda sample=sample: sample.replace(b'a'), 'replace expected at least 2 arguments, got 1')\n    check(name + '.replace.too-many', lambda sample=sample: sample.replace(b'a', b'b', 1, 2), 'replace expected at most 3 arguments, got 4')\n    check(name + '.replace.bad-count', lambda sample=sample: sample.replace(b'a', b'b', 'x'), \"'str' object cannot be interpreted as an integer\")\nprint(len(failures))\nif failures:\n    print(failures[:5])",
+        &["0"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_maketrans
 // and ::test_translate. The slice covers 256-byte translation tables,
 // bytes-like maketrans arguments, receiver-driven translate result types,
@@ -25576,7 +31648,7 @@ fn cpython_builtin_bytearray_translate_extend_errors_subset() {
 #[test]
 fn cpython_bytes_percent_format_subset() {
     assert_output(
-        "for ctor in [bytes, bytearray]:\n    fmt = ctor(b'hello, %b!')\n    result = fmt % b'world'\n    print(type(result).__name__, result, fmt == ctor(b'hello, %b!'))\n    fmt = ctor(b'%s / 100 = %d%%')\n    result = fmt % (b'seventy-nine', 79)\n    print(type(result).__name__, result)\n    print(ctor(b'hello,\\x00%b!') % b'world')\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc'})\n    print(ctor(b'...%(f(o)o)b...') % {b'f(o)o': b'abc', b'foo': b'bar'})\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc', b'def': 123})\n    print(ctor(b'%*b') % (5, b'abc'))\n    print(ctor(b'%*b') % (-5, b'abc'))\n    print(ctor(b'%*.*b') % (5, 2, b'abc'))\n    print(ctor(b'%*.*b') % (5, 3, b'abc'))\n    print(ctor(b'%i %*.*b') % (10, 5, 3, b'abc'))\n    print(ctor(b'%i%b %*.*b') % (10, b'3', 5, 3, b'abc'))\n    print(ctor(b'%c') % b'a')\n    print(ctor(b'%d') % 3.14)\n    holder = ctor(b'hello, %b!')\n    alias = holder\n    holder %= b'world'\n    print(type(holder).__name__, holder, alias == ctor(b'hello, %b!'))\n    if isinstance(alias, bytearray):\n        print(holder is alias, alias)\n    for expr in [lambda: ctor(b'%x') % 3.14, lambda: ctor(b'%c') % b'ab', lambda: ctor(b'%c') % 256, lambda: ctor(b'%b') % 'text']:\n        try:\n            expr()\n        except (TypeError, OverflowError, ValueError) as error:\n            print(error.__class__.__name__)",
+        "for ctor in [bytes, bytearray]:\n    fmt = ctor(b'hello, %b!')\n    result = fmt % b'world'\n    print(type(result).__name__, result, fmt == ctor(b'hello, %b!'))\n    fmt = ctor(b'%s / 100 = %d%%')\n    result = fmt % (b'seventy-nine', 79)\n    print(type(result).__name__, result)\n    print(ctor(b'hello,\\x00%b!') % b'world')\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc'})\n    print(ctor(b'...%(f(o)o)b...') % {b'f(o)o': b'abc', b'foo': b'bar'})\n    print(ctor(b'...%(foo)b...') % {b'foo': b'abc', b'def': 123})\n    print(ctor(b'%*b') % (5, b'abc'))\n    print(ctor(b'%*b') % (-5, b'abc'))\n    print(ctor(b'%*.*b') % (5, 2, b'abc'))\n    print(ctor(b'%*.*b') % (5, 3, b'abc'))\n    print(ctor(b'%i %*.*b') % (10, 5, 3, b'abc'))\n    print(ctor(b'%i%b %*.*b') % (10, b'3', 5, 3, b'abc'))\n    print(ctor(b'%b %s') % (memoryview(b'ab'), memoryview(b'cd')))\n    print(ctor(b'%c') % b'a')\n    print(ctor(b'%d') % 3.14)\n    print(ctor(b'%f %F %.2f %e %E %g %G') % (1.0, 1.0, 1.25, 1234.5, 1234.5, 1.25, 1.25))\n    print(ctor(b'%+08.2f') % 1.25)\n    holder = ctor(b'hello, %b!')\n    alias = holder\n    holder %= b'world'\n    print(type(holder).__name__, holder, alias == ctor(b'hello, %b!'))\n    if isinstance(alias, bytearray):\n        print(holder is alias, alias)\n    for expr in [lambda: ctor(b'%x') % 3.14, lambda: ctor(b'%c') % b'ab', lambda: ctor(b'%c') % 256, lambda: ctor(b'%b') % 'text', lambda: ctor(b'%c') % memoryview(b'a')]:\n        try:\n            expr()\n        except (TypeError, OverflowError, ValueError) as error:\n            print(error.__class__.__name__)",
         &[
             "bytes b'hello, world!' True",
             "bytes b'seventy-nine / 100 = 79%'",
@@ -25590,12 +31662,16 @@ fn cpython_bytes_percent_format_subset() {
             "b'  abc'",
             "b'10   abc'",
             "b'103   abc'",
+            "b'ab cd'",
             "b'a'",
             "b'3'",
+            "b'1.000000 1.000000 1.25 1.234500e+03 1.234500E+03 1.25 1.25'",
+            "b'+0001.25'",
             "bytes b'hello, world!' True",
             "TypeError",
             "TypeError",
             "OverflowError",
+            "TypeError",
             "TypeError",
             "bytearray bytearray(b'hello, world!') True",
             "bytearray bytearray(b'seventy-nine / 100 = 79%')",
@@ -25609,14 +31685,78 @@ fn cpython_bytes_percent_format_subset() {
             "bytearray(b'  abc')",
             "bytearray(b'10   abc')",
             "bytearray(b'103   abc')",
+            "bytearray(b'ab cd')",
             "bytearray(b'a')",
             "bytearray(b'3')",
+            "bytearray(b'1.000000 1.000000 1.25 1.234500e+03 1.234500E+03 1.25 1.25')",
+            "bytearray(b'+0001.25')",
             "bytearray bytearray(b'hello, world!') True",
             "False bytearray(b'hello, %b!')",
             "TypeError",
             "TypeError",
             "OverflowError",
             "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_mod.
+// This slice covers public old-style bytes formatting behavior around
+// `__bytes__`, non-ASCII repr escaping, and mapping/dynamic-width errors.
+#[test]
+fn cpython_bytes_percent_format_dunder_bytes_errors_subset() {
+    assert_output(
+        "class BytesResult:\n    def __bytes__(self):\n        return b'xx'\nclass StrResult:\n    def __bytes__(self):\n        return 'not bytes'\nclass Raises:\n    def __bytes__(self):\n        raise RuntimeError('boom')\nclass NonAsciiRepr:\n    def __repr__(self):\n        return chr(233)\nfor ctor in [bytes, bytearray]:\n    print(ctor(b'%b') % BytesResult())\n    print(ctor(b'%s') % BytesResult())\n    for expr in [lambda: ctor(b'%b') % StrResult(), lambda: ctor(b'%b') % Raises(), lambda: ctor(b'%(x)*b') % {b'x': b'a'}, lambda: ctor(b'%(x)b %b') % {b'x': b'a'}, lambda: ctor(b'%(x)*b') % ({b'x': b'a'}, 3), lambda: ctor(b'%f') % 'text', lambda: ctor(b'%c') % memoryview(b'a')]:\n        try:\n            expr()\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])\n    try:\n        ctor(b'%(x)b') % {b'y': b'a'}\n    except KeyError as error:\n        print(error.__class__.__name__, error.args)\n    print(ctor(b'%r') % NonAsciiRepr())\n    print(ctor(b'%a') % NonAsciiRepr())",
+        &[
+            "b'xx'",
+            "b'xx'",
+            "TypeError __bytes__ returned non-bytes (type str)",
+            "RuntimeError boom",
+            "TypeError * wants int",
+            "TypeError not enough arguments for format string",
+            "TypeError format requires a mapping",
+            "TypeError float argument required, not str",
+            "TypeError %c requires an integer in range(256) or a single byte, not memoryview",
+            "KeyError (b'x',)",
+            "b'\\\\xe9'",
+            "b'\\\\xe9'",
+            "bytearray(b'xx')",
+            "bytearray(b'xx')",
+            "TypeError __bytes__ returned non-bytes (type str)",
+            "RuntimeError boom",
+            "TypeError * wants int",
+            "TypeError not enough arguments for format string",
+            "TypeError format requires a mapping",
+            "TypeError float argument required, not str",
+            "TypeError %c requires an integer in range(256) or a single byte, not memoryview",
+            "KeyError (b'x',)",
+            "bytearray(b'\\\\xe9')",
+            "bytearray(b'\\\\xe9')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_mod
+// direct dunder behavior and ByteArrayTest::test_mod_concurrent_mutation.
+// The bytearray receiver must stay resize-locked while formatting invokes
+// user code such as __repr__ for %a.
+#[test]
+fn cpython_bytes_percent_dunder_and_reentrant_bytearray_subset() {
+    assert_output(
+        "class B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor receiver in [b'%s', B(b'%s'), bytearray(b'%s'), BA(b'%s')]:\n    result = receiver.__mod__(b'a')\n    print(type(receiver).__name__, type(result).__name__, result, result is receiver)\nfor typ, receiver in [(bytes, b'%s'), (bytes, B(b'%s')), (bytearray, bytearray(b'%s')), (bytearray, BA(b'%s'))]:\n    result = typ.__mod__(receiver, b'a')\n    print('unbound', typ.__name__, type(receiver).__name__, type(result).__name__, result)\nprint('__mod__' in dir(bytes), '__mod__' in dir(bytearray), '__mod__' in dir(B), '__mod__' in dir(BA))\nfor op in ['dunder', 'operator']:\n    fmt = bytearray(b'%a end')\n    class S:\n        def __repr__(self):\n            fmt.clear()\n            return 'E'\n    try:\n        if op == 'dunder':\n            fmt.__mod__(S())\n        else:\n            fmt % S()\n    except BufferError as error:\n        print(op, error.__class__.__name__, fmt)\n    else:\n        print(op, 'accepted', fmt)",
+        &[
+            "bytes bytes b'a' False",
+            "B bytes b'a' False",
+            "bytearray bytearray bytearray(b'a') False",
+            "BA bytearray bytearray(b'a') False",
+            "unbound bytes bytes bytes b'a'",
+            "unbound bytes B bytes b'a'",
+            "unbound bytearray bytearray bytearray bytearray(b'a')",
+            "unbound bytearray BA bytearray bytearray(b'a')",
+            "True True True True",
+            "dunder BufferError bytearray(b'%a end')",
+            "operator BufferError bytearray(b'%a end')",
         ],
     );
 }
@@ -25725,6 +31865,36 @@ fn cpython_bytearray_resize_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest::test_alloc,
+// ::test_init_alloc, and the subclass slice of ::test_resize. This pins the
+// public `__alloc__()` contract and inherited bytearray mutation methods
+// without claiming CPython's exact allocator growth policy.
+#[test]
+fn cpython_bytearray_alloc_and_subclass_mutation_subset() {
+    assert_output(
+        "b = bytearray()\nprint(b.__alloc__(), b.__alloc__() >= len(b))\nok = True\nfor _ in range(5):\n    b += b'x'\n    ok = ok and b.__alloc__() > len(b)\nprint(len(b), ok, b.__alloc__() > len(b))\nb = bytearray()\nchecks = []\ndef g():\n    for i in range(1, 5):\n        yield i\n        checks.append((list(b), len(b), b.__alloc__() > len(b)))\nprint(b.__init__(g()), list(b), len(b), b.__alloc__() > len(b), checks)\nclass BA(bytearray):\n    pass\nba = BA(b'abc')\nprint(ba.append(100), type(ba).__name__, ba)\nprint(ba.extend(memoryview(b'ef')), ba)\nprint(ba.insert(1, 90), ba)\nprint(ba.pop(), ba)\nprint(ba.remove(ord('Z')), ba)\nprint(ba.reverse(), ba)\ncopy = ba.copy()\nprint(type(copy).__name__, copy == ba, copy is ba)\nprint(ba.resize(2), ba)\nba = BA(b'ab')\nresult = ba.__iadd__(b'c')\nprint(type(result).__name__, result is ba, ba)\nresult = ba.__imul__(2)\nprint(type(result).__name__, result is ba, ba)\nprint(ba.__setitem__(slice(1, 4), b'XYZ'), ba)\nprint(ba.__delitem__(slice(None, None, 2)), ba)\nprint(BA(b'abc').__alloc__() > len(BA(b'abc')))\nprint('__alloc__' in dir(bytearray), '__alloc__' in dir(BA), '__alloc__' in dir(BA()))",
+        &[
+            "0 True",
+            "5 True True",
+            "None [1, 2, 3, 4] 4 True [([1], 1, True), ([1, 2], 2, True), ([1, 2, 3], 3, True), ([1, 2, 3, 4], 4, True)]",
+            "None BA BA(b'abcd')",
+            "None BA(b'abcdef')",
+            "None BA(b'aZbcdef')",
+            "102 BA(b'aZbcde')",
+            "None BA(b'abcde')",
+            "None BA(b'edcba')",
+            "bytearray True False",
+            "None BA(b'ed')",
+            "BA True BA(b'abc')",
+            "BA True BA(b'abcabc')",
+            "None BA(b'aXYZbc')",
+            "None BA(b'XZc')",
+            "True",
+            "True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest::
 // test_resize_forbidden. Active memoryview exports must block every
 // bytearray operation that would resize the buffer, and the original contents
@@ -25749,12 +31919,12 @@ fn cpython_bytearray_resize_forbidden_subset() {
 
 // Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest::test_take_bytes.
 // The slice covers public take-and-delete behavior and the active memoryview
-// exporter BufferError case. CPython allocation details and `sys.getsizeof()`
-// remain classified as implementation work.
+// exporter BufferError case. Exact allocation-size accounting and
+// `sys.getsizeof()` remain classified as implementation work.
 #[test]
 fn cpython_bytearray_take_bytes_subset() {
     assert_output(
-        "class Indexable:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nba = bytearray(b'ab')\nprint(ba.take_bytes(), ba, len(ba))\nba = bytearray(b'abcdef')\nprint(ba.take_bytes(1), ba, len(ba))\nprint(ba.take_bytes(-5), ba, len(ba))\nprint(ba.take_bytes(-3), ba, len(ba))\nprint(ba.take_bytes(3), ba, len(ba))\nprint(ba.take_bytes(0), ba)\nprint(ba.take_bytes(), ba)\nprint(ba.take_bytes(None), ba)\nba = bytearray(b'abcdef')\nprint(ba.take_bytes(Indexable(2)), ba)\nba = bytearray(b'abcde')\ndel ba[:2]\nprint(ba)\nprint(ba.take_bytes(), ba)\nba = bytearray(b'abcde')\ndel ba[-2:]\nprint(ba)\nprint(ba.take_bytes(), ba)\nba = bytearray(b'abcde')\nba.resize(4)\nprint(ba.take_bytes(), ba)\nfor expr in [lambda: bytearray().take_bytes(-1), lambda: bytearray(b'abcdef').take_bytes(7), lambda: bytearray(b'abcdef').take_bytes(3.14), lambda: bytearray(b'abcdef').take_bytes(1, 2)]:\n    try:\n        expr()\n    except (TypeError, IndexError) as error:\n        print(error.__class__.__name__)\nba = bytearray(b'abc')\nwith memoryview(ba) as mv:\n    try:\n        ba.take_bytes()\n    except BufferError as error:\n        print(error.__class__.__name__, ba)\nprint(ba.take_bytes(), ba)\nprint('take_bytes' in dir(bytes), 'take_bytes' in dir(bytearray), 'take_bytes' in dir(bytearray()))",
+        "class Indexable:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass BA(bytearray):\n    pass\nba = bytearray(b'ab')\nprint(ba.take_bytes(), ba, len(ba))\nba = bytearray(b'abcdef')\nprint(ba.take_bytes(1), ba, len(ba))\nprint(ba.take_bytes(-5), ba, len(ba))\nprint(ba.take_bytes(-3), ba, len(ba))\nprint(ba.take_bytes(3), ba, len(ba))\nprint(ba.take_bytes(0), ba)\nprint(ba.take_bytes(), ba)\nprint(ba.take_bytes(None), ba)\nba = bytearray(b'abcdef')\nprint(ba.take_bytes(Indexable(2)), ba)\nba = BA(b'xyz')\nprint(type(ba).__name__, ba.take_bytes(2), type(ba.take_bytes()).__name__, ba)\nba = bytearray(b'abcde')\ndel ba[:2]\nprint(ba)\nprint(ba.take_bytes(), ba)\nba = bytearray(b'abcde')\ndel ba[-2:]\nprint(ba)\nprint(ba.take_bytes(), ba)\nba = bytearray(b'abcde')\nba.resize(4)\nprint(ba.take_bytes(), ba)\nfor expr in [lambda: bytearray().take_bytes(-1), lambda: bytearray(b'abcdef').take_bytes(7), lambda: bytearray(b'abcdef').take_bytes(3.14), lambda: bytearray(b'abcdef').take_bytes(1, 2)]:\n    try:\n        expr()\n    except (TypeError, IndexError) as error:\n        print(error.__class__.__name__)\nba = bytearray(b'abc')\nwith memoryview(ba) as mv:\n    try:\n        ba.take_bytes()\n    except BufferError as error:\n        print(error.__class__.__name__, ba)\nprint(ba.take_bytes(), ba)\nprint('take_bytes' in dir(bytes), 'take_bytes' in dir(bytearray), 'take_bytes' in dir(bytearray()), 'take_bytes' in dir(BA), 'take_bytes' in dir(BA()))",
         &[
             "b'ab' bytearray(b'') 0",
             "b'a' bytearray(b'bcdef') 5",
@@ -25765,6 +31935,7 @@ fn cpython_bytearray_take_bytes_subset() {
             "b'' bytearray(b'')",
             "b'' bytearray(b'')",
             "b'ab' bytearray(b'cdef')",
+            "BA b'xy' bytes BA(b'')",
             "bytearray(b'cde')",
             "b'cde' bytearray(b'')",
             "bytearray(b'abc')",
@@ -25776,7 +31947,7 @@ fn cpython_bytearray_take_bytes_subset() {
             "TypeError",
             "BufferError bytearray(b'abc')",
             "b'abc' bytearray(b'')",
-            "False True True",
+            "False True True True True",
         ],
     );
 }
@@ -25795,6 +31966,18 @@ fn cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset() {
             "bytearray(b'xc') bytearray(b'xc') True True",
             "bytearray(b'xcxcxc')",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest::
+// test_exhausted_iterator. An exhausted bytearray iterator must remain
+// exhausted after the exporter grows, while a sibling iterator that has not
+// reached the old end can still observe appended bytes.
+#[test]
+fn cpython_bytearray_exhausted_iterator_subset() {
+    assert_output(
+        "a = bytearray([1, 2, 3])\nexhit = iter(a)\nempit = iter(a)\nfor x in exhit:\n    next(empit)\na.append(9)\nprint(list(exhit), list(empit), a)\nexhit = iter(bytearray([1, 2, 3]))\nseen = []\nfor _ in exhit:\n    seen.append(next(exhit, 1))\nprint(seen)",
+        &["[] [9] bytearray(b'\\x01\\x02\\x03\\t')", "[2, 1]"],
     );
 }
 
@@ -25848,6 +32031,21 @@ fn cpython_bytearray_extend_empty_buffer_overflow_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_bytes.py::ByteArrayTest::test_regexps.
+// MiniPython exposes a deliberately small `re.findall()` bytes-pattern subset:
+// ASCII `\w+` over bytes-like subjects returns ordinary bytes matches.
+#[test]
+fn cpython_bytearray_regexps_subset() {
+    assert_output(
+        "import re\ndef by(text):\n    return bytearray(map(ord, text))\nfor source in [by('Hello, world'), b'Hi, Bob_2!', memoryview(b'xy 99')]:\n    matches = re.findall(br'\\w+', source)\n    print(type(source).__name__, matches, [type(item).__name__ for item in matches])",
+        &[
+            "bytearray [b'Hello', b'world'] ['bytes', 'bytes']",
+            "bytes [b'Hi', b'Bob_2'] ['bytes', 'bytes']",
+            "memoryview [b'xy', b'99'] ['bytes', 'bytes']",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom,
 // AssortedBytesTest::test_bytes_repr, and the module-level BytesSubclass /
 // ByteArraySubclass definitions. This is the first public bytes/bytearray
@@ -25861,6 +32059,102 @@ fn cpython_bytes_bytearray_subclass_basics_subset() {
             "True True b'ab' 2 False True",
             "True True b'cd' 2 False True",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::SubclassTest::test_basic
+// and ::test_join as applied to BytesSubclassTest and ByteArraySubclassTest.
+// Bytes/bytearray subclass operations use the stored base value for comparison,
+// concatenation, repetition, and inherited methods, while non-mutating results
+// are returned as the base bytes/bytearray type rather than the subclass.
+#[test]
+fn cpython_bytes_bytearray_subclass_ops_and_join_subset() {
+    assert_output(
+        "class B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor T, base in [(B, bytes), (BA, bytearray)]:\n    a = b'abcd'\n    c = b'efgh'\n    ta = T(a)\n    tc = T(c)\n    print(T.__name__, issubclass(T, base), isinstance(T(), base))\n    print(ta == ta, not (ta == tc), ta < tc, ta <= tc, tc >= ta, tc > ta, ta is a)\n    print(a + c == ta + tc, a + c == a + tc, a + c == ta + c)\n    repeated = ta * 5\n    print(a * 5 == repeated, type(repeated).__name__)\n    s2 = base().join([ta])\n    print(type(s2).__name__, s2 == ta, s2 is ta)\n    s3 = ta.join([b'abcd'])\n    print(type(s3).__name__, s3 == b'abcd')\nprint(hasattr(B(b''), 'join'), hasattr(BA(b''), 'join'), hasattr(bytes, 'join'), hasattr(bytearray, 'join'))",
+        &[
+            "B True True",
+            "True True True True True True False",
+            "True True True",
+            "True bytes",
+            "bytes True False",
+            "bytes True",
+            "BA True True",
+            "True True True True True True False",
+            "True True True",
+            "True bytearray",
+            "bytearray True False",
+            "bytearray True",
+            "True True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::SubclassTest::test_fromhex.
+// The classmethod returns the concrete bytes/bytearray subclass and routes
+// through subclass construction, including custom __new__ / __init__ hooks.
+#[test]
+fn cpython_bytes_bytearray_subclass_fromhex_subset() {
+    assert_output(
+        "class B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor T in [B, BA]:\n    x = T.fromhex('1a2B30')\n    print(T.__name__, type(x).__name__, x == b'\\x1a+0', isinstance(x, T), getattr(x, 'foo', 'none'))\nclass B1(bytes):\n    def __new__(cls, value):\n        me = bytes.__new__(cls, value)\n        me.foo = 'bar'\n        return me\nclass BA1(bytearray):\n    def __new__(cls, value):\n        me = bytearray.__new__(cls, value)\n        me.foo = 'bar'\n        return me\nfor T in [B1, BA1]:\n    x = T.fromhex('1a2B30')\n    print(T.__name__, type(x).__name__, x == b'\\x1a+0', getattr(x, 'foo', 'none'))\nclass B2(bytes):\n    def __init__(self, value):\n        self.foo = 'bar'\nclass BA2(bytearray):\n    def __init__(self, *args):\n        bytearray.__init__(self, *args)\n        self.foo = 'bar'\nfor T in [B2, BA2]:\n    x = T.fromhex('1a2B30')\n    print(T.__name__, type(x).__name__, x == b'\\x1a+0', getattr(x, 'foo', 'none'))\ny = bytearray.__new__(BA, b'abc', spam='ignored')\nprint(type(y).__name__, y, y == b'abc')\nprint(bytearray.__init__(y, b'abc'), y, y == b'abc')\nprint(hasattr(bytes, '__new__'), hasattr(bytearray, '__new__'), hasattr(bytearray, '__init__'))",
+        &[
+            "B B True True none",
+            "BA BA True True none",
+            "B1 B1 True bar",
+            "BA1 BA1 True bar",
+            "B2 B2 True bar",
+            "BA2 BA2 True bar",
+            "BA BA(b'') False",
+            "None BA(b'abc') True",
+            "True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::ByteArraySubclassTest::test_init_override.
+// A bytearray subclass with a custom __init__ receives the original
+// constructor arguments instead of having them pre-consumed by bytearray().
+#[test]
+fn cpython_bytearray_subclass_init_override_subset() {
+    assert_output(
+        "class Sub(bytearray):\n    def __init__(self, newarg=1, *args, **kwargs):\n        print('init', newarg, args, kwargs.get('source', None))\n        bytearray.__init__(self, *args, **kwargs)\nfor factory in [lambda: Sub(4, b'abcd'), lambda: Sub(4, source=b'abcd'), lambda: Sub(newarg=4, source=b'abcd')]:\n    value = factory()\n    print(type(value).__name__, value == b'abcd', bytes(value), isinstance(value, bytearray))\nclass Empty(bytearray):\n    def __init__(self, value):\n        print('empty init', value)\nempty = Empty(b'abc')\nprint(type(empty).__name__, len(empty), bytes(empty))",
+        &[
+            "init 4 (b'abcd',) None",
+            "Sub True b'abcd' True",
+            "init 4 () b'abcd'",
+            "Sub True b'abcd' True",
+            "init 4 () b'abcd'",
+            "Sub True b'abcd' True",
+            "empty init b'abc'",
+            "Empty 0 b''",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::SubclassTest::test_copy.
+// Shallow and deep copies preserve the concrete bytes/bytearray subclass,
+// equality, user attributes, and nested subclass attribute values while
+// returning a distinct top-level object.
+#[test]
+fn cpython_bytes_bytearray_subclass_copy_subset() {
+    assert_output(
+        "import copy\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor T in [B, BA]:\n    a = T(b'abcd')\n    a.x = 10\n    a.z = T(b'efgh')\n    for label, method in [('copy', copy.copy), ('deepcopy', copy.deepcopy)]:\n        b = method(a)\n        print(T.__name__, label, type(b).__name__, b == a, b is a, getattr(b, 'x', 'none'), type(getattr(b, 'z', None)).__name__, getattr(b, 'z', b'') == T(b'efgh'), hasattr(b, 'y'))",
+        &[
+            "B copy B True False 10 B True False",
+            "B deepcopy B True False 10 B True False",
+            "BA copy BA True False 10 BA True False",
+            "BA deepcopy BA True False 10 BA True False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::SubclassTest::test_pickle.
+// MiniPython's pickle module uses an internal payload instead of CPython's
+// binary pickle stream, so this locks the public subclass round-trip semantics.
+#[test]
+fn cpython_bytes_bytearray_subclass_pickle_subset() {
+    assert_output(
+        "import pickle\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor T in [B, BA]:\n    checked = 0\n    nested = 0\n    independent = 0\n    for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n        a = T(b'abcd')\n        a.x = 10\n        a.z = T(b'efgh')\n        b = pickle.loads(pickle.dumps(a, proto))\n        if type(b) is T and b == a and b is not a and b.x == 10 and not hasattr(b, 'y'):\n            checked += 1\n        if type(b.z) is T and b.z == T(b'efgh'):\n            nested += 1\n        if isinstance(b, bytearray):\n            b.append(ord('!'))\n            if bytes(a) == b'abcd' and bytes(b) == b'abcd!':\n                independent += 1\n        elif bytes(b) == b'abcd':\n            independent += 1\n    print(T.__name__, checked, nested, independent, pickle.HIGHEST_PROTOCOL + 1)",
+        &["B 6 6 6 6", "BA 6 6 6 6"],
     );
 }
 
@@ -25887,6 +32181,59 @@ fn cpython_bytes_dunder_bytes_and_blocking_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+        ],
+    );
+    assert_output(
+        "class BytesSubclass(bytes):\n    pass\nclass OtherBytesSubclass(bytes):\n    pass\nclass StrWithBytes(str):\n    def __new__(cls, value):\n        self = str.__new__(cls, '\\u20ac')\n        self.value = value\n        return self\n    def __bytes__(self):\n        return self.value\nclass BytesWithBytes(bytes):\n    def __new__(cls, value):\n        self = bytes.__new__(cls, b'\\xa4')\n        self.value = value\n        return self\n    def __bytes__(self):\n        return self.value\nsamples = [\n    ('str-bytes', lambda: bytes(StrWithBytes(b'abc')), b'abc'),\n    ('str-encoding', lambda: bytes(StrWithBytes(b'abc'), 'iso8859-15'), b'\\xa4'),\n    ('str-subbytes', lambda: bytes(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-str-bytes', lambda: BytesSubclass(StrWithBytes(b'abc')), b'abc'),\n    ('sub-str-encoding', lambda: BytesSubclass(StrWithBytes(b'abc'), 'iso8859-15'), b'\\xa4'),\n    ('sub-str-subbytes', lambda: BytesSubclass(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-str-other', lambda: BytesSubclass(StrWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),\n    ('byteswithbytes', lambda: bytes(BytesWithBytes(b'abc')), b'abc'),\n    ('sub-byteswithbytes', lambda: BytesSubclass(BytesWithBytes(b'abc')), b'abc'),\n    ('byteswithbytes-sub', lambda: bytes(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-byteswithbytes-sub', lambda: BytesSubclass(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-byteswithbytes-other', lambda: BytesSubclass(BytesWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),\n]\nfor label, callback, expected in samples:\n    result = callback()\n    print(label, type(result).__name__, result == expected, result)\nplain = str.__new__(str, 'plain')\ncustom = str.__new__(StrWithBytes, 'stored')\nprint(type(plain).__name__, plain)\nprint(type(custom).__name__, str(custom), hasattr(custom, 'value'))",
+        &[
+            "str-bytes bytes True b'abc'",
+            "str-encoding bytes True b'\\xa4'",
+            "str-subbytes BytesSubclass True b'abc'",
+            "sub-str-bytes BytesSubclass True b'abc'",
+            "sub-str-encoding BytesSubclass True b'\\xa4'",
+            "sub-str-subbytes BytesSubclass True b'abc'",
+            "sub-str-other BytesSubclass True b'abc'",
+            "byteswithbytes bytes True b'abc'",
+            "sub-byteswithbytes BytesSubclass True b'abc'",
+            "byteswithbytes-sub BytesSubclass True b'abc'",
+            "sub-byteswithbytes-sub BytesSubclass True b'abc'",
+            "sub-byteswithbytes-other BytesSubclass True b'abc'",
+            "str plain",
+            "StrWithBytes stored False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BytesTest::test__bytes__.
+#[test]
+fn cpython_bytes_dunder_bytes_method_subset() {
+    assert_output(
+        "class B(bytes):\n    pass\nfor value in [b'foo\\0bar', B(b'bar\\0foo')]:\n    result = value.__bytes__()\n    print(type(value).__name__, result == value, type(result).__name__, isinstance(result, bytes), type(result) is bytes, result is value)\nprint(bytes.__bytes__(b'direct'))\nprint(B.__bytes__(B(b'inherited')))\nprint('__bytes__' in dir(bytes), '__bytes__' in dir(B), hasattr(bytearray(b''), '__bytes__'))",
+        &[
+            "bytes True bytes True True True",
+            "B True bytes True True False",
+            "b'direct'",
+            "b'inherited'",
+            "True True False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BytesTest::
+// test_repeat_id_preserving. Exact bytes repeat by one preserves object
+// identity, while zero/negative/two repeats and bytes subclasses return
+// distinct exact bytes objects.
+#[test]
+fn cpython_bytes_repeat_id_preserving_subset() {
+    assert_output(
+        "a = b'123abc1@'\nb = b'456zyx-+'\nprint(id(a) == id(a), id(a) != id(b), id(a) != id(a * -4), id(a) != id(a * 0))\nprint(id(a) == id(a * 1), id(a) == id(1 * a), id(a) == id(a * True), id(a) != id(a * 2))\nprint(b'' is bytes(), id(b'') == id(bytes()))\nclass SubBytes(bytes):\n    pass\ns = SubBytes(b'qwerty()')\nprint(id(s) == id(s), id(s) != id(s * -4), id(s) != id(s * 0))\nprint(id(s) != id(s * 1), id(s) != id(1 * s), id(s) != id(s * True), id(s) != id(s * 2))\nprint(type(s * 1).__name__, s * 1 == b'qwerty()')",
+        &[
+            "True True True True",
+            "True True True True",
+            "True True",
+            "True True True",
+            "True True True True",
+            "bytes True",
         ],
     );
 }
@@ -25923,6 +32270,69 @@ fn cpython_bytes_bytearray_subclass_repr_and_compare_subset() {
             "True True True True",
             "True True",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::AssortedBytesTest::
+// test_from_bytearray and ::test_compare_bytes_to_bytearray. This pins
+// bytearray construction from a memoryview-backed bytes object plus both
+// operand orders for bytes/bytearray rich comparison.
+#[test]
+fn cpython_bytes_bytearray_assorted_public_subset() {
+    assert_output(
+        "sample = bytes(b'Hello world\\n\\x80\\x81\\xfe\\xff')\nconverted = bytearray(memoryview(sample))\nprint('from-bytearray', converted == bytearray(sample), bytes(converted) == sample, len(converted))\nprint('bytes-left', b'abc' == bytearray(b'abc'), b'ab' != bytearray(b'abc'), b'ab' <= bytearray(b'abc'), b'ab' < bytearray(b'abc'), b'abc' >= bytearray(b'ab'), b'abc' > bytearray(b'ab'))\nprint('bytes-left-false', b'abc' != bytearray(b'abc'), b'ab' == bytearray(b'abc'), b'ab' > bytearray(b'abc'), b'ab' >= bytearray(b'abc'), b'abc' < bytearray(b'ab'), b'abc' <= bytearray(b'ab'))\nprint('bytearray-left', bytearray(b'abc') == b'abc', bytearray(b'ab') != b'abc', bytearray(b'ab') <= b'abc', bytearray(b'ab') < b'abc', bytearray(b'abc') >= b'ab', bytearray(b'abc') > b'ab')\nprint('bytearray-left-false', bytearray(b'abc') != b'abc', bytearray(b'ab') == b'abc', bytearray(b'ab') > b'abc', bytearray(b'ab') >= b'abc', bytearray(b'abc') < b'ab', bytearray(b'abc') <= b'ab')",
+        &[
+            "from-bytearray True True 16",
+            "bytes-left True True True True True True",
+            "bytes-left-false False False False False False False",
+            "bytearray-left True True True True True True",
+            "bytearray-left-false False False False False False False",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::AssortedBytesTest::test_compare.
+// BytesWarning comparison checks only run when the interpreter bytes-warning
+// flag is enabled. `-b` records warnings; `-bb` installs the default
+// warning-as-error filter, while catch_warnings can still override it.
+#[test]
+fn cpython_bytes_warning_compare_subset() {
+    let source = "import sys, warnings\nprint('flag', sys.flags.bytes_warning)\ndef check(label, expr):\n    with warnings.catch_warnings(record=True) as caught:\n        warnings.simplefilter('always')\n        result = expr()\n    if caught:\n        warning = caught[0]\n        print(label, result, len(caught), warning.category is BytesWarning, str(warning.message))\n    else:\n        print(label, result, 0)\nfor label, expr in [\n    ('bytes-str', lambda: b'' == ''),\n    ('str-bytes', lambda: '' == b''),\n    ('bytes-ne-str', lambda: b'' != ''),\n    ('str-ne-bytes', lambda: '' != b''),\n    ('bytearray-str', lambda: bytearray(b'') == ''),\n    ('str-bytearray', lambda: '' == bytearray(b'')),\n    ('bytearray-ne-str', lambda: bytearray(b'') != ''),\n    ('str-ne-bytearray', lambda: '' != bytearray(b'')),\n    ('bytes-int', lambda: b'\\0' == 0),\n    ('int-bytes', lambda: 0 == b'\\0'),\n    ('bytes-ne-int', lambda: b'\\0' != 0),\n    ('int-ne-bytes', lambda: 0 != b'\\0'),\n    ('bytearray-int', lambda: bytearray(b'\\0') == 0),\n]:\n    check(label, expr)\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter('always')\n    print('bb-caught', b'' == '', len(caught), caught[0].category is BytesWarning)";
+    assert_output_with_runtime_options(
+        source,
+        &[
+            "flag 1",
+            "bytes-str False 1 True Comparison between bytes and string",
+            "str-bytes False 1 True Comparison between bytes and string",
+            "bytes-ne-str True 1 True Comparison between bytes and string",
+            "str-ne-bytes True 1 True Comparison between bytes and string",
+            "bytearray-str False 1 True Comparison between bytearray and string",
+            "str-bytearray False 1 True Comparison between bytearray and string",
+            "bytearray-ne-str True 1 True Comparison between bytearray and string",
+            "str-ne-bytearray True 1 True Comparison between bytearray and string",
+            "bytes-int False 1 True Comparison between bytes and int",
+            "int-bytes False 1 True Comparison between bytes and int",
+            "bytes-ne-int True 1 True Comparison between bytes and int",
+            "int-ne-bytes True 1 True Comparison between bytes and int",
+            "bytearray-int False 0",
+            "bb-caught False 1 True",
+        ],
+        RuntimeOptions::default().with_bytes_warning(1),
+    );
+
+    let error = run_source_with_runtime_options(
+        "b'' == ''",
+        RuntimeOptions::default().with_bytes_warning(2),
+    )
+    .expect_err("expected -bb bytes comparison to raise BytesWarning");
+    assert!(
+        error.contains("BytesWarning: Comparison between bytes and string"),
+        "unexpected error: {error}"
+    );
+    assert_output_with_runtime_options(
+        "import warnings\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter('always')\n    print(b'' == '', len(caught), caught[0].category is BytesWarning)",
+        &["False 1 True"],
+        RuntimeOptions::default().with_bytes_warning(2),
     );
 }
 
@@ -26016,6 +32426,29 @@ fn cpython_bytearray_nonmutating_methods_copy_buffers_subset() {
             "bytearray(b'x') bytearray(b'') bytearray(b'') False",
             "bytearray(b'!') bytearray(b'')",
             "bytearray(b'') bytearray(b'')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_bytes.py::BytearrayPEP3137Test::
+// test_returns_new_copy. Mutable bytearray non-mutating methods must return
+// value-equal but distinct bytearray objects, even for no-op operations.
+#[test]
+fn cpython_bytearray_pep3137_returns_new_copy_subset() {
+    assert_output(
+        "val = bytearray(b'1234')\nfor methname in ['zfill', 'rjust', 'ljust', 'center']:\n    newval = getattr(val, methname)(3)\n    print(methname, val == newval, val is newval)\nchecks = [\n    ('split', lambda: val.split()[0]),\n    ('rsplit', lambda: val.rsplit()[0]),\n    ('partition', lambda: val.partition(b'.')[0]),\n    ('rpartition', lambda: val.rpartition(b'.')[2]),\n    ('splitlines', lambda: val.splitlines()[0]),\n    ('replace', lambda: val.replace(b'', b'')),\n]\nfor name, maker in checks:\n    newval = maker()\n    print(name, val == newval, val is newval)\nsep = bytearray(b'')\nnewval = sep.join([val])\nprint('join', val == newval, val is newval)",
+        &[
+            "zfill True False",
+            "rjust True False",
+            "ljust True False",
+            "center True False",
+            "split True False",
+            "rsplit True False",
+            "partition True False",
+            "rpartition True False",
+            "splitlines True False",
+            "replace True False",
+            "join True False",
         ],
     );
 }
@@ -27232,7 +33665,8 @@ fn cpython_type_namespace_order_subset() {
 
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_dir and
 // ::test_vars. This covers the executable introspection subset over local
-// scopes, modules, classes, instances, custom __dir__, and __dict__ properties.
+// scopes, modules, module subclasses, classes, instances, custom __dir__, and
+// __dict__ properties.
 #[test]
 fn cpython_vars_dir_builtin_subset() {
     assert_output(
@@ -27246,6 +33680,13 @@ fn cpython_vars_dir_builtin_subset() {
     assert_output(
         "import sys\nsys.__dict__['live_probe'] = 7\nprint(sys.live_probe)\nvars(sys)['live_probe2'] = 8\nprint(sys.live_probe2)\ndel sys.__dict__['live_probe']\nprint(hasattr(sys, 'live_probe'), 'live_probe2' in dir(sys))\nsys.__dict__['__name__'] = 'renamed_sys'\nprint(sys.__name__, vars(sys)['__name__'])",
         &["7", "8", "False True", "renamed_sys renamed_sys"],
+    );
+    assert_output(
+        "import types\nclass Foo(types.ModuleType):\n    __dict__ = 8\nf = Foo('foo')\nprint(isinstance(f, types.ModuleType), f.__name__, f.__dict__)\ntry:\n    dir(f)\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
+        &[
+            "True foo 8",
+            "TypeError <module>.__dict__ is not a dictionary",
+        ],
     );
     assert_output(
         "print('strip' in dir(str), '__mro__' in dir(str))\nclass Box:\n    class_attr = 3\n    def __init__(self):\n        self.y = 8\nbox = Box()\nprint('y' in dir(box), 'class_attr' in dir(box), sorted(vars(box).keys()))\nprint('class_attr' in vars(Box), '__module__' in vars(Box))",
@@ -27266,6 +33707,20 @@ fn cpython_vars_dir_builtin_subset() {
     assert_output(
         "print(sorted([].__dir__()) == dir([]))\nprint(sorted(object.__dir__([])) == dir([]), '__dir__' in dir([]))",
         &["True", "True True"],
+    );
+    assert_output(
+        "class SlotOnly:\n    __slots__ = []\nprint('__repr__' in dir(SlotOnly()))\nclass ClassShadow:\n    __slots__ = ['__class__', '__dict__']\n    def __init__(self):\n        self.bar = 'wow'\nshadow = ClassShadow()\nprint(dir(shadow))\ntry:\n    shadow.__class__\nexcept AttributeError as error:\n    print(error.__class__.__name__)\nshadow.__class__ = int\nnames = dir(shadow)\nprint('bit_length' in names, '__repr__' in names, 'bar' in names, shadow.__class__ is int, type(shadow).__name__)\nshadow.__class__ = 7\nnames = dir(shadow)\nprint('__repr__' in names, 'bar' in names, '__class__' in names, shadow.__class__)",
+        &[
+            "True",
+            "['bar']",
+            "AttributeError",
+            "True True True True ClassShadow",
+            "False True False 7",
+        ],
+    );
+    assert_output(
+        "try:\n    raise IndexError\nexcept IndexError as error:\n    names = dir(error.__traceback__)\nprint(len(names), names)",
+        &["4 ['tb_frame', 'tb_lasti', 'tb_lineno', 'tb_next']"],
     );
 }
 
@@ -27873,7 +34328,7 @@ fn cpython_int_max_str_digits_formatting_subset() {
 // ::test_next and selected Lib/test/test_iter.py iterator exhaustion cases.
 #[test]
 fn cpython_iter_next_builtin_subset() {
-    assert_output(
+    assert_output_with_stack(
         "for value in [('1', '2'), ['1', '2'], '12']:\n    iterator = iter(value)\n    print(next(iterator), next(iterator))\n    try:\n        next(iterator)\n    except StopIteration:\n        print('stopped')\nfor expr in [lambda: iter(), lambda: iter(42, 42)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "1 2",
@@ -27885,14 +34340,16 @@ fn cpython_iter_next_builtin_subset() {
             "TypeError",
             "TypeError",
         ],
+        8 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         "iterator = iter(range(2))\nprint(next(iterator))\nprint(next(iterator))\nfor _ in [0, 1]:\n    try:\n        next(iterator)\n    except StopIteration:\n        print('stopped')\nprint(next(iterator, 42))\nclass Iter:\n    def __iter__(self):\n        return self\n    def __next__(self):\n        raise StopIteration\niterator = iter(Iter())\nprint(next(iterator, 42))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\ndef gen():\n    yield 1\n    return\niterator = gen()\nprint(next(iterator))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\nprint(next(iterator, 42))",
         &[
             "0", "1", "stopped", "stopped", "42", "42", "stopped", "1", "stopped", "42",
         ],
+        8 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "HAS_MORE = 1\n",
             "NO_MORE = 2\n",
@@ -27920,8 +34377,9 @@ fn cpython_iter_next_builtin_subset() {
             "print(list(iter(stop_by_exception, 99)))",
         ),
         &["stopped", "done", "[1, 2]"],
+        8 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "def show(label, iterator, mutate=None):\n",
             "    print(label, list(iterator))\n",
@@ -27974,6 +34432,7 @@ fn cpython_iter_next_builtin_subset() {
             "enumerate [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4)]",
             "enumerate []",
         ],
+        8 * 1024 * 1024,
     );
 }
 
@@ -28246,6 +34705,133 @@ fn cpython_sequence_constructor_builtins_subset() {
     );
 }
 
+// Adapted from CPython public list-subclass behavior used by
+// Lib/test/test_weakref.py::ReferencesTestCase::test_basic_proxy.
+// This pins the supported sequence protocol without depending on subclass repr.
+#[test]
+fn cpython_list_subclass_core_sequence_subset() {
+    assert_output(
+        concat!(
+            "class ListSubclass(list):\n",
+            "    pass\n",
+            "items = ListSubclass()\n",
+            "print('type', type(items).__name__, isinstance(items, list), items.__class__ is ListSubclass)\n",
+            "print('empty', bool(items), len(items), list(items))\n",
+            "items.append(12)\n",
+            "print('append', bool(items), len(items), 12 in items, items[0], list(items))\n",
+            "items[:] = [2, 3]\n",
+            "print('slice-set', len(items), items[:], 3 in items)\n",
+            "items[1] = 5\n",
+            "print('item-set', items[1], list(items))\n",
+            "print('reversed', list(reversed(items)))\n",
+            "names = dir(items)\n",
+            "print('dir', 'append' in names, '__len__' in names)\n",
+            "print('construct', list(ListSubclass([1, 2])), list(ListSubclass((3, 4))))\n",
+            "print('repr', repr(ListSubclass()), str(ListSubclass([1, 2])), f'{ListSubclass([\"x\"])!r}', f'{ListSubclass([\"x\"])!s}')\n",
+            "recursive = ListSubclass([1])\n",
+            "recursive.append(recursive)\n",
+            "print('recursive', repr(recursive), str(recursive))\n",
+            "for expr in [lambda: ListSubclass(sequence=[]), lambda: ListSubclass(42)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print('error', error.__class__.__name__)",
+        ),
+        &[
+            "type ListSubclass True True",
+            "empty False 0 []",
+            "append True 1 True 12 [12]",
+            "slice-set 2 [2, 3] True",
+            "item-set 5 [2, 5]",
+            "reversed [5, 2]",
+            "dir True True",
+            "construct [1, 2] [3, 4]",
+            "repr [] [1, 2] ['x'] ['x']",
+            "recursive [1, [...]] [1, [...]]",
+            "error TypeError",
+            "error TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython public tuple-subclass behavior used by sequence and
+// class-creation tests. This pins the supported immutable sequence protocol
+// without depending on CPython's object layout.
+#[test]
+fn cpython_tuple_subclass_core_sequence_subset() {
+    assert_output(
+        concat!(
+            "class TupleSubclass(tuple):\n",
+            "    pass\n",
+            "items = TupleSubclass([1, 2])\n",
+            "print('type', type(items).__name__, isinstance(items, tuple), items.__class__ is TupleSubclass)\n",
+            "print('state', bool(items), len(items), list(items), repr(items), str(items), f'{items!r}', f'{items!s}')\n",
+            "print('index-slice', items[0], items[:], list(reversed(items)))\n",
+            "empty = TupleSubclass()\n",
+            "print('empty', bool(empty), len(empty), list(empty), repr(empty), list(reversed(empty)))\n",
+            "for expr in [lambda: TupleSubclass(sequence=[]), lambda: TupleSubclass(1, 2), lambda: TupleSubclass(42)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print('error', error.__class__.__name__)",
+        ),
+        &[
+            "type TupleSubclass True True",
+            "state True 2 [1, 2] (1, 2) (1, 2) (1, 2) (1, 2)",
+            "index-slice 1 (1, 2) [2, 1]",
+            "empty False 0 [] () []",
+            "error TypeError",
+            "error TypeError",
+            "error TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython public dict-subclass behavior used across
+// Lib/test/test_builtin.py and Lib/test/test_types.py mapping-protocol cases.
+// This pins the supported mutable mapping protocol without depending on
+// CPython's internal dict layout.
+#[test]
+fn cpython_dict_subclass_core_mapping_subset() {
+    assert_output(
+        concat!(
+            "class DictSubclass(dict):\n",
+            "    pass\n",
+            "for source in [(), {'a': 1}, [('b', 2)]]:\n",
+            "    items = DictSubclass(source)\n",
+            "    print('construct', type(items).__name__, isinstance(items, dict), len(items), list(items), repr(items), str(items))\n",
+            "    print('get', items.get('a'), items.get('b'))\n",
+            "items = DictSubclass()\n",
+            "items['x'] = 1\n",
+            "items.update({'y': 2})\n",
+            "print('after-set', len(items), list(items), items['x'], items['y'], repr(items), f'{items!r}', f'{items!s}')\n",
+            "items['x'] = 3\n",
+            "print('replace', items['x'], repr(items))\n",
+            "items['self'] = items\n",
+            "print('recursive', repr(items), str(items))\n",
+            "del items['x']\n",
+            "print('delete', 'x' in items, len(items), repr(items))\n",
+            "try:\n",
+            "    del items['missing']\n",
+            "except KeyError as error:\n",
+            "    print('missing', error.__class__.__name__)",
+        ),
+        &[
+            "construct DictSubclass True 0 [] {} {}",
+            "get None None",
+            "construct DictSubclass True 1 ['a'] {'a': 1} {'a': 1}",
+            "get 1 None",
+            "construct DictSubclass True 1 ['b'] {'b': 2} {'b': 2}",
+            "get None 2",
+            "after-set 2 ['x', 'y'] 1 2 {'x': 1, 'y': 2} {'x': 1, 'y': 2} {'x': 1, 'y': 2}",
+            "replace 3 {'x': 3, 'y': 2}",
+            "recursive {'x': 3, 'y': 2, 'self': {...}} {'x': 3, 'y': 2, 'self': {...}}",
+            "delete False 2 {'y': 2, 'self': {...}}",
+            "missing KeyError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_set.py::TestFrozenSet and the common
 // TestJointOps cases, plus Lib/test/test_collections.py Set/MutableSet ABC
 // registration checks. This is a first-pass exact `frozenset` surface, not
@@ -28324,6 +34910,22 @@ fn cpython_set_and_frozenset_subclass_subset() {
             "print(type(u) is SetSubclass, isinstance(u, set), issubclass(SetSubclass, set))\n",
             "print(sorted(list(u)), set(u) == {1, 2}, len(u), 1 in u, 3 in u)\n",
             "print(isinstance(u, Set), isinstance(u, MutableSet), isinstance(u, Hashable))\n",
+            "print(repr(SetSubclass()), str(SetSubclass()), f'{SetSubclass()}')\n",
+            "display_set = SetSubclass([1])\n",
+            "print(repr(display_set), str(display_set), f'{display_set}')\n",
+            "print(object.__format__(SetSubclass(), ''), object.__format__(display_set, ''))\n",
+            "try:\n",
+            "    format(display_set, '>10')\n",
+            "except TypeError as error:\n",
+            "    print('set format TypeError', 'SetSubclass.__format__' in str(error))\n",
+            "try:\n",
+            "    object.__format__(display_set, '>10')\n",
+            "except TypeError as error:\n",
+            "    print('set object format TypeError', 'SetSubclass.__format__' in str(error))\n",
+            "class SetSubclassWithFormat(set):\n",
+            "    def __format__(self, spec):\n",
+            "        return 'setfmt:' + spec\n",
+            "print(f'{SetSubclassWithFormat([1]):abc}')\n",
             "try:\n",
             "    hash(u)\n",
             "except TypeError:\n",
@@ -28362,6 +34964,22 @@ fn cpython_set_and_frozenset_subclass_subset() {
             "print(type(f) is FrozenSetSubclass, isinstance(f, frozenset), issubclass(FrozenSetSubclass, frozenset))\n",
             "print(sorted(list(f)), set(f) == {1, 2}, len(f), 2 in f, 3 in f)\n",
             "print(isinstance(f, Set), isinstance(f, MutableSet), isinstance(f, Hashable))\n",
+            "print(repr(FrozenSetSubclass()), str(FrozenSetSubclass()), f'{FrozenSetSubclass()}')\n",
+            "display_frozen = FrozenSetSubclass([1])\n",
+            "print(repr(display_frozen), str(display_frozen), f'{display_frozen}')\n",
+            "print(object.__format__(FrozenSetSubclass(), ''), object.__format__(display_frozen, ''))\n",
+            "try:\n",
+            "    format(display_frozen, '>10')\n",
+            "except TypeError as error:\n",
+            "    print('frozenset format TypeError', 'FrozenSetSubclass.__format__' in str(error))\n",
+            "try:\n",
+            "    object.__format__(display_frozen, '>10')\n",
+            "except TypeError as error:\n",
+            "    print('frozenset object format TypeError', 'FrozenSetSubclass.__format__' in str(error))\n",
+            "class FrozenSetSubclassWithFormat(frozenset):\n",
+            "    def __format__(self, spec):\n",
+            "        return 'frozenfmt:' + spec\n",
+            "print(f'{FrozenSetSubclassWithFormat([1]):abc}')\n",
             "print(type(f.copy()).__name__, f.copy() is f)\n",
             "print(f == frozenset([1, 2]), frozenset([1, 2]) == f, f < frozenset([1, 2, 3]))\n",
             "print(type(f.union([3])).__name__, sorted(f.union([3])))\n",
@@ -28414,6 +35032,12 @@ fn cpython_set_and_frozenset_subclass_subset() {
             "True True True",
             "[1, 2] True 2 True False",
             "True True False",
+            "SetSubclass() SetSubclass() SetSubclass()",
+            "SetSubclass({1}) SetSubclass({1}) SetSubclass({1})",
+            "SetSubclass() SetSubclass({1})",
+            "set format TypeError True",
+            "set object format TypeError True",
+            "setfmt:abc",
             "set subclass hash TypeError",
             "[1, 3] set",
             "True True True",
@@ -28426,6 +35050,12 @@ fn cpython_set_and_frozenset_subclass_subset() {
             "True True True",
             "[1, 2] True 2 True False",
             "True False True",
+            "FrozenSetSubclass() FrozenSetSubclass() FrozenSetSubclass()",
+            "FrozenSetSubclass({1}) FrozenSetSubclass({1}) FrozenSetSubclass({1})",
+            "FrozenSetSubclass() FrozenSetSubclass({1})",
+            "frozenset format TypeError True",
+            "frozenset object format TypeError True",
+            "frozenfmt:abc",
             "frozenset False",
             "True True True",
             "frozenset [1, 2, 3]",
@@ -28749,7 +35379,7 @@ fn cpython_set_hash_exception_propagation_subset() {
 // comparison exceptions must propagate.
 #[test]
 fn cpython_set_bad_comparison_errors_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "class BadCmp:\n",
             "    def __hash__(self):\n",
@@ -28775,6 +35405,7 @@ fn cpython_set_bad_comparison_errors_subset() {
             "RuntimeError",
             "RuntimeError",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -28783,7 +35414,7 @@ fn cpython_set_bad_comparison_errors_subset() {
 // collision must use Python rich equality and propagate its exception.
 #[test]
 fn cpython_set_bad_comparison_algebra_errors_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "class BadCmp:\n",
             "    def __hash__(self):\n",
@@ -28849,6 +35480,7 @@ fn cpython_set_bad_comparison_algebra_errors_subset() {
             "RuntimeError",
             "RuntimeError",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -29754,6 +36386,11 @@ fn cpython_operator_callable_helper_subset() {
             "print(operator.methodcaller('bar')(m), operator.methodcaller('bar', f=5)(m))\n",
             "print(operator.methodcaller('baz', name='spam', self='eggs')(m))\n",
             "print(operator.methodcaller('return_arguments', 0, 1, a=2)(m))\n",
+            "many_positional_arguments = tuple(range(10))\n",
+            "many_kw_arguments = dict(zip('abcdefghij', range(10)))\n",
+            "print(operator.methodcaller('return_arguments', *many_positional_arguments)(m))\n",
+            "print(operator.methodcaller('return_arguments', **many_kw_arguments)(m))\n",
+            "print(operator.methodcaller('return_arguments', *many_positional_arguments, **many_kw_arguments)(m))\n",
             "for expr in [lambda: operator.methodcaller(), lambda: operator.methodcaller(12), lambda: operator.methodcaller('foo')(), lambda: operator.methodcaller('foo', 1, 2)(m, 3), lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)]:\n",
             "    try:\n",
             "        expr()\n",
@@ -29797,6 +36434,9 @@ fn cpython_operator_callable_helper_subset() {
             "42 5",
             "('spam', 'eggs')",
             "((0, 1), {'a': 2})",
+            "((0, 1, 2, 3, 4, 5, 6, 7, 8, 9), {})",
+            "((), {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'i': 8, 'j': 9})",
+            "((0, 1, 2, 3, 4, 5, 6, 7, 8, 9), {'a': 0, 'b': 1, 'c': 2, 'd': 3, 'e': 4, 'f': 5, 'g': 6, 'h': 7, 'i': 8, 'j': 9})",
             "TypeError",
             "TypeError",
             "TypeError",
@@ -30347,6 +36987,1274 @@ fn cpython_pow_builtin_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestPartial public call,
+// attribute, and side-effect behavior. Placeholder, pickling, and weakref
+// checks remain outside this runtime surface.
+#[test]
+fn cpython_functools_partial_subset() {
+    assert_output(
+        concat!(
+            "from functools import partial\n",
+            "def capture(*args, **kwargs):\n",
+            "    return args, kwargs\n",
+            "p = partial(capture, 1, 2, a=10, b=20)\n",
+            "print(callable(p), type(p).__name__)\n",
+            "print(p(3, 4, b=30, c=40))\n",
+            "print(p.func is capture, p.args, p.keywords == {'a': 10, 'b': 20})\n",
+            "for expr in [lambda: partial(), lambda: partial(2), lambda: partial(2)()]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "d = {'a': 3}\n",
+            "def func(a=10, b=20):\n",
+            "    return a\n",
+            "p = partial(func, a=5)\n",
+            "print(p(**d), d)\n",
+            "p(b=7)\n",
+            "print(d)\n",
+            "d = {'a': 3}\n",
+            "p = partial(capture, **d)\n",
+            "print(p())\n",
+            "d['a'] = 5\n",
+            "print(p())\n",
+            "p = partial(capture)\n",
+            "print(p.keywords, p(), p(1, 2))\n",
+            "p = partial(capture, 1, 2)\n",
+            "print(p(), p(3, 4))\n",
+            "p = partial(capture, a=1)\n",
+            "print(p.keywords, p(), p(b=2), p(a=3, b=2))\n",
+            "for args in [(), (0,), (0, 1), (0, 1, 2), (0, 1, 2, 3)]:\n",
+            "    got, empty = partial(capture, *args)('x')\n",
+            "    print(got == args + ('x',), empty == {})\n",
+            "for a in ['a', 0, None, 3.5]:\n",
+            "    empty, got = partial(capture, a=a)(x=None)\n",
+            "    print(empty == (), got == {'a': a, 'x': None})\n",
+            "p = partial(capture, 0, a=1)\n",
+            "args1, kw1 = p(1, b=2)\n",
+            "args2, kw2 = p()\n",
+            "print(args1, kw1, args2, kw2)\n",
+            "def div(x, y):\n",
+            "    x / y\n",
+            "for expr in [lambda: partial(div, 1, 0)(), lambda: partial(div, 1)(0), lambda: partial(div)(1, 0), lambda: partial(div, y=0)(1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ZeroDivisionError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "p = partial(capture, 'first')\n",
+            "p2 = partial(p, 'second')\n",
+            "p2.new_attr = 'spam'\n",
+            "print(p2(), p2.new_attr, p2.__dict__['new_attr'])\n",
+            "del p2.new_attr\n",
+            "try:\n",
+            "    p2.new_attr\n",
+            "except AttributeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "for attr in ['func', 'args', 'keywords']:\n",
+            "    try:\n",
+            "        setattr(p2, attr, 42)\n",
+            "    except AttributeError as error:\n",
+            "        print(attr, error.__class__.__name__)\n",
+        ),
+        &[
+            "True partial",
+            "((1, 2, 3, 4), {'a': 10, 'b': 30, 'c': 40})",
+            "True (1, 2) True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "3 {'a': 3}",
+            "{'a': 3}",
+            "((), {'a': 3})",
+            "((), {'a': 3})",
+            "{} ((), {}) ((1, 2), {})",
+            "((1, 2), {}) ((1, 2, 3, 4), {})",
+            "{'a': 1} ((), {'a': 1}) ((), {'a': 1, 'b': 2}) ((), {'a': 3, 'b': 2})",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "(0, 1) {'a': 1, 'b': 2} (0,) {'a': 1}",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "ZeroDivisionError",
+            "(('first', 'second'), {}) spam spam",
+            "AttributeError",
+            "func AttributeError",
+            "args AttributeError",
+            "keywords AttributeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestPartialMethod public
+// descriptor and call behavior. Abstract-method metadata, subclass optimizer
+// paths, weakref, pickle, and C accelerator internals remain outside this
+// runtime surface.
+#[test]
+fn cpython_functools_partialmethod_subset() {
+    assert_output_with_stack(
+        concat!(
+            "from functools import partial, partialmethod\n",
+            "def normalize(value):\n",
+            "    if isinstance(value, A):\n",
+            "        return 'self'\n",
+            "    if value is A:\n",
+            "        return 'A'\n",
+            "    return value\n",
+            "def capture(*args, **kwargs):\n",
+            "    normalized = []\n",
+            "    for arg in args:\n",
+            "        normalized.append(normalize(arg))\n",
+            "    return tuple(normalized), sorted(kwargs.items())\n",
+            "class A:\n",
+            "    nothing = partialmethod(capture)\n",
+            "    positional = partialmethod(capture, 1)\n",
+            "    keywords = partialmethod(capture, a=2)\n",
+            "    both = partialmethod(capture, 3, b=4)\n",
+            "    spec_keywords = partialmethod(capture, self=1, func=2)\n",
+            "    nested = partialmethod(positional, 5)\n",
+            "    over_partial = partialmethod(partial(capture, c=6), 7)\n",
+            "a = A()\n",
+            "for call in [\n",
+            "    lambda: a.nothing(),\n",
+            "    lambda: a.nothing(5, c=6),\n",
+            "    lambda: a.positional(),\n",
+            "    lambda: a.keywords(c=6),\n",
+            "    lambda: a.both(5, c=6),\n",
+            "    lambda: A.both(a, 5, c=6),\n",
+            "    lambda: a.spec_keywords(),\n",
+            "    lambda: a.nested(6, d=7),\n",
+            "    lambda: A.nested(a, 6, d=7),\n",
+            "    lambda: a.over_partial(5, d=8),\n",
+            "    lambda: A.over_partial(a, 5, d=8),\n",
+            "    lambda: a.keywords(a=3),\n",
+            "]:\n",
+            "    print(call())\n",
+            "print(hasattr(a.both, '__self__'), a.both.__self__ is a)\n",
+        ),
+        &[
+            "(('self',), [])",
+            "(('self', 5), [('c', 6)])",
+            "(('self', 1), [])",
+            "(('self',), [('a', 2), ('c', 6)])",
+            "(('self', 3, 5), [('b', 4), ('c', 6)])",
+            "(('self', 3, 5), [('b', 4), ('c', 6)])",
+            "(('self',), [('func', 2), ('self', 1)])",
+            "(('self', 1, 5, 6), [('d', 7)])",
+            "(('self', 1, 5, 6), [('d', 7)])",
+            "(('self', 7, 5), [('c', 6), ('d', 8)])",
+            "(('self', 7, 5), [('c', 6), ('d', 8)])",
+            "(('self',), [('a', 3)])",
+            "True True",
+        ],
+        64 * 1024 * 1024,
+    );
+    assert_output_with_stack(
+        concat!(
+            "from functools import partialmethod\n",
+            "def normalize(value):\n",
+            "    if isinstance(value, A):\n",
+            "        return 'self'\n",
+            "    if value is A:\n",
+            "        return 'A'\n",
+            "    return value\n",
+            "def capture(*args, **kwargs):\n",
+            "    normalized = []\n",
+            "    for arg in args:\n",
+            "        normalized.append(normalize(arg))\n",
+            "    return tuple(normalized), sorted(kwargs.items())\n",
+            "class A:\n",
+            "    keywords = partialmethod(capture, a=2)\n",
+            "    static = partialmethod(staticmethod(capture), 8)\n",
+            "    cls = partialmethod(classmethod(capture), d=9)\n",
+            "a = A()\n",
+            "for call in [\n",
+            "    lambda: a.static(5, d=8),\n",
+            "    lambda: A.static(5, d=8),\n",
+            "    lambda: a.cls(5, c=8),\n",
+            "    lambda: A.cls(5, c=8),\n",
+            "    lambda: a.keywords(a=3),\n",
+            "]:\n",
+            "    print(call())\n",
+            "print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)\n",
+            "print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))\n",
+            "for expr in [lambda: partialmethod(None, 1), lambda: partialmethod(), lambda: partialmethod(func=capture, a=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)\n",
+        ),
+        &[
+            "((8, 5), [('d', 8)])",
+            "((8, 5), [('d', 8)])",
+            "(('A', 5), [('c', 8), ('d', 9)])",
+            "(('A', 5), [('c', 8), ('d', 9)])",
+            "(('self',), [('a', 3)])",
+            "True True",
+            "False False False",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "False partialmethod",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestCmpToKey public
+// behavior. The slice covers the key wrapper comparison contract without
+// relying on address-bearing repr output or C accelerator internals.
+#[test]
+fn cpython_functools_cmp_to_key_subset() {
+    assert_output(
+        concat!(
+            "from functools import cmp_to_key\n",
+            "def mycmp(x, y):\n",
+            "    return (x > y) - (x < y)\n",
+            "K = cmp_to_key(mycmp)\n",
+            "a = K(1)\n",
+            "b = K(2)\n",
+            "same = K(1)\n",
+            "print(callable(K), callable(a), a.obj, b.obj)\n",
+            "again = a(2)\n",
+            "print(again.obj, again > same)\n",
+            "print(a < b, a <= b, a == b, a != b, a > b, a >= b)\n",
+            "print(a == same, a <= same, a >= same)\n",
+            "print(sorted([5, 2, 4, 1, 3], key=K))\n",
+            "a.obj = 3\n",
+            "print(a.obj, a > b)\n",
+            "del a.obj\n",
+            "print(a.obj is None)\n",
+            "print(cmp_to_key(mycmp=mycmp)(obj='x').obj)\n",
+            "def len_cmp(x, y):\n",
+            "    return (len(x) > len(y)) - (len(x) < len(y))\n",
+            "print(sorted(['aaa', 'b', 'cc'], key=cmp_to_key(len_cmp)))\n",
+            "K_reverse = cmp_to_key(lambda x, y: (y > x) - (y < x))\n",
+            "print(sorted([1, 2, 3], key=K_reverse))\n",
+            "def bad(x, y):\n",
+            "    raise ValueError('bad')\n",
+            "for expr in [\n",
+            "    lambda: K(1) < 1,\n",
+            "    lambda: K(1) == 1,\n",
+            "    lambda: K(1) != 1,\n",
+            "    lambda: hash(K),\n",
+            "    lambda: hash(K(1)),\n",
+            "    lambda: K(),\n",
+            "    lambda: K(1, 2),\n",
+            "    lambda: K(other=1),\n",
+            "    lambda: cmp_to_key(),\n",
+            "    lambda: cmp_to_key(mycmp=mycmp, other=1),\n",
+            "    lambda: cmp_to_key(3)(1) < cmp_to_key(3)(2),\n",
+            "    lambda: cmp_to_key(bad)(1) < cmp_to_key(bad)(2),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)\n",
+        ),
+        &[
+            "True True 1 2",
+            "2 True",
+            "True True False True False False",
+            "True True True",
+            "[1, 2, 3, 4, 5]",
+            "3 True",
+            "True",
+            "x",
+            "['b', 'cc', 'aaa']",
+            "[3, 2, 1]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestUpdateWrapper and
+// ::TestWraps public behavior. The migrated slice covers the wrapper metadata
+// contract without relying on the full lazy annotation implementation.
+#[test]
+fn cpython_functools_update_wrapper_wraps_subset() {
+    assert_output(
+        concat!(
+            "from functools import WRAPPER_ASSIGNMENTS, WRAPPER_UPDATES, update_wrapper, wraps\n",
+            "print(WRAPPER_ASSIGNMENTS, WRAPPER_UPDATES)\n",
+            "def f(a: 'new'):\n",
+            "    'doc'\n",
+            "    pass\n",
+            "f.attr = 'value'\n",
+            "f.extra = {'a': 1}\n",
+            "f.__wrapped__ = 'lie'\n",
+            "def wrapper(b: 'old'):\n",
+            "    pass\n",
+            "result = update_wrapper(wrapper, f)\n",
+            "print(result is wrapper, wrapper.__wrapped__ is f, wrapper.__module__ == f.__module__)\n",
+            "print(wrapper.__name__, wrapper.__qualname__ == f.__qualname__, wrapper.__doc__, wrapper.attr)\n",
+            "print(wrapper.__annotations__ == {'a': 'new'}, 'b' in wrapper.__annotations__)\n",
+            "print(wrapper.__dict__['__wrapped__'] is f, wrapper.__dict__['attr'])\n",
+            "def g():\n",
+            "    'doc'\n",
+            "    pass\n",
+            "g.attr = 'x'\n",
+            "def w():\n",
+            "    pass\n",
+            "update_wrapper(w, g, (), ())\n",
+            "print(w.__name__, hasattr(w, 'attr'), w.__wrapped__ is g)\n",
+            "def source():\n",
+            "    pass\n",
+            "source.attr = 'assigned'\n",
+            "source.dict_attr = {'a': 1, 'b': 2}\n",
+            "def dest():\n",
+            "    pass\n",
+            "dest.dict_attr = {}\n",
+            "update_wrapper(dest, source, ('attr',), ('dict_attr',))\n",
+            "print(dest.attr, sorted(dest.dict_attr.items()), dest.__wrapped__ is source)\n",
+            "def missing():\n",
+            "    pass\n",
+            "def dest2():\n",
+            "    pass\n",
+            "dest2.dict_attr = {}\n",
+            "update_wrapper(dest2, missing, ('attr',), ('dict_attr',))\n",
+            "print('attr' in dest2.__dict__, dest2.dict_attr)\n",
+            "del dest2.dict_attr\n",
+            "for expr in [\n",
+            "    lambda: update_wrapper(dest2, source, (), ('dict_attr',)),\n",
+            "    lambda: update_wrapper(),\n",
+            "    lambda: wraps(),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, AttributeError) as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "dest2.dict_attr = 1\n",
+            "try:\n",
+            "    update_wrapper(dest2, source, (), ('dict_attr',))\n",
+            "except (TypeError, AttributeError) as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "print(callable(wraps(f)), type(wraps(f)).__name__)\n",
+            "@wraps(f)\n",
+            "def decorated():\n",
+            "    pass\n",
+            "print(decorated.__name__, decorated.__wrapped__ is f, decorated.attr, decorated.__annotations__ == {'a': 'new'})\n",
+            "@wraps(f, (), ())\n",
+            "def plain():\n",
+            "    pass\n",
+            "print(plain.__name__, hasattr(plain, 'attr'), plain.__wrapped__ is f)\n",
+        ),
+        &[
+            "('__module__', '__name__', '__qualname__', '__doc__', '__annotate__', '__type_params__') ('__dict__',)",
+            "True True True",
+            "f True doc value",
+            "True False",
+            "True value",
+            "w False True",
+            "assigned [('a', 1), ('b', 2)] True",
+            "False {}",
+            "AttributeError",
+            "TypeError",
+            "TypeError",
+            "AttributeError",
+            "True partial",
+            "f True value True",
+            "plain False True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestTotalOrdering public
+// decorator behavior. Pickle identity and metaclass-ordering cases remain
+// classified separately from this runtime subset.
+#[test]
+fn cpython_functools_total_ordering_subset() {
+    assert_output(
+        concat!(
+            "from functools import total_ordering\n",
+            "\n",
+            "def show(label, cls):\n",
+            "    a = cls(1)\n",
+            "    b = cls(2)\n",
+            "    c = cls(2)\n",
+            "    print(label, a < b, b > a, a <= b, b >= a, c <= b, c >= b)\n",
+            "\n",
+            "@total_ordering\n",
+            "class LT:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __lt__(self, other):\n",
+            "        return self.value < other.value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "show('lt', LT)\n",
+            "print(LT.__le__.__name__, LT.__gt__.__name__, LT.__ge__.__module__)\n",
+            "\n",
+            "@total_ordering\n",
+            "class LE:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __le__(self, other):\n",
+            "        return self.value <= other.value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "show('le', LE)\n",
+            "\n",
+            "@total_ordering\n",
+            "class GT:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __gt__(self, other):\n",
+            "        return self.value > other.value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "show('gt', GT)\n",
+            "\n",
+            "@total_ordering\n",
+            "class GE:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __ge__(self, other):\n",
+            "        return self.value >= other.value\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "show('ge', GE)\n",
+            "\n",
+            "@total_ordering\n",
+            "class Keep:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __lt__(self, other):\n",
+            "        return self.value < other.value\n",
+            "    def __le__(self, other):\n",
+            "        return 'kept'\n",
+            "    def __eq__(self, other):\n",
+            "        return self.value == other.value\n",
+            "print('keep', Keep(1).__le__(Keep(2)), Keep.__le__.__name__)\n",
+            "\n",
+            "try:\n",
+            "    @total_ordering\n",
+            "    class Empty:\n",
+            "        pass\n",
+            "except ValueError as error:\n",
+            "    print('empty', error.__class__.__name__, 'ordering operation' in str(error))\n",
+            "\n",
+            "@total_ordering\n",
+            "class N:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __eq__(self, other):\n",
+            "        if isinstance(other, N):\n",
+            "            return self.value == other.value\n",
+            "        return False\n",
+            "    def __lt__(self, other):\n",
+            "        if isinstance(other, N):\n",
+            "            return self.value < other.value\n",
+            "        return NotImplemented\n",
+            "n = N(1)\n",
+            "print('notimpl', n.__le__(1) is NotImplemented, n.__gt__(1) is NotImplemented, n.__ge__(1) is NotImplemented)\n",
+            "try:\n",
+            "    n < 1\n",
+            "except TypeError as error:\n",
+            "    print('type', error.__class__.__name__)",
+        ),
+        &[
+            "lt True True True True True True",
+            "__le__ __gt__ functools",
+            "le True True True True True True",
+            "gt True True True True True True",
+            "ge True True True True True True",
+            "keep kept __le__",
+            "empty ValueError True",
+            "notimpl True True True",
+            "type TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestCache and TestLRU
+// public behavior. Threading, pickle, C accelerator identity, and typed key
+// subtleties remain outside this first cache-wrapper surface.
+#[test]
+fn cpython_functools_cache_subset() {
+    assert_output(
+        concat!(
+            "from functools import cache, lru_cache, partial\n",
+            "import copy\n",
+            "import builtins\n",
+            "@cache\n",
+            "def fib(n):\n",
+            "    if n < 2:\n",
+            "        return n\n",
+            "    return fib(n - 1) + fib(n - 2)\n",
+            "print([fib(n) for n in range(16)])\n",
+            "info = fib.cache_info()\n",
+            "print(tuple(info))\n",
+            "print(info.hits, info.misses, info.maxsize, info.currsize)\n",
+            "print(sorted(fib.cache_parameters().items()))\n",
+            "fib.cache_clear()\n",
+            "print(tuple(fib.cache_info()))\n",
+            "\n",
+            "calls = []\n",
+            "@cache\n",
+            "def double(value):\n",
+            "    calls.append(value)\n",
+            "    return value * 2\n",
+            "print(double(3), double(3), calls, tuple(double.cache_info()))\n",
+            "print(double.__wrapped__(3), calls, tuple(double.cache_info()))\n",
+            "double.cache_info = 'shadow'\n",
+            "print(double.cache_info)\n",
+            "del double.cache_info\n",
+            "print(tuple(double.cache_info()))\n",
+            "try:\n",
+            "    double([])\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "print(tuple(double.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=None)\n",
+            "def by_kw(n):\n",
+            "    if n < 2:\n",
+            "        return n\n",
+            "    return by_kw(n=n - 1) + by_kw(n=n - 2)\n",
+            "print([by_kw(n=number) for number in range(16)])\n",
+            "print(tuple(by_kw.cache_info()))\n",
+            "print(sorted(by_kw.cache_parameters().items()))\n",
+            "by_kw.cache_clear()\n",
+            "print(tuple(by_kw.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=2)\n",
+            "def identity(value):\n",
+            "    return value\n",
+            "print(identity(1), identity(2), identity(1), identity(3), tuple(identity.cache_info()))\n",
+            "print(identity(2), tuple(identity.cache_info()))\n",
+            "\n",
+            "@lru_cache\n",
+            "def square(x):\n",
+            "    return x ** 2\n",
+            "print([square(x) for x in [10, 20, 10]], tuple(square.cache_info()))\n",
+            "\n",
+            "zero_calls = []\n",
+            "@lru_cache(0)\n",
+            "def never():\n",
+            "    zero_calls.append(1)\n",
+            "    return 20\n",
+            "print([never() for _ in range(5)], len(zero_calls), tuple(never.cache_info()))\n",
+            "\n",
+            "one_calls = []\n",
+            "@lru_cache(1)\n",
+            "def one_slot():\n",
+            "    one_calls.append(1)\n",
+            "    return 20\n",
+            "for _ in range(5):\n",
+            "    one_slot()\n",
+            "print(len(one_calls), tuple(one_slot.cache_info()))\n",
+            "\n",
+            "two_calls = []\n",
+            "@lru_cache(2)\n",
+            "def two_slots(value):\n",
+            "    two_calls.append(value)\n",
+            "    return value * 10\n",
+            "two_values = []\n",
+            "for value in [7, 9, 7, 9, 7, 9, 8, 8, 8, 9, 9, 9, 8, 8, 8, 7]:\n",
+            "    two_values.append(two_slots(value))\n",
+            "print(two_values)\n",
+            "print(len(two_calls), tuple(two_slots.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=-10)\n",
+            "def neg(value):\n",
+            "    return value\n",
+            "for _ in range(2):\n",
+            "    for value in range(5):\n",
+            "        neg(value)\n",
+            "print(tuple(neg.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=None)\n",
+            "def bad(index):\n",
+            "    return 'abc'[index]\n",
+            "print(bad(0), tuple(bad.cache_info()))\n",
+            "for _ in range(2):\n",
+            "    try:\n",
+            "        bad(15)\n",
+            "    except IndexError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "print(tuple(bad.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=128)\n",
+            "def finite_bad(index):\n",
+            "    return 'abc'[index]\n",
+            "print(finite_bad(0), tuple(finite_bad.cache_info()))\n",
+            "for _ in range(2):\n",
+            "    try:\n",
+            "        finite_bad(15)\n",
+            "    except IndexError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "print(tuple(finite_bad.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=None, typed=True)\n",
+            "def identify(value):\n",
+            "    return type(value).__name__, value\n",
+            "print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(identify.cache_info()))\n",
+            "cached_repr = lru_cache(typed=True)(repr)\n",
+            "print(cached_repr(1), cached_repr(True), cached_repr(1.0), tuple(cached_repr.cache_info()))\n",
+            "print(cached_repr((1,)), cached_repr((True,)), cached_repr((1.0,)), tuple(cached_repr.cache_info()))\n",
+            "\n",
+            "@lru_cache(maxsize=10)\n",
+            "def kwargs_order(**kwargs):\n",
+            "    return list(kwargs.items())\n",
+            "print(kwargs_order(a=1, b=2), kwargs_order(b=2, a=1), tuple(kwargs_order.cache_info()))\n",
+            "\n",
+            "once = True\n",
+            "@lru_cache(maxsize=10)\n",
+            "def recursive(value):\n",
+            "    global once\n",
+            "    result = '.' + str(value) + '.'\n",
+            "    if value == 20 and once:\n",
+            "        once = False\n",
+            "        result = recursive(value)\n",
+            "    return result\n",
+            "for value in range(15):\n",
+            "    recursive(value)\n",
+            "print(tuple(recursive.cache_info()))\n",
+            "print(recursive(20), tuple(recursive.cache_info()))\n",
+            "\n",
+            "@lru_cache()\n",
+            "def empty_kwargs(value):\n",
+            "    return value\n",
+            "empty_kwargs(0)\n",
+            "empty_kwargs(0, **{})\n",
+            "print(tuple(empty_kwargs.cache_info()))\n",
+            "\n",
+            "@lru_cache()\n",
+            "def star_args(*args):\n",
+            "    return args\n",
+            "print(star_args(1, 2), star_args((1, 2)), tuple(star_args.cache_info()))\n",
+            "\n",
+            "saved_len = builtins.len\n",
+            "try:\n",
+            "    builtins.len = lru_cache(4)(len)\n",
+            "    observed_lengths = []\n",
+            "    for value in [0, 0, 1, 2, 3, 3, 4, 5, 6, 1, 7, 2, 1]:\n",
+            "        observed_lengths.append(len('abcdefghijklmn'[:value]))\n",
+            "    print(observed_lengths, tuple(builtins.len.cache_info()))\n",
+            "finally:\n",
+            "    builtins.len = saved_len\n",
+            "\n",
+            "class CachedInt(int):\n",
+            "    f_cnt = 0\n",
+            "    @lru_cache(2)\n",
+            "    def method(self, value):\n",
+            "        self.f_cnt += 1\n",
+            "        return value * 10 + self\n",
+            "a = CachedInt(5)\n",
+            "b = CachedInt(5)\n",
+            "c = CachedInt(7)\n",
+            "print(tuple(CachedInt.method.cache_info()))\n",
+            "a_values = []\n",
+            "for value in [1, 2, 2, 3, 1, 1, 1, 2, 3, 3]:\n",
+            "    a_values.append(a.method(value))\n",
+            "print(a_values)\n",
+            "print(a.f_cnt, b.f_cnt, c.f_cnt, tuple(CachedInt.method.cache_info()))\n",
+            "for value in [1, 2, 1, 1, 1, 1, 3, 2, 2, 2]:\n",
+            "    b.method(value)\n",
+            "print(a.f_cnt, b.f_cnt, c.f_cnt, tuple(CachedInt.method.cache_info()))\n",
+            "for value in [2, 1, 1, 1, 1, 2, 1, 3, 2, 1]:\n",
+            "    c.method(value)\n",
+            "print(a.f_cnt, b.f_cnt, c.f_cnt, tuple(CachedInt.method.cache_info()), tuple(a.method.cache_info()), tuple(b.method.cache_info()), tuple(c.method.cache_info()))\n",
+            "CachedInt.method.marker = 'cached-method'\n",
+            "print(hasattr(a.method, '__wrapped__'), a.method.__wrapped__ is CachedInt.method.__wrapped__, a.method.marker)\n",
+            "a.method.cache_clear()\n",
+            "print(tuple(CachedInt.method.cache_info()))\n",
+            "method_params = a.method.cache_parameters()\n",
+            "method_params['maxsize'] = 99\n",
+            "print(sorted(method_params.items()), sorted(CachedInt.method.cache_parameters().items()))\n",
+            "\n",
+            "def copied_orig(x, y):\n",
+            "    return 3 * x + y\n",
+            "@lru_cache()\n",
+            "def copied_func(x, y):\n",
+            "    return 3 * x + y\n",
+            "class CopiedCache:\n",
+            "    @lru_cache()\n",
+            "    def cached_meth(self, x, y):\n",
+            "        return 3 * x + y\n",
+            "    @staticmethod\n",
+            "    @lru_cache()\n",
+            "    def cached_staticmeth(x, y):\n",
+            "        return 3 * x + y\n",
+            "copied_part = partial(copied_orig, 2)\n",
+            "for copied in [copied_func, CopiedCache.cached_meth, CopiedCache.cached_staticmeth, lru_cache(2)(copied_part)]:\n",
+            "    print(copy.copy(copied) is copied, copy.deepcopy(copied) is copied)\n",
+            "\n",
+            "def decorated_source(zomg: 'zomg_annotation'):\n",
+            "    \"\"\"f doc string\"\"\"\n",
+            "    return 42\n",
+            "decorated_wrapper = lru_cache()(decorated_source)\n",
+            "print(decorated_wrapper.__name__, decorated_wrapper.__doc__, decorated_wrapper.__module__, decorated_wrapper.__qualname__, decorated_wrapper.__wrapped__ is decorated_source)\n",
+            "\n",
+            "@lru_cache(maxsize=1000, typed=True)\n",
+            "def cache_params():\n",
+            "    return 1\n",
+            "print(sorted(cache_params.cache_parameters().items()))\n",
+        ),
+        &[
+            "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]",
+            "(28, 16, None, 16)",
+            "28 16 None 16",
+            "[('maxsize', None), ('typed', False)]",
+            "(0, 0, None, 0)",
+            "6 6 [3] (1, 1, None, 1)",
+            "6 [3, 3] (1, 1, None, 1)",
+            "shadow",
+            "(1, 1, None, 1)",
+            "TypeError",
+            "(1, 1, None, 1)",
+            "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]",
+            "(28, 16, None, 16)",
+            "[('maxsize', None), ('typed', False)]",
+            "(0, 0, None, 0)",
+            "1 2 1 3 (1, 3, 2, 2)",
+            "2 (1, 4, 2, 2)",
+            "[100, 400, 100] (1, 2, 128, 2)",
+            "[20, 20, 20, 20, 20] 5 (0, 5, 0, 0)",
+            "1 (4, 1, 1, 1)",
+            "[70, 90, 70, 90, 70, 90, 80, 80, 80, 90, 90, 90, 80, 80, 80, 70]",
+            "4 (12, 4, 2, 2)",
+            "(0, 10, 0, 0)",
+            "a (0, 1, None, 1)",
+            "IndexError",
+            "IndexError",
+            "(0, 3, None, 1)",
+            "a (0, 1, 128, 1)",
+            "IndexError",
+            "IndexError",
+            "(0, 3, 128, 1)",
+            "('int', 3) ('float', 3.0) ('int', 3) ('float', 3.0) (0, 4, None, 4)",
+            "1 True 1.0 (0, 3, 128, 3)",
+            "(1,) (1,) (1,) (2, 4, 128, 4)",
+            "[('a', 1), ('b', 2)] [('b', 2), ('a', 1)] (0, 2, 10, 2)",
+            "(0, 15, 10, 10)",
+            ".20. (0, 17, 10, 10)",
+            "(1, 1, 128, 1)",
+            "(1, 2) ((1, 2),) (0, 2, 128, 2)",
+            "[0, 0, 1, 2, 3, 3, 4, 5, 6, 1, 7, 2, 1] (3, 10, 4, 4)",
+            "(0, 0, 2, 0)",
+            "[15, 25, 25, 35, 15, 15, 15, 25, 35, 35]",
+            "6 0 0 (4, 6, 2, 2)",
+            "6 4 0 (10, 10, 2, 2)",
+            "6 4 5 (15, 15, 2, 2) (15, 15, 2, 2) (15, 15, 2, 2) (15, 15, 2, 2)",
+            "True True cached-method",
+            "(0, 0, 2, 0)",
+            "[('maxsize', 99), ('typed', False)] [('maxsize', 2), ('typed', False)]",
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "decorated_source f doc string __main__ decorated_source True",
+            "[('maxsize', 1000), ('typed', True)]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestCachedProperty public
+// descriptor behavior plus the shared type.__new__ __set_name__ hook.
+// Metaclass mappingproxy mutation and cached_property subclass data-descriptor
+// cases remain outside this first runtime slice.
+#[test]
+fn cpython_functools_cached_property_subset() {
+    assert_output(
+        concat!(
+            "from functools import cached_property\n",
+            "\n",
+            "class CachedCostItem:\n",
+            "    _cost = 1\n",
+            "    @cached_property\n",
+            "    def cost(self):\n",
+            "        \"\"\"The cost of the item.\"\"\"\n",
+            "        self._cost += 1\n",
+            "        return self._cost\n",
+            "item = CachedCostItem()\n",
+            "print(item.cost, item.cost, sorted(item.__dict__.items()))\n",
+            "print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)\n",
+            "\n",
+            "class OptionallyCachedCostItem:\n",
+            "    _cost = 1\n",
+            "    def get_cost(self):\n",
+            "        self._cost += 1\n",
+            "        return self._cost\n",
+            "    cached_cost = cached_property(get_cost)\n",
+            "item = OptionallyCachedCostItem()\n",
+            "print(item.get_cost(), item.cached_cost, item.get_cost(), item.cached_cost, sorted(item.__dict__.items()))\n",
+            "\n",
+            "try:\n",
+            "    class ReusedCachedProperty:\n",
+            "        @cached_property\n",
+            "        def a(self):\n",
+            "            pass\n",
+            "        b = a\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "\n",
+            "counter = 0\n",
+            "@cached_property\n",
+            "def _cp(_self):\n",
+            "    global counter\n",
+            "    counter += 1\n",
+            "    return counter\n",
+            "class A:\n",
+            "    cp = _cp\n",
+            "class B:\n",
+            "    cp = _cp\n",
+            "a = A()\n",
+            "b = B()\n",
+            "print(a.cp, b.cp, a.cp, _cp.attrname)\n",
+            "\n",
+            "cp = cached_property(lambda self: 5)\n",
+            "class Foo:\n",
+            "    pass\n",
+            "Foo.cp = cp\n",
+            "try:\n",
+            "    print(Foo().cp)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "\n",
+            "class Slots:\n",
+            "    __slots__ = ('_cost',)\n",
+            "    def __init__(self):\n",
+            "        self._cost = 1\n",
+            "    @cached_property\n",
+            "    def cost(self):\n",
+            "        return 9\n",
+            "try:\n",
+            "    print(Slots().cost)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "\n",
+            "calls = []\n",
+            "class Descriptor:\n",
+            "    def __set_name__(self, owner, name):\n",
+            "        calls.append((owner.__name__, name))\n",
+            "class WithDescriptor:\n",
+            "    field = Descriptor()\n",
+            "print(calls)\n",
+            "\n",
+            "calls = []\n",
+            "class DynamicDescriptor:\n",
+            "    def __set_name__(self, owner, name):\n",
+            "        calls.append((owner.__name__, name))\n",
+            "Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})\n",
+            "print(calls)\n",
+            "\n",
+            "class Boom:\n",
+            "    def __set_name__(self, owner, name):\n",
+            "        raise RuntimeError('boom-' + owner.__name__ + '-' + name)\n",
+            "try:\n",
+            "    class X:\n",
+            "        field = Boom()\n",
+            "except RuntimeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "try:\n",
+            "    Dynamic = type('Dynamic', (), {'field': Boom()})\n",
+            "except RuntimeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+        ),
+        &[
+            "2 2 [('_cost', 2), ('cost', 2)]",
+            "cached_property The cost of the item. __main__ cost",
+            "2 3 4 3 [('_cost', 4), ('cached_cost', 3)]",
+            "TypeError Cannot assign the same cached_property to two different names ('a' and 'b').",
+            "1 2 1 cp",
+            "TypeError Cannot use cached_property instance without calling __set_name__ on it.",
+            "TypeError No '__dict__' attribute on 'Slots' instance to cache 'cost' property.",
+            "[('WithDescriptor', 'field')]",
+            "[('Dynamic', 'field')]",
+            "RuntimeError boom-X-field",
+            "RuntimeError boom-Dynamic-field",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestReduce public behavior.
+// This covers the Python-visible reduce call contract without relying on the
+// C accelerator or exact TypeError wording.
+#[test]
+fn cpython_functools_reduce_subset() {
+    assert_output(
+        concat!(
+            "from functools import reduce\n",
+            "from operator import add\n",
+            "class Squares:\n",
+            "    def __init__(self, max):\n",
+            "        self.max = max\n",
+            "        self.sofar = []\n",
+            "    def __len__(self):\n",
+            "        return len(self.sofar)\n",
+            "    def __getitem__(self, i):\n",
+            "        if not 0 <= i < self.max:\n",
+            "            raise IndexError\n",
+            "        n = len(self.sofar)\n",
+            "        while n <= i:\n",
+            "            self.sofar.append(n * n)\n",
+            "            n += 1\n",
+            "        return self.sofar[i]\n",
+            "print(reduce(add, ['a', 'b', 'c'], ''))\n",
+            "print(reduce(add, [['a', 'c'], [], ['d', 'w']], []))\n",
+            "print(reduce(lambda x, y: x * y, range(2, 8), 1))\n",
+            "print(reduce(lambda x, y: x * y, range(2, 21), 1))\n",
+            "print(reduce(add, Squares(10)), reduce(add, Squares(10), 0), reduce(add, Squares(0), 0))\n",
+            "print(reduce(42, '1'), reduce(42, '', '1'))\n",
+            "print(reduce(add, [], None), reduce(add, [], 42))\n",
+            "class SequenceClass:\n",
+            "    def __init__(self, n):\n",
+            "        self.n = n\n",
+            "    def __getitem__(self, i):\n",
+            "        if 0 <= i < self.n:\n",
+            "            return i\n",
+            "        raise IndexError\n",
+            "print(reduce(add, SequenceClass(5)), reduce(add, SequenceClass(5), 42))\n",
+            "print(reduce(add, SequenceClass(0), 42), reduce(add, SequenceClass(1)), reduce(add, SequenceClass(1), 42))\n",
+            "d = {'one': 1, 'two': 2, 'three': 3}\n",
+            "print(reduce(add, d), ''.join(d.keys()))\n",
+            "print(reduce(add, ['a', 'b', 'c'], initial=''))\n",
+            "print(reduce(lambda x, y: x * y, range(2, 8), initial=1))\n",
+            "print(reduce(42, '', initial='1'))\n",
+        ),
+        &[
+            "abc",
+            "['a', 'c', 'd', 'w']",
+            "5040",
+            "2432902008176640000",
+            "285 285 0",
+            "1 1",
+            "None 42",
+            "10 52",
+            "42 0 42",
+            "onetwothree onetwothree",
+            "abc",
+            "5040",
+            "1",
+        ],
+    );
+    assert_output(
+        concat!(
+            "from functools import reduce\n",
+            "from operator import add\n",
+            "class TestFailingIter:\n",
+            "    def __iter__(self):\n",
+            "        raise RuntimeError\n",
+            "class BadSeq:\n",
+            "    def __getitem__(self, index):\n",
+            "        raise ValueError\n",
+            "checks = [\n",
+            "    lambda: reduce(),\n",
+            "    lambda: reduce(add),\n",
+            "    lambda: reduce(42, 42),\n",
+            "    lambda: reduce(42, 42, 42),\n",
+            "    lambda: reduce(add, []),\n",
+            "    lambda: reduce(add, ''),\n",
+            "    lambda: reduce(add, ()),\n",
+            "    lambda: reduce(42, (42, 42)),\n",
+            "    lambda: reduce(add, object()),\n",
+            "    lambda: reduce(add, SequenceClass(0)),\n",
+            "    lambda: reduce(add, [0, 1], initial=''),\n",
+            "    lambda: reduce(function=lambda x, y: (x or 1) + y, sequence=[1, 2, 3]),\n",
+            "    lambda: reduce(lambda x, y: x + y, sequence=[1, 2, 3], initial=1),\n",
+            "    lambda: reduce(add, [1], 2, 3),\n",
+            "    lambda: reduce(add, [1], 2, initial=3),\n",
+            "]\n",
+            "class SequenceClass:\n",
+            "    def __init__(self, n):\n",
+            "        self.n = n\n",
+            "    def __getitem__(self, i):\n",
+            "        if 0 <= i < self.n:\n",
+            "            return i\n",
+            "        raise IndexError\n",
+            "for check in checks:\n",
+            "    try:\n",
+            "        check()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "for check in [lambda: reduce(add, TestFailingIter()), lambda: reduce(42, BadSeq())]:\n",
+            "    try:\n",
+            "        check()\n",
+            "    except (RuntimeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)\n",
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "RuntimeError",
+            "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestSingleDispatch public
+// wrapper, registration, dispatch, registry, MRO behavior, annotation inference,
+// and union registration. The private `_compose_mro` / `_c3_mro` helpers, cache
+// invalidation internals, weakref, and C-specific paths remain outside this
+// runtime surface.
+#[test]
+fn cpython_functools_singledispatch_subset() {
+    assert_output(
+        concat!(
+            "from functools import singledispatch\n",
+            "from collections.abc import Sized, MutableMapping, MutableSequence\n",
+            "@singledispatch\n",
+            "def g(obj):\n",
+            "    return 'base:' + type(obj).__name__\n",
+            "def g_int(i):\n",
+            "    return 'int:' + str(i)\n",
+            "g.register(int, g_int)\n",
+            "print(g('x'))\n",
+            "print(g(5), g(True), g([1, 2]))\n",
+            "print(g.dispatch(int) is g_int, g.dispatch(object) is g.dispatch(str))\n",
+            "@g.register(str)\n",
+            "def g_str(s):\n",
+            "    return 'str:' + s\n",
+            "print(g('x'), g.dispatch(str) is g_str)\n",
+            "class A: pass\n",
+            "class C(A): pass\n",
+            "class B(A): pass\n",
+            "class D(C, B): pass\n",
+            "def g_a(a): return 'A'\n",
+            "def g_b(b): return 'B'\n",
+            "g.register(A, g_a)\n",
+            "g.register(B, g_b)\n",
+            "print(g(A()), g(B()), g(C()), g(D()))\n",
+            "@singledispatch\n",
+            "def h(obj):\n",
+            "    'Simple test'\n",
+            "    return 'base'\n",
+            "print(h.__name__, h.__doc__, h.__wrapped__(None))\n",
+            "print(callable(h), type(h.registry).__name__, h.registry[object] is h.dispatch(object))\n",
+            "h.register(Sized, lambda obj: 'sized')\n",
+            "print(h({}), h([]), h(()))\n",
+            "h.register(MutableMapping, lambda obj: 'mapping')\n",
+            "h.register(MutableSequence, lambda obj: 'sequence')\n",
+            "h.register(tuple, lambda obj: 'tuple')\n",
+            "print(h({}), h([]), h(()))\n",
+            "print(h.dispatch(dict)({}), h.dispatch(list)([]), h.dispatch(tuple)(()))\n",
+            "print(h._clear_cache())\n",
+            "print(singledispatch(42).dispatch(object))\n",
+            "print(h.register(float, 42))\n",
+            "try:\n",
+            "    h(1.5)\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "for expr in [lambda: h.register(42, lambda x: x), lambda: h.dispatch(42)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)\n",
+        ),
+        &[
+            "base:str",
+            "int:5 int:True base:list",
+            "True True",
+            "str:x True",
+            "A B A B",
+            "h Simple test base",
+            "True mappingproxy True",
+            "sized sized sized",
+            "mapping sequence tuple",
+            "mapping sequence tuple",
+            "None",
+            "42",
+            "42",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+    assert_output(
+        concat!(
+            "from functools import singledispatch\n",
+            "from typing import Union\n",
+            "@singledispatch\n",
+            "def g(obj):\n",
+            "    return 'base'\n",
+            "@g.register\n",
+            "def _(obj: int):\n",
+            "    return 'int'\n",
+            "@g.register\n",
+            "def _(obj: Union[str, bytes]):\n",
+            "    return 'text'\n",
+            "@g.register\n",
+            "def _(obj: float | complex):\n",
+            "    return 'number'\n",
+            "def pair(obj):\n",
+            "    return 'pair'\n",
+            "print(g.register(tuple | list, pair) is pair)\n",
+            "print(g(1), g('a'), g(b'a'), g(1.5), g(1j), g([]), g(()), g({}))\n",
+            "print(g.dispatch(str).__name__, g.dispatch(bytes).__name__, g.dispatch(list).__name__, g.dispatch(tuple).__name__)\n",
+            "@singledispatch\n",
+            "def r(obj):\n",
+            "    return 'base'\n",
+            "@r.register\n",
+            "def _(obj) -> int:\n",
+            "    return 'return'\n",
+            "print(r(1), r('x'))\n",
+            "try:\n",
+            "    @r.register\n",
+            "    def no_annotation(obj):\n",
+            "        return 'bad'\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+        ),
+        &[
+            "True",
+            "int text text number number pair pair base",
+            "_ _ pair pair",
+            "return base",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py::TestSingleDispatchMethod
+// public descriptor behavior. This shares the existing singledispatch registry
+// machinery and covers method binding, annotation inference, and union
+// registration without copying CPython's private cache internals.
+#[test]
+fn cpython_functools_singledispatchmethod_subset() {
+    assert_output(
+        concat!(
+            "from functools import singledispatchmethod\n",
+            "class C:\n",
+            "    @singledispatchmethod\n",
+            "    def m(self, arg):\n",
+            "        return 'base:' + type(arg).__name__\n",
+            "    @m.register(int)\n",
+            "    def _(self, arg):\n",
+            "        return 'int:' + str(arg)\n",
+            "    @m.register(str)\n",
+            "    @classmethod\n",
+            "    def _(cls, arg):\n",
+            "        return 'cls:' + cls.__name__ + ':' + arg\n",
+            "c = C()\n",
+            "print(c.m(1), c.m(True), c.m([]), c.m('x'))\n",
+            "print(C.m(c, 1), C.m(c, 'x'))\n",
+            "descriptor = C.__dict__['m']\n",
+            "print(callable(descriptor), type(descriptor).__name__, descriptor.func.__name__, descriptor.dispatcher.dispatch(int)(c, 2))\n",
+            "def c_float(self, arg):\n",
+            "    return 'float:' + str(arg)\n",
+            "print(descriptor.register(float, c_float) is c_float, c.m(1.5))\n",
+            "@C.m.register(tuple)\n",
+            "def _(self, arg):\n",
+            "    return 'tuple:' + str(len(arg))\n",
+            "@c.m.register(bytes)\n",
+            "def _(self, arg):\n",
+            "    return 'bytes:' + str(len(arg))\n",
+            "print(c.m((1, 2)), c.m(b'abc'))\n",
+            "print(C.m.__name__, c.m.__name__)\n",
+            "try:\n",
+            "    c.m()\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__, str(error).split('\\n')[0])\n",
+            "try:\n",
+            "    singledispatchmethod()\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "try:\n",
+            "    descriptor.register(42, lambda self, arg: arg)\n",
+            "except TypeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "class S:\n",
+            "    @singledispatchmethod\n",
+            "    @staticmethod\n",
+            "    def m(arg):\n",
+            "        return 'base:' + str(arg)\n",
+            "    @m.register(int)\n",
+            "    @staticmethod\n",
+            "    def _(arg):\n",
+            "        return 'int:' + str(arg)\n",
+            "print(S.m(1), S().m(1), S.m('x'), S().m('x'))\n",
+            "class K:\n",
+            "    @singledispatchmethod\n",
+            "    @classmethod\n",
+            "    def m(cls, arg):\n",
+            "        return 'base:' + cls.__name__ + ':' + str(arg)\n",
+            "    @m.register(int)\n",
+            "    @classmethod\n",
+            "    def _(cls, arg):\n",
+            "        return 'int:' + cls.__name__ + ':' + str(arg)\n",
+            "print(K.m(1), K().m(1), K.m('x'), K().m('x'))\n",
+        ),
+        &[
+            "int:1 int:True base:list cls:C:x",
+            "base:int base:str",
+            "False singledispatchmethod m int:2",
+            "True float:1.5",
+            "tuple:2 bytes:3",
+            "m m",
+            "TypeError m requires at least 1 positional argument",
+            "TypeError",
+            "TypeError",
+            "int:1 int:1 base:x base:x",
+            "int:K:1 int:K:1 base:K:x base:K:x",
+        ],
+    );
+    assert_output(
+        concat!(
+            "from functools import singledispatchmethod\n",
+            "from typing import Union\n",
+            "class C:\n",
+            "    @singledispatchmethod\n",
+            "    def m(self, arg):\n",
+            "        return 'base'\n",
+            "    @m.register\n",
+            "    def _(self, arg: int):\n",
+            "        return 'int'\n",
+            "    @m.register\n",
+            "    def _(self, arg: Union[str, bytes]):\n",
+            "        return 'text'\n",
+            "    @m.register\n",
+            "    def _(self, arg: float | complex):\n",
+            "        return 'number'\n",
+            "def pair(self, arg):\n",
+            "    return 'pair'\n",
+            "descriptor = C.__dict__['m']\n",
+            "print(descriptor.register(tuple | list, pair) is pair)\n",
+            "c = C()\n",
+            "print(c.m(1), c.m('a'), c.m(b'a'), c.m(1.5), c.m(1j), c.m([]), c.m(()), c.m({}))\n",
+            "print(C.m(c, 1), C.m(c, 'a'))\n",
+        ),
+        &[
+            "True",
+            "int text text number number pair pair base",
+            "base base",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::test_ascii. MiniPython covers
 // ordinary containers, recursive containers, and Unicode scalar escaping; lone
 // surrogate strings remain future Unicode-storage work.
@@ -30588,7 +38496,7 @@ print('%g %#g' % (1.1, 1.1))"#,
     );
     assert_error(
         "print('%(x)r %r' % {'x': 1})",
-        "runtime error: ValueError: format requires a parenthesised mapping key",
+        "runtime error: TypeError: not enough arguments for format string",
     );
     assert_error(
         "print('%c' % 1114112)",
@@ -30600,7 +38508,7 @@ print('%g %#g' % (1.1, 1.1))"#,
     );
     assert_error(
         "print('%(x)*r' % {'x': 1})",
-        "runtime error: ValueError: * cannot be used with a parenthesised mapping key",
+        "runtime error: TypeError: * wants int",
     );
     assert_error(
         "print('%g' % '1')",
@@ -30652,6 +38560,197 @@ print('%g %#g' % (1.1, 1.1))"#,
     ] {
         assert_rejected(source);
     }
+}
+
+// Adapted from CPython Lib/test/test_format.py old-style `%r` / `%a`
+// behavior. String percent formatting must call user `__repr__`, propagate
+// exceptions, reject non-string repr results, and apply ASCII conversion for
+// `%a`.
+#[test]
+fn cpython_old_style_string_percent_repr_protocol_subset() {
+    assert_output(
+        "class Raises:\n    def __repr__(self):\n        raise RuntimeError('repr boom')\nclass NonString:\n    def __repr__(self):\n        return 123\nclass NonAscii:\n    def __repr__(self):\n        return chr(233)\nfor expr in [lambda: '%r' % Raises(), lambda: '%a' % Raises(), lambda: '%r' % NonString(), lambda: '%a' % NonString()]:\n    try:\n        expr()\n    except (RuntimeError, TypeError) as error:\n        print(error.__class__.__name__, error.args[0])\nprint('%r' % NonAscii())\nprint('%a' % NonAscii())\nprint('%6r|%-6a|%.3a' % (NonAscii(), NonAscii(), NonAscii()))",
+        &[
+            "RuntimeError repr boom",
+            "RuntimeError repr boom",
+            "TypeError __repr__ returned non-string (type int)",
+            "TypeError __repr__ returned non-string (type int)",
+            "é",
+            "\\xe9",
+            "     é|\\xe9  |\\xe",
+        ],
+    );
+}
+
+// Adapted from CPython old-style `%c` behavior in Lib/test/test_format.py
+// and Lib/test/test_bytes.py. `%c` accepts integer-like objects through
+// `__index__` for str, bytes, and bytearray formatting.
+#[test]
+fn cpython_old_style_percent_c_index_protocol_subset() {
+    assert_output(
+        "class IndexOk:\n    def __index__(self):\n        return 65\nclass IndexRaises:\n    def __index__(self):\n        raise RuntimeError('idx boom')\nclass IndexBad:\n    def __index__(self):\n        return '65'\nfor obj in [IndexOk(), IndexRaises(), IndexBad(), object()]:\n    try:\n        print('%c' % obj)\n    except (TypeError, RuntimeError) as error:\n        print(error.__class__.__name__, error.args[0])\nfor ctor in [bytes, bytearray]:\n    for obj in [IndexOk(), IndexRaises(), IndexBad(), object()]:\n        try:\n            print(ctor(b'%c') % obj)\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])",
+        &[
+            "A",
+            "RuntimeError idx boom",
+            "TypeError %c requires an int or a unicode character, not IndexBad",
+            "TypeError %c requires an int or a unicode character, not object",
+            "b'A'",
+            "RuntimeError idx boom",
+            "TypeError __index__ returned non-int (type str)",
+            "TypeError %c requires an integer in range(256) or a single byte, not object",
+            "bytearray(b'A')",
+            "RuntimeError idx boom",
+            "TypeError __index__ returned non-int (type str)",
+            "TypeError %c requires an integer in range(256) or a single byte, not object",
+        ],
+    );
+}
+
+// Adapted from CPython old-style integer formatting behavior in
+// Lib/test/test_format.py and Lib/test/test_bytes.py. Decimal integer formats
+// accept `__int__` first and fall back to `__index__`, while radix formats only
+// accept `__index__`.
+#[test]
+fn cpython_old_style_percent_integer_protocol_subset() {
+    assert_output(
+        "class IntOk:\n    def __int__(self):\n        return 42\nclass IndexOk:\n    def __index__(self):\n        return 42\nclass Both:\n    def __int__(self):\n        return 7\n    def __index__(self):\n        return 9\nclass IntRaises:\n    def __int__(self):\n        raise RuntimeError('int boom')\nclass IndexRaises:\n    def __index__(self):\n        raise RuntimeError('idx boom')\nclass IntBad:\n    def __int__(self):\n        return '42'\nclass IndexBad:\n    def __index__(self):\n        return '42'\nfor fmt in ['%d', '%i', '%u']:\n    for obj in [IntOk(), IndexOk(), Both(), IntRaises(), IndexRaises(), IntBad(), IndexBad()]:\n        try:\n            print(fmt % obj)\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])\nfor fmt in ['%x', '%X', '%o']:\n    for obj in [IntOk(), IndexOk(), Both(), IndexRaises(), IndexBad()]:\n        try:\n            print(fmt % obj)\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])\nfor ctor in [bytes, bytearray]:\n    for fmt in [b'%d', b'%x']:\n        for obj in [IntOk(), IndexOk(), Both(), IntRaises(), IndexRaises(), IntBad(), IndexBad()]:\n            try:\n                print(ctor(fmt) % obj)\n            except (TypeError, RuntimeError) as error:\n                print(error.__class__.__name__, error.args[0])",
+        &[
+            "42",
+            "42",
+            "7",
+            "RuntimeError int boom",
+            "RuntimeError idx boom",
+            "TypeError %d format: a real number is required, not IntBad",
+            "TypeError %d format: a real number is required, not IndexBad",
+            "42",
+            "42",
+            "7",
+            "RuntimeError int boom",
+            "RuntimeError idx boom",
+            "TypeError %i format: a real number is required, not IntBad",
+            "TypeError %i format: a real number is required, not IndexBad",
+            "42",
+            "42",
+            "7",
+            "RuntimeError int boom",
+            "RuntimeError idx boom",
+            "TypeError %u format: a real number is required, not IntBad",
+            "TypeError %u format: a real number is required, not IndexBad",
+            "TypeError %x format: an integer is required, not IntOk",
+            "2a",
+            "9",
+            "RuntimeError idx boom",
+            "TypeError %x format: an integer is required, not IndexBad",
+            "TypeError %X format: an integer is required, not IntOk",
+            "2A",
+            "9",
+            "RuntimeError idx boom",
+            "TypeError %X format: an integer is required, not IndexBad",
+            "TypeError %o format: an integer is required, not IntOk",
+            "52",
+            "11",
+            "RuntimeError idx boom",
+            "TypeError %o format: an integer is required, not IndexBad",
+            "b'42'",
+            "b'42'",
+            "b'7'",
+            "RuntimeError int boom",
+            "RuntimeError idx boom",
+            "TypeError %d format: a real number is required, not IntBad",
+            "TypeError %d format: a real number is required, not IndexBad",
+            "TypeError %x format: an integer is required, not IntOk",
+            "b'2a'",
+            "b'9'",
+            "TypeError %x format: an integer is required, not IntRaises",
+            "RuntimeError idx boom",
+            "TypeError %x format: an integer is required, not IntBad",
+            "TypeError %x format: an integer is required, not IndexBad",
+            "bytearray(b'42')",
+            "bytearray(b'42')",
+            "bytearray(b'7')",
+            "RuntimeError int boom",
+            "RuntimeError idx boom",
+            "TypeError %d format: a real number is required, not IntBad",
+            "TypeError %d format: a real number is required, not IndexBad",
+            "TypeError %x format: an integer is required, not IntOk",
+            "bytearray(b'2a')",
+            "bytearray(b'9')",
+            "TypeError %x format: an integer is required, not IntRaises",
+            "RuntimeError idx boom",
+            "TypeError %x format: an integer is required, not IntBad",
+            "TypeError %x format: an integer is required, not IndexBad",
+        ],
+    );
+}
+
+// Adapted from CPython old-style float formatting behavior in
+// Lib/test/test_format.py and Lib/test/test_bytes.py. String formatting uses
+// `__float__` before `__index__` and propagates those protocol exceptions,
+// while bytes/bytearray expose the public `float argument required` TypeError
+// for failed object-protocol conversion.
+#[test]
+fn cpython_old_style_percent_float_protocol_subset() {
+    assert_output(
+        "class FloatOk:\n    def __float__(self):\n        return 1.25\nclass FloatBad:\n    def __float__(self):\n        return '1.25'\nclass FloatRaises:\n    def __float__(self):\n        raise RuntimeError('float boom')\nclass IndexOk:\n    def __index__(self):\n        return 3\nclass IndexBad:\n    def __index__(self):\n        return '3'\nclass IndexRaises:\n    def __index__(self):\n        raise RuntimeError('idx boom')\nclass BothFloatBadIndexOk:\n    def __float__(self):\n        return 'bad'\n    def __index__(self):\n        return 4\nclass BothFloatRaisesIndexOk:\n    def __float__(self):\n        raise RuntimeError('float boom')\n    def __index__(self):\n        return 4\nfor obj in [FloatOk(), FloatBad(), FloatRaises(), IndexOk(), IndexBad(), IndexRaises(), BothFloatBadIndexOk(), BothFloatRaisesIndexOk()]:\n    for fmt in ['%f', '%g']:\n        try:\n            print(fmt % obj)\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])\nfor ctor in [bytes, bytearray]:\n    for obj in [FloatOk(), FloatBad(), FloatRaises(), IndexOk(), IndexBad(), IndexRaises(), BothFloatBadIndexOk(), BothFloatRaisesIndexOk()]:\n        try:\n            print(ctor(b'%f') % obj)\n        except (TypeError, RuntimeError) as error:\n            print(error.__class__.__name__, error.args[0])",
+        &[
+            "1.250000",
+            "1.25",
+            "TypeError FloatBad.__float__ returned non-float (type str)",
+            "TypeError FloatBad.__float__ returned non-float (type str)",
+            "RuntimeError float boom",
+            "RuntimeError float boom",
+            "3.000000",
+            "3",
+            "TypeError __index__ returned non-int (type str)",
+            "TypeError __index__ returned non-int (type str)",
+            "RuntimeError idx boom",
+            "RuntimeError idx boom",
+            "TypeError BothFloatBadIndexOk.__float__ returned non-float (type str)",
+            "TypeError BothFloatBadIndexOk.__float__ returned non-float (type str)",
+            "RuntimeError float boom",
+            "RuntimeError float boom",
+            "b'1.250000'",
+            "TypeError float argument required, not FloatBad",
+            "TypeError float argument required, not FloatRaises",
+            "b'3.000000'",
+            "TypeError float argument required, not IndexBad",
+            "TypeError float argument required, not IndexRaises",
+            "TypeError float argument required, not BothFloatBadIndexOk",
+            "TypeError float argument required, not BothFloatRaisesIndexOk",
+            "bytearray(b'1.250000')",
+            "TypeError float argument required, not FloatBad",
+            "TypeError float argument required, not FloatRaises",
+            "bytearray(b'3.000000')",
+            "TypeError float argument required, not IndexBad",
+            "TypeError float argument required, not IndexRaises",
+            "TypeError float argument required, not BothFloatBadIndexOk",
+            "TypeError float argument required, not BothFloatRaisesIndexOk",
+        ],
+    );
+}
+
+// Adapted from CPython old-style mapping formatting behavior in
+// Lib/test/test_format.py and Lib/test/test_bytes.py. User objects with
+// `__getitem__` are accepted as mappings, lookup exceptions stay catchable,
+// and bytes/bytearray mapping keys are passed as bytes.
+#[test]
+fn cpython_old_style_percent_custom_mapping_protocol_subset() {
+    assert_output(
+        "class MappingOk:\n    def __getitem__(self, key):\n        if key == 'name':\n            return 'answer'\n        if key == 'value':\n            return 42\n        if key == b'name':\n            return b'answer'\n        if key == b'value':\n            return 42\n        raise KeyError(key)\nclass MappingRaises:\n    def __getitem__(self, key):\n        raise RuntimeError('getitem boom ' + str(key))\nclass MappingMissing:\n    def __getitem__(self, key):\n        raise KeyError(key)\nclass NonMapping:\n    pass\nprint('%(name)s=%(value)d' % MappingOk())\nprint(b'%(name)b=%(value)d' % MappingOk())\nprint(bytearray(b'%(name)b=%(value)d') % MappingOk())\nfor expr in [\n    lambda: '%(name)s' % MappingRaises(),\n    lambda: b'%(name)b' % MappingRaises(),\n    lambda: bytearray(b'%(name)b') % MappingRaises(),\n    lambda: '%(name)s' % MappingMissing(),\n    lambda: b'%(name)b' % MappingMissing(),\n    lambda: bytearray(b'%(name)b') % MappingMissing(),\n    lambda: '%(name)s' % NonMapping(),\n    lambda: b'%(name)b' % NonMapping(),\n]:\n    try:\n        expr()\n    except (RuntimeError, KeyError, TypeError) as error:\n        print(error.__class__.__name__, str(error), error.args)",
+        &[
+            "answer=42",
+            "b'answer=42'",
+            "bytearray(b'answer=42')",
+            "RuntimeError getitem boom name ('getitem boom name',)",
+            "RuntimeError getitem boom b'name' (\"getitem boom b'name'\",)",
+            "RuntimeError getitem boom b'name' (\"getitem boom b'name'\",)",
+            "KeyError 'name' ('name',)",
+            "KeyError b'name' (b'name',)",
+            "KeyError b'name' (b'name',)",
+            "TypeError format requires a mapping ('format requires a mapping',)",
+            "TypeError format requires a mapping ('format requires a mapping',)",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_str.py::test_format and ::test_format_map.
@@ -30924,6 +39023,103 @@ fn cpython_complex_format_subset() {
             "X ValueError Unknown format code 'X' for object of type 'complex'",
         ],
     );
+    assert_output(
+        r#"NAN = float('nan')
+INF = float('inf')
+cases = [
+    (1+3j, '', '(1+3j)'),
+    (1.5+3.5j, '', '(1.5+3.5j)'),
+    (3j, '', '3j'),
+    (3.2j, '', '3.2j'),
+    (3+0j, '', '(3+0j)'),
+    (3.2+0j, '', '(3.2+0j)'),
+    (3.2+0j, '-', '(3.2+0j)'),
+    (3.2+0j, '<', '(3.2+0j)'),
+    (4/7. - 100j/7., '', '(0.5714285714285714-14.285714285714286j)'),
+    (4/7. - 100j/7., '-', '(0.5714285714285714-14.285714285714286j)'),
+    (4/7. - 100j/7., '<', '(0.5714285714285714-14.285714285714286j)'),
+    (4/7. - 100j/7., '10', '(0.5714285714285714-14.285714285714286j)'),
+    (complex(0.0, 3.0), '', '3j'),
+    (complex(0.0, 3.0), '-', '3j'),
+    (complex(0.0, 3.0), '<', '3j'),
+    (complex(0.0, 3.0), '2', '3j'),
+    (complex(-0.0, 2.0), '', '(-0+2j)'),
+    (complex(-0.0, 2.0), '-', '(-0+2j)'),
+    (complex(-0.0, 2.0), '<', '(-0+2j)'),
+    (complex(-0.0, 2.0), '3', '(-0+2j)'),
+    (1+3j, 'g', '1+3j'),
+    (3j, 'g', '0+3j'),
+    (1.5+3.5j, 'g', '1.5+3.5j'),
+    (1.5+3.5j, '+g', '+1.5+3.5j'),
+    (1.5-3.5j, '+g', '+1.5-3.5j'),
+    (1.5-3.5j, '-g', '1.5-3.5j'),
+    (1.5+3.5j, ' g', ' 1.5+3.5j'),
+    (1.5-3.5j, ' g', ' 1.5-3.5j'),
+    (-1.5+3.5j, ' g', '-1.5+3.5j'),
+    (-1.5-3.5j, ' g', '-1.5-3.5j'),
+    (-1.5-3.5e-20j, 'g', '-1.5-3.5e-20j'),
+    (-1.5-3.5j, 'f', '-1.500000-3.500000j'),
+    (-1.5-3.5j, 'F', '-1.500000-3.500000j'),
+    (-1.5-3.5j, 'e', '-1.500000e+00-3.500000e+00j'),
+    (-1.5-3.5j, '.2e', '-1.50e+00-3.50e+00j'),
+    (-1.5-3.5j, '.2E', '-1.50E+00-3.50E+00j'),
+    (-1.5e10-3.5e5j, '.2G', '-1.5E+10-3.5E+05j'),
+    (1.5+3j, '<20g', '1.5+3j              '),
+    (1.5+3j, '*<20g', '1.5+3j**************'),
+    (1.5+3j, '>20g', '              1.5+3j'),
+    (1.5+3j, '^20g', '       1.5+3j       '),
+    (1.5+3j, '<20', '(1.5+3j)            '),
+    (1.5+3j, '>20', '            (1.5+3j)'),
+    (1.5+3j, '^20', '      (1.5+3j)      '),
+    (1.123-3.123j, '^20.2', '     (1.1-3.1j)     '),
+    (1.5+3j, '20.2f', '          1.50+3.00j'),
+    (1.5+3j, '>20.2f', '          1.50+3.00j'),
+    (1.5+3j, '<20.2f', '1.50+3.00j          '),
+    (1.5e20+3j, '<20.2f', '150000000000000000000.00+3.00j'),
+    (1.5e20+3j, '>40.2f', '          150000000000000000000.00+3.00j'),
+    (1.5e20+3j, '^40,.2f', '  150,000,000,000,000,000,000.00+3.00j  '),
+    (1.5e21+3j, '^40,.2f', ' 1,500,000,000,000,000,000,000.00+3.00j '),
+    (1.5e21+3000j, ',.2f', '1,500,000,000,000,000,000,000.00+3,000.00j'),
+    (1+1j, '.0e', '1e+00+1e+00j'),
+    (1+1j, '#.0e', '1.e+00+1.e+00j'),
+    (1+1j, '.0f', '1+1j'),
+    (1+1j, '#.0f', '1.+1.j'),
+    (1.1+1.1j, 'g', '1.1+1.1j'),
+    (1.1+1.1j, '#g', '1.10000+1.10000j'),
+    (1+1j, '.1e', '1.0e+00+1.0e+00j'),
+    (1+1j, '#.1e', '1.0e+00+1.0e+00j'),
+    (1+1j, '.1f', '1.0+1.0j'),
+    (1+1j, '#.1f', '1.0+1.0j'),
+    ((-1.5+0.5j), '#f', '-1.500000+0.500000j'),
+    ((-1.5+0.5j), '#.0f', '-2.+0.j'),
+    ((-1.5+0.5j), '#e', '-1.500000e+00+5.000000e-01j'),
+    ((-1.5+0.5j), '#.0e', '-2.e+00+5.e-01j'),
+    ((-1.5+0.5j), '#g', '-1.50000+0.500000j'),
+    ((-1.5+0.5j), '.0g', '-2+0.5j'),
+    ((-1.5+0.5j), '#.0g', '-2.+0.5j'),
+    (complex(NAN, NAN), 'f', 'nan+nanj'),
+    (complex(1, NAN), 'f', '1.000000+nanj'),
+    (complex(NAN, 1), 'f', 'nan+1.000000j'),
+    (complex(NAN, -1), 'f', 'nan-1.000000j'),
+    (complex(NAN, NAN), 'F', 'NAN+NANj'),
+    (complex(1, NAN), 'F', '1.000000+NANj'),
+    (complex(NAN, 1), 'F', 'NAN+1.000000j'),
+    (complex(NAN, -1), 'F', 'NAN-1.000000j'),
+    (complex(INF, INF), 'f', 'inf+infj'),
+    (complex(1, INF), 'f', '1.000000+infj'),
+    (complex(INF, 1), 'f', 'inf+1.000000j'),
+    (complex(INF, -1), 'f', 'inf-1.000000j'),
+    (complex(INF, INF), 'F', 'INF+INFj'),
+    (complex(1, INF), 'F', '1.000000+INFj'),
+    (complex(INF, 1), 'F', 'INF+1.000000j'),
+    (complex(INF, -1), 'F', 'INF-1.000000j'),
+]
+ok = True
+for value, spec, expected in cases:
+    ok = ok and format(value, spec) == expected
+print('case-count', len(cases), ok)"#,
+        &["case-count 86 True"],
+    );
     assert_error(
         "(1.5+0.5j).__format__('010f')",
         "runtime error: ValueError: Zero padding is not allowed in complex format specifier",
@@ -31047,13 +39243,17 @@ fn cpython_complex_constructor_basic_subset() {
             "TypeError complex() argument 'imag' must be a real number, not str",
         ],
     );
+    assert_output(
+        "c = complex(4.25, 1.5)\nprint(complex(c) is c, complex.__new__(complex, c) is c, c.__complex__() is c, (+c) is c)\nimport warnings\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter('always')\n    kw = complex(real=c)\nprint(kw == c, kw is c, len(caught), caught[0].category is DeprecationWarning)",
+        &["True True True True", "True False 1 True"],
+    );
 }
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::
 // test_constructor protocol rows for exact built-in complex construction.
 #[test]
 fn cpython_complex_constructor_protocol_subset() {
-    assert_output(
+    assert_output_with_stack(
         "class WithFloat:\n    def __init__(self, value):\n        self.value = value\n    def __float__(self):\n        return self.value\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\ndef show(z):\n    print(type(z) is complex, repr(z.real), repr(z.imag), z)\nfor expr in [lambda: complex(WithFloat(4.25)), lambda: complex(WithFloat(4.25), 1.5), lambda: complex(1.5, WithFloat(4.25)), lambda: complex(WithIndex(42)), lambda: complex(WithIndex(42), 1.5), lambda: complex(1.5, WithIndex(42))]:\n    show(expr())",
         &[
             "True 4.25 0.0 (4.25+0j)",
@@ -31063,9 +39263,113 @@ fn cpython_complex_constructor_protocol_subset() {
             "True 42.0 1.5 (42+1.5j)",
             "True 1.5 42.0 (1.5+42j)",
         ],
+        64 * 1024 * 1024,
     );
-    assert_output(
-        "class WithComplex:\n    def __init__(self, value):\n        self.value = value\n    def __complex__(self):\n        return self.value\nclass WithFloat:\n    def __init__(self, value):\n        self.value = value\n    def __float__(self):\n        return self.value\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass MyInt:\n    def __int__(self):\n        return 42\nfor expr in [lambda: complex(WithComplex(1.5)), lambda: complex(WithComplex(1)), lambda: complex(WithComplex(None)), lambda: complex(WithComplex(4.25+0j), object()), lambda: complex(WithFloat(42)), lambda: complex(WithFloat(42), 1.5), lambda: complex(1.5, WithFloat(42)), lambda: complex(WithFloat(None)), lambda: complex(WithFloat(None), 1.5), lambda: complex(1.5, WithFloat(None)), lambda: complex(WithIndex(None)), lambda: complex(WithIndex(None), 1.5), lambda: complex(1.5, WithIndex(None)), lambda: complex(MyInt()), lambda: complex(MyInt(), 1.5), lambda: complex(1.5, MyInt())]:\n    try:\n        expr()\n    except (TypeError, OverflowError) as error:\n        print(error.__class__.__name__)",
+    assert_output_with_stack(
+        "class ComplexSubclass(complex):\n    pass\nclass WithComplex:\n    def __init__(self, value):\n        self.value = value\n    def __complex__(self):\n        return self.value\ndef show(label, expr):\n    try:\n        z = expr()\n        print(label, type(z) is complex, repr(z.real), repr(z.imag), z)\n    except TypeError as error:\n        print(label, error.__class__.__name__, error)\nfor label, expr in [('real-complex-zero', lambda: complex(4.25+0j, 0)), ('real-subclass-zero', lambda: complex(ComplexSubclass(4.25+0j), 0)), ('real-provider-zero', lambda: complex(WithComplex(4.25+0j), 0)), ('imag-complex', lambda: complex(0, 4.25+0j)), ('imag-subclass', lambda: complex(0, ComplexSubclass(4.25+0j))), ('imag-provider', lambda: complex(0, WithComplex(4.25+0j))), ('both-complex', lambda: complex(4.25j, 0j)), ('kw-real-complex', lambda: complex(real=4.25+1.5j))]:\n    show(label, expr)",
+        &[
+            "real-complex-zero True 4.25 0.0 (4.25+0j)",
+            "real-subclass-zero True 4.25 0.0 (4.25+0j)",
+            "real-provider-zero True 4.25 0.0 (4.25+0j)",
+            "imag-complex True 0.0 4.25 4.25j",
+            "imag-subclass True 0.0 4.25 4.25j",
+            "imag-provider TypeError complex() argument 'imag' must be a real number, not WithComplex",
+            "both-complex True 0.0 4.25 4.25j",
+            "kw-real-complex True 4.25 1.5 (4.25+1.5j)",
+        ],
+        64 * 1024 * 1024,
+    );
+    assert_output_with_stack(
+        r#"import warnings
+class ComplexSubclass(complex):
+    pass
+class WithComplex:
+    def __init__(self, value):
+        self.value = value
+    def __complex__(self):
+        return self.value
+class WithComplexSubclass:
+    def __complex__(self):
+        return ComplexSubclass(4.25+1.5j)
+class complex1(complex):
+    def __complex__(self):
+        return self
+
+def show(label, expr):
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter('always')
+        try:
+            value = expr()
+            print(label, value, len(caught))
+        except TypeError as error:
+            print(label, error.__class__.__name__, len(caught))
+        for wm in caught:
+            print(wm.category is DeprecationWarning, str(wm.message))
+
+show('real-complex-zero', lambda: complex(4.25+0j, 0))
+show('real-subclass-zero', lambda: complex(ComplexSubclass(4.25+0j), 0))
+show('real-provider-zero', lambda: complex(WithComplex(4.25+0j), 0))
+show('real-imag', lambda: complex(4.25j, 0))
+show('zeroj-real', lambda: complex(0j, 4.25))
+show('imag-complex', lambda: complex(0, 4.25+0j))
+show('imag-subclass', lambda: complex(0, ComplexSubclass(4.25+0j)))
+show('imag-provider', lambda: complex(0, WithComplex(4.25+0j)))
+show('real-float-imag-imag', lambda: complex(0.0, 4.25j))
+show('complex-complex-real', lambda: complex(4.25+0j, 0j))
+show('complex-complex-imag', lambda: complex(4.25j, 0j))
+show('zeroj-complex-real', lambda: complex(0j, 4.25+0j))
+show('zeroj-complex-imag', lambda: complex(0j, 4.25j))
+show('kw-real-complex-zero', lambda: complex(real=4.25+0j))
+show('kw-real-complex', lambda: complex(real=4.25+1.5j))
+show('pos-provider-subclass', lambda: complex(WithComplexSubclass()))
+show('kw-provider-subclass', lambda: complex(real=WithComplexSubclass()))
+show('pos-self-subclass', lambda: complex(complex1(1j)))"#,
+        &[
+            "real-complex-zero (4.25+0j) 1",
+            "True complex() argument 'real' must be a real number, not complex",
+            "real-subclass-zero (4.25+0j) 1",
+            "True complex() argument 'real' must be a real number, not ComplexSubclass",
+            "real-provider-zero (4.25+0j) 1",
+            "True complex() argument 'real' must be a real number, not WithComplex",
+            "real-imag 4.25j 1",
+            "True complex() argument 'real' must be a real number, not complex",
+            "zeroj-real 4.25j 1",
+            "True complex() argument 'real' must be a real number, not complex",
+            "imag-complex 4.25j 1",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "imag-subclass 4.25j 1",
+            "True complex() argument 'imag' must be a real number, not ComplexSubclass",
+            "imag-provider TypeError 0",
+            "real-float-imag-imag (-4.25+0j) 1",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "complex-complex-real (4.25+0j) 2",
+            "True complex() argument 'real' must be a real number, not complex",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "complex-complex-imag 4.25j 2",
+            "True complex() argument 'real' must be a real number, not complex",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "zeroj-complex-real 4.25j 2",
+            "True complex() argument 'real' must be a real number, not complex",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "zeroj-complex-imag (-4.25+0j) 2",
+            "True complex() argument 'real' must be a real number, not complex",
+            "True complex() argument 'imag' must be a real number, not complex",
+            "kw-real-complex-zero (4.25+0j) 1",
+            "True complex() argument 'real' must be a real number, not complex",
+            "kw-real-complex (4.25+1.5j) 1",
+            "True complex() argument 'real' must be a real number, not complex",
+            "pos-provider-subclass (4.25+1.5j) 1",
+            "True __complex__ returned non-complex (type ComplexSubclass).  The ability to return an instance of a strict subclass of complex is deprecated, and may be removed in a future version of Python.",
+            "kw-provider-subclass (4.25+1.5j) 2",
+            "True __complex__ returned non-complex (type ComplexSubclass).  The ability to return an instance of a strict subclass of complex is deprecated, and may be removed in a future version of Python.",
+            "True complex() argument 'real' must be a real number, not WithComplexSubclass",
+            "pos-self-subclass 1j 1",
+            "True __complex__ returned non-complex (type complex1).  The ability to return an instance of a strict subclass of complex is deprecated, and may be removed in a future version of Python.",
+        ],
+        64 * 1024 * 1024,
+    );
+    assert_output_with_stack(
+        "class WithComplex:\n    def __init__(self, value):\n        self.value = value\n    def __complex__(self):\n        return self.value\nclass WithFloat:\n    def __init__(self, value):\n        self.value = value\n    def __float__(self):\n        return self.value\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\nclass MyInt:\n    def __int__(self):\n        return 42\nfor expr in [lambda: complex(WithComplex(1.5)), lambda: complex(WithComplex(1)), lambda: complex(WithComplex(None)), lambda: complex(WithComplex(4.25+0j), object()), lambda: complex(WithComplex(1.5), object()), lambda: complex(WithComplex(1), object()), lambda: complex(WithComplex(None), object()), lambda: complex(0, WithComplex(4.25+0j)), lambda: complex(WithFloat(42)), lambda: complex(WithFloat(42), 1.5), lambda: complex(1.5, WithFloat(42)), lambda: complex(WithFloat(None)), lambda: complex(WithFloat(None), 1.5), lambda: complex(1.5, WithFloat(None)), lambda: complex(WithIndex(2**2000), 1.5), lambda: complex(1.5, WithIndex(2**2000)), lambda: complex(WithIndex(None)), lambda: complex(WithIndex(None), 1.5), lambda: complex(1.5, WithIndex(None)), lambda: complex(MyInt()), lambda: complex(MyInt(), 1.5), lambda: complex(1.5, MyInt())]:\n    try:\n        expr()\n    except (TypeError, OverflowError) as error:\n        print(error.__class__.__name__)",
         &[
             "TypeError",
             "TypeError",
@@ -31077,6 +39381,12 @@ fn cpython_complex_constructor_protocol_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
             "TypeError",
             "TypeError",
             "TypeError",
@@ -31084,20 +39394,22 @@ fn cpython_complex_constructor_protocol_subset() {
             "TypeError",
             "TypeError",
         ],
+        64 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         "class EvilExc(Exception):\n    pass\nclass evilcomplex:\n    def __complex__(self):\n        raise EvilExc\nclass WithIndex:\n    def __init__(self, value):\n        self.value = value\n    def __index__(self):\n        return self.value\ntry:\n    complex({})\nexcept TypeError:\n    print('primed')\ntry:\n    complex(evilcomplex())\nexcept EvilExc:\n    print('EvilExc')\ntry:\n    complex(WithIndex(2**2000))\nexcept OverflowError as error:\n    print(error.__class__.__name__)",
         &["primed", "EvilExc", "OverflowError"],
+        64 * 1024 * 1024,
     );
 }
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::
-// test_from_number for the exact built-in complex type. MiniPython does not yet
-// model complex subclass instances or complex object identity.
+// test_from_number for the exact built-in complex type. Complex subclass
+// construction is covered below.
 #[test]
 fn cpython_complex_from_number_subset() {
     assert_output(
-        "def eq(actual, expected):\n    print(actual == expected, type(actual) is complex)\neq(complex.from_number(3.14), 3.14+0j)\neq(complex.from_number(3.14j), 3.14j)\neq(complex.from_number(314), 314.0+0j)\nclass WithComplex:\n    def __complex__(self):\n        return 3.14+2.72j\nclass WithFloat:\n    def __float__(self):\n        return 3.14\nclass WithIndex:\n    def __index__(self):\n        return 314\neq(complex.from_number(WithComplex()), 3.14+2.72j)\neq(complex.from_number(WithFloat()), 3.14+0j)\neq(complex.from_number(WithIndex()), 314.0+0j)\nNAN = float('nan')\ncNAN = complex(NAN, NAN)\nx = complex.from_number(cNAN)\nprint(x != x, type(x) is complex)\nprint('from_number' in dir(complex), 'from_number' in dir(1+1j), (1+1j).from_number(5))",
+        "def eq(actual, expected):\n    print(actual == expected, type(actual) is complex)\neq(complex.from_number(3.14), 3.14+0j)\neq(complex.from_number(3.14j), 3.14j)\neq(complex.from_number(314), 314.0+0j)\nclass OtherComplexSubclass(complex):\n    pass\neq(complex.from_number(OtherComplexSubclass(3.14, 2.72)), 3.14+2.72j)\nclass WithComplex:\n    def __complex__(self):\n        return 3.14+2.72j\nclass WithFloat:\n    def __float__(self):\n        return 3.14\nclass WithIndex:\n    def __index__(self):\n        return 314\neq(complex.from_number(WithComplex()), 3.14+2.72j)\neq(complex.from_number(WithFloat()), 3.14+0j)\neq(complex.from_number(WithIndex()), 314.0+0j)\nNAN = float('nan')\ncNAN = complex(NAN, NAN)\nx = complex.from_number(cNAN)\nprint(x != x, type(x) is complex, x is cNAN, complex.from_number(cNAN) is cNAN)\nprint('from_number' in dir(complex), 'from_number' in dir(1+1j), (1+1j).from_number(5))",
         &[
             "True True",
             "True True",
@@ -31106,6 +39418,7 @@ fn cpython_complex_from_number_subset() {
             "True True",
             "True True",
             "True True",
+            "True True True True",
             "True True (5+0j)",
         ],
     );
@@ -31118,6 +39431,101 @@ fn cpython_complex_from_number_subset() {
             "TypeError",
             "TypeError",
         ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_constructor
+// and ::test_from_number subclass rows. Constructor warning assertions around
+// strict-complex-subclass `__complex__` returns are covered above.
+#[test]
+fn cpython_complex_subclass_constructor_and_from_number_subset() {
+    assert_output_with_stack(
+        r#"class ComplexSubclass(complex):
+    pass
+class ComplexSubclassWithNew(complex):
+    def __new__(cls, value=0j):
+        return complex.__new__(cls, value + 1j)
+class WithComplex:
+    def __complex__(self):
+        return ComplexSubclass(3+4j)
+class WithFloat:
+    def __float__(self):
+        return 2.5
+class complex0(complex):
+    def __complex__(self):
+        return 42j
+class complex1(complex):
+    def __new__(cls, value=0j):
+        return complex.__new__(cls, 2*value)
+    def __complex__(self):
+        return self
+class complex2(complex):
+    def __complex__(self):
+        return None
+
+def show(label, value, typ):
+    print(label, value, type(value).__name__, type(value) is complex, type(value) is typ, isinstance(value, complex), value.real, value.imag)
+
+def show_custom_complex(label, expr):
+    try:
+        value = expr()
+        print(label, value, type(value).__name__, type(value) is complex, type(value) is ComplexSubclass, value.real, value.imag)
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+
+show('default', ComplexSubclass(), ComplexSubclass)
+show('real', ComplexSubclass(1.5), ComplexSubclass)
+show('complex', ComplexSubclass(1+2j), ComplexSubclass)
+show('two-arg', ComplexSubclass(1, 2), ComplexSubclass)
+show('kw', ComplexSubclass(real=1, imag=2), ComplexSubclass)
+show('new-direct', complex.__new__(ComplexSubclass, 1+2j), ComplexSubclass)
+show('new-kw', complex.__new__(ComplexSubclass, real=1, imag=2), ComplexSubclass)
+show('custom-new', ComplexSubclassWithNew(1+2j), ComplexSubclassWithNew)
+show('from-complex', ComplexSubclass.from_number(1+2j), ComplexSubclass)
+show('from-with-complex', ComplexSubclass.from_number(WithComplex()), ComplexSubclass)
+show('from-with-float', ComplexSubclass.from_number(WithFloat()), ComplexSubclass)
+show('custom-from', ComplexSubclassWithNew.from_number(1+2j), ComplexSubclassWithNew)
+show('exact-from-subclass-result', complex.from_number(WithComplex()), complex)
+show('exact-constructor-subclass-result', complex(WithComplex()), complex)
+show_custom_complex('custom-complex0', lambda: complex(complex0(1j)))
+show_custom_complex('custom-complex1', lambda: complex(complex1(1j)))
+show_custom_complex('custom-complex2', lambda: complex(complex2(1j)))
+z = ComplexSubclass(1+2j)
+print('dir', 'from_number' in dir(ComplexSubclass), 'from_number' in dir(z), '__new__' in dir(complex))
+bound = ComplexSubclass(3+4j).__complex__()
+print('bound-subclass-complex', bound, type(bound).__name__, type(bound) is complex)
+print('unbound', type(complex.__complex__(z)) is complex, type(complex.conjugate(z)) is complex, type(complex.__pos__(z)) is complex, type(complex.__neg__(z)) is complex)
+print('ops', z + 1, 1 + z, z - 1, 1 - z, z * 2, z / 2)
+print('unary-bool-abs', +z, -z, bool(ComplexSubclass()), bool(z), abs(ComplexSubclass(3+4j)))
+print('compare-hash', z == 1+2j, z != 1+2j, hash(ComplexSubclass(1+0j)) == hash(1+0j))
+print('instance-from', type(z.from_number(5)) is ComplexSubclass, z.from_number(5))"#,
+        &[
+            "default 0j ComplexSubclass False True True 0.0 0.0",
+            "real (1.5+0j) ComplexSubclass False True True 1.5 0.0",
+            "complex (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "two-arg (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "kw (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "new-direct (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "new-kw (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "custom-new (1+3j) ComplexSubclassWithNew False True True 1.0 3.0",
+            "from-complex (1+2j) ComplexSubclass False True True 1.0 2.0",
+            "from-with-complex (3+4j) ComplexSubclass False True True 3.0 4.0",
+            "from-with-float (2.5+0j) ComplexSubclass False True True 2.5 0.0",
+            "custom-from (1+3j) ComplexSubclassWithNew False True True 1.0 3.0",
+            "exact-from-subclass-result (3+4j) complex True True True 3.0 4.0",
+            "exact-constructor-subclass-result (3+4j) complex True True True 3.0 4.0",
+            "custom-complex0 42j complex True False 0.0 42.0",
+            "custom-complex1 2j complex True False 0.0 2.0",
+            "custom-complex2 TypeError",
+            "dir True True True",
+            "bound-subclass-complex (3+4j) complex True",
+            "unbound True True True True",
+            "ops (2+2j) (2+2j) 2j -2j (2+4j) (0.5+1j)",
+            "unary-bool-abs (1+2j) (-1-2j) False True 5.0",
+            "compare-hash True False True",
+            "instance-from True (5+0j)",
+        ],
+        64 * 1024 * 1024,
     );
 }
 
@@ -31253,15 +39661,65 @@ fn cpython_complex_add_sub_mul_subset() {
             "(nan+nanj) nan nan",
         ],
     );
+    assert_output(
+        r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return True
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+def same_complex(actual, expected):
+    return same_float(actual.real, expected.real) and same_float(actual.imag, expected.imag)
+cases = [
+    (1e300+1j, complex(INF, INF), complex(NAN, INF)),
+    (1e300+1j, complex(NAN, INF), complex(-INF, INF)),
+    (1e300+1j, complex(INF, NAN), complex(INF, INF)),
+    (complex(INF, 1), complex(NAN, INF), complex(NAN, INF)),
+    (complex(INF, 1), complex(INF, NAN), complex(INF, NAN)),
+    (complex(NAN, 1), complex(1, INF), complex(-INF, NAN)),
+    (complex(1, NAN), complex(1, INF), complex(NAN, INF)),
+    (complex(1e200, NAN), complex(1e200, NAN), complex(INF, NAN)),
+    (complex(1e200, NAN), complex(NAN, 1e200), complex(NAN, INF)),
+    (complex(NAN, 1e200), complex(1e200, NAN), complex(NAN, INF)),
+    (complex(NAN, 1e200), complex(NAN, 1e200), complex(-INF, NAN)),
+    (complex(NAN, NAN), complex(NAN, NAN), complex(NAN, NAN)),
+]
+ok = True
+for z, w, expected in cases:
+    ok = ok and same_complex(z * w, expected)
+    ok = ok and same_complex(w * z, expected)
+print(ok)
+for label, value in [
+    ('finite-nan-inf', (1e300+1j) * complex(NAN, INF)),
+    ('finite-inf-nan', (1e300+1j) * complex(INF, NAN)),
+    ('nan-one-one-inf', complex(NAN, 1) * complex(1, INF)),
+    ('nan-huge-nan-huge', complex(NAN, 1e200) * complex(NAN, 1e200)),
+]:
+    print(label, repr(value.real), copysign(1.0, value.real), repr(value.imag), copysign(1.0, value.imag))"#,
+        &[
+            "True",
+            "finite-nan-inf -inf -1.0 inf 1.0",
+            "finite-inf-nan inf 1.0 inf 1.0",
+            "nan-one-one-inf -inf -1.0 nan 1.0",
+            "nan-huge-nan-huge -inf -1.0 nan 1.0",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_truediv,
-// ::test_truediv_zero_division, ::test_floordiv, ::test_mod, and ::test_divmod.
+// ::test_truediv_zero_division, ::test_floordiv, ::test_floordiv_zero_division,
+// ::test_mod, ::test_mod_zero_division, ::test_divmod, and
+// ::test_divmod_zero_division.
 #[test]
 fn cpython_complex_division_subset() {
     assert_output(
         "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nsimple_real = [float(i) for i in range(-5, 6)]\nsimple_complex = [complex(x, y) for x in simple_real for y in simple_real]\nfor x in simple_complex:\n    for y in simple_complex:\n        z = x * y\n        if x:\n            ok = ok and close(z / x, y)\n        if y:\n            ok = ok and close(z / y, x)\nprint(ok)\nprint(complex.__truediv__(2+0j, 1+1j))\nprint('__truediv__' in dir(1+1j), '__truediv__' in dir(complex))",
         &["True", "(1-1j)", "True True"],
+    );
+    assert_output(
+        "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nfor x in [complex(1e200, 1e200), complex(1e-200, 1e-200)]:\n    y = 1+0j\n    z = x * y\n    ok = ok and close(z / x, y)\n    ok = ok and close(z.__truediv__(x), y)\n    ok = ok and close(z / y, x)\n    ok = ok and close(z.__truediv__(y), x)\nprint(ok)",
+        &["True"],
     );
     assert_output(
         "def show(z):\n    print(z, repr(z.real), repr(z.imag))\nshow((1+1j) / float(2))\nshow(float(1) / (1+2j))\nshow(float(1) / (-1+2j))\nshow(float(1) / (1-2j))\nshow(float(1) / (2+1j))\nshow(float(1) / (-2+1j))\nshow(float(1) / (2-1j))",
@@ -31284,6 +39742,59 @@ fn cpython_complex_division_subset() {
             "True nan nan",
             "True nan nan",
             "True nan nan",
+        ],
+    );
+    assert_output(
+        r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return True
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+def same_complex(actual, expected):
+    return same_float(actual.real, expected.real) and same_float(actual.imag, expected.imag)
+cases = [
+    (complex(INF, NAN) / 2, complex(INF, NAN)),
+    (complex(INF, 1)/(0.0+1j), complex(NAN, -INF)),
+    (complex(INF, -INF)/(1+0j), complex(INF, -INF)),
+    (complex(INF, INF)/(0.0+1j), complex(INF, -INF)),
+    (complex(NAN, INF)/complex(2**1000, 2**-1000), complex(INF, INF)),
+    (complex(INF, NAN)/complex(2**1000, 2**-1000), complex(INF, -INF)),
+    ((1+1j)/complex(INF, INF), (0.0+0j)),
+    ((1+1j)/complex(INF, -INF), (0.0+0j)),
+    ((1+1j)/complex(-INF, INF), complex(0.0, -0.0)),
+    ((1+1j)/complex(-INF, -INF), complex(-0.0, 0)),
+    ((INF+1j)/complex(INF, INF), complex(NAN, NAN)),
+    (complex(1, INF)/complex(INF, INF), complex(NAN, NAN)),
+    (complex(INF, 1)/complex(1, INF), complex(NAN, NAN)),
+    (INF/(1+0j), complex(INF, NAN)),
+    (INF/(0.0+1j), complex(NAN, -INF)),
+    (INF/complex(2**1000, 2**-1000), complex(INF, NAN)),
+    (INF/complex(NAN, NAN), complex(NAN, NAN)),
+    (float(1)/complex(INF, INF), (0.0-0j)),
+    (float(1)/complex(INF, -INF), (0.0+0j)),
+    (float(1)/complex(-INF, INF), complex(-0.0, -0.0)),
+    (float(1)/complex(-INF, -INF), complex(-0.0, 0)),
+    (float(1)/complex(INF, NAN), complex(0.0, -0.0)),
+    (float(1)/complex(-INF, NAN), complex(-0.0, -0.0)),
+    (float(1)/complex(NAN, INF), complex(0.0, -0.0)),
+    (float(INF)/complex(NAN, INF), complex(NAN, NAN)),
+]
+print(all(same_complex(actual, expected) for actual, expected in cases))
+for label, value in [
+    ('finite-neginf-inf', (1+1j)/complex(-INF, INF)),
+    ('finite-neginf-neginf', (1+1j)/complex(-INF, -INF)),
+    ('real-over-inf-inf', float(1)/complex(INF, INF)),
+    ('real-over-neginf-inf', float(1)/complex(-INF, INF)),
+]:
+    print(label, repr(value.real), copysign(1.0, value.real), repr(value.imag), copysign(1.0, value.imag))"#,
+        &[
+            "True",
+            "finite-neginf-inf 0.0 1.0 -0.0 -1.0",
+            "finite-neginf-neginf -0.0 -1.0 0.0 1.0",
+            "real-over-inf-inf 0.0 1.0 -0.0 -1.0",
+            "real-over-neginf-inf -0.0 -1.0 -0.0 -1.0",
         ],
     );
     assert_output(
@@ -31311,6 +39822,26 @@ fn cpython_complex_division_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+        ],
+    );
+    assert_output(
+        "ZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor op in ['floordiv', 'mod', 'divmod']:\n    for a, b in ZERO_DIVISION:\n        try:\n            if op == 'floordiv':\n                a // b\n            elif op == 'mod':\n                a % b\n            else:\n                divmod(a, b)\n        except TypeError as error:\n            print(op, error.__class__.__name__)",
+        &[
+            "floordiv TypeError",
+            "floordiv TypeError",
+            "floordiv TypeError",
+            "floordiv TypeError",
+            "floordiv TypeError",
+            "mod TypeError",
+            "mod TypeError",
+            "mod TypeError",
+            "mod TypeError",
+            "mod TypeError",
+            "divmod TypeError",
+            "divmod TypeError",
+            "divmod TypeError",
+            "divmod TypeError",
+            "divmod TypeError",
         ],
     );
 }
@@ -31343,6 +39874,30 @@ fn cpython_complex_pow_subset() {
             "ValueError complex modulo",
             "TypeError",
             "TypeError",
+        ],
+    );
+    assert_output(
+        "a = 3.33+4.43j\nprint(a ** 0j == 1+0j, type(a ** 0j) is complex)\nprint(a ** (0.0+0.0j) == 1+0j, type(a ** (0.0+0.0j)) is complex)\nprint(3j ** 0j == 1+0j, type(3j ** 0j) is complex)\nprint(3j ** 0 == 1+0j, type(3j ** 0) is complex)\nprint(a ** 105 == a ** 105)\nprint(a ** -105 == a ** -105)\nprint(a ** -30 == a ** -30)\nprint(0.0j ** 0 == 1+0j, type(0.0j ** 0) is complex)",
+        &[
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "True",
+            "True",
+            "True",
+            "True True",
+        ],
+    );
+    assert_output(
+        "import sys\nfor label, expr in [('general-overflow', lambda: pow(1e200+1j, 1e200+1j)), ('integer-overflow', lambda: pow(1e200+1j, 5)), ('large-imag-overflow', lambda: 9j ** (33j**3))]:\n    try:\n        expr()\n    except OverflowError as error:\n        print(label, error.__class__.__name__)\nfor label, expr in [('zero-complex-a', lambda: 0j ** (3.33+4.43j)), ('zero-complex-b', lambda: 0j ** (3-2j))]:\n    try:\n        expr()\n    except ZeroDivisionError as error:\n        print(label, error.__class__.__name__)\nvalues = (sys.maxsize, sys.maxsize+1, sys.maxsize-1, -sys.maxsize, -sys.maxsize+1, -sys.maxsize+1)\nok = True\nfor real in values:\n    for imag in values:\n        c = complex(real, imag)\n        for expr in [lambda c=c, real=real: c ** real, lambda c=c: c ** c]:\n            try:\n                expr()\n            except OverflowError:\n                pass\n            except BaseException:\n                ok = False\nprint('boundary-no-crash', ok)",
+        &[
+            "general-overflow OverflowError",
+            "integer-overflow OverflowError",
+            "large-imag-overflow OverflowError",
+            "zero-complex-a ZeroDivisionError",
+            "zero-complex-b ZeroDivisionError",
+            "boundary-no-crash True",
         ],
     );
 }
@@ -31440,13 +39995,41 @@ fn cpython_complex_overflow_subset() {
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::
 // test_boolcontext, ::test_constructor_special_numbers, and
-// ::test_constructor_negative_nans_from_string. Subclass-specific rows remain
-// outside this exact built-in complex slice.
+// ::test_constructor_negative_nans_from_string.
 #[test]
 fn cpython_complex_bool_and_special_numbers_subset() {
     assert_output(
-        "from math import copysign\nINF = float('inf')\nNAN = float('nan')\ndef same_float(actual, expected):\n    if actual != actual and expected != expected:\n        return copysign(1.0, actual) == copysign(1.0, expected)\n    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)\nok = True\nfor x in [0.0, -0.0, INF, -INF, NAN]:\n    for y in [0.0, -0.0, INF, -INF, NAN]:\n        z = complex(x, y)\n        ok = ok and same_float(z.real, x) and same_float(z.imag, y)\nprint(ok)\nprint(bool(complex(1e-6, 1e-6)), bool(complex(0.0, 0.0)), bool(1j), (1j).__bool__(), (0j).__bool__())\nprint(copysign(1.0, complex('-nan').real), copysign(1.0, complex('-nanj').imag), copysign(1.0, complex('-nan-nanj').real), copysign(1.0, complex('-nan-nanj').imag))",
-        &["True", "True False True True False", "-1.0 -1.0 -1.0 -1.0"],
+        r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+class ComplexSubclass(complex):
+    pass
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return copysign(1.0, actual) == copysign(1.0, expected)
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+ok = True
+ok_sub = ok_exact = ok_round = True
+for x in [0.0, -0.0, INF, -INF, NAN]:
+    for y in [0.0, -0.0, INF, -INF, NAN]:
+        z = complex(x, y)
+        ok = ok and same_float(z.real, x) and same_float(z.imag, y)
+        z = ComplexSubclass(x, y)
+        ok_sub = ok_sub and type(z) is ComplexSubclass and same_float(z.real, x) and same_float(z.imag, y)
+        z = complex(ComplexSubclass(x, y))
+        ok_exact = ok_exact and type(z) is complex and same_float(z.real, x) and same_float(z.imag, y)
+        z = ComplexSubclass(complex(x, y))
+        ok_round = ok_round and type(z) is ComplexSubclass and same_float(z.real, x) and same_float(z.imag, y)
+print(ok)
+print(ok_sub, ok_exact, ok_round)
+print(bool(complex(1e-6, 1e-6)), bool(complex(0.0, 0.0)), bool(1j), (1j).__bool__(), (0j).__bool__())
+print(copysign(1.0, complex('-nan').real), copysign(1.0, complex('-nanj').imag), copysign(1.0, complex('-nan-nanj').real), copysign(1.0, complex('-nan-nanj').imag))"#,
+        &[
+            "True",
+            "True True True",
+            "True False True True False",
+            "-1.0 -1.0 -1.0 -1.0",
+        ],
     );
 }
 
@@ -31456,22 +40039,10 @@ fn cpython_complex_bool_and_special_numbers_subset() {
 #[test]
 fn cpython_complex_string_underscore_and_literal_subset() {
     assert_output(
-        "for lit in ['1_000', '1_000j', '1_0+2_0j', '1_0e+2_0', '.1_0', '1_0.5_0', '1_0e-2_0j']:\n    print(lit, complex(lit) == complex(lit.replace('_', '')))\nfor lit in ['1__0', '1_', '1_.0', '1._0', '1e_1', '1e+_1', '1_j']:\n    try:\n        complex(lit)\n    except ValueError as error:\n        print(lit, error.__class__.__name__)\nz1, z2 = 0j, -0j\nprint(repr(z1.imag), repr(z2.imag))\nfor z in [-0j, -7j, -1e1000j]:\n    print(repr(z.real), repr(z.imag))",
+        "VALID = ['0_0_0', '4_2', '1_0000_0000', '0b1001_0100', '0xffff_ffff', '0o5_7_7', '1_00_00.5', '1_00_00.5e5', '1_00_00e5_1', '1e1_0', '.1_4', '.1_4e1', '0b_0', '0x_f', '0o_5', '1_00_00j', '1_00_00.5j', '1_00_00e5_1j', '.1_4j', '(1_2.5+3_3j)', '(.5_6j)']\nINVALID = ['0_', '42_', '1.4j_', '0x_', '0b1_', '0xf_', '0o5_', '0 if 1_Else 1', '0_b0', '0_xf', '0_o5', '0_7', '09_99', '4_______2', '0.1__4', '0.1__4j', '0b1001__0100', '0xffff__ffff', '0x___', '0o5__77', '1e1__0', '1e1__0j', '1_.4', '1_.4j', '1._4', '1._4j', '._5', '._5j', '1.0e+_1', '1.0e+_1j', '1.4_j', '1.4e5_j', '1_e1', '1.4_e1', '1.4_e1j', '1e_1', '1.4e_1', '1.4e_1j', '(1+1.5_j_)', '(1+1.5_j)']\nvalid = [lit for lit in VALID if not any(ch in lit for ch in 'xXoObB')]\ninvalid = [lit for lit in INVALID if lit not in ('0_7', '09_99') and not any(ch in lit for ch in 'xXoObB')]\nvalid_ok = all(complex(lit) == eval(lit) and complex(lit) == complex(lit.replace('_', '')) for lit in valid)\ninvalid_ok = True\nfor lit in invalid:\n    try:\n        complex(lit)\n    except ValueError:\n        pass\n    else:\n        invalid_ok = False\nprint('valid-count', len(valid), valid_ok)\nprint('invalid-count', len(invalid), invalid_ok)\nz1, z2 = 0j, -0j\nprint(repr(z1.imag), repr(z2.imag))\nfor z in [-0j, -7j, -1e1000j]:\n    print(repr(z.real), repr(z.imag))",
         &[
-            "1_000 True",
-            "1_000j True",
-            "1_0+2_0j True",
-            "1_0e+2_0 True",
-            ".1_0 True",
-            "1_0.5_0 True",
-            "1_0e-2_0j True",
-            "1__0 ValueError",
-            "1_ ValueError",
-            "1_.0 ValueError",
-            "1._0 ValueError",
-            "1e_1 ValueError",
-            "1e+_1 ValueError",
-            "1_j ValueError",
+            "valid-count 15 True",
+            "invalid-count 27 True",
             "0.0 -0.0",
             "-0.0 -0.0",
             "-0.0 -7.0",
@@ -32919,6 +41490,745 @@ fn cpython_dict_view_mappingproxy_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests. This ports
+// the first public `types.new_class`, `prepare_class`, `resolve_bases`, and
+// `__mro_entries__` slice without claiming the full metaclass conflict matrix.
+#[test]
+fn cpython_types_class_creation_new_class_resolve_bases_subset() {
+    assert_output(
+        concat!(
+            "import types, typing\n",
+            "print('new_class' in types.__all__, 'prepare_class' in types.__all__, 'resolve_bases' in types.__all__)\n",
+            "print(types.new_class('C').__name__, types.new_class('C').__bases__[0] is object)\n",
+            "C = types.new_class('C', (int,))\n",
+            "print(issubclass(C, int), C.__bases__[0] is int)\n",
+            "def body(ns):\n",
+            "    ns['x'] = 42\n",
+            "D = types.new_class('D', (), {}, body)\n",
+            "print(D.x, D.__name__)\n",
+            "settings = {'metaclass': lambda name, bases, ns, **kw: (name, bases, sorted(ns.items()), kw), 'z': 2}\n",
+            "print(types.new_class('E', (), settings, body))\n",
+            "print(settings['z'], 'metaclass' in settings)\n",
+            "meta, ns, kw = types.prepare_class('P')\n",
+            "print(meta is type, type(ns).__name__, kw == {})\n",
+            "class Meta(type):\n",
+            "    def __prepare__(name, bases, z=0):\n",
+            "        return {'prepared': z, 'base_count': len(bases)}\n",
+            "class Direct(metaclass=Meta):\n",
+            "    pass\n",
+            "class Derived(Direct):\n",
+            "    pass\n",
+            "print(Direct.__class__ is Meta, type(Direct) is Meta, isinstance(Direct, Meta), isinstance(Direct, type), Direct.prepared, Direct.base_count)\n",
+            "print(Derived.__class__ is Meta, type(Derived) is Meta, isinstance(Derived, Meta), isinstance(Derived, type), Derived.prepared, Derived.base_count)\n",
+            "meta, ns, kw = types.prepare_class('P', (), {'metaclass': Meta, 'z': 2})\n",
+            "print(meta is Meta, ns, kw)\n",
+            "Prepared = types.new_class('Prepared', (), {'metaclass': Meta})\n",
+            "PreparedChild = types.new_class('PreparedChild', (Prepared,))\n",
+            "print(Prepared.__class__ is Meta, type(Prepared) is Meta, isinstance(Prepared, Meta), isinstance(Prepared, type), Prepared.prepared, Prepared.base_count)\n",
+            "print(PreparedChild.__class__ is Meta, type(PreparedChild) is Meta, isinstance(PreparedChild, Meta), isinstance(PreparedChild, type), PreparedChild.prepared, PreparedChild.base_count)\n",
+            "class MetaConstruct(type):\n",
+            "    def __new__(mcls, name, bases, ns, marker='x'):\n",
+            "        print('new', mcls.__name__, name, len(bases), ns.get('body_value', 'missing'), marker)\n",
+            "        ns['from_new'] = marker\n",
+            "        return type.__new__(mcls, name, bases, ns)\n",
+            "    def __init__(cls, name, bases, ns, marker='x'):\n",
+            "        print('init', cls.__name__, name, len(bases), ns.get('from_new'), marker)\n",
+            "        cls.from_init = marker + '-init'\n",
+            "class ConstructBase(metaclass=MetaConstruct, marker='base'):\n",
+            "    body_value = 1\n",
+            "class ConstructChild(ConstructBase, marker='child'):\n",
+            "    pass\n",
+            "print(ConstructBase.from_new, ConstructBase.from_init, ConstructChild.from_new, ConstructChild.from_init)\n",
+            "def construct_body(ns):\n",
+            "    ns['body_value'] = 7\n",
+            "ConstructDyn = types.new_class('ConstructDyn', (), {'metaclass': MetaConstruct, 'marker': 'dyn'}, construct_body)\n",
+            "print(ConstructDyn.from_new, ConstructDyn.from_init)\n",
+            "class HookBase:\n",
+            "    def __init_subclass__(cls, **kw):\n",
+            "        print('sub', cls.__name__, kw['flag'])\n",
+            "class InitOnlyMeta(type):\n",
+            "    def __init__(cls, name, bases, ns, **kw):\n",
+            "        print('meta-init', cls.__name__, kw['flag'])\n",
+            "class HookChild(HookBase, metaclass=InitOnlyMeta, flag=3):\n",
+            "    pass\n",
+            "class AMeta(type): pass\n",
+            "class BMeta(type): pass\n",
+            "class A(metaclass=AMeta): pass\n",
+            "class B(metaclass=BMeta): pass\n",
+            "try:\n",
+            "    class Bad(A, B): pass\n",
+            "except TypeError as error:\n",
+            "    print('conflict', type(error).__name__)\n",
+            "class TupleSubclass(tuple):\n",
+            "    pass\n",
+            "tuple_bases = TupleSubclass((int, object))\n",
+            "TupleDyn = type('TupleDyn', tuple_bases, {})\n",
+            "print('tuple-bases', type(tuple_bases).__name__, len(tuple_bases), isinstance(tuple_bases, tuple), TupleDyn.__bases__ == (int, object), type(TupleDyn.__bases__).__name__, TupleDyn.__bases__ is tuple_bases, TupleDyn.__bases__[0] is int, TupleDyn.__bases__[1] is object)\n",
+            "tuple_new_bases = TupleSubclass((int,))\n",
+            "TupleNew = types.new_class('TupleNew', tuple_new_bases, {})\n",
+            "print('tuple-new', TupleNew.__bases__ == (int,), type(TupleNew.__bases__).__name__, TupleNew.__bases__ is tuple_new_bases)\n",
+            "TypingListDyn = types.new_class('TypingListDyn', (typing.List[int],), {})\n",
+            "print('typing-list-bases', TypingListDyn.__bases__[0] is list, TypingListDyn.__bases__[1] is typing.Generic, types.get_original_bases(TypingListDyn)[0] == typing.List[int])\n",
+            "print('typing-list-mro', TypingListDyn.__mro__[0] is TypingListDyn, TypingListDyn.__mro__[1] is list, TypingListDyn.__mro__[2] is typing.Generic, TypingListDyn.__mro__[3] is object)\n",
+            "BuiltinListDyn = types.new_class('BuiltinListDyn', (list[int],), {})\n",
+            "print('list-bases', BuiltinListDyn.__bases__[0] is list, len(BuiltinListDyn.__bases__), types.get_original_bases(BuiltinListDyn)[0] == list[int])\n",
+            "print('list-mro', BuiltinListDyn.__mro__[0] is BuiltinListDyn, BuiltinListDyn.__mro__[1] is list, BuiltinListDyn.__mro__[2] is object)\n",
+            "T = typing.TypeVar('T')\n",
+            "class ClassBasedNamedTuple(typing.NamedTuple):\n",
+            "    x: int\n",
+            "class GenericNamedTuple(typing.NamedTuple, typing.Generic[T]):\n",
+            "    x: T\n",
+            "CallBasedNamedTuple = typing.NamedTuple('CallBasedNamedTuple', [('x', int)])\n",
+            "print('nt-orig-class', types.get_original_bases(ClassBasedNamedTuple)[0] is typing.NamedTuple)\n",
+            "print('nt-orig-generic', types.get_original_bases(GenericNamedTuple)[0] is typing.NamedTuple, types.get_original_bases(GenericNamedTuple)[1] == typing.Generic[T])\n",
+            "print('nt-call', types.get_original_bases(CallBasedNamedTuple)[0] is typing.NamedTuple, CallBasedNamedTuple.__bases__[0] is tuple, CallBasedNamedTuple(3).x)\n",
+            "class ClassBasedTypedDict(typing.TypedDict):\n",
+            "    x: int\n",
+            "class GenericTypedDict(typing.TypedDict, typing.Generic[T]):\n",
+            "    x: T\n",
+            "CallBasedTypedDict = typing.TypedDict('CallBasedTypedDict', {'x': int})\n",
+            "print('td-orig-class', types.get_original_bases(ClassBasedTypedDict)[0] is typing.TypedDict)\n",
+            "print('td-orig-generic', types.get_original_bases(GenericTypedDict)[0] is typing.TypedDict, types.get_original_bases(GenericTypedDict)[1] == typing.Generic[T])\n",
+            "print('td-call', types.get_original_bases(CallBasedTypedDict)[0] is typing.TypedDict, ClassBasedTypedDict.__bases__[0] is dict, CallBasedTypedDict(x=3)['x'])\n",
+            "class A: pass\n",
+            "class B: pass\n",
+            "class MroEntry:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        if A in bases:\n",
+            "            return ()\n",
+            "        return (A,)\n",
+            "raw1 = (MroEntry(),)\n",
+            "resolved1 = types.resolve_bases(raw1)\n",
+            "print(resolved1[0] is A, resolved1 is raw1)\n",
+            "raw2 = (A, MroEntry())\n",
+            "resolved2 = types.resolve_bases(raw2)\n",
+            "print(resolved2 == (A,), resolved2 is raw2)\n",
+            "raw3 = (A, B)\n",
+            "resolved3 = types.resolve_bases(raw3)\n",
+            "print(resolved3 is raw3)\n",
+            "Resolved = types.new_class('Resolved', (MroEntry(),), {})\n",
+            "print(Resolved.__bases__[0] is A, types.get_original_bases(Resolved)[0].__class__ is MroEntry)\n",
+            "class Bad:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        return A\n",
+            "try:\n",
+            "    types.resolve_bases((Bad(),))\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, 'tuple' in str(error))"
+        ),
+        &[
+            "True True True",
+            "C True",
+            "True True",
+            "42 D",
+            "('E', (), [('x', 42)], {'z': 2})",
+            "2 True",
+            "True dict True",
+            "True True True True 0 0",
+            "True True True True 0 1",
+            "True {'prepared': 2, 'base_count': 0} {'z': 2}",
+            "True True True True 0 0",
+            "True True True True 0 1",
+            "new MetaConstruct ConstructBase 0 1 base",
+            "init ConstructBase ConstructBase 0 base base",
+            "new MetaConstruct ConstructChild 1 missing child",
+            "init ConstructChild ConstructChild 1 child child",
+            "base base-init child child-init",
+            "new MetaConstruct ConstructDyn 0 7 dyn",
+            "init ConstructDyn ConstructDyn 0 dyn dyn",
+            "dyn dyn-init",
+            "sub HookChild 3",
+            "meta-init HookChild 3",
+            "conflict TypeError",
+            "tuple-bases TupleSubclass 2 True True TupleSubclass True True True",
+            "tuple-new True TupleSubclass True",
+            "typing-list-bases True True True",
+            "typing-list-mro True True True True",
+            "list-bases True 1 True",
+            "list-mro True True True",
+            "nt-orig-class True",
+            "nt-orig-generic True True",
+            "nt-call True True 3",
+            "td-orig-class True",
+            "td-orig-generic True True",
+            "td-call True True 3",
+            "True False",
+            "True False",
+            "True",
+            "True True",
+            "TypeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_new_class_basics through ::test_new_class_meta_with_base. This keeps
+// the CPython helper metaclass shape, including `type.__prepare__`,
+// staticmethod metaclass `__new__`, and metaclass `__init__` super dispatch.
+#[test]
+fn cpython_types_class_creation_new_class_meta_helper_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "class Meta(type):\n",
+            "    def __init__(cls, name, bases, ns, **kw):\n",
+            "        super().__init__(name, bases, ns)\n",
+            "    @staticmethod\n",
+            "    def __new__(mcls, name, bases, ns, **kw):\n",
+            "        return super().__new__(mcls, name, bases, ns)\n",
+            "    @classmethod\n",
+            "    def __prepare__(mcls, name, bases, **kw):\n",
+            "        ns = super().__prepare__(name, bases)\n",
+            "        ns['y'] = 1\n",
+            "        ns.update(kw)\n",
+            "        return ns\n",
+            "print(type(type.__prepare__('Raw', (), z=9)).__name__)\n",
+            "C = types.new_class('C')\n",
+            "print(C.__name__, C.__bases__[0] is object)\n",
+            "Sub = types.new_class('Sub', (int,))\n",
+            "print(issubclass(Sub, int), Sub.__bases__[0] is int)\n",
+            "settings = {'metaclass': Meta, 'z': 2}\n",
+            "for i in range(2):\n",
+            "    M = types.new_class('M' + str(i), (), settings)\n",
+            "    print(isinstance(M, Meta), M.y, M.z, settings['z'], 'metaclass' in settings)\n",
+            "def body(ns):\n",
+            "    ns['x'] = 0\n",
+            "D = types.new_class('D', (), {'metaclass': Meta, 'z': 2}, body)\n",
+            "print(isinstance(D, Meta), D.x, D.y, D.z)\n",
+            "E = types.new_class('E', (), {}, None)\n",
+            "print(E.__name__, E.__bases__[0] is object)\n",
+            "F = types.new_class(name='F', bases=(int,), kwds=dict(metaclass=Meta, z=2), exec_body=body)\n",
+            "print(issubclass(F, int), isinstance(F, Meta), F.x, F.y, F.z, F.__bases__[0] is int)\n",
+            "print(super(Meta, F).__self_class__ is Meta)"
+        ),
+        &[
+            "dict",
+            "C True",
+            "True True",
+            "True 1 2 2 True",
+            "True 1 2 2 True",
+            "True 0 1 2",
+            "E True",
+            "True True 0 1 2 True",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_new_class_metaclass_keywords. Callable metaclasses passed to
+// `types.new_class` should receive the requested name, original bases,
+// prepared namespace, and class keywords with `metaclass` removed.
+#[test]
+fn cpython_types_class_creation_new_class_metaclass_keywords_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def meta_func(name, bases, ns, **kw):\n",
+            "    return name, bases, ns, kw\n",
+            "res = types.new_class('X', (int, object), dict(metaclass=meta_func, x=0))\n",
+            "print(res[0], res[1][0] is int, res[1][1] is object, res[2] == {}, res[3] == {'x': 0})"
+        ),
+        &["X True True True True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_new_class_with_mro_entry,
+// ::test_new_class_with_mro_entry_genericalias,
+// ::test_new_class_with_mro_entry_none, and
+// ::test_new_class_with_mro_entry_error. This pins the core public
+// `types.new_class` base-resolution behavior for single `__mro_entries__`
+// providers, generic aliases, dropped bases, and invalid provider results.
+#[test]
+fn cpython_types_class_creation_mro_entries_core_subset() {
+    assert_output(
+        concat!(
+            "import types, typing\n",
+            "class A: pass\n",
+            "class B: pass\n",
+            "class C:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        print('single-bases', len(bases), bases[0] is c)\n",
+            "        return (A,)\n",
+            "c = C()\n",
+            "D = types.new_class('D', (c,), {})\n",
+            "print('single', D.__bases__[0] is A, D.__orig_bases__[0] is c, D.__mro__[0] is D, D.__mro__[1] is A, D.__mro__[2] is object)\n",
+            "L1 = types.new_class('L1', (typing.List[int],), {})\n",
+            "print('typing-list', L1.__bases__[0] is list, L1.__bases__[1] is typing.Generic, L1.__orig_bases__[0] == typing.List[int], L1.__mro__[1] is list, L1.__mro__[2] is typing.Generic)\n",
+            "L2 = types.new_class('L2', (list[int],), {})\n",
+            "print('list', L2.__bases__[0] is list, len(L2.__bases__), L2.__orig_bases__[0] == list[int], L2.__mro__[1] is list, L2.__mro__[2] is object)\n",
+            "class Drop:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        print('drop-bases', len(bases), bases[0] is A, bases[1] is drop, bases[2] is B)\n",
+            "        return ()\n",
+            "drop = Drop()\n",
+            "Dropped = types.new_class('Dropped', (A, drop, B), {})\n",
+            "print('drop', Dropped.__bases__ == (A, B), Dropped.__orig_bases__[0] is A, Dropped.__orig_bases__[1] is drop, Dropped.__orig_bases__[2] is B, Dropped.__mro__[1] is A, Dropped.__mro__[2] is B, Dropped.__mro__[3] is object)\n",
+            "class Bad:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        return A\n",
+            "try:\n",
+            "    types.new_class('BadClass', (Bad(),), {})\n",
+            "except TypeError as error:\n",
+            "    print('bad', type(error).__name__, 'tuple' in str(error))"
+        ),
+        &[
+            "single-bases 1 True",
+            "single True True True True True",
+            "typing-list True True True True True",
+            "list True 1 True True True",
+            "drop-bases 3 True True True",
+            "drop True True True True True True True",
+            "bad TypeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_prepare_class, ::test_resolve_bases, and
+// ::test_resolve_bases_with_mro_entry. This pins the public metaclass
+// derivation and bases-resolution helper semantics without relying on
+// CPython's unittest scaffolding.
+#[test]
+fn cpython_types_class_creation_prepare_resolve_bases_subset() {
+    assert_output(
+        concat!(
+            "import types, typing\n",
+            "expected_ns = {}\n",
+            "class MetaA(type):\n",
+            "    def __new__(*args, **kwargs):\n",
+            "        return type.__new__(*args, **kwargs)\n",
+            "    def __prepare__(*args):\n",
+            "        return expected_ns\n",
+            "B0 = types.new_class('B0', (object,))\n",
+            "C0 = types.new_class('C0', (object,), {'metaclass': MetaA})\n",
+            "meta, ns, kwds = types.prepare_class('D0', (B0, C0), {'metaclass': type})\n",
+            "print(meta is MetaA, ns is expected_ns, kwds == {})\n",
+            "class A: pass\n",
+            "class B: pass\n",
+            "class C:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        if A in bases:\n",
+            "            return ()\n",
+            "        return (A,)\n",
+            "c = C()\n",
+            "print(types.resolve_bases(()) == ())\n",
+            "print(types.resolve_bases((c,)) == (A,))\n",
+            "print(types.resolve_bases((C,)) == (C,))\n",
+            "print(types.resolve_bases((A, C)) == (A, C))\n",
+            "print(types.resolve_bases((c, A)) == (A,))\n",
+            "print(types.resolve_bases((A, c)) == (A,))\n",
+            "for bases in [(A,), (C,), (A, C), (A, C, B)]:\n",
+            "    print(types.resolve_bases(bases) is bases)\n",
+            "print(types.resolve_bases((typing.List[int],)) == (list, typing.Generic))\n",
+            "print(types.resolve_bases((list[int],)) == (list,))"
+        ),
+        &[
+            "True True True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_new_class_with_mro_entry_multiple and
+// ::test_new_class_with_mro_entry_multiple_2. Multiple `__mro_entries__`
+// providers should each see the original bases tuple while their returned
+// tuples are expanded left-to-right into the created class bases and MRO.
+#[test]
+fn cpython_types_class_creation_mro_entries_multiple_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "class A1: pass\n",
+            "class A2: pass\n",
+            "class A3: pass\n",
+            "class B1: pass\n",
+            "class B2: pass\n",
+            "class A:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        print('A-bases', len(bases), bases[0].__class__ is A, bases[1] is C, bases[2].__class__ is B)\n",
+            "        return (A1, A2, A3)\n",
+            "class B:\n",
+            "    def __mro_entries__(self, bases):\n",
+            "        print('B-bases', len(bases), bases[0].__class__ is A, bases[1] is C, bases[2].__class__ is B)\n",
+            "        return (B1, B2)\n",
+            "class C: pass\n",
+            "D = types.new_class('D', (A(), C, B()), {})\n",
+            "print(D.__bases__ == (A1, A2, A3, C, B1, B2))\n",
+            "print(D.__orig_bases__[0].__class__ is A, D.__orig_bases__[1] is C, D.__orig_bases__[2].__class__ is B)\n",
+            "print(D.__mro__[0] is D, D.__mro__[1] is A1, D.__mro__[2] is A2, D.__mro__[3] is A3, D.__mro__[4] is C, D.__mro__[5] is B1, D.__mro__[6] is B2, D.__mro__[7] is object)"
+        ),
+        &[
+            "A-bases 3 True True True",
+            "B-bases 3 True True True",
+            "True",
+            "True True True",
+            "True True True True True True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_metaclass_derivation. This pins winner-metaclass selection for
+// `types.new_class`, including `__new__` call order, inherited `__prepare__`
+// namespaces, base-order independence, and explicit compatible metaclasses.
+#[test]
+fn cpython_types_class_creation_metaclass_derivation_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "new_calls = []\n",
+            "class AMeta(type):\n",
+            "    def __new__(mcls, name, bases, ns):\n",
+            "        new_calls.append('AMeta')\n",
+            "        return super().__new__(mcls, name, bases, ns)\n",
+            "    @classmethod\n",
+            "    def __prepare__(mcls, name, bases):\n",
+            "        return {}\n",
+            "class BMeta(AMeta):\n",
+            "    def __new__(mcls, name, bases, ns):\n",
+            "        new_calls.append('BMeta')\n",
+            "        return super().__new__(mcls, name, bases, ns)\n",
+            "    @classmethod\n",
+            "    def __prepare__(mcls, name, bases):\n",
+            "        ns = super().__prepare__(name, bases)\n",
+            "        ns['BMeta_was_here'] = True\n",
+            "        return ns\n",
+            "A = types.new_class('A', (), {'metaclass': AMeta})\n",
+            "print('A', type(A) is AMeta, new_calls)\n",
+            "new_calls.clear()\n",
+            "B = types.new_class('B', (), {'metaclass': BMeta})\n",
+            "print('B', type(B) is BMeta, new_calls)\n",
+            "new_calls.clear()\n",
+            "C = types.new_class('C', (A, B))\n",
+            "print('C', type(C) is BMeta, new_calls, 'BMeta_was_here' in C.__dict__)\n",
+            "new_calls.clear()\n",
+            "C2 = types.new_class('C2', (B, A))\n",
+            "print('C2', type(C2) is BMeta, new_calls, 'BMeta_was_here' in C2.__dict__)\n",
+            "new_calls.clear()\n",
+            "D = types.new_class('D', (C,), {'metaclass': type})\n",
+            "print('D', type(D) is BMeta, new_calls, 'BMeta_was_here' in D.__dict__)\n",
+            "new_calls.clear()\n",
+            "E = types.new_class('E', (C,), {'metaclass': AMeta})\n",
+            "print('E', type(E) is BMeta, new_calls, 'BMeta_was_here' in E.__dict__)"
+        ),
+        &[
+            "A True ['AMeta']",
+            "B True ['BMeta', 'AMeta']",
+            "C True ['BMeta', 'AMeta'] True",
+            "C2 True ['BMeta', 'AMeta'] True",
+            "D True ['BMeta', 'AMeta'] True",
+            "E True ['BMeta', 'AMeta'] True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_get_original_bases. This covers the public `types.get_original_bases`
+// behavior for ordinary classes, generic aliases, builtins, and non-type
+// rejection without relying on implementation-specific repr text.
+#[test]
+fn cpython_types_class_creation_get_original_bases_subset() {
+    assert_output(
+        concat!(
+            "import types, typing\n",
+            "T = typing.TypeVar('T')\n",
+            "class A:\n",
+            "    pass\n",
+            "class B(typing.Generic[T]):\n",
+            "    pass\n",
+            "class C(B[int]):\n",
+            "    pass\n",
+            "class D(B[str], float):\n",
+            "    pass\n",
+            "print(types.get_original_bases(A)[0] is object)\n",
+            "print(types.get_original_bases(B)[0] == typing.Generic[T])\n",
+            "print(types.get_original_bases(C)[0] == B[int])\n",
+            "print(types.get_original_bases(int)[0] is object)\n",
+            "orig_d = types.get_original_bases(D)\n",
+            "print(orig_d[0] == B[str], orig_d[1] is float)\n",
+            "class E(list[T]):\n",
+            "    pass\n",
+            "class F(list[int]):\n",
+            "    pass\n",
+            "print(types.get_original_bases(E)[0] == list[T], types.get_original_bases(F)[0] == list[int])\n",
+            "try:\n",
+            "    types.get_original_bases(object())\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, 'Expected an instance of type' in str(error))"
+        ),
+        &[
+            "True",
+            "True",
+            "True",
+            "True",
+            "True True",
+            "True True",
+            "TypeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_bad___prepare__ and the public non-type metaclass class-statement
+// paths related to ::test_metaclass_override_function and
+// ::test_metaclass_override_callable.
+#[test]
+fn cpython_types_class_creation_prepare_and_metaclass_callable_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "class BadMeta(type):\n",
+            "    @classmethod\n",
+            "    def __prepare__(*args):\n",
+            "        return None\n",
+            "try:\n",
+            "    class Foo(metaclass=BadMeta):\n",
+            "        pass\n",
+            "except TypeError as error:\n",
+            "    print('bad-type', type(error).__name__, str(error).startswith('BadMeta.__prepare__()'), 'return a mapping' in str(error))\n",
+            "class BadMetaInstance:\n",
+            "    @classmethod\n",
+            "    def __prepare__(*args):\n",
+            "        return None\n",
+            "try:\n",
+            "    class Bar(metaclass=BadMetaInstance()):\n",
+            "        pass\n",
+            "except TypeError as error:\n",
+            "    print('bad-instance', type(error).__name__, str(error).startswith('<metaclass>.__prepare__()'), 'return a mapping' in str(error))\n",
+            "meta, ns, kwds = types.prepare_class('P', (), {'metaclass': BadMeta})\n",
+            "print('prepare-bad-type', meta is BadMeta, ns, kwds)\n",
+            "meta, ns, kwds = types.prepare_class('Q', (), {'metaclass': BadMetaInstance()})\n",
+            "print('prepare-bad-instance', type(meta).__name__, ns, kwds)\n",
+            "marker = object()\n",
+            "def func(name, bases, ns, **kw):\n",
+            "    print('func-args', name, len(bases), type(ns).__name__, ns['body'], kw['z'])\n",
+            "    return marker\n",
+            "class FuncClass(metaclass=func, z=2):\n",
+            "    body = 1\n",
+            "print('func-result', FuncClass is marker)\n",
+            "class CallableMeta:\n",
+            "    @classmethod\n",
+            "    def __prepare__(cls, name, bases, **kw):\n",
+            "        print('callable-prepare', cls.__name__, name, len(bases), kw['z'])\n",
+            "        return {'prepared': kw['z']}\n",
+            "    def __call__(self, name, bases, ns, **kw):\n",
+            "        print('callable-call', name, ns['prepared'], ns['body'], kw['z'])\n",
+            "        return (name, bases, ns, kw)\n",
+            "class CallableClass(metaclass=CallableMeta(), z=4):\n",
+            "    body = 2\n",
+            "print('callable-result', CallableClass[0], CallableClass[2]['prepared'], CallableClass[2]['body'], CallableClass[3]['z'])"
+        ),
+        &[
+            "bad-type TypeError True True",
+            "bad-instance TypeError True True",
+            "prepare-bad-type True None {}",
+            "prepare-bad-instance BadMetaInstance None {}",
+            "func-args FuncClass 0 dict 1 2",
+            "func-result True",
+            "callable-prepare CallableMeta CallableClass 0 4",
+            "callable-call CallableClass 4 2 4",
+            "callable-result CallableClass 4 2 4",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_metaclass_override_function. A function metaclass passed to
+// `types.new_class` is not itself a class, so no winner-metaclass calculation
+// should override it even when bases have ordinary or custom metaclasses.
+#[test]
+fn cpython_types_class_creation_metaclass_override_function_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "class Meta(type):\n",
+            "    pass\n",
+            "class A(metaclass=Meta):\n",
+            "    pass\n",
+            "marker = object()\n",
+            "def func(name, bases, ns, **kw):\n",
+            "    print('func', name, len(bases), type(ns).__name__, sorted(kw.items()))\n",
+            "    return marker\n",
+            "X = types.new_class('X', (), {'metaclass': func})\n",
+            "Y = types.new_class('Y', (object,), {'metaclass': func})\n",
+            "Z = types.new_class('Z', (A,), {'metaclass': func})\n",
+            "print(X is marker, Y is marker, Z is marker)"
+        ),
+        &[
+            "func X 0 dict []",
+            "func Y 1 dict []",
+            "func Z 1 dict []",
+            "True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_metaclass_override_callable. This extends the non-`type` metaclass
+// path to metaclass products used as later bases, including winner-metaclass
+// derivation and conflict reporting from `type(base)`.
+#[test]
+fn cpython_types_class_creation_non_type_metaclass_derivation_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "new_calls = []\n",
+            "prepare_calls = []\n",
+            "class ANotMeta:\n",
+            "    def __new__(mcls, *args, **kwargs):\n",
+            "        new_calls.append('ANotMeta')\n",
+            "        return super().__new__(mcls)\n",
+            "    @classmethod\n",
+            "    def __prepare__(mcls, name, bases):\n",
+            "        prepare_calls.append('ANotMeta')\n",
+            "        return {}\n",
+            "class BNotMeta(ANotMeta):\n",
+            "    def __new__(mcls, *args, **kwargs):\n",
+            "        new_calls.append('BNotMeta')\n",
+            "        return super().__new__(mcls)\n",
+            "    @classmethod\n",
+            "    def __prepare__(mcls, name, bases):\n",
+            "        prepare_calls.append('BNotMeta')\n",
+            "        return super().__prepare__(name, bases)\n",
+            "A = types.new_class('A', (), {'metaclass': ANotMeta})\n",
+            "print('A', type(A) is ANotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "B = types.new_class('B', (), {'metaclass': BNotMeta})\n",
+            "print('B', type(B) is BNotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "C = types.new_class('C', (A, B))\n",
+            "print('C', type(C) is BNotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "C2 = types.new_class('C2', (B, A))\n",
+            "print('C2', type(C2) is BNotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "try:\n",
+            "    types.new_class('D', (C,), {'metaclass': type})\n",
+            "except TypeError as error:\n",
+            "    print('D-error', type(error).__name__)\n",
+            "E = types.new_class('E', (C,), {'metaclass': ANotMeta})\n",
+            "print('E', type(E) is BNotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "F = types.new_class('F', (object(), C))\n",
+            "print('F', type(F) is BNotMeta, prepare_calls, new_calls)\n",
+            "prepare_calls.clear(); new_calls.clear()\n",
+            "F2 = types.new_class('F2', (C, object()))\n",
+            "print('F2', type(F2) is BNotMeta, prepare_calls, new_calls)\n",
+            "for bases in [(C, int()), (int(), C)]:\n",
+            "    try:\n",
+            "        types.new_class('X', bases)\n",
+            "    except TypeError as error:\n",
+            "        print('X-error', type(error).__name__)"
+        ),
+        &[
+            "A True ['ANotMeta'] ['ANotMeta']",
+            "B True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "C True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "C2 True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "D-error TypeError",
+            "E True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "F True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "F2 True ['BNotMeta', 'ANotMeta'] ['BNotMeta', 'ANotMeta']",
+            "X-error TypeError",
+            "X-error TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_one_argument_type. Only builtin `type` accepts the one-argument
+// inspection form; type subclasses still require the three-argument class
+// construction form.
+#[test]
+fn cpython_types_class_creation_one_argument_type_subset() {
+    assert_output(
+        concat!(
+            "print(type(5) is int)\n",
+            "class M(type):\n",
+            "    pass\n",
+            "try:\n",
+            "    M(5)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "class N(type, metaclass=M):\n",
+            "    pass\n",
+            "try:\n",
+            "    N(5)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "Created = M('Created', (), {'x': 3})\n",
+            "print(type(Created) is M, Created.__class__ is M, Created.x)"
+        ),
+        &[
+            "True",
+            "TypeError type.__new__() takes exactly 3 arguments (1 given)",
+            "TypeError type.__new__() takes exactly 3 arguments (1 given)",
+            "True True 3",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_metaclass_new_error. Three-argument `type()` must derive the winning
+// metaclass from its bases and surface exceptions raised by that metaclass
+// constructor.
+#[test]
+fn cpython_types_class_creation_metaclass_new_error_subset() {
+    assert_output(
+        concat!(
+            "class ModelBase(type):\n",
+            "    def __new__(cls, name, bases, attrs):\n",
+            "        super_new = super().__new__\n",
+            "        new_class = super_new(cls, name, bases, {})\n",
+            "        if name != 'Model':\n",
+            "            raise RuntimeWarning(f'{name=}')\n",
+            "        return new_class\n",
+            "class Model(metaclass=ModelBase):\n",
+            "    pass\n",
+            "print(type(Model) is ModelBase, Model.__class__ is ModelBase)\n",
+            "try:\n",
+            "    type('SouthPonies', (Model,), {})\n",
+            "except RuntimeWarning as error:\n",
+            "    print(type(error).__name__, str(error))"
+        ),
+        &["True True", "RuntimeWarning name='SouthPonies'"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::ClassCreationTests
+// ::test_subclass_inherited_slot_update. A dict subclass should honor dynamic
+// `__getitem__` updates and then delegate back to `dict.__getitem__`.
+#[test]
+fn cpython_types_class_creation_subclass_inherited_slot_update_subset() {
+    assert_output(
+        concat!(
+            "class D(dict):\n",
+            "    pass\n",
+            "d = D({None: None})\n",
+            "print(d[None] is None)\n",
+            "D.__getitem__ = lambda self, item: 42\n",
+            "print(d[None])\n",
+            "D.__getitem__ = dict.__getitem__\n",
+            "print(d[None] is None)"
+        ),
+        &["True", "42", "True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests. MiniPython
 // covers the exact-dict MappingProxyType path here; dict subclasses and
 // ChainMap remain a later object-model slice.
@@ -34289,7 +43599,7 @@ fn cpython_collections_counter_repr_nonsortable_subset() {
 // latter must preserve Counter subclass hooks for get() and __setitem__.
 #[test]
 fn cpython_collections_counter_helper_function_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "from collections import Counter, OrderedDict, _count_elements\n",
             "elems = list('abracadabra')\n",
@@ -34324,6 +43634,7 @@ fn cpython_collections_counter_helper_function_subset() {
             "True 5 2 2 1 1",
             "True 5 2 2 1 1",
         ],
+        8 * 1024 * 1024,
     );
 }
 
@@ -34790,6 +44101,435 @@ fn cpython_collections_counter_symmetric_difference_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_names.
+// This ports the public module-name surface. CPython's C accelerator identity
+// comparison and descriptor behavior are tracked separately in the manifest.
+#[test]
+fn cpython_types_names_public_surface_subset() {
+    assert_output(
+        concat!(
+            "import _types, types\n",
+            "expected = {\n",
+            "    'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType',\n",
+            "    'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType',\n",
+            "    'CoroutineType', 'DynamicClassAttribute', 'EllipsisType',\n",
+            "    'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType',\n",
+            "    'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType',\n",
+            "    'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType',\n",
+            "    'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType',\n",
+            "    'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType',\n",
+            "    'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class',\n",
+            "    'prepare_class', 'resolve_bases',\n",
+            "}\n",
+            "actual = set(types.__all__)\n",
+            "print(len(types.__all__), actual == expected, sorted(expected - actual), sorted(actual - expected))\n",
+            "print(all(hasattr(types, name) for name in expected))\n",
+            "print(types.FunctionType is types.LambdaType, types.BuiltinFunctionType is types.BuiltinMethodType)\n",
+            "print(type(types.WrapperDescriptorType).__name__, type(types.DynamicClassAttribute).__name__, type(types.CapsuleType).__name__)\n",
+            "accelerated = expected - {'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases'}\n",
+            "print(all(hasattr(_types, name) for name in accelerated), hasattr(_types, 'coroutine'), hasattr(_types, '__all__'))\n",
+            "print(all(getattr(_types, name) is getattr(types, name) for name in accelerated))"
+        ),
+        &[
+            "35 True [] []",
+            "True",
+            "True True",
+            "type type type",
+            "True False False",
+            "True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_float_constructor.
+#[test]
+fn cpython_types_float_constructor_edges_subset() {
+    assert_output(
+        concat!(
+            "for text in ['', '5\\0', '5_5\\0']:\n",
+            "    try:\n",
+            "        float(text)\n",
+            "    except ValueError as error:\n",
+            "        print(repr(text), error.__class__.__name__)"
+        ),
+        &[
+            "'' ValueError",
+            "'5\\x00' ValueError",
+            "'5_5\\x00' ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_float_to_string.
+#[test]
+fn cpython_types_float_to_string_subset() {
+    assert_output(
+        concat!(
+            "def expected_exp(i):\n",
+            "    sign = '+' if i >= 0 else '-'\n",
+            "    magnitude = abs(i)\n",
+            "    if magnitude < 10:\n",
+            "        return '1.500000e' + sign + '0' + str(magnitude)\n",
+            "    return '1.500000e' + sign + str(magnitude)\n",
+            "checked = 0\n",
+            "for i in range(-99, 100):\n",
+            "    f = float('1.5e' + str(i))\n",
+            "    expected = expected_exp(i)\n",
+            "    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:\n",
+            "        assert actual == expected\n",
+            "        checked += 1\n",
+            "for f, expected in [(1.5e100, '1.500000e+100'), (1.5e101, '1.500000e+101'), (1.5e-100, '1.500000e-100'), (1.5e-101, '1.500000e-101')]:\n",
+            "    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:\n",
+            "        assert actual == expected\n",
+            "        checked += 1\n",
+            "print(checked)\n",
+            "print('%g' % 1.0, '%#g' % 1.0)\n",
+            "print((1).__format__('d'), int.__format__(1, '04d'), True.__format__(''), True.__format__('d'), bool.__format__(False, 'd'), (1.0).__format__('e'))\n",
+            "print('__format__' in dir(1), '__format__' in dir(1.0), '__format__' in dir(True), '__format__' in dir(int), '__format__' in dir(float))\n",
+            "for expr in [lambda: (1).__format__(1), lambda: (1.0).__format__(1), lambda: float.__format__(1, 'e')]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "609",
+            "1 1.00000",
+            "1 0001 True 1 0 1.000000e+00",
+            "True True True True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_normal_integers.
+// The CPython small-integer object-sharing assertion is implementation-specific;
+// this subset covers the public arithmetic, comparison, overflow-boundary, and
+// negative-shift behavior.
+#[test]
+fn cpython_types_normal_integers_subset() {
+    assert_output(
+        concat!(
+            "import sys\n",
+            "print('add', 12 + 24, 12 + (-24), (-12) + 24, (-12) + (-24))\n",
+            "print('compare', 12 < 24, -24 < -12)\n",
+            "xsize, ysize, zsize = 238, 356, 4\n",
+            "print('mul', xsize * ysize * zsize == zsize * xsize * ysize, xsize * ysize * zsize)\n",
+            "m = -sys.maxsize - 1\n",
+            "min_exact = []\n",
+            "for divisor in (1, 2, 4, 8, 16, 32):\n",
+            "    j = m // divisor\n",
+            "    prod = divisor * j\n",
+            "    min_exact.append((prod == m, type(prod) is int))\n",
+            "print('min-exact', min_exact)\n",
+            "min_under = []\n",
+            "for divisor in (1, 2, 4, 8, 16, 32):\n",
+            "    j = m // divisor - 1\n",
+            "    prod = divisor * j\n",
+            "    min_under.append((prod < m, type(prod) is int))\n",
+            "print('min-under', min_under)\n",
+            "m = sys.maxsize\n",
+            "max_over = []\n",
+            "for divisor in (1, 2, 4, 8, 16, 32):\n",
+            "    j = m // divisor + 1\n",
+            "    prod = divisor * j\n",
+            "    max_over.append((prod > m, type(prod) is int))\n",
+            "print('max-over', max_over)\n",
+            "x = sys.maxsize\n",
+            "print('instances', isinstance(x + 1, int), isinstance(-x - 1, int), isinstance(-x - 2, int))\n",
+            "for label, expr in [('left', lambda: 5 << -5), ('right', lambda: 5 >> -5)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ValueError as error:\n",
+            "        print('shift', label, error.__class__.__name__, str(error))"
+        ),
+        &[
+            "add 36 -12 12 -36",
+            "compare True True",
+            "mul True 338912",
+            "min-exact [(True, True), (True, True), (True, True), (True, True), (True, True), (True, True)]",
+            "min-under [(True, True), (True, True), (True, True), (True, True), (True, True), (True, True)]",
+            "max-over [(True, True), (True, True), (True, True), (True, True), (True, True), (True, True)]",
+            "instances True True True",
+            "shift left ValueError negative shift count",
+            "shift right ValueError negative shift count",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_int__format__.
+#[test]
+fn cpython_types_int_format_subset() {
+    assert_output(
+        r#"def check(i, format_spec, expected):
+    assert type(i) is int
+    assert type(format_spec) is str
+    actual = i.__format__(format_spec)
+    assert actual == expected
+rows = [
+    (123456789, 'd', '123456789'), (123456789, 'd', '123456789'), (1, 'c', chr(1)),
+    (1, '-', '1'), (-1, '-', '-1'), (1, '-3', '  1'), (-1, '-3', ' -1'),
+    (1, '+3', ' +1'), (-1, '+3', ' -1'), (1, ' 3', '  1'), (-1, ' 3', ' -1'),
+    (1, ' ', ' 1'), (-1, ' ', '-1'),
+    (3, 'x', '3'), (3, 'X', '3'), (1234, 'x', '4d2'), (-1234, 'x', '-4d2'),
+    (1234, '8x', '     4d2'), (-1234, '8x', '    -4d2'), (1234, 'x', '4d2'), (-1234, 'x', '-4d2'),
+    (-3, 'x', '-3'), (-3, 'X', '-3'), (int('be', 16), 'x', 'be'), (int('be', 16), 'X', 'BE'),
+    (-int('be', 16), 'x', '-be'), (-int('be', 16), 'X', '-BE'),
+    (3, 'o', '3'), (-3, 'o', '-3'), (65, 'o', '101'), (-65, 'o', '-101'),
+    (1234, 'o', '2322'), (-1234, 'o', '-2322'), (1234, '-o', '2322'), (-1234, '-o', '-2322'),
+    (1234, ' o', ' 2322'), (-1234, ' o', '-2322'), (1234, '+o', '+2322'), (-1234, '+o', '-2322'),
+    (3, 'b', '11'), (-3, 'b', '-11'), (1234, 'b', '10011010010'), (-1234, 'b', '-10011010010'),
+    (1234, '-b', '10011010010'), (-1234, '-b', '-10011010010'), (1234, ' b', ' 10011010010'), (-1234, ' b', '-10011010010'),
+    (1234, '+b', '+10011010010'), (-1234, '+b', '-10011010010'),
+    (0, '#b', '0b0'), (0, '-#b', '0b0'), (1, '-#b', '0b1'), (-1, '-#b', '-0b1'),
+    (-1, '-#5b', ' -0b1'), (1, '+#5b', ' +0b1'), (100, '+#b', '+0b1100100'),
+    (100, '#012b', '0b0001100100'), (-100, '#012b', '-0b001100100'),
+    (0, '#o', '0o0'), (0, '-#o', '0o0'), (1, '-#o', '0o1'), (-1, '-#o', '-0o1'),
+    (-1, '-#5o', ' -0o1'), (1, '+#5o', ' +0o1'), (100, '+#o', '+0o144'),
+    (100, '#012o', '0o0000000144'), (-100, '#012o', '-0o000000144'),
+    (0, '#x', '0x0'), (0, '-#x', '0x0'), (1, '-#x', '0x1'), (-1, '-#x', '-0x1'),
+    (-1, '-#5x', ' -0x1'), (1, '+#5x', ' +0x1'), (100, '+#x', '+0x64'),
+    (100, '#012x', '0x0000000064'), (-100, '#012x', '-0x000000064'),
+    (123456, '#012x', '0x000001e240'), (-123456, '#012x', '-0x00001e240'),
+    (0, '#X', '0X0'), (0, '-#X', '0X0'), (1, '-#X', '0X1'), (-1, '-#X', '-0X1'),
+    (-1, '-#5X', ' -0X1'), (1, '+#5X', ' +0X1'), (100, '+#X', '+0X64'),
+    (100, '#012X', '0X0000000064'), (-100, '#012X', '-0X000000064'),
+    (123456, '#012X', '0X000001E240'), (-123456, '#012X', '-0X00001E240'),
+    (123, ',', '123'), (-123, ',', '-123'), (1234, ',', '1,234'), (-1234, ',', '-1,234'),
+    (123456, ',', '123,456'), (-123456, ',', '-123,456'), (1234567, ',', '1,234,567'), (-1234567, ',', '-1,234,567'),
+    (1234, '010,', '00,001,234'),
+    (10**100, 'd', '1' + '0' * 100), (10**100 + 100, 'd', '1' + '0' * 97 + '100'),
+    (123456, '0<20', '12345600000000000000'), (123456, '1<20', '12345611111111111111'), (123456, '*<20', '123456**************'),
+    (123456, '0>20', '00000000000000123456'), (123456, '1>20', '11111111111111123456'), (123456, '*>20', '**************123456'),
+    (123456, '0=20', '00000000000000123456'), (123456, '1=20', '11111111111111123456'), (123456, '*=20', '**************123456'),
+]
+for row in rows:
+    check(*row)
+print('rows', len(rows))
+value_errors = 0
+type_errors = 0
+for spec in ['1.3', '+c', None, 0, ',n', ',c', '#c']:
+    try:
+        (3).__format__(spec)
+    except ValueError:
+        value_errors += 1
+    except TypeError:
+        type_errors += 1
+print('errors', value_errors, type_errors)
+invalid_specs = 0
+for format_spec in ([chr(x) for x in range(ord('a'), ord('z') + 1)] + [chr(x) for x in range(ord('A'), ord('Z') + 1)]):
+    if format_spec not in 'bcdoxXeEfFgGn%':
+        for value in [0, 1, -1]:
+            try:
+                value.__format__(format_spec)
+            except ValueError:
+                invalid_specs += 1
+print('invalid-specs', invalid_specs)
+float_specs = 0
+for format_spec in 'eEfFgG%':
+    for value in [0, 1, -1, 100, -100, 1234567890, -1234567890]:
+        assert value.__format__(format_spec) == float(value).__format__(format_spec)
+        float_specs += 1
+print('float-specs', float_specs)"#,
+        &[
+            "rows 109",
+            "errors 5 2",
+            "invalid-specs 117",
+            "float-specs 49",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_float__format__.
+#[test]
+fn cpython_types_float_format_subset() {
+    assert_output(
+        r#"def check(f, format_spec, expected):
+    assert f.__format__(format_spec) == expected
+    assert format(f, format_spec) == expected
+rows = [
+    (0.0, 'f', '0.000000'),
+    (0.0, '', '0.0'), (0.01, '', '0.01'), (0.01, 'g', '0.01'),
+    (1.23, '1', '1.23'), (-1.23, '1', '-1.23'), (1.23, '1g', '1.23'), (-1.23, '1g', '-1.23'),
+    (1.0, ' g', ' 1'), (-1.0, ' g', '-1'), (1.0, '+g', '+1'), (-1.0, '+g', '-1'),
+    (1.1234e200, 'g', '1.1234e+200'), (1.1234e200, 'G', '1.1234E+200'),
+    (1.0, 'f', '1.000000'), (-1.0, 'f', '-1.000000'),
+    (1.0, ' f', ' 1.000000'), (-1.0, ' f', '-1.000000'), (1.0, '+f', '+1.000000'), (-1.0, '+f', '-1.000000'),
+    (1.0, 'e', '1.000000e+00'), (-1.0, 'e', '-1.000000e+00'), (1.0, 'E', '1.000000E+00'), (-1.0, 'E', '-1.000000E+00'),
+    (1.1234e20, 'e', '1.123400e+20'), (1.1234e20, 'E', '1.123400E+20'),
+    (1.25e200, '+g', '+1.25e+200'), (1.25e200, '+', '+1.25e+200'),
+    (1.1e200, '+g', '+1.1e+200'), (1.1e200, '+', '+1.1e+200'),
+    (1234.0, '010f', '1234.000000'), (1234.0, '011f', '1234.000000'), (1234.0, '012f', '01234.000000'),
+    (-1234.0, '011f', '-1234.000000'), (-1234.0, '012f', '-1234.000000'), (-1234.0, '013f', '-01234.000000'),
+    (-1234.12341234, '013f', '-01234.123412'), (-123456.12341234, '011.2f', '-0123456.12'),
+    (1.2, '010,.2', '0,000,001.2'),
+    (1234.0, '011,f', '1,234.000000'), (1234.0, '012,f', '1,234.000000'), (1234.0, '013,f', '01,234.000000'),
+    (-1234.0, '012,f', '-1,234.000000'), (-1234.0, '013,f', '-1,234.000000'), (-1234.0, '014,f', '-01,234.000000'),
+    (-12345.0, '015,f', '-012,345.000000'), (-123456.0, '016,f', '-0,123,456.000000'), (-123456.0, '017,f', '-0,123,456.000000'),
+    (-123456.12341234, '017,f', '-0,123,456.123412'), (-123456.12341234, '013,.2f', '-0,123,456.12'),
+    (-1.0, '%', '-100.000000%'),
+    (1.0, '.0e', '1e+00'), (1.0, '#.0e', '1.e+00'), (1.0, '.0f', '1'), (1.0, '#.0f', '1.'),
+    (1.1, 'g', '1.1'), (1.1, '#g', '1.10000'), (1.0, '.0%', '100%'), (1.0, '#.0%', '100.%'),
+    (1.0, '0e', '1.000000e+00'), (1.0, '#0e', '1.000000e+00'), (1.0, '0f', '1.000000'), (1.0, '#0f', '1.000000'),
+    (1.0, '.1e', '1.0e+00'), (1.0, '#.1e', '1.0e+00'), (1.0, '.1f', '1.0'), (1.0, '#.1f', '1.0'),
+    (1.0, '.1%', '100.0%'), (1.0, '#.1%', '100.0%'),
+    (12345.6, '0<20', '12345.60000000000000'), (12345.6, '1<20', '12345.61111111111111'), (12345.6, '*<20', '12345.6*************'),
+    (12345.6, '0>20', '000000000000012345.6'), (12345.6, '1>20', '111111111111112345.6'), (12345.6, '*>20', '*************12345.6'),
+    (12345.6, '0=20', '000000000000012345.6'), (12345.6, '1=20', '111111111111112345.6'), (12345.6, '*=20', '*************12345.6'),
+]
+for row in rows:
+    check(*row)
+print('rows', len(rows))
+huge = 0
+for value, expected_len in [(1.1234e90, 98), (1.1234e200, 208)]:
+    for fmt in ('f', 'F'):
+        result = value.__format__(fmt)
+        assert len(result) == expected_len
+        assert result[-7] == '.'
+        assert result[:12] in ('112340000000', '112339999999')
+        huge += 1
+print('huge', huge)
+type_errors = 0
+for spec in [None, 0]:
+    try:
+        (3.0).__format__(spec)
+    except TypeError:
+        type_errors += 1
+value_errors = 0
+for format_spec in 'sbcdoxX':
+    for value in [0.0, 1.0, -1.0, 1e100, -1e100, 1e-100, -1e-100]:
+        try:
+            format(value, format_spec)
+        except ValueError:
+            value_errors += 1
+print('errors', type_errors, value_errors)"#,
+        &["rows 78", "huge 4", "errors 2 49"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_format_spec_errors.
+#[test]
+fn cpython_types_format_spec_errors_subset() {
+    assert_output(
+        concat!(
+            "large_errors = 0\n",
+            "for label, spec in [('width', '1' * 10000 + 'd'), ('precision', '.' + '1' * 10000 + 'd'), ('both', '1' * 1000 + '.' + '1' * 10000 + 'd')]:\n",
+            "    try:\n",
+            "        format(0, spec)\n",
+            "    except ValueError as error:\n",
+            "        large_errors += 1\n",
+            "        print(label, error.__class__.__name__)\n",
+            "comma_errors = 0\n",
+            "for code in 'xXobns':\n",
+            "    try:\n",
+            "        format(0, ',' + code)\n",
+            "    except ValueError as error:\n",
+            "        comma_errors += 1\n",
+            "        print('comma', code, error.__class__.__name__, str(error))\n",
+            "print('summary', large_errors, comma_errors)"
+        ),
+        &[
+            "width ValueError",
+            "precision ValueError",
+            "both ValueError",
+            "comma x ValueError Cannot specify ',' with 'x'.",
+            "comma X ValueError Cannot specify ',' with 'X'.",
+            "comma o ValueError Cannot specify ',' with 'o'.",
+            "comma b ValueError Cannot specify ',' with 'b'.",
+            "comma n ValueError Cannot specify ',' with 'n'.",
+            "comma s ValueError Cannot specify ',' with 's'.",
+            "summary 3 6",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_method_descriptor_types.
+#[test]
+fn cpython_types_method_descriptor_types_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "print(isinstance(str.join, types.MethodDescriptorType))\n",
+            "print(isinstance(list.append, types.MethodDescriptorType))\n",
+            "print(isinstance(''.join, types.BuiltinMethodType))\n",
+            "print(isinstance([].append, types.BuiltinMethodType))\n",
+            "print(isinstance(int.__dict__['from_bytes'], types.ClassMethodDescriptorType))\n",
+            "print(isinstance(int.from_bytes, types.BuiltinMethodType))\n",
+            "print(isinstance(int.__new__, types.BuiltinMethodType))\n",
+            "print(type(str.join).__name__, type(list.append).__name__, type(int.__dict__['from_bytes']).__name__)\n",
+            "print(int.from_bytes(b'\\x01\\x00', 'little'), int.from_bytes(b'\\xff', 'big', signed=True), bool.from_bytes(b'\\x02', 'big'))\n",
+            "print(int.__dict__['from_bytes'](int, b'\\x01', 'big'))\n",
+            "print(int.__new__(int, '10'))\n",
+            "items = []\n",
+            "list.append(items, 3)\n",
+            "print(items)"
+        ),
+        &[
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "method_descriptor method_descriptor classmethod_descriptor",
+            "1 -1 True",
+            "1",
+            "10",
+            "[3]",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_slot_wrapper_types
+// and ::test_method_wrapper_types. MiniPython represents these slot wrappers
+// with its existing builtin and bound-method values, while preserving the
+// public `types` identities and direct call behavior.
+#[test]
+fn cpython_types_slot_and_method_wrapper_types_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "for label, value in [\n",
+            "    ('object.__init__', object.__init__),\n",
+            "    ('object.__str__', object.__str__),\n",
+            "    ('object.__lt__', object.__lt__),\n",
+            "    ('int.__lt__', int.__lt__),\n",
+            "]:\n",
+            "    print(label, isinstance(value, types.WrapperDescriptorType), type(value) is types.WrapperDescriptorType, callable(value))\n",
+            "for label, value in [\n",
+            "    ('object().__init__', object().__init__),\n",
+            "    ('object().__str__', object().__str__),\n",
+            "    ('object().__lt__', object().__lt__),\n",
+            "    ('(42).__lt__', (42).__lt__),\n",
+            "]:\n",
+            "    print(label, isinstance(value, types.MethodWrapperType), type(value) is types.MethodWrapperType, callable(value))\n",
+            "print(object.__init__(object()))\n",
+            "print(object().__init__())\n",
+            "print(object.__lt__(object(), object()) is NotImplemented)\n",
+            "print(object().__lt__(object()) is NotImplemented)\n",
+            "print(int.__lt__(42, 43), (42).__lt__(43), (42).__lt__('x') is NotImplemented)"
+        ),
+        &[
+            "object.__init__ True True True",
+            "object.__str__ True True True",
+            "object.__lt__ True True True",
+            "int.__lt__ True True True",
+            "object().__init__ True True True",
+            "object().__str__ True True True",
+            "object().__lt__ True True True",
+            "(42).__lt__ True True True",
+            "None",
+            "None",
+            "True",
+            "True",
+            "True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests::test_methods.
 // MiniPython checks the mappingproxy method surface by behavior instead of
 // mirroring CPython's exact descriptor objects.
@@ -35210,12 +44950,168 @@ fn cpython_types_simple_namespace_recursive_and_replace_subset() {
     );
 }
 
+// Adapted from CPython main Lib/test/test_types.py::SimpleNamespaceTests
+// ::test_replace_invalid_subtype plus public `SimpleNamespace.__new__` behavior.
+// This guards the safety edge where a SimpleNamespace subclass constructor may
+// return a non-namespace object; `copy.replace()` must turn that into a
+// catchable TypeError instead of reusing stale fields or crashing.
+#[test]
+fn cpython_types_simple_namespace_new_and_invalid_replace_subset() {
+    assert_output(
+        concat!(
+            "import copy, types\n",
+            "created = False\n",
+            "print(type(types.SimpleNamespace.__new__(types.SimpleNamespace)).__name__, repr(types.SimpleNamespace.__new__(types.SimpleNamespace)))\n",
+            "print(type(types.SimpleNamespace.__new__(types.SimpleNamespace, 1, x=2)).__name__)\n",
+            "try:\n",
+            "    types.SimpleNamespace.__new__(int)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, 'not a subtype of types.SimpleNamespace' in str(error))\n",
+            "ns0 = types.SimpleNamespace(x=1)\n",
+            "print(hasattr(types.SimpleNamespace, '__replace__'), hasattr(ns0, '__replace__'))\n",
+            "print(types.SimpleNamespace.__replace__(ns0, y=3), ns0.__replace__(x=2))\n",
+            "class MyNS(types.SimpleNamespace):\n",
+            "    def __new__(cls, *args, **kwargs):\n",
+            "        if created:\n",
+            "            return 12345\n",
+            "        return super().__new__(cls)\n",
+            "ns = MyNS(ham=8, eggs=9)\n",
+            "print(type(ns).__name__, sorted(vars(ns).items()))\n",
+            "print(hasattr(ns, '__replace__'), type(ns.__replace__(eggs=10)).__name__, sorted(vars(ns.__replace__(eggs=10)).items()))\n",
+            "created = True\n",
+            "try:\n",
+            "    copy.replace(ns, ham=5)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, 'expect types.SimpleNamespace type' in str(error), 'MyNS()' in str(error), \"'int' object\" in str(error))"
+        ),
+        &[
+            "SimpleNamespace namespace()",
+            "SimpleNamespace",
+            "TypeError True",
+            "True True",
+            "namespace(x=1, y=3) namespace(x=2)",
+            "MyNS [('eggs', 9), ('ham', 8)]",
+            "True MyNS [('eggs', 10), ('ham', 8)]",
+            "TypeError True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::SimpleNamespaceTests. This
+// covers the remaining public SimpleNamespace behavior that MiniPython can
+// support without CPython's pickle byte-stream format: constructor order,
+// underlying `__dict__` lifetime, delete/reassign edges, nested references,
+// repr order, internal-payload pickle round trips, unsupported rich ordering,
+// and fake-namespace comparison safety.
+#[test]
+fn cpython_types_simple_namespace_remaining_public_subset() {
+    assert_output(
+        concat!(
+            "import pickle, types\n",
+            "ordered = types.SimpleNamespace({'x': 1, 'y': 2}, x=4, z=3)\n",
+            "print(list(vars(ordered).items()))\n",
+            "pair_ordered = types.SimpleNamespace([['x', 1], ['y', 2]], x=4, z=3)\n",
+            "print(list(vars(pair_ordered).items()))\n",
+            "print(list(vars(types.SimpleNamespace([], x=4, z=3)).items()))\n",
+            "print(list(vars(types.SimpleNamespace({})).items()))\n",
+            "ns1 = types.SimpleNamespace()\n",
+            "ns2 = types.SimpleNamespace(x=1, y=2)\n",
+            "ns3 = types.SimpleNamespace(a=True, b=False)\n",
+            "mapping = ns3.__dict__\n",
+            "del ns3\n",
+            "print(sorted(vars(ns1).items()), sorted(vars(ns2).items()), sorted(mapping.items()))\n",
+            "try:\n",
+            "    del ns1.spam\n",
+            "except AttributeError as error:\n",
+            "    print(type(error).__name__)\n",
+            "ns2 = types.SimpleNamespace(x=1, y=2, w=3)\n",
+            "try:\n",
+            "    del ns2.spam\n",
+            "except AttributeError as error:\n",
+            "    print(type(error).__name__)\n",
+            "del ns2.y\n",
+            "print(sorted(vars(ns2).items()))\n",
+            "ns2.y = 'spam'\n",
+            "print(sorted(vars(ns2).items()))\n",
+            "del ns2.y\n",
+            "print(sorted(vars(ns2).items()))\n",
+            "ns1.spam = 5\n",
+            "print(sorted(vars(ns1).items()))\n",
+            "del ns1.spam\n",
+            "print(sorted(vars(ns1).items()))\n",
+            "ns1 = types.SimpleNamespace(a=1, b=2)\n",
+            "ns2 = types.SimpleNamespace()\n",
+            "ns3 = types.SimpleNamespace(x=ns1)\n",
+            "ns2.spam = ns1\n",
+            "ns2.ham = '?'\n",
+            "ns2.spam = ns3\n",
+            "print(sorted(vars(ns1).items()))\n",
+            "print(vars(ns2)['spam'] is ns3, vars(ns2)['ham'], vars(ns3)['x'] is ns1, ns3.x.a)\n",
+            "print(repr(types.SimpleNamespace(x=1, y=2, w=3)))\n",
+            "ns = types.SimpleNamespace()\n",
+            "ns.x = 'spam'\n",
+            "ns._y = 5\n",
+            "print(repr(ns))\n",
+            "ns = types.SimpleNamespace(breakfast='spam', lunch='spam')\n",
+            "checked = 0\n",
+            "for protocol in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    restored = pickle.loads(pickle.dumps(ns, protocol))\n",
+            "    if restored == ns and restored is not ns and type(restored) is types.SimpleNamespace and sorted(vars(restored).items()) == sorted(vars(ns).items()):\n",
+            "        checked += 1\n",
+            "print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)\n",
+            "plain_left = types.SimpleNamespace(x=1)\n",
+            "plain_right = types.SimpleNamespace(y=2)\n",
+            "for expr in [lambda: plain_left > plain_right, lambda: plain_left >= plain_right, lambda: plain_left < plain_right, lambda: plain_left <= plain_right]:\n",
+            "    try:\n",
+            "        print(expr())\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+            "class FakeSimpleNamespace(str):\n",
+            "    __class__ = types.SimpleNamespace\n",
+            "for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: types.SimpleNamespace() != FakeSimpleNamespace(), lambda: types.SimpleNamespace() < FakeSimpleNamespace(), lambda: types.SimpleNamespace() <= FakeSimpleNamespace(), lambda: types.SimpleNamespace() > FakeSimpleNamespace(), lambda: types.SimpleNamespace() >= FakeSimpleNamespace()]:\n",
+            "    try:\n",
+            "        print(expr())\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)"
+        ),
+        &[
+            "[('x', 4), ('y', 2), ('z', 3)]",
+            "[('x', 4), ('y', 2), ('z', 3)]",
+            "[('x', 4), ('z', 3)]",
+            "[]",
+            "[] [('x', 1), ('y', 2)] [('a', True), ('b', False)]",
+            "AttributeError",
+            "AttributeError",
+            "[('w', 3), ('x', 1)]",
+            "[('w', 3), ('x', 1), ('y', 'spam')]",
+            "[('w', 3), ('x', 1)]",
+            "[('spam', 5)]",
+            "[]",
+            "[('a', 1), ('b', 2)]",
+            "True ? True 1",
+            "namespace(x=1, y=2, w=3)",
+            "namespace(x='spam', _y=5)",
+            "pickle 6 6",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "False",
+            "True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::test_Sequence_mixins.
 // MiniPython keeps the same observable comparison against native list/str
 // index() behavior, then covers the other Sequence mixins in a compact form.
 #[test]
 fn cpython_collections_abc_sequence_mixins_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "from collections.abc import Sequence\n",
             "class SequenceSubclass(Sequence):\n",
@@ -35270,6 +45166,7 @@ fn cpython_collections_abc_sequence_mixins_subset() {
             "1 1 5",
             "ValueError",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -35995,7 +45892,7 @@ fn cpython_collections_abc_async_generator_core_mixin_subset() {
 // subclasses.
 #[test]
 fn cpython_collections_abc_async_generator_throw_close_mixin_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "from collections.abc import AsyncGenerator, Awaitable, Coroutine\n",
             "class MinimalAGen(AsyncGenerator):\n",
@@ -36089,6 +45986,7 @@ fn cpython_collections_abc_async_generator_throw_close_mixin_subset() {
             "close-error bad close",
             "close-runtime asynchronous generator ignored GeneratorExit",
         ],
+        16 * 1024 * 1024,
     );
 }
 
@@ -39719,6 +49617,1573 @@ fn cpython_type_params_generic_alias_subset() {
     );
 }
 
+// Adapted from CPython public `typing.get_args()` / `typing.get_origin()`
+// helper behavior for GenericAlias and union annotations.
+#[test]
+fn cpython_typing_get_origin_args_subset() {
+    assert_output(
+        concat!(
+            "from typing import get_args, get_origin, Union\n",
+            "print(get_origin(list[int]) is list, get_origin(tuple[int, ...]) is tuple, get_origin(dict[str, int]) is dict)\n",
+            "print(get_args(list[int])[0] is int, get_args(tuple[int, ...])[1] is Ellipsis, get_args(dict[str, int])[1] is int)\n",
+            "print(get_origin(int | str).__name__, get_args(int | str)[0] is int, get_args(int | str)[1] is str)\n",
+            "print(get_origin(Union[int, str]).__name__, get_args(Union[int, str])[0] is int, get_args(Union[int, str])[1] is str)\n",
+            "print(get_origin(int), get_args(int))\n",
+            "class Base[T]:\n",
+            "    pass\n",
+            "print(get_origin(Base[int]) is Base, get_args(Base[int])[0] is int)\n",
+        ),
+        &[
+            "True True True",
+            "True True True",
+            "Union True True",
+            "Union True True",
+            "None ()",
+            "True True",
+        ],
+    );
+}
+
+// Adapted from CPython public `types.GenericAlias` and `types.UnionType`
+// behavior for parameterized builtin/user types and PEP 604 unions.
+#[test]
+fn cpython_types_generic_alias_union_type_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "from typing import Union\n",
+            "values = (list[int], tuple[int, ...], int | str, Union[int, str])\n",
+            "for value in values:\n",
+            "    typ = type(value)\n",
+            "    print(typ.__name__, typ is types.GenericAlias, typ is types.UnionType, isinstance(value, types.GenericAlias), isinstance(value, types.UnionType))\n",
+            "print(types.GenericAlias.__name__, types.GenericAlias.__module__, types.GenericAlias.__qualname__)\n",
+            "print(types.UnionType.__name__, types.UnionType.__module__, types.UnionType.__qualname__)\n",
+            "constructed = types.GenericAlias(list, (int,))\n",
+            "print(constructed.__origin__ is list, constructed.__args__[0] is int, type(constructed) is types.GenericAlias)\n",
+            "constructed = types.GenericAlias(list, int)\n",
+            "print(constructed.__origin__ is list, constructed.__args__[0] is int)\n",
+            "print(types.UnionType[int] is int, types.UnionType[int, int] is int, types.UnionType[int, str] == int | str, isinstance(types.UnionType[int, str], types.UnionType))\n",
+            "for expr in (lambda: types.GenericAlias(list), lambda: types.GenericAlias(list, (int,), 3), lambda: types.GenericAlias(origin=list, args=(int,)), lambda: types.UnionType()):\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "GenericAlias True False True False",
+            "GenericAlias True False True False",
+            "Union False True False True",
+            "Union False True False True",
+            "GenericAlias types GenericAlias",
+            "Union typing Union",
+            "True True True",
+            "True True",
+            "True True True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests forward-reference
+// union construction and `types.UnionType[...]` instantiation behavior.
+#[test]
+fn cpython_types_union_forward_ref_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "import typing\n",
+            "class OnlyForwardArg:\n",
+            "    def __init__(self, forward_arg):\n",
+            "        self.__forward_arg__ = forward_arg\n",
+            "class EqualToForwardRef:\n",
+            "    def __init__(self, forward_arg):\n",
+            "        self.__forward_arg__ = forward_arg\n",
+            "    def __eq__(self, other):\n",
+            "        return getattr(other, '__forward_arg__', None) == self.__forward_arg__\n",
+            "fr = typing.ForwardRef('str')\n",
+            "print(type(fr).__name__, isinstance(fr, typing.ForwardRef), repr(fr), fr.__forward_arg__, fr.__forward_module__, fr.__forward_is_argument__, fr.__forward_is_class__)\n",
+            "print(fr == typing.ForwardRef('str'), fr == typing.ForwardRef('int'), fr == OnlyForwardArg('str'), fr == EqualToForwardRef('str'))\n",
+            "for label, union in [('typing', typing.Union[int, 'str']), ('uniontype', types.UnionType[int, 'str']), ('optional', typing.Optional['str'])]:\n",
+            "    print(label, isinstance(union, types.UnionType), repr(union), tuple(repr(arg) for arg in union.__args__))\n",
+            "print('tuple-custom', typing.Union[int, 'str'].__args__ == (int, EqualToForwardRef('str')))\n",
+            "T = typing.TypeVar('T')\n",
+            "for label, union in [('after', T | 'Forward'), ('before', 'Forward' | T), ('fr-after', typing.ForwardRef('A') | 'B'), ('fr-before', 'B' | typing.ForwardRef('A'))]:\n",
+            "    print(label, isinstance(union, types.UnionType), tuple(repr(arg) for arg in union.__args__))\n",
+            "for label, expr in [('int-str', lambda: int | 'Forward'), ('str-int', lambda: 'Forward' | int), ('str-str', lambda: 'A' | 'B')]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__)\n",
+        ),
+        &[
+            "ForwardRef True ForwardRef('str') str None True False",
+            "True False False True",
+            "typing True int | ForwardRef('str') (\"<class 'int'>\", \"ForwardRef('str')\")",
+            "uniontype True int | ForwardRef('str') (\"<class 'int'>\", \"ForwardRef('str')\")",
+            "optional True ForwardRef('str') | None (\"ForwardRef('str')\", \"<class 'NoneType'>\")",
+            "tuple-custom True",
+            "after True ('T', \"ForwardRef('Forward')\")",
+            "before True (\"ForwardRef('Forward')\", 'T')",
+            "fr-after True (\"ForwardRef('A')\", \"ForwardRef('B')\")",
+            "fr-before True (\"ForwardRef('B')\", \"ForwardRef('A')\")",
+            "int-str TypeError",
+            "str-int TypeError",
+            "str-str TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests
+// test_or_type_operator_with_forward. MiniPython resolves ForwardRef operands
+// through typing.get_type_hints() for function annotations.
+#[test]
+fn cpython_types_union_forward_get_type_hints_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "class Forward:\n",
+            "    pass\n",
+            "T = typing.TypeVar('T')\n",
+            "ForwardAfter = T | 'Forward'\n",
+            "ForwardBefore = 'Forward' | T\n",
+            "def forward_after(x: ForwardAfter[int]) -> None:\n",
+            "    pass\n",
+            "def forward_before(x: ForwardBefore[int]) -> None:\n",
+            "    pass\n",
+            "for label, func, expected in [('after', forward_after, (int, Forward)), ('before', forward_before, (Forward, int))]:\n",
+            "    hints = typing.get_type_hints(func)\n",
+            "    args = typing.get_args(hints['x'])\n",
+            "    print(label, args == expected, hints['return'] is type(None), tuple(arg.__name__ for arg in args))\n",
+            "def direct_string(x: 'Forward') -> None:\n",
+            "    pass\n",
+            "hints = typing.get_type_hints(direct_string)\n",
+            "print('direct', hints['x'] is Forward, hints['return'] is type(None))\n",
+        ),
+        &[
+            "after True True ('int', 'Forward')",
+            "before True True ('Forward', 'int')",
+            "direct True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests public PEP 604
+// operator, hash, classinfo, and `__args__` behavior.
+#[test]
+fn cpython_types_union_public_operator_and_classinfo_subset() {
+    assert_output(
+        concat!(
+            "import collections.abc\n",
+            "import types\n",
+            "import typing\n",
+            "from collections import namedtuple\n",
+            "from typing import Union, get_args, get_origin\n",
+            "print('eq-basic', int | str == Union[int, str], str | int == Union[int, str], int | list != Union[int, str])\n",
+            "print('none', int | None == Union[int, None], None | int == Union[int, None], int | type(None) == int | None)\n",
+            "print('none-extra', type(None) | int == None | int)\n",
+            "print('flatten', int | str | list == Union[int, str, list], int | (str | list) == Union[int, str, list], (int | str) | (str | int) == int | str)\n",
+            "print('flatten-extra', str | (int | list) == Union[int, str, list], str | float | int | complex | int == (int | str) | (float | complex))\n",
+            "print('identity', int | int is int)\n",
+            "print('hash', hash(int | str) == hash(str | int), hash(int | str) == hash(Union[int, str]))\n",
+            "for label, expr in [('bad-rhs', lambda: int | 3), ('bad-lhs', lambda: 3 | int), ('bad-instance', lambda: object() | int)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError:\n",
+            "        print(label, 'TypeError')\n",
+            "x = int | str\n",
+            "print('x-eq', x == int | str, x == str | int, x != {})\n",
+            "for label, expr in [('lt-self', lambda: x < x), ('le-self', lambda: x <= x), ('lt-typing', lambda: x < Union[str, int]), ('lt-union', lambda: x < (int | bool))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError:\n",
+            "        print(label, 'TypeError')\n",
+            "print('typing-alias', typing.List | typing.Tuple == Union[typing.List, typing.Tuple], typing.List[int] | typing.Tuple[int] == Union[typing.List[int], typing.Tuple[int]], typing.List[int] | None == Union[typing.List[int], None], None | typing.List[int] == Union[None, typing.List[int]], Union[str, int, typing.List[int]] == str | int | typing.List[int])\n",
+            "print('typing-list-str', list | str == Union[list, str], typing.List | str == Union[typing.List, str])\n",
+            "ga_mix = list[int] | list[str] | dict[float, str]\n",
+            "print('ga-mixed', ga_mix == Union[list[int], list[str], dict[float, str]], repr(ga_mix))\n",
+            "for expr in [int | str, (int | str) | list, int | (str | list), (int | str) | int, int | (str | int), Union[int, str] | list, int | Union[str, list], (str | int) | Union[int, list], int | type(None), type(None) | int]:\n",
+            "    print('args', tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in expr.__args__))\n",
+            "for label, x in [('list-int', list[int]), ('typing-list-int', typing.List[int]), ('typing-tuple-int-int', typing.Tuple[int, int]), ('typing-callable', typing.Callable[[int], int]), ('typing-hashable', typing.Hashable)]:\n",
+            "    print('args-extra', label, tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in (x | None).__args__), tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in (None | x).__args__), x | None == Union[x, None], None | x == Union[None, x])\n",
+            "for union in (int | str, Union[int, str]):\n",
+            "    print('checks', isinstance(1, union), isinstance(True, union), isinstance('a', union), isinstance(None, union), issubclass(int, union), issubclass(bool, union), issubclass(str, union), issubclass(type(None), union))\n",
+            "for union in (int | None, Union[int, None]):\n",
+            "    print('none-checks', isinstance(None, union), issubclass(type(None), union))\n",
+            "for union in (int | collections.abc.Mapping, Union[int, collections.abc.Mapping]):\n",
+            "    print('mapping-checks', isinstance({}, union), isinstance((), union), issubclass(dict, union), issubclass(list, union))\n",
+            "for label, union in [('list-str', list[str] | int), ('callable', collections.abc.Callable[..., str] | int)]:\n",
+            "    for op, expr in [('isinstance', lambda union=union: isinstance(1, union)), ('issubclass', lambda union=union: issubclass(int, union))]:\n",
+            "        try:\n",
+            "            expr()\n",
+            "        except TypeError:\n",
+            "            print('ga-classinfo-error', label, op)\n",
+            "chain = BaseException | bool | bytes | complex | float | int | list | map | set\n",
+            "chain_expected = Union[BaseException, bool, bytes, complex, float, int, list, map, set]\n",
+            "print('long-chain', chain == chain_expected, tuple(arg.__name__ for arg in chain.__args__))\n",
+            "NT = namedtuple('A', ['B', 'C', 'D'])\n",
+            "named_union = NT | str\n",
+            "print('namedtuple', named_union == Union[NT, str], named_union.__args__[0].__name__, named_union.__args__[1].__name__)\n",
+            "print('typing-genericalias', typing.GenericAlias is types.GenericAlias, repr(int | typing.GenericAlias(list, int)))\n",
+            "for expr in (int | str, (int | str) | list, int | (str | list), int | None, int | type(None), int | typing.GenericAlias(list, int)):\n",
+            "    print('repr', repr(expr))\n",
+            "for expr in (int | str, int | None, int | typing.GenericAlias(list, int)):\n",
+            "    print('str', str(expr))\n",
+            "print('types', type(int | str) is types.UnionType, isinstance(int | str, types.UnionType), get_origin(int | str).__name__, tuple(arg.__name__ for arg in get_args(int | str)))\n",
+        ),
+        &[
+            "eq-basic True True True",
+            "none True True True",
+            "none-extra True",
+            "flatten True True True",
+            "flatten-extra True True",
+            "identity True",
+            "hash True True",
+            "bad-rhs TypeError",
+            "bad-lhs TypeError",
+            "bad-instance TypeError",
+            "x-eq True True True",
+            "lt-self TypeError",
+            "le-self TypeError",
+            "lt-typing TypeError",
+            "lt-union TypeError",
+            "typing-alias True True True True True",
+            "typing-list-str True True",
+            "ga-mixed True list[int] | list[str] | dict[float, str]",
+            "args ('int', 'str')",
+            "args ('int', 'str', 'list')",
+            "args ('int', 'str', 'list')",
+            "args ('int', 'str')",
+            "args ('int', 'str')",
+            "args ('int', 'str', 'list')",
+            "args ('int', 'str', 'list')",
+            "args ('str', 'int', 'list')",
+            "args ('int', 'NoneType')",
+            "args ('NoneType', 'int')",
+            "args-extra list-int ('list', 'NoneType') ('NoneType', 'list') True True",
+            "args-extra typing-list-int ('list', 'NoneType') ('NoneType', 'list') True True",
+            "args-extra typing-tuple-int-int ('tuple', 'NoneType') ('NoneType', 'tuple') True True",
+            "args-extra typing-callable ('Callable', 'NoneType') ('NoneType', 'Callable') True True",
+            "args-extra typing-hashable ('Hashable', 'NoneType') ('NoneType', 'Hashable') True True",
+            "checks True True True False True True True False",
+            "checks True True True False True True True False",
+            "none-checks True True",
+            "none-checks True True",
+            "mapping-checks True False True False",
+            "mapping-checks True False True False",
+            "ga-classinfo-error list-str isinstance",
+            "ga-classinfo-error list-str issubclass",
+            "ga-classinfo-error callable isinstance",
+            "ga-classinfo-error callable issubclass",
+            "long-chain True ('BaseException', 'bool', 'bytes', 'complex', 'float', 'int', 'list', 'map', 'set')",
+            "namedtuple True A str",
+            "typing-genericalias True int | list[int]",
+            "repr int | str",
+            "repr int | str | list",
+            "repr int | str | list",
+            "repr int | None",
+            "repr int | None",
+            "repr int | list[int]",
+            "str int | str",
+            "str int | None",
+            "str int | list[int]",
+            "types True True Union ('int', 'str')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests
+// GenericAlias subclass and bad type equality behavior.
+#[test]
+fn cpython_types_union_genericalias_subclass_bad_eq_subset() {
+    assert_output(
+        concat!(
+            "import collections.abc\n",
+            "import types\n",
+            "import typing\n",
+            "class SubClass(types.GenericAlias):\n",
+            "    pass\n",
+            "d = SubClass(list, float)\n",
+            "a = list[int]\n",
+            "b = list[str]\n",
+            "c = dict[float, str]\n",
+            "print('subclass', type(d).__name__, isinstance(d, types.GenericAlias), type(d) is types.GenericAlias, repr(d), d.__origin__ is list, d.__args__[0] is float)\n",
+            "print('d-eq-ga', d == list[float], list[float] == d, hash(d) == hash(list[float]))\n",
+            "print('eq-union', a | b | c | d == typing.Union[a, b, c, d])\n",
+            "print('dedupe', a | c | b | b | a | c | d | d == a | b | c | d)\n",
+            "print('order', a | b | d == b | a | d)\n",
+            "print('repr', repr(a | b | c | d))\n",
+            "class BadType(type):\n",
+            "    def __eq__(self, other):\n",
+            "        return 1 / 0\n",
+            "bt = BadType('bt', (), {})\n",
+            "bt2 = BadType('bt2', (), {})\n",
+            "union1 = int | bt\n",
+            "union2 = int | bt2\n",
+            "for label, expr in [('union-eq', lambda: union1 == union2), ('bad-or', lambda: bt | bt2)]:\n",
+            "    try:\n",
+            "        print(label, expr())\n",
+            "    except Exception as exc:\n",
+            "        print(label, type(exc).__name__)\n",
+            "for label, union in [('subclass', d | int), ('list', list[str] | int), ('callable', collections.abc.Callable[..., str] | int)]:\n",
+            "    for op, expr in [('isinstance', lambda union=union: isinstance(1, union)), ('issubclass', lambda union=union: issubclass(int, union))]:\n",
+            "        try:\n",
+            "            print('classinfo', label, op, expr())\n",
+            "        except Exception as exc:\n",
+            "            print('classinfo', label, op, type(exc).__name__)\n",
+        ),
+        &[
+            "subclass SubClass True False list[float] True True",
+            "d-eq-ga True True True",
+            "eq-union True",
+            "dedupe True",
+            "order True",
+            "repr list[int] | list[str] | dict[float, str] | list[float]",
+            "union-eq ZeroDivisionError",
+            "bad-or ZeroDivisionError",
+            "classinfo subclass isinstance TypeError",
+            "classinfo subclass issubclass TypeError",
+            "classinfo list isinstance TypeError",
+            "classinfo list issubclass TypeError",
+            "classinfo callable isinstance TypeError",
+            "classinfo callable issubclass TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests bad-module
+// regression. The public requirement is that odd metaclass module metadata does
+// not crash union construction.
+#[test]
+fn cpython_types_union_bad_module_guard_subset() {
+    assert_output(
+        concat!(
+            "class BadMeta(type):\n",
+            "    __qualname__ = 'TypeVar'\n",
+            "    @property\n",
+            "    def __module__(self):\n",
+            "        1 / 0\n",
+            "TypeVar = BadMeta('TypeVar', (), {})\n",
+            "_SpecialForm = BadMeta('_SpecialForm', (), {})\n",
+            "for label, obj in [('TypeVar', TypeVar()), ('_SpecialForm', _SpecialForm())]:\n",
+            "    try:\n",
+            "        str | obj\n",
+            "    except BaseException as error:\n",
+            "        print('bad-module', label, type(error).__name__ in ('TypeError', 'ZeroDivisionError'))\n",
+        ),
+        &["bad-module TypeVar True", "bad-module _SpecialForm True"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests TypeVar
+// substitution and parameter tracking for PEP 604 unions.
+#[test]
+fn cpython_types_union_typevar_parameter_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "T = typing.TypeVar('T')\n",
+            "S = typing.TypeVar('S')\n",
+            "print('typevar-eq', T | str == typing.Union[T, str], str | T == typing.Union[str, T])\n",
+            "print('typevar-sub', (int | T)[int] is int, (T | int)[int] is int)\n",
+            "print('args-none', tuple(arg.__name__ for arg in (T | None).__args__), tuple(arg.__name__ for arg in (None | T).__args__))\n",
+            "print('params', tuple(param.__name__ for param in (int | T).__parameters__), tuple(param.__name__ for param in (list[T] | list[S]).__parameters__))\n",
+            "print('chain', (float | list[T])[int] == float | list[int])\n",
+            "print('nested-params', tuple(param.__name__ for param in list[int | list[T]].__parameters__))\n",
+            "print('nested-sub', list[int | list[T]][str] == list[int | list[str]])\n",
+            "print('pair-sub', (list[T] | list[S])[int, T] == list[int] | list[T])\n",
+            "print('pair-dedupe', (list[T] | list[S])[int, int] == list[int])\n",
+            "for label, union in [('intT', int | T), ('Union-intT', typing.Union[int, T])]:\n",
+            "    print('classinfo-resolve', label, isinstance(1, union), issubclass(int, union))\n",
+            "for label, union in [('Tint', T | int), ('Union-Tint', typing.Union[T, int])]:\n",
+            "    for op, expr in [('isinstance-1', lambda union=union: isinstance(1, union)), ('issubclass-int', lambda union=union: issubclass(int, union))]:\n",
+            "        try:\n",
+            "            expr()\n",
+            "        except TypeError:\n",
+            "            print('classinfo-error', label, op)\n",
+            "for label, union in [('intT', int | T), ('Tint', T | int), ('Union-intT', typing.Union[int, T]), ('Union-Tint', typing.Union[T, int])]:\n",
+            "    for op, expr in [('isinstance-object', lambda union=union: isinstance(object(), union)), ('issubclass-object', lambda union=union: issubclass(object, union))]:\n",
+            "        try:\n",
+            "            expr()\n",
+            "        except TypeError:\n",
+            "            print('classinfo-object-error', label, op)\n",
+        ),
+        &[
+            "typevar-eq True True",
+            "typevar-sub True True",
+            "args-none ('T', 'NoneType') ('NoneType', 'T')",
+            "params ('T',) ('T', 'S')",
+            "chain True",
+            "nested-params ('T',)",
+            "nested-sub True",
+            "pair-sub True",
+            "pair-dedupe True",
+            "classinfo-resolve intT True True",
+            "classinfo-resolve Union-intT True True",
+            "classinfo-error Tint isinstance-1",
+            "classinfo-error Tint issubclass-int",
+            "classinfo-error Union-Tint isinstance-1",
+            "classinfo-error Union-Tint issubclass-int",
+            "classinfo-object-error intT isinstance-object",
+            "classinfo-object-error intT issubclass-object",
+            "classinfo-object-error Tint isinstance-object",
+            "classinfo-object-error Tint issubclass-object",
+            "classinfo-object-error Union-intT isinstance-object",
+            "classinfo-object-error Union-intT issubclass-object",
+            "classinfo-object-error Union-Tint isinstance-object",
+            "classinfo-object-error Union-Tint issubclass-object",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests parameter
+// substitution behavior for the typing forms MiniPython currently supports.
+#[test]
+fn cpython_types_union_parameter_substitution_subset() {
+    assert_output_with_stack(
+        concat!(
+            "import collections.abc\n",
+            "import typing\n",
+            "T = typing.TypeVar('T')\n",
+            "S = typing.TypeVar('S')\n",
+            "NT = typing.NewType('NT', str)\n",
+            "x = int | T | bytes\n",
+            "def check(label, actual, expected):\n",
+            "    print(label, actual == expected, type(actual) is type(expected), tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in actual.__args__), tuple(param.__name__ for param in getattr(actual, '__parameters__', ())))\n",
+            "check('str', x[str], int | str | bytes)\n",
+            "check('list-int', x[list[int]], int | list[int] | bytes)\n",
+            "check('typing-list', x[typing.List], int | typing.List | bytes)\n",
+            "check('typing-list-int', x[typing.List[int]], int | typing.List[int] | bytes)\n",
+            "check('typing-hashable', x[typing.Hashable], int | typing.Hashable | bytes)\n",
+            "check('abc-hashable', x[collections.abc.Hashable], int | collections.abc.Hashable | bytes)\n",
+            "check('typing-callable', x[typing.Callable[[int], str]], int | typing.Callable[[int], str] | bytes)\n",
+            "check('abc-callable', x[collections.abc.Callable[[int], str]], int | collections.abc.Callable[[int], str] | bytes)\n",
+            "check('typing-tuple', x[typing.Tuple[int, str]], int | typing.Tuple[int, str] | bytes)\n",
+            "check('typing-literal', x[typing.Literal['none']], int | typing.Literal['none'] | bytes)\n",
+            "check('typing-newtype', x[NT], int | NT | bytes)\n",
+            "check('nested-pep604', x[str | list], int | str | list | bytes)\n",
+            "check('nested-typing-union', x[typing.Union[str, list]], typing.Union[int, str, list, bytes])\n",
+            "check('dedupe-pep604', x[str | int], int | str | bytes)\n",
+            "check('dedupe-typing-union', x[typing.Union[str, int]], typing.Union[int, str, bytes])\n",
+            "check('typevar-s', x[S], int | S | bytes)\n",
+            "try:\n",
+            "    x[int, str]\n",
+            "except TypeError:\n",
+            "    print('arity-error')\n",
+        ),
+        &[
+            "str True True ('int', 'str', 'bytes') ()",
+            "list-int True True ('int', 'list', 'bytes') ()",
+            "typing-list True True ('int', 'List', 'bytes') ()",
+            "typing-list-int True True ('int', 'list', 'bytes') ()",
+            "typing-hashable True True ('int', 'Hashable', 'bytes') ()",
+            "abc-hashable True True ('int', 'Hashable', 'bytes') ()",
+            "typing-callable True True ('int', 'Callable', 'bytes') ()",
+            "abc-callable True True ('int', 'Callable', 'bytes') ()",
+            "typing-tuple True True ('int', 'tuple', 'bytes') ()",
+            "typing-literal True True ('int', 'Literal', 'bytes') ()",
+            "typing-newtype True True ('int', 'NT', 'bytes') ()",
+            "nested-pep604 True True ('int', 'str', 'list', 'bytes') ()",
+            "nested-typing-union True True ('int', 'str', 'list', 'bytes') ()",
+            "dedupe-pep604 True True ('int', 'str', 'bytes') ()",
+            "dedupe-typing-union True True ('int', 'str', 'bytes') ()",
+            "typevar-s True True ('int', 'S', 'bytes') ('S',)",
+            "arity-error",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests copy and
+// pickle behavior for parameterized union aliases.
+#[test]
+fn cpython_types_union_copy_pickle_subset() {
+    assert_output(
+        concat!(
+            "import copy\n",
+            "import pickle\n",
+            "import typing\n",
+            "T = typing.TypeVar('T')\n",
+            "orig = list[T] | int\n",
+            "for label, copied in [('copy', copy.copy(orig)), ('deepcopy', copy.deepcopy(orig))]:\n",
+            "    print(label, copied == orig, copied.__args__ == orig.__args__, copied.__parameters__ == orig.__parameters__, copied is orig, type(copied).__name__)\n",
+            "checked = 0\n",
+            "for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n",
+            "    loaded = pickle.loads(pickle.dumps(orig, proto))\n",
+            "    if loaded == orig and loaded.__args__ == orig.__args__ and loaded.__parameters__ == orig.__parameters__ and type(loaded).__name__ == 'Union':\n",
+            "        checked += 1\n",
+            "print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)\n",
+        ),
+        &[
+            "copy True True True False Union",
+            "deepcopy True True True False Union",
+            "pickle 6 6",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests bad
+// instancecheck/subclasscheck behavior through PEP 604 union classinfo.
+#[test]
+fn cpython_types_union_bad_classinfo_checks_subset() {
+    assert_output(
+        concat!(
+            "class BadInstanceMeta(type):\n",
+            "    def __instancecheck__(cls, inst):\n",
+            "        1/0\n",
+            "x = int | BadInstanceMeta('A', (), {})\n",
+            "print('isinstance-int', isinstance(1, x))\n",
+            "try:\n",
+            "    isinstance([], x)\n",
+            "except ZeroDivisionError as exc:\n",
+            "    print('isinstance-list-error', type(exc).__name__, str(exc))\n",
+            "class BadSubclassMeta(type):\n",
+            "    def __subclasscheck__(cls, sub):\n",
+            "        1/0\n",
+            "y = int | BadSubclassMeta('B', (), {})\n",
+            "print('issubclass-int', issubclass(int, y))\n",
+            "try:\n",
+            "    issubclass(list, y)\n",
+            "except ZeroDivisionError as exc:\n",
+            "    print('issubclass-list-error', type(exc).__name__, str(exc))\n",
+        ),
+        &[
+            "isinstance-int True",
+            "isinstance-list-error ZeroDivisionError division by zero",
+            "issubclass-int True",
+            "issubclass-list-error ZeroDivisionError division by zero",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests unhashable
+// metaclass behavior for union hashing.
+#[test]
+fn cpython_types_union_unhashable_metaclass_subset() {
+    assert_output(
+        concat!(
+            "class UnhashableMeta(type):\n",
+            "    __hash__ = None\n",
+            "class A(metaclass=UnhashableMeta):\n",
+            "    pass\n",
+            "class B(metaclass=UnhashableMeta):\n",
+            "    pass\n",
+            "for label, union in [('AB', A | B), ('intB', int | B), ('Aint', A | int)]:\n",
+            "    print(label, tuple(arg.__name__ for arg in union.__args__))\n",
+            "    try:\n",
+            "        hash(union)\n",
+            "    except TypeError as exc:\n",
+            "        print(label, type(exc).__name__, str(exc))\n",
+        ),
+        &[
+            "AB ('A', 'B')",
+            "AB TypeError unhashable type: 'UnhashableMeta'",
+            "intB ('int', 'B')",
+            "intB TypeError unhashable type: 'UnhashableMeta'",
+            "Aint ('A', 'int')",
+            "Aint TypeError unhashable type: 'UnhashableMeta'",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests dynamic
+// unhashable-to-hashable union hashing behavior.
+#[test]
+fn cpython_types_union_dynamic_hashability_subset() {
+    assert_output(
+        concat!(
+            "is_hashable = False\n",
+            "class DynamicHashMeta(type):\n",
+            "    def __hash__(self):\n",
+            "        if is_hashable:\n",
+            "            return 1\n",
+            "        raise TypeError('not hashable')\n",
+            "class A(metaclass=DynamicHashMeta):\n",
+            "    pass\n",
+            "class B(metaclass=DynamicHashMeta):\n",
+            "    pass\n",
+            "union = A | B\n",
+            "print('args', tuple(arg.__name__ for arg in union.__args__))\n",
+            "try:\n",
+            "    hash(union)\n",
+            "except TypeError as exc:\n",
+            "    print('before', type(exc).__name__, str(exc))\n",
+            "is_hashable = True\n",
+            "print('class-hash', hash(A), hash(B))\n",
+            "try:\n",
+            "    hash(union)\n",
+            "except TypeError as exc:\n",
+            "    print('after-old', type(exc).__name__, str(exc))\n",
+            "single = A | A\n",
+            "print('after-new', isinstance(hash(A | B), int), single is A)\n",
+        ),
+        &[
+            "args ('A', 'B')",
+            "before TypeError not hashable",
+            "class-hash 1 1",
+            "after-old TypeError union contains 2 unhashable elements",
+            "after-new True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests NewType behavior.
+#[test]
+fn cpython_types_union_newtype_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "UserId = typing.NewType('UserId', int)\n",
+            "print('meta', UserId.__name__, UserId.__module__, UserId.__supertype__ is int, type(UserId).__name__, type(UserId).__module__)\n",
+            "print('call', UserId(42), UserId('x'))\n",
+            "union = UserId | str\n",
+            "print('union', union == typing.Union[UserId, str], repr(union), tuple(arg.__name__ for arg in union.__args__))\n",
+        ),
+        &[
+            "meta UserId __main__ True NewType typing",
+            "call 42 x",
+            "union True __main__.UserId | str ('UserId', 'str')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests typing.IO behavior.
+#[test]
+fn cpython_types_union_io_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "print('meta', repr(typing.IO), str(typing.IO), typing.IO.__name__, typing.IO.__module__, type(typing.IO).__name__)\n",
+            "union = typing.IO | str\n",
+            "print('union', union == typing.Union[typing.IO, str], repr(union), tuple(arg.__name__ for arg in union.__args__))\n",
+            "ga = typing.IO[str]\n",
+            "print('generic', repr(ga), str(ga), ga.__name__, ga.__origin__ is typing.IO, tuple(arg.__name__ for arg in ga.__args__))\n",
+            "generic_union = ga | int\n",
+            "print('generic-union', generic_union == typing.Union[ga, int], repr(generic_union), tuple(getattr(arg, '__name__', repr(arg)) for arg in generic_union.__args__))\n",
+            "for name in ('TextIO', 'BinaryIO'):\n",
+            "    form = getattr(typing, name)\n",
+            "    union = form | str\n",
+            "    print('named', name, repr(form), form.__name__, form.__module__, union == typing.Union[form, str], repr(union), tuple(arg.__name__ for arg in union.__args__))\n",
+            "    try:\n",
+            "        form[str]\n",
+            "    except TypeError:\n",
+            "        print('named-subscript-error', name)\n",
+        ),
+        &[
+            "meta <class 'typing.IO'> <class 'typing.IO'> IO typing type",
+            "union True typing.IO | str ('IO', 'str')",
+            "generic typing.IO[str] typing.IO[str] IO True ('str',)",
+            "generic-union True typing.IO[str] | int ('IO', 'int')",
+            "named TextIO <class 'typing.TextIO'> TextIO typing True typing.TextIO | str ('TextIO', 'str')",
+            "named-subscript-error TextIO",
+            "named BinaryIO <class 'typing.BinaryIO'> BinaryIO typing True typing.BinaryIO | str ('BinaryIO', 'str')",
+            "named-subscript-error BinaryIO",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests TypedDict behavior.
+#[test]
+fn cpython_types_union_typed_dict_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "class Point2D(typing.TypedDict):\n",
+            "    x: int\n",
+            "    y: int\n",
+            "    label: str\n",
+            "union = Point2D | str\n",
+            "print('typed-dict', union == typing.Union[Point2D, str], tuple(arg.__name__ for arg in union.__args__), Point2D(x=1, y=2, label='p')['label'])\n",
+        ),
+        &["typed-dict True ('Point2D', 'str') p"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests Protocol behavior.
+#[test]
+fn cpython_types_union_protocol_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "class Proto(typing.Protocol):\n",
+            "    def meth(self) -> int:\n",
+            "        ...\n",
+            "union = Proto | str\n",
+            "print('protocol-meta', typing.Protocol.__name__, typing.Protocol.__module__, tuple(base.__name__ for base in Proto.__bases__))\n",
+            "print('protocol-union', union == typing.Union[Proto, str], tuple(arg.__name__ for arg in union.__args__))\n",
+        ),
+        &[
+            "protocol-meta Protocol typing ('Protocol',)",
+            "protocol-union True ('Proto', 'str')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests SpecialForm
+// behavior for PEP 604 unions.
+#[test]
+fn cpython_types_union_special_form_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "any_union = typing.Any | str\n",
+            "print('any', any_union == typing.Union[typing.Any, str], repr(any_union), tuple(repr(arg) for arg in any_union.__args__))\n",
+            "noreturn_union = typing.NoReturn | str\n",
+            "print('noreturn', noreturn_union == typing.Union[typing.NoReturn, str], repr(noreturn_union), tuple(repr(arg) for arg in noreturn_union.__args__))\n",
+            "optional_union = typing.Optional[int] | str\n",
+            "print('optional-alias', repr(typing.Optional[int]), tuple(repr(arg) for arg in typing.Optional[int].__args__))\n",
+            "print('optional-union', optional_union == typing.Union[typing.Optional[int], str], repr(optional_union), tuple(repr(arg) for arg in optional_union.__args__))\n",
+            "print('optional-flat', optional_union == typing.Union[int, str, None])\n",
+            "chain = typing.Union[int, bool] | str\n",
+            "print('union-chain', chain == typing.Union[int, bool, str], repr(chain), tuple(arg.__name__ for arg in chain.__args__))\n",
+        ),
+        &[
+            "any True typing.Any | str ('typing.Any', \"<class 'str'>\")",
+            "noreturn True typing.NoReturn | str ('typing.NoReturn', \"<class 'str'>\")",
+            "optional-alias int | None (\"<class 'int'>\", \"<class 'NoneType'>\")",
+            "optional-union True int | None | str (\"<class 'int'>\", \"<class 'NoneType'>\", \"<class 'str'>\")",
+            "optional-flat True",
+            "union-chain True int | bool | str ('int', 'bool', 'str')",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::UnionTests Literal union
+// behavior for non-enum literal values.
+#[test]
+fn cpython_types_union_literal_subset() {
+    assert_output(
+        concat!(
+            "import typing\n",
+            "from enum import IntEnum\n",
+            "Literal = typing.Literal\n",
+            "print('args', tuple(repr(arg) for arg in (Literal[1] | Literal[2]).__args__))\n",
+            "print('false-distinct', tuple(repr(arg) for arg in (Literal[0] | Literal[False]).__args__))\n",
+            "print('true-distinct', tuple(repr(arg) for arg in (Literal[1] | Literal[True]).__args__))\n",
+            "print('dedupe-int', Literal[1] | Literal[1] == Literal[1])\n",
+            "print('dedupe-str', Literal['a'] | Literal['a'] == Literal['a'])\n",
+            "print('repr', repr(Literal['a'] | Literal['b']))\n",
+            "class Ints(IntEnum):\n",
+            "    A = 0\n",
+            "    B = False\n",
+            "    C = 1\n",
+            "    D = True\n",
+            "print('enum-values', repr(Ints.A), str(Ints.A), int(Ints.A), Ints.A == 0, type(Ints.A).__name__, Ints.A.name, Ints.A.value)\n",
+            "print('enum-aliases', Ints.A is Ints.B, Ints.C is Ints.D, Ints(0) is Ints.A, Ints(False) is Ints.A)\n",
+            "print('enum-members', tuple((name, repr(value)) for name, value in Ints.__members__.items()))\n",
+            "for left, right in ((Ints.A, 0), (Ints.B, False), (Ints.C, 1), (Ints.D, True), (Ints.A, Ints.B), (Ints.C, Ints.D)):\n",
+            "    alias = Literal[left] | Literal[right]\n",
+            "    print('enum-union', repr(Literal[left]), repr(Literal[right]), tuple(repr(arg) for arg in alias.__args__), alias == Literal[left])\n",
+        ),
+        &[
+            "args ('typing.Literal[1]', 'typing.Literal[2]')",
+            "false-distinct ('typing.Literal[0]', 'typing.Literal[False]')",
+            "true-distinct ('typing.Literal[1]', 'typing.Literal[True]')",
+            "dedupe-int True",
+            "dedupe-str True",
+            "repr typing.Literal['a'] | typing.Literal['b']",
+            "enum-values <Ints.A: 0> 0 0 True Ints A 0",
+            "enum-aliases True True True True",
+            "enum-members (('A', '<Ints.A: 0>'), ('B', '<Ints.A: 0>'), ('C', '<Ints.C: 1>'), ('D', '<Ints.C: 1>'))",
+            "enum-union typing.Literal[<Ints.A: 0>] typing.Literal[0] ('typing.Literal[<Ints.A: 0>]', 'typing.Literal[0]') False",
+            "enum-union typing.Literal[<Ints.A: 0>] typing.Literal[False] ('typing.Literal[<Ints.A: 0>]', 'typing.Literal[False]') False",
+            "enum-union typing.Literal[<Ints.C: 1>] typing.Literal[1] ('typing.Literal[<Ints.C: 1>]', 'typing.Literal[1]') False",
+            "enum-union typing.Literal[<Ints.C: 1>] typing.Literal[True] ('typing.Literal[<Ints.C: 1>]', 'typing.Literal[True]') False",
+            "enum-union typing.Literal[<Ints.A: 0>] typing.Literal[<Ints.A: 0>] ('<Ints.A: 0>',) True",
+            "enum-union typing.Literal[<Ints.C: 1>] typing.Literal[<Ints.C: 1>] ('<Ints.C: 1>',) True",
+        ],
+    );
+}
+
+// Adapted from CPython public `types` singleton type aliases.
+#[test]
+fn cpython_types_singleton_type_aliases_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "items = ((None, types.NoneType), (NotImplemented, types.NotImplementedType), (Ellipsis, types.EllipsisType))\n",
+            "for value, alias in items:\n",
+            "    print(type(value) is alias, isinstance(value, alias), alias() is value)\n",
+            "    print(alias.__name__, alias.__module__, alias.__qualname__)\n",
+            "for alias in (types.NoneType, types.NotImplementedType, types.EllipsisType):\n",
+            "    for expr in (lambda alias=alias: alias(1), lambda alias=alias: alias(value=1)):\n",
+            "        try:\n",
+            "            expr()\n",
+            "        except TypeError as error:\n",
+            "            print(alias.__name__, type(error).__name__)\n",
+        ),
+        &[
+            "True True True",
+            "NoneType builtins NoneType",
+            "True True True",
+            "NotImplementedType builtins NotImplementedType",
+            "True True True",
+            "ellipsis builtins ellipsis",
+            "NoneType TypeError",
+            "NoneType TypeError",
+            "NotImplementedType TypeError",
+            "NotImplementedType TypeError",
+            "ellipsis TypeError",
+            "ellipsis TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython public `types.ModuleType` behavior and
+// Lib/test/test_types.py::TypesTests::test_names. This covers the public module
+// type alias, construction defaults, keyword construction, and module attribute
+// mutation without copying CPython's module-state internals.
+#[test]
+fn cpython_types_module_type_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "m = types.ModuleType('spam')\n",
+            "print(type(m).__name__, type(m) is types.ModuleType, isinstance(m, types.ModuleType), m.__class__ is types.ModuleType)\n",
+            "print(m.__name__, m.__doc__, m.__package__, m.__loader__, m.__spec__, type(m.__dict__).__name__)\n",
+            "m = types.ModuleType('spam', 'doc')\n",
+            "print(m.__name__, m.__doc__)\n",
+            "m = types.ModuleType(name='eggs', doc='ham')\n",
+            "print(m.__name__, m.__doc__)\n",
+            "m.x = 1\n",
+            "print(m.x, m.__dict__['x'])\n",
+            "del m.x\n",
+            "try:\n",
+            "    m.x\n",
+            "except AttributeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "print(types.ModuleType.__name__, types.ModuleType.__module__, types.ModuleType.__qualname__)\n",
+            "for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: types.ModuleType('x', 'd', 'e'), lambda: types.ModuleType('x', name='y'), lambda: types.ModuleType(foo='x'), lambda: types.ModuleType('x', foo=1), lambda: types.ModuleType('x', 'd', doc='e'), lambda: types.ModuleType(name='x', doc='d', foo=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "module True True True",
+            "spam None None None None dict",
+            "spam doc",
+            "eggs ham",
+            "1 1",
+            "AttributeError",
+            "module builtins module",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::CoroutineTests. This covers the
+// public `types.coroutine()` behavior MiniPython supports: wrong argument
+// rejection, non-generator return pass-through, native coroutine function
+// identity, coroutine-like object pass-through, iterable coroutine pass-through,
+// generator-function idempotence and flags, and `_GeneratorWrapper` forwarding
+// for native and functional duck generators, including generator frame and
+// yield-from introspection aliases.
+#[test]
+fn cpython_types_coroutine_public_subset() {
+    assert_output(
+        concat!(
+            "import types, inspect\n",
+            "for expr in [lambda: types.coroutine(None), lambda: types.coroutine(1), lambda: types.coroutine(object())]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print('wrong', type(error).__name__, 'expects a callable' in str(error))\n",
+            "@types.coroutine\n",
+            "def non_gen_string():\n",
+            "    return 'spam'\n",
+            "print('non-gen-string', non_gen_string())\n",
+            "class Awaitable:\n",
+            "    def __await__(self):\n",
+            "        return iter(())\n",
+            "aw = Awaitable()\n",
+            "@types.coroutine\n",
+            "def non_gen_awaitable():\n",
+            "    return aw\n",
+            "print('non-gen-awaitable', non_gen_awaitable() is aw)\n",
+            "non_gen_awaitable = types.coroutine(non_gen_awaitable)\n",
+            "print('non-gen-awaitable-2', non_gen_awaitable() is aw)\n",
+            "async def native():\n",
+            "    return 'native'\n",
+            "decorated_native = types.coroutine(native)\n",
+            "print('native-identity', decorated_native is native)\n",
+            "coro = decorated_native()\n",
+            "print('native-type', type(coro).__name__, isinstance(coro, types.CoroutineType), coro.__class__ is types.CoroutineType)\n",
+            "print('native-close', coro.close())\n",
+            "class CoroLike:\n",
+            "    def send(self, value=None):\n",
+            "        return value\n",
+            "    def throw(self, *args):\n",
+            "        return args\n",
+            "    def close(self):\n",
+            "        return None\n",
+            "    def __await__(self):\n",
+            "        return self\n",
+            "coro_like = CoroLike()\n",
+            "@types.coroutine\n",
+            "def returns_coro_like():\n",
+            "    return coro_like\n",
+            "print('duck-coro', returns_coro_like() is coro_like, returns_coro_like().__await__() is coro_like)\n",
+            "class CoroGenLike(CoroLike):\n",
+            "    def __iter__(self):\n",
+            "        return self\n",
+            "    def __next__(self):\n",
+            "        raise StopIteration\n",
+            "coro_gen_like = CoroGenLike()\n",
+            "@types.coroutine\n",
+            "def returns_coro_gen_like():\n",
+            "    return coro_gen_like\n",
+            "print('duck-corogen', returns_coro_gen_like() is coro_gen_like, returns_coro_gen_like().__await__() is coro_gen_like)\n",
+            "@types.coroutine\n",
+            "def iterable_coro():\n",
+            "    yield 'tick'\n",
+            "gencoro = iterable_coro()\n",
+            "@types.coroutine\n",
+            "def returns_itercoro():\n",
+            "    return gencoro\n",
+            "print('returning-itercoro', returns_itercoro() is gencoro)\n",
+            "returns_itercoro = types.coroutine(returns_itercoro)\n",
+            "print('returning-itercoro-2', returns_itercoro() is gencoro)\n",
+            "def gen():\n",
+            "    yield 'x'\n",
+            "print('genfunc-id', types.coroutine(gen) is gen, types.coroutine(types.coroutine(gen)) is gen)\n",
+            "print('gen-flags', bool(gen.__code__.co_flags & inspect.CO_ITERABLE_COROUTINE), bool(gen.__code__.co_flags & inspect.CO_COROUTINE))\n",
+            "g = gen()\n",
+            "print('gen-code-flags', bool(g.gi_code.co_flags & inspect.CO_ITERABLE_COROUTINE), bool(g.gi_code.co_flags & inspect.CO_COROUTINE))\n",
+            "print('gen-run', next(g), type(g).__name__)\n",
+            "try:\n",
+            "    next(g)\n",
+            "except StopIteration:\n",
+            "    print('gen-stop')"
+        ),
+        &[
+            "wrong TypeError True",
+            "wrong TypeError True",
+            "wrong TypeError True",
+            "non-gen-string spam",
+            "non-gen-awaitable True",
+            "non-gen-awaitable-2 True",
+            "native-identity True",
+            "native-type coroutine True True",
+            "native-close None",
+            "duck-coro True True",
+            "duck-corogen True True",
+            "returning-itercoro True",
+            "returning-itercoro-2 True",
+            "genfunc-id True True",
+            "gen-flags True False",
+            "gen-code-flags True False",
+            "gen-run x generator",
+            "gen-stop",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_async_def_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "async def foo():\n",
+            "    pass\n",
+            "foo_code = foo.__code__\n",
+            "foo_flags = foo.__code__.co_flags\n",
+            "decorated_foo = types.coroutine(foo)\n",
+            "print('func-id', foo is decorated_foo)\n",
+            "print('flags-stable', foo.__code__.co_flags == foo_flags)\n",
+            "print('code-is', decorated_foo.__code__ is foo_code)\n",
+            "foo_coro = foo()\n",
+            "def bar():\n",
+            "    return foo_coro\n",
+            "for index in range(2):\n",
+            "    bar = types.coroutine(bar)\n",
+            "    coro = bar()\n",
+            "    print('coro-is', index, foo_coro is coro)\n",
+            "    print('cr-code-flags', coro.cr_code.co_flags == foo_flags)\n",
+            "    print('close', coro.close())"
+        ),
+        &[
+            "func-id True",
+            "flags-stable True",
+            "code-is True",
+            "coro-is 0 True",
+            "cr-code-flags True",
+            "close None",
+            "coro-is 1 True",
+            "cr-code-flags True",
+            "close None",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_generator_wrapper_subset() {
+    assert_output(
+        concat!(
+            "import types, inspect, collections.abc\n",
+            "def wrapper_gen():\n",
+            "    received = yield 1\n",
+            "    return (yield received)\n",
+            "exact_gen = wrapper_gen()\n",
+            "@types.coroutine\n",
+            "def returns_plain_gen():\n",
+            "    return exact_gen\n",
+            "wrapper = returns_plain_gen()\n",
+            "print('wrapper-type', type(wrapper).__name__, isinstance(wrapper, types._GeneratorWrapper), isinstance(wrapper, collections.abc.Coroutine), isinstance(wrapper, collections.abc.Awaitable))\n",
+            "print('wrapper-await', wrapper.__await__() is exact_gen, iter(wrapper) is exact_gen)\n",
+            "print('wrapper-names', wrapper.__name__, wrapper.__qualname__)\n",
+            "print('wrapper-attr-identity', all(getattr(wrapper, name) is getattr(exact_gen, name) for name in ['__name__', '__qualname__', 'gi_code', 'gi_running', 'gi_frame', 'gi_suspended']), wrapper.cr_code is exact_gen.gi_code)\n",
+            "print('wrapper-flags', bool(wrapper.gi_code.co_flags & inspect.CO_GENERATOR), bool(wrapper.cr_code.co_flags & inspect.CO_GENERATOR))\n",
+            "print('wrapper-state0', wrapper.gi_running, wrapper.gi_frame is None, wrapper.gi_frame is exact_gen.gi_frame, wrapper.cr_frame is exact_gen.gi_frame, wrapper.gi_yieldfrom is None, wrapper.gi_suspended)\n",
+            "print('wrapper-run', next(wrapper), wrapper.send('two'))\n",
+            "try:\n",
+            "    wrapper.send('spam')\n",
+            "except StopIteration as error:\n",
+            "    print('wrapper-stop', error.args[0])\n",
+            "throw_gen = wrapper_gen()\n",
+            "throw_wrapper = types.coroutine(lambda: throw_gen)()\n",
+            "next(throw_wrapper)\n",
+            "try:\n",
+            "    throw_wrapper.throw(Exception('ham'))\n",
+            "except Exception as error:\n",
+            "    print('wrapper-throw', error.args[0])\n",
+            "returns_plain_gen = types.coroutine(returns_plain_gen)\n",
+            "print('wrapper-double', returns_plain_gen().__await__() is exact_gen)\n",
+            "wrapper2 = types.coroutine(lambda: wrapper_gen())()\n",
+            "names = dir(wrapper2)\n",
+            "print('wrapper-repr', 'GeneratorWrapper' in repr(wrapper2), repr(wrapper2) == str(wrapper2))\n",
+            "print('wrapper-dir', all(name in names for name in ['__await__', '__iter__', '__next__', 'cr_code', 'cr_running', 'cr_frame', 'cr_suspended', 'gi_code', 'gi_frame', 'gi_running', 'gi_suspended', 'send', 'close', 'throw']))"
+        ),
+        &[
+            "wrapper-type _GeneratorWrapper True True True",
+            "wrapper-await True True",
+            "wrapper-names wrapper_gen wrapper_gen",
+            "wrapper-attr-identity True True",
+            "wrapper-flags True True",
+            "wrapper-state0 False False True True True False",
+            "wrapper-run 1 two",
+            "wrapper-stop spam",
+            "wrapper-throw ham",
+            "wrapper-double True",
+            "wrapper-repr True True",
+            "wrapper-dir True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_generator_frame_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def gen_func():\n",
+            "    yield 1\n",
+            "    return (yield 2)\n",
+            "gen = gen_func()\n",
+            "@types.coroutine\n",
+            "def foo():\n",
+            "    return gen\n",
+            "wrapper = foo()\n",
+            "print('frame-created', type(gen.gi_frame).__name__, gen.gi_frame is gen.gi_frame, wrapper.gi_frame is gen.gi_frame, wrapper.cr_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code, wrapper.cr_code is gen.gi_code)\n",
+            "print('run1', next(wrapper))\n",
+            "print('frame-suspended1', gen.gi_frame is not None, wrapper.gi_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code)\n",
+            "print('run2', wrapper.send(None))\n",
+            "print('frame-suspended2', gen.gi_frame is not None, wrapper.gi_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code)\n",
+            "try:\n",
+            "    wrapper.send('spam')\n",
+            "except StopIteration as error:\n",
+            "    print('stop', error.args[0])\n",
+            "print('frame-closed', gen.gi_frame is None, wrapper.gi_frame is None, wrapper.cr_frame is None)"
+        ),
+        &[
+            "frame-created frame True True True True True",
+            "run1 1",
+            "frame-suspended1 True True True",
+            "run2 2",
+            "frame-suspended2 True True True",
+            "stop spam",
+            "frame-closed True True True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_generator_yieldfrom_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def inner():\n",
+            "    yield 'inner-one'\n",
+            "    yield 'inner-two'\n",
+            "    return 'inner-done'\n",
+            "def outer():\n",
+            "    yield 'outer-before'\n",
+            "    result = yield from inner()\n",
+            "    yield result\n",
+            "    yield 'outer-after'\n",
+            "gen = outer()\n",
+            "@types.coroutine\n",
+            "def foo():\n",
+            "    return gen\n",
+            "wrapper = foo()\n",
+            "print('created', wrapper.gi_yieldfrom is None, wrapper.cr_await is None)\n",
+            "print('run0', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)\n",
+            "print('run1', next(wrapper), type(wrapper.gi_yieldfrom).__name__, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.cr_await is gen.gi_yieldfrom, wrapper.gi_yieldfrom.gi_frame is not None)\n",
+            "print('run2', next(wrapper), type(wrapper.gi_yieldfrom).__name__, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.cr_await is gen.gi_yieldfrom)\n",
+            "print('run3', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)\n",
+            "print('run4', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)\n",
+            "try:\n",
+            "    next(wrapper)\n",
+            "except StopIteration:\n",
+            "    print('closed', wrapper.gi_yieldfrom is None, wrapper.cr_await is None)"
+        ),
+        &[
+            "created True True",
+            "run0 outer-before True True",
+            "run1 inner-one generator True True True",
+            "run2 inner-two generator True True",
+            "run3 inner-done True True",
+            "run4 outer-after True True",
+            "closed True True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_duck_generator_wrapper_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "class Generator:\n",
+            "    def __init__(self, fut):\n",
+            "        self._i = 0\n",
+            "        self._fut = fut\n",
+            "    def __iter__(self):\n",
+            "        return self\n",
+            "    def __next__(self):\n",
+            "        return self.send(None)\n",
+            "    def send(self, v):\n",
+            "        try:\n",
+            "            if self._i == 0:\n",
+            "                assert v is None\n",
+            "                return self._fut\n",
+            "            if self._i == 1:\n",
+            "                raise StopIteration(v * 2)\n",
+            "            if self._i > 1:\n",
+            "                raise StopIteration\n",
+            "        finally:\n",
+            "            self._i += 1\n",
+            "    def throw(self, tp, *exc):\n",
+            "        self._i = 100\n",
+            "        if tp is not GeneratorExit:\n",
+            "            raise tp\n",
+            "    def close(self):\n",
+            "        self.throw(GeneratorExit)\n",
+            "@types.coroutine\n",
+            "def duck():\n",
+            "    return Generator('spam')\n",
+            "duck_wrapper = duck()\n",
+            "print('duck-wrapper', isinstance(duck_wrapper, types._GeneratorWrapper), duck_wrapper.__await__() is duck_wrapper, iter(duck_wrapper) is duck_wrapper)\n",
+            "print('duck-send-1', duck_wrapper.send(None))\n",
+            "try:\n",
+            "    duck_wrapper.send(20)\n",
+            "except StopIteration as ex:\n",
+            "    print('duck-stop', ex.args[0])"
+        ),
+        &[
+            "duck-wrapper True True True",
+            "duck-send-1 spam",
+            "duck-stop 40",
+        ],
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_duck_generator_await_subset() {
+    assert_output_with_stack(
+        concat!(
+            "import types\n",
+            "class Generator:\n",
+            "    def __init__(self, fut):\n",
+            "        self._i = 0\n",
+            "        self._fut = fut\n",
+            "    def __iter__(self):\n",
+            "        return self\n",
+            "    def __next__(self):\n",
+            "        return self.send(None)\n",
+            "    def send(self, v):\n",
+            "        try:\n",
+            "            if self._i == 0:\n",
+            "                assert v is None\n",
+            "                return self._fut\n",
+            "            if self._i == 1:\n",
+            "                raise StopIteration(v * 2)\n",
+            "            if self._i > 1:\n",
+            "                raise StopIteration\n",
+            "        finally:\n",
+            "            self._i += 1\n",
+            "    def throw(self, tp, *exc):\n",
+            "        self._i = 100\n",
+            "        if tp is not GeneratorExit:\n",
+            "            raise tp\n",
+            "    def close(self):\n",
+            "        self.throw(GeneratorExit)\n",
+            "@types.coroutine\n",
+            "def foo():\n",
+            "    return Generator('spam')\n",
+            "wrapper = foo()\n",
+            "print('wrapper', isinstance(wrapper, types._GeneratorWrapper))\n",
+            "async def corofunc():\n",
+            "    return await foo() + 100\n",
+            "coro = corofunc()\n",
+            "print('first', coro.send(None))\n",
+            "try:\n",
+            "    coro.send(20)\n",
+            "except StopIteration as ex:\n",
+            "    print('stop', ex.args[0])"
+        ),
+        &["wrapper True", "first spam", "stop 140"],
+        64 * 1024 * 1024,
+    );
+}
+
+#[test]
+fn cpython_types_coroutine_duck_generator_proxy_subset() {
+    assert_output(
+        concat!(
+            "import types, collections.abc, weakref, unittest.mock\n",
+            "class GenLike:\n",
+            "    def send(self):\n",
+            "        pass\n",
+            "    def throw(self):\n",
+            "        pass\n",
+            "    def close(self):\n",
+            "        pass\n",
+            "    def __iter__(self):\n",
+            "        pass\n",
+            "    def __next__(self):\n",
+            "        pass\n",
+            "gen = unittest.mock.MagicMock(GenLike)\n",
+            "gen.__iter__ = lambda gen: gen\n",
+            "gen.__name__ = 'gen'\n",
+            "gen.__qualname__ = 'test.gen'\n",
+            "print('gen', isinstance(gen, collections.abc.Generator), iter(gen) is gen)\n",
+            "@types.coroutine\n",
+            "def foo():\n",
+            "    return gen\n",
+            "wrapper = foo()\n",
+            "print('types', type(wrapper).__name__, isinstance(wrapper, types._GeneratorWrapper), isinstance(wrapper, collections.abc.Coroutine), isinstance(wrapper, collections.abc.Awaitable))\n",
+            "print('await-iter', wrapper.__await__() is wrapper, iter(wrapper) is wrapper)\n",
+            "print('names', wrapper.__name__ is gen.__name__, wrapper.__qualname__ is gen.__qualname__)\n",
+            "for name in ['gi_running', 'gi_frame', 'gi_code', 'gi_yieldfrom', 'gi_suspended', 'cr_running', 'cr_frame', 'cr_code', 'cr_await', 'cr_suspended']:\n",
+            "    try:\n",
+            "        getattr(wrapper, name)\n",
+            "        print('missing-attr', name, 'no-error')\n",
+            "    except AttributeError:\n",
+            "        print('missing-attr', name, 'AttributeError')\n",
+            "gen.gi_running = object()\n",
+            "gen.gi_frame = object()\n",
+            "gen.gi_code = object()\n",
+            "gen.gi_yieldfrom = object()\n",
+            "gen.gi_suspended = object()\n",
+            "print('attrs', wrapper.gi_running is gen.gi_running, wrapper.gi_frame is gen.gi_frame, wrapper.gi_code is gen.gi_code, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.gi_suspended is gen.gi_suspended)\n",
+            "print('crattrs', wrapper.cr_running is gen.gi_running, wrapper.cr_frame is gen.gi_frame, wrapper.cr_code is gen.gi_code, wrapper.cr_await is gen.gi_yieldfrom, wrapper.cr_suspended is gen.gi_suspended)\n",
+            "wrapper.close()\n",
+            "gen.close.assert_called_once_with()\n",
+            "print('close-called')\n",
+            "wrapper.send(1)\n",
+            "gen.send.assert_called_once_with(1)\n",
+            "gen.reset_mock()\n",
+            "next(wrapper)\n",
+            "gen.__next__.assert_called_once_with()\n",
+            "gen.reset_mock()\n",
+            "wrapper.throw(1, 2, 3)\n",
+            "gen.throw.assert_called_once_with(1, 2, 3)\n",
+            "gen.reset_mock()\n",
+            "wrapper.throw(1, 2)\n",
+            "gen.throw.assert_called_once_with(1, 2)\n",
+            "gen.reset_mock()\n",
+            "wrapper.throw(1)\n",
+            "gen.throw.assert_called_once_with(1)\n",
+            "gen.reset_mock()\n",
+            "print('call-matrix')\n",
+            "error = Exception()\n",
+            "gen.throw.side_effect = error\n",
+            "try:\n",
+            "    wrapper.throw(1)\n",
+            "except Exception as ex:\n",
+            "    print('throw-prop', ex is error)\n",
+            "gen.throw.side_effect = None\n",
+            "gen.reset_mock()\n",
+            "for label, call in [('throw0', lambda: wrapper.throw()), ('close1', lambda: wrapper.close(1)), ('send0', lambda: wrapper.send())]:\n",
+            "    try:\n",
+            "        call()\n",
+            "    except TypeError:\n",
+            "        print(label, 'TypeError')\n",
+            "print('invalid-no-forward', not gen.throw.called, not gen.close.called, not gen.send.called)\n",
+            "@types.coroutine\n",
+            "def bar():\n",
+            "    return wrapper\n",
+            "print('double', bar() is wrapper)\n",
+            "ref = weakref.ref(wrapper)\n",
+            "print('weakref', ref() is wrapper, callable(ref), isinstance(ref, weakref.ReferenceType))"
+        ),
+        &[
+            "gen True True",
+            "types _GeneratorWrapper True True True",
+            "await-iter True True",
+            "names True True",
+            "missing-attr gi_running AttributeError",
+            "missing-attr gi_frame AttributeError",
+            "missing-attr gi_code AttributeError",
+            "missing-attr gi_yieldfrom AttributeError",
+            "missing-attr gi_suspended AttributeError",
+            "missing-attr cr_running AttributeError",
+            "missing-attr cr_frame AttributeError",
+            "missing-attr cr_code AttributeError",
+            "missing-attr cr_await AttributeError",
+            "missing-attr cr_suspended AttributeError",
+            "attrs True True True True True",
+            "crattrs True True True True True",
+            "close-called",
+            "call-matrix",
+            "throw-prop True",
+            "throw0 TypeError",
+            "close1 TypeError",
+            "send0 TypeError",
+            "invalid-no-forward True True True",
+            "double True",
+            "weakref True True True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::FunctionTests. This covers the
+// public `types.FunctionType` constructor over MiniPython code objects without
+// depending on CPython's internal function layout.
+#[test]
+fn cpython_types_function_type_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def ex(a, /, b, *, c):\n",
+            "    return a + b + c\n",
+            "func = types.FunctionType(ex.__code__, {}, 'func', (1, 2), None, {'c': 3})\n",
+            "print(func(), func.__name__, func.__qualname__, func.__module__, type(func).__name__)\n",
+            "print(func.__defaults__, func.__kwdefaults__)\n",
+            "print(type(func) is types.FunctionType, isinstance(func, types.FunctionType), func.__class__ is types.FunctionType)\n",
+            "func2 = types.FunctionType(ex.__code__, {}, 'func', None, None, None)\n",
+            "print(func2.__defaults__, func2.__kwdefaults__)\n",
+            "func3 = types.FunctionType(ex.__code__, {'__name__': 'mod'}, None, (1, 2), None, {'c': 3})\n",
+            "print(func3(), func3.__name__, func3.__qualname__, func3.__module__)\n",
+            "func4 = types.FunctionType(ex.__code__, {}, 'func', (0, 1, 2), None, {'c': 3})\n",
+            "print(func4(), func4.__defaults__)\n",
+            "for expr in [lambda: types.FunctionType(1, {}, 'func', (1, 2), None, {'c': 3}), lambda: types.FunctionType(ex.__code__, 1, 'func', (1, 2), None, {'c': 3}), lambda: types.FunctionType(ex.__code__, {}, 1, (1, 2), None, {'c': 3}), lambda: types.FunctionType(ex.__code__, {}, 'func', 1, None, {'c': 3}), lambda: types.FunctionType(ex.__code__, {}, 'func', (1, 2), (), {'c': 3}), lambda: types.FunctionType(ex.__code__, {}, 'func', (1, 2), None, 3)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__, 'arg' in str(error) or 'closure' in str(error))"
+        ),
+        &[
+            "6 func ex None function",
+            "(1, 2) {'c': 3}",
+            "True True True",
+            "None None",
+            "6 ex ex mod",
+            "6 (0, 1, 2)",
+            "TypeError True",
+            "TypeError True",
+            "TypeError True",
+            "TypeError True",
+            "TypeError True",
+            "TypeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_names for the
+// public aliases backed by existing MiniPython runtime objects.
+#[test]
+fn cpython_types_code_traceback_type_aliases_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def sample():\n",
+            "    return 1\n",
+            "code = sample.__code__\n",
+            "print(type(code).__name__, type(code) is types.CodeType, isinstance(code, types.CodeType), code.__class__ is types.CodeType)\n",
+            "print(types.CodeType.__name__, types.CodeType.__module__, types.CodeType.__qualname__)\n",
+            "try:\n",
+            "    raise OSError\n",
+            "except OSError as error:\n",
+            "    tb = error.__traceback__\n",
+            "print(type(tb).__name__, type(tb) is types.TracebackType, isinstance(tb, types.TracebackType), tb.__class__ is types.TracebackType)\n",
+            "print(types.TracebackType.__name__, types.TracebackType.__module__, types.TracebackType.__qualname__)"
+        ),
+        &[
+            "code True True True",
+            "code builtins code",
+            "traceback True True True",
+            "traceback builtins traceback",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests
+// ::test_traceback_and_frame_types for the public FrameType alias and the frame
+// attributes MiniPython already exposes through `sys._getframe()`.
+#[test]
+fn cpython_types_frame_type_alias_subset() {
+    assert_output(
+        concat!(
+            "import sys, types\n",
+            "def capture():\n",
+            "    frame = sys._getframe()\n",
+            "    print(frame is sys._getframe())\n",
+            "    return frame\n",
+            "def outer():\n",
+            "    return capture()\n",
+            "frame = outer()\n",
+            "print(type(frame).__name__, type(frame) is types.FrameType, isinstance(frame, types.FrameType), frame.__class__ is types.FrameType)\n",
+            "print(types.FrameType.__name__, types.FrameType.__module__, types.FrameType.__qualname__)\n",
+            "print(type(frame.f_code).__name__, isinstance(frame.f_code, types.CodeType), frame.f_code.__class__ is types.CodeType)\n",
+            "print(type(frame.f_globals).__name__, type(frame.f_locals).__name__, isinstance(frame.f_locals, types.FrameLocalsProxyType), isinstance(frame.f_back, types.FrameType))\n",
+            "print(type(frame.f_back).__name__, frame.f_back.__class__ is types.FrameType)\n",
+            "print(isinstance(hash(frame), int), bool(frame))\n",
+            "try:\n",
+            "    frame.__dict__\n",
+            "except AttributeError as error:\n",
+            "    print(error.__class__.__name__, 'has no attribute' in str(error))"
+        ),
+        &[
+            "True",
+            "frame True True True",
+            "frame builtins frame",
+            "code True True",
+            "dict FrameLocalsProxy True True",
+            "frame True",
+            "True True",
+            "AttributeError True",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_frame_locals_proxy_type.
+#[test]
+fn cpython_types_frame_locals_proxy_type_subset() {
+    assert_output(
+        concat!(
+            "import inspect, types\n",
+            "def probe():\n",
+            "    marker = 42\n",
+            "    frame = inspect.currentframe()\n",
+            "    print(frame is not None)\n",
+            "    print(isinstance(types.FrameLocalsProxyType, type))\n",
+            "    print(isinstance(types.FrameLocalsProxyType.__doc__, str) or types.FrameLocalsProxyType.__doc__ is None)\n",
+            "    print(types.FrameLocalsProxyType.__module__, types.FrameLocalsProxyType.__name__)\n",
+            "    print(type(frame.f_locals).__name__, isinstance(frame.f_locals, types.FrameLocalsProxyType), frame.f_locals.__class__ is types.FrameLocalsProxyType)\n",
+            "    print('marker' in frame.f_locals, frame.f_locals['marker'], len(frame.f_locals) >= 2)\n",
+            "    print(sorted(k for k in frame.f_locals if k in ('frame', 'marker')))\n",
+            "probe()"
+        ),
+        &[
+            "True",
+            "True",
+            "True",
+            "builtins FrameLocalsProxy",
+            "FrameLocalsProxy True True",
+            "True 42 True",
+            "['frame', 'marker']",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_names and
+// ::test_method_descriptor_types for public aliases that map cleanly to
+// MiniPython runtime objects rather than CPython C-only descriptor internals.
+#[test]
+fn cpython_types_runtime_type_aliases_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "def f(self):\n",
+            "    return self\n",
+            "lam = lambda: None\n",
+            "def gen():\n",
+            "    yield 1\n",
+            "async def coro():\n",
+            "    return 1\n",
+            "async def agen():\n",
+            "    yield 1\n",
+            "class C:\n",
+            "    def m(self):\n",
+            "        return 'method'\n",
+            "coro_obj = coro()\n",
+            "agen_obj = agen()\n",
+            "samples = [\n",
+            "    ('function', f, types.FunctionType),\n",
+            "    ('lambda', lam, types.LambdaType),\n",
+            "    ('generator', gen(), types.GeneratorType),\n",
+            "    ('coroutine', coro_obj, types.CoroutineType),\n",
+            "    ('async_generator', agen_obj, types.AsyncGeneratorType),\n",
+            "]\n",
+            "for label, value, typ in samples:\n",
+            "    print(label, type(value).__name__, type(value) is typ, isinstance(value, typ), value.__class__ is typ)\n",
+            "print(types.LambdaType is types.FunctionType)\n",
+            "print(type(len).__name__, type(len) is types.BuiltinFunctionType, isinstance(len, types.BuiltinFunctionType))\n",
+            "print(type([].append).__name__, type([].append) is types.BuiltinMethodType, isinstance([].append, types.BuiltinMethodType))\n",
+            "bound = C().m\n",
+            "print(type(bound).__name__, type(bound) is types.MethodType, isinstance(bound, types.MethodType), bound.__class__ is types.MethodType)\n",
+            "obj = C()\n",
+            "constructed = types.MethodType(f, obj)\n",
+            "print(constructed.__func__ is f, constructed.__self__ is obj, constructed() is obj)\n",
+            "for alias in [types.GeneratorType, types.CoroutineType, types.AsyncGeneratorType, types.BuiltinFunctionType, types.BuiltinMethodType, types.MethodType]:\n",
+            "    print(alias.__name__, alias.__module__, alias.__qualname__)\n",
+            "required = ('FunctionType', 'LambdaType', 'GeneratorType', 'CoroutineType', 'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'MethodType')\n",
+            "print(all(name in types.__all__ for name in required), 'CapsuleType' in types.__all__)\n",
+            "for expr in [lambda: types.MethodType(), lambda: types.MethodType(f), lambda: types.MethodType(f, obj, 1), lambda: types.MethodType(1, obj), lambda: types.MethodType(f, None), lambda: types.MethodType(function=f, instance=obj)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "function function True True True",
+            "lambda function True True True",
+            "generator generator True True True",
+            "coroutine coroutine True True True",
+            "async_generator async_generator True True True",
+            "True",
+            "builtin_function_or_method True True",
+            "builtin_function_or_method True True",
+            "method True True True",
+            "True True True",
+            "generator builtins generator",
+            "coroutine builtins coroutine",
+            "async_generator builtins async_generator",
+            "builtin_function_or_method builtins builtin_function_or_method",
+            "builtin_function_or_method builtins builtin_function_or_method",
+            "method builtins method",
+            "True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython's `type_alias` grammar rule and PEP 695 soft-keyword
 // behavior. `type` starts a type alias only in the statement form
 // `type NAME [type_params] = expression`; otherwise it remains an ordinary name.
@@ -40409,6 +51874,44 @@ fn cpython_type_params_typevartuple_paramspec_runtime_subset() {
     assert_output(
         "from typing import TypeVarTuple, ParamSpec, NoDefault\nTs = TypeVarTuple('Ts')\nP = ParamSpec('P')\nprint(isinstance(Ts, TypeVarTuple), Ts.__name__, Ts.__default__ is NoDefault)\nprint(isinstance(P, ParamSpec), P.__name__, P.__default__ is NoDefault, P.__infer_variance__, P.__covariant__, P.__contravariant__)",
         &["True Ts True", "True P True False False False"],
+    );
+}
+
+// Adapted from CPython Lib/test/test_type_params.py::TypeParamsWeakRefTest.
+// The CPython method asserts these public type-parameter objects accept
+// `weakref.ref()`; it does not require collection-time clearing behavior.
+#[test]
+fn cpython_type_params_weakrefs_subset() {
+    assert_output(
+        concat!(
+            "from typing import Generic, ParamSpec, TypeVar, TypeVarTuple\n",
+            "import weakref\n",
+            "T = TypeVar('T')\n",
+            "P = ParamSpec('P')\n",
+            "class OldStyle(Generic[T]):\n",
+            "    pass\n",
+            "class NewStyle[T]:\n",
+            "    pass\n",
+            "cases = [\n",
+            "    T,\n",
+            "    TypeVar('T', bound=int),\n",
+            "    P,\n",
+            "    P.args,\n",
+            "    P.kwargs,\n",
+            "    TypeVarTuple('Ts'),\n",
+            "    OldStyle,\n",
+            "    OldStyle[int],\n",
+            "    OldStyle(),\n",
+            "    NewStyle,\n",
+            "    NewStyle[int],\n",
+            "    NewStyle(),\n",
+            "    Generic[T],\n",
+            "]\n",
+            "refs = [weakref.ref(case) for case in cases]\n",
+            "print(len(refs), all(callable(ref) for ref in refs), all(isinstance(ref, weakref.ReferenceType) for ref in refs))\n",
+            "print(type(P.args).__name__, P.args.__origin__ is P, type(P.kwargs).__name__, P.kwargs.__origin__ is P)"
+        ),
+        &["13 True True", "ParamSpecArgs True ParamSpecKwargs True"],
     );
 }
 

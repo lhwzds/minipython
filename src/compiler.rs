@@ -8,7 +8,7 @@ use crate::bytecode::{
     CallArgRegister, CallKeywordRegister, ExceptHandler as BytecodeExceptHandler,
     ExceptHandlerNameBinding, FormatConversion, Instruction, Register, TemplatePartRegister,
 };
-use crate::value::{Value, float_value, tuple_value};
+use crate::value::{Value, bytes_value, complex_value, float_value, tuple_value};
 use num_bigint::BigInt;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashSet, VecDeque};
@@ -19,6 +19,7 @@ const MAX_STATIC_BLOCK_DEPTH: usize = 21;
 #[derive(Clone, Debug)]
 pub struct CompileOptions {
     pub optimize: i64,
+    pub allow_top_level_await: bool,
     pub function_first_lines: Vec<usize>,
     pub function_line_sequences: Vec<Vec<usize>>,
     pub function_position_columns: Vec<Vec<Option<(usize, usize)>>>,
@@ -30,6 +31,7 @@ impl Default for CompileOptions {
     fn default() -> Self {
         Self {
             optimize: -1,
+            allow_top_level_await: false,
             function_first_lines: Vec::new(),
             function_line_sequences: Vec::new(),
             function_position_columns: Vec::new(),
@@ -75,6 +77,11 @@ impl CompileOptions {
         sequences: Vec<(usize, Vec<usize>)>,
     ) -> Self {
         self.generator_expression_line_sequences = sequences;
+        self
+    }
+
+    pub fn with_allow_top_level_await(mut self, allow: bool) -> Self {
+        self.allow_top_level_await = allow;
         self
     }
 }
@@ -160,6 +167,444 @@ pub fn compile_eval_with_options(
         .push(Instruction::Return { src: Some(src) });
 
     Ok(compiler.instructions)
+}
+
+pub fn program_contains_top_level_await(program: &Program) -> bool {
+    statements_contain_top_level_await(&program.statements)
+}
+
+pub fn expr_contains_top_level_await(expr: &Expr) -> bool {
+    top_level_expr_contains_await(expr)
+}
+
+fn statements_contain_top_level_await(statements: &[Stmt]) -> bool {
+    statements.iter().any(stmt_contains_top_level_await)
+}
+
+fn stmt_contains_top_level_await(stmt: &Stmt) -> bool {
+    match stmt {
+        Stmt::Pass
+        | Stmt::Import { .. }
+        | Stmt::ImportFrom { .. }
+        | Stmt::Global(_)
+        | Stmt::Nonlocal(_)
+        | Stmt::Break
+        | Stmt::Continue => false,
+        Stmt::Expr(expr) => top_level_expr_contains_await(expr),
+        Stmt::Assign { targets, value, .. } => {
+            top_level_expr_contains_await(value)
+                || targets.iter().any(target_contains_top_level_await)
+        }
+        Stmt::AnnAssign {
+            target,
+            annotation,
+            value,
+            ..
+        } => {
+            target_contains_top_level_await(target)
+                || top_level_expr_contains_await(annotation)
+                || value.as_ref().is_some_and(top_level_expr_contains_await)
+        }
+        Stmt::TypeAlias {
+            type_params, value, ..
+        } => {
+            type_params.iter().any(type_param_contains_top_level_await)
+                || top_level_expr_contains_await(value)
+        }
+        Stmt::AugAssign { target, value, .. } => {
+            target_contains_top_level_await(target) || top_level_expr_contains_await(value)
+        }
+        Stmt::Delete { target } => target_contains_top_level_await(target),
+        Stmt::FunctionDef {
+            type_params,
+            params,
+            decorators,
+            returns,
+            ..
+        }
+        | Stmt::AsyncFunctionDef {
+            type_params,
+            params,
+            decorators,
+            returns,
+            ..
+        } => {
+            type_params.iter().any(type_param_contains_top_level_await)
+                || params_contains_top_level_await(params)
+                || decorators.iter().any(top_level_expr_contains_await)
+                || returns.as_ref().is_some_and(top_level_expr_contains_await)
+        }
+        Stmt::ClassDef {
+            type_params,
+            bases,
+            keywords,
+            decorators,
+            ..
+        } => {
+            type_params.iter().any(type_param_contains_top_level_await)
+                || bases.iter().any(call_arg_contains_top_level_await)
+                || keywords.iter().any(call_keyword_contains_top_level_await)
+                || decorators.iter().any(top_level_expr_contains_await)
+        }
+        Stmt::Return(value) => value.as_ref().is_some_and(top_level_expr_contains_await),
+        Stmt::Assert { condition, message } => {
+            top_level_expr_contains_await(condition)
+                || message.as_ref().is_some_and(top_level_expr_contains_await)
+        }
+        Stmt::Raise { value, cause } => {
+            value.as_ref().is_some_and(top_level_expr_contains_await)
+                || cause.as_ref().is_some_and(top_level_expr_contains_await)
+        }
+        Stmt::If {
+            condition,
+            then_body,
+            else_body,
+        } => {
+            top_level_expr_contains_await(condition)
+                || statements_contain_top_level_await(then_body)
+                || statements_contain_top_level_await(else_body)
+        }
+        Stmt::Match { subject, cases } => {
+            top_level_expr_contains_await(subject)
+                || cases.iter().any(match_case_contains_top_level_await)
+        }
+        Stmt::Try {
+            body,
+            handlers,
+            else_body,
+            finally_body,
+        }
+        | Stmt::TryStar {
+            body,
+            handlers,
+            else_body,
+            finally_body,
+        } => {
+            statements_contain_top_level_await(body)
+                || handlers.iter().any(except_handler_contains_top_level_await)
+                || statements_contain_top_level_await(else_body)
+                || statements_contain_top_level_await(finally_body)
+        }
+        Stmt::With { items, body, .. } => {
+            items.iter().any(with_item_contains_top_level_await)
+                || statements_contain_top_level_await(body)
+        }
+        Stmt::AsyncWith { .. } | Stmt::AsyncFor { .. } => true,
+        Stmt::While {
+            condition,
+            body,
+            else_body,
+        } => {
+            top_level_expr_contains_await(condition)
+                || statements_contain_top_level_await(body)
+                || statements_contain_top_level_await(else_body)
+        }
+        Stmt::For {
+            target,
+            iter,
+            body,
+            else_body,
+            ..
+        } => {
+            target_contains_top_level_await(target)
+                || top_level_expr_contains_await(iter)
+                || statements_contain_top_level_await(body)
+                || statements_contain_top_level_await(else_body)
+        }
+    }
+}
+
+fn top_level_expr_contains_await(expr: &Expr) -> bool {
+    match expr {
+        Expr::Number(_)
+        | Expr::BigInt(_)
+        | Expr::Float(_)
+        | Expr::Imaginary(_)
+        | Expr::String(_)
+        | Expr::Bytes(_)
+        | Expr::Bool(_)
+        | Expr::None
+        | Expr::Ellipsis
+        | Expr::Name(_) => false,
+        Expr::JoinedString(parts) => parts.iter().any(fstring_part_contains_top_level_await),
+        Expr::TemplateString(parts) => parts.iter().any(template_part_contains_top_level_await),
+        Expr::Attribute { object, .. }
+        | Expr::Unary {
+            operand: object, ..
+        }
+        | Expr::YieldFrom(object)
+        | Expr::Starred(object)
+        | Expr::Subscript { object, .. } => top_level_expr_contains_await(object),
+        Expr::Await(_) => true,
+        Expr::Binary { left, right, .. }
+        | Expr::Comparison { left, right, .. }
+        | Expr::Logical { left, right, .. } => {
+            top_level_expr_contains_await(left) || top_level_expr_contains_await(right)
+        }
+        Expr::ChainedComparison { left, comparisons } => {
+            top_level_expr_contains_await(left)
+                || comparisons
+                    .iter()
+                    .any(|(_, expr)| top_level_expr_contains_await(expr))
+        }
+        Expr::IfExpression {
+            condition,
+            then_branch,
+            else_branch,
+        } => {
+            top_level_expr_contains_await(condition)
+                || top_level_expr_contains_await(then_branch)
+                || top_level_expr_contains_await(else_branch)
+        }
+        Expr::NamedExpr { value, .. } => top_level_expr_contains_await(value),
+        Expr::Yield { value } => value.as_deref().is_some_and(top_level_expr_contains_await),
+        Expr::List(items) | Expr::Set(items) | Expr::FrozenSet(items) | Expr::Tuple(items) => {
+            items.iter().any(top_level_expr_contains_await)
+        }
+        Expr::ListComp { element, clauses } | Expr::SetComp { element, clauses } => {
+            clauses.iter().any(|clause| clause.is_async)
+                || top_level_expr_contains_await(element)
+                || clauses
+                    .iter()
+                    .any(comprehension_clause_contains_top_level_await)
+        }
+        Expr::GeneratorComp { clauses, .. } => clauses
+            .first()
+            .is_some_and(|clause| top_level_expr_contains_await(&clause.iter)),
+        Expr::Dict(entries) => entries.iter().any(dict_item_contains_top_level_await),
+        Expr::DictComp {
+            key,
+            value,
+            clauses,
+        } => {
+            clauses.iter().any(|clause| clause.is_async)
+                || top_level_expr_contains_await(key)
+                || top_level_expr_contains_await(value)
+                || clauses
+                    .iter()
+                    .any(comprehension_clause_contains_top_level_await)
+        }
+        Expr::DictUnpackComp { value, clauses } => {
+            clauses.iter().any(|clause| clause.is_async)
+                || top_level_expr_contains_await(value)
+                || clauses
+                    .iter()
+                    .any(comprehension_clause_contains_top_level_await)
+        }
+        Expr::SliceLiteral { start, stop, step } => {
+            start.as_deref().is_some_and(top_level_expr_contains_await)
+                || stop.as_deref().is_some_and(top_level_expr_contains_await)
+                || step.as_deref().is_some_and(top_level_expr_contains_await)
+        }
+        Expr::Slice {
+            object,
+            start,
+            stop,
+            step,
+        } => {
+            top_level_expr_contains_await(object)
+                || start.as_deref().is_some_and(top_level_expr_contains_await)
+                || stop.as_deref().is_some_and(top_level_expr_contains_await)
+                || step.as_deref().is_some_and(top_level_expr_contains_await)
+        }
+        Expr::Call { callee, args } => {
+            top_level_expr_contains_await(callee) || args.iter().any(top_level_expr_contains_await)
+        }
+        Expr::KeywordCall {
+            callee,
+            args,
+            keywords,
+        } => {
+            top_level_expr_contains_await(callee)
+                || args.iter().any(top_level_expr_contains_await)
+                || keywords
+                    .iter()
+                    .any(|(_, value)| top_level_expr_contains_await(value))
+        }
+        Expr::UnpackCall {
+            callee,
+            args,
+            keywords,
+        } => {
+            top_level_expr_contains_await(callee)
+                || args.iter().any(call_arg_contains_top_level_await)
+                || keywords.iter().any(call_keyword_contains_top_level_await)
+        }
+        Expr::Lambda { params, .. } => params_contains_top_level_await(params),
+    }
+}
+
+fn target_contains_top_level_await(target: &Target) -> bool {
+    match target {
+        Target::Name(_) => false,
+        Target::Attribute { object, .. } => top_level_expr_contains_await(object),
+        Target::Subscript { object, index } => {
+            top_level_expr_contains_await(object) || top_level_expr_contains_await(index)
+        }
+        Target::Slice {
+            object,
+            start,
+            stop,
+            step,
+        } => {
+            top_level_expr_contains_await(object)
+                || start.as_ref().is_some_and(top_level_expr_contains_await)
+                || stop.as_ref().is_some_and(top_level_expr_contains_await)
+                || step.as_ref().is_some_and(top_level_expr_contains_await)
+        }
+        Target::Starred(target) => target_contains_top_level_await(target),
+        Target::Tuple(targets) | Target::List(targets) => {
+            targets.iter().any(target_contains_top_level_await)
+        }
+    }
+}
+
+fn comprehension_clause_contains_top_level_await(clause: &ComprehensionClause) -> bool {
+    target_contains_top_level_await(&clause.target)
+        || top_level_expr_contains_await(&clause.iter)
+        || clause.ifs.iter().any(top_level_expr_contains_await)
+}
+
+fn params_contains_top_level_await(params: &FunctionParams) -> bool {
+    params
+        .positional_only
+        .iter()
+        .chain(params.positional.iter())
+        .chain(params.keyword_only.iter())
+        .any(param_contains_top_level_await)
+        || params
+            .vararg_annotation
+            .as_deref()
+            .is_some_and(top_level_expr_contains_await)
+        || params
+            .kwarg_annotation
+            .as_deref()
+            .is_some_and(top_level_expr_contains_await)
+}
+
+fn param_contains_top_level_await(param: &Param) -> bool {
+    param
+        .annotation
+        .as_ref()
+        .is_some_and(top_level_expr_contains_await)
+        || param
+            .default
+            .as_ref()
+            .is_some_and(top_level_expr_contains_await)
+}
+
+fn type_param_contains_top_level_await(type_param: &TypeParam) -> bool {
+    type_param
+        .bound
+        .as_ref()
+        .is_some_and(top_level_expr_contains_await)
+        || type_param
+            .default
+            .as_ref()
+            .is_some_and(top_level_expr_contains_await)
+}
+
+fn call_arg_contains_top_level_await(arg: &CallArg) -> bool {
+    match arg {
+        CallArg::Expr(expr) | CallArg::Unpack(expr) => top_level_expr_contains_await(expr),
+    }
+}
+
+fn call_keyword_contains_top_level_await(keyword: &CallKeyword) -> bool {
+    match keyword {
+        CallKeyword::Named(_, expr) | CallKeyword::Unpack(expr) => {
+            top_level_expr_contains_await(expr)
+        }
+    }
+}
+
+fn dict_item_contains_top_level_await(item: &DictItem) -> bool {
+    match item {
+        DictItem::Entry { key, value } => {
+            top_level_expr_contains_await(key) || top_level_expr_contains_await(value)
+        }
+        DictItem::Unpack(expr) => top_level_expr_contains_await(expr),
+    }
+}
+
+fn with_item_contains_top_level_await(item: &WithItem) -> bool {
+    top_level_expr_contains_await(&item.context_expr)
+        || item
+            .optional_vars
+            .as_ref()
+            .is_some_and(target_contains_top_level_await)
+}
+
+fn except_handler_contains_top_level_await(handler: &AstExceptHandler) -> bool {
+    handler
+        .type_expr
+        .as_ref()
+        .is_some_and(top_level_expr_contains_await)
+        || statements_contain_top_level_await(&handler.body)
+}
+
+fn match_case_contains_top_level_await(case: &MatchCase) -> bool {
+    pattern_contains_top_level_await(&case.pattern)
+        || case
+            .guard
+            .as_ref()
+            .is_some_and(top_level_expr_contains_await)
+        || statements_contain_top_level_await(&case.body)
+}
+
+fn pattern_contains_top_level_await(pattern: &Pattern) -> bool {
+    match pattern {
+        Pattern::Literal(expr) | Pattern::Singleton(expr) | Pattern::Value(expr) => {
+            top_level_expr_contains_await(expr)
+        }
+        Pattern::Capture(_) | Pattern::Wildcard | Pattern::Star(_) => false,
+        Pattern::Or(patterns) | Pattern::Sequence(patterns) => {
+            patterns.iter().any(pattern_contains_top_level_await)
+        }
+        Pattern::Mapping { entries, .. } => entries.iter().any(|(key, pattern)| {
+            top_level_expr_contains_await(key) || pattern_contains_top_level_await(pattern)
+        }),
+        Pattern::Class {
+            class,
+            positional,
+            keywords,
+        } => {
+            top_level_expr_contains_await(class)
+                || positional.iter().any(pattern_contains_top_level_await)
+                || keywords
+                    .iter()
+                    .any(|(_, pattern)| pattern_contains_top_level_await(pattern))
+        }
+        Pattern::As { pattern, .. } => pattern_contains_top_level_await(pattern),
+    }
+}
+
+fn fstring_part_contains_top_level_await(part: &FStringPart) -> bool {
+    match part {
+        FStringPart::Literal(_) => false,
+        FStringPart::Formatted {
+            value, format_spec, ..
+        } => {
+            top_level_expr_contains_await(value)
+                || format_spec
+                    .as_ref()
+                    .is_some_and(|parts| parts.iter().any(fstring_part_contains_top_level_await))
+        }
+    }
+}
+
+fn template_part_contains_top_level_await(part: &TemplateStringPart) -> bool {
+    match part {
+        TemplateStringPart::Literal(_) => false,
+        TemplateStringPart::Interpolation {
+            value, format_spec, ..
+        } => {
+            top_level_expr_contains_await(value)
+                || format_spec
+                    .as_ref()
+                    .is_some_and(|parts| parts.iter().any(fstring_part_contains_top_level_await))
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -363,7 +808,7 @@ impl Compiler {
             loop_contexts: Vec::new(),
             finally_contexts: Vec::new(),
             function_depth: 0,
-            async_function_depth: 0,
+            async_function_depth: usize::from(options.allow_top_level_await),
             global_names: HashSet::new(),
             nonlocal_names: HashSet::new(),
             local_names: HashSet::new(),
@@ -3313,6 +3758,7 @@ impl Compiler {
             iterator,
             dst: item,
             completion: result,
+            track_yield_from: true,
             target: usize::MAX,
         });
         self.instructions.push(Instruction::Yield {
@@ -3441,6 +3887,10 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::InPlaceMatrixMultiply { dst, left, right });
             }
+            BinaryOp::FloorDivide => {
+                self.instructions
+                    .push(Instruction::InPlaceFloorDivide { dst, left, right });
+            }
             BinaryOp::BitOr => {
                 self.instructions
                     .push(Instruction::InPlaceBitOr { dst, left, right });
@@ -3520,10 +3970,7 @@ impl Compiler {
                 let dst = self.alloc_register();
                 self.instructions.push(Instruction::LoadConst {
                     dst,
-                    value: Value::Complex {
-                        real: 0.0,
-                        imag: parse_float_literal(value)?,
-                    },
+                    value: complex_value(0.0, parse_float_literal(value)?),
                 });
                 Ok(dst)
             }
@@ -3539,7 +3986,7 @@ impl Compiler {
                 let dst = self.alloc_register();
                 self.instructions.push(Instruction::LoadConst {
                     dst,
-                    value: Value::Bytes(value.clone()),
+                    value: bytes_value(value.clone()),
                 });
                 Ok(dst)
             }
@@ -5133,9 +5580,9 @@ fn compile_time_constant_value(expr: &Expr) -> Option<Value> {
         Expr::Float(value) => parse_float_literal(value).ok().map(float_value),
         Expr::Imaginary(value) => parse_float_literal(value)
             .ok()
-            .map(|imag| Value::Complex { real: 0.0, imag }),
+            .map(|imag| complex_value(0.0, imag)),
         Expr::String(value) => Some(Value::String(value.clone())),
-        Expr::Bytes(value) => Some(Value::Bytes(value.clone())),
+        Expr::Bytes(value) => Some(bytes_value(value.clone())),
         Expr::Bool(value) => Some(Value::Bool(*value)),
         Expr::None => Some(Value::None),
         Expr::Ellipsis => Some(Value::Ellipsis),
@@ -5744,10 +6191,7 @@ fn negated_literal_constant_value(expr: &Expr) -> Result<Option<Value>, String> 
         },
         Expr::BigInt(value) => Value::BigInt(-parse_big_int_literal(value)?),
         Expr::Float(value) => float_value(-parse_float_literal(value)?),
-        Expr::Imaginary(value) => Value::Complex {
-            real: -0.0,
-            imag: -parse_float_literal(value)?,
-        },
+        Expr::Imaginary(value) => complex_value(-0.0, -parse_float_literal(value)?),
         _ => return Ok(None),
     };
     Ok(Some(value))
@@ -8162,7 +8606,7 @@ mod tests {
         ExceptHandler as BytecodeExceptHandler, ExceptHandlerNameBinding, FormatConversion,
         Instruction,
     };
-    use crate::value::{Value, float_value, tuple_value};
+    use crate::value::{Value, complex_value, float_value, tuple_value};
 
     #[test]
     fn compiles_print_number_to_bytecode() {
@@ -8225,10 +8669,7 @@ mod tests {
             Ok(vec![
                 Instruction::LoadConst {
                     dst: 0,
-                    value: Value::Complex {
-                        real: 0.0,
-                        imag: 1.5,
-                    }
+                    value: complex_value(0.0, 1.5)
                 },
                 Instruction::Pop { src: 0 },
                 Instruction::Halt,
@@ -9570,6 +10011,41 @@ mod tests {
                     value: Value::Number(3)
                 },
                 Instruction::InPlaceMultiply {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::StoreName {
+                    name: "x".to_string(),
+                    src: 2
+                },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_floor_divide_augmented_assignment_to_in_place_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::AugAssign {
+                target: Target::Name("x".to_string()),
+                op: BinaryOp::FloorDivide,
+                value: Expr::Number(3),
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "x".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(3)
+                },
+                Instruction::InPlaceFloorDivide {
                     dst: 2,
                     left: 0,
                     right: 1

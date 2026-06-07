@@ -26,6 +26,8 @@ use lexer::{
 use parser::{parse, parse_eval, parse_func_type, parse_interactive, parse_with_diagnostic};
 use vm::Vm;
 
+pub use vm::RuntimeOptions;
+
 use crate::ast::{
     CallArg, CallKeyword, ComparisonOp, DictItem, Expr, FStringPart, FunctionParams, Pattern,
     Program, Stmt, Target, TemplateStringPart, TypeParam,
@@ -119,6 +121,13 @@ impl Default for SandboxPolicy {
 }
 
 pub fn run_source(source: &str) -> Result<Vec<String>, String> {
+    run_source_with_runtime_options(source, RuntimeOptions::default())
+}
+
+pub fn run_source_with_runtime_options(
+    source: &str,
+    options: RuntimeOptions,
+) -> Result<Vec<String>, String> {
     reject_too_complex_source(source)?;
     let (spanned_tokens, _warnings) = lex_with_spans_for_parse(source)
         .map_err(|error| format!("lex error: {}", error.message))?;
@@ -130,7 +139,7 @@ pub fn run_source(source: &str) -> Result<Vec<String>, String> {
     let instructions =
         compile_with_options(&stmt, compile_options_for_spanned_tokens(&spanned_tokens))
             .map_err(|message| format!("compile error: {message}"))?;
-    let mut vm = Vm::new(instructions);
+    let mut vm = Vm::new(instructions).with_runtime_options(options);
 
     vm.run()
         .map_err(|message| format!("runtime error: {message}"))
@@ -240,12 +249,19 @@ pub fn run_source_with_warnings_as_errors(source: &str) -> Result<Vec<String>, S
 }
 
 pub fn eval_source(source: &str) -> Result<String, String> {
+    eval_source_with_runtime_options(source, RuntimeOptions::default())
+}
+
+pub fn eval_source_with_runtime_options(
+    source: &str,
+    options: RuntimeOptions,
+) -> Result<String, String> {
     reject_too_complex_source(source)?;
     let tokens = lex_for_parse(source).map_err(|message| format!("lex error: {message}"))?;
     let expr = parse_eval(&tokens).map_err(|message| format!("parse error: {message}"))?;
     let instructions =
         compile_eval(&expr).map_err(|message| format!("compile error: {message}"))?;
-    let mut vm = Vm::new(instructions);
+    let mut vm = Vm::new(instructions).with_runtime_options(options);
 
     vm.run_eval()
         .map(|value| value.to_string())

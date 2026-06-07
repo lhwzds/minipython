@@ -44,18 +44,22 @@ impl<'a> From<&'a BytesDiffCase> for BytesSource<'a> {
 }
 
 fn assert_cpython_output_parity(case: &DiffCase) {
-    let cpython_output = run_cpython(case.source).unwrap_or_else(|message| {
+    assert_cpython_output_parity_source(case.origin, case.name, case.source);
+}
+
+fn assert_cpython_output_parity_source(origin: &str, name: &str, source: &str) {
+    let cpython_output = run_cpython(source).unwrap_or_else(|message| {
         panic!(
             "failed to run CPython for {}::{}\nsource:\n{}\n\n{}",
-            case.origin, case.name, case.source, message
+            origin, name, source, message
         )
     });
     assert!(
         cpython_output.status.success(),
         "expected CPython to accept {}::{}\nsource:\n{}\n\nstderr:\n{}",
-        case.origin,
-        case.name,
-        case.source,
+        origin,
+        name,
+        source,
         String::from_utf8_lossy(&cpython_output.stderr)
     );
 
@@ -64,13 +68,81 @@ fn assert_cpython_output_parity(case: &DiffCase) {
     let cpython_lines: Vec<String> = cpython_stdout.lines().map(str::to_string).collect();
 
     assert_eq!(
-        run_minipython_source(case.source),
+        run_minipython_source(source),
         Ok(cpython_lines),
         "MiniPython output differs from CPython for {}::{}\nsource:\n{}",
-        case.origin,
-        case.name,
-        case.source
+        origin,
+        name,
+        source
     );
+}
+
+fn cpython_formatfloat_testfile_source() -> String {
+    let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/formatfloat_testcases.txt";
+    let data =
+        fs::read_to_string(path).unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
+    format!(
+        r#"data = {data:?}
+cases = []
+for line in data.splitlines():
+    line = line.strip()
+    if not line or line.startswith('--'):
+        continue
+    lhs, expected = [part.strip() for part in line.split('->')]
+    fmt, arg = lhs.split()
+    cases.append((fmt, arg, expected))
+
+checks = 0
+failures = 0
+for fmt, arg, expected in cases:
+    value = float(arg)
+    for label, got, wanted in [
+        ('percent', fmt % value, expected),
+        ('percent-neg', fmt % -value, '-' + expected),
+    ]:
+        checks += 1
+        if got != wanted:
+            print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+            failures += 1
+    if fmt != '%r':
+        spec = fmt[1:]
+        for label, got, wanted in [
+            ('format', format(value, spec), expected),
+            ('format-neg', format(-value, spec), '-' + expected),
+        ]:
+            checks += 1
+            if got != wanted:
+                print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+                failures += 1
+print('checked', len(cases), checks, 'failures', failures)"#
+    )
+}
+
+fn cpython_floating_points_repr_source() -> String {
+    let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/floating_points.txt";
+    let data =
+        fs::read_to_string(path).unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
+    format!(
+        r#"import math
+data = {data:?}
+checked = 0
+failures = 0
+for line in data.splitlines():
+    text = line.strip()
+    if not text or text.startswith('#'):
+        continue
+    value = eval(text)
+    rendered = repr(value)
+    roundtrip = eval(rendered)
+    if value != roundtrip:
+        print('mismatch', text, rendered, roundtrip)
+        failures += 1
+    if value == 0.0 and math.copysign(1.0, value) != math.copysign(1.0, roundtrip):
+        print('zero-sign-mismatch', text, rendered)
+        failures += 1
+    checked += 1
+print('checked', checked, 'failures', failures)"#
+    )
 }
 
 fn assert_cpython_rejection_parity(case: &DiffCase) {
@@ -598,6 +670,401 @@ else:
             source: "for value in [0.875, -0.875, 0.0, 11.5, 2.1, -2.1, -2100.0]:\n    print(value.real, value.imag, value.conjugate(), value.is_integer(), value.as_integer_ratio())",
         },
         DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase public hex/fromhex behavior",
+            name: "float-hex-and-fromhex",
+            source: "import math\nfor text in ['inf', '-INF', 'nan', '-NaN', '1.0', '0x.1p4', '0x1.921fb54442d18p1', '0x0.0000000000001p-1022', '0x3p-1076', '0x0.fffffffffffffcp0']:\n    value = float.fromhex(text)\n    if value != value:\n        print(text, 'nan', math.copysign(1.0, value))\n    else:\n        print(text, value.hex(), math.copysign(1.0, value))\nprint((1.5).hex(), float.hex(1.5), (-0.0).hex())\nfor text in ['infi', '0x.p0', '0x1p+', '0x1p1024']:\n    try:\n        float.fromhex(text)\n    except (ValueError, OverflowError) as error:\n        print(text, error.__class__.__name__)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_from_hex accepted spellings",
+            name: "float-fromhex-accepted-variants",
+            source: concat!(
+                "import math\n",
+                "INF = float('inf')\n",
+                "NAN = float('nan')\n",
+                "def identical(x, y):\n",
+                "    if x != x or y != y:\n",
+                "        return x != x and y != y\n",
+                "    if x == y:\n",
+                "        if x != 0.0:\n",
+                "            return True\n",
+                "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+                "    return False\n",
+                "variant_cases = [\n",
+                "    ('inf', INF), ('+Inf', INF), ('-INF', -INF), ('iNf', INF),\n",
+                "    ('Infinity', INF), ('+INFINITY', INF), ('-infinity', -INF), ('-iNFiNitY', -INF),\n",
+                "    ('nan', NAN), ('+NaN', NAN), ('-NaN', NAN), ('-nAN', NAN),\n",
+                "    ('1', 1.0), ('+1', 1.0), ('1.', 1.0), ('1.0', 1.0), ('1.0p0', 1.0),\n",
+                "    ('01', 1.0), ('01.', 1.0), ('0x1', 1.0), ('0x1.', 1.0), ('0x1.0', 1.0),\n",
+                "    ('+0x1.0', 1.0), ('0x1p0', 1.0), ('0X1p0', 1.0), ('0X1P0', 1.0), ('0x1P0', 1.0),\n",
+                "    ('0x1.p0', 1.0), ('0x1.0p0', 1.0), ('0x.1p4', 1.0), ('0x.1p04', 1.0),\n",
+                "    ('0x.1p004', 1.0), ('0x1p+0', 1.0), ('0x1P-0', 1.0), ('+0x1p0', 1.0),\n",
+                "    ('0x01p0', 1.0), ('0x1p00', 1.0), (' 0x1p0 ', 1.0), ('\\n 0x1p0', 1.0),\n",
+                "    ('0x1p0 \\t', 1.0), ('0xap0', 10.0), ('0xAp0', 10.0), ('0xaP0', 10.0),\n",
+                "    ('0xAP0', 10.0), ('0xbep0', 190.0), ('0xBep0', 190.0), ('0xbEp0', 190.0),\n",
+                "    ('0XBE0P-4', 190.0), ('0xBEp0', 190.0), ('0xB.Ep4', 190.0), ('0x.BEp8', 190.0),\n",
+                "    ('0x.0BEp12', 190.0),\n",
+                "]\n",
+                "ok = True\n",
+                "for text, expected in variant_cases:\n",
+                "    ok = ok and identical(float.fromhex(text), expected)\n",
+                "print('variants', ok, len(variant_cases), float.fromhex('0x.BEp8').hex(), float.fromhex('-iNFiNitY'))\n",
+                "pi = float.fromhex('0x1.921fb54442d18p1')\n",
+                "pi_spellings = [\n",
+                "    '0x.006487ed5110b46p11', '0x.00c90fdaa22168cp10', '0x.01921fb54442d18p9',\n",
+                "    '0x.03243f6a8885a3p8', '0x.06487ed5110b46p7', '0x.0c90fdaa22168cp6',\n",
+                "    '0x.1921fb54442d18p5', '0x.3243f6a8885a3p4', '0x.6487ed5110b46p3',\n",
+                "    '0x.c90fdaa22168cp2', '0x1.921fb54442d18p1', '0x3.243f6a8885a3p0',\n",
+                "    '0x6.487ed5110b46p-1', '0xc.90fdaa22168cp-2', '0x19.21fb54442d18p-3',\n",
+                "    '0x32.43f6a8885a3p-4', '0x64.87ed5110b46p-5', '0xc9.0fdaa22168cp-6',\n",
+                "    '0x192.1fb54442d18p-7', '0x324.3f6a8885a3p-8', '0x648.7ed5110b46p-9',\n",
+                "    '0xc90.fdaa22168cp-10', '0x1921.fb54442d18p-11', '0x1921fb54442d1.8p-47',\n",
+                "    '0x3243f6a8885a3p-48', '0x6487ed5110b46p-49', '0xc90fdaa22168cp-50',\n",
+                "    '0x1921fb54442d18p-51', '0x3243f6a8885a30p-52', '0x6487ed5110b460p-53',\n",
+                "    '0xc90fdaa22168c0p-54', '0x1921fb54442d180p-55',\n",
+                "]\n",
+                "ok = True\n",
+                "for text in pi_spellings:\n",
+                "    ok = ok and identical(float.fromhex(text), pi)\n",
+                "print('pi-shifts', ok, len(pi_spellings), pi.hex(), float.fromhex(pi_spellings[0]).hex(), float.fromhex(pi_spellings[-1]).hex())",
+            ),
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_from_hex overflow, zero, and underflow groups",
+            name: "float-fromhex-overflow-zero-underflow",
+            source: r#"import math
+MAX = float.fromhex('0x.fffffffffffff8p+1024')
+TINY = float.fromhex('0x0.0000000000001p-1022')
+
+def identical(x, y):
+    if x != x or y != y:
+        return x != x and y != y
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+overflow_inputs = [
+    '-0x1p1024', '0x1p+1025', '+0X1p1030', '-0x1p+1100', '0X1p123456789123456789',
+    '+0X.8p+1025', '+0x0.8p1025', '-0x0.4p1026', '0X2p+1023', '0x2.p1023',
+    '-0x2.0p+1023', '+0X4p+1022', '0x1.ffffffffffffffp+1023',
+    '-0X1.fffffffffffff9p1023', '0X1.fffffffffffff8p1023', '+0x3.fffffffffffffp1022',
+    '0x3fffffffffffffp+970', '0x10000000000000000p960', '-0Xffffffffffffffffp960',
+]
+ok = True
+overflows = 0
+wrong = []
+for index, text in enumerate(overflow_inputs):
+    try:
+        float.fromhex(text)
+    except OverflowError:
+        overflows += 1
+    except Exception as error:
+        ok = False
+        wrong.append((index, error.__class__.__name__))
+    else:
+        ok = False
+        wrong.append((index, 'accepted'))
+print('overflow', ok, overflows, len(overflow_inputs), len(wrong))
+
+round_to_max = [
+    ('+0x1.fffffffffffffp+1023', MAX),
+    ('-0X1.fffffffffffff7p1023', -MAX),
+    ('0X1.fffffffffffff7fffffffffffffp1023', MAX),
+]
+ok = True
+for text, expected in round_to_max:
+    ok = ok and identical(float.fromhex(text), expected)
+print('round-to-max', ok, len(round_to_max), float.fromhex(round_to_max[2][0]).hex())
+
+zero_cases = [
+    ('0x0p0', 0.0), ('0x0p1000', 0.0), ('-0x0p1023', -0.0), ('0X0p1024', 0.0),
+    ('-0x0p1025', -0.0), ('0X0p2000', 0.0), ('0x0p123456789123456789', 0.0),
+    ('-0X0p-0', -0.0), ('-0X0p-1000', -0.0), ('0x0p-1023', 0.0),
+    ('-0X0p-1024', -0.0), ('-0x0p-1025', -0.0), ('-0x0p-1072', -0.0),
+    ('0X0p-1073', 0.0), ('-0x0p-1074', -0.0), ('0x0p-1075', 0.0),
+    ('0X0p-1076', 0.0), ('-0X0p-2000', -0.0), ('-0x0p-123456789123456789', -0.0),
+]
+ok = True
+for text, expected in zero_cases:
+    ok = ok and identical(float.fromhex(text), expected)
+print('zeros', ok, len(zero_cases), float.fromhex(zero_cases[2][0]).hex(), float.fromhex(zero_cases[-1][0]).hex())
+
+underflow_cases = [
+    ('0X1p-1075', 0.0), ('-0X1p-1075', -0.0), ('-0x1p-123456789123456789', -0.0),
+    ('0x1.00000000000000001p-1075', TINY), ('-0x1.1p-1075', -TINY),
+    ('0x1.fffffffffffffffffp-1075', TINY),
+]
+ok = True
+for text, expected in underflow_cases:
+    ok = ok and identical(float.fromhex(text), expected)
+print('underflow', ok, len(underflow_cases), float.fromhex(underflow_cases[3][0]).hex(), float.fromhex(underflow_cases[4][0]).hex())"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_from_hex round-half-even groups",
+            name: "float-fromhex-rounding-boundaries",
+            source: r#"import math
+MIN = float.fromhex('0x1p-1022')
+TINY = float.fromhex('0x0.0000000000001p-1022')
+EPS = float.fromhex('0x0.0000000000001p0')
+
+def identical(x, y):
+    if x != x or y != y:
+        return x != x and y != y
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+def check_group(name, cases):
+    ok = True
+    bad = []
+    for index, (text, expected) in enumerate(cases):
+        value = float.fromhex(text)
+        if not identical(value, expected):
+            ok = False
+            bad.append((index, value.hex(), expected.hex()))
+    print(name, ok, len(cases), float.fromhex(cases[0][0]).hex(), float.fromhex(cases[-1][0]).hex(), len(bad))
+    if bad:
+        print(name + '-bad', bad[:3])
+
+near_zero = [
+    ('0x1p-1076', 0.0), ('0X2p-1076', 0.0), ('0X3p-1076', TINY),
+    ('0x4p-1076', TINY), ('0X5p-1076', TINY), ('0X6p-1076', 2*TINY),
+    ('0x7p-1076', 2*TINY), ('0X8p-1076', 2*TINY), ('0X9p-1076', 2*TINY),
+    ('0xap-1076', 2*TINY), ('0Xbp-1076', 3*TINY), ('0xcp-1076', 3*TINY),
+    ('0Xdp-1076', 3*TINY), ('0Xep-1076', 4*TINY), ('0xfp-1076', 4*TINY),
+    ('0x10p-1076', 4*TINY), ('-0x1p-1076', -0.0), ('-0X2p-1076', -0.0),
+    ('-0x3p-1076', -TINY), ('-0X4p-1076', -TINY), ('-0x5p-1076', -TINY),
+    ('-0x6p-1076', -2*TINY), ('-0X7p-1076', -2*TINY), ('-0X8p-1076', -2*TINY),
+    ('-0X9p-1076', -2*TINY), ('-0Xap-1076', -2*TINY), ('-0xbp-1076', -3*TINY),
+    ('-0xcp-1076', -3*TINY), ('-0Xdp-1076', -3*TINY), ('-0xep-1076', -4*TINY),
+    ('-0Xfp-1076', -4*TINY), ('-0X10p-1076', -4*TINY),
+]
+near_min = [
+    ('0x0.ffffffffffffd6p-1022', MIN-3*TINY), ('0x0.ffffffffffffd8p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffdap-1022', MIN-2*TINY), ('0x0.ffffffffffffdcp-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffdep-1022', MIN-2*TINY), ('0x0.ffffffffffffe0p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffe2p-1022', MIN-2*TINY), ('0x0.ffffffffffffe4p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffe6p-1022', MIN-2*TINY), ('0x0.ffffffffffffe8p-1022', MIN-2*TINY),
+    ('0x0.ffffffffffffeap-1022', MIN-TINY), ('0x0.ffffffffffffecp-1022', MIN-TINY),
+    ('0x0.ffffffffffffeep-1022', MIN-TINY), ('0x0.fffffffffffff0p-1022', MIN-TINY),
+    ('0x0.fffffffffffff2p-1022', MIN-TINY), ('0x0.fffffffffffff4p-1022', MIN-TINY),
+    ('0x0.fffffffffffff6p-1022', MIN-TINY), ('0x0.fffffffffffff8p-1022', MIN),
+    ('0x0.fffffffffffffap-1022', MIN), ('0x0.fffffffffffffcp-1022', MIN),
+    ('0x0.fffffffffffffep-1022', MIN), ('0x1.00000000000000p-1022', MIN),
+    ('0x1.00000000000002p-1022', MIN), ('0x1.00000000000004p-1022', MIN),
+    ('0x1.00000000000006p-1022', MIN), ('0x1.00000000000008p-1022', MIN),
+    ('0x1.0000000000000ap-1022', MIN+TINY), ('0x1.0000000000000cp-1022', MIN+TINY),
+    ('0x1.0000000000000ep-1022', MIN+TINY), ('0x1.00000000000010p-1022', MIN+TINY),
+    ('0x1.00000000000012p-1022', MIN+TINY), ('0x1.00000000000014p-1022', MIN+TINY),
+    ('0x1.00000000000016p-1022', MIN+TINY), ('0x1.00000000000018p-1022', MIN+2*TINY),
+]
+near_one = [
+    ('0x0.fffffffffffff0p0', 1.0-EPS), ('0x0.fffffffffffff1p0', 1.0-EPS),
+    ('0X0.fffffffffffff2p0', 1.0-EPS), ('0x0.fffffffffffff3p0', 1.0-EPS),
+    ('0X0.fffffffffffff4p0', 1.0-EPS), ('0X0.fffffffffffff5p0', 1.0-EPS/2),
+    ('0X0.fffffffffffff6p0', 1.0-EPS/2), ('0x0.fffffffffffff7p0', 1.0-EPS/2),
+    ('0x0.fffffffffffff8p0', 1.0-EPS/2), ('0X0.fffffffffffff9p0', 1.0-EPS/2),
+    ('0X0.fffffffffffffap0', 1.0-EPS/2), ('0x0.fffffffffffffbp0', 1.0-EPS/2),
+    ('0X0.fffffffffffffcp0', 1.0), ('0x0.fffffffffffffdp0', 1.0),
+    ('0X0.fffffffffffffep0', 1.0), ('0x0.ffffffffffffffp0', 1.0),
+    ('0X1.00000000000000p0', 1.0), ('0X1.00000000000001p0', 1.0),
+    ('0x1.00000000000002p0', 1.0), ('0X1.00000000000003p0', 1.0),
+    ('0x1.00000000000004p0', 1.0), ('0X1.00000000000005p0', 1.0),
+    ('0X1.00000000000006p0', 1.0), ('0X1.00000000000007p0', 1.0),
+    ('0x1.00000000000007ffffffffffffffffffffp0', 1.0), ('0x1.00000000000008p0', 1.0),
+    ('0x1.00000000000008000000000000000001p0', 1+EPS), ('0X1.00000000000009p0', 1.0+EPS),
+    ('0x1.0000000000000ap0', 1.0+EPS), ('0x1.0000000000000bp0', 1.0+EPS),
+    ('0X1.0000000000000cp0', 1.0+EPS), ('0x1.0000000000000dp0', 1.0+EPS),
+    ('0x1.0000000000000ep0', 1.0+EPS), ('0X1.0000000000000fp0', 1.0+EPS),
+    ('0x1.00000000000010p0', 1.0+EPS), ('0X1.00000000000011p0', 1.0+EPS),
+    ('0x1.00000000000012p0', 1.0+EPS), ('0X1.00000000000013p0', 1.0+EPS),
+    ('0X1.00000000000014p0', 1.0+EPS), ('0x1.00000000000015p0', 1.0+EPS),
+    ('0x1.00000000000016p0', 1.0+EPS), ('0X1.00000000000017p0', 1.0+EPS),
+    ('0x1.00000000000017ffffffffffffffffffffp0', 1.0+EPS), ('0x1.00000000000018p0', 1.0+2*EPS),
+    ('0X1.00000000000018000000000000000001p0', 1.0+2*EPS), ('0x1.00000000000019p0', 1.0+2*EPS),
+    ('0X1.0000000000001ap0', 1.0+2*EPS), ('0X1.0000000000001bp0', 1.0+2*EPS),
+    ('0x1.0000000000001cp0', 1.0+2*EPS), ('0x1.0000000000001dp0', 1.0+2*EPS),
+    ('0x1.0000000000001ep0', 1.0+2*EPS), ('0X1.0000000000001fp0', 1.0+2*EPS),
+    ('0x1.00000000000020p0', 1.0+2*EPS),
+]
+check_group('near-zero', near_zero)
+check_group('near-min', near_min)
+check_group('near-one', near_one)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_invalid_inputs",
+            name: "float-hex-fromhex-invalid-inputs",
+            source: concat!(
+                "invalid_inputs = [\n",
+                "    'infi',\n",
+                "    '-Infinit',\n",
+                "    '++inf',\n",
+                "    '-+Inf',\n",
+                "    '--nan',\n",
+                "    '+-NaN',\n",
+                "    'snan',\n",
+                "    'NaNs',\n",
+                "    'nna',\n",
+                "    'an',\n",
+                "    'nf',\n",
+                "    'nfinity',\n",
+                "    'inity',\n",
+                "    'iinity',\n",
+                "    '0xnan',\n",
+                "    '',\n",
+                "    ' ',\n",
+                "    'x1.0p0',\n",
+                "    '0xX1.0p0',\n",
+                "    '+ 0x1.0p0',\n",
+                "    '- 0x1.0p0',\n",
+                "    '0 x1.0p0',\n",
+                "    '0x 1.0p0',\n",
+                "    '0x1 2.0p0',\n",
+                "    '+0x1 .0p0',\n",
+                "    '0x1. 0p0',\n",
+                "    '-0x1.0 1p0',\n",
+                "    '-0x1.0 p0',\n",
+                "    '+0x1.0p +0',\n",
+                "    '0x1.0p -0',\n",
+                "    '0x1.0p 0',\n",
+                "    '+0x1.0p+ 0',\n",
+                "    '-0x1.0p- 0',\n",
+                "    '++0x1.0p-0',\n",
+                "    '--0x1.0p0',\n",
+                "    '+-0x1.0p+0',\n",
+                "    '-+0x1.0p0',\n",
+                "    '0x1.0p++0',\n",
+                "    '+0x1.0p+-0',\n",
+                "    '-0x1.0p-+0',\n",
+                "    '0x1.0p--0',\n",
+                "    '0x1.0.p0',\n",
+                "    '0x.p0',\n",
+                "    '0x1,p0',\n",
+                "    '0x1pa',\n",
+                "    '0x1p\\uff10',\n",
+                "    '\\uff10x1p0',\n",
+                "    '0x\\uff11p0',\n",
+                "    '0x1.\\uff10p0',\n",
+                "    '0x1p0 \\n 0x2p0',\n",
+                "    '0x1p0\\0 0x1p0',\n",
+                "]\n",
+                "ok = True\n",
+                "value_errors = 0\n",
+                "accepted = []\n",
+                "wrong = []\n",
+                "for index, text in enumerate(invalid_inputs):\n",
+                "    try:\n",
+                "        result = float.fromhex(text)\n",
+                "    except ValueError:\n",
+                "        value_errors += 1\n",
+                "    except Exception as error:\n",
+                "        ok = False\n",
+                "        wrong.append((index, error.__class__.__name__))\n",
+                "    else:\n",
+                "        ok = False\n",
+                "        accepted.append((index, repr(result)))\n",
+                "print('invalid-inputs', ok, value_errors, len(invalid_inputs), len(accepted), len(wrong))\n",
+                "print('sample', repr(invalid_inputs[0]), repr(invalid_inputs[15]), repr(invalid_inputs[-1]))",
+            ),
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_ends and ::test_whitespace",
+            name: "float-hex-fromhex-ends-whitespace",
+            source: concat!(
+                "import math\n",
+                "INF = float('inf')\n",
+                "NAN = float('nan')\n",
+                "MAX = float.fromhex('0x.fffffffffffff8p+1024')\n",
+                "MIN = float.fromhex('0x1p-1022')\n",
+                "TINY = float.fromhex('0x0.0000000000001p-1022')\n",
+                "EPS = float.fromhex('0x0.0000000000001p0')\n",
+                "def identical(x, y):\n",
+                "    if x != x or y != y:\n",
+                "        return x != x and y != y\n",
+                "    if x == y:\n",
+                "        if x != 0.0:\n",
+                "            return True\n",
+                "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+                "    return False\n",
+                "ends = [\n",
+                "    ('MIN', MIN, math.ldexp(1.0, -1022)),\n",
+                "    ('TINY', TINY, math.ldexp(1.0, -1074)),\n",
+                "    ('EPS', EPS, math.ldexp(1.0, -52)),\n",
+                "    ('MAX', MAX, 2.0 * (math.ldexp(1.0, 1023) - math.ldexp(1.0, 970))),\n",
+                "]\n",
+                "for name, actual, expected in ends:\n",
+                "    print(name, actual.hex(), expected.hex(), identical(actual, expected))\n",
+                "value_pairs = [('inf', INF), ('-Infinity', -INF), ('nan', NAN), ('1.0', 1.0), ('-0x.2', -0.125), ('-0.0', -0.0)]\n",
+                "whitespace = ['', ' ', '\\t', '\\n', '\\n \\t', '\\f', '\\v', '\\r']\n",
+                "ok = True\n",
+                "count = 0\n",
+                "for text, expected in value_pairs:\n",
+                "    for lead in whitespace:\n",
+                "        for trail in whitespace:\n",
+                "            got = float.fromhex(lead + text + trail)\n",
+                "            ok = ok and identical(got, expected)\n",
+                "            count += 1\n",
+                "print('whitespace', ok, count)\n",
+                "for text in ['\\f-0.0\\v', '\\rnan\\n', '\\n \\t-0x.2\\f']:\n",
+                "    value = float.fromhex(text)\n",
+                "    if value != value:\n",
+                "        print(repr(text), 'nan')\n",
+                "    else:\n",
+                "        print(repr(text), value.hex(), math.copysign(1.0, value))",
+            ),
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_roundtrip deterministic sweep",
+            name: "float-hex-fromhex-roundtrip-matrix",
+            source: concat!(
+                "import math\n",
+                "NAN = float('nan')\n",
+                "INF = float('inf')\n",
+                "MAX = float.fromhex('0x1.fffffffffffffp+1023')\n",
+                "MIN = float.fromhex('0x1p-1022')\n",
+                "TINY = float.fromhex('0x0.0000000000001p-1022')\n",
+                "def identical(x, y):\n",
+                "    if x != x or y != y:\n",
+                "        return x != x and y != y\n",
+                "    if x == y:\n",
+                "        if x != 0.0:\n",
+                "            return True\n",
+                "        return math.copysign(1.0, x) == math.copysign(1.0, y)\n",
+                "    return False\n",
+                "def roundtrip(x):\n",
+                "    return float.fromhex(x.hex())\n",
+                "for x in [NAN, INF, MAX, MIN, MIN - TINY, TINY, 0.0]:\n",
+                "    print(x.hex(), identical(x, roundtrip(x)), (-x).hex(), identical(-x, roundtrip(-x)))\n",
+                "ok = True\n",
+                "count = 0\n",
+                "skipped = 0\n",
+                "for i in range(10000):\n",
+                "    exponent = ((i * 1543 + 17) % 2400) - 1200\n",
+                "    mantissa_bits = (i * 6364136223846793005 + 1442695040888963407) % (2 ** 53)\n",
+                "    mantissa = mantissa_bits / float(2 ** 53)\n",
+                "    sign = -1.0 if ((i * 1103515245 + 12345) % 2) else 1.0\n",
+                "    try:\n",
+                "        x = sign * math.ldexp(mantissa, exponent)\n",
+                "    except OverflowError:\n",
+                "        skipped += 1\n",
+                "    else:\n",
+                "        count += 1\n",
+                "        if not identical(x, roundtrip(x)):\n",
+                "            print('mismatch', i, exponent, mantissa_bits, x.hex(), roundtrip(x).hex())\n",
+                "            ok = False\n",
+                "print('deterministic-sweep', ok, count, skipped)\n",
+                "print(roundtrip(-0.0).hex(), identical(-0.0, roundtrip(-0.0)))",
+            ),
+        },
+        DiffCase {
+            origin: "Lib/test/test_float.py::HexFloatTestCase::test_subclass",
+            name: "float-fromhex-subclass-construction",
+            source: "class F(float):\n    def __new__(cls, value):\n        return float.__new__(cls, value + 1)\nf = F.fromhex((1.5).hex())\nprint(type(f) is F, f, f == 2.5, isinstance(f, float), issubclass(F, float), f.hex())\nprint(float.__new__(F, 1.5), type(float.__new__(F, 1.5)) is F)\nclass F2(float):\n    def __init__(self, value):\n        self.foo = 'bar'\nf = F2.fromhex((1.5).hex())\nprint(type(f) is F2, f, f == 1.5, getattr(f, 'foo', 'none'), bool(F2(0.0)), bool(F2(0.25)))",
+        },
+        DiffCase {
             origin: "Lib/test/test_bool.py::test_math",
             name: "bool-arithmetic-and-bitwise",
             source: "print(False + 2, True + 2, True - False, False - True)\nprint(True * 1, False * 1, True % 2)\nprint(True & False, True | False, True ^ True)",
@@ -824,6 +1291,21 @@ except SyntaxError as error:
             source: "print(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'), bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30 '))\nprint(b''.hex(), b'\\x1a\\x2b\\x30'.hex(), bytearray(b'\\x1a\\x2b\\x30').hex())\nthree = b'\\xb9\\x01\\xef'\nprint(three.hex(), three.hex(':'), three.hex(':', 2), three.hex('*', -2), three.hex(sep=':', bytes_per_sep=2))\nsix = b'\\x03\\x06\\x09\\x0c\\x0f\\x12'\nprint(six.hex('.', 1), six.hex(' ', 2), six.hex('-', 3), six.hex(':', 4), six.hex('_', -3), six.hex(':', -4))\nfor expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex(chr(0x100)), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         },
         DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_regexps",
+            name: "bytearray-regexps-findall",
+            source: "import re\ndef by(text):\n    return bytearray(map(ord, text))\nfor source in [by('Hello, world'), b'Hi, Bob_2!', memoryview(b'xy 99')]:\n    matches = re.findall(br'\\w+', source)\n    print(type(source).__name__, matches, [type(item).__name__ for item in matches])",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArraySubclassTest::test_init_override",
+            name: "bytearray-subclass-init-override",
+            source: "class Sub(bytearray):\n    def __init__(self, newarg=1, *args, **kwargs):\n        print('init', newarg, args, kwargs.get('source', None))\n        bytearray.__init__(self, *args, **kwargs)\nfor factory in [lambda: Sub(4, b'abcd'), lambda: Sub(4, source=b'abcd'), lambda: Sub(newarg=4, source=b'abcd')]:\n    value = factory()\n    print(type(value).__name__, value == b'abcd', bytes(value), isinstance(value, bytearray))\nclass Empty(bytearray):\n    def __init__(self, value):\n        print('empty init', value)\nempty = Empty(b'abc')\nprint(type(empty).__name__, len(empty), bytes(empty))",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::SubclassTest::test_pickle",
+            name: "bytes-bytearray-subclass-pickle-roundtrip",
+            source: "import pickle\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor T in [B, BA]:\n    checked = 0\n    nested = 0\n    independent = 0\n    for proto in range(pickle.HIGHEST_PROTOCOL + 1):\n        a = T(b'abcd')\n        a.x = 10\n        a.z = T(b'efgh')\n        b = pickle.loads(pickle.dumps(a, proto))\n        if type(b) is T and b == a and b is not a and b.x == 10 and not hasattr(b, 'y'):\n            checked += 1\n        if type(b.z) is T and b.z == T(b'efgh'):\n            nested += 1\n        if isinstance(b, bytearray):\n            b.append(ord('!'))\n            if bytes(a) == b'abcd' and bytes(b) == b'abcd!':\n                independent += 1\n        elif bytes(b) == b'abcd':\n            independent += 1\n    print(T.__name__, checked, nested, independent, pickle.HIGHEST_PROTOCOL + 1)",
+        },
+        DiffCase {
             origin: "Lib/test/test_bytes.py::ByteArrayTest::test_copied / ::test_partition_bytearray_doesnt_share_nullstring",
             name: "bytearray-nonmutating-copy-buffer-semantics",
             source: "b = bytearray(b'abc')\nr = b.replace(b'abc', b'cde', 0)\nprint(r, r is b)\nr += b'!'\nprint(b, r)\nt = bytearray([i for i in range(256)])\nx = bytearray(b'')\ny = x.translate(t)\nprint(y, y is x)\ny += b'!'\nprint(x, y)\na, b, c = bytearray(b'x').partition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\na, b, c = bytearray(b'x').partition(b'y')\nprint(b, c)\nb, c, a = bytearray(b'x').rpartition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\nc, b, a = bytearray(b'x').rpartition(b'y')\nprint(b, c)",
@@ -837,6 +1319,11 @@ except SyntaxError as error:
             origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_length_hint / ::test_repeat_after_setslice",
             name: "bytearray-iterator-length-hint-and-repeat-regressions",
             source: "ba = bytearray(b'ab')\nit = iter(ba)\nprint(next(it), it.__length_hint__())\nba.clear()\nprint(it.__length_hint__(), list(it))\nb = bytearray(b'abc')\nb[:2] = b'x'\nb1 = b * 1\nb3 = b * 3\nprint(b, b1, b1 == b'xc', b1 == b)\nprint(b3)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",
+            name: "bytearray-exhausted-iterator",
+            source: "a = bytearray([1, 2, 3])\nexhit = iter(a)\nempit = iter(a)\nfor x in exhit:\n    next(empit)\na.append(9)\nprint(list(exhit), list(empit), a)\nexhit = iter(bytearray([1, 2, 3]))\nseen = []\nfor _ in exhit:\n    seen.append(next(exhit, 1))\nprint(seen)",
         },
         DiffCase {
             origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index_inbounds skip_bounds_safety_slice",
@@ -2151,6 +2638,72 @@ except TypeError as error:
     print(error.__class__.__name__)"#,
         },
         DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_float_to_string",
+            name: "types-float-to-string-and-numeric-dunder-format",
+            source: r#"def expected_exp(i):
+    sign = '+' if i >= 0 else '-'
+    magnitude = abs(i)
+    if magnitude < 10:
+        return '1.500000e' + sign + '0' + str(magnitude)
+    return '1.500000e' + sign + str(magnitude)
+checked = 0
+for i in range(-99, 100):
+    f = float('1.5e' + str(i))
+    expected = expected_exp(i)
+    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:
+        assert actual == expected
+        checked += 1
+for f, expected in [(1.5e100, '1.500000e+100'), (1.5e101, '1.500000e+101'), (1.5e-100, '1.500000e-100'), (1.5e-101, '1.500000e-101')]:
+    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:
+        assert actual == expected
+        checked += 1
+print(checked)
+print('%g' % 1.0, '%#g' % 1.0)
+print((1).__format__('d'), int.__format__(1, '04d'), True.__format__(''), True.__format__('d'), bool.__format__(False, 'd'), (1.0).__format__('e'))
+print('__format__' in dir(1), '__format__' in dir(1.0), '__format__' in dir(True), '__format__' in dir(int), '__format__' in dir(float))
+for expr in [lambda: (1).__format__(1), lambda: (1.0).__format__(1), lambda: float.__format__(1, 'e')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_normal_integers public arithmetic rows",
+            name: "types-normal-integers-public-arithmetic",
+            source: r#"import sys
+print('add', 12 + 24, 12 + (-24), (-12) + 24, (-12) + (-24))
+print('compare', 12 < 24, -24 < -12)
+xsize, ysize, zsize = 238, 356, 4
+print('mul', xsize * ysize * zsize == zsize * xsize * ysize, xsize * ysize * zsize)
+m = -sys.maxsize - 1
+min_exact = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor
+    prod = divisor * j
+    min_exact.append((prod == m, type(prod) is int))
+print('min-exact', min_exact)
+min_under = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor - 1
+    prod = divisor * j
+    min_under.append((prod < m, type(prod) is int))
+print('min-under', min_under)
+m = sys.maxsize
+max_over = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor + 1
+    prod = divisor * j
+    max_over.append((prod > m, type(prod) is int))
+print('max-over', max_over)
+x = sys.maxsize
+print('instances', isinstance(x + 1, int), isinstance(-x - 1, int), isinstance(-x - 2, int))
+for label, expr in [('left', lambda: 5 << -5), ('right', lambda: 5 >> -5)]:
+    try:
+        expr()
+    except ValueError as error:
+        print('shift', label, error.__class__.__name__, str(error))"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",
             name: "ascii-builtin",
             source: r#"print(ascii(''))
@@ -2552,6 +3105,29 @@ except NameError as error:
     print(error.__class__.__name__, 'a' in str(error))
 finally:
     sys.stdout = saved"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::TestBreakpoint custom breakpointhook rows",
+            name: "builtin-breakpoint-custom-hook",
+            source: r#"import builtins, sys
+print(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))
+print(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)
+def hook(*args, **kwargs):
+    print('hook', args, kwargs)
+    return 'ret'
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+print('call0', breakpoint())
+print('callargs', breakpoint(1, 'x', key=3))
+print('module-call', builtins.breakpoint())
+del sys.breakpointhook
+try:
+    breakpoint()
+except RuntimeError as error:
+    print('lost', type(error).__name__, str(error))
+finally:
+    sys.breakpointhook = saved
+print('reset-same', sys.breakpointhook is sys.__breakpointhook__)"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec_globals_dict_subclass / ::test_exec_builtins_mapping_import",
@@ -2957,6 +3533,195 @@ for value, spec in [(10, ',b'), (10, ',o'), (65, ',c'), (65, '#c'), (1, '.2d')]:
         print(error)"#,
         },
         DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_int__format__",
+            name: "types-int-dunder-format-matrix",
+            source: r#"def check(i, format_spec, expected):
+    assert type(i) is int
+    assert type(format_spec) is str
+    actual = i.__format__(format_spec)
+    assert actual == expected
+rows = [
+    (123456789, 'd', '123456789'), (123456789, 'd', '123456789'), (1, 'c', chr(1)),
+    (1, '-', '1'), (-1, '-', '-1'), (1, '-3', '  1'), (-1, '-3', ' -1'),
+    (1, '+3', ' +1'), (-1, '+3', ' -1'), (1, ' 3', '  1'), (-1, ' 3', ' -1'),
+    (1, ' ', ' 1'), (-1, ' ', '-1'),
+    (3, 'x', '3'), (3, 'X', '3'), (1234, 'x', '4d2'), (-1234, 'x', '-4d2'),
+    (1234, '8x', '     4d2'), (-1234, '8x', '    -4d2'), (1234, 'x', '4d2'), (-1234, 'x', '-4d2'),
+    (-3, 'x', '-3'), (-3, 'X', '-3'), (int('be', 16), 'x', 'be'), (int('be', 16), 'X', 'BE'),
+    (-int('be', 16), 'x', '-be'), (-int('be', 16), 'X', '-BE'),
+    (3, 'o', '3'), (-3, 'o', '-3'), (65, 'o', '101'), (-65, 'o', '-101'),
+    (1234, 'o', '2322'), (-1234, 'o', '-2322'), (1234, '-o', '2322'), (-1234, '-o', '-2322'),
+    (1234, ' o', ' 2322'), (-1234, ' o', '-2322'), (1234, '+o', '+2322'), (-1234, '+o', '-2322'),
+    (3, 'b', '11'), (-3, 'b', '-11'), (1234, 'b', '10011010010'), (-1234, 'b', '-10011010010'),
+    (1234, '-b', '10011010010'), (-1234, '-b', '-10011010010'), (1234, ' b', ' 10011010010'), (-1234, ' b', '-10011010010'),
+    (1234, '+b', '+10011010010'), (-1234, '+b', '-10011010010'),
+    (0, '#b', '0b0'), (0, '-#b', '0b0'), (1, '-#b', '0b1'), (-1, '-#b', '-0b1'),
+    (-1, '-#5b', ' -0b1'), (1, '+#5b', ' +0b1'), (100, '+#b', '+0b1100100'),
+    (100, '#012b', '0b0001100100'), (-100, '#012b', '-0b001100100'),
+    (0, '#o', '0o0'), (0, '-#o', '0o0'), (1, '-#o', '0o1'), (-1, '-#o', '-0o1'),
+    (-1, '-#5o', ' -0o1'), (1, '+#5o', ' +0o1'), (100, '+#o', '+0o144'),
+    (100, '#012o', '0o0000000144'), (-100, '#012o', '-0o000000144'),
+    (0, '#x', '0x0'), (0, '-#x', '0x0'), (1, '-#x', '0x1'), (-1, '-#x', '-0x1'),
+    (-1, '-#5x', ' -0x1'), (1, '+#5x', ' +0x1'), (100, '+#x', '+0x64'),
+    (100, '#012x', '0x0000000064'), (-100, '#012x', '-0x000000064'),
+    (123456, '#012x', '0x000001e240'), (-123456, '#012x', '-0x00001e240'),
+    (0, '#X', '0X0'), (0, '-#X', '0X0'), (1, '-#X', '0X1'), (-1, '-#X', '-0X1'),
+    (-1, '-#5X', ' -0X1'), (1, '+#5X', ' +0X1'), (100, '+#X', '+0X64'),
+    (100, '#012X', '0X0000000064'), (-100, '#012X', '-0X000000064'),
+    (123456, '#012X', '0X000001E240'), (-123456, '#012X', '-0X00001E240'),
+    (123, ',', '123'), (-123, ',', '-123'), (1234, ',', '1,234'), (-1234, ',', '-1,234'),
+    (123456, ',', '123,456'), (-123456, ',', '-123,456'), (1234567, ',', '1,234,567'), (-1234567, ',', '-1,234,567'),
+    (1234, '010,', '00,001,234'),
+    (10**100, 'd', '1' + '0' * 100), (10**100 + 100, 'd', '1' + '0' * 97 + '100'),
+    (123456, '0<20', '12345600000000000000'), (123456, '1<20', '12345611111111111111'), (123456, '*<20', '123456**************'),
+    (123456, '0>20', '00000000000000123456'), (123456, '1>20', '11111111111111123456'), (123456, '*>20', '**************123456'),
+    (123456, '0=20', '00000000000000123456'), (123456, '1=20', '11111111111111123456'), (123456, '*=20', '**************123456'),
+]
+for row in rows:
+    check(*row)
+print('rows', len(rows))
+value_errors = 0
+type_errors = 0
+for spec in ['1.3', '+c', None, 0, ',n', ',c', '#c']:
+    try:
+        (3).__format__(spec)
+    except ValueError:
+        value_errors += 1
+    except TypeError:
+        type_errors += 1
+print('errors', value_errors, type_errors)
+invalid_specs = 0
+for format_spec in ([chr(x) for x in range(ord('a'), ord('z') + 1)] + [chr(x) for x in range(ord('A'), ord('Z') + 1)]):
+    if format_spec not in 'bcdoxXeEfFgGn%':
+        for value in [0, 1, -1]:
+            try:
+                value.__format__(format_spec)
+            except ValueError:
+                invalid_specs += 1
+print('invalid-specs', invalid_specs)
+float_specs = 0
+for format_spec in 'eEfFgG%':
+    for value in [0, 1, -1, 100, -100, 1234567890, -1234567890]:
+        assert value.__format__(format_spec) == float(value).__format__(format_spec)
+        float_specs += 1
+print('float-specs', float_specs)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_float__format__",
+            name: "types-float-dunder-format-matrix",
+            source: r#"def check(f, format_spec, expected):
+    assert f.__format__(format_spec) == expected
+    assert format(f, format_spec) == expected
+rows = [
+    (0.0, 'f', '0.000000'),
+    (0.0, '', '0.0'), (0.01, '', '0.01'), (0.01, 'g', '0.01'),
+    (1.23, '1', '1.23'), (-1.23, '1', '-1.23'), (1.23, '1g', '1.23'), (-1.23, '1g', '-1.23'),
+    (1.0, ' g', ' 1'), (-1.0, ' g', '-1'), (1.0, '+g', '+1'), (-1.0, '+g', '-1'),
+    (1.1234e200, 'g', '1.1234e+200'), (1.1234e200, 'G', '1.1234E+200'),
+    (1.0, 'f', '1.000000'), (-1.0, 'f', '-1.000000'),
+    (1.0, ' f', ' 1.000000'), (-1.0, ' f', '-1.000000'), (1.0, '+f', '+1.000000'), (-1.0, '+f', '-1.000000'),
+    (1.0, 'e', '1.000000e+00'), (-1.0, 'e', '-1.000000e+00'), (1.0, 'E', '1.000000E+00'), (-1.0, 'E', '-1.000000E+00'),
+    (1.1234e20, 'e', '1.123400e+20'), (1.1234e20, 'E', '1.123400E+20'),
+    (1.25e200, '+g', '+1.25e+200'), (1.25e200, '+', '+1.25e+200'),
+    (1.1e200, '+g', '+1.1e+200'), (1.1e200, '+', '+1.1e+200'),
+    (1234.0, '010f', '1234.000000'), (1234.0, '011f', '1234.000000'), (1234.0, '012f', '01234.000000'),
+    (-1234.0, '011f', '-1234.000000'), (-1234.0, '012f', '-1234.000000'), (-1234.0, '013f', '-01234.000000'),
+    (-1234.12341234, '013f', '-01234.123412'), (-123456.12341234, '011.2f', '-0123456.12'),
+    (1.2, '010,.2', '0,000,001.2'),
+    (1234.0, '011,f', '1,234.000000'), (1234.0, '012,f', '1,234.000000'), (1234.0, '013,f', '01,234.000000'),
+    (-1234.0, '012,f', '-1,234.000000'), (-1234.0, '013,f', '-1,234.000000'), (-1234.0, '014,f', '-01,234.000000'),
+    (-12345.0, '015,f', '-012,345.000000'), (-123456.0, '016,f', '-0,123,456.000000'), (-123456.0, '017,f', '-0,123,456.000000'),
+    (-123456.12341234, '017,f', '-0,123,456.123412'), (-123456.12341234, '013,.2f', '-0,123,456.12'),
+    (-1.0, '%', '-100.000000%'),
+    (1.0, '.0e', '1e+00'), (1.0, '#.0e', '1.e+00'), (1.0, '.0f', '1'), (1.0, '#.0f', '1.'),
+    (1.1, 'g', '1.1'), (1.1, '#g', '1.10000'), (1.0, '.0%', '100%'), (1.0, '#.0%', '100.%'),
+    (1.0, '0e', '1.000000e+00'), (1.0, '#0e', '1.000000e+00'), (1.0, '0f', '1.000000'), (1.0, '#0f', '1.000000'),
+    (1.0, '.1e', '1.0e+00'), (1.0, '#.1e', '1.0e+00'), (1.0, '.1f', '1.0'), (1.0, '#.1f', '1.0'),
+    (1.0, '.1%', '100.0%'), (1.0, '#.1%', '100.0%'),
+    (12345.6, '0<20', '12345.60000000000000'), (12345.6, '1<20', '12345.61111111111111'), (12345.6, '*<20', '12345.6*************'),
+    (12345.6, '0>20', '000000000000012345.6'), (12345.6, '1>20', '111111111111112345.6'), (12345.6, '*>20', '*************12345.6'),
+    (12345.6, '0=20', '000000000000012345.6'), (12345.6, '1=20', '111111111111112345.6'), (12345.6, '*=20', '*************12345.6'),
+]
+for row in rows:
+    check(*row)
+print('rows', len(rows))
+huge = 0
+for value, expected_len in [(1.1234e90, 98), (1.1234e200, 208)]:
+    for fmt in ('f', 'F'):
+        result = value.__format__(fmt)
+        assert len(result) == expected_len
+        assert result[-7] == '.'
+        assert result[:12] in ('112340000000', '112339999999')
+        huge += 1
+print('huge', huge)
+type_errors = 0
+for spec in [None, 0]:
+    try:
+        (3.0).__format__(spec)
+    except TypeError:
+        type_errors += 1
+value_errors = 0
+for format_spec in 'sbcdoxX':
+    for value in [0.0, 1.0, -1.0, 1e100, -1e100, 1e-100, -1e-100]:
+        try:
+            format(value, format_spec)
+        except ValueError:
+            value_errors += 1
+print('errors', type_errors, value_errors)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_format_spec_errors",
+            name: "types-format-spec-errors",
+            source: r#"large_errors = 0
+for label, spec in [('width', '1' * 10000 + 'd'), ('precision', '.' + '1' * 10000 + 'd'), ('both', '1' * 1000 + '.' + '1' * 10000 + 'd')]:
+    try:
+        format(0, spec)
+    except ValueError as error:
+        large_errors += 1
+        print(label, error.__class__.__name__)
+comma_errors = 0
+for code in 'xXobns':
+    try:
+        format(0, ',' + code)
+    except ValueError as error:
+        comma_errors += 1
+        print('comma', code, error.__class__.__name__, str(error))
+print('summary', large_errors, comma_errors)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_method_descriptor_types",
+            name: "types-method-descriptor-types",
+            source: r#"import types
+print(isinstance(str.join, types.MethodDescriptorType))
+print(isinstance(list.append, types.MethodDescriptorType))
+print(isinstance(''.join, types.BuiltinMethodType))
+print(isinstance([].append, types.BuiltinMethodType))
+print(isinstance(int.__dict__['from_bytes'], types.ClassMethodDescriptorType))
+print(isinstance(int.from_bytes, types.BuiltinMethodType))
+print(isinstance(int.__new__, types.BuiltinMethodType))
+print(type(str.join).__name__, type(list.append).__name__, type(int.__dict__['from_bytes']).__name__)
+print(int.from_bytes(b'\x01\x00', 'little'), int.from_bytes(b'\xff', 'big', signed=True), bool.from_bytes(b'\x02', 'big'))
+print(int.__dict__['from_bytes'](int, b'\x01', 'big'))
+print(int.__new__(int, '10'))
+items = []
+list.append(items, 3)
+print(items)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_types.py::TypesTests::test_frame_locals_proxy_type",
+            name: "types-frame-locals-proxy-currentframe",
+            source: r#"import inspect, types
+def probe():
+    marker = 42
+    frame = inspect.currentframe()
+    proxy_type = getattr(types, 'FrameLocalsProxyType', dict)
+    print(frame is not None, isinstance(frame.f_locals, proxy_type))
+    print(type(frame.f_locals).__name__ in ('dict', 'FrameLocalsProxy'))
+    print('marker' in frame.f_locals, frame.f_locals['marker'])
+    print(sorted(k for k in frame.f_locals if k in ('frame', 'marker')))
+probe()"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_bool.py::BoolTest::test_bool custom truth protocol",
             name: "custom-bool-and-len-truth-protocol",
             source: r#"class FalseByBool:
@@ -3161,6 +3926,2412 @@ except ValueError as error:
     ] {
         assert_cpython_output_parity(&case);
     }
+}
+
+#[test]
+fn cpython_float_fromhex_bpo44954_diff_subset() {
+    let oracle_probe = run_cpython("print(float.fromhex('0x.8p-1074').hex())")
+        .expect("failed to run CPython bpo-44954 capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython bpo-44954 probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "0x0.0p+0" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::HexFloatTestCase::test_from_hex bpo-44954 regression",
+        name: "float-fromhex-bpo-44954-regression",
+        source: r#"import math
+TINY = float.fromhex('0x0.0000000000001p-1022')
+
+def identical(x, y):
+    if x == y:
+        if x != 0.0:
+            return True
+        return math.copysign(1.0, x) == math.copysign(1.0, y)
+    return False
+
+cases = [
+    ('0x.8p-1074', 0.0), ('0x.80p-1074', 0.0), ('0x.81p-1074', TINY),
+    ('0x8p-1078', 0.0), ('0x8.0p-1078', 0.0), ('0x8.1p-1078', TINY),
+    ('0x80p-1082', 0.0), ('0x81p-1082', TINY), ('.8p-1074', 0.0),
+    ('8p-1078', 0.0), ('-.8p-1074', -0.0), ('+8p-1078', 0.0),
+]
+ok = True
+bad = []
+for index, (text, expected) in enumerate(cases):
+    value = float.fromhex(text)
+    if not identical(value, expected):
+        ok = False
+        bad.append((index, value.hex(), expected.hex()))
+print('bpo-44954', ok, len(cases), float.fromhex(cases[0][0]).hex(), float.fromhex(cases[-1][0]).hex(), len(bad))"#,
+    });
+}
+
+#[test]
+fn cpython_float_constructor_core_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_float, ::test_noargs, ::test_error_message, and ::test_float_with_comma public subset",
+        name: "float-constructor-core",
+        source: r#"def show(label, expr, allowed=None):
+    try:
+        value = expr()
+        print(label, repr(value), type(value).__name__)
+    except BaseException as error:
+        if allowed is None:
+            print(label, type(error).__name__, error.args[0])
+        else:
+            print(label, type(error).__name__, error.args[0] in allowed)
+
+for item in [
+    ('noargs', lambda: float()),
+    ('float-float', lambda: float(3.14)),
+    ('float-int', lambda: float(314)),
+    ('float-spaces', lambda: float('  3.14  ')),
+    ('arabic-digits', lambda: float('  ٣.١٤  ')),
+    ('unicode-space', lambda: float('\u20033.14\u2002')),
+    ('long-bytes', lambda: float(b'.' + b'1' * 1000)),
+    ('long-str', lambda: float('.' + '1' * 1000)),
+    ('comma', lambda: float('  3,14  ')),
+    ('plus-comma', lambda: float('  +3,14  ')),
+    ('minus-comma', lambda: float('  -3,14  ')),
+    ('bad-hex-a', lambda: float('  0x3.1  ')),
+    ('bad-hex-b', lambda: float('  -0x3.p-1  ')),
+    ('bad-hex-c', lambda: float('  +0x3.p-1  ')),
+    ('bad-sign-pp', lambda: float('++3.14')),
+    ('bad-sign-pm', lambda: float('+-3.14')),
+    ('bad-sign-mp', lambda: float('-+3.14')),
+    ('bad-sign-mm', lambda: float('--3.14')),
+    ('bad-dotnan', lambda: float('.nan')),
+    ('bad-dotinf', lambda: float('+.inf')),
+    ('bad-dot', lambda: float('.')),
+    ('bad-negdot', lambda: float('-.')),
+    ('bad-dict', lambda: float({}), [
+        "float() argument must be a string or a real number, not 'dict'",
+        "float() argument must be a string or a number, not 'dict'",
+    ]),
+    ('bad-d-exp', lambda: float('-1.7d29')),
+    ('bad-D-exp', lambda: float('3D-14')),
+    ('bad-japanese', lambda: float('こんにちは')),
+    ('bad-half', lambda: float('½')),
+    ('bad-mixed-half', lambda: float('123½')),
+    ('bad-embedded-space', lambda: float('  123 456  ')),
+    ('bad-bytes-space', lambda: float(b'  123 456  ')),
+    ('bad-empty', lambda: float('')),
+    ('bad-space', lambda: float(' '), [
+        "could not convert string to float: ' '",
+        "could not convert string to float: ''",
+    ]),
+    ('bad-whitespace', lambda: float('\t \n'), [
+        "could not convert string to float: '\\t \\n'",
+        "could not convert string to float: ''",
+    ]),
+    ('bad-arabic-suffix', lambda: float('٣١٤!')),
+    ('bad-nul-a', lambda: float('123\0')),
+    ('bad-nul-b', lambda: float('123\0 245')),
+    ('bad-nul-c', lambda: float('123\x00245')),
+    ('bad-bytes-nul', lambda: float(b'123\0')),
+    ('bad-bytes-nonutf8', lambda: float(b'123\xa0')),
+]:
+    show(*item)"#,
+    });
+}
+
+#[test]
+fn cpython_float_conversion_protocol_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_floatconversion",
+        name: "float-conversion-protocol",
+        source: r#"class FloatSubclass(float):
+    pass
+class OtherFloatSubclass(float):
+    pass
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class Foo2(float):
+    def __float__(self):
+        return 42.0
+class Foo3(float):
+    def __new__(cls, value=0.0):
+        return float.__new__(cls, 2 * value)
+    def __float__(self):
+        return self
+class Foo4(float):
+    def __float__(self):
+        return 42
+class FooStr(str):
+    def __float__(self):
+        return float(str(self)) + 1
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value, type(value).__name__, type(value) is float, type(value) is FloatSubclass)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+show('floatlike', lambda: float(FloatLike(42.0)))
+show('foo2', lambda: float(Foo2()))
+show('foo3', lambda: float(Foo3(21)))
+show('foostr', lambda: float(FooStr('8')))
+show('subclass-return', lambda: float(FloatLike(OtherFloatSubclass(42.0))))
+show('subclass-ctor', lambda: FloatSubclass(FloatLike(OtherFloatSubclass(42.0))))
+show('bad', lambda: float(Foo4(42)))"#,
+    });
+}
+
+#[test]
+fn cpython_float_bytes_like_input_types_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_non_numeric_input_types and ::test_float_memoryview",
+        name: "float-bytes-like-input-types",
+        source: r#"import array
+class CustomStr(str):
+    pass
+class CustomBytes(bytes):
+    pass
+class CustomByteArray(bytearray):
+    pass
+
+for label, source in [
+    ('bytes', bytes(b' 3.14  ')),
+    ('bytearray', bytearray(b' 3.14  ')),
+    ('CustomStr', CustomStr(' 3.14  ')),
+    ('CustomBytes', CustomBytes(b' 3.14  ')),
+    ('CustomByteArray', CustomByteArray(b' 3.14  ')),
+    ('memoryview', memoryview(b' 3.14  ')),
+    ('arrayB', array.array('B', b' 3.14  ')),
+]:
+    value = float(source)
+    print(label, value, type(value) is float)
+
+for label, source in [
+    ('memoryview-core', memoryview(b'12.3')[1:4]),
+    ('memoryview-nul', memoryview(b'12.3\0')[1:4]),
+    ('memoryview-space', memoryview(b'12.3 ')[1:4]),
+    ('memoryview-letter', memoryview(b'12.3A')[1:4]),
+    ('memoryview-extra', memoryview(b'12.34')[1:4]),
+]:
+    print(label, float(source))
+
+bad_cases = [
+    ('bytes', bytes(b'AAAA'), "could not convert string to float: b'AAAA'"),
+    ('bytearray', bytearray(b'AAAA'), "could not convert string to float: bytearray(b'AAAA')"),
+    ('CustomStr', CustomStr('AAAA'), "could not convert string to float: 'AAAA'"),
+    ('CustomBytes', CustomBytes(b'AAAA'), "could not convert string to float: b'AAAA'"),
+    ('CustomByteArray', CustomByteArray(b'AAAA'), "could not convert string to float: CustomByteArray(b'AAAA')"),
+    ('arrayB', array.array('B', b'AAAA'), "could not convert string to float: array('B', [65, 65, 65, 65])"),
+]
+for label, source, expected in bad_cases:
+    try:
+        float(source)
+    except ValueError as error:
+        print(label, error.__class__.__name__, error.args[0] == expected)
+
+try:
+    float(memoryview(b'AAAA'))
+except ValueError as error:
+    print('memoryview-bad', error.__class__.__name__, error.args[0].startswith('could not convert string to float: <memory at 0x'))
+try:
+    float({})
+except TypeError as error:
+    print('dict-bad', error.__class__.__name__, error.args[0] in [
+        "float() argument must be a string or a number, not 'dict'",
+        "float() argument must be a string or a real number, not 'dict'",
+    ])"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_array_b_buffer_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",
+        name: "memoryview-array-b-buffer",
+        source: r#"import array
+arr = array.array('B', [97, 98, 99])
+m = memoryview(arr)
+print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.readonly, m.tolist(), m.tobytes(), m.obj is arr)
+m[0] = ord('z')
+print(arr, repr(arr), bytes(arr), m.tolist())
+m[1:3] = b'XY'
+print(arr, bytes(arr), m.tobytes())
+sub = m[::2]
+print(sub.tolist(), sub.strides, sub.obj is arr)
+readonly = m.toreadonly()
+print(readonly.readonly, readonly.obj is arr, readonly.tolist())"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_array_signed_byte_buffer_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py array-backed public signed-byte buffer behavior",
+        name: "memoryview-array-signed-byte-buffer",
+        source: r#"import array
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+for source in [b'\xff\x00\x7f', bytearray(b'\xff\x00\x7f'), [-1, 0, 127], memoryview(array.array('b', [-1, 2])), memoryview(b'\xff')]:
+    show('init-' + type(source).__name__, lambda source=source: (repr(array.array('b', source)), bytes(array.array('b', source)), list(array.array('b', source))))
+arr = array.array('b', [-1, 0, 127])
+m = memoryview(arr)
+print('view', m.format, m.itemsize, m.ndim, m.shape, m.strides, m.readonly, m.tolist(), m.tobytes(), m.obj is arr, m[0])
+m[0] = -2
+print('set', repr(arr), m.tolist(), m.tobytes())
+show('set-high', lambda: m.__setitem__(1, 128))
+show('set-type', lambda: m.__setitem__(1, b'X'))
+m[1:3] = memoryview(array.array('b', [3, -4]))
+print('slice-ok', repr(arr), m.tolist(), m.tobytes())
+for label, rhs in [('bytes', b'\x01\x02'), ('B-view', memoryview(array.array('B', [1, 2]))), ('list', [1, 2])]:
+    show('slice-' + label, lambda rhs=rhs: m.__setitem__(slice(0, 2), rhs))"#,
+    });
+}
+
+#[test]
+fn cpython_array_module_and_constructor_public_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py::MiscTest public constructor/module behavior",
+        name: "array-module-and-constructor-public-surface",
+        source: r#"import array
+class S(str):
+    pass
+def show(label, expr):
+    try:
+        print(label, repr(expr()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+def show_class(label, expr):
+    try:
+        print(label, repr(expr()))
+    except BaseException as error:
+        print(label, error.__class__.__name__)
+legacy = 'bBuhHiIlLqQfd'
+print('module', isinstance(array.typecodes, str), all(tc in array.typecodes for tc in legacy))
+print('constructors', array.array('B').typecode, array.array(S('b')).typecode)
+print('roundtrip-legacy', ''.join(array.array(tc).typecode for tc in legacy))
+show_class('bad-x', lambda: array.array('x'))
+show_class('bad-empty', lambda: array.array(''))
+show_class('bad-bytes', lambda: array.array(b'B'))
+show_class('bad-int', lambda: array.array(65))
+show_class('bad-none', lambda: array.array(None))
+show('bad-arity0', lambda: array.array())
+show('bad-arity3', lambda: array.array('B', [], 3))
+show('bad-keyword', lambda: array.array(spam=42))
+a = array.array('B')
+a[:] = a
+print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
+    });
+}
+
+#[test]
+fn cpython_array_subclass_public_construction_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public array subclass construction and __new__ behavior",
+        name: "array-subclass-public-construction",
+        source: r#"import array, copy
+class A(array.array):
+    pass
+class AInit(array.array):
+    def __init__(self, typecode, source=()):
+        self.seen = (typecode, list(source) if not isinstance(source, str) else source)
+class ANew(array.array):
+    def __new__(cls, typecode, source=()):
+        self = array.array.__new__(cls, typecode, source)
+        self.flag = 'new'
+        return self
+def show(label, expr):
+    try:
+        print(label, repr(expr()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for T in [A, AInit, ANew]:
+    a = T('B', [1, 2])
+    print('sub', T.__name__, type(a).__name__, isinstance(a, array.array), issubclass(T, array.array), a.typecode, a.itemsize, a.tolist(), a.tobytes(), repr(a), getattr(a, 'seen', None), getattr(a, 'flag', None))
+    print('methods', a.append(3), a.tolist(), a.pop(), a.tolist(), list(reversed(a)))
+    a.x = 10
+    copied = copy.copy(a)
+    print('copy', type(copied).__name__, isinstance(copied, array.array), copied.tolist(), getattr(copied, 'x', None), copied is a)
+show('new-exact', lambda: (lambda a: (type(a).__name__, a.typecode, a.tolist()))(array.array.__new__(array.array, 'B', [4])))
+show('new-sub', lambda: (lambda a: (type(a).__name__, a.typecode, a.tolist()))(array.array.__new__(A, 'B', [5])))
+show('new-bad-class', lambda: array.array.__new__(list, 'B'))
+print('visible', hasattr(array.array, '__new__'), hasattr(A, '__new__'))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_sequence_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array sequence and bytes surface",
+        name: "array-one-byte-public-sequence",
+        source: r#"import array
+for tc, vals in [('B', [1, 255]), ('b', [-1, 0, 127])]:
+    a = array.array(tc, vals)
+    print(tc, a.typecode, a.itemsize, len(a), bool(a), a.tolist(), a.tobytes(), a[0], a[-1], a[1:], list(reversed(a)))
+    print(a.__len__(), a.__getitem__(slice(0, 2)), list(a.__iter__()), a.__contains__(vals[0]), a.__contains__(999))
+print(bool(array.array('B')))"#,
+    });
+}
+
+#[test]
+fn cpython_array_short_public_sequence_and_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public signed and unsigned short array sequence and mutation surface",
+        name: "array-short-public-sequence-and-mutation",
+        source: r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('h', [1, -2, 32767], [-32769, 32768]), ('H', [0, 7, 65535], [-1, 65536])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'x'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('B', array.array('b', [-1])), ('b', array.array('B', [255])), ('h', memoryview(b'\xff')), ('h', b'\x01\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+    });
+}
+
+#[test]
+fn cpython_array_int_public_sequence_and_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public signed and unsigned int array sequence and mutation surface",
+        name: "array-int-public-sequence-and-mutation",
+        source: r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('i', [1, -2, 2147483647], [-2147483649, 2147483648]), ('I', [0, 7, 4294967295], [-1, 4294967296])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'xyz'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('h', array.array('i', [-32769])), ('H', array.array('I', [65536])), ('i', memoryview(b'\xff')), ('i', b'\x01\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+    });
+}
+
+#[test]
+fn cpython_array_long_long_public_sequence_and_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public signed and unsigned long long array sequence and mutation surface",
+        name: "array-long-long-public-sequence-and-mutation",
+        source: r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class BigI:
+    def __index__(self):
+        return 2**63
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('q', [1, -2, 9223372036854775807], [-9223372036854775809, 9223372036854775808]), ('Q', [0, 7, 18446744073709551615], [-1, 18446744073709551616])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('from-big-index', lambda tc=tc: array.array(tc, [BigI()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abcdefg'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00\x00\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('i', array.array('q', [-2147483649])), ('I', array.array('Q', [4294967296])), ('q', memoryview(b'\xff')), ('q', b'\x01\x00\x00\x00\x00\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+    });
+}
+
+#[test]
+fn cpython_array_native_long_public_sequence_and_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public native signed and unsigned long array sequence and mutation surface",
+        name: "array-native-long-public-sequence-and-mutation",
+        source: r#"import array, io
+class I:
+    def __index__(self):
+        return 7
+class BigI:
+    def __index__(self):
+        return 2**63
+class Bad:
+    def __index__(self):
+        return 'x'
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals, bads in [('l', [1, -2, 9223372036854775807], [-9223372036854775809, 9223372036854775808]), ('L', [0, 7, 18446744073709551615], [-1, 18446744073709551616])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('from-big-index', lambda tc=tc: array.array(tc, [BigI()]).tolist())
+    for value in bads:
+        show('ctor-bad-' + str(value), lambda tc=tc, value=value: array.array(tc, [value]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [Bad()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, I()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(I()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([I()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abcdefg'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    show('fromfile-short-count', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01\x00\x00\x00\x00\x00\x00\x00'), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('i', array.array('l', [-2147483649])), ('I', array.array('L', [4294967296])), ('l', memoryview(b'\xff')), ('l', b'\x01\x00\x00\x00\x00\x00\x00\x00')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+    });
+}
+
+#[test]
+fn cpython_array_float_public_sequence_and_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public float and double array sequence and mutation surface",
+        name: "array-float-public-sequence-and-mutation",
+        source: r#"import array, io
+class F:
+    def __float__(self):
+        return 7.25
+class I:
+    def __index__(self):
+        return 7
+class BadFloat:
+    def __float__(self):
+        return 'x'
+class BadIndex:
+    def __index__(self):
+        return 'x'
+class FloatRaises:
+    def __float__(self):
+        raise RuntimeError('float boom')
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('f', [1.5, -2.25, 3.5]), ('d', [1.5, -2.25, 3.5])]:
+    print('tc', tc)
+    show('basic', lambda tc=tc, vals=vals: (array.array(tc).itemsize, array.array(tc, vals).itemsize, len(array.array(tc, vals)), array.array(tc, vals).tolist(), array.array(tc, vals).tobytes(), repr(array.array(tc, vals))))
+    show('from-float', lambda tc=tc: array.array(tc, [F()]).tolist())
+    show('from-index', lambda tc=tc: array.array(tc, [I()]).tolist())
+    show('ctor-bad-float-result', lambda tc=tc: array.array(tc, [BadFloat()]))
+    show('ctor-bad-index-result', lambda tc=tc: array.array(tc, [BadIndex()]))
+    show('ctor-float-raises', lambda tc=tc: array.array(tc, [FloatRaises()]))
+    a = array.array(tc, vals)
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc, vals=vals: (lambda a: (a.__setitem__(1, F()), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('append-insert', lambda tc=tc, vals=vals: (lambda a: (a.append(F()), a.insert(-99, vals[-1]), a.tolist(), a.tobytes()))(array.array(tc, vals)))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist([F()]), a.tolist(), a.tobytes()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc, vals=vals: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tobytes()))(array.array(tc)))(array.array(tc, vals)))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abc'))(array.array(tc)))
+    show('byteswap', lambda tc=tc, vals=vals: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, vals)))
+    show('pop-count-index', lambda a=a, vals=vals: (a.count(vals[0]), a.index(vals[-1]), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc, vals=vals: ((array.array(tc, vals) + array.array(tc, vals[:1])).tolist(), (array.array(tc, vals) * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    payload = b'\x00' * array.array(tc).itemsize
+    show('fromfile-short-count', lambda tc=tc, payload=payload: (lambda a: (a.fromfile(io.BytesIO(payload), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+for dst, src in [('f', array.array('d', [1.5])), ('d', array.array('f', [1.5])), ('f', memoryview(b'\x00')), ('f', b'\x00\x00\xc0?'), ('d', b'\x00\x00\x00\x00\x00\x00\xf8?')]:
+    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"#,
+    });
+}
+
+#[test]
+fn cpython_array_unicode_public_sequence_and_mutation_diff_subset() {
+    let probe = run_cpython(
+        "import array\ntry:\n    array.array('w')\n    print('yes')\nexcept ValueError:\n    print('no')",
+    )
+    .expect("failed to probe CPython array('w') support");
+    let supports_w = String::from_utf8(probe.stdout)
+        .expect("CPython probe emitted non-UTF-8 output")
+        .contains("yes");
+    let typecodes = if supports_w { "['u', 'w']" } else { "['u']" };
+    let cross_typecode_source = if supports_w {
+        "for dst, src in [('u', array.array('w', 'A')), ('w', array.array('u', 'A'))]:\n    show('ctor-source-' + dst + '-' + type(src).__name__, lambda dst=dst, src=src: (array.array(dst, src).tolist(), array.array(dst, src).tobytes()))"
+    } else {
+        ""
+    };
+    let source = format!(
+        r#"import array, io
+def show(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__, str(error))
+def show_class(label, func):
+    try:
+        print(label, repr(func()))
+    except BaseException as error:
+        print(label, error.__class__.__name__)
+for tc in {typecodes}:
+    print('tc', tc)
+    show('empty', lambda tc=tc: (array.array(tc).typecode, array.array(tc).itemsize, len(array.array(tc)), array.array(tc).tolist(), array.array(tc).tobytes(), repr(array.array(tc)), array.array(tc).tounicode()))
+    for text in ['Az', 'éΩ', '😀']:
+        show('basic-' + text, lambda tc=tc, text=text: (array.array(tc, text).itemsize, len(array.array(tc, text)), array.array(tc, text).tolist(), array.array(tc, text).tobytes(), repr(array.array(tc, text)), array.array(tc, text).tounicode()))
+    show('fromunicode', lambda tc=tc: (lambda a: (a.fromunicode('A😀'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc)))
+    show('frombytes-exact', lambda tc=tc: (lambda src: (lambda a: (a.frombytes(src.tobytes()), a.tolist(), a.tounicode(), a.tobytes()))(array.array(tc)))(array.array(tc, 'Az')))
+    show('frombytes-short', lambda tc=tc: (lambda a: a.frombytes(b'abc'))(array.array(tc)))
+    a = array.array(tc, 'Az')
+    show('sequence', lambda a=a: (a[0], a[-1], a[1:].tolist(), a[::-1].tolist(), list(a), list(reversed(a)), bytes(a)))
+    show('setitem', lambda tc=tc: (lambda a: (a.__setitem__(1, 'Ω'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc, 'Az')))
+    show('append-insert', lambda tc=tc: (lambda a: (a.append('😀'), a.insert(-99, 'Ω'), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc, 'Az')))
+    show('fromlist', lambda tc=tc: (lambda a: (a.fromlist(['A', 'Ω']), a.tolist(), a.tobytes(), a.tounicode()))(array.array(tc)))
+    show('byteswap', lambda tc=tc: (lambda a: (a.byteswap(), a.tobytes(), a.tolist()))(array.array(tc, 'Az')))
+    show('pop-count-index', lambda a=a: (a.count('A'), a.index('z'), a.pop(), a.tolist(), a.tobytes()))
+    show('repeat-add', lambda tc=tc: ((array.array(tc, 'Az') + array.array(tc, 'A')).tolist(), (array.array(tc, 'Az') * 2).tolist()))
+    show('fromfile-short-item', lambda tc=tc: (lambda a: (a.fromfile(io.BytesIO(b'\x01'), 1), a.tolist()))(array.array(tc)))
+    payload = b'\x00' * array.array(tc).itemsize
+    show('fromfile-short-count', lambda tc=tc, payload=payload: (lambda a: (a.fromfile(io.BytesIO(payload), 2), a.tolist(), a.tobytes()))(array.array(tc)))
+    for value in ['AB', b'A', 65, None, '']:
+        show_class('append-bad-' + type(value).__name__ + '-' + repr(value), lambda tc=tc, value=value: array.array(tc).append(value))
+    show('fromunicode-type', lambda tc=tc: array.array(tc).fromunicode(b'A'))
+    show('constructor-list', lambda tc=tc: array.array(tc, ['A', 'Ω']).tolist())
+    show('constructor-bytes', lambda tc=tc: array.array(tc, array.array(tc, 'A').tobytes()).tolist())
+{cross_typecode_source}"#
+    );
+    assert_cpython_output_parity_source(
+        "Lib/test/test_array.py public unicode array sequence and mutation surface",
+        "array-unicode-public-sequence-and-mutation",
+        &source,
+    );
+}
+
+#[test]
+fn cpython_array_one_byte_public_mutation_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array mutable sequence methods",
+        name: "array-one-byte-public-mutation-methods",
+        source: r#"import array
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'copy' in dir(a), 'insert' in dir(a))
+    print('append-insert', tc, a.append(vals[-1]), a.insert(1, vals[0]), repr(a), a.tolist(), bytes(a))
+    print('extend', tc, a.extend(vals), repr(a), a.tolist(), bytes(a))
+    print('pop-reverse', tc, a.pop(), a.reverse(), repr(a), a.tolist())
+    print('count-index-contains', tc, a.count(vals[0]), a.index(vals[0]), vals[0] in a, float(vals[0]) in a)
+    show('index-missing-' + tc, lambda a=a: a.index(999))
+    print('remove', tc, a.remove(vals[0]), repr(a), a.tolist())
+    print('fromlist-frombytes', tc, a.fromlist(vals), a.frombytes(b'\xff\x02'), repr(a), a.tolist(), bytes(a))
+for tc, bad in [('B', -1), ('B', 256), ('b', -129), ('b', 128)]:
+    a = array.array(tc, [0])
+    show('append-bad-' + tc + '-' + str(bad), lambda a=a, bad=bad: a.append(bad))
+    print('state', repr(a))
+for tc in ['B', 'b']:
+    a = array.array(tc)
+    show('pop-empty-' + tc, lambda a=a: a.pop())
+    a = array.array(tc, [0])
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    show('extend-other-' + tc, lambda a=a, other=other: a.extend(other))
+    print('state', repr(a))
+    show('fromlist-type-' + tc, lambda a=a: a.fromlist((1, 2)))
+    show('frombytes-type-' + tc, lambda a=a: a.frombytes([1]))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_subscript_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array subscript mutation",
+        name: "array-one-byte-public-subscript-mutation",
+        source: r#"import array
+class I:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+def show_class(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [1, 2, 3, 4]), ('b', [-1, 2, 3, 4])]:
+    a = array.array(tc, vals)
+    a[0] = vals[1]
+    a[-1] = vals[0]
+    a[I(1)] = vals[1]
+    print('scalar', tc, repr(a), a.tolist(), bytes(a))
+    show('scalar-bounds-' + tc, lambda a=a: a.__setitem__(99, vals[0]))
+    show_class('scalar-type-' + tc, lambda a=a: a.__setitem__(0, 'x'))
+    b = array.array(tc, vals)
+    print('dunder-set', tc, b.__setitem__(0, vals[1]), repr(b))
+    b[1:3] = array.array(tc, vals[:1])
+    print('slice-shrink', tc, repr(b), b.tolist(), bytes(b))
+    b[1:2] = array.array(tc, vals[1:4])
+    print('slice-grow', tc, repr(b), b.tolist(), bytes(b))
+    show('slice-list-' + tc, lambda b=b: b.__setitem__(slice(0, 1), [vals[0]]))
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    show('slice-other-' + tc, lambda b=b, other=other: b.__setitem__(slice(0, 1), other))
+    c = array.array(tc, vals)
+    c[::2] = array.array(tc, vals[:2])
+    print('ext-slice', tc, repr(c), c.tolist(), bytes(c))
+    show('ext-len-' + tc, lambda c=c: c.__setitem__(slice(None, None, 2), array.array(tc, vals[:1])))
+    d = array.array(tc, vals)
+    print('dunder-del', tc, d.__delitem__(1), repr(d), d.tolist(), bytes(d))
+    del d[::2]
+    print('del-ext', tc, repr(d), d.tolist(), bytes(d))
+    e = array.array(tc, vals)
+    del e[1:3]
+    print('del-contig', tc, repr(e), e.tolist(), bytes(e))
+    show('del-bounds-' + tc, lambda e=e: e.__delitem__(99))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_copy_byteswap_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array copy, byteswap, and comparisons",
+        name: "array-one-byte-public-copy-byteswap-compare",
+        source: r#"import array, copy
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [1, 2, 3]), ('b', [-1, 2, 3])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'copy' in dir(a), '__copy__' in dir(a), '__deepcopy__' in dir(a), 'byteswap' in dir(a))
+    shallow = copy.copy(a)
+    deep = copy.deepcopy(a)
+    direct = a.__copy__()
+    direct_deep = a.__deepcopy__({})
+    print('copies', tc, repr(shallow), repr(deep), repr(direct), repr(direct_deep), shallow is a, deep is a, direct is a, direct_deep is a)
+    shallow[0] = vals[-1]
+    deep[1] = vals[0]
+    direct[-1] = vals[0]
+    direct_deep[0] = vals[-1]
+    print('copy-independent', tc, repr(a), repr(shallow), repr(deep), repr(direct), repr(direct_deep))
+    print('byteswap', tc, a.byteswap(), repr(a), bytes(a))
+    show('deepcopy-arity0-' + tc, lambda a=a: a.__deepcopy__())
+    show('deepcopy-arity2-' + tc, lambda a=a: a.__deepcopy__({}, {}))
+base = array.array('B', [1, 2])
+for label, other in [
+    ('sameB', array.array('B', [1, 2])),
+    ('greaterB', array.array('B', [1, 3])),
+    ('shortB', array.array('B', [1])),
+    ('sameb', array.array('b', [1, 2])),
+    ('signed-low', array.array('b', [-1, 2])),
+    ('list', [1, 2]),
+    ('bytes', b'\x01\x02'),
+]:
+    print('eq', label, base == other, base != other, base.__eq__(other), base.__ne__(other))
+    print('dunder-order', label, base.__lt__(other), base.__le__(other), base.__gt__(other), base.__ge__(other))
+    show('op-lt-' + label, lambda other=other: base < other)
+    show('op-le-' + label, lambda other=other: base <= other)
+    show('op-gt-' + label, lambda other=other: base > other)
+    show('op-ge-' + label, lambda other=other: base >= other)"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_concat_repeat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array concatenation and repeat",
+        name: "array-one-byte-public-concat-repeat",
+        source: r#"import array
+class I:
+    def __index__(self):
+        return 3
+class BadIndex:
+    def __index__(self):
+        return 'x'
+def show(label, expr):
+    try:
+        value = expr()
+        if hasattr(value, 'tolist'):
+            print(label, repr(value), value.tolist(), value.tobytes())
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+def inplace_add(tc, vals):
+    a = array.array(tc, vals)
+    alias = a
+    a += array.array(tc, vals[::-1])
+    print('iadd-op', tc, repr(a), a.tolist(), a is alias)
+def inplace_mul(tc, vals, count):
+    a = array.array(tc, vals)
+    alias = a
+    a *= count
+    print('imul-op', tc, count.__class__.__name__, repr(a), a.tolist(), a is alias)
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    same = array.array(tc, vals[::-1])
+    other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
+    print('methods', tc, '__add__' in dir(a), '__iadd__' in dir(a), '__mul__' in dir(a), '__rmul__' in dir(a), '__imul__' in dir(a))
+    show('add-' + tc, lambda a=a, same=same: a + same)
+    show('dunder-add-' + tc, lambda a=a, same=same: a.__add__(same))
+    show('add-other-' + tc, lambda a=a, other=other: a + other)
+    show('add-list-' + tc, lambda a=a: a + [1])
+    show('dunder-iadd-list-' + tc, lambda a=a: a.__iadd__([1]))
+    show('mul2-' + tc, lambda a=a: a * 2)
+    show('rmul2-' + tc, lambda a=a: 2 * a)
+    show('mul-index-' + tc, lambda a=a: a * I())
+    show('mul0-' + tc, lambda a=a: a * 0)
+    show('mulneg-' + tc, lambda a=a: a * -1)
+    show('mul-bad-' + tc, lambda a=a: a * 'x')
+    show('dunder-mul-bad-' + tc, lambda a=a: a.__mul__('x'))
+    show('mul-bad-index-' + tc, lambda a=a: a * BadIndex())
+    d = array.array(tc, vals)
+    direct = d.__iadd__(same)
+    print('iadd-dunder', tc, repr(d), d.tolist(), direct is d)
+    inplace_add(tc, vals)
+    for count in [3, 0, -1, False, True, I()]:
+        inplace_mul(tc, vals, count)
+    d = array.array(tc, vals)
+    direct = d.__imul__(2)
+    print('imul-dunder', tc, repr(d), d.tolist(), direct is d)
+    show('imul-bad-' + tc, lambda tc=tc, vals=vals: array.array(tc, vals).__imul__('x'))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_buffer_info_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array buffer_info method",
+        name: "array-one-byte-public-buffer-info",
+        source: r#"import array
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [1, 2, 3]), ('b', [-1, 0, 127])]:
+    a = array.array(tc, vals)
+    info = a.buffer_info()
+    print('info', tc, 'buffer_info' in dir(a), type(info).__name__, len(info), type(info[0]).__name__, info[0] == 0, info[1], len(a), a.itemsize)
+    a.append(vals[0])
+    info2 = a.buffer_info()
+    print('after', tc, info2[1], len(a), type(info2[0]).__name__, info2[0] == 0)
+    print('dunder', tc, getattr(a, 'buffer_info')().__class__.__name__)
+    show('arity-' + tc, lambda a=a: a.buffer_info(1))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_unicode_method_rejection_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array unicode helper method rejection",
+        name: "array-one-byte-public-unicode-method-rejection",
+        source: r#"import array
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+def show_class(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__)
+for tc, vals in [('B', [65, 66]), ('b', [65, -1])]:
+    a = array.array(tc, vals)
+    print('methods', tc, 'fromunicode' in dir(a), 'tounicode' in dir(a))
+    show_class('tounicode-' + tc, lambda a=a: a.tounicode())
+    show_class('fromunicode-' + tc, lambda a=a: a.fromunicode('AZ'))
+    print('state', tc, repr(a), a.tolist(), bytes(a))
+    show('fromunicode-arity0-' + tc, lambda a=a: a.fromunicode())
+    show('fromunicode-arity2-' + tc, lambda a=a: a.fromunicode('A', 'B'))
+    show('fromunicode-type-' + tc, lambda a=a: a.fromunicode(b'A'))
+    show('tounicode-arity-' + tc, lambda a=a: a.tounicode(1))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_file_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public one-byte array tofile/fromfile methods and io.BytesIO",
+        name: "array-one-byte-public-file-methods",
+        source: r#"import array, io
+def show_class(label, expr):
+    try:
+        value = expr()
+        print(label, value)
+    except Exception as error:
+        print(label, error.__class__.__name__)
+
+bio = io.BytesIO(b'abc')
+print('bytesio-methods', hasattr(bio, 'read'), hasattr(bio, 'write'), hasattr(bio, 'getvalue'))
+print('bytesio-read', bio.read(1), bio.read(None), bio.read())
+bio = io.BytesIO(b'abc')
+print('bytesio-write', bio.write(b'XY'), bio.getvalue(), bio.read(), bio.write(bytearray(b'Z')), bio.getvalue())
+show_class('bytesio-write-type', lambda: io.BytesIO().write('x'))
+show_class('bytesio-read-arity', lambda: io.BytesIO().read(1, 2))
+show_class('bytesio-getvalue-arity', lambda: io.BytesIO().getvalue(1))
+
+class TextRead:
+    def read(self, n):
+        return 'abc'
+class ByteArrayRead:
+    def read(self, n):
+        return bytearray(b'ab')
+
+for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
+    a = array.array(tc, vals)
+    target = io.BytesIO()
+    print('methods', tc, 'tofile' in dir(a), 'fromfile' in dir(a))
+    print('tofile', tc, a.tofile(target), target.getvalue(), a.tolist())
+    print('append-write', tc, target.write(b'!'), target.getvalue())
+    src = io.BytesIO(target.getvalue() + b'Z')
+    c = array.array(tc)
+    print('fromfile1', tc, c.fromfile(src, 2), c.tolist(), c.tobytes())
+    show_class('fromfile-short-' + tc, lambda c=c, src=src: c.fromfile(src, 10))
+    print('after-short', tc, c.tolist(), c.tobytes())
+    z = array.array(tc, [vals[0]])
+    zero = io.BytesIO(b'Q')
+    print('fromfile-zero', tc, z.fromfile(zero, 0), z.tolist(), zero.read())
+    show_class('tofile-arity0-' + tc, lambda a=a: a.tofile())
+    show_class('tofile-arity2-' + tc, lambda a=a: a.tofile(io.BytesIO(), 1))
+    show_class('fromfile-arity0-' + tc, lambda tc=tc: array.array(tc).fromfile())
+    show_class('fromfile-arity1-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO()))
+    show_class('fromfile-arity3-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 1, 2))
+    show_class('fromfile-neg-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), -1))
+    show_class('fromfile-nonint-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 'x'))
+    show_class('fromfile-textread-' + tc, lambda tc=tc: array.array(tc).fromfile(TextRead(), 2))
+    show_class('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))"#,
+    });
+}
+
+#[test]
+fn cpython_array_one_byte_public_clear_diff_subset() {
+    let oracle_probe = run_cpython("import array\nprint(hasattr(array.array('B'), 'clear'))")
+        .expect("failed to run CPython array.clear capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython array.clear probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public array.clear method",
+        name: "array-one-byte-public-clear",
+        source: r#"import array
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    print(tc, 'clear' in dir(a), a.clear(), repr(a), bool(a), len(a))"#,
+    });
+}
+
+#[test]
+fn cpython_float_hash_and_sys_info_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_hash and ::test_hash_nan",
+        name: "float-hash-and-sys-info",
+        source: r#"import sys
+ok = True
+for x in range(-30, 30):
+    ok = ok and hash(float(x)) == hash(x)
+print('small-int-float', ok)
+print('minus-one', hash(-1), hash(-1.0))
+print('max', hash(float(sys.float_info.max)) == hash(int(sys.float_info.max)))
+print('inf', hash(float('inf')) == sys.hash_info.inf, hash(float('-inf')) == -sys.hash_info.inf)
+value = float('nan')
+print('nan', isinstance(hash(value), int), hash(value) != 42)
+class H:
+    def __hash__(self):
+        return 42
+class F(float, H):
+    pass
+value = F('nan')
+print('subnan', isinstance(hash(value), int), hash(value) == 42)
+print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds)
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)"#,
+    });
+}
+
+#[test]
+fn cpython_float_int_comparison_boundaries_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_issue_gh143006 and public float/int exact-comparison boundaries",
+        name: "float-int-comparison-boundaries",
+        source: r#"class EvilInt(int):
+    def __neg__(self):
+        return ''
+
+i = -1 << 50
+f = float(i) - 0.5
+i = EvilInt(i)
+print('evil', f == i, f != i, f < i, f <= i, f > i, f >= i)
+
+huge = 2 ** 200
+hf = float(huge)
+print('huge-eq', hf == huge, hf == huge + 1, hf == huge - 1, hf != huge + 1)
+print('huge-order', hf < huge + 1, hf > huge - 1, hf <= huge, hf >= huge)
+
+small = 2 ** 60
+sf = float(small)
+print('i64-order', sf == small, sf == small + 1, sf < small + 1, sf > small - 1)
+
+class I(int):
+    pass
+j = I(small + 1)
+print('subclass', sf == j, sf < j, sf <= j, sf > j, sf >= j)
+
+nan = float('nan')
+print('nan-order', nan < 1, nan <= 1, nan > 1, nan >= 1, 1 < nan, 1 <= nan, 1 > nan, 1 >= nan)"#,
+    });
+}
+
+#[test]
+fn cpython_float_getformat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::FormatFunctionsTestCase::test_getformat",
+        name: "float-getformat",
+        source: r#"for name in ['double', 'float']:
+    value = float.__getformat__(name)
+    print(name, value in ['unknown', 'IEEE, big-endian', 'IEEE, little-endian'])
+try:
+    float.__getformat__('chicken')
+except ValueError as error:
+    print('bad-name', error.__class__.__name__, error.args[0])
+try:
+    float.__getformat__(1)
+except TypeError as error:
+    print('bad-type', error.__class__.__name__, error.args[0])
+print('dir', '__getformat__' in dir(float), callable(float.__getformat__))
+print('instance', (1.0).__getformat__('double') == float.__getformat__('double'))
+class F(float):
+    pass
+print('subclass', F.__getformat__('float') == float.__getformat__('float'), F(1.0).__getformat__('float') == float.__getformat__('float'))"#,
+    });
+}
+
+#[test]
+fn cpython_float_default_precision_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::FormatTestCase::test_format and ::test_issue5864",
+        name: "float-default-precision-format",
+        source: r#"checks = [
+    ('issue-a', 123.456, '.4'),
+    ('issue-b', 1234.56, '.4'),
+    ('issue-c', 12345.6, '.4'),
+    ('one-p0', 1.0, '.0'),
+    ('one-p1', 1.0, '.1'),
+    ('one-p2', 1.0, '.2'),
+    ('one-p4', 1.0, '.4'),
+    ('sign-plus', 123.456, '+.4'),
+    ('sign-space', 123.456, ' .4'),
+    ('alternate', 123.456, '#.4'),
+    ('nan-sign', float('nan'), '+.4'),
+    ('inf-zero', float('inf'), '010,.2'),
+]
+for label, value, spec in checks:
+    print(label, format(value, spec))
+x = 100 / 7.0
+print('empty-like', format(x, '') == format(x, '-') == format(x, '>') == format(x, '2') == str(x))"#,
+    });
+}
+
+#[test]
+fn cpython_float_fractional_grouping_format_diff_subset() {
+    let oracle_probe = run_cpython("print(format(1.23, '._f'))")
+        .expect("failed to run CPython fractional grouping capability probe");
+    if !oracle_probe.status.success() {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::FormatTestCase::test_format",
+        name: "float-fractional-grouping-format",
+        source: r#"x = 123_456.123_456
+checks = [
+    ('frac-under-fixed', '._f'),
+    ('frac-comma-fixed', '.,f'),
+    ('both-under-fixed', '_._f'),
+    ('both-comma-fixed', ',.,f'),
+    ('prec-under-fixed', '.10_f'),
+    ('prec-comma-fixed', '.10,f'),
+    ('right-width', '>21._f'),
+    ('left-width', '<21._f'),
+    ('signed-under-exp', '+.11_e'),
+    ('signed-comma-exp', '+.11,e'),
+    ('zero-under-fixed-21', '021_._f'),
+    ('zero-under-fixed-20', '020_._f'),
+    ('signed-zero-under-fixed', '+021_._f'),
+    ('space-width-under-fixed', '21_._f'),
+    ('right-zero-under-fixed', '>021_._f'),
+    ('left-zero-under-fixed', '<021_._f'),
+    ('zero-under-fixed-prec10-23', '023_.10_f'),
+    ('zero-under-fixed-prec10-22', '022_.10_f'),
+    ('signed-zero-under-fixed-prec10', '+023_.10_f'),
+    ('zero-under-fixed-prec9', '023_.9_f'),
+    ('zero-under-exp-21', '021_._e'),
+    ('zero-under-exp-20', '020_._e'),
+    ('signed-zero-under-exp', '+021_._e'),
+    ('zero-under-exp-prec10-23', '023_.10_e'),
+    ('zero-under-exp-prec10-22', '022_.10_e'),
+    ('zero-under-exp-prec9', '023_.9_e'),
+]
+for label, spec in checks:
+    print(label, format(x, spec))
+bad_specs = ['._6f', '.,_f', '.6,_f', '.6_,f', '.6_n', '.6,n']
+for spec in bad_specs:
+    try:
+        format(x, spec)
+    except ValueError as error:
+        print('bad', spec, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_float_zero_width_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::FormatTestCase::test_issue35560",
+        name: "float-zero-width-format",
+        source: r#"checks = [
+    ('pos-empty-zero-width', 123.0, '00'),
+    ('pos-fixed-zero-width', 123.34, '00f'),
+    ('pos-exp-zero-width', 123.34, '00e'),
+    ('pos-general-zero-width', 123.34, '00g'),
+    ('pos-fixed-precision', 123.34, '00.10f'),
+    ('pos-exp-precision', 123.34, '00.10e'),
+    ('pos-general-precision', 123.34, '00.10g'),
+    ('pos-width-one-fixed', 123.34, '01f'),
+    ('neg-empty-zero-width', -123.0, '00'),
+    ('neg-fixed-zero-width', -123.34, '00f'),
+    ('neg-exp-zero-width', -123.34, '00e'),
+    ('neg-general-zero-width', -123.34, '00g'),
+    ('neg-fixed-precision', -123.34, '00.10f'),
+    ('neg-exp-precision', -123.34, '00.10e'),
+    ('neg-general-precision', -123.34, '00.10g'),
+]
+for label, value, spec in checks:
+    print(label, format(value, spec))"#,
+    });
+}
+
+#[test]
+fn cpython_float_format_testfile_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::FormatTestCase::test_format_testfile",
+        name: "float-format-testfile",
+        source: r#"data = '''
+%.0f 0 -> 0
+%.1f 0 -> 0.0
+%.50f 0 -> 0.00000000000000000000000000000000000000000000000000
+%.0f 1.5 -> 2
+%.0f 2.5 -> 2
+%.0f 3.5 -> 4
+%.0f 1e49 -> 9999999999999999464902769475481793196872414789632
+%.0f 1e50 -> 100000000000000007629769841091887003294964970946560
+%.1f 0.06 -> 0.1
+%.1f 0.25 -> 0.2
+%.1f 0.75 -> 0.8
+%.2f 0.125 -> 0.12
+%.2f 0.375 -> 0.38
+%.2f 1234567.8912 -> 1234567.89
+%#.0f 0 -> 0.
+%#.1f 0 -> 0.0
+%#.0f 1.5 -> 2.
+%#.0f 2.5 -> 2.
+%#.0f 10.1 -> 10.
+%#.0f 1234.56 -> 1235.
+%#.1f 1.4 -> 1.4
+%#.2f 0.375 -> 0.38
+%f 0 -> 0.000000
+%f 1.23456789 -> 1.234568
+%f 0.0000005001 -> 0.000001
+%f 0.0000004999 -> 0.000000
+%.0e 0 -> 0e+00
+%.50e 0 -> 0.00000000000000000000000000000000000000000000000000e+00
+%.0e 0.01 -> 1e-02
+%.0e 1 -> 1e+00
+%.0e 123.456 -> 1e+02
+%.0e 0.5 -> 5e-01
+%.0e 1.4 -> 1e+00
+%.0e 6.5 -> 6e+00
+%.1e 0.0001 -> 1.0e-04
+%#.0e 0.01 -> 1.e-02
+%#.0e 0.1 -> 1.e-01
+%#.0e 1 -> 1.e+00
+%#.0e 10 -> 1.e+01
+%#.0e 100 -> 1.e+02
+%#.0e 0.012 -> 1.e-02
+%#.0e 0.12 -> 1.e-01
+%#.0e 1.2 -> 1.e+00
+%#.0e 12 -> 1.e+01
+%#.0e 120 -> 1.e+02
+%#.0e 123.456 -> 1.e+02
+%#.0e 0.000123456 -> 1.e-04
+%#.0e 123456000 -> 1.e+08
+%#.0e 0.5 -> 5.e-01
+%#.0e 1.4 -> 1.e+00
+%#.0e 1.5 -> 2.e+00
+%#.0e 1.6 -> 2.e+00
+%#.0e 2.4999999 -> 2.e+00
+%#.0e 2.5 -> 2.e+00
+%#.0e 2.5000001 -> 3.e+00
+%#.0e 3.499999999999 -> 3.e+00
+%#.0e 3.5 -> 4.e+00
+%#.0e 4.5 -> 4.e+00
+%#.0e 5.5 -> 6.e+00
+%#.0e 6.5 -> 6.e+00
+%#.0e 7.5 -> 8.e+00
+%#.0e 8.5 -> 8.e+00
+%#.0e 9.4999 -> 9.e+00
+%#.0e 9.5 -> 1.e+01
+%#.0e 10.5 -> 1.e+01
+%#.0e 14.999 -> 1.e+01
+%#.0e 15 -> 2.e+01
+%#.1e 123.4 -> 1.2e+02
+%#.2e 0.0001357 -> 1.36e-04
+%.0g 0 -> 0
+%.100g 0 -> 0
+%.0g 1000 -> 1e+03
+%.0g 1 -> 1
+%.0g 1e-3 -> 0.001
+%.0g 1e-5 -> 1e-05
+%.0g 0.12 -> 0.1
+%.1g 1e-6 -> 1e-06
+%.1g 0.0012 -> 0.001
+%.2g 1e-6 -> 1e-06
+%.2g 0.00123 -> 0.0012
+%#.0g 0 -> 0.
+%#.1g 0 -> 0.
+%#.2g 0 -> 0.0
+%#.3g 0 -> 0.00
+%#.4g 0 -> 0.000
+%#.0g 0.2 -> 0.2
+%#.1g 0.2 -> 0.2
+%#.2g 0.2 -> 0.20
+%#.3g 0.2 -> 0.200
+%#.4g 0.2 -> 0.2000
+%#.10g 0.2 -> 0.2000000000
+%#.0g 2 -> 2.
+%#.1g 2 -> 2.
+%#.2g 2 -> 2.0
+%#.3g 2 -> 2.00
+%#.4g 2 -> 2.000
+%#.0g 20 -> 2.e+01
+%#.1g 20 -> 2.e+01
+%#.2g 20 -> 20.
+%#.3g 20 -> 20.0
+%#.4g 20 -> 20.00
+%#.0g 234.56 -> 2.e+02
+%#.1g 234.56 -> 2.e+02
+%#.2g 234.56 -> 2.3e+02
+%#.3g 234.56 -> 235.
+%#.4g 234.56 -> 234.6
+%#.5g 234.56 -> 234.56
+%#.6g 234.56 -> 234.560
+%r 0 -> 0.0
+%r 1 -> 1.0
+%r 1e15 -> 1000000000000000.0
+%r 9999999999999999 -> 1e+16
+%r 1e16 -> 1e+16
+%r 1.000000000000001e-4 -> 0.0001000000000000001
+%r 0.9999999999999999e-4 -> 9.999999999999999e-05
+%r 1e-5 -> 1e-05
+'''
+cases = []
+for line in data.splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    lhs, expected = [part.strip() for part in line.split('->')]
+    fmt, arg = lhs.split()
+    cases.append((fmt, arg, expected))
+
+checks = 0
+for fmt, arg, expected in cases:
+    value = float(arg)
+    for label, got, wanted in [
+        ('percent', fmt % value, expected),
+        ('percent-neg', fmt % -value, '-' + expected),
+    ]:
+        checks += 1
+        if got != wanted:
+            print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+    if fmt != '%r':
+        spec = fmt[1:]
+        for label, got, wanted in [
+            ('format', format(value, spec), expected),
+            ('format-neg', format(-value, spec), '-' + expected),
+        ]:
+            checks += 1
+            if got != wanted:
+                print('mismatch', label, fmt, arg, repr(got), repr(wanted))
+print('checked', len(cases), checks)"#,
+    });
+}
+
+#[test]
+fn cpython_float_format_testfile_full_diff_subset() {
+    let source = cpython_formatfloat_testfile_source();
+    assert_cpython_output_parity_source(
+        "Lib/test/test_float.py::FormatTestCase::test_format_testfile",
+        "float-format-testfile-full",
+        &source,
+    );
+}
+
+#[test]
+fn cpython_float_repr_roundtrip_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::ReprTestCase::test_repr",
+        name: "float-repr-roundtrip",
+        source: r#"import math
+texts = '''
+0E0 -0E0 1E0 15E-1 125E-2 1125E-3 10625E-4
+103125E-5 1015625E-6 10078125E-7 100390625E-8
+1001953125E-9 10009765625E-10 100048828125E-11
+1000244140625E-12 10001220703125E-13 100006103515625E-14
+1000030517578125E-15 10000152587890625E-16 +8E153 -1E153
++9E306 -2E153 +7E-304 -3E-49 +7E-303 +50609263E157
++2572981889477453E142 -33584377202279118724E-252
++36992084760177624177E-318 -73984169520355248354E-318
++99257763227713890244E-115 -87336362425182547697E-280 -87E-274
+-9821613080E121 -82783038381290406E165 +67536228609141569109E-133
+-35620497849450218807E-306 +66550376797582521751E-126 +1721E-17
+-68384463429E25 +76E-23 +134976318E25 -2739849386524269E26
++5479698773048538E26 +6124568318523113E-25 -1139777988171071E-24
++6322612303128019E-27 -2955864564844617E-25 -9994029144998961E25
+-2971238324022087E27 -1656055679333934E-27 -1445488709150234E-26
++55824717499885172E27 -69780896874856465E26 +84161538867545199E25
+-27912358749942586E27 +24711112462926331E-25 -12645224606256038E-27
+-12249136637046226E-25 +74874448287465757E27 -35642836832753303E24
+-71285673665506606E24 +43723334984997307E-26 +10182419849537963E-24
+-93501703572661982E-26 2183167012312112312312.23538020374420446192e-370
+0.99999999999999999999999999999999999999999e+23
+'''.split()
+checked = 0
+for text in texts:
+    value = eval(text)
+    rendered = repr(value)
+    roundtrip = eval(rendered)
+    if value != roundtrip:
+        print('mismatch', text, rendered, roundtrip)
+    if value == 0.0 and math.copysign(1.0, value) != math.copysign(1.0, roundtrip):
+        print('zero-sign-mismatch', text, rendered)
+    if str(value) != rendered:
+        print('str-repr-mismatch', text, str(value), rendered)
+    checked += 1
+print('checked', checked, repr(eval(texts[0])), repr(eval(texts[-1])))"#,
+    });
+}
+
+#[test]
+fn cpython_float_repr_roundtrip_full_diff_subset() {
+    let source = cpython_floating_points_repr_source();
+    assert_cpython_output_parity_source(
+        "Lib/test/test_float.py::ReprTestCase::test_repr",
+        "float-repr-roundtrip-full",
+        &source,
+    );
+}
+
+#[test]
+fn cpython_float_short_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::ReprTestCase::test_short_repr",
+        name: "float-short-repr",
+        source: r#"import sys
+test_strings = [
+    '0.0',
+    '1.0',
+    '0.01',
+    '0.02',
+    '0.03',
+    '0.04',
+    '0.05',
+    '1.23456789',
+    '10.0',
+    '100.0',
+    '1000000000000000.0',
+    '9999999999999990.0',
+    '1e+16',
+    '1e+17',
+    '0.001',
+    '0.001001',
+    '0.00010000000000001',
+    '0.0001',
+    '9.999999999999e-05',
+    '1e-05',
+    '8.72293771110361e+25',
+    '7.47005307342313e+26',
+    '2.86438000439698e+28',
+    '8.89142905246179e+28',
+    '3.08578087079232e+35',
+]
+checked = 0
+for text in test_strings:
+    for candidate in (text, '-' + text):
+        value = float(candidate)
+        checked += 1
+        if repr(value) != candidate:
+            print('repr-mismatch', candidate, repr(value))
+        if str(value) != repr(value):
+            print('str-mismatch', candidate, str(value), repr(value))
+        if eval(repr(value)) != value:
+            print('roundtrip-mismatch', candidate, repr(value))
+print('style', sys.float_repr_style)
+print('checked', checked)"#,
+    });
+}
+
+#[test]
+fn cpython_float_round_specials_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::RoundTestCase",
+        name: "float-round-specials",
+        source: r#"import math
+def show(label, fn):
+    try:
+        value = fn()
+        if isinstance(value, float):
+            if math.isnan(value):
+                print(label, 'nan', math.copysign(1.0, value), repr(value))
+            else:
+                print(label, repr(value), math.copysign(1.0, value))
+        else:
+            print(label, repr(value), type(value).__name__)
+    except BaseException as error:
+        print(label, type(error).__name__, error.args[0])
+
+INF = float('inf')
+NAN = float('nan')
+for label, fn in [
+    ('round-inf', lambda: round(INF)),
+    ('round-ninf', lambda: round(-INF)),
+    ('round-nan', lambda: round(NAN)),
+    ('round-inf-bad-ndigits', lambda: round(INF, 0.0)),
+    ('round-nan-bad-ndigits', lambda: round(NAN, "ceci n\\'est pas un integer")),
+    ('round-negzero-complex-ndigits', lambda: round(-0.0, 1j)),
+    ('round-inf-0', lambda: round(INF, 0)),
+    ('round-ninf-0', lambda: round(-INF, 0)),
+    ('round-nan-0', lambda: round(NAN, 0)),
+    ('round-large-324', lambda: round(123.456, 324)),
+    ('round-large-307', lambda: round(1e300, 307)),
+    ('round-subnormal-315', lambda: round(1.4e-315, 315)),
+    ('round-small-neg308', lambda: round(-123.456, -308)),
+    ('round-small-neg309', lambda: round(-123.456, -309)),
+    ('round-overflow-pos', lambda: round(1.6e308, -308)),
+    ('round-overflow-neg', lambda: round(-1.7e308, -308)),
+    ('round-prev-a', lambda: round(562949953421312.5, 1)),
+    ('round-prev-b', lambda: round(56294995342131.5, 3)),
+    ('round-half-25', lambda: round(25.0, -1)),
+    ('round-half-35', lambda: round(35.0, -1)),
+    ('round-half-45', lambda: round(45.0, -1)),
+    ('round-half-55', lambda: round(55.0, -1)),
+    ('round-none-pos', lambda: round(1.23, None)),
+    ('round-none-kw', lambda: round(1.78, ndigits=None)),
+    ('round-large-big', lambda: round(123.456, 2**100)),
+    ('round-small-big', lambda: round(-123.456, -2**100)),
+]:
+    show(label, fn)
+
+def identical(x, y):
+    return x == y and (x != 0.0 or math.copysign(1.0, x) == math.copysign(1.0, y))
+
+large_ok = True
+large_count = 0
+for n in [324, 325, 400, 2**31-1, 2**31, 2**32, 2**100]:
+    for value in [123.456, -123.456, 1e300, 1e-320]:
+        large_count += 1
+        if round(value, n) != value:
+            large_ok = False
+for value, n, expected in [
+    (1e150, 300, 1e150),
+    (1e300, 307, 1e300),
+    (-3.1415, 308, -3.1415),
+    (1e150, 309, 1e150),
+    (1.4e-315, 315, 1e-315),
+]:
+    large_count += 1
+    if round(value, n) != expected:
+        large_ok = False
+
+small_ok = True
+small_count = 0
+for n in [-308, -309, -400, 1-2**31, -2**31, -2**31-1, -2**100]:
+    for value, expected in [
+        (123.456, 0.0),
+        (-123.456, -0.0),
+        (1e300, 0.0),
+        (1e-320, 0.0),
+    ]:
+        small_count += 1
+        if not identical(round(value, n), expected):
+            small_ok = False
+print('large-grid', large_ok, large_count)
+print('small-grid', small_ok, small_count)"#,
+    });
+}
+
+#[test]
+fn cpython_float_round_dunder_none_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::RoundTestCase::test_round_with_none_arg_direct_call",
+        name: "float-round-dunder-none",
+        source: r#"def show(label, fn):
+    try:
+        value = fn()
+        print(label, repr(value), type(value).__name__, type(value) is int, type(value) is float)
+    except BaseException as error:
+        print(label, type(error).__name__)
+
+class MyFloat(float):
+    pass
+
+for label, fn in [
+    ('bound-noarg', lambda: (1.0).__round__()),
+    ('bound-none', lambda: (1.0).__round__(None)),
+    ('bound-zero', lambda: (1.25).__round__(0)),
+    ('bound-one', lambda: (1.25).__round__(1)),
+    ('bound-big-pos', lambda: (123.456).__round__(2**100)),
+    ('bound-big-neg', lambda: (-123.456).__round__(-2**100)),
+    ('bound-bad', lambda: (1.25).__round__(1.0)),
+    ('bound-kw', lambda: (1.25).__round__(ndigits=1)),
+    ('desc-none', lambda: float.__round__(1.25, None)),
+    ('desc-one', lambda: float.__round__(1.25, 1)),
+    ('desc-bad-receiver', lambda: float.__round__(1)),
+    ('subclass-none', lambda: MyFloat(1.75).__round__(None)),
+    ('subclass-one', lambda: MyFloat(1.75).__round__(1)),
+]:
+    show(label, fn)
+print('has-dir', '__round__' in dir(1.0), '__round__' in dir(float))"#,
+    });
+}
+
+#[test]
+fn cpython_float_round_matches_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::RoundTestCase::test_matches_float_format",
+        name: "float-round-matches-format",
+        source: r#"def check(label, values):
+    checked = 0
+    for x in values:
+        for ndigits in range(4):
+            formatted = float(format(x, '.' + str(ndigits) + 'f'))
+            rounded = round(x, ndigits)
+            if formatted != rounded:
+                print('mismatch', label, repr(x), ndigits, repr(formatted), repr(rounded))
+            checked += 1
+    print(label, checked)
+
+check('thousandths', [i / 1000.0 for i in range(500)])
+check('half-cent-grid', [i / 1000.0 for i in range(5, 5000, 10)])
+check('deterministic-random-like', [((i * 1103515245 + 12345) % 1000000) / 1000000.0 for i in range(500)])"#,
+    });
+}
+
+#[test]
+fn cpython_float_format_specials_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::RoundTestCase::test_format_specials",
+        name: "float-format-specials",
+        source: r#"INF = float('inf')
+NAN = float('nan')
+formats = ['%e', '%f', '%g', '%.0e', '%.6f', '%.20g',
+           '%#e', '%#f', '%#g', '%#.20e', '%#.15f', '%#.3g']
+rows = []
+for fmt in formats:
+    for label, value, expected in [
+        ('inf', INF, 'inf'),
+        ('ninf', -INF, '-inf'),
+        ('nan', NAN, 'nan'),
+        ('nnan', -NAN, 'nan'),
+    ]:
+        rows.append((fmt, label, value, expected))
+    pfmt = '%+' + fmt[1:]
+    for label, value, expected in [
+        ('p-inf', INF, '+inf'),
+        ('p-ninf', -INF, '-inf'),
+        ('p-nan', NAN, '+nan'),
+        ('p-nnan', -NAN, '+nan'),
+    ]:
+        rows.append((pfmt, label, value, expected))
+    sfmt = '% ' + fmt[1:]
+    for label, value, expected in [
+        ('s-inf', INF, ' inf'),
+        ('s-ninf', -INF, '-inf'),
+        ('s-nan', NAN, ' nan'),
+        ('s-nnan', -NAN, ' nan'),
+    ]:
+        rows.append((sfmt, label, value, expected))
+
+checked = 0
+for fmt, label, value, expected in rows:
+    percent_value = fmt % value
+    format_value = format(value, fmt[1:])
+    if percent_value != expected:
+        print('percent-mismatch', fmt, label, repr(percent_value), repr(expected))
+    if format_value != expected:
+        print('format-mismatch', fmt[1:], label, repr(format_value), repr(expected))
+    checked += 2
+print('checked', checked)"#,
+    });
+}
+
+#[test]
+fn cpython_float_inf_nan_string_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::InfNanTest",
+        name: "float-inf-nan-string",
+        source: r#"import math
+def show_float(label, expr):
+    try:
+        value = expr()
+        print(label, math.isinf(value), math.isnan(value), repr(value), str(value), math.copysign(1.0, value))
+    except BaseException as error:
+        print(label, type(error).__name__, error.args[0])
+
+for text in ['inf', '+inf', '-inf', 'infinity', '+infinity', '-infinity', 'INF', '+Inf', '-iNF', 'Infinity', '+iNfInItY', '-INFINITY']:
+    show_float('parse-inf ' + text, lambda text=text: float(text))
+for text in ['info', '+info', '-info', 'in', '+in', '-in', 'infinit', '+Infin', '-INFI', 'infinitys', '++Inf', '-+inf', '+-infinity', '--Infinity']:
+    show_float('bad-inf ' + text, lambda text=text: float(text))
+for text in ['nan', '+nan', '-nan', 'NAN', '+NAn', '-NaN']:
+    show_float('parse-nan ' + text, lambda text=text: float(text))
+for text in ['nana', '+nana', '-nana', 'na', '+na', '-na', '++nan', '-+NAN', '+-NaN', '--nAn']:
+    show_float('bad-nan ' + text, lambda text=text: float(text))
+for label, value in [
+    ('inf-as-repr', 1e300 * 1e300),
+    ('ninf-as-repr', -1e300 * 1e300),
+    ('nan-as-repr', 1e300 * 1e300 * 0),
+    ('neg-nan-as-repr', -1e300 * 1e300 * 0),
+]:
+    print(label, repr(value), str(value), math.isinf(value), math.isnan(value), math.copysign(1.0, value))
+print('sign-inf', math.copysign(1.0, float('inf')), math.copysign(1.0, float('-inf')))
+print('sign-nan', math.copysign(1.0, float('nan')), math.copysign(1.0, float('-nan')))"#,
+    });
+}
+
+#[test]
+fn cpython_float_from_number_diff_subset() {
+    let oracle_probe = run_cpython("print(hasattr(float, 'from_number'))")
+        .expect("failed to run CPython float.from_number capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython float.from_number probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_from_number and ::test_from_number_subclass",
+        name: "float-from-number",
+        source: r#"class FloatSubclass(float):
+    pass
+class OtherFloatSubclass(float):
+    pass
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class MyIndex:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class MyInt:
+    def __init__(self, value):
+        self.value = value
+    def __int__(self):
+        return self.value
+
+def show(label, value, typ):
+    print(label, value, type(value) is typ)
+
+show('float-float', float.from_number(3.14), float)
+show('float-int', float.from_number(314), float)
+show('float-subclass-input', float.from_number(OtherFloatSubclass(3.14)), float)
+show('float-like', float.from_number(FloatLike(3.14)), float)
+show('float-like-subclass-result', float.from_number(FloatLike(OtherFloatSubclass(2.5))), float)
+show('float-index', float.from_number(MyIndex(314)), float)
+show('subclass-float', FloatSubclass.from_number(3.14), FloatSubclass)
+show('subclass-index', FloatSubclass.from_number(MyIndex(314)), FloatSubclass)
+print('dir', 'from_number' in dir(float), 'from_number' in dir(1.0), 'from_number' in dir(FloatSubclass), 'from_number' in dir(FloatSubclass(1.0)))
+print('instance-call', type((1.0).from_number(2.0)) is float, type(FloatSubclass(1.0).from_number(2.0)) is FloatSubclass)
+NAN = float('nan')
+x = float.from_number(NAN)
+print('nan', x != x, type(x) is float, x is NAN)
+y = FloatSubclass.from_number(NAN)
+print('subclass-nan', y != y, type(y) is FloatSubclass)
+for label, expr in [
+    ('str', lambda: float.from_number('3.14')),
+    ('bytes', lambda: float.from_number(b'3.14')),
+    ('complex', lambda: float.from_number(3.14j)),
+    ('myint', lambda: float.from_number(MyInt(314))),
+    ('dict', lambda: float.from_number({})),
+    ('none', lambda: float.from_number()),
+    ('many', lambda: float.from_number(1, 2)),
+    ('kw', lambda: float.from_number(x=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+try:
+    float.from_number(MyIndex(2**2000))
+except OverflowError as error:
+    print('huge-index', error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_subclass_constructor_and_from_number_diff_subset() {
+    let oracle_probe = run_cpython("print(hasattr(complex, 'from_number'))")
+        .expect("failed to run CPython complex.from_number capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython complex.from_number probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_constructor and ::test_from_number subclass rows",
+        name: "complex-subclass-constructor-and-from-number",
+        source: r#"class ComplexSubclass(complex):
+    pass
+class ComplexSubclassWithNew(complex):
+    def __new__(cls, value=0j):
+        return complex.__new__(cls, value + 1j)
+class WithComplex:
+    def __complex__(self):
+        return ComplexSubclass(3+4j)
+class WithFloat:
+    def __float__(self):
+        return 2.5
+
+def show(label, value, typ):
+    print(label, value, type(value).__name__, type(value) is complex, type(value) is typ, isinstance(value, complex), value.real, value.imag)
+
+show('default', ComplexSubclass(), ComplexSubclass)
+show('real', ComplexSubclass(1.5), ComplexSubclass)
+show('complex', ComplexSubclass(1+2j), ComplexSubclass)
+show('two-arg', ComplexSubclass(1, 2), ComplexSubclass)
+show('kw', ComplexSubclass(real=1, imag=2), ComplexSubclass)
+show('new-direct', complex.__new__(ComplexSubclass, 1+2j), ComplexSubclass)
+show('new-kw', complex.__new__(ComplexSubclass, real=1, imag=2), ComplexSubclass)
+show('custom-new', ComplexSubclassWithNew(1+2j), ComplexSubclassWithNew)
+show('from-complex', ComplexSubclass.from_number(1+2j), ComplexSubclass)
+show('from-with-complex', ComplexSubclass.from_number(WithComplex()), ComplexSubclass)
+show('from-with-float', ComplexSubclass.from_number(WithFloat()), ComplexSubclass)
+show('custom-from', ComplexSubclassWithNew.from_number(1+2j), ComplexSubclassWithNew)
+show('exact-from-subclass-result', complex.from_number(WithComplex()), complex)
+show('exact-constructor-subclass-result', complex(WithComplex()), complex)
+z = ComplexSubclass(1+2j)
+print('dir', 'from_number' in dir(ComplexSubclass), 'from_number' in dir(z), '__new__' in dir(complex))
+print('unbound', type(complex.__complex__(z)) is complex, type(complex.conjugate(z)) is complex, type(complex.__pos__(z)) is complex, type(complex.__neg__(z)) is complex)
+print('ops', z + 1, 1 + z, z - 1, 1 - z, z * 2, z / 2)
+print('unary-bool-abs', +z, -z, bool(ComplexSubclass()), bool(z), abs(ComplexSubclass(3+4j)))
+print('compare-hash', z == 1+2j, z != 1+2j, hash(ComplexSubclass(1+0j)) == hash(1+0j))
+print('instance-from', type(z.from_number(5)) is ComplexSubclass, z.from_number(5))"#,
+    });
+}
+
+#[test]
+fn cpython_complex_two_arg_protocol_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_constructor two-argument complex protocol rows",
+        name: "complex-two-arg-protocol",
+        source: r#"class ComplexSubclass(complex):
+    pass
+class WithComplex:
+    def __init__(self, value):
+        self.value = value
+    def __complex__(self):
+        return self.value
+
+def show(label, expr):
+    try:
+        z = expr()
+        print(label, type(z) is complex, repr(z.real), repr(z.imag), z)
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+
+for label, expr in [
+    ('real-complex-zero', lambda: complex(4.25+0j, 0)),
+    ('real-subclass-zero', lambda: complex(ComplexSubclass(4.25+0j), 0)),
+    ('real-provider-zero', lambda: complex(WithComplex(4.25+0j), 0)),
+    ('imag-complex', lambda: complex(0, 4.25+0j)),
+    ('imag-subclass', lambda: complex(0, ComplexSubclass(4.25+0j))),
+    ('imag-provider', lambda: complex(0, WithComplex(4.25+0j))),
+    ('both-complex', lambda: complex(4.25j, 0j)),
+    ('kw-real-complex', lambda: complex(real=4.25+1.5j)),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_subclass_constructor_special_numbers_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_constructor custom subclass __complex__ rows and ::test_constructor_special_numbers subclass rows",
+        name: "complex-subclass-constructor-special-numbers",
+        source: r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+class ComplexSubclass(complex):
+    pass
+class complex0(complex):
+    def __complex__(self):
+        return 42j
+class complex1(complex):
+    def __new__(cls, value=0j):
+        return complex.__new__(cls, 2*value)
+    def __complex__(self):
+        return self
+class complex2(complex):
+    def __complex__(self):
+        return None
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value, type(value).__name__, type(value) is complex, type(value) is ComplexSubclass, repr(value.real), repr(value.imag))
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+
+show('complex0', lambda: complex(complex0(1j)))
+show('complex1', lambda: complex(complex1(1j)))
+show('complex2', lambda: complex(complex2(1j)))
+
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return copysign(1.0, actual) == copysign(1.0, expected)
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+values = [0.0, -0.0, INF, -INF, NAN]
+ok_sub = ok_exact = ok_round = True
+for x in values:
+    for y in values:
+        z = ComplexSubclass(x, y)
+        ok_sub = ok_sub and type(z) is ComplexSubclass and same_float(z.real, x) and same_float(z.imag, y)
+        z = complex(ComplexSubclass(x, y))
+        ok_exact = ok_exact and type(z) is complex and same_float(z.real, x) and same_float(z.imag, y)
+        z = ComplexSubclass(complex(x, y))
+        ok_round = ok_round and type(z) is ComplexSubclass and same_float(z.real, x) and same_float(z.imag, y)
+print('special-matrix', ok_sub, ok_exact, ok_round)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_truediv_nonfinite_diff_subset() {
+    let oracle_probe = run_cpython(
+        "INF = float('inf')\nz = (1+1j) / complex(INF, INF)\nprint(z.real == 0.0 and z.imag == 0.0)",
+    )
+    .expect("failed to run CPython complex true division non-finite capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython complex true division probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_truediv non-finite recovery rows",
+        name: "complex-truediv-nonfinite-recovery",
+        source: r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return True
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+def same_complex(actual, expected):
+    return same_float(actual.real, expected.real) and same_float(actual.imag, expected.imag)
+cases = [
+    (complex(INF, NAN) / 2, complex(INF, NAN)),
+    (complex(INF, 1)/(0.0+1j), complex(NAN, -INF)),
+    (complex(INF, -INF)/(1+0j), complex(INF, -INF)),
+    (complex(INF, INF)/(0.0+1j), complex(INF, -INF)),
+    (complex(NAN, INF)/complex(2**1000, 2**-1000), complex(INF, INF)),
+    (complex(INF, NAN)/complex(2**1000, 2**-1000), complex(INF, -INF)),
+    ((1+1j)/complex(INF, INF), (0.0+0j)),
+    ((1+1j)/complex(INF, -INF), (0.0+0j)),
+    ((1+1j)/complex(-INF, INF), complex(0.0, -0.0)),
+    ((1+1j)/complex(-INF, -INF), complex(-0.0, 0)),
+    ((INF+1j)/complex(INF, INF), complex(NAN, NAN)),
+    (complex(1, INF)/complex(INF, INF), complex(NAN, NAN)),
+    (complex(INF, 1)/complex(1, INF), complex(NAN, NAN)),
+    (INF/(1+0j), complex(INF, NAN)),
+    (INF/(0.0+1j), complex(NAN, -INF)),
+    (INF/complex(2**1000, 2**-1000), complex(INF, NAN)),
+    (INF/complex(NAN, NAN), complex(NAN, NAN)),
+    (float(1)/complex(INF, INF), (0.0-0j)),
+    (float(1)/complex(INF, -INF), (0.0+0j)),
+    (float(1)/complex(-INF, INF), complex(-0.0, -0.0)),
+    (float(1)/complex(-INF, -INF), complex(-0.0, 0)),
+    (float(1)/complex(INF, NAN), complex(0.0, -0.0)),
+    (float(1)/complex(-INF, NAN), complex(-0.0, -0.0)),
+    (float(1)/complex(NAN, INF), complex(0.0, -0.0)),
+    (float(INF)/complex(NAN, INF), complex(NAN, NAN)),
+]
+print(all(same_complex(actual, expected) for actual, expected in cases))
+for label, value in [
+    ('finite-neginf-inf', (1+1j)/complex(-INF, INF)),
+    ('finite-neginf-neginf', (1+1j)/complex(-INF, -INF)),
+    ('real-over-inf-inf', float(1)/complex(INF, INF)),
+    ('real-over-neginf-inf', float(1)/complex(-INF, INF)),
+]:
+    print(label, repr(value.real), copysign(1.0, value.real), repr(value.imag), copysign(1.0, value.imag))"#,
+    });
+}
+
+#[test]
+fn cpython_complex_truediv_extreme_inverse_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_truediv huge and tiny inverse rows",
+        name: "complex-truediv-extreme-inverse",
+        source: r#"def close(a, b):
+    return abs(a - b) < 1e-9
+ok = True
+for x in [complex(1e200, 1e200), complex(1e-200, 1e-200)]:
+    y = 1+0j
+    z = x * y
+    ok = ok and close(z / x, y)
+    ok = ok and close(z.__truediv__(x), y)
+    ok = ok and close(z / y, x)
+    ok = ok and close(z.__truediv__(y), x)
+print(ok)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_mul_nonfinite_diff_subset() {
+    let oracle_probe = run_cpython(
+        "INF = float('inf')\nNAN = float('nan')\nz = (1e300+1j) * complex(NAN, INF)\nprint(z.real == -INF and z.imag == INF)",
+    )
+    .expect("failed to run CPython complex multiplication non-finite capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython complex multiplication probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_mul non-finite complex-by-complex rows",
+        name: "complex-mul-nonfinite-recovery",
+        source: r#"from math import copysign
+INF = float('inf')
+NAN = float('nan')
+def same_float(actual, expected):
+    if actual != actual and expected != expected:
+        return True
+    return actual == expected and copysign(1.0, actual) == copysign(1.0, expected)
+def same_complex(actual, expected):
+    return same_float(actual.real, expected.real) and same_float(actual.imag, expected.imag)
+cases = [
+    (1e300+1j, complex(INF, INF), complex(NAN, INF)),
+    (1e300+1j, complex(NAN, INF), complex(-INF, INF)),
+    (1e300+1j, complex(INF, NAN), complex(INF, INF)),
+    (complex(INF, 1), complex(NAN, INF), complex(NAN, INF)),
+    (complex(INF, 1), complex(INF, NAN), complex(INF, NAN)),
+    (complex(NAN, 1), complex(1, INF), complex(-INF, NAN)),
+    (complex(1, NAN), complex(1, INF), complex(NAN, INF)),
+    (complex(1e200, NAN), complex(1e200, NAN), complex(INF, NAN)),
+    (complex(1e200, NAN), complex(NAN, 1e200), complex(NAN, INF)),
+    (complex(NAN, 1e200), complex(1e200, NAN), complex(NAN, INF)),
+    (complex(NAN, 1e200), complex(NAN, 1e200), complex(-INF, NAN)),
+    (complex(NAN, NAN), complex(NAN, NAN), complex(NAN, NAN)),
+]
+ok = True
+for z, w, expected in cases:
+    ok = ok and same_complex(z * w, expected)
+    ok = ok and same_complex(w * z, expected)
+print(ok)
+for label, value in [
+    ('finite-nan-inf', (1e300+1j) * complex(NAN, INF)),
+    ('finite-inf-nan', (1e300+1j) * complex(INF, NAN)),
+    ('nan-one-one-inf', complex(NAN, 1) * complex(1, INF)),
+    ('nan-huge-nan-huge', complex(NAN, 1e200) * complex(NAN, 1e200)),
+]:
+    print(label, repr(value.real), copysign(1.0, value.real), repr(value.imag), copysign(1.0, value.imag))"#,
+    });
+}
+
+#[test]
+fn cpython_complex_pow_zero_and_stress_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_pow zero exponent and self-comparison rows",
+        name: "complex-pow-zero-and-stress",
+        source: r#"a = 3.33+4.43j
+print(a ** 0j == 1+0j, type(a ** 0j) is complex)
+print(a ** (0.0+0.0j) == 1+0j, type(a ** (0.0+0.0j)) is complex)
+print(3j ** 0j == 1+0j, type(3j ** 0j) is complex)
+print(3j ** 0 == 1+0j, type(3j ** 0) is complex)
+print(a ** 105 == a ** 105)
+print(a ** -105 == a ** -105)
+print(a ** -30 == a ** -30)
+print(0.0j ** 0 == 1+0j, type(0.0j ** 0) is complex)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_division_unsupported_zero_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_floordiv_zero_division, ::test_mod_zero_division, and ::test_divmod_zero_division",
+        name: "complex-unsupported-division-zero-operands",
+        source: r#"ZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]
+for op in ['floordiv', 'mod', 'divmod']:
+    for a, b in ZERO_DIVISION:
+        try:
+            if op == 'floordiv':
+                a // b
+            elif op == 'mod':
+                a % b
+            else:
+                divmod(a, b)
+        except TypeError as error:
+            print(op, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_complex_pow_overflow_boundary_diff_subset() {
+    let oracle_probe = run_cpython(
+        "try:\n    pow(1e200+1j, 5)\nexcept OverflowError:\n    print('True')\nelse:\n    print('False')",
+    )
+    .expect("failed to run CPython complex pow overflow capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython complex pow overflow probe emitted non-UTF-8 output");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_pow overflow and boundary rows",
+        name: "complex-pow-overflow-boundary",
+        source: r#"import sys
+for label, expr in [
+    ('general-overflow', lambda: pow(1e200+1j, 1e200+1j)),
+    ('integer-overflow', lambda: pow(1e200+1j, 5)),
+    ('large-imag-overflow', lambda: 9j ** (33j**3)),
+]:
+    try:
+        expr()
+    except OverflowError as error:
+        print(label, error.__class__.__name__)
+for label, expr in [
+    ('zero-complex-a', lambda: 0j ** (3.33+4.43j)),
+    ('zero-complex-b', lambda: 0j ** (3-2j)),
+]:
+    try:
+        expr()
+    except ZeroDivisionError as error:
+        print(label, error.__class__.__name__)
+values = (sys.maxsize, sys.maxsize+1, sys.maxsize-1, -sys.maxsize, -sys.maxsize+1, -sys.maxsize+1)
+ok = True
+for real in values:
+    for imag in values:
+        c = complex(real, imag)
+        for expr in [lambda c=c, real=real: c ** real, lambda c=c: c ** c]:
+            try:
+                expr()
+            except OverflowError:
+                pass
+            except BaseException:
+                ok = False
+print('boundary-no-crash', ok)"#,
+    });
+}
+
+#[test]
+fn cpython_float_keywords_in_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_keywords_in_subclass",
+        name: "float-keywords-in-subclass",
+        source: r#"class subclass(float):
+    pass
+u = subclass(2.5)
+print('plain', type(u) is subclass, float(u), repr(u))
+
+class subclass_with_init(float):
+    def __init__(self, arg, newarg=None):
+        self.newarg = newarg
+u = subclass_with_init(2.5, newarg=3)
+print('init', type(u) is subclass_with_init, float(u), u.newarg)
+
+class subclass_with_new(float):
+    def __new__(cls, arg, newarg=None):
+        self = super().__new__(cls, arg)
+        self.newarg = newarg
+        return self
+u = subclass_with_new(2.5, newarg=3)
+print('new', type(u) is subclass_with_new, float(u), u.newarg)"#,
+    });
+}
+
+#[test]
+fn cpython_float_containment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_float_containment",
+        name: "float-containment",
+        source: r#"INF = float('inf')
+NAN = float('nan')
+floats = (INF, -INF, 0.0, 1.0, NAN)
+for label, value in [('inf', INF), ('-inf', -INF), ('0.0', 0.0), ('1.0', 1.0), ('nan', NAN)]:
+    print('contains', label, value in [value], value in (value,), value in {value}, value in {value: None}, [value].count(value), value in floats)
+for label, value in [('inf', INF), ('-inf', -INF), ('0.0', 0.0), ('1.0', 1.0), ('nan', NAN)]:
+    l, t, s, d = [value], (value,), {value}, {value: None}
+    print('selfeq', label, [value] == [value], (value,) == (value,), {value} == {value}, {value: None} == {value: None}, l == l, t == t, s == s, d == d)
+other_nan = float('nan')
+print('distinct-nan', NAN == other_nan, NAN is other_nan, other_nan in {NAN}, {NAN} == {other_nan})"#,
+    });
+}
+
+#[test]
+fn cpython_float_floor_ceil_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_float_floor and ::test_float_ceil",
+        name: "float-floor-ceil",
+        source: r#"class FloatSubclass(float):
+    pass
+for method in ['__floor__', '__ceil__']:
+    print('dir', method, method in dir(float), method in dir(1.0), method in dir(FloatSubclass), method in dir(FloatSubclass(1.0)))
+    for value in [0.5, 1.0, 1.5, -0.5, -1.0, -1.5, 1.23e20, -1.23e20]:
+        result = getattr(value, method)()
+        unbound = getattr(float, method)(value)
+        subclass_result = getattr(FloatSubclass(value), method)()
+        print(method, repr(value), result, type(result).__name__, result == unbound, result == subclass_result)
+    for value in [float('nan'), float('inf'), float('-inf')]:
+        try:
+            getattr(value, method)()
+        except Exception as error:
+            print(method, repr(value), error.__class__.__name__, str(error))
+    for expr in [lambda: getattr(1.0, method)(1), lambda: getattr(float, method)(), lambda: getattr(float, method)('1.0')]:
+        try:
+            expr()
+        except TypeError as error:
+            print(method, 'typeerror', error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_float_mod_signed_zero_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_float_mod",
+        name: "float-mod-signed-zero",
+        source: r#"import math
+import operator
+
+def same_float(actual, expected):
+    if actual == expected:
+        if actual != 0.0:
+            return True
+        return math.copysign(1.0, actual) == math.copysign(1.0, expected)
+    return False
+
+cases = [
+    (-1.0, 1.0, 0.0),
+    (-1e-100, 1.0, 1.0),
+    (-0.0, 1.0, 0.0),
+    (0.0, 1.0, 0.0),
+    (1e-100, 1.0, 1e-100),
+    (1.0, 1.0, 0.0),
+    (-1.0, -1.0, -0.0),
+    (-1e-100, -1.0, -1e-100),
+    (-0.0, -1.0, -0.0),
+    (0.0, -1.0, -0.0),
+    (1e-100, -1.0, -1.0),
+    (1.0, -1.0, -0.0),
+]
+ok = True
+for left, right, expected in cases:
+    ok = ok and same_float(left % right, expected)
+    ok = ok and same_float(operator.mod(left, right), expected)
+print('mod-signs', ok, len(cases), repr((-1.0) % -1.0), math.copysign(1.0, (-1.0) % -1.0), repr((1e-100) % -1.0))"#,
+    });
+}
+
+#[test]
+fn cpython_float_pow_special_cases_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_float.py::GeneralFloatCases::test_float_pow",
+        name: "float-pow-special-cases",
+        source: r#"import math
+import operator
+
+def same_float(actual, expected):
+    if type(expected).__name__ == 'float' and math.isnan(expected):
+        return type(actual).__name__ == 'float' and math.isnan(actual)
+    if actual == expected:
+        if type(expected).__name__ == 'float' and expected == 0.0:
+            return math.copysign(1.0, actual) == math.copysign(1.0, expected)
+        return True
+    return False
+
+def apply_pow(base, exponent, op):
+    if op == 0:
+        return base ** exponent
+    if op == 1:
+        return pow(base, exponent)
+    return operator.pow(base, exponent)
+
+INF = float('inf')
+NAN = float('nan')
+nan_cases = [
+    (-INF, NAN),
+    (-2.0, NAN),
+    (-1.0, NAN),
+    (-0.5, NAN),
+    (-0.0, NAN),
+    (0.0, NAN),
+    (0.5, NAN),
+    (2.0, NAN),
+    (INF, NAN),
+    (NAN, NAN),
+    (NAN, -INF),
+    (NAN, -2.0),
+    (NAN, -1.0),
+    (NAN, -0.5),
+    (NAN, 0.5),
+    (NAN, 1.0),
+    (NAN, 2.0),
+    (NAN, INF),
+]
+float_cases = [
+    (-0.0, 1.0, -0.0),
+    (0.0, 1.0, 0.0),
+    (-0.0, 0.5, 0.0),
+    (-0.0, 2.0, 0.0),
+    (0.0, 0.5, 0.0),
+    (0.0, 2.0, 0.0),
+    (-1.0, -INF, 1.0),
+    (-1.0, INF, 1.0),
+    (1.0, -INF, 1.0),
+    (1.0, -2.0, 1.0),
+    (1.0, -1.0, 1.0),
+    (1.0, -0.5, 1.0),
+    (1.0, -0.0, 1.0),
+    (1.0, 0.0, 1.0),
+    (1.0, 0.5, 1.0),
+    (1.0, 1.0, 1.0),
+    (1.0, 2.0, 1.0),
+    (1.0, INF, 1.0),
+    (1.0, NAN, 1.0),
+    (-INF, 0.0, 1.0),
+    (-2.0, 0.0, 1.0),
+    (-1.0, 0.0, 1.0),
+    (-0.5, 0.0, 1.0),
+    (-0.0, 0.0, 1.0),
+    (0.0, 0.0, 1.0),
+    (0.5, 0.0, 1.0),
+    (1.0, 0.0, 1.0),
+    (2.0, 0.0, 1.0),
+    (INF, 0.0, 1.0),
+    (NAN, 0.0, 1.0),
+    (-INF, -0.0, 1.0),
+    (-2.0, -0.0, 1.0),
+    (-1.0, -0.0, 1.0),
+    (-0.5, -0.0, 1.0),
+    (-0.0, -0.0, 1.0),
+    (0.0, -0.0, 1.0),
+    (0.5, -0.0, 1.0),
+    (1.0, -0.0, 1.0),
+    (2.0, -0.0, 1.0),
+    (INF, -0.0, 1.0),
+    (NAN, -0.0, 1.0),
+    (-0.5, -INF, INF),
+    (-0.0, -INF, INF),
+    (0.0, -INF, INF),
+    (0.5, -INF, INF),
+    (-INF, -INF, 0.0),
+    (-2.0, -INF, 0.0),
+    (2.0, -INF, 0.0),
+    (INF, -INF, 0.0),
+    (-0.5, INF, 0.0),
+    (-0.0, INF, 0.0),
+    (0.0, INF, 0.0),
+    (0.5, INF, 0.0),
+    (-INF, INF, INF),
+    (-2.0, INF, INF),
+    (2.0, INF, INF),
+    (INF, INF, INF),
+    (-INF, -1.0, -0.0),
+    (-INF, -0.5, 0.0),
+    (-INF, -2.0, 0.0),
+    (-INF, 1.0, -INF),
+    (-INF, 0.5, INF),
+    (-INF, 2.0, INF),
+    (INF, 0.5, INF),
+    (INF, 1.0, INF),
+    (INF, 2.0, INF),
+    (INF, -2.0, 0.0),
+    (INF, -1.0, 0.0),
+    (INF, -0.5, 0.0),
+    (-2.0, -2.0, 0.25),
+    (-2.0, -1.0, -0.5),
+    (-2.0, -0.0, 1.0),
+    (-2.0, 0.0, 1.0),
+    (-2.0, 1.0, -2.0),
+    (-2.0, 2.0, 4.0),
+    (-1.0, -2.0, 1.0),
+    (-1.0, -1.0, -1.0),
+    (-1.0, -0.0, 1.0),
+    (-1.0, 0.0, 1.0),
+    (-1.0, 1.0, -1.0),
+    (-1.0, 2.0, 1.0),
+    (2.0, -2.0, 0.25),
+    (2.0, -1.0, 0.5),
+    (2.0, -0.0, 1.0),
+    (2.0, 0.0, 1.0),
+    (2.0, 1.0, 2.0),
+    (2.0, 2.0, 4.0),
+    (1.0, -1e100, 1.0),
+    (1.0, 1e100, 1.0),
+    (-1.0, -1e100, 1.0),
+    (-1.0, 1e100, 1.0),
+    (-2.0, -2000.0, 0.0),
+    (-2.0, -2001.0, -0.0),
+    (2.0, -2000.0, 0.0),
+    (2.0, -2000.5, 0.0),
+    (2.0, -2001.0, 0.0),
+    (-0.5, 2000.0, 0.0),
+    (-0.5, 2001.0, -0.0),
+    (0.5, 2000.0, 0.0),
+    (0.5, 2000.5, 0.0),
+    (0.5, 2001.0, 0.0),
+]
+zero_error_cases = [
+    (-0.0, -1.0),
+    (0.0, -1.0),
+    (-0.0, -2.0),
+    (-0.0, -0.5),
+    (0.0, -2.0),
+    (0.0, -0.5),
+]
+complex_type_cases = [
+    (-2.0, -0.5),
+    (-2.0, 0.5),
+    (-1.0, -0.5),
+    (-1.0, 0.5),
+    (-0.5, -0.5),
+    (-0.5, 0.5),
+    (-2.0, -2000.5),
+    (-0.5, 2000.5),
+]
+complex_value_cases = [
+    (-2.0, 0.5, complex(0.0, 1.4142135623730951)),
+    (-2.0, -0.5, complex(0.0, -0.7071067811865476)),
+]
+
+ok_nan = True
+nan_checked = 0
+for base, exponent in nan_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        nan_checked += 1
+        ok_nan = ok_nan and type(result).__name__ == 'float' and math.isnan(result)
+print('pow-nan-values', ok_nan, len(nan_cases), nan_checked)
+
+ok_float = True
+float_checked = 0
+for base, exponent, expected in float_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        float_checked += 1
+        ok_float = ok_float and same_float(result, expected)
+print('pow-float-values', ok_float, len(float_cases), float_checked)
+
+zero_errors = 0
+for base, exponent in zero_error_cases:
+    for op in range(3):
+        try:
+            apply_pow(base, exponent, op)
+        except ZeroDivisionError:
+            zero_errors += 1
+print('pow-zero-errors', zero_errors == len(zero_error_cases) * 3, zero_errors)
+
+ok_complex_type = True
+complex_type_checked = 0
+for base, exponent in complex_type_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        complex_type_checked += 1
+        ok_complex_type = ok_complex_type and type(result) is complex
+print('pow-complex-types', ok_complex_type, len(complex_type_cases), complex_type_checked)
+
+ok_complex_value = True
+complex_value_checked = 0
+for base, exponent, expected in complex_value_cases:
+    for op in range(3):
+        result = apply_pow(base, exponent, op)
+        complex_value_checked += 1
+        ok_complex_value = ok_complex_value and type(result) is complex and abs(result - expected) < 1e-12
+print('pow-complex-values', ok_complex_value, len(complex_value_cases), complex_value_checked)"#,
+    });
 }
 
 // Differential source-encoding tests adapted from

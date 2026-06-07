@@ -2,14 +2,25 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 
 const MANIFEST: &str = include_str!("cpython_test_manifest.md");
+const CPYTHON_COVERAGE: &str = include_str!("cpython_coverage.md");
+const CPYTHON_MIGRATION: &str = include_str!("cpython_migration.md");
+const CPYTHON_DIFF: &str = include_str!("cpython_diff.rs");
+const CPYTHON_SUBSET: &str = include_str!("cpython_subset.rs");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
 const CPYTHON_TEST_BUILTIN_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_builtin.py";
+const CPYTHON_TEST_COMPLEX_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_complex.py";
+const CPYTHON_TEST_FLOAT_SOURCE: &str = "/Volumes/samsung/GitHub/cpython/Lib/test/test_float.py";
 const CPYTHON_TEST_COLLECTIONS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_collections.py";
 const CPYTHON_TEST_COMPILE_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_compile.py";
+const CPYTHON_TEST_MEMORYVIEW_SOURCE: &str =
+    "/Volumes/samsung/GitHub/cpython/Lib/test/test_memoryview.py";
+const CPYTHON_TEST_BYTES_SOURCE: &str = "/Volumes/samsung/GitHub/cpython/Lib/test/test_bytes.py";
+const CPYTHON_TEST_TYPES_SOURCE: &str = "/Volumes/samsung/GitHub/cpython/Lib/test/test_types.py";
 const CPYTHON_TEST_TYPE_COMMENTS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_comments.py";
 const CPYTHON_TEST_TYPE_PARAMS_SOURCE: &str =
@@ -69,9 +80,14 @@ fn cpython_test_manifest_source_totals_match_extracted_baseline() {
     assert_source_total(&groups, "Lib/test/test_syntax.py", 55);
     assert_source_total(&groups, "Lib/test/test_compile.py", 186);
     assert_source_total(&groups, "Lib/test/test_builtin.py", 133);
+    assert_source_total(&groups, "Lib/test/test_complex.py", 37);
+    assert_source_total(&groups, "Lib/test/test_float.py", 54);
     assert_source_total(&groups, "Lib/test/test_collections.py", 103);
+    assert_source_total(&groups, "Lib/test/test_types.py", 131);
     assert_source_total(&groups, "Lib/test/test_type_comments.py", 17);
     assert_source_total(&groups, "Lib/test/test_type_params.py", 107);
+    assert_source_total(&groups, "Lib/test/test_memoryview.py", 42);
+    assert_source_total(&groups, "Lib/test/test_bytes.py", 143);
     assert_source_total(&groups, "Lib/test/test_ast/test_ast.py", 216);
     assert_source_total(&groups, "Lib/test/test_ast/snippets.py", 0);
 }
@@ -534,6 +550,37 @@ fn cpython_test_manifest_type_params_dunder_method_audit_is_complete() {
 }
 
 #[test]
+fn cpython_test_manifest_type_params_weakref_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
+        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
+    });
+    let expected = python_test_class_method_names(&source, "TypeParamsWeakRefTest");
+    let methods = method_audit_methods(
+        "## `Lib/test/test_type_params.py::TypeParamsWeakRefTest` Method Audit",
+    );
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypeParamsWeakRefTest method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "TypeParamsWeakRefTest methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "TypeParamsWeakRefTest method audit drifted"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_builtin_group_counts_match_current_source() {
     let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
         .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
@@ -561,6 +608,372 @@ fn cpython_test_manifest_builtin_group_counts_match_current_source() {
             .copied()
             .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_BUILTIN_SOURCE}"));
         assert_manifest_group_count(&groups, "Lib/test/test_builtin.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_complex_group_count_matches_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_COMPLEX_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPLEX_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let expected = class_counts
+        .get("ComplexTest")
+        .copied()
+        .unwrap_or_else(|| panic!("missing class `ComplexTest` in {CPYTHON_TEST_COMPLEX_SOURCE}"));
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(&groups, "Lib/test/test_complex.py", "ComplexTest", expected);
+}
+
+#[test]
+fn cpython_test_manifest_complex_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_COMPLEX_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPLEX_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "ComplexTest")
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let methods = method_audit_methods("## `Lib/test/test_complex.py::ComplexTest` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "ComplexTest method audit row count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        37,
+        "ported ComplexTest method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial ComplexTest method count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "partial")),
+        "ComplexTest method audit contains an unexpected status"
+    );
+
+    let expected_statuses = BTreeMap::from([
+        ("test___complex__", "ported"),
+        ("test_abs", "ported"),
+        ("test_add", "ported"),
+        ("test_boolcontext", "ported"),
+        ("test_conjugate", "ported"),
+        ("test_constructor", "ported"),
+        ("test_constructor_from_string", "ported"),
+        ("test_constructor_negative_nans_from_string", "ported"),
+        ("test_constructor_special_numbers", "ported"),
+        ("test_divmod", "ported"),
+        ("test_divmod_zero_division", "ported"),
+        ("test_floordiv", "ported"),
+        ("test_floordiv_zero_division", "ported"),
+        ("test_format", "ported"),
+        ("test_from_number", "ported"),
+        ("test_from_number_subclass", "ported"),
+        ("test_getnewargs", "ported"),
+        ("test_hash", "ported"),
+        ("test_mod", "ported"),
+        ("test_mod_zero_division", "ported"),
+        ("test_mul", "ported"),
+        ("test_neg", "ported"),
+        ("test_negated_imaginary_literal", "ported"),
+        ("test_negative_zero_repr_str", "ported"),
+        ("test_overflow", "ported"),
+        ("test_plus_minus_0j", "ported"),
+        ("test_pos", "ported"),
+        ("test_pow", "ported"),
+        ("test_pow_with_small_integer_exponents", "ported"),
+        ("test_repr_roundtrip", "ported"),
+        ("test_repr_str", "ported"),
+        ("test_richcompare", "ported"),
+        ("test_richcompare_boundaries", "ported"),
+        ("test_sub", "ported"),
+        ("test_truediv", "ported"),
+        ("test_truediv_zero_division", "ported"),
+        ("test_underscores", "ported"),
+    ]);
+    let actual_statuses = methods
+        .iter()
+        .map(|method| (method.method, method.status))
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+        actual_statuses, expected_statuses,
+        "ComplexTest method audit statuses drifted"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "ComplexTest method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_float_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_float.py",
+        "module-level `test_*` functions",
+        module_level_test_function_count(&source),
+    );
+
+    for group in [
+        "GeneralFloatCases",
+        "FormatFunctionsTestCase",
+        "IEEEFormatTestCase",
+        "FormatTestCase",
+        "ReprTestCase",
+        "RoundTestCase",
+        "InfNanTest",
+        "HexFloatTestCase",
+    ] {
+        let expected = class_counts
+            .get(group)
+            .copied()
+            .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_FLOAT_SOURCE}"));
+        assert_manifest_group_count(&groups, "Lib/test/test_float.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_float_general_cases_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "GeneralFloatCases")
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let methods =
+        method_audit_methods("## `Lib/test/test_float.py::GeneralFloatCases` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "GeneralFloatCases method audit row count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        21,
+        "ported GeneralFloatCases method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        1,
+        "partial GeneralFloatCases method count drifted"
+    );
+
+    let expected_statuses = BTreeMap::from([
+        ("test_float", "ported"),
+        ("test_noargs", "ported"),
+        ("test_underscores", "ported"),
+        ("test_non_numeric_input_types", "ported"),
+        ("test_float_memoryview", "ported"),
+        ("test_error_message", "ported"),
+        ("test_float_with_comma", "partial"),
+        ("test_floatconversion", "ported"),
+        ("test_keyword_args", "ported"),
+        ("test_keywords_in_subclass", "ported"),
+        ("test_from_number", "ported"),
+        ("test_from_number_subclass", "ported"),
+        ("test_is_integer", "ported"),
+        ("test_floatasratio", "ported"),
+        ("test_float_containment", "ported"),
+        ("test_float_floor", "ported"),
+        ("test_float_ceil", "ported"),
+        ("test_float_mod", "ported"),
+        ("test_float_pow", "ported"),
+        ("test_hash", "ported"),
+        ("test_hash_nan", "ported"),
+        ("test_issue_gh143006", "ported"),
+    ]);
+    let actual_statuses = methods
+        .iter()
+        .map(|method| (method.method, method.status))
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+        actual_statuses, expected_statuses,
+        "GeneralFloatCases method audit statuses drifted"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "GeneralFloatCases method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_float_method_audit_statuses_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+
+    for (class_name, heading, expected_statuses) in [
+        (
+            "FormatFunctionsTestCase",
+            "## `Lib/test/test_float.py::FormatFunctionsTestCase` Method Audit",
+            BTreeMap::from([("test_getformat", "ported")]),
+        ),
+        (
+            "IEEEFormatTestCase",
+            "## `Lib/test/test_float.py::IEEEFormatTestCase` Method Audit",
+            BTreeMap::from([
+                ("test_double_specials_do_unpack", "blocked_by_runtime"),
+                ("test_float_specials_do_unpack", "blocked_by_runtime"),
+                (
+                    "test_serialized_float_rounding",
+                    "blocked_by_cpython_internal",
+                ),
+            ]),
+        ),
+        (
+            "FormatTestCase",
+            "## `Lib/test/test_float.py::FormatTestCase` Method Audit",
+            BTreeMap::from([
+                ("test_format", "ported"),
+                ("test_format_testfile", "ported"),
+                ("test_issue5864", "ported"),
+                ("test_issue35560", "ported"),
+            ]),
+        ),
+        (
+            "ReprTestCase",
+            "## `Lib/test/test_float.py::ReprTestCase` Method Audit",
+            BTreeMap::from([("test_repr", "ported"), ("test_short_repr", "ported")]),
+        ),
+        (
+            "RoundTestCase",
+            "## `Lib/test/test_float.py::RoundTestCase` Method Audit",
+            BTreeMap::from([
+                ("test_inf_nan", "ported"),
+                ("test_inf_nan_ndigits", "ported"),
+                ("test_large_n", "ported"),
+                ("test_small_n", "ported"),
+                ("test_overflow", "ported"),
+                ("test_previous_round_bugs", "ported"),
+                ("test_matches_float_format", "ported"),
+                ("test_format_specials", "ported"),
+                ("test_None_ndigits", "ported"),
+                ("test_round_with_none_arg_direct_call", "ported"),
+            ]),
+        ),
+        (
+            "InfNanTest",
+            "## `Lib/test/test_float.py::InfNanTest` Method Audit",
+            BTreeMap::from([
+                ("test_inf_from_str", "ported"),
+                ("test_inf_as_str", "ported"),
+                ("test_nan_from_str", "ported"),
+                ("test_nan_as_str", "ported"),
+                ("test_inf_signs", "ported"),
+                ("test_nan_signs", "ported"),
+            ]),
+        ),
+        (
+            "HexFloatTestCase",
+            "## `Lib/test/test_float.py::HexFloatTestCase` Method Audit",
+            BTreeMap::from([
+                ("test_ends", "ported"),
+                ("test_invalid_inputs", "ported"),
+                ("test_whitespace", "ported"),
+                ("test_from_hex", "ported"),
+                ("test_roundtrip", "ported"),
+                ("test_subclass", "ported"),
+            ]),
+        ),
+    ] {
+        let expected = python_test_class_method_names(&source, class_name)
+            .into_iter()
+            .collect::<BTreeSet<_>>();
+        let methods = method_audit_methods(heading);
+        assert_eq!(
+            methods.len(),
+            expected.len(),
+            "{class_name} method audit row count drifted"
+        );
+
+        let actual_statuses = methods
+            .iter()
+            .map(|method| (method.method, method.status))
+            .collect::<BTreeMap<_, _>>();
+        assert_eq!(
+            actual_statuses, expected_statuses,
+            "{class_name} method audit statuses drifted"
+        );
+
+        let actual = methods
+            .iter()
+            .map(|method| method.method.to_string())
+            .collect::<BTreeSet<_>>();
+        assert_eq!(actual, expected, "{class_name} method audit drifted");
+    }
+}
+
+#[test]
+fn cpython_test_manifest_float_fromhex_matrix_inputs_have_runtime_evidence() {
+    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let method_source = python_test_method_source(&source, "HexFloatTestCase", "test_from_hex");
+    let mut inputs = python_call_string_arguments(&method_source, "fromHex");
+    inputs.extend(python_reference_string_arguments(&method_source, "fromHex"));
+    let inputs = inputs.into_iter().collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        inputs.len(),
+        262,
+        "CPython HexFloatTestCase::test_from_hex input matrix drifted"
+    );
+
+    let evidence = format!("{CPYTHON_SUBSET}\n{CPYTHON_DIFF}");
+    let missing = inputs
+        .iter()
+        .filter(|input| !python_string_literal_has_rust_evidence(input, &evidence))
+        .collect::<Vec<_>>();
+    assert!(
+        missing.is_empty(),
+        "missing Rust runtime evidence for CPython HexFloatTestCase::test_from_hex inputs: {missing:?}"
+    );
+
+    for name in [
+        "cpython_float_fromhex_accepted_variants_subset",
+        "cpython_float_fromhex_overflow_zero_underflow_subset",
+        "cpython_float_fromhex_rounding_boundaries_subset",
+        "cpython_float_fromhex_bpo44954_regression_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(name),
+            "missing subset evidence `{name}` for HexFloatTestCase::test_from_hex"
+        );
+    }
+
+    for name in [
+        "float-fromhex-accepted-variants",
+        "float-fromhex-overflow-zero-underflow",
+        "float-fromhex-rounding-boundaries",
+        "float-fromhex-bpo-44954-regression",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(name),
+            "missing differential evidence `{name}` for HexFloatTestCase::test_from_hex"
+        );
     }
 }
 
@@ -740,7 +1153,7 @@ fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked
             .iter()
             .filter(|method| method.status == "ported")
             .count(),
-        7,
+        8,
         "ported BuiltinTest attribute/introspection audit count drifted"
     );
     assert_eq!(
@@ -748,7 +1161,7 @@ fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked
             .iter()
             .filter(|method| method.status == "partial")
             .count(),
-        2,
+        1,
         "partial BuiltinTest attribute/introspection audit count drifted"
     );
     assert!(
@@ -760,7 +1173,7 @@ fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked
 
     let expected_statuses = BTreeMap::from([
         ("test_delattr", "ported"),
-        ("test_dir", "partial"),
+        ("test_dir", "ported"),
         ("test_getattr", "partial"),
         ("test_hasattr", "ported"),
         ("test_isinstance", "ported"),
@@ -782,6 +1195,93 @@ fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked
             builtin_methods.contains(*method),
             "BuiltinTest attribute/introspection audit references missing CPython method `{method}`"
         );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_MEMORYVIEW_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_MEMORYVIEW_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let expected_count = class_counts.values().sum::<usize>();
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_memoryview.py",
+        "direct test method definitions",
+        expected_count,
+    );
+
+    let evidence = format!("{MANIFEST}\n{CPYTHON_SUBSET}\n{CPYTHON_COVERAGE}\n{CPYTHON_MIGRATION}");
+    let missing = class_counts
+        .keys()
+        .flat_map(|class_name| python_test_class_method_names(&source, class_name))
+        .filter(|method_name| !evidence.contains(method_name))
+        .collect::<Vec<_>>();
+    assert!(
+        missing.is_empty(),
+        "memoryview direct methods are not tracked in manifest: {missing:?}"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_bytes_base_methods_are_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_BYTES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BYTES_SOURCE}: {error}"));
+    let expected_count = python_test_class_method_counts(&source)
+        .get("BaseBytesTest")
+        .copied()
+        .unwrap_or_else(|| panic!("missing class `BaseBytesTest` in {CPYTHON_TEST_BYTES_SOURCE}"));
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_bytes.py",
+        "BaseBytesTest",
+        expected_count,
+    );
+    assert_manifest_group_status(
+        &groups,
+        "Lib/test/test_bytes.py",
+        "BaseBytesTest",
+        "partial",
+    );
+
+    let evidence = format!("{MANIFEST}\n{CPYTHON_SUBSET}\n{CPYTHON_COVERAGE}\n{CPYTHON_MIGRATION}");
+    let missing = python_test_class_method_names(&source, "BaseBytesTest")
+        .into_iter()
+        .filter(|method_name| !evidence.contains(method_name))
+        .collect::<Vec<_>>();
+    assert!(
+        missing.is_empty(),
+        "BaseBytesTest methods are not tracked in manifest evidence: {missing:?}"
+    );
+}
+
+#[test]
+fn cpython_test_manifest_bytes_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_BYTES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BYTES_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    for (group, status) in [
+        ("BaseBytesTest", "partial"),
+        ("BytesTest", "partial"),
+        ("ByteArrayTest", "partial"),
+        ("AssortedBytesTest", "ported"),
+        ("BytearrayPEP3137Test", "ported"),
+        ("SubclassTest", "ported"),
+        ("ByteArraySubclassTest", "ported"),
+        ("FreeThreadingTest", "blocked_by_cpython_internal"),
+    ] {
+        let expected = class_counts
+            .get(group)
+            .copied()
+            .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_BYTES_SOURCE}"));
+        assert_manifest_group_count(&groups, "Lib/test/test_bytes.py", group, expected);
+        assert_manifest_group_status(&groups, "Lib/test/test_bytes.py", group, status);
     }
 }
 
@@ -935,11 +1435,136 @@ fn cpython_test_manifest_builtin_iterator_method_audit_is_tracked() {
 }
 
 #[test]
+fn cpython_test_manifest_builtin_compile_io_regression_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let methods = method_audit_methods(
+        "## `Lib/test/test_builtin.py::BuiltinTest Compile/I/O/Regression Method Audit`",
+    );
+
+    assert_eq!(
+        methods.len(),
+        18,
+        "BuiltinTest compile/I/O/regression audit row count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        13,
+        "ported BuiltinTest compile/I/O/regression audit count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial BuiltinTest compile/I/O/regression audit count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "not_started")
+            .count(),
+        0,
+        "not_started BuiltinTest compile/I/O/regression audit count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_runtime")
+            .count(),
+        5,
+        "blocked_by_runtime BuiltinTest compile/I/O/regression audit count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| matches!(
+            method.status,
+            "ported" | "not_started" | "blocked_by_runtime"
+        )),
+        "BuiltinTest compile/I/O/regression audit contains an unexpected status"
+    );
+
+    let expected_statuses = BTreeMap::from([
+        ("test_bool_notimplemented", "ported"),
+        ("test_bytearray_extend_error", "ported"),
+        ("test_bytearray_join_with_custom_iterator", "ported"),
+        ("test_bytearray_join_with_misbehaving_iterator", "ported"),
+        ("test_bytearray_translate", "ported"),
+        ("test_compile", "ported"),
+        ("test_compile_ast", "ported"),
+        ("test_compile_async_generator", "ported"),
+        ("test_compile_top_level_await", "ported"),
+        ("test_compile_top_level_await_invalid_cases", "ported"),
+        ("test_compile_top_level_await_no_coro", "ported"),
+        ("test_construct_singletons", "ported"),
+        ("test_input", "blocked_by_runtime"),
+        ("test_input_gh130163", "blocked_by_runtime"),
+        ("test_open", "blocked_by_runtime"),
+        ("test_open_default_encoding", "blocked_by_runtime"),
+        ("test_open_non_inheritable", "blocked_by_runtime"),
+        ("test_singleton_attribute_access", "ported"),
+    ]);
+    let actual_statuses = methods
+        .iter()
+        .map(|method| (method.method, method.status))
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+        actual_statuses, expected_statuses,
+        "BuiltinTest compile/I/O/regression audit statuses drifted"
+    );
+    for method in expected_statuses.keys() {
+        assert!(
+            builtin_methods.contains(*method),
+            "BuiltinTest compile/I/O/regression audit references missing CPython method `{method}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_builtin_test_breakpoint_method_audit_is_classified() {
-    assert_builtin_method_audit_status_matches_current_source(
-        "TestBreakpoint",
-        "## `Lib/test/test_builtin.py::TestBreakpoint` Method Audit",
-        "blocked_by_runtime",
+    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let expected_methods = python_test_class_method_names(&source, "TestBreakpoint")
+        .into_iter()
+        .collect::<BTreeSet<_>>();
+    let methods =
+        method_audit_methods("## `Lib/test/test_builtin.py::TestBreakpoint` Method Audit");
+    let actual_methods = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual_methods, expected_methods,
+        "TestBreakpoint method audit drifted"
+    );
+
+    let expected_statuses = BTreeMap::from([
+        ("test_breakpoint", "partial"),
+        ("test_breakpoint_with_breakpointhook_set", "ported_public"),
+        ("test_breakpoint_with_breakpointhook_reset", "partial"),
+        ("test_breakpoint_with_args_and_keywords", "ported_public"),
+        ("test_breakpoint_with_passthru_error", "blocked_by_runtime"),
+        ("test_envar_good_path_builtin", "blocked_by_runtime"),
+        ("test_envar_good_path_other", "blocked_by_runtime"),
+        ("test_envar_good_path_noop_0", "blocked_by_runtime"),
+        ("test_envar_good_path_empty_string", "blocked_by_runtime"),
+        ("test_envar_unimportable", "blocked_by_runtime"),
+        ("test_envar_ignored_when_hook_is_set", "blocked_by_runtime"),
+        ("test_runtime_error_when_hook_is_lost", "ported_public"),
+    ]);
+    let actual_statuses = methods
+        .iter()
+        .map(|method| (method.method, method.status))
+        .collect::<BTreeMap<_, _>>();
+    assert_eq!(
+        actual_statuses, expected_statuses,
+        "TestBreakpoint audit statuses drifted"
     );
 }
 
@@ -1377,6 +2002,7 @@ fn cpython_test_manifest_statuses_are_well_formed() {
             matches!(
                 group.status,
                 "ported"
+                    | "ported_public"
                     | "partial"
                     | "blocked_by_runtime"
                     | "blocked_by_ast_module"
@@ -1397,6 +2023,20 @@ fn cpython_test_manifest_statuses_are_well_formed() {
             method.method,
             method.status
         );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
+    let groups = manifest_groups();
+
+    for (source, group) in [
+        ("Lib/test/test_compile.py", "TestSourcePositions"),
+        ("Lib/test/test_collections.py", "TestNamedTuple"),
+        ("Lib/test/test_collections.py", "TestCollectionABCs"),
+        ("Lib/test/test_types.py", "UnionTests"),
+    ] {
+        assert_manifest_group_status(&groups, source, group, "ported_public");
     }
 }
 
@@ -1596,6 +2236,118 @@ fn cpython_test_manifest_collections_group_counts_match_current_source() {
 }
 
 #[test]
+fn cpython_test_manifest_types_group_counts_match_current_source() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let class_counts = python_test_class_method_counts(&source);
+    let groups = manifest_groups();
+
+    assert_manifest_group_count(
+        &groups,
+        "Lib/test/test_types.py",
+        "module-level `test_*` functions",
+        module_level_test_function_count(&source),
+    );
+
+    for group in [
+        "TypesTests",
+        "UnionTests",
+        "MappingProxyTests",
+        "ClassCreationTests",
+        "SimpleNamespaceTests",
+        "CoroutineTests",
+        "FunctionTests",
+        "SubinterpreterTests",
+    ] {
+        let expected = class_counts
+            .get(group)
+            .copied()
+            .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_TYPES_SOURCE}"));
+        assert_manifest_group_count(&groups, "Lib/test/test_types.py", group, expected);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_types_tests_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "TypesTests");
+    let methods = method_audit_methods("## `Lib/test/test_types.py::TypesTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "TypesTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| {
+            matches!(
+                method.status,
+                "ported" | "partial" | "blocked_by_runtime" | "blocked_by_cpython_internal"
+            )
+        }),
+        "TypesTests method audit contains an unknown status"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        23,
+        "ported TypesTests method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial TypesTests method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_runtime")
+            .count(),
+        4,
+        "blocked-by-runtime TypesTests method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_cpython_internal")
+            .count(),
+        3,
+        "blocked-by-CPython-internal TypesTests method count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .any(|method| method.method == "test_names" && method.status == "ported"),
+        "TypesTests test_names public alias surface should remain ported"
+    );
+    assert!(
+        methods.iter().any(|method| {
+            method.method == "test_internal_sizes" && method.status == "blocked_by_cpython_internal"
+        }),
+        "TypesTests internal size checks should stay classified as CPython-internal"
+    );
+    assert!(
+        methods
+            .iter()
+            .any(|method| method.method == "test_none_type" && method.status == "ported"),
+        "TypesTests singleton alias coverage should remain ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "TypesTests method audit drifted");
+}
+
+#[test]
 fn cpython_test_manifest_builtin_sorted_method_audit_is_complete() {
     let methods = method_audit_methods("## `Lib/test/test_builtin.py::TestSorted` Method Audit");
 
@@ -1618,6 +2370,194 @@ fn cpython_test_manifest_builtin_sorted_method_audit_is_complete() {
         assert!(
             methods.iter().any(|method| method.method == expected),
             "missing TestSorted method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_types_union_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "UnionTests");
+    let methods = method_audit_methods("## `Lib/test/test_types.py::UnionTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "UnionTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| {
+            matches!(
+                method.status,
+                "ported"
+                    | "partial"
+                    | "blocked_by_runtime"
+                    | "blocked_by_cpython_internal"
+                    | "not_started"
+            )
+        }),
+        "UnionTests method audit contains an unknown status"
+    );
+    assert!(
+        methods
+            .iter()
+            .any(|method| method.method == "test_hash" && method.status == "ported"),
+        "UnionTests hash method should remain fully ported"
+    );
+    assert!(
+        methods.iter().any(|method| {
+            method.method == "test_or_type_operator_reference_cycle"
+                && method.status == "blocked_by_cpython_internal"
+        }),
+        "UnionTests reference-cycle method should remain classified as CPython-internal"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "UnionTests method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_types_mappingproxy_method_audit_is_complete() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_types.py::MappingProxyTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        15,
+        "MappingProxyTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "all MappingProxyTests methods should be ported"
+    );
+
+    for expected in [
+        "test_constructor",
+        "test_methods",
+        "test_get",
+        "test_missing",
+        "test_customdict",
+        "test_chainmap",
+        "test_contains",
+        "test_views",
+        "test_len",
+        "test_iterators",
+        "test_reversed",
+        "test_copy",
+        "test_union",
+        "test_hash",
+        "test_richcompare",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing MappingProxyTests method audit row for `{expected}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_types_class_creation_method_audit_is_complete() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "ClassCreationTests");
+    let methods =
+        method_audit_methods("## `Lib/test/test_types.py::ClassCreationTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "ClassCreationTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "all ClassCreationTests methods should be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "ClassCreationTests method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_types_coroutine_method_audit_is_tracked() {
+    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
+        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let expected = python_test_class_method_names(&source, "CoroutineTests");
+    let methods = method_audit_methods("## `Lib/test/test_types.py::CoroutineTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "CoroutineTests method audit row count drifted"
+    );
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "partial" | "blocked_by_runtime")),
+        "CoroutineTests method statuses should be ported, partial, or blocked_by_runtime"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        11,
+        "ported CoroutineTests method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "partial")
+            .count(),
+        0,
+        "partial CoroutineTests method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_runtime")
+            .count(),
+        0,
+        "blocked CoroutineTests method count drifted"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let expected = expected.into_iter().collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "CoroutineTests method audit drifted");
+}
+
+#[test]
+fn cpython_test_manifest_types_function_method_audit_is_complete() {
+    let methods = method_audit_methods("## `Lib/test/test_types.py::FunctionTests` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        2,
+        "FunctionTests method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "all FunctionTests methods should be ported"
+    );
+
+    for expected in [
+        "test_function_type_defaults",
+        "test_function_type_wrong_defaults",
+    ] {
+        assert!(
+            methods.iter().any(|method| method.method == expected),
+            "missing FunctionTests method audit row for `{expected}`"
         );
     }
 }
@@ -2038,6 +2978,23 @@ fn assert_manifest_group_count(
     );
 }
 
+fn assert_manifest_group_status(
+    groups: &[ManifestGroup<'_>],
+    source: &str,
+    group: &str,
+    expected: &str,
+) {
+    let actual = groups
+        .iter()
+        .find(|entry| entry.source == source && entry.group == group)
+        .unwrap_or_else(|| panic!("missing manifest group `{source}` / `{group}`"))
+        .status;
+    assert_eq!(
+        actual, expected,
+        "manifest status drifted for `{source}` / `{group}`"
+    );
+}
+
 fn summary_rows() -> BTreeMap<&'static str, (usize, usize)> {
     let mut rows = BTreeMap::new();
     for line in MANIFEST.lines() {
@@ -2215,6 +3172,130 @@ fn python_test_class_method_names(source: &str, class_name: &str) -> Vec<String>
             )
         })
         .collect()
+}
+
+fn python_test_method_source(source: &str, class_name: &str, method_name: &str) -> String {
+    let lines = source.lines().collect::<Vec<_>>();
+    let class_start = lines
+        .iter()
+        .position(|line| {
+            line.strip_prefix("class ")
+                .and_then(|rest| rest.split(['(', '[', ':']).next())
+                == Some(class_name)
+        })
+        .unwrap_or_else(|| panic!("missing class `{class_name}`"));
+    let class_end = lines[class_start + 1..]
+        .iter()
+        .position(|line| line.starts_with("class "))
+        .map(|offset| class_start + 1 + offset)
+        .unwrap_or(lines.len());
+    let method_signature = format!("    def {method_name}(");
+    let method_start = lines[class_start + 1..class_end]
+        .iter()
+        .position(|line| line.starts_with(&method_signature))
+        .map(|offset| class_start + 1 + offset)
+        .unwrap_or_else(|| panic!("missing method `{class_name}::{method_name}`"));
+    let method_end = lines[method_start + 1..class_end]
+        .iter()
+        .position(|line| line.starts_with("    def test_"))
+        .map(|offset| method_start + 1 + offset)
+        .unwrap_or(class_end);
+
+    lines[method_start..method_end].join("\n")
+}
+
+fn python_call_string_arguments(source: &str, call_name: &str) -> Vec<String> {
+    let pattern = format!("{call_name}(");
+    let mut arguments = Vec::new();
+    let mut offset = 0;
+
+    while let Some(position) = source[offset..].find(&pattern) {
+        let mut index = offset + position + pattern.len();
+        let bytes = source.as_bytes();
+        while matches!(bytes.get(index), Some(b' ' | b'\n' | b'\t')) {
+            index += 1;
+        }
+
+        let Some(&quote) = bytes.get(index) else {
+            break;
+        };
+        if quote != b'\'' && quote != b'"' {
+            offset = index.saturating_add(1);
+            continue;
+        }
+
+        let literal_start = index + 1;
+        index = literal_start;
+        while let Some(&byte) = bytes.get(index) {
+            if byte == b'\\' {
+                index += 2;
+                continue;
+            }
+            if byte == quote {
+                arguments.push(source[literal_start..index].to_string());
+                index += 1;
+                break;
+            }
+            index += 1;
+        }
+        offset = index;
+    }
+
+    arguments
+}
+
+fn python_reference_string_arguments(source: &str, function_name: &str) -> Vec<String> {
+    let pattern = format!("{function_name},");
+    let mut arguments = Vec::new();
+    let mut offset = 0;
+
+    while let Some(position) = source[offset..].find(&pattern) {
+        let mut index = offset + position + pattern.len();
+        let bytes = source.as_bytes();
+        while matches!(bytes.get(index), Some(b' ' | b'\n' | b'\t')) {
+            index += 1;
+        }
+
+        let Some(&quote) = bytes.get(index) else {
+            break;
+        };
+        if quote != b'\'' && quote != b'"' {
+            offset = index.saturating_add(1);
+            continue;
+        }
+
+        let literal_start = index + 1;
+        index = literal_start;
+        while let Some(&byte) = bytes.get(index) {
+            if byte == b'\\' {
+                index += 2;
+                continue;
+            }
+            if byte == quote {
+                arguments.push(source[literal_start..index].to_string());
+                index += 1;
+                break;
+            }
+            index += 1;
+        }
+        offset = index;
+    }
+
+    arguments
+}
+
+fn python_string_literal_has_rust_evidence(literal_inner: &str, evidence: &str) -> bool {
+    let mut candidates = BTreeSet::new();
+    candidates.insert(literal_inner.to_string());
+    candidates.insert(literal_inner.replace('\\', "\\\\"));
+    candidates.insert(literal_inner.replace('\t', "\\t"));
+    candidates.insert(literal_inner.replace('\t', "\\\\t"));
+    candidates.insert(literal_inner.replace('\n', "\\n"));
+    candidates.insert(literal_inner.replace('\n', "\\\\n"));
+
+    candidates
+        .iter()
+        .any(|candidate| evidence.contains(candidate))
 }
 
 fn module_level_test_function_count(source: &str) -> usize {

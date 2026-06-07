@@ -286,6 +286,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlaceFloorDivide {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     Modulo {
         dst: Register,
         left: Register,
@@ -596,6 +601,7 @@ pub enum Instruction {
         iterator: Register,
         dst: Register,
         completion: Register,
+        track_yield_from: bool,
         target: usize,
     },
     Pop {
