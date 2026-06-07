@@ -468,8 +468,8 @@ print(json.dumps(json.loads('"\\ud834\\udd20"')))"#,
 #[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
-        origin: "Lib/test/test_itertools.py public count/repeat/chain/islice/pairwise core subset",
-        name: "itertools-count-repeat-chain-islice-pairwise-core",
+        origin: "Lib/test/test_itertools.py public count/repeat/chain/islice core subset",
+        name: "itertools-count-repeat-chain-islice-core",
         source: r#"import itertools
 c = itertools.count(2, 3)
 print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
@@ -489,10 +489,6 @@ it = iter(range(10))
 print(list(itertools.islice(it, 2, 5)), next(it))
 s = itertools.islice(range(3), 1)
 print(type(s).__name__, iter(s) is s)
-p = itertools.pairwise('abcd')
-print(type(p).__name__, iter(p) is p, list(p), list(p))
-print(list(itertools.pairwise([1])), list(itertools.pairwise([])))
-print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))
 try:
     itertools.chain(iterable=[1])
 except TypeError as error:
@@ -511,13 +507,39 @@ for expr in [
     lambda: itertools.islice(range(3), 1, -1),
     lambda: itertools.islice(range(3), 1, 2, 0),
     lambda: itertools.islice(iterable=range(3), stop=2),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_itertools_pairwise_diff_subset() {
+    let probe = run_cpython("import itertools; print(hasattr(itertools, 'pairwise'))")
+        .expect("failed to probe CPython itertools.pairwise support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping itertools.pairwise diff: CPython oracle lacks itertools.pairwise");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public pairwise core subset",
+        name: "itertools-pairwise-core",
+        source: r#"import itertools
+p = itertools.pairwise('abcd')
+print(type(p).__name__, iter(p) is p, list(p), list(p))
+print(list(itertools.pairwise([1])), list(itertools.pairwise([])))
+print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))
+for expr in [
     lambda: itertools.pairwise(),
     lambda: itertools.pairwise(range(3), range(3)),
     lambda: itertools.pairwise(iterable=range(3)),
 ]:
     try:
         expr()
-    except (TypeError, ValueError) as error:
+    except TypeError as error:
         print(error.__class__.__name__)"#,
     });
 }

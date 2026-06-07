@@ -200,9 +200,10 @@ Recent runtime migration notes:
   sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_count_repeat_chain_subset` and
-  `cpython_itertools_core_diff_subset`, covering the pure in-memory first-pass
-  `count()`, `repeat()`, `chain()`, `islice()`, and `pairwise()` iterator
-  protocol behavior.
+  `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
+  `cpython_itertools_pairwise_diff_subset`, covering the pure in-memory
+  first-pass `count()`, `repeat()`, `chain()`, `islice()`, and `pairwise()`
+  iterator protocol behavior.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
   arbitrary supported iterables, and non-negative integer `islice()` windows
