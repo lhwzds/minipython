@@ -32203,6 +32203,36 @@ fn cpython_json_loads_escape_and_duplicate_key_subset() {
 }
 
 #[test]
+fn cpython_json_loads_strict_subset() {
+    assert_output(
+        "import json\nsources = ['\"a' + chr(10) + 'b\"', '\"a' + chr(9) + 'b\"', '\"a' + chr(0) + 'b\"', '{\"x\": \"a' + chr(10) + 'b\"}']\nfor strict in [True, 1, False, 0, []]:\n    for source in sources:\n        try:\n            print(repr(strict), repr(json.loads(source, strict=strict)))\n        except Exception as error:\n            print(repr(strict), isinstance(error, ValueError))\ntry:\n    json.loads('{}', strict=False, unknown=1)\nexcept Exception as error:\n    print('unknown', type(error).__name__, isinstance(error, TypeError))",
+        &[
+            "True True",
+            "True True",
+            "True True",
+            "True True",
+            "1 True",
+            "1 True",
+            "1 True",
+            "1 True",
+            "False 'a\\nb'",
+            "False 'a\\tb'",
+            "False 'a\\x00b'",
+            "False {'x': 'a\\nb'}",
+            "0 'a\\nb'",
+            "0 'a\\tb'",
+            "0 'a\\x00b'",
+            "0 {'x': 'a\\nb'}",
+            "[] 'a\\nb'",
+            "[] 'a\\tb'",
+            "[] 'a\\x00b'",
+            "[] {'x': 'a\\nb'}",
+            "unknown TypeError True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_string_escape_subset() {
     assert_output(
         "import json\nfor value in ['\\x00\\x1f', '\\b\\f\\n\\r\\t', '\"\\\\', 'é', '𝄠']:\n    print(json.dumps(value))",
@@ -32270,6 +32300,123 @@ fn cpython_json_dumps_separators_subset() {
             "ValueError True",
             "ValueError True",
             "TypeError True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_skipkeys_subset() {
+    assert_output(
+        "import json\nclass K:\n    pass\nclass S(str):\n    pass\nclass I(int):\n    pass\ncases = [\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, False, False),\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, True, False),\n    ({K(): 'custom', 'a': [1, 2]}, True, False),\n    ({(1, 2): 'tuple', S('s'): I(4)}, True, False),\n    ({(1, 2): 'tuple', 'b': 1, 'a': 2}, True, True),\n]\nfor value, skipkeys, sort_keys in cases:\n    try:\n        print(json.dumps(value, skipkeys=skipkeys, sort_keys=sort_keys))\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\nprint(json.dumps({(1, 2): 'tuple', 'é': '𝄠'}, skipkeys=True, ensure_ascii=False, separators=(',', ':')))\nfor skipkeys in [[], {}, K()]:\n    try:\n        json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=skipkeys)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\n    else:\n        print('ok')",
+        &[
+            "TypeError True",
+            "{\"a\": 1, \"null\": 2, \"3\": \"three\"}",
+            "{\"a\": [1, 2]}",
+            "{\"s\": 4}",
+            "TypeError True",
+            "{\"é\":\"𝄠\"}",
+            "TypeError True",
+            "TypeError True",
+            "ok",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_allow_nan_subset() {
+    assert_output(
+        "import json\nclass F(float):\n    pass\nvalues = [float('nan'), float('inf'), float('-inf'), F(float('nan')), F(float('inf')), 1.5]\nfor allow_nan in [True, 1, False, 0]:\n    for value in values:\n        try:\n            print(allow_nan, json.dumps(value, allow_nan=allow_nan))\n        except Exception as error:\n            print(allow_nan, type(error).__name__, isinstance(error, ValueError))\nfor allow_nan in [True, False]:\n    try:\n        print('key', allow_nan, json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan))\n    except Exception as error:\n        print('key', allow_nan, type(error).__name__, isinstance(error, ValueError))\ntry:\n    json.dumps([float('nan')], allow_nan=[])\nexcept Exception as error:\n    print('list', type(error).__name__, isinstance(error, ValueError))\nelse:\n    print('list ok')",
+        &[
+            "True NaN",
+            "True Infinity",
+            "True -Infinity",
+            "True NaN",
+            "True Infinity",
+            "True 1.5",
+            "1 NaN",
+            "1 Infinity",
+            "1 -Infinity",
+            "1 NaN",
+            "1 Infinity",
+            "1 1.5",
+            "False ValueError True",
+            "False ValueError True",
+            "False ValueError True",
+            "False ValueError True",
+            "False ValueError True",
+            "False 1.5",
+            "0 ValueError True",
+            "0 ValueError True",
+            "0 ValueError True",
+            "0 ValueError True",
+            "0 ValueError True",
+            "0 1.5",
+            "key True {\"NaN\": \"nan\", \"Infinity\": \"inf\", \"1.0\": \"one\"}",
+            "key False ValueError True",
+            "list ValueError True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_check_circular_subset() {
+    assert_output(
+        "import json\nfrom collections import namedtuple\ncases = []\ncycle_list = []\ncycle_list.append(cycle_list)\ncases.append(('list', cycle_list))\ncycle_dict = {}\ncycle_dict['self'] = cycle_dict\ncases.append(('dict', cycle_dict))\ninner = []\ncycle_tuple = (inner,)\ninner.append(cycle_tuple)\ncases.append(('tuple', cycle_tuple))\nPoint = namedtuple('Point', 'items')\nitems = []\ncycle_namedtuple = Point(items)\nitems.append(cycle_namedtuple)\ncases.append(('namedtuple', cycle_namedtuple))\nfor check_circular in [True, 1, False, 0, []]:\n    for label, value in cases:\n        try:\n            json.dumps(value, check_circular=check_circular)\n        except Exception as error:\n            print(repr(check_circular), label, type(error).__name__, isinstance(error, (ValueError, RecursionError)))\n        else:\n            print(repr(check_circular), label, 'OK')\nfor value in [[1, 2], {'a': [1]}, (1, 2)]:\n    print(json.dumps(value, check_circular=False))\ntry:\n    json.dumps([1], check_circular=object())\nexcept Exception as error:\n    print('object', type(error).__name__)\nelse:\n    print('object ok')",
+        &[
+            "True list ValueError True",
+            "True dict ValueError True",
+            "True tuple ValueError True",
+            "True namedtuple ValueError True",
+            "1 list ValueError True",
+            "1 dict ValueError True",
+            "1 tuple ValueError True",
+            "1 namedtuple ValueError True",
+            "False list RecursionError True",
+            "False dict RecursionError True",
+            "False tuple RecursionError True",
+            "False namedtuple RecursionError True",
+            "0 list RecursionError True",
+            "0 dict RecursionError True",
+            "0 tuple RecursionError True",
+            "0 namedtuple RecursionError True",
+            "[] list RecursionError True",
+            "[] dict RecursionError True",
+            "[] tuple RecursionError True",
+            "[] namedtuple RecursionError True",
+            "[1, 2]",
+            "{\"a\": [1]}",
+            "[1, 2]",
+            "object ok",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_indent_subset() {
+    assert_output(
+        "import json\nvalue = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}\nfor indent in [None, 0, 2, '', '--']:\n    print('CASE', repr(indent))\n    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))\nfor args in [dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:\n    print('SEP', args['indent'], repr(args['separators']))\n    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))\nfor indent in [True, False, 1.5, [], object()]:\n    try:\n        print('BAD', repr(json.dumps([1, 2], indent=indent)))\n    except Exception as error:\n        print('BAD', type(error).__name__, isinstance(error, TypeError))",
+        &[
+            "CASE None",
+            r#"'{"a": {"é": "𝄠"}, "b": [1, {"x": 2}], "empty": []}'"#,
+            "CASE 0",
+            r#"'{\n"a": {\n"é": "𝄠"\n},\n"b": [\n1,\n{\n"x": 2\n}\n],\n"empty": []\n}'"#,
+            "CASE 2",
+            r#"'{\n  "a": {\n    "é": "𝄠"\n  },\n  "b": [\n    1,\n    {\n      "x": 2\n    }\n  ],\n  "empty": []\n}'"#,
+            "CASE ''",
+            r#"'{\n"a": {\n"é": "𝄠"\n},\n"b": [\n1,\n{\n"x": 2\n}\n],\n"empty": []\n}'"#,
+            "CASE '--'",
+            r#"'{\n--"a": {\n----"é": "𝄠"\n--},\n--"b": [\n----1,\n----{\n------"x": 2\n----}\n--],\n--"empty": []\n}'"#,
+            "SEP 2 (',', ':')",
+            r#"'{\n  "b":[\n    1,\n    2\n  ],\n  "a":3\n}'"#,
+            "SEP 2 (', ', ': ')",
+            r#"'{\n  "b": [\n    1, \n    2\n  ], \n  "a": 3\n}'"#,
+            "SEP 0 (',', ':')",
+            r#"'{\n"b":[\n1,\n2\n],\n"a":3\n}'"#,
+            r#"BAD '[\n 1,\n 2\n]'"#,
+            r#"BAD '[\n1,\n2\n]'"#,
+            "BAD TypeError True",
+            "BAD TypeError True",
+            "BAD TypeError True",
         ],
     );
 }

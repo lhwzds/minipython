@@ -22077,15 +22077,19 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        if !keywords.is_empty() {
-            return Err("TypeError: loads() does not accept keyword arguments".to_string());
-        }
         let [source] = args.as_slice() else {
             return Err(format!(
                 "TypeError: loads() expected 1 argument, got {}",
                 args.len()
             ));
         };
+        let mut strict = true;
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "strict" => strict = is_truthy(&value)?,
+                _ => return Err("TypeError: loads() does not accept keyword arguments".to_string()),
+            }
+        }
         let source = match source {
             Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
             Value::Bytes(bytes) => json_loads_decode_bytes(bytes.as_ref())?,
@@ -22107,7 +22111,7 @@ impl Vm {
                 ));
             }
         };
-        JsonParser::new(&source).parse()
+        JsonParser::new(&source, strict).parse()
     }
 
     fn call_json_dumps(
@@ -22122,13 +22126,24 @@ impl Vm {
             ));
         };
         let mut options = JsonDumpsOptions::default();
+        let mut separators_explicit = false;
         for (keyword, value) in keywords {
             match keyword.as_str() {
+                "allow_nan" => options.allow_nan = is_truthy(&value)?,
+                "check_circular" => options.check_circular = is_truthy(&value)?,
                 "ensure_ascii" => options.ensure_ascii = is_truthy(&value)?,
+                "indent" => options.indent = json_dumps_indent_string(&value)?,
+                "skipkeys" => options.skip_keys = is_truthy(&value)?,
                 "sort_keys" => options.sort_keys = is_truthy(&value)?,
-                "separators" => json_dumps_apply_separators(&mut options, &value)?,
+                "separators" => {
+                    separators_explicit = true;
+                    json_dumps_apply_separators(&mut options, &value)?;
+                }
                 _ => return Err("TypeError: dumps() does not accept keyword arguments".to_string()),
             }
+        }
+        if options.indent.is_some() && !separators_explicit {
+            options.item_separator = ",".to_string();
         }
         let mut active = HashSet::new();
         Ok(Value::String(json_dumps_value(
@@ -53712,13 +53727,15 @@ fn unbox_slice_part(value: Option<Box<Value>>) -> Option<Value> {
 struct JsonParser {
     chars: Vec<char>,
     pos: usize,
+    strict: bool,
 }
 
 impl JsonParser {
-    fn new(source: &str) -> Self {
+    fn new(source: &str, strict: bool) -> Self {
         Self {
             chars: source.chars().collect(),
             pos: 0,
+            strict,
         }
     }
 
@@ -53822,7 +53839,9 @@ impl JsonParser {
             match ch {
                 '"' => return Ok(value),
                 '\\' => value.push_str(&self.parse_escape()?),
-                ch if ch <= '\u{1f}' => return self.error("Invalid control character"),
+                ch if self.strict && ch <= '\u{1f}' => {
+                    return self.error("Invalid control character");
+                }
                 ch => value.push(ch),
             }
         }
@@ -54051,20 +54070,56 @@ fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, 
 }
 
 struct JsonDumpsOptions {
+    allow_nan: bool,
+    check_circular: bool,
     ensure_ascii: bool,
+    skip_keys: bool,
     sort_keys: bool,
     item_separator: String,
     key_separator: String,
+    indent: Option<String>,
 }
 
 impl Default for JsonDumpsOptions {
     fn default() -> Self {
         Self {
+            allow_nan: true,
+            check_circular: true,
             ensure_ascii: true,
+            skip_keys: false,
             sort_keys: false,
             item_separator: ", ".to_string(),
             key_separator: ": ".to_string(),
+            indent: None,
         }
+    }
+}
+
+fn json_dumps_indent_string(value: &Value) -> Result<Option<String>, String> {
+    match value {
+        Value::None => Ok(None),
+        Value::Bool(true) => Ok(Some(" ".to_string())),
+        Value::Bool(false) => Ok(Some(String::new())),
+        Value::Number(value) => Ok(Some(" ".repeat((*value).max(0) as usize))),
+        Value::BigInt(value) => {
+            let Some(value) = value.to_i64() else {
+                return Err("TypeError: json.dumps() indent must be str, int or None".to_string());
+            };
+            Ok(Some(" ".repeat(value.max(0) as usize)))
+        }
+        value if int_subclass_integer(value).is_some() => {
+            let indent =
+                json_dumps_int_subclass(value).expect("int subclass storage exists after guard");
+            let Ok(indent) = indent.parse::<i64>() else {
+                return Err("TypeError: json.dumps() indent must be str, int or None".to_string());
+            };
+            Ok(Some(" ".repeat(indent.max(0) as usize)))
+        }
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(Some(value.clone())),
+        value if str_subclass_string(value).is_some() => Ok(Some(
+            str_subclass_string(value).expect("str subclass storage exists after guard"),
+        )),
+        _ => Err("TypeError: json.dumps() indent must be str, int or None".to_string()),
     }
 }
 
@@ -54110,21 +54165,38 @@ fn json_dumps_value(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
 ) -> Result<String, String> {
+    json_dumps_value_at_depth(value, active, options, 0)
+}
+
+fn json_dumps_value_at_depth(
+    value: &Value,
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+    depth: usize,
+) -> Result<String, String> {
     if let Some(identity) = json_dumps_container_identity(value) {
         if !active.insert(identity) {
-            return Err("ValueError: Circular reference detected".to_string());
+            return if options.check_circular {
+                Err("ValueError: Circular reference detected".to_string())
+            } else {
+                Err(
+                    "RecursionError: maximum recursion depth exceeded while encoding a JSON object"
+                        .to_string(),
+                )
+            };
         }
-        let result = json_dumps_value_inner(value, active, options);
+        let result = json_dumps_value_inner(value, active, options, depth);
         active.remove(&identity);
         return result;
     }
-    json_dumps_value_inner(value, active, options)
+    json_dumps_value_inner(value, active, options, depth)
 }
 
 fn json_dumps_value_inner(
     value: &Value,
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
+    depth: usize,
 ) -> Result<String, String> {
     match value {
         Value::None => Ok("null".to_string()),
@@ -54132,13 +54204,14 @@ fn json_dumps_value_inner(
         Value::Bool(false) => Ok("false".to_string()),
         Value::Number(value) => Ok(value.to_string()),
         Value::BigInt(value) => Ok(value.to_string()),
-        Value::Float(value) => Ok(json_dumps_float(**value)),
+        Value::Float(value) => json_dumps_float(**value, options),
         value if int_subclass_integer(value).is_some() => {
             Ok(json_dumps_int_subclass(value).expect("int subclass storage exists after guard"))
         }
-        value if float_subclass_float(value).is_some() => Ok(json_dumps_float(
+        value if float_subclass_float(value).is_some() => json_dumps_float(
             *float_subclass_float(value).expect("float subclass storage exists after guard"),
-        )),
+            options,
+        ),
         Value::String(value) | Value::IdentityString { value, .. } => {
             Ok(format!("\"{}\"", json_escape_string(value, options)))
         }
@@ -54149,21 +54222,23 @@ fn json_dumps_value_inner(
                 options
             )
         )),
-        Value::List(items) => json_dumps_sequence(&items.borrow(), active, options),
-        Value::Tuple(items) => json_dumps_sequence(items, active, options),
-        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active, options),
-        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active, options),
+        Value::List(items) => json_dumps_sequence(&items.borrow(), active, options, depth),
+        Value::Tuple(items) => json_dumps_sequence(items, active, options, depth),
+        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active, options, depth),
+        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active, options, depth),
         value if list_subclass_storage(value).is_some() => json_dumps_sequence(
             &list_subclass_storage(value)
                 .expect("list subclass storage exists after guard")
                 .borrow(),
             active,
             options,
+            depth,
         ),
         value if tuple_subclass_items(value).is_some() => json_dumps_sequence(
             &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
             active,
             options,
+            depth,
         ),
         value if dict_subclass_entries(value).is_some() => json_dumps_dict(
             &dict_subclass_entries(value)
@@ -54172,11 +54247,12 @@ fn json_dumps_value_inner(
                 .entries,
             active,
             options,
+            depth,
         ),
         value if namedtuple_subclass_storage(value).is_some() => {
             let (_, values) = namedtuple_subclass_storage(value)
                 .expect("namedtuple subclass storage after guard");
-            json_dumps_sequence(&values, active, options)
+            json_dumps_sequence(&values, active, options, depth)
         }
         value => Err(format!(
             "TypeError: Object of type {} is not JSON serializable",
@@ -54213,10 +54289,24 @@ fn json_dumps_sequence(
     items: &[Value],
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
+    depth: usize,
 ) -> Result<String, String> {
     let mut parts = Vec::with_capacity(items.len());
     for item in items {
-        parts.push(json_dumps_value(item, active, options)?);
+        parts.push(json_dumps_value_at_depth(item, active, options, depth + 1)?);
+    }
+    if let Some(indent) = &options.indent {
+        if parts.is_empty() {
+            return Ok("[]".to_string());
+        }
+        let current_indent = indent.repeat(depth);
+        let next_indent = indent.repeat(depth + 1);
+        return Ok(format!(
+            "[\n{}{}\n{}]",
+            next_indent,
+            parts.join(&format!("{}\n{}", options.item_separator, next_indent)),
+            current_indent
+        ));
     }
     Ok(format!("[{}]", parts.join(&options.item_separator)))
 }
@@ -54225,6 +54315,7 @@ fn json_dumps_dict(
     entries: &[(Value, Value)],
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
+    depth: usize,
 ) -> Result<String, String> {
     let mut sorted_entries;
     let entries = if options.sort_keys {
@@ -54236,12 +54327,27 @@ fn json_dumps_dict(
     };
     let mut parts = Vec::with_capacity(entries.len());
     for (key, value) in entries {
-        let key = json_dumps_dict_key(key)?;
+        let Some(key) = json_dumps_dict_key(key, options)? else {
+            continue;
+        };
         parts.push(format!(
             "\"{}\"{}{}",
             json_escape_string(&key, options),
             options.key_separator,
-            json_dumps_value(value, active, options)?
+            json_dumps_value_at_depth(value, active, options, depth + 1)?
+        ));
+    }
+    if let Some(indent) = &options.indent {
+        if parts.is_empty() {
+            return Ok("{}".to_string());
+        }
+        let current_indent = indent.repeat(depth);
+        let next_indent = indent.repeat(depth + 1);
+        return Ok(format!(
+            "{{\n{}{}\n{}}}",
+            next_indent,
+            parts.join(&format!("{}\n{}", options.item_separator, next_indent)),
+            current_indent
         ));
     }
     Ok(format!("{{{}}}", parts.join(&options.item_separator)))
@@ -54273,24 +54379,26 @@ fn json_dumps_compare_dict_keys(left: &Value, right: &Value) -> Result<Ordering,
     })
 }
 
-fn json_dumps_dict_key(key: &Value) -> Result<String, String> {
+fn json_dumps_dict_key(key: &Value, options: &JsonDumpsOptions) -> Result<Option<String>, String> {
     match key {
-        Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
-        value if str_subclass_string(value).is_some() => {
-            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
-        }
-        Value::Bool(true) => Ok("true".to_string()),
-        Value::Bool(false) => Ok("false".to_string()),
-        Value::None => Ok("null".to_string()),
-        Value::Number(value) => Ok(value.to_string()),
-        Value::BigInt(value) => Ok(value.to_string()),
-        Value::Float(value) => Ok(json_dumps_float(**value)),
-        value if int_subclass_integer(value).is_some() => {
-            Ok(json_dumps_int_subclass(key).expect("int subclass storage exists after guard"))
-        }
-        value if float_subclass_float(value).is_some() => Ok(json_dumps_float(
-            *float_subclass_float(value).expect("float subclass storage exists after guard"),
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(Some(value.clone())),
+        value if str_subclass_string(value).is_some() => Ok(Some(
+            str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
+        Value::Bool(true) => Ok(Some("true".to_string())),
+        Value::Bool(false) => Ok(Some("false".to_string())),
+        Value::None => Ok(Some("null".to_string())),
+        Value::Number(value) => Ok(Some(value.to_string())),
+        Value::BigInt(value) => Ok(Some(value.to_string())),
+        Value::Float(value) => Ok(Some(json_dumps_float(**value, options)?)),
+        value if int_subclass_integer(value).is_some() => Ok(Some(
+            json_dumps_int_subclass(key).expect("int subclass storage exists after guard"),
+        )),
+        value if float_subclass_float(value).is_some() => Ok(Some(json_dumps_float(
+            *float_subclass_float(value).expect("float subclass storage exists after guard"),
+            options,
+        )?)),
+        _ if options.skip_keys => Ok(None),
         value => Err(format!(
             "TypeError: keys must be str, int, float, bool or None, not {}",
             type_name(value)
@@ -54306,15 +54414,18 @@ fn json_dumps_int_subclass(value: &Value) -> Option<String> {
     }
 }
 
-fn json_dumps_float(value: f64) -> String {
+fn json_dumps_float(value: f64, options: &JsonDumpsOptions) -> Result<String, String> {
+    if !options.allow_nan && !value.is_finite() {
+        return Err("ValueError: Out of range float values are not JSON compliant".to_string());
+    }
     if value.is_nan() {
-        "NaN".to_string()
+        Ok("NaN".to_string())
     } else if value == f64::INFINITY {
-        "Infinity".to_string()
+        Ok("Infinity".to_string())
     } else if value == f64::NEG_INFINITY {
-        "-Infinity".to_string()
+        Ok("-Infinity".to_string())
     } else {
-        format_float_display(value)
+        Ok(format_float_display(value))
     }
 }
 

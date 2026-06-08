@@ -580,6 +580,26 @@ print(json.dumps(json.loads('"\\/\\b\\f\\r\\t"')))"#,
 }
 
 #[test]
+fn cpython_json_loads_strict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads strict subset",
+        name: "json-loads-strict",
+        source: r#"import json
+sources = ['"a' + chr(10) + 'b"', '"a' + chr(9) + 'b"', '"a' + chr(0) + 'b"', '{"x": "a' + chr(10) + 'b"}']
+for strict in [True, 1, False, 0, []]:
+    for source in sources:
+        try:
+            print(repr(strict), repr(json.loads(source, strict=strict)))
+        except Exception as error:
+            print(repr(strict), isinstance(error, ValueError))
+try:
+    json.loads('{}', strict=False, unknown=1)
+except Exception as error:
+    print('unknown', type(error).__name__, isinstance(error, TypeError))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_string_escape_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps string escape subset",
@@ -637,6 +657,133 @@ for separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:
         json.dumps(value, separators=separators)
     except Exception as error:
         print(type(error).__name__, isinstance(error, (TypeError, ValueError)))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_skipkeys_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps skipkeys subset",
+        name: "json-dumps-skipkeys",
+        source: r#"import json
+class K:
+    pass
+class S(str):
+    pass
+class I(int):
+    pass
+cases = [
+    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, False, False),
+    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, True, False),
+    ({K(): 'custom', 'a': [1, 2]}, True, False),
+    ({(1, 2): 'tuple', S('s'): I(4)}, True, False),
+    ({(1, 2): 'tuple', 'b': 1, 'a': 2}, True, True),
+]
+for value, skipkeys, sort_keys in cases:
+    try:
+        print(json.dumps(value, skipkeys=skipkeys, sort_keys=sort_keys))
+    except Exception as error:
+        print(type(error).__name__, isinstance(error, TypeError))
+print(json.dumps({(1, 2): 'tuple', 'é': '𝄠'}, skipkeys=True, ensure_ascii=False, separators=(',', ':')))
+for skipkeys in [[], {}, K()]:
+    try:
+        json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=skipkeys)
+    except Exception as error:
+        print(type(error).__name__, isinstance(error, TypeError))
+    else:
+        print('ok')"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_allow_nan_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps allow_nan subset",
+        name: "json-dumps-allow-nan",
+        source: r#"import json
+class F(float):
+    pass
+values = [float('nan'), float('inf'), float('-inf'), F(float('nan')), F(float('inf')), 1.5]
+for allow_nan in [True, 1, False, 0]:
+    for value in values:
+        try:
+            print(allow_nan, json.dumps(value, allow_nan=allow_nan))
+        except Exception as error:
+            print(allow_nan, type(error).__name__, isinstance(error, ValueError))
+for allow_nan in [True, False]:
+    try:
+        print('key', allow_nan, json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan))
+    except Exception as error:
+        print('key', allow_nan, type(error).__name__, isinstance(error, ValueError))
+try:
+    json.dumps([float('nan')], allow_nan=[])
+except Exception as error:
+    print('list', type(error).__name__, isinstance(error, ValueError))
+else:
+    print('list ok')"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_check_circular_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps check_circular subset",
+        name: "json-dumps-check-circular",
+        source: r#"import json
+from collections import namedtuple
+cases = []
+cycle_list = []
+cycle_list.append(cycle_list)
+cases.append(('list', cycle_list))
+cycle_dict = {}
+cycle_dict['self'] = cycle_dict
+cases.append(('dict', cycle_dict))
+inner = []
+cycle_tuple = (inner,)
+inner.append(cycle_tuple)
+cases.append(('tuple', cycle_tuple))
+Point = namedtuple('Point', 'items')
+items = []
+cycle_namedtuple = Point(items)
+items.append(cycle_namedtuple)
+cases.append(('namedtuple', cycle_namedtuple))
+for check_circular in [True, 1, False, 0, []]:
+    for label, value in cases:
+        try:
+            json.dumps(value, check_circular=check_circular)
+        except Exception as error:
+            print(repr(check_circular), label, type(error).__name__, isinstance(error, (ValueError, RecursionError)))
+        else:
+            print(repr(check_circular), label, 'OK')
+for value in [[1, 2], {'a': [1]}, (1, 2)]:
+    print(json.dumps(value, check_circular=False))
+try:
+    json.dumps([1], check_circular=object())
+except Exception as error:
+    print('object', type(error).__name__)
+else:
+    print('object ok')"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_indent_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps indent subset",
+        name: "json-dumps-indent",
+        source: r#"import json
+value = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}
+for indent in [None, 0, 2, '', '--']:
+    print('CASE', repr(indent))
+    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))
+for args in [dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:
+    print('SEP', args['indent'], repr(args['separators']))
+    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))
+for indent in [True, False, 1.5, [], object()]:
+    try:
+        print('BAD', repr(json.dumps([1, 2], indent=indent)))
+    except Exception as error:
+        print('BAD', type(error).__name__, isinstance(error, TypeError))"#,
     });
 }
 
