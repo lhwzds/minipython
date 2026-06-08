@@ -8375,8 +8375,14 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.count" => {
                 self.call_itertools_count(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.cycle" => {
+                self.call_itertools_cycle(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.repeat" => {
                 self.call_itertools_repeat(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.accumulate" => {
+                self.call_itertools_accumulate(args, keywords)
             }
             Value::Builtin(name) if name == "itertools.chain" => {
                 self.call_itertools_chain(args, keywords)
@@ -8387,11 +8393,26 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.compress" => {
                 self.call_itertools_compress(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.dropwhile" => {
+                self.call_itertools_dropwhile(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.filterfalse" => {
+                self.call_itertools_filterfalse(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.islice" => {
                 self.call_itertools_islice(args, keywords)
             }
             Value::Builtin(name) if name == "itertools.pairwise" => {
                 self.call_itertools_pairwise(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.starmap" => {
+                self.call_itertools_starmap(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.takewhile" => {
+                self.call_itertools_takewhile(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.zip_longest" => {
+                self.call_itertools_zip_longest(args, keywords)
             }
             Value::Builtin(name) if name == "ast.__replace__" => {
                 self.call_ast_replace_method(args, keywords)
@@ -22196,6 +22217,28 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_cycle(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: cycle() takes no keyword arguments".to_string());
+        }
+        let [iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: cycle expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsCycle {
+            iterator: Box::new(get_iter(iterable.clone())?),
+            saved: Vec::new(),
+            index: 0,
+            exhausted: false,
+        }))
+    }
+
     fn call_itertools_chain(
         &mut self,
         args: Vec<Value>,
@@ -22211,6 +22254,78 @@ impl Vm {
         Ok(shared_iterator(Value::ItertoolsChain {
             iterators,
             index: 0,
+        }))
+    }
+
+    fn call_itertools_accumulate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 2 {
+            return Err(format!(
+                "TypeError: accumulate() takes at most 2 positional arguments ({} given)",
+                args.len()
+            ));
+        }
+
+        let mut iterable = args.first().cloned();
+        let mut function = args.get(1).cloned().unwrap_or(Value::None);
+        let mut initial = None;
+        let mut total_count = args.len();
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "iterable" => {
+                    if iterable.is_some() {
+                        return Err(
+                            "TypeError: accumulate() got multiple values for argument 'iterable'"
+                                .to_string(),
+                        );
+                    }
+                    iterable = Some(value);
+                    total_count += 1;
+                }
+                "func" => {
+                    if args.len() >= 2 {
+                        return Err(
+                            "TypeError: accumulate() got multiple values for argument 'func'"
+                                .to_string(),
+                        );
+                    }
+                    function = value;
+                    total_count += 1;
+                }
+                "initial" => {
+                    if initial.is_some() {
+                        return Err(
+                            "TypeError: accumulate() got multiple values for argument 'initial'"
+                                .to_string(),
+                        );
+                    }
+                    initial = Some(Box::new(value));
+                    total_count += 1;
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: accumulate() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+        if total_count > 3 {
+            return Err(format!(
+                "TypeError: accumulate() takes at most 3 arguments ({} given)",
+                total_count
+            ));
+        }
+        let iterable = iterable.ok_or_else(|| {
+            "TypeError: accumulate() missing required argument 'iterable' (pos 1)".to_string()
+        })?;
+        Ok(shared_iterator(Value::ItertoolsAccumulate {
+            iterator: Box::new(get_iter(iterable)?),
+            function: Box::new(function),
+            total: None,
+            initial,
         }))
     }
 
@@ -22251,6 +22366,112 @@ impl Vm {
         Ok(shared_iterator(Value::ItertoolsCompress {
             data: Box::new(get_iter(data)?),
             selectors: Box::new(get_iter(selectors)?),
+        }))
+    }
+
+    fn call_itertools_filterfalse(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: filterfalse() takes no keyword arguments".to_string());
+        }
+        let [function, iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: filterfalse expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsFilterFalse {
+            function: Box::new(function.clone()),
+            iterator: Box::new(get_iter(iterable.clone())?),
+        }))
+    }
+
+    fn call_itertools_zip_longest(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut fillvalue = Value::None;
+        for (keyword, value) in keywords {
+            if keyword != "fillvalue" {
+                return Err(
+                    "TypeError: zip_longest() got an unexpected keyword argument".to_string(),
+                );
+            }
+            fillvalue = value;
+        }
+        let iterators = args
+            .into_iter()
+            .map(|value| get_iter(value).map(Some))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(shared_iterator(Value::ItertoolsZipLongest {
+            iterators,
+            fillvalue: Box::new(fillvalue),
+        }))
+    }
+
+    fn call_itertools_takewhile(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: takewhile() takes no keyword arguments".to_string());
+        }
+        let [predicate, iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: takewhile expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsTakewhile {
+            predicate: Box::new(predicate.clone()),
+            iterator: Box::new(get_iter(iterable.clone())?),
+            done: false,
+        }))
+    }
+
+    fn call_itertools_dropwhile(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: dropwhile() takes no keyword arguments".to_string());
+        }
+        let [predicate, iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: dropwhile expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsDropwhile {
+            predicate: Box::new(predicate.clone()),
+            iterator: Box::new(get_iter(iterable.clone())?),
+            dropping: true,
+        }))
+    }
+
+    fn call_itertools_starmap(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: starmap() takes no keyword arguments".to_string());
+        }
+        let [function, iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: starmap expected 2 arguments, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsStarmap {
+            function: Box::new(function.clone()),
+            iterator: Box::new(get_iter(iterable.clone())?),
         }))
     }
 
@@ -27575,6 +27796,59 @@ impl Vm {
                     IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
             },
+            Value::ItertoolsAccumulate {
+                iterator,
+                function,
+                total,
+                initial,
+            } => {
+                if let Some(value) = initial.take() {
+                    *total = Some(value.clone());
+                    return Ok(IteratorAdvance::Yield(*value));
+                }
+                let value = match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                let next_total = match total.as_ref() {
+                    Some(current) if matches!(function.as_ref(), Value::None) => {
+                        self.add_values(current.as_ref().clone(), value)?
+                    }
+                    Some(current) => self.call_value(
+                        function.as_ref().clone(),
+                        vec![current.as_ref().clone(), value],
+                    )?,
+                    None => value,
+                };
+                *total = Some(Box::new(next_total.clone()));
+                return Ok(IteratorAdvance::Yield(next_total));
+            }
+            Value::ItertoolsCycle {
+                iterator,
+                saved,
+                index,
+                exhausted,
+            } => {
+                if !*exhausted {
+                    match self.advance_owned_iterator(iterator.as_mut())? {
+                        IteratorAdvance::Yield(value) => {
+                            saved.push(value.clone());
+                            return Ok(IteratorAdvance::Yield(value));
+                        }
+                        IteratorAdvance::Complete(_) => *exhausted = true,
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                }
+                if saved.is_empty() {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                let value = saved[*index].clone();
+                *index = (*index + 1) % saved.len();
+                return Ok(IteratorAdvance::Yield(value));
+            }
             Value::ItertoolsCompress { data, selectors } => loop {
                 let value = match self.advance_owned_iterator(data.as_mut())? {
                     IteratorAdvance::Yield(value) => value,
@@ -27594,6 +27868,178 @@ impl Vm {
                     return Ok(IteratorAdvance::Yield(value));
                 }
             },
+            Value::ItertoolsFilterFalse { function, iterator } => loop {
+                let value = match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+
+                let keep = if matches!(function.as_ref(), Value::None) {
+                    !self.truth_value(value.clone())?
+                } else {
+                    let predicate =
+                        self.call_value(function.as_ref().clone(), vec![value.clone()])?;
+                    !self.truth_value(predicate)?
+                };
+                if keep {
+                    return Ok(IteratorAdvance::Yield(value));
+                }
+            },
+            Value::ItertoolsTakewhile {
+                predicate,
+                iterator,
+                done,
+            } => loop {
+                if *done {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                let value = match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        *done = true;
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                let predicate_value =
+                    self.call_value(predicate.as_ref().clone(), vec![value.clone()])?;
+                if self.truth_value(predicate_value)? {
+                    return Ok(IteratorAdvance::Yield(value));
+                }
+                *done = true;
+                return Ok(IteratorAdvance::Complete(Value::None));
+            },
+            Value::ItertoolsDropwhile {
+                predicate,
+                iterator,
+                dropping,
+            } => loop {
+                let value = match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        *dropping = false;
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                if *dropping {
+                    let predicate_value =
+                        self.call_value(predicate.as_ref().clone(), vec![value.clone()])?;
+                    if self.truth_value(predicate_value)? {
+                        continue;
+                    }
+                    *dropping = false;
+                }
+                return Ok(IteratorAdvance::Yield(value));
+            },
+            Value::ItertoolsStarmap { function, iterator } => {
+                let args_value = match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                let args = self.collect_iterable_values(args_value)?;
+                return Ok(IteratorAdvance::Yield(
+                    self.call_value(function.as_ref().clone(), args)?,
+                ));
+            }
+            Value::ItertoolsZipLongest {
+                iterators,
+                fillvalue,
+            } => {
+                if iterators.is_empty() {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                let mut values = Vec::with_capacity(iterators.len());
+                let mut yielded = false;
+                for iterator in iterators.iter_mut() {
+                    match iterator {
+                        Some(current) => match self.advance_owned_iterator(current)? {
+                            IteratorAdvance::Yield(value) => {
+                                yielded = true;
+                                values.push(value);
+                            }
+                            IteratorAdvance::Complete(_) => {
+                                *iterator = None;
+                                values.push(fillvalue.as_ref().clone());
+                            }
+                            IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                        },
+                        None => values.push(fillvalue.as_ref().clone()),
+                    }
+                }
+                if yielded {
+                    return Ok(IteratorAdvance::Yield(tuple_value(values)));
+                }
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            Value::ItertoolsIslice {
+                iterator,
+                position,
+                next_position,
+                stop,
+                step,
+            } => {
+                if stop.is_some_and(|stop| *next_position >= stop) {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                loop {
+                    match self.advance_owned_iterator(iterator.as_mut())? {
+                        IteratorAdvance::Yield(value) => {
+                            let current_position = *position;
+                            *position = position.saturating_add(1);
+                            if current_position == *next_position {
+                                *next_position = next_position.saturating_add(*step);
+                                return Ok(IteratorAdvance::Yield(value));
+                            }
+                        }
+                        IteratorAdvance::Complete(value) => {
+                            return Ok(IteratorAdvance::Complete(value));
+                        }
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                    if stop.is_some_and(|stop| *position >= stop) {
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                }
+            }
+            Value::ItertoolsPairwise {
+                iterator,
+                previous,
+                initialized,
+            } => {
+                if !*initialized {
+                    match self.advance_owned_iterator(iterator.as_mut())? {
+                        IteratorAdvance::Yield(value) => {
+                            *previous = Some(Box::new(value));
+                            *initialized = true;
+                        }
+                        IteratorAdvance::Complete(value) => {
+                            return Ok(IteratorAdvance::Complete(value));
+                        }
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                }
+                match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => {
+                        let Some(left) = previous.as_ref() else {
+                            return Ok(IteratorAdvance::Complete(Value::None));
+                        };
+                        let pair = tuple_value(vec![left.as_ref().clone(), value.clone()]);
+                        *previous = Some(Box::new(value));
+                        return Ok(IteratorAdvance::Yield(pair));
+                    }
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
             Value::MapIterator {
                 function,
                 iterators,
@@ -30313,6 +30759,78 @@ fn deep_copy_iterator_state(
             strict: *strict,
         }),
         Value::FilterIterator { function, iterator } => Ok(Value::FilterIterator {
+            function: Box::new(deep_copy_value(function, memo)?),
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+        }),
+        Value::ItertoolsAccumulate {
+            iterator,
+            function,
+            total,
+            initial,
+        } => Ok(Value::ItertoolsAccumulate {
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            function: Box::new(deep_copy_value(function, memo)?),
+            total: total
+                .as_ref()
+                .map(|value| deep_copy_value(value, memo).map(Box::new))
+                .transpose()?,
+            initial: initial
+                .as_ref()
+                .map(|value| deep_copy_value(value, memo).map(Box::new))
+                .transpose()?,
+        }),
+        Value::ItertoolsCycle {
+            iterator,
+            saved,
+            index,
+            exhausted,
+        } => Ok(Value::ItertoolsCycle {
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            saved: saved
+                .iter()
+                .map(|value| deep_copy_value(value, memo))
+                .collect::<Result<Vec<_>, _>>()?,
+            index: *index,
+            exhausted: *exhausted,
+        }),
+        Value::ItertoolsTakewhile {
+            predicate,
+            iterator,
+            done,
+        } => Ok(Value::ItertoolsTakewhile {
+            predicate: Box::new(deep_copy_value(predicate, memo)?),
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            done: *done,
+        }),
+        Value::ItertoolsDropwhile {
+            predicate,
+            iterator,
+            dropping,
+        } => Ok(Value::ItertoolsDropwhile {
+            predicate: Box::new(deep_copy_value(predicate, memo)?),
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            dropping: *dropping,
+        }),
+        Value::ItertoolsStarmap { function, iterator } => Ok(Value::ItertoolsStarmap {
+            function: Box::new(deep_copy_value(function, memo)?),
+            iterator: Box::new(deep_copy_value(iterator, memo)?),
+        }),
+        Value::ItertoolsZipLongest {
+            iterators,
+            fillvalue,
+        } => Ok(Value::ItertoolsZipLongest {
+            iterators: iterators
+                .iter()
+                .map(|iterator| {
+                    iterator
+                        .as_ref()
+                        .map(|value| deep_copy_value(value, memo))
+                        .transpose()
+                })
+                .collect::<Result<Vec<_>, _>>()?,
+            fillvalue: Box::new(deep_copy_value(fillvalue, memo)?),
+        }),
+        Value::ItertoolsFilterFalse { function, iterator } => Ok(Value::ItertoolsFilterFalse {
             function: Box::new(deep_copy_value(function, memo)?),
             iterator: Box::new(deep_copy_value(iterator, memo)?),
         }),
@@ -52068,8 +52586,15 @@ fn type_name(value: &Value) -> &str {
         Value::FilterIterator { .. } => "filter",
         Value::ItertoolsCount { .. } => "count",
         Value::ItertoolsRepeat { .. } => "repeat",
+        Value::ItertoolsCycle { .. } => "cycle",
+        Value::ItertoolsAccumulate { .. } => "accumulate",
         Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => "chain",
         Value::ItertoolsCompress { .. } => "compress",
+        Value::ItertoolsDropwhile { .. } => "dropwhile",
+        Value::ItertoolsFilterFalse { .. } => "filterfalse",
+        Value::ItertoolsTakewhile { .. } => "takewhile",
+        Value::ItertoolsStarmap { .. } => "starmap",
+        Value::ItertoolsZipLongest { .. } => "zip_longest",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
@@ -52182,8 +52707,15 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::FilterIterator { .. } => "filter",
         Value::ItertoolsCount { .. } => "count",
         Value::ItertoolsRepeat { .. } => "repeat",
+        Value::ItertoolsCycle { .. } => "cycle",
+        Value::ItertoolsAccumulate { .. } => "accumulate",
         Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => "chain",
         Value::ItertoolsCompress { .. } => "compress",
+        Value::ItertoolsDropwhile { .. } => "dropwhile",
+        Value::ItertoolsFilterFalse { .. } => "filterfalse",
+        Value::ItertoolsTakewhile { .. } => "takewhile",
+        Value::ItertoolsStarmap { .. } => "starmap",
+        Value::ItertoolsZipLongest { .. } => "zip_longest",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
@@ -66130,6 +66662,29 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             }
             Ok(IteratorAdvance::Yield(value.as_ref().clone()))
         }
+        Value::ItertoolsCycle {
+            iterator,
+            saved,
+            index,
+            exhausted,
+        } => {
+            if !*exhausted {
+                match advance_plain_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => {
+                        saved.push(value.clone());
+                        return Ok(IteratorAdvance::Yield(value));
+                    }
+                    IteratorAdvance::Complete(_) => *exhausted = true,
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
+            if saved.is_empty() {
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            let value = saved[*index].clone();
+            *index = (*index + 1) % saved.len();
+            Ok(IteratorAdvance::Yield(value))
+        }
         Value::ItertoolsChain { iterators, index } => {
             while *index < iterators.len() {
                 match advance_plain_iterator(&mut iterators[*index])? {
@@ -67417,9 +67972,16 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::FilterIterator { .. }
         | Value::ItertoolsCount { .. }
         | Value::ItertoolsRepeat { .. }
+        | Value::ItertoolsCycle { .. }
+        | Value::ItertoolsAccumulate { .. }
         | Value::ItertoolsChain { .. }
         | Value::ItertoolsChainFromIterable { .. }
         | Value::ItertoolsCompress { .. }
+        | Value::ItertoolsDropwhile { .. }
+        | Value::ItertoolsFilterFalse { .. }
+        | Value::ItertoolsTakewhile { .. }
+        | Value::ItertoolsStarmap { .. }
+        | Value::ItertoolsZipLongest { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
@@ -67627,9 +68189,16 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::FilterIterator { .. }
         | Value::ItertoolsCount { .. }
         | Value::ItertoolsRepeat { .. }
+        | Value::ItertoolsCycle { .. }
+        | Value::ItertoolsAccumulate { .. }
         | Value::ItertoolsChain { .. }
         | Value::ItertoolsChainFromIterable { .. }
         | Value::ItertoolsCompress { .. }
+        | Value::ItertoolsDropwhile { .. }
+        | Value::ItertoolsFilterFalse { .. }
+        | Value::ItertoolsTakewhile { .. }
+        | Value::ItertoolsStarmap { .. }
+        | Value::ItertoolsZipLongest { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
@@ -67942,6 +68511,28 @@ fn get_iter(value: Value) -> Result<Value, String> {
         Value::ItertoolsRepeat { value, remaining } => {
             Ok(shared_iterator(Value::ItertoolsRepeat { value, remaining }))
         }
+        Value::ItertoolsCycle {
+            iterator,
+            saved,
+            index,
+            exhausted,
+        } => Ok(shared_iterator(Value::ItertoolsCycle {
+            iterator,
+            saved,
+            index,
+            exhausted,
+        })),
+        Value::ItertoolsAccumulate {
+            iterator,
+            function,
+            total,
+            initial,
+        } => Ok(shared_iterator(Value::ItertoolsAccumulate {
+            iterator,
+            function,
+            total,
+            initial,
+        })),
         Value::ItertoolsChain { iterators, index } => {
             Ok(shared_iterator(Value::ItertoolsChain { iterators, index }))
         }
@@ -67957,6 +68548,37 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 selectors,
             }))
         }
+        Value::ItertoolsTakewhile {
+            predicate,
+            iterator,
+            done,
+        } => Ok(shared_iterator(Value::ItertoolsTakewhile {
+            predicate,
+            iterator,
+            done,
+        })),
+        Value::ItertoolsDropwhile {
+            predicate,
+            iterator,
+            dropping,
+        } => Ok(shared_iterator(Value::ItertoolsDropwhile {
+            predicate,
+            iterator,
+            dropping,
+        })),
+        Value::ItertoolsStarmap { function, iterator } => {
+            Ok(shared_iterator(Value::ItertoolsStarmap {
+                function,
+                iterator,
+            }))
+        }
+        Value::ItertoolsZipLongest {
+            iterators,
+            fillvalue,
+        } => Ok(shared_iterator(Value::ItertoolsZipLongest {
+            iterators,
+            fillvalue,
+        })),
         Value::ItertoolsIslice {
             iterator,
             position,
@@ -73748,9 +74370,16 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::FilterIterator { .. } => Ok(true),
         Value::ItertoolsCount { .. } => Ok(true),
         Value::ItertoolsRepeat { .. } => Ok(true),
+        Value::ItertoolsCycle { .. } => Ok(true),
+        Value::ItertoolsAccumulate { .. } => Ok(true),
         Value::ItertoolsChain { .. } => Ok(true),
         Value::ItertoolsChainFromIterable { .. } => Ok(true),
         Value::ItertoolsCompress { .. } => Ok(true),
+        Value::ItertoolsDropwhile { .. } => Ok(true),
+        Value::ItertoolsFilterFalse { .. } => Ok(true),
+        Value::ItertoolsTakewhile { .. } => Ok(true),
+        Value::ItertoolsStarmap { .. } => Ok(true),
+        Value::ItertoolsZipLongest { .. } => Ok(true),
         Value::ItertoolsIslice { .. } => Ok(true),
         Value::ItertoolsPairwise { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),

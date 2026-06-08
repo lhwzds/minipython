@@ -218,14 +218,24 @@ Recent runtime migration notes:
   `cpython_itertools_count_repeat_chain_subset` and
   `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, covering the pure in-memory
-  first-pass `count()`, `repeat()`, `chain()`, `chain.from_iterable()`,
-  `compress()`, `islice()`, and `pairwise()` iterator protocol behavior.
+  first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
+  `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
+  `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, and `pairwise()`
+  iterator protocol behavior.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
   arbitrary supported iterables, lazy `chain.from_iterable()` flattening,
-  selector-truthy `compress()` filtering with shortest-input exhaustion, and
-  non-negative integer `islice()` windows over finite or infinite iterators,
-  plus adjacent-pair iteration over finite and infinite sources. The broader
+  default and callable `accumulate()` reduction with `initial`, cached
+  `cycle()` replay over finite and generator sources,
+  selector-truthy `compress()` filtering with shortest-input exhaustion,
+  false-predicate `filterfalse()` selection with callable or `None`, and
+  predicate-prefix `takewhile()` / `dropwhile()` termination behavior over
+  finite and generator inputs, star-argument mapping over iterable argument
+  rows, longest-zip padding with `fillvalue`, and
+  non-negative integer `islice()` windows over finite, infinite, and
+  generator-backed iterators,
+  plus adjacent-pair iteration over finite, infinite, and generator-backed
+  sources. The broader
   `itertools` module, floating/non-integer `count()` arithmetic, combinatoric
   iterators, and pickling/repr edge cases remain open.
 - The bundled `math` module also includes `cpython_math_isclose_subset`,

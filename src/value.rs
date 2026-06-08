@@ -643,6 +643,12 @@ pub enum Value {
         value: Box<Value>,
         remaining: Option<BigInt>,
     },
+    ItertoolsCycle {
+        iterator: Box<Value>,
+        saved: Vec<Value>,
+        index: usize,
+        exhausted: bool,
+    },
     ItertoolsChain {
         iterators: Vec<Value>,
         index: usize,
@@ -651,9 +657,37 @@ pub enum Value {
         iterator: Box<Value>,
         current: Option<Box<Value>>,
     },
+    ItertoolsAccumulate {
+        iterator: Box<Value>,
+        function: Box<Value>,
+        total: Option<Box<Value>>,
+        initial: Option<Box<Value>>,
+    },
     ItertoolsCompress {
         data: Box<Value>,
         selectors: Box<Value>,
+    },
+    ItertoolsFilterFalse {
+        function: Box<Value>,
+        iterator: Box<Value>,
+    },
+    ItertoolsTakewhile {
+        predicate: Box<Value>,
+        iterator: Box<Value>,
+        done: bool,
+    },
+    ItertoolsDropwhile {
+        predicate: Box<Value>,
+        iterator: Box<Value>,
+        dropping: bool,
+    },
+    ItertoolsStarmap {
+        function: Box<Value>,
+        iterator: Box<Value>,
+    },
+    ItertoolsZipLongest {
+        iterators: Vec<Option<Value>>,
+        fillvalue: Box<Value>,
     },
     ItertoolsIslice {
         iterator: Box<Value>,
@@ -1071,11 +1105,18 @@ impl fmt::Display for Value {
             Value::FilterIterator { .. } => write!(f, "<filter object>"),
             Value::ItertoolsCount { .. } => write!(f, "count(...)"),
             Value::ItertoolsRepeat { .. } => write!(f, "repeat(...)"),
+            Value::ItertoolsCycle { .. } => write!(f, "<itertools.cycle object>"),
             Value::ItertoolsChain { .. } => write!(f, "<itertools.chain object>"),
             Value::ItertoolsChainFromIterable { .. } => {
                 write!(f, "<itertools.chain object>")
             }
+            Value::ItertoolsAccumulate { .. } => write!(f, "<itertools.accumulate object>"),
             Value::ItertoolsCompress { .. } => write!(f, "<itertools.compress object>"),
+            Value::ItertoolsFilterFalse { .. } => write!(f, "<itertools.filterfalse object>"),
+            Value::ItertoolsTakewhile { .. } => write!(f, "<itertools.takewhile object>"),
+            Value::ItertoolsDropwhile { .. } => write!(f, "<itertools.dropwhile object>"),
+            Value::ItertoolsStarmap { .. } => write!(f, "<itertools.starmap object>"),
+            Value::ItertoolsZipLongest { .. } => write!(f, "<itertools.zip_longest object>"),
             Value::ItertoolsIslice { .. } => write!(f, "<itertools.islice object>"),
             Value::ItertoolsPairwise { .. } => write!(f, "<itertools.pairwise object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
@@ -2714,6 +2755,106 @@ impl PartialEq for Value {
                     iterator: right_iterator,
                 },
             ) => left_function == right_function && left_iterator == right_iterator,
+            (
+                Value::ItertoolsFilterFalse {
+                    function: left_function,
+                    iterator: left_iterator,
+                },
+                Value::ItertoolsFilterFalse {
+                    function: right_function,
+                    iterator: right_iterator,
+                },
+            ) => left_function == right_function && left_iterator == right_iterator,
+            (
+                Value::ItertoolsTakewhile {
+                    predicate: left_predicate,
+                    iterator: left_iterator,
+                    done: left_done,
+                },
+                Value::ItertoolsTakewhile {
+                    predicate: right_predicate,
+                    iterator: right_iterator,
+                    done: right_done,
+                },
+            ) => {
+                left_predicate == right_predicate
+                    && left_iterator == right_iterator
+                    && left_done == right_done
+            }
+            (
+                Value::ItertoolsDropwhile {
+                    predicate: left_predicate,
+                    iterator: left_iterator,
+                    dropping: left_dropping,
+                },
+                Value::ItertoolsDropwhile {
+                    predicate: right_predicate,
+                    iterator: right_iterator,
+                    dropping: right_dropping,
+                },
+            ) => {
+                left_predicate == right_predicate
+                    && left_iterator == right_iterator
+                    && left_dropping == right_dropping
+            }
+            (
+                Value::ItertoolsStarmap {
+                    function: left_function,
+                    iterator: left_iterator,
+                },
+                Value::ItertoolsStarmap {
+                    function: right_function,
+                    iterator: right_iterator,
+                },
+            ) => left_function == right_function && left_iterator == right_iterator,
+            (
+                Value::ItertoolsZipLongest {
+                    iterators: left_iterators,
+                    fillvalue: left_fillvalue,
+                },
+                Value::ItertoolsZipLongest {
+                    iterators: right_iterators,
+                    fillvalue: right_fillvalue,
+                },
+            ) => left_iterators == right_iterators && left_fillvalue == right_fillvalue,
+            (
+                Value::ItertoolsAccumulate {
+                    iterator: left_iterator,
+                    function: left_function,
+                    total: left_total,
+                    initial: left_initial,
+                },
+                Value::ItertoolsAccumulate {
+                    iterator: right_iterator,
+                    function: right_function,
+                    total: right_total,
+                    initial: right_initial,
+                },
+            ) => {
+                left_iterator == right_iterator
+                    && left_function == right_function
+                    && left_total == right_total
+                    && left_initial == right_initial
+            }
+            (
+                Value::ItertoolsCycle {
+                    iterator: left_iterator,
+                    saved: left_saved,
+                    index: left_index,
+                    exhausted: left_exhausted,
+                },
+                Value::ItertoolsCycle {
+                    iterator: right_iterator,
+                    saved: right_saved,
+                    index: right_index,
+                    exhausted: right_exhausted,
+                },
+            ) => {
+                left_iterator == right_iterator
+                    && left_saved == right_saved
+                    && left_index == right_index
+                    && left_exhausted == right_exhausted
+            }
             (
                 Value::CallIterator {
                     callable: left_callable,

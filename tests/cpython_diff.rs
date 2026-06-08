@@ -775,6 +775,35 @@ class Flag:
     def __bool__(self):
         return self.value
 print(list(itertools.compress('xy', [Flag(False), Flag(True)])))
+ff = itertools.filterfalse(None, [0, 1, '', 'x', [], [1], False, True])
+print(type(ff).__name__, iter(ff) is ff, list(ff), list(ff))
+print(list(itertools.filterfalse(lambda value: value % 2, range(6))))
+print(list(itertools.filterfalse(lambda value: value, (value for value in [0, 1, 2, 0]))))
+tw = itertools.takewhile(lambda value: value < 3, [1, 2, 3, 1])
+print(type(tw).__name__, iter(tw) is tw, list(tw), list(tw))
+print(list(itertools.takewhile(lambda value: value, (value for value in [1, 2, 0, 3]))))
+dw = itertools.dropwhile(lambda value: value < 3, [1, 2, 3, 1])
+print(type(dw).__name__, iter(dw) is dw, list(dw), list(dw))
+print(list(itertools.dropwhile(lambda value: value, (value for value in [1, 2, 0, 3]))))
+sm = itertools.starmap(lambda left, right: left + right, [(1, 2), [3, 4], ('a', 'b')])
+print(type(sm).__name__, iter(sm) is sm, list(sm), list(sm))
+print(list(itertools.starmap(lambda left, right: left * right, ((value, 2) for value in range(4)))))
+acc = itertools.accumulate([1, 2, 3])
+print(type(acc).__name__, iter(acc) is acc, list(acc), list(acc))
+print(list(itertools.accumulate([1, 2, 3], lambda left, right: left * right)))
+print(list(itertools.accumulate([], initial=10)))
+print(list(itertools.accumulate([1, 2], initial=10)))
+print(list(itertools.accumulate(iterable=[1, 2], func=lambda left, right: left * right, initial=10)))
+zl = itertools.zip_longest([1, 2], 'ab')
+print(type(zl).__name__, iter(zl) is zl, list(zl), list(zl))
+print(list(itertools.zip_longest()))
+print(list(itertools.zip_longest([1], [2, 3], fillvalue='x')))
+print(list(itertools.zip_longest((value for value in [1, 2]), [3])))
+cy = itertools.cycle('ab')
+print(type(cy).__name__, iter(cy) is cy, list(itertools.islice(cy, 6)), list(itertools.islice(cy, 3)))
+print(list(itertools.islice(itertools.cycle([]), 3)))
+print(list(itertools.islice(itertools.cycle(value for value in [1, 2]), 7)))
+print(list(itertools.islice((value for value in range(5)), 1, 5, 2)))
 print(list(itertools.islice(range(10), 4)))
 print(list(itertools.islice(range(10), 2, None)))
 print(list(itertools.islice(range(10), 1, 8, 3)))
@@ -801,6 +830,66 @@ except TypeError as error:
     print(error.__class__.__name__)
 try:
     itertools.compress('abc')
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.filterfalse(None)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.filterfalse(function=None, iterable=[])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.takewhile(lambda value: True)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.takewhile(predicate=lambda value: True, iterable=[])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.dropwhile(lambda value: True)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.dropwhile(predicate=lambda value: True, iterable=[])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.starmap(lambda left, right: left + right)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.starmap(function=lambda left, right: left + right, iterable=[])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    list(itertools.starmap(lambda value: value, [1]))
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.accumulate()
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.accumulate([1], lambda left, right: left + right, 0)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.accumulate([1], bad=1)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.zip_longest(iterable=[1])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.cycle()
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.cycle(iterable=[1])
 except TypeError as error:
     print(error.__class__.__name__)
 try:
@@ -842,6 +931,7 @@ p = itertools.pairwise('abcd')
 print(type(p).__name__, iter(p) is p, list(p), list(p))
 print(list(itertools.pairwise([1])), list(itertools.pairwise([])))
 print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))
+print(list(itertools.pairwise(value for value in [1, 2, 3, 4])))
 for expr in [
     lambda: itertools.pairwise(),
     lambda: itertools.pairwise(range(3), range(3)),
