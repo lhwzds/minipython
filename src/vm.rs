@@ -22061,10 +22061,18 @@ impl Vm {
         };
         let source = match source {
             Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
-            Value::Bytes(bytes) => String::from_utf8(bytes.as_ref().clone())
-                .map_err(|_| "ValueError: json.loads() source must be UTF-8".to_string())?,
-            Value::ByteArray(bytes) => String::from_utf8(bytes.borrow().bytes().to_vec())
-                .map_err(|_| "ValueError: json.loads() source must be UTF-8".to_string())?,
+            Value::Bytes(bytes) => json_loads_decode_bytes(bytes.as_ref())?,
+            Value::ByteArray(bytes) => json_loads_decode_bytes(bytes.borrow().bytes())?,
+            value if str_subclass_string(value).is_some() => {
+                str_subclass_string(value).expect("str subclass storage exists after guard")
+            }
+            value if bytes_subclass_bytes(value).is_some() => json_loads_decode_bytes(
+                &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+            )?,
+            value if bytearray_subclass_bytes(value).is_some() => json_loads_decode_bytes(
+                &bytearray_subclass_bytes(value)
+                    .expect("bytearray subclass storage exists after guard"),
+            )?,
             value => {
                 return Err(format!(
                     "TypeError: the JSON object must be str, bytes or bytearray, not {}",
@@ -22089,7 +22097,8 @@ impl Vm {
                 args.len()
             ));
         };
-        Ok(Value::String(json_dumps_value(value)?))
+        let mut active = HashSet::new();
+        Ok(Value::String(json_dumps_value(value, &mut active)?))
     }
 
     fn call_itertools_count(
@@ -53076,6 +53085,14 @@ impl JsonParser {
             Some('"') => self.parse_string().map(Value::String),
             Some('{') => self.parse_object(),
             Some('[') => self.parse_array(),
+            Some('N') => {
+                self.expect_literal("NaN")?;
+                Ok(float_value(f64::NAN))
+            }
+            Some('I') => {
+                self.expect_literal("Infinity")?;
+                Ok(float_value(f64::INFINITY))
+            }
             Some('t') => {
                 self.expect_literal("true")?;
                 Ok(Value::Bool(true))
@@ -53087,6 +53104,10 @@ impl JsonParser {
             Some('n') => {
                 self.expect_literal("null")?;
                 Ok(Value::None)
+            }
+            Some('-') if self.starts_with("-Infinity") => {
+                self.expect_literal("-Infinity")?;
+                Ok(float_value(f64::NEG_INFINITY))
             }
             Some('-' | '0'..='9') => self.parse_number(),
             Some(_) | None => self.error("Expecting value"),
@@ -53263,9 +53284,6 @@ impl JsonParser {
             let value = text
                 .parse::<f64>()
                 .map_err(|_| "ValueError: Invalid number in json.loads() subset".to_string())?;
-            if !value.is_finite() {
-                return self.error("Invalid number");
-            }
             Ok(float_value(value))
         } else {
             let integer = BigInt::parse_bytes(text.as_bytes(), 10)
@@ -53306,6 +53324,12 @@ impl JsonParser {
         }
     }
 
+    fn starts_with(&self, text: &str) -> bool {
+        self.chars
+            .get(self.pos..self.pos + text.chars().count())
+            .is_some_and(|chars| chars.iter().copied().eq(text.chars()))
+    }
+
     fn peek(&self) -> Option<char> {
         self.chars.get(self.pos).copied()
     }
@@ -53321,23 +53345,120 @@ impl JsonParser {
     }
 }
 
-fn json_dumps_value(value: &Value) -> Result<String, String> {
+fn json_loads_decode_bytes(bytes: &[u8]) -> Result<String, String> {
+    json_loads_decode_bytes_inner(bytes)
+        .map_err(|_| "ValueError: json.loads() source must be decodable JSON text".to_string())
+}
+
+fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, ()> {
+    if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
+        return String::from_utf8(bytes[3..].to_vec()).map_err(|_| ());
+    }
+    if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) {
+        return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Little);
+    }
+    if bytes.starts_with(&[0x00, 0x00, 0xfe, 0xff]) {
+        return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Big);
+    }
+    if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
+        return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict).map_err(|_| ());
+    }
+    if bytes.len() >= 4 {
+        if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
+            return json_decode_utf32_bytes(bytes, Utf16Endian::Big);
+        }
+        if bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
+            return json_decode_utf32_bytes(bytes, Utf16Endian::Little);
+        }
+        if bytes[0] == 0 && bytes[2] == 0 {
+            return decode_utf16_bytes(bytes, Some(Utf16Endian::Big), CodecErrorMode::Strict)
+                .map_err(|_| ());
+        }
+        if bytes[1] == 0 && bytes[3] == 0 {
+            return decode_utf16_bytes(bytes, Some(Utf16Endian::Little), CodecErrorMode::Strict)
+                .map_err(|_| ());
+        }
+    }
+    String::from_utf8(bytes.to_vec()).map_err(|_| ())
+}
+
+fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, ()> {
+    if bytes.len() % 4 != 0 {
+        return Err(());
+    }
+    let mut output = String::new();
+    for chunk in bytes.chunks_exact(4) {
+        let codepoint = match endian {
+            Utf16Endian::Little => u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            Utf16Endian::Big => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+        };
+        let ch = char::from_u32(codepoint).ok_or(())?;
+        output.push(ch);
+    }
+    Ok(output)
+}
+
+fn json_dumps_value(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
+    if let Some(identity) = json_dumps_container_identity(value) {
+        if !active.insert(identity) {
+            return Err("ValueError: Circular reference detected".to_string());
+        }
+        let result = json_dumps_value_inner(value, active);
+        active.remove(&identity);
+        return result;
+    }
+    json_dumps_value_inner(value, active)
+}
+
+fn json_dumps_value_inner(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
     match value {
         Value::None => Ok("null".to_string()),
         Value::Bool(true) => Ok("true".to_string()),
         Value::Bool(false) => Ok("false".to_string()),
         Value::Number(value) => Ok(value.to_string()),
         Value::BigInt(value) => Ok(value.to_string()),
-        Value::Float(value) if value.is_finite() => Ok(format_float_display(**value)),
-        Value::Float(_) => {
-            Err("ValueError: Out of range float values are not JSON compliant".to_string())
+        Value::Float(value) => Ok(json_dumps_float(**value)),
+        value if int_subclass_integer(value).is_some() => {
+            Ok(json_dumps_int_subclass(value).expect("int subclass storage exists after guard"))
         }
+        value if float_subclass_float(value).is_some() => Ok(json_dumps_float(
+            *float_subclass_float(value).expect("float subclass storage exists after guard"),
+        )),
         Value::String(value) | Value::IdentityString { value, .. } => {
             Ok(format!("\"{}\"", json_escape_string(value)))
         }
-        Value::List(items) => json_dumps_sequence(&items.borrow()),
-        Value::Tuple(items) => json_dumps_sequence(items),
-        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries),
+        value if str_subclass_string(value).is_some() => Ok(format!(
+            "\"{}\"",
+            json_escape_string(
+                &str_subclass_string(value).expect("str subclass storage exists after guard")
+            )
+        )),
+        Value::List(items) => json_dumps_sequence(&items.borrow(), active),
+        Value::Tuple(items) => json_dumps_sequence(items, active),
+        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active),
+        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active),
+        value if list_subclass_storage(value).is_some() => json_dumps_sequence(
+            &list_subclass_storage(value)
+                .expect("list subclass storage exists after guard")
+                .borrow(),
+            active,
+        ),
+        value if tuple_subclass_items(value).is_some() => json_dumps_sequence(
+            &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
+            active,
+        ),
+        value if dict_subclass_entries(value).is_some() => json_dumps_dict(
+            &dict_subclass_entries(value)
+                .expect("dict subclass entries exist after guard")
+                .borrow()
+                .entries,
+            active,
+        ),
+        value if namedtuple_subclass_storage(value).is_some() => {
+            let (_, values) = namedtuple_subclass_storage(value)
+                .expect("namedtuple subclass storage after guard");
+            json_dumps_sequence(&values, active)
+        }
         value => Err(format!(
             "TypeError: Object of type {} is not JSON serializable",
             type_name(value)
@@ -53345,22 +53466,49 @@ fn json_dumps_value(value: &Value) -> Result<String, String> {
     }
 }
 
-fn json_dumps_sequence(items: &[Value]) -> Result<String, String> {
+fn json_dumps_container_identity(value: &Value) -> Option<usize> {
+    match value {
+        Value::List(items) => Some(Rc::as_ptr(items) as usize),
+        Value::Tuple(items) => Some(Rc::as_ptr(items) as usize),
+        Value::NamedTuple { values, .. } => Some(Rc::as_ptr(values) as usize),
+        Value::Dict(entries) => Some(Rc::as_ptr(entries) as usize),
+        value if list_subclass_storage(value).is_some() => Some(Rc::as_ptr(
+            &list_subclass_storage(value).expect("list subclass storage exists after guard"),
+        ) as usize),
+        value if tuple_subclass_items(value).is_some() => Some(Rc::as_ptr(
+            &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
+        ) as usize),
+        value if dict_subclass_entries(value).is_some() => Some(Rc::as_ptr(
+            &dict_subclass_entries(value).expect("dict subclass entries exist after guard"),
+        ) as usize),
+        value if namedtuple_subclass_storage(value).is_some() => {
+            let (_, values) = namedtuple_subclass_storage(value)
+                .expect("namedtuple subclass storage after guard");
+            Some(Rc::as_ptr(&values) as usize)
+        }
+        _ => None,
+    }
+}
+
+fn json_dumps_sequence(items: &[Value], active: &mut HashSet<usize>) -> Result<String, String> {
     let mut parts = Vec::with_capacity(items.len());
     for item in items {
-        parts.push(json_dumps_value(item)?);
+        parts.push(json_dumps_value(item, active)?);
     }
     Ok(format!("[{}]", parts.join(", ")))
 }
 
-fn json_dumps_dict(entries: &[(Value, Value)]) -> Result<String, String> {
+fn json_dumps_dict(
+    entries: &[(Value, Value)],
+    active: &mut HashSet<usize>,
+) -> Result<String, String> {
     let mut parts = Vec::with_capacity(entries.len());
     for (key, value) in entries {
         let key = json_dumps_dict_key(key)?;
         parts.push(format!(
             "\"{}\": {}",
             json_escape_string(&key),
-            json_dumps_value(value)?
+            json_dumps_value(value, active)?
         ));
     }
     Ok(format!("{{{}}}", parts.join(", ")))
@@ -53369,19 +53517,45 @@ fn json_dumps_dict(entries: &[(Value, Value)]) -> Result<String, String> {
 fn json_dumps_dict_key(key: &Value) -> Result<String, String> {
     match key {
         Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        value if str_subclass_string(value).is_some() => {
+            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
         Value::Bool(true) => Ok("true".to_string()),
         Value::Bool(false) => Ok("false".to_string()),
         Value::None => Ok("null".to_string()),
         Value::Number(value) => Ok(value.to_string()),
         Value::BigInt(value) => Ok(value.to_string()),
-        Value::Float(value) if value.is_finite() => Ok(format_float_display(**value)),
-        Value::Float(_) => {
-            Err("ValueError: Out of range float values are not JSON compliant".to_string())
+        Value::Float(value) => Ok(json_dumps_float(**value)),
+        value if int_subclass_integer(value).is_some() => {
+            Ok(json_dumps_int_subclass(key).expect("int subclass storage exists after guard"))
         }
+        value if float_subclass_float(value).is_some() => Ok(json_dumps_float(
+            *float_subclass_float(value).expect("float subclass storage exists after guard"),
+        )),
         value => Err(format!(
             "TypeError: keys must be str, int, float, bool or None, not {}",
             type_name(value)
         )),
+    }
+}
+
+fn json_dumps_int_subclass(value: &Value) -> Option<String> {
+    match int_subclass_integer(value)? {
+        Value::Number(value) => Some(value.to_string()),
+        Value::BigInt(value) => Some(value.to_string()),
+        _ => None,
+    }
+}
+
+fn json_dumps_float(value: f64) -> String {
+    if value.is_nan() {
+        "NaN".to_string()
+    } else if value == f64::INFINITY {
+        "Infinity".to_string()
+    } else if value == f64::NEG_INFINITY {
+        "-Infinity".to_string()
+    } else {
+        format_float_display(value)
     }
 }
 

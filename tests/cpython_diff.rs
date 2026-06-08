@@ -450,18 +450,169 @@ fn cpython_json_loads_dumps_diff_subset() {
         origin: "Lib/json public loads/dumps core data model subset",
         name: "json-loads-dumps-core-values",
         source: r#"import json
+import math
+from collections import namedtuple
+from enum import IntEnum
 source = '{"a": 1, "b": [true, false, null], "c": "x\\ny"}'
 value = json.loads(source)
 print(value)
 print(value['a'], value['b'], repr(value['c']))
 print(json.loads(b'[1, 2.5, -3, 4e2]'))
+print(json.loads(bytearray(b'{"ba": true}')))
+def u16le(text, bom=False):
+    data = bytearray()
+    if bom:
+        data.extend(b'\xff\xfe')
+    for ch in text:
+        code = ord(ch)
+        data.append(code & 255)
+        data.append((code >> 8) & 255)
+    return bytes(data)
+def u16be(text):
+    data = bytearray()
+    for ch in text:
+        code = ord(ch)
+        data.append((code >> 8) & 255)
+        data.append(code & 255)
+    return bytes(data)
+def u32le(text, bom=False):
+    data = bytearray()
+    if bom:
+        data.extend(b'\xff\xfe\x00\x00')
+    for ch in text:
+        code = ord(ch)
+        data.append(code & 255)
+        data.append((code >> 8) & 255)
+        data.append((code >> 16) & 255)
+        data.append((code >> 24) & 255)
+    return bytes(data)
+def u32be(text, bom=False):
+    data = bytearray()
+    if bom:
+        data.extend(b'\x00\x00\xfe\xff')
+    for ch in text:
+        code = ord(ch)
+        data.append((code >> 24) & 255)
+        data.append((code >> 16) & 255)
+        data.append((code >> 8) & 255)
+        data.append(code & 255)
+    return bytes(data)
+for label, data in [
+    ('utf8-bom', b'\xef\xbb\xbf{"enc": "utf8-bom"}'),
+    ('utf16-le', u16le('{"enc": "utf16-le"}')),
+    ('utf16-be', u16be('{"enc": "utf16-be"}')),
+    ('utf16', u16le('{"enc": "utf16"}', True)),
+    ('utf32-le', u32le('{"enc": "utf32-le"}')),
+    ('utf32-be', u32be('{"enc": "utf32-be"}')),
+    ('utf32-bom-le', u32le('{"enc": "utf32-bom-le"}', True)),
+    ('utf32-bom-be', u32be('{"enc": "utf32-bom-be"}', True)),
+]:
+    print(label, json.loads(data))
+class JsonStr(str):
+    pass
+class JsonBytes(bytes):
+    pass
+class JsonByteArray(bytearray):
+    pass
+print('bytearray-sub-utf16', json.loads(JsonByteArray(u16le('{"subenc": "bytearray-utf16"}'))))
+print('bytes-sub-utf32', json.loads(JsonBytes(u32le('{"subenc": "bytes-utf32"}', True))))
+class JsonInt(int):
+    pass
+class JsonFloat(float):
+    pass
+class JsonList(list):
+    pass
+class JsonTuple(tuple):
+    pass
+class JsonDict(dict):
+    pass
+for source in [JsonStr('{"sub": "str"}'), JsonBytes(b'{"sub": "bytes"}'), JsonByteArray(b'{"sub": "bytearray"}')]:
+    print(type(source).__name__, json.loads(source))
+print(json.dumps(JsonStr('dump-str-subclass')))
+print(json.dumps({JsonStr('key'): JsonStr('value')}))
+print(json.dumps([JsonInt(7), JsonFloat(2.5)]))
+print(json.dumps({JsonInt(2): JsonInt(3), JsonFloat(1.5): JsonFloat(4.5)}))
+class JsonCode(IntEnum):
+    ok = 200
+print(json.dumps(JsonCode.ok))
+print(json.dumps({JsonCode.ok: JsonCode.ok}))
+print(json.dumps(JsonList([1, 2])))
+print(json.dumps(JsonTuple((3, 4))))
+print(json.dumps(JsonDict({'nested': JsonList([JsonInt(5)])})))
+JsonPoint = namedtuple('JsonPoint', 'x y')
+print(json.dumps(JsonPoint(8, JsonInt(9))))
 for item in [None, True, False, 0, -3, 12, 1.5, 'plain', 'a\nb', [1, True, None], {'a': 1, 'b': [False, None]}]:
     encoded = json.dumps(item)
     print(encoded)
     print(json.loads(encoded) == item)
 print(json.dumps({'quote': '"', 'slash': '\\', 'nonascii': 'é'}))
 print(json.dumps({2: 'two', 4.5: 'float', False: 'no', None: 'nil'}))
-print(json.dumps(json.loads('"\\ud834\\udd20"')))"#,
+print(json.dumps(json.loads('"\\ud834\\udd20"')))
+print(json.dumps(float('nan')), json.dumps(float('inf')), json.dumps(float('-inf')))
+for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
+    value = json.loads(text)
+    print(text, math.isnan(value), math.isinf(value), value < 0)"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_dumps_error_boundary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads/dumps error boundary subset",
+        name: "json-loads-dumps-error-boundaries",
+        source: r#"import json
+from collections import namedtuple
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print(label, isinstance(error, TypeError), isinstance(error, ValueError))
+    else:
+        print(label, 'OK')
+
+show('loads-no-args', lambda: json.loads())
+show('loads-extra-arg', lambda: json.loads('{}', 1))
+show('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))
+show('loads-memoryview', lambda: json.loads(memoryview(b'{}')))
+show('loads-invalid-utf8', lambda: json.loads(b'\xff'))
+show('loads-trailing-data', lambda: json.loads('{} []'))
+show('loads-leading-zero', lambda: json.loads('01'))
+show('loads-invalid-escape', lambda: json.loads('"\\x"'))
+show('loads-unclosed-array', lambda: json.loads('[1'))
+show('dumps-no-args', lambda: json.dumps())
+show('dumps-extra-arg', lambda: json.dumps({}, 1))
+show('dumps-unknown-keyword', lambda: json.dumps({}, unknown=1))
+show('dumps-object', lambda: json.dumps(object()))
+show('dumps-bytes', lambda: json.dumps(b'abc'))
+show('dumps-bytearray', lambda: json.dumps(bytearray(b'abc')))
+show('dumps-memoryview', lambda: json.dumps(memoryview(b'abc')))
+show('dumps-bad-key', lambda: json.dumps({(1, 2): 3}))
+cycle_list = []
+cycle_list.append(cycle_list)
+show('dumps-list-cycle', lambda: json.dumps(cycle_list))
+cycle_dict = {}
+cycle_dict['self'] = cycle_dict
+show('dumps-dict-cycle', lambda: json.dumps(cycle_dict))
+inner = []
+cycle_tuple = (inner,)
+inner.append(cycle_tuple)
+show('dumps-tuple-cycle', lambda: json.dumps(cycle_tuple))
+class JsonList(list):
+    pass
+class JsonDict(dict):
+    pass
+sub_list = JsonList()
+sub_list.append(sub_list)
+show('dumps-list-subclass-cycle', lambda: json.dumps(sub_list))
+sub_dict = JsonDict()
+sub_dict['self'] = sub_dict
+show('dumps-dict-subclass-cycle', lambda: json.dumps(sub_dict))
+items = []
+Cycle = namedtuple('Cycle', 'items')
+cycle_namedtuple = Cycle(items)
+items.append(cycle_namedtuple)
+show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
     });
 }
 

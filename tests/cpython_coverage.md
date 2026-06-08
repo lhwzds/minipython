@@ -196,15 +196,22 @@ Recent runtime migration notes:
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.
-- The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`
-  and `cpython_json_loads_dumps_diff_subset`, covering the pure in-memory
-  first-pass `loads()` / `dumps()` public data model for objects, arrays,
-  strings and escapes including paired UTF-16 surrogate escapes, integers,
-  finite floats, booleans, null, and CPython's basic dict-key coercion for
-  `str` / `int` / finite `float` / `bool` / `None`. File APIs,
-  encoder/decoder subclass hooks, keyword options, unpaired surrogate storage,
-  and full `JSONDecodeError` compatibility remain intentionally outside this
-  sandbox subset.
+- The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
+  `cpython_json_loads_dumps_diff_subset`, and
+  `cpython_json_loads_dumps_error_boundary_diff_subset`, covering the pure
+  in-memory first-pass `loads()` / `dumps()` public data model for objects,
+  arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
+  and UTF-16/UTF-32 encoded byte input, strings and `str` / `int` / `float`
+  subclass and `IntEnum` values/keys,
+  list/tuple/dict subclass containers and namedtuples, escapes including paired
+  UTF-16 surrogate escapes, integers, finite and default non-finite floats,
+  booleans, null,
+  CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
+  `None`, circular-reference rejection for list/dict/tuple/namedtuple
+  container paths, and first-pass error classification. File APIs,
+  encoder/decoder subclass hooks, keyword options, bytes/bytearray
+  serialization, unpaired surrogate storage, and full `JSONDecodeError`
+  compatibility remain intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_count_repeat_chain_subset` and
   `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
