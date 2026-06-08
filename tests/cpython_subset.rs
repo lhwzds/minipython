@@ -10,11 +10,17 @@ use minipython::{
     tokenize_cpython_with_spans, tokenize_with_spans,
 };
 
-fn cpython_formatfloat_testfile_source() -> String {
+fn cpython_formatfloat_testfile_source() -> Option<String> {
     let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/formatfloat_testcases.txt";
-    let data = std::fs::read_to_string(path)
-        .unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
-    format!(
+    let data = match std::fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("skipping CPython formatfloat full subset: missing {path}");
+            return None;
+        }
+        Err(error) => panic!("failed to read {path}: {error}"),
+    };
+    Some(format!(
         r#"data = {data:?}
 cases = []
 for line in data.splitlines():
@@ -48,14 +54,20 @@ for fmt, arg, expected in cases:
                 print('mismatch', label, fmt, arg, repr(got), repr(wanted))
                 failures += 1
 print('checked', len(cases), checks, 'failures', failures)"#
-    )
+    ))
 }
 
-fn cpython_floating_points_repr_source() -> String {
+fn cpython_floating_points_repr_source() -> Option<String> {
     let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/floating_points.txt";
-    let data = std::fs::read_to_string(path)
-        .unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
-    format!(
+    let data = match std::fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("skipping CPython floating-points repr full subset: missing {path}");
+            return None;
+        }
+        Err(error) => panic!("failed to read {path}: {error}"),
+    };
+    Some(format!(
         r#"import math
 data = {data:?}
 checked = 0
@@ -75,7 +87,7 @@ for line in data.splitlines():
         failures += 1
     checked += 1
 print('checked', checked, 'failures', failures)"#
-    )
+    ))
 }
 
 fn assert_output(source: &str, expected: &[&str]) {
@@ -5882,7 +5894,9 @@ print('checked', len(cases), checks)"#,
 // representative slice above.
 #[test]
 fn cpython_float_format_testfile_full_subset() {
-    let source = cpython_formatfloat_testfile_source();
+    let Some(source) = cpython_formatfloat_testfile_source() else {
+        return;
+    };
     assert_output(&source, &["checked 292 1114 failures 0"]);
 }
 
@@ -5938,7 +5952,9 @@ print('checked', checked, repr(eval(texts[0])), repr(eval(texts[-1])))"#,
 // rather than the deterministic representative slice above.
 #[test]
 fn cpython_float_repr_roundtrip_full_subset() {
-    let source = cpython_floating_points_repr_source();
+    let Some(source) = cpython_floating_points_repr_source() else {
+        return;
+    };
     assert_output(&source, &["checked 1016 failures 0"]);
 }
 
@@ -12959,8 +12975,17 @@ fn cpython_ast_repr_eval_expression_snapshot_subset() {
     ];
     let snapshot_path =
         std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/data/ast_repr.txt");
-    let snapshots = std::fs::read_to_string(snapshot_path)
-        .unwrap_or_else(|error| panic!("failed to read {}: {error}", snapshot_path.display()));
+    let snapshots = match std::fs::read_to_string(snapshot_path) {
+        Ok(snapshots) => snapshots,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!(
+                "skipping CPython AST repr eval snapshot subset: missing {}",
+                snapshot_path.display()
+            );
+            return;
+        }
+        Err(error) => panic!("failed to read {}: {error}", snapshot_path.display()),
+    };
     let expected = snapshots
         .lines()
         .skip(EXEC_REPR_SNAPSHOT_LINES)
@@ -12986,6 +13011,19 @@ fn cpython_ast_repr_eval_expression_snapshot_subset() {
 // `data/ast_repr.txt` snapshots.
 #[test]
 fn cpython_ast_repr_full_snapshot_from_cpython_source_subset() {
+    let snippets_path =
+        std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/snippets.py");
+    let snapshot_path =
+        std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/data/ast_repr.txt");
+    for path in [snippets_path, snapshot_path] {
+        if !path.exists() {
+            eprintln!(
+                "skipping CPython AST repr full snapshot subset: missing {}",
+                path.display()
+            );
+            return;
+        }
+    }
     let sources = cpython_ast_repr_sources_from_cpython();
     let snapshots = cpython_ast_repr_snapshots();
     assert_eq!(sources.len(), snapshots.len());
@@ -14018,6 +14056,14 @@ fn cpython_ast_validator_nonlocal_exact_subset() {
 
 #[test]
 fn cpython_ast_validator_stdlib_compile_seed_subset() {
+    let cpython_lib = std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib");
+    if !cpython_lib.exists() {
+        eprintln!(
+            "skipping CPython stdlib compile seed subset: missing {}",
+            cpython_lib.display()
+        );
+        return;
+    }
     for relative in [
         "__future__.py",
         "__hello__.py",
@@ -14172,9 +14218,18 @@ fn cpython_ast_validator_stdlib_compile_seed_subset() {
         "test/test_grammar.py",
         "test/test_unpack_ex.py",
     ] {
-        let path = std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib").join(relative);
-        let source = std::fs::read_to_string(&path)
-            .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+        let path = cpython_lib.join(relative);
+        let source = match std::fs::read_to_string(&path) {
+            Ok(source) => source,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!(
+                    "skipping CPython stdlib compile seed subset: missing {}",
+                    path.display()
+                );
+                return;
+            }
+            Err(error) => panic!("failed to read {}: {error}", path.display()),
+        };
         assert_eq!(
             compile_source(&source),
             Ok(()),
@@ -14186,6 +14241,14 @@ fn cpython_ast_validator_stdlib_compile_seed_subset() {
 
 #[test]
 fn cpython_ast_validator_stdlib_recursive_compile_seed_subset() {
+    let cpython_lib = std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib");
+    if !cpython_lib.exists() {
+        eprintln!(
+            "skipping CPython recursive stdlib compile seed subset: missing {}",
+            cpython_lib.display()
+        );
+        return;
+    }
     for relative in [
         "__phello__/__init__.py",
         "__phello__/ham/__init__.py",
@@ -14443,9 +14506,18 @@ fn cpython_ast_validator_stdlib_recursive_compile_seed_subset() {
         "encodings/uu_codec.py",
         "encodings/zlib_codec.py",
     ] {
-        let path = std::path::Path::new("/Volumes/samsung/GitHub/cpython/Lib").join(relative);
-        let source = std::fs::read_to_string(&path)
-            .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+        let path = cpython_lib.join(relative);
+        let source = match std::fs::read_to_string(&path) {
+            Ok(source) => source,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!(
+                    "skipping CPython recursive stdlib compile seed subset: missing {}",
+                    path.display()
+                );
+                return;
+            }
+            Err(error) => panic!("failed to read {}: {error}", path.display()),
+        };
         assert_eq!(
             compile_source(&source),
             Ok(()),
@@ -19176,8 +19248,14 @@ except TypeError as error:
 #[test]
 fn cpython_compile_specifics_compile_ast_cpython_file_subset() {
     let path = "/Volumes/samsung/GitHub/cpython/Lib/test/test_compile.py";
-    let file_source =
-        std::fs::read_to_string(path).expect("local CPython test_compile.py should be readable");
+    let file_source = match std::fs::read_to_string(path) {
+        Ok(source) => source,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("skipping CPython test_compile.py full subset: missing {path}");
+            return;
+        }
+        Err(error) => panic!("failed to read {path}: {error}"),
+    };
     let source = format!(
         r#"import ast
 source = {file_source:?}
@@ -27742,7 +27820,7 @@ print(sum(x for x in (y for y in (z for z in range(10)))), sum([x for x in range
 print(sum(x for x in [y for y in (z for z in range(10))]), sum([x for x in range(10)]))
 print(sum(x for x in (y for y in (z for z in range(10) if True)) if True), sum([x for x in range(10)]))
 print(sum(x for x in (y for y in (z for z in range(10) if True) if False) if True))"#;
-    assert_output(
+    assert_output_with_stack(
         source,
         &[
             "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
@@ -27759,6 +27837,7 @@ print(sum(x for x in (y for y in (z for z in range(10) if True) if False) if Tru
             "45 45",
             "0",
         ],
+        32 * 1024 * 1024,
     );
     assert_error(
         "foo(x for x in range(10), 100)",
@@ -39969,39 +40048,41 @@ for label, value in [
 // ::test_divmod_zero_division.
 #[test]
 fn cpython_complex_division_subset() {
-    assert_output(
-        "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nsimple_real = [float(i) for i in range(-5, 6)]\nsimple_complex = [complex(x, y) for x in simple_real for y in simple_real]\nfor x in simple_complex:\n    for y in simple_complex:\n        z = x * y\n        if x:\n            ok = ok and close(z / x, y)\n        if y:\n            ok = ok and close(z / y, x)\nprint(ok)\nprint(complex.__truediv__(2+0j, 1+1j))\nprint('__truediv__' in dir(1+1j), '__truediv__' in dir(complex))",
-        &["True", "(1-1j)", "True True"],
-    );
-    assert_output(
-        "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nfor x in [complex(1e200, 1e200), complex(1e-200, 1e-200)]:\n    y = 1+0j\n    z = x * y\n    ok = ok and close(z / x, y)\n    ok = ok and close(z.__truediv__(x), y)\n    ok = ok and close(z / y, x)\n    ok = ok and close(z.__truediv__(y), x)\nprint(ok)",
-        &["True"],
-    );
-    assert_output(
-        "def show(z):\n    print(z, repr(z.real), repr(z.imag))\nshow((1+1j) / float(2))\nshow(float(1) / (1+2j))\nshow(float(1) / (-1+2j))\nshow(float(1) / (1-2j))\nshow(float(1) / (2+1j))\nshow(float(1) / (-2+1j))\nshow(float(1) / (2-1j))",
-        &[
-            "(0.5+0.5j) 0.5 0.5",
-            "(0.2-0.4j) 0.2 -0.4",
-            "(-0.2-0.4j) -0.2 -0.4",
-            "(0.2+0.4j) 0.2 0.4",
-            "(0.4-0.2j) 0.4 -0.2",
-            "(-0.4-0.2j) -0.4 -0.2",
-            "(0.4+0.2j) 0.4 0.2",
-        ],
-    );
-    assert_output(
-        "NAN = float('nan')\nfor denom_real, denom_imag in [(0, NAN), (NAN, 0), (NAN, NAN)]:\n    for value in [complex(0, 0) / complex(denom_real, denom_imag), float(0) / complex(denom_real, denom_imag)]:\n        print(value != value, repr(value.real), repr(value.imag))",
-        &[
-            "True nan nan",
-            "True nan nan",
-            "True nan nan",
-            "True nan nan",
-            "True nan nan",
-            "True nan nan",
-        ],
-    );
-    assert_output(
-        r#"from math import copysign
+    run_test_with_stack(64 * 1024 * 1024, || {
+        assert_output_with_stack(
+            "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nsimple_real = [float(i) for i in range(-5, 6)]\nsimple_complex = [complex(x, y) for x in simple_real for y in simple_real]\nfor x in simple_complex:\n    for y in simple_complex:\n        z = x * y\n        if x:\n            ok = ok and close(z / x, y)\n        if y:\n            ok = ok and close(z / y, x)\nprint(ok)\nprint(complex.__truediv__(2+0j, 1+1j))\nprint('__truediv__' in dir(1+1j), '__truediv__' in dir(complex))",
+            &["True", "(1-1j)", "True True"],
+            32 * 1024 * 1024,
+        );
+        assert_output(
+            "def close(a, b):\n    return abs(a - b) < 1e-9\nok = True\nfor x in [complex(1e200, 1e200), complex(1e-200, 1e-200)]:\n    y = 1+0j\n    z = x * y\n    ok = ok and close(z / x, y)\n    ok = ok and close(z.__truediv__(x), y)\n    ok = ok and close(z / y, x)\n    ok = ok and close(z.__truediv__(y), x)\nprint(ok)",
+            &["True"],
+        );
+        assert_output(
+            "def show(z):\n    print(z, repr(z.real), repr(z.imag))\nshow((1+1j) / float(2))\nshow(float(1) / (1+2j))\nshow(float(1) / (-1+2j))\nshow(float(1) / (1-2j))\nshow(float(1) / (2+1j))\nshow(float(1) / (-2+1j))\nshow(float(1) / (2-1j))",
+            &[
+                "(0.5+0.5j) 0.5 0.5",
+                "(0.2-0.4j) 0.2 -0.4",
+                "(-0.2-0.4j) -0.2 -0.4",
+                "(0.2+0.4j) 0.2 0.4",
+                "(0.4-0.2j) 0.4 -0.2",
+                "(-0.4-0.2j) -0.4 -0.2",
+                "(0.4+0.2j) 0.4 0.2",
+            ],
+        );
+        assert_output(
+            "NAN = float('nan')\nfor denom_real, denom_imag in [(0, NAN), (NAN, 0), (NAN, NAN)]:\n    for value in [complex(0, 0) / complex(denom_real, denom_imag), float(0) / complex(denom_real, denom_imag)]:\n        print(value != value, repr(value.real), repr(value.imag))",
+            &[
+                "True nan nan",
+                "True nan nan",
+                "True nan nan",
+                "True nan nan",
+                "True nan nan",
+                "True nan nan",
+            ],
+        );
+        assert_output(
+            r#"from math import copysign
 INF = float('inf')
 NAN = float('nan')
 def same_float(actual, expected):
@@ -40045,61 +40126,62 @@ for label, value in [
     ('real-over-neginf-inf', float(1)/complex(-INF, INF)),
 ]:
     print(label, repr(value.real), copysign(1.0, value.real), repr(value.imag), copysign(1.0, value.imag))"#,
-        &[
-            "True",
-            "finite-neginf-inf 0.0 1.0 -0.0 -1.0",
-            "finite-neginf-neginf -0.0 -1.0 0.0 1.0",
-            "real-over-inf-inf 0.0 1.0 -0.0 -1.0",
-            "real-over-neginf-inf -0.0 -1.0 -0.0 -1.0",
-        ],
-    );
-    assert_output(
-        "import operator\nZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor a, b in ZERO_DIVISION:\n    try:\n        a / b\n    except ZeroDivisionError as error:\n        print(error.__class__.__name__)\nfor expr in [lambda: operator.truediv(1j, None), lambda: operator.truediv(None, 1j), lambda: (1+1j) // (1+0j), lambda: (1+1j) // 1.0, lambda: (1+1j) // 1, lambda: 1.0 // (1+0j), lambda: 1 // (1+0j), lambda: (1+1j) % (1+0j), lambda: (1+1j) % 1.0, lambda: (1+1j) % 1, lambda: 1.0 % (1+0j), lambda: 1 % (1+0j), lambda: divmod(1+1j, 1+0j), lambda: divmod(1+1j, 1.0), lambda: divmod(1+1j, 1), lambda: divmod(1.0, 1+0j), lambda: divmod(1, 1+0j)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
-        &[
-            "ZeroDivisionError",
-            "ZeroDivisionError",
-            "ZeroDivisionError",
-            "ZeroDivisionError",
-            "ZeroDivisionError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-        ],
-    );
-    assert_output(
-        "ZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor op in ['floordiv', 'mod', 'divmod']:\n    for a, b in ZERO_DIVISION:\n        try:\n            if op == 'floordiv':\n                a // b\n            elif op == 'mod':\n                a % b\n            else:\n                divmod(a, b)\n        except TypeError as error:\n            print(op, error.__class__.__name__)",
-        &[
-            "floordiv TypeError",
-            "floordiv TypeError",
-            "floordiv TypeError",
-            "floordiv TypeError",
-            "floordiv TypeError",
-            "mod TypeError",
-            "mod TypeError",
-            "mod TypeError",
-            "mod TypeError",
-            "mod TypeError",
-            "divmod TypeError",
-            "divmod TypeError",
-            "divmod TypeError",
-            "divmod TypeError",
-            "divmod TypeError",
-        ],
-    );
+            &[
+                "True",
+                "finite-neginf-inf 0.0 1.0 -0.0 -1.0",
+                "finite-neginf-neginf -0.0 -1.0 0.0 1.0",
+                "real-over-inf-inf 0.0 1.0 -0.0 -1.0",
+                "real-over-neginf-inf -0.0 -1.0 -0.0 -1.0",
+            ],
+        );
+        assert_output(
+            "import operator\nZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor a, b in ZERO_DIVISION:\n    try:\n        a / b\n    except ZeroDivisionError as error:\n        print(error.__class__.__name__)\nfor expr in [lambda: operator.truediv(1j, None), lambda: operator.truediv(None, 1j), lambda: (1+1j) // (1+0j), lambda: (1+1j) // 1.0, lambda: (1+1j) // 1, lambda: 1.0 // (1+0j), lambda: 1 // (1+0j), lambda: (1+1j) % (1+0j), lambda: (1+1j) % 1.0, lambda: (1+1j) % 1, lambda: 1.0 % (1+0j), lambda: 1 % (1+0j), lambda: divmod(1+1j, 1+0j), lambda: divmod(1+1j, 1.0), lambda: divmod(1+1j, 1), lambda: divmod(1.0, 1+0j), lambda: divmod(1, 1+0j)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+            &[
+                "ZeroDivisionError",
+                "ZeroDivisionError",
+                "ZeroDivisionError",
+                "ZeroDivisionError",
+                "ZeroDivisionError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+                "TypeError",
+            ],
+        );
+        assert_output(
+            "ZERO_DIVISION = [(1+1j, 0+0j), (1+1j, 0.0), (1+1j, 0), (1.0, 0+0j), (1, 0+0j)]\nfor op in ['floordiv', 'mod', 'divmod']:\n    for a, b in ZERO_DIVISION:\n        try:\n            if op == 'floordiv':\n                a // b\n            elif op == 'mod':\n                a % b\n            else:\n                divmod(a, b)\n        except TypeError as error:\n            print(op, error.__class__.__name__)",
+            &[
+                "floordiv TypeError",
+                "floordiv TypeError",
+                "floordiv TypeError",
+                "floordiv TypeError",
+                "floordiv TypeError",
+                "mod TypeError",
+                "mod TypeError",
+                "mod TypeError",
+                "mod TypeError",
+                "mod TypeError",
+                "divmod TypeError",
+                "divmod TypeError",
+                "divmod TypeError",
+                "divmod TypeError",
+                "divmod TypeError",
+            ],
+        );
+    });
 }
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::test_pow.
@@ -42339,7 +42421,7 @@ fn cpython_types_class_creation_metaclass_override_function_subset() {
 // derivation and conflict reporting from `type(base)`.
 #[test]
 fn cpython_types_class_creation_non_type_metaclass_derivation_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import types\n",
             "new_calls = []\n",
@@ -42402,6 +42484,7 @@ fn cpython_types_class_creation_non_type_metaclass_derivation_subset() {
             "X-error TypeError",
             "X-error TypeError",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -45784,7 +45867,7 @@ fn cpython_collections_abc_set_noncomparable_comparison_subset() {
 // the ABC mixin methods, including an instance-level _from_iterable override.
 #[test]
 fn cpython_collections_abc_set_from_iterable_operator_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "from collections.abc import MutableSet\n",
             "class SetUsingInstanceFromIterable(MutableSet):\n",
@@ -45818,6 +45901,7 @@ fn cpython_collections_abc_set_from_iterable_operator_subset() {
             "True from_iterable [1, 2, 4]",
             "True test [1, 2, 4]",
         ],
+        32 * 1024 * 1024,
     );
 }
 

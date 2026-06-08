@@ -77,11 +77,17 @@ fn assert_cpython_output_parity_source(origin: &str, name: &str, source: &str) {
     );
 }
 
-fn cpython_formatfloat_testfile_source() -> String {
+fn cpython_formatfloat_testfile_source() -> Option<String> {
     let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/formatfloat_testcases.txt";
-    let data =
-        fs::read_to_string(path).unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
-    format!(
+    let data = match fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("skipping CPython float format dataset diff: missing {path}");
+            return None;
+        }
+        Err(error) => panic!("failed to read {path}: {error}"),
+    };
+    Some(format!(
         r#"data = {data:?}
 cases = []
 for line in data.splitlines():
@@ -115,14 +121,20 @@ for fmt, arg, expected in cases:
                 print('mismatch', label, fmt, arg, repr(got), repr(wanted))
                 failures += 1
 print('checked', len(cases), checks, 'failures', failures)"#
-    )
+    ))
 }
 
-fn cpython_floating_points_repr_source() -> String {
+fn cpython_floating_points_repr_source() -> Option<String> {
     let path = "/Volumes/samsung/GitHub/cpython/Lib/test/mathdata/floating_points.txt";
-    let data =
-        fs::read_to_string(path).unwrap_or_else(|error| panic!("failed to read {path}: {error}"));
-    format!(
+    let data = match fs::read_to_string(path) {
+        Ok(data) => data,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            eprintln!("skipping CPython float repr dataset diff: missing {path}");
+            return None;
+        }
+        Err(error) => panic!("failed to read {path}: {error}"),
+    };
+    Some(format!(
         r#"import math
 data = {data:?}
 checked = 0
@@ -142,7 +154,7 @@ for line in data.splitlines():
         failures += 1
     checked += 1
 print('checked', checked, 'failures', failures)"#
-    )
+    ))
 }
 
 fn assert_cpython_rejection_parity(case: &DiffCase) {
@@ -679,6 +691,29 @@ Cycle = namedtuple('Cycle', 'items')
 cycle_namedtuple = Cycle(items)
 items.append(cycle_namedtuple)
 show('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_string_error_boundary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads string error boundary subset",
+        name: "json-loads-string-error-boundaries",
+        source: r#"import json
+
+def show(label, source):
+    try:
+        json.loads(source)
+    except Exception as error:
+        print(label, isinstance(error, ValueError))
+    else:
+        print(label, 'OK')
+
+show('bad-escape', '"\\q"')
+show('short-unicode-escape', '"\\u12"')
+show('nonhex-unicode-escape', '"\\u12xz"')
+show('raw-newline', '"line\nbreak"')
+show('raw-tab', '"a\tb"')"#,
     });
 }
 
@@ -5979,7 +6014,9 @@ print('checked', len(cases), checks)"#,
 
 #[test]
 fn cpython_float_format_testfile_full_diff_subset() {
-    let source = cpython_formatfloat_testfile_source();
+    let Some(source) = cpython_formatfloat_testfile_source() else {
+        return;
+    };
     assert_cpython_output_parity_source(
         "Lib/test/test_float.py::FormatTestCase::test_format_testfile",
         "float-format-testfile-full",
@@ -6034,7 +6071,9 @@ print('checked', checked, repr(eval(texts[0])), repr(eval(texts[-1])))"#,
 
 #[test]
 fn cpython_float_repr_roundtrip_full_diff_subset() {
-    let source = cpython_floating_points_repr_source();
+    let Some(source) = cpython_floating_points_repr_source() else {
+        return;
+    };
     assert_cpython_output_parity_source(
         "Lib/test/test_float.py::ReprTestCase::test_repr",
         "float-repr-roundtrip-full",

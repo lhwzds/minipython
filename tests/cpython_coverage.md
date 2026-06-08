@@ -25,6 +25,13 @@ Recent runtime migration notes:
   `json`. Each required module must keep concrete `cpython_diff` evidence, and
   partial modules must keep their supported and excluded surfaces documented in
   that manifest rather than implying full CPython stdlib parity.
+- Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
+  are tracked separately by the `Runtime Compatibility Module Registry` in
+  `tests/cpython_migration.md`. They do not expand the default sandbox product
+  scope: `sandbox_policy_denies_stdlib_imports`,
+  `sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
+  `stdlib_create_module_registry_is_classified_by_scope` keep the runtime
+  policy, registry classification, and documentation aligned.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -220,7 +227,8 @@ Recent runtime migration notes:
   construction from lists and other UserList objects.
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_loads_dumps_diff_subset`, and
-  `cpython_json_loads_dumps_error_boundary_diff_subset`, covering the pure
+  `cpython_json_loads_dumps_error_boundary_diff_subset`, plus
+  `cpython_json_loads_string_error_boundary_diff_subset`, covering the pure
   in-memory first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, strings and `str` / `int` / `float`
@@ -231,8 +239,8 @@ Recent runtime migration notes:
   empty containers, finite and default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
-  container paths, and first-pass type, structural, literal, and data error
-  classification. File APIs,
+  container paths, raw control-character rejection, malformed escape rejection,
+  and first-pass type, structural, literal, and data error classification. File APIs,
   encoder/decoder subclass hooks, keyword options, bytes/bytearray
   serialization, unpaired surrogate storage, and full `JSONDecodeError`
   compatibility remain intentionally outside this sandbox subset.

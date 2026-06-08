@@ -6,6 +6,8 @@ const CPYTHON_COVERAGE: &str = include_str!("cpython_coverage.md");
 const CPYTHON_MIGRATION: &str = include_str!("cpython_migration.md");
 const CPYTHON_DIFF: &str = include_str!("cpython_diff.rs");
 const CPYTHON_SUBSET: &str = include_str!("cpython_subset.rs");
+const LANGUAGE_TESTS: &str = include_str!("language.rs");
+const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
 const CPYTHON_TEST_BUILTIN_SOURCE: &str =
@@ -25,6 +27,19 @@ const CPYTHON_TEST_TYPE_COMMENTS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_comments.py";
 const CPYTHON_TEST_TYPE_PARAMS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_params.py";
+
+macro_rules! cpython_source_or_skip {
+    ($path:expr) => {
+        match fs::read_to_string($path) {
+            Ok(source) => source,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!("skipping CPython manifest source audit: missing {}", $path);
+                return;
+            }
+            Err(error) => panic!("failed to read {}: {}", $path, error),
+        }
+    };
+}
 
 #[derive(Debug)]
 struct ManifestGroup<'a> {
@@ -102,8 +117,7 @@ fn cpython_test_manifest_source_totals_match_extracted_baseline() {
 
 #[test]
 fn cpython_test_manifest_compile_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -126,8 +140,7 @@ fn cpython_test_manifest_compile_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_compile_specifics_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestSpecifics");
     let methods = method_audit_methods("## `Lib/test/test_compile.py::TestSpecifics` Method Audit");
 
@@ -167,8 +180,7 @@ fn cpython_test_manifest_compile_specifics_method_audit_matches_current_source()
 
 #[test]
 fn cpython_test_manifest_compile_source_positions_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestSourcePositions");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestSourcePositions` Method Audit");
@@ -230,8 +242,7 @@ fn cpython_test_manifest_compile_source_positions_method_audit_matches_current_s
 
 #[test]
 fn cpython_test_manifest_compile_boolean_expression_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestBooleanExpression");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestBooleanExpression` Method Audit");
@@ -259,8 +270,7 @@ fn cpython_test_manifest_compile_boolean_expression_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_compile_static_attributes_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestStaticAttributes");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestStaticAttributes` Method Audit");
@@ -288,8 +298,7 @@ fn cpython_test_manifest_compile_static_attributes_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_compile_expression_stack_size_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestExpressionStackSize");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestExpressionStackSize` Method Audit");
@@ -317,8 +326,7 @@ fn cpython_test_manifest_compile_expression_stack_size_method_audit_is_complete(
 
 #[test]
 fn cpython_test_manifest_compile_stack_size_stability_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestStackSizeStability");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestStackSizeStability` Method Audit");
@@ -346,8 +354,7 @@ fn cpython_test_manifest_compile_stack_size_stability_method_audit_is_complete()
 
 #[test]
 fn cpython_test_manifest_compile_instruction_sequence_method_audit_is_classified() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPILE_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPILE_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestInstructionSequence");
     let methods =
         method_audit_methods("## `Lib/test/test_compile.py::TestInstructionSequence` Method Audit");
@@ -377,9 +384,7 @@ fn cpython_test_manifest_compile_instruction_sequence_method_audit_is_classified
 
 #[test]
 fn cpython_test_manifest_type_comments_group_count_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_COMMENTS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_COMMENTS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_COMMENTS_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let expected = class_counts
         .get("TypeCommentTests")
@@ -399,9 +404,7 @@ fn cpython_test_manifest_type_comments_group_count_matches_current_source() {
 
 #[test]
 fn cpython_test_manifest_type_comments_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_COMMENTS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_COMMENTS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_COMMENTS_SOURCE);
     let expected = python_test_class_method_names(&source, "TypeCommentTests");
     let methods =
         method_audit_methods("## `Lib/test/test_type_comments.py::TypeCommentTests` Method Audit");
@@ -426,9 +429,7 @@ fn cpython_test_manifest_type_comments_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_type_params_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -466,9 +467,7 @@ fn cpython_test_manifest_type_params_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_type_params_invalid_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
     let expected = python_test_class_method_names(&source, "TypeParamsInvalidTest");
     let methods = method_audit_methods(
         "## `Lib/test/test_type_params.py::TypeParamsInvalidTest` Method Audit",
@@ -497,9 +496,7 @@ fn cpython_test_manifest_type_params_invalid_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_type_params_nonlocal_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
     let expected = python_test_class_method_names(&source, "TypeParamsNonlocalTest");
     let methods = method_audit_methods(
         "## `Lib/test/test_type_params.py::TypeParamsNonlocalTest` Method Audit",
@@ -528,9 +525,7 @@ fn cpython_test_manifest_type_params_nonlocal_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_type_params_dunder_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
     let expected = python_test_class_method_names(&source, "TypeParamsTypeParamsDunder");
     let methods = method_audit_methods(
         "## `Lib/test/test_type_params.py::TypeParamsTypeParamsDunder` Method Audit",
@@ -559,9 +554,7 @@ fn cpython_test_manifest_type_params_dunder_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_type_params_weakref_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPE_PARAMS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_TYPE_PARAMS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
     let expected = python_test_class_method_names(&source, "TypeParamsWeakRefTest");
     let methods = method_audit_methods(
         "## `Lib/test/test_type_params.py::TypeParamsWeakRefTest` Method Audit",
@@ -590,8 +583,7 @@ fn cpython_test_manifest_type_params_weakref_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_builtin_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -621,8 +613,7 @@ fn cpython_test_manifest_builtin_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_complex_group_count_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPLEX_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPLEX_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPLEX_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let expected = class_counts
         .get("ComplexTest")
@@ -635,8 +626,7 @@ fn cpython_test_manifest_complex_group_count_matches_current_source() {
 
 #[test]
 fn cpython_test_manifest_complex_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_COMPLEX_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_COMPLEX_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COMPLEX_SOURCE);
     let expected = python_test_class_method_names(&source, "ComplexTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -727,8 +717,7 @@ fn cpython_test_manifest_complex_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_float_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -759,8 +748,7 @@ fn cpython_test_manifest_float_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_float_general_cases_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
     let expected = python_test_class_method_names(&source, "GeneralFloatCases")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -831,8 +819,7 @@ fn cpython_test_manifest_float_general_cases_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_float_method_audit_statuses_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
 
     for (class_name, heading, expected_statuses) in [
         (
@@ -937,8 +924,7 @@ fn cpython_test_manifest_float_method_audit_statuses_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_float_fromhex_matrix_inputs_have_runtime_evidence() {
-    let source = fs::read_to_string(CPYTHON_TEST_FLOAT_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_FLOAT_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
     let method_source = python_test_method_source(&source, "HexFloatTestCase", "test_from_hex");
     let mut inputs = python_call_string_arguments(&method_source, "fromHex");
     inputs.extend(python_reference_string_arguments(&method_source, "fromHex"));
@@ -987,8 +973,7 @@ fn cpython_test_manifest_float_fromhex_matrix_inputs_have_runtime_evidence() {
 
 #[test]
 fn cpython_test_manifest_builtin_eval_exec_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1058,8 +1043,7 @@ fn cpython_test_manifest_builtin_eval_exec_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_builtin_core_runtime_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1142,8 +1126,7 @@ fn cpython_test_manifest_builtin_core_runtime_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1208,8 +1191,7 @@ fn cpython_test_manifest_builtin_attribute_introspection_method_audit_is_tracked
 
 #[test]
 fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_MEMORYVIEW_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_MEMORYVIEW_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_MEMORYVIEW_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let expected_count = class_counts.values().sum::<usize>();
     let groups = manifest_groups();
@@ -1235,8 +1217,7 @@ fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
 
 #[test]
 fn cpython_test_manifest_bytes_base_methods_are_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BYTES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BYTES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let expected_count = python_test_class_method_counts(&source)
         .get("BaseBytesTest")
         .copied()
@@ -1269,8 +1250,7 @@ fn cpython_test_manifest_bytes_base_methods_are_tracked() {
 
 #[test]
 fn cpython_test_manifest_bytes_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_BYTES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BYTES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -1295,8 +1275,7 @@ fn cpython_test_manifest_bytes_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_builtin_aggregate_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1365,8 +1344,7 @@ fn cpython_test_manifest_builtin_aggregate_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_builtin_iterator_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1444,8 +1422,7 @@ fn cpython_test_manifest_builtin_iterator_method_audit_is_tracked() {
 
 #[test]
 fn cpython_test_manifest_builtin_compile_io_regression_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let builtin_methods = python_test_class_method_names(&source, "BuiltinTest")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1536,8 +1513,7 @@ fn cpython_test_manifest_builtin_compile_io_regression_method_audit_is_tracked()
 
 #[test]
 fn cpython_test_manifest_builtin_test_breakpoint_method_audit_is_classified() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let expected_methods = python_test_class_method_names(&source, "TestBreakpoint")
         .into_iter()
         .collect::<BTreeSet<_>>();
@@ -1605,8 +1581,7 @@ fn cpython_test_manifest_builtin_immortal_tests_method_audit_is_classified() {
 
 #[test]
 fn cpython_test_manifest_builtin_test_type_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let expected = python_test_class_method_names(&source, "TestType");
     let methods = method_audit_methods("## `Lib/test/test_builtin.py::TestType` Method Audit");
 
@@ -1648,8 +1623,7 @@ fn cpython_test_manifest_builtin_test_type_method_audit_matches_current_source()
 
 #[test]
 fn cpython_test_manifest_ast_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -1684,8 +1658,7 @@ fn cpython_test_manifest_ast_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_ast_tests_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "AST_Tests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::AST_Tests` Method Audit");
@@ -1726,8 +1699,7 @@ fn cpython_test_manifest_ast_tests_method_audit_matches_current_source() {
 
 #[test]
 fn cpython_test_manifest_lazy_import_test_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "LazyImportTest");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::LazyImportTest` Method Audit");
@@ -1768,8 +1740,7 @@ fn cpython_test_manifest_lazy_import_test_method_audit_matches_current_source() 
 
 #[test]
 fn cpython_test_manifest_copy_tests_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "CopyTests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::CopyTests` Method Audit");
@@ -1810,8 +1781,7 @@ fn cpython_test_manifest_copy_tests_method_audit_matches_current_source() {
 
 #[test]
 fn cpython_test_manifest_node_transformer_tests_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "NodeTransformerTests");
     let methods = method_audit_methods(
         "## `Lib/test/test_ast/test_ast.py::NodeTransformerTests` Method Audit",
@@ -1840,8 +1810,7 @@ fn cpython_test_manifest_node_transformer_tests_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_constant_tests_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "ConstantTests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::ConstantTests` Method Audit");
@@ -1866,8 +1835,7 @@ fn cpython_test_manifest_constant_tests_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_end_position_tests_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "EndPositionTests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::EndPositionTests` Method Audit");
@@ -1892,8 +1860,7 @@ fn cpython_test_manifest_end_position_tests_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_ast_constructor_tests_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "ASTConstructorTests");
     let methods = method_audit_methods(
         "## `Lib/test/test_ast/test_ast.py::ASTConstructorTests` Method Audit",
@@ -1919,8 +1886,7 @@ fn cpython_test_manifest_ast_constructor_tests_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_module_state_tests_method_audit_is_classified() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "ModuleStateTests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::ModuleStateTests` Method Audit");
@@ -1947,8 +1913,7 @@ fn cpython_test_manifest_module_state_tests_method_audit_is_classified() {
 
 #[test]
 fn cpython_test_manifest_command_line_tests_method_audit_is_classified() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "CommandLineTests");
     let methods =
         method_audit_methods("## `Lib/test/test_ast/test_ast.py::CommandLineTests` Method Audit");
@@ -1975,8 +1940,7 @@ fn cpython_test_manifest_command_line_tests_method_audit_is_classified() {
 
 #[test]
 fn cpython_test_manifest_ast_optimization_tests_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_AST_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_AST_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "ASTOptimizationTests");
     let methods = method_audit_methods(
         "## `Lib/test/test_ast/test_ast.py::ASTOptimizationTests` Method Audit",
@@ -2095,6 +2059,14 @@ fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
             "sandbox stdlib row `{}` must cite concrete cpython_diff evidence",
             row.module
         );
+        let has_direct_diff_evidence = evidence_names.iter().any(|evidence| {
+            evidence.starts_with("cpython_") || sandbox_stdlib_legacy_direct_evidence(evidence)
+        });
+        assert!(
+            has_direct_diff_evidence,
+            "sandbox stdlib row `{}` must cite at least one direct CPython diff evidence test",
+            row.module
+        );
 
         for evidence in evidence_names {
             let function_name = evidence.replace('-', "_");
@@ -2110,6 +2082,23 @@ fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
             );
         }
     }
+}
+
+fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
+    matches!(
+        evidence,
+        "globals-locals-builtins"
+            | "exec-builtin"
+            | "compile-code-object-builtin"
+            | "builtin-breakpoint-custom-hook"
+            | "iter-next-builtins"
+            | "map-filter-builtins"
+            | "float-hash-and-sys-info"
+            | "types-frame-locals-proxy-currentframe"
+            | "types-method-descriptor-types"
+            | "types-int-dunder-format-matrix"
+            | "types-float-dunder-format-matrix"
+    )
 }
 
 #[test]
@@ -2130,6 +2119,11 @@ fn cpython_coverage_links_sandbox_stdlib_scope_to_manifest() {
         "functools",
         "itertools",
         "json",
+        "Runtime Compatibility Module Registry",
+        "src/stdlib.rs::create_module()",
+        "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
+        "stdlib_create_module_registry_is_classified_by_scope",
     ] {
         assert!(
             CPYTHON_COVERAGE.contains(required),
@@ -2146,10 +2140,32 @@ fn cpython_migration_documents_sandbox_stdlib_allow_list_semantics() {
         "their child modules",
         "SandboxPolicy::deny_stdlib()",
         "must be explicitly allowed",
+        "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
+        "stdlib_create_module_registry_is_classified_by_scope",
     ] {
         assert!(
             CPYTHON_MIGRATION.contains(required),
             "migration document must mention sandbox allow-list semantic `{required}`"
+        );
+    }
+}
+
+#[test]
+fn sandbox_policy_guard_names_reference_real_runtime_tests() {
+    for guard in [
+        "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
+        "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
+    ] {
+        let test_signature = format!("fn {guard}()");
+        assert!(
+            LANGUAGE_TESTS.contains(&test_signature),
+            "documented sandbox policy guard `{guard}` must exist in tests/language.rs"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(guard) || CPYTHON_COVERAGE.contains(guard),
+            "sandbox policy guard `{guard}` must be referenced by migration or coverage docs"
         );
     }
 }
@@ -2179,6 +2195,106 @@ fn cpython_migration_documents_out_of_scope_runtime_stop_line_guard() {
             "migration document must mention out-of-scope runtime stop-line term `{required}`"
         );
     }
+}
+
+#[test]
+fn stdlib_create_module_registry_is_explicitly_tracked() {
+    let actual = stdlib_create_module_names();
+    let expected = [
+        "_types",
+        "_weakref",
+        "annotationlib",
+        "array",
+        "ast",
+        "builtins",
+        "collections",
+        "collections.abc",
+        "copy",
+        "decimal",
+        "dis",
+        "enum",
+        "fractions",
+        "functools",
+        "inspect",
+        "io",
+        "itertools",
+        "json",
+        "math",
+        "math.integer",
+        "operator",
+        "os",
+        "os.path",
+        "pickle",
+        "re",
+        "string",
+        "string.templatelib",
+        "sys",
+        "test",
+        "test.typinganndata",
+        "test.typinganndata.ann_module",
+        "test.typinganndata.ann_module2",
+        "test.typinganndata.ann_module3",
+        "time",
+        "types",
+        "typing",
+        "unittest",
+        "unittest.mock",
+        "warnings",
+        "weakref",
+    ]
+    .into_iter()
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        actual, expected,
+        "stdlib create_module registry drifted; classify new modules before exposing them"
+    );
+}
+
+#[test]
+fn stdlib_create_module_registry_keeps_stop_line_modules_unavailable() {
+    let actual = stdlib_create_module_names();
+    for forbidden in [
+        "_ctypes",
+        "_socket",
+        "_ssl",
+        "_testcapi",
+        "multiprocessing",
+        "pdb",
+        "pty",
+        "signal",
+        "socket",
+        "subprocess",
+    ] {
+        assert!(
+            !actual.contains(forbidden),
+            "out-of-scope module `{forbidden}` must not be exposed by default"
+        );
+    }
+}
+
+#[test]
+fn stdlib_create_module_registry_is_classified_by_scope() {
+    let actual = stdlib_create_module_names();
+    let sandbox_modules = sandbox_stdlib_module_names();
+    let compatibility_modules = compatibility_module_registry_names();
+    let classified = sandbox_modules
+        .union(&compatibility_modules)
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let actual = actual
+        .into_iter()
+        .map(str::to_string)
+        .collect::<BTreeSet<_>>();
+
+    assert!(
+        sandbox_modules.is_disjoint(&compatibility_modules),
+        "sandbox stdlib modules must not also be compatibility-only modules"
+    );
+    assert_eq!(
+        actual, classified,
+        "every create_module() entry must be classified as required sandbox stdlib or compatibility/test support"
+    );
 }
 
 #[test]
@@ -2344,9 +2460,7 @@ fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_collections_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COLLECTIONS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_COLLECTIONS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COLLECTIONS_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -2378,8 +2492,7 @@ fn cpython_test_manifest_collections_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_types_group_counts_match_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
     let groups = manifest_groups();
 
@@ -2410,8 +2523,7 @@ fn cpython_test_manifest_types_group_counts_match_current_source() {
 
 #[test]
 fn cpython_test_manifest_types_tests_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPES_SOURCE);
     let expected = python_test_class_method_names(&source, "TypesTests");
     let methods = method_audit_methods("## `Lib/test/test_types.py::TypesTests` Method Audit");
 
@@ -2517,8 +2629,7 @@ fn cpython_test_manifest_builtin_sorted_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_types_union_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPES_SOURCE);
     let expected = python_test_class_method_names(&source, "UnionTests");
     let methods = method_audit_methods("## `Lib/test/test_types.py::UnionTests` Method Audit");
 
@@ -2603,8 +2714,7 @@ fn cpython_test_manifest_types_mappingproxy_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_types_class_creation_method_audit_is_complete() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPES_SOURCE);
     let expected = python_test_class_method_names(&source, "ClassCreationTests");
     let methods =
         method_audit_methods("## `Lib/test/test_types.py::ClassCreationTests` Method Audit");
@@ -2629,8 +2739,7 @@ fn cpython_test_manifest_types_class_creation_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_types_coroutine_method_audit_is_tracked() {
-    let source = fs::read_to_string(CPYTHON_TEST_TYPES_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_TYPES_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPES_SOURCE);
     let expected = python_test_class_method_names(&source, "CoroutineTests");
     let methods = method_audit_methods("## `Lib/test/test_types.py::CoroutineTests` Method Audit");
 
@@ -2954,9 +3063,7 @@ fn cpython_test_manifest_collections_one_trick_pony_method_audit_is_complete() {
 
 #[test]
 fn cpython_test_manifest_collections_collection_abcs_method_audit_matches_current_source() {
-    let source = fs::read_to_string(CPYTHON_TEST_COLLECTIONS_SOURCE).unwrap_or_else(|error| {
-        panic!("failed to read {CPYTHON_TEST_COLLECTIONS_SOURCE}: {error}")
-    });
+    let source = cpython_source_or_skip!(CPYTHON_TEST_COLLECTIONS_SOURCE);
     let expected = python_test_class_method_names(&source, "TestCollectionABCs");
     let methods =
         method_audit_methods("## `Lib/test/test_collections.py::TestCollectionABCs` Method Audit");
@@ -3222,6 +3329,85 @@ fn sandbox_stdlib_rows() -> Vec<SandboxStdlibRow<'static>> {
     rows
 }
 
+fn stdlib_create_module_names() -> BTreeSet<&'static str> {
+    let start = STDLIB_SOURCE
+        .find("pub(crate) fn create_module(")
+        .expect("stdlib.rs must define create_module()");
+    let end = start
+        + STDLIB_SOURCE[start..]
+            .find("\n        _ => Err(")
+            .expect("create_module() must end with a ModuleNotFoundError fallback");
+
+    STDLIB_SOURCE[start..end]
+        .lines()
+        .filter_map(|line| {
+            let line = line.trim_start();
+            let rest = line.strip_prefix('"')?;
+            let (name, rest) = rest.split_once('"')?;
+            if rest.trim_start().starts_with("=>") {
+                Some(name)
+            } else {
+                None
+            }
+        })
+        .collect()
+}
+
+fn sandbox_stdlib_module_names() -> BTreeSet<String> {
+    let mut modules = BTreeSet::new();
+    for row in sandbox_stdlib_rows() {
+        match row.module.as_str() {
+            "collections / collections.abc" => {
+                modules.insert("collections".to_string());
+                modules.insert("collections.abc".to_string());
+            }
+            "math / math.integer" => {
+                modules.insert("math".to_string());
+                modules.insert("math.integer".to_string());
+            }
+            "io.BytesIO" => {
+                modules.insert("io".to_string());
+            }
+            module => {
+                modules.insert(module.to_string());
+            }
+        }
+    }
+    modules
+}
+
+fn compatibility_module_registry_names() -> BTreeSet<String> {
+    let mut in_section = false;
+    let mut modules = BTreeSet::new();
+
+    for line in CPYTHON_MIGRATION.lines() {
+        if line == "## Runtime Compatibility Module Registry" {
+            in_section = true;
+            continue;
+        }
+
+        if in_section && line.starts_with("## ") {
+            break;
+        }
+
+        if !in_section {
+            continue;
+        }
+
+        let cells = table_cells(line);
+        if cells.len() != 2 {
+            continue;
+        }
+        let module = strip_backticks(cells[0]).unwrap_or(cells[0]);
+        if module == "Module" || module.chars().all(|ch| ch == '-') {
+            continue;
+        }
+        modules.insert(module.to_string());
+    }
+
+    modules
+}
+
 fn backtick_tokens(text: &str) -> Vec<&str> {
     text.split('`')
         .enumerate()
@@ -3242,8 +3428,7 @@ fn assert_builtin_method_audit_status_matches_current_source(
     section_heading: &str,
     status: &str,
 ) {
-    let source = fs::read_to_string(CPYTHON_TEST_BUILTIN_SOURCE)
-        .unwrap_or_else(|error| panic!("failed to read {CPYTHON_TEST_BUILTIN_SOURCE}: {error}"));
+    let source = cpython_source_or_skip!(CPYTHON_TEST_BUILTIN_SOURCE);
     let expected = python_test_class_method_names(&source, class_name);
     let methods = method_audit_methods(section_heading);
 

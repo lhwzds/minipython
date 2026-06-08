@@ -52,7 +52,10 @@ this manifest records their supported surface, excluded surface, and CPython
 diff evidence. Sandbox import policy is allow-list based: package entries cover
 their child modules, but compatibility shims outside the required surface remain
 blocked under `SandboxPolicy::deny_stdlib()` and must be explicitly allowed by
-the embedding host.
+the embedding host. `sandbox_policy_denies_stdlib_imports`,
+`sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
+`stdlib_create_module_registry_is_classified_by_scope` guard the runtime policy
+and registry classification contract.
 
 The default stop line excludes:
 
@@ -93,7 +96,44 @@ direct CPython diff evidence, not that the full CPython module has been cloned.
 | `operator` | Arithmetic/comparison helpers, sequence/member helpers, attrgetter/itemgetter/methodcaller, and selected signature/module metadata. | `pure-memory-stdlib-core`, `operator-precedence-and-associativity`, `cpython_operator_public_helpers_diff_subset`. | Full pickle metadata and every CPython helper edge case until separately migrated. |
 | `functools` | `partial`, `partialmethod`, `reduce`, `cmp_to_key`, wrapper helpers, cache/lru-cache/cached-property, singledispatch, singledispatchmethod, and total_ordering subsets. | `pure-memory-stdlib-core`, `cpython_functools_public_helpers_diff_subset`, `pow-builtin`. | Full CPython cache implementation internals, weakref/lifecycle subtleties, and unsupported descriptor edge cases. |
 | `itertools` | `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`, `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`, `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, and `pairwise()` pure iterator behavior. | `cpython_itertools_core_diff_subset`; `cpython_itertools_pairwise_diff_subset` is gated for CPython 3.10+ oracles. | Full itertools module, combinatoric iterators, floating `count()` arithmetic, pickling/repr exactness. |
-| `json` | Pure in-memory `loads()` from `str` / `bytes` / `bytearray` values and subclasses, including UTF-8 BOM and UTF-16/UTF-32 encoded byte input, duplicate-object-key last-value behavior, JSON whitespace, integer/float number grammar edges, top-level scalars and empty containers, plus `dumps()` data model subset for common JSON values, `str` / `int` / `float` subclass and `IntEnum` values/keys, list/tuple/dict subclass and namedtuple containers, standard strings/escapes, finite and default non-finite float spelling, bool/null, lists/tuples/dicts, basic dict-key coercion, circular-reference rejection, and first-pass type/structural/literal/data error classification. | `cpython_json_loads_dumps_diff_subset`, `cpython_json_loads_escape_and_duplicate_key_diff_subset`, `cpython_json_dumps_string_escape_diff_subset`, `cpython_json_dumps_float_spelling_diff_subset`, `cpython_json_loads_number_and_whitespace_diff_subset`, `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, `cpython_json_loads_dumps_error_boundary_diff_subset`. | File APIs, hooks, keyword options such as `allow_nan`, bytes/bytearray serialization, unpaired surrogate storage, and full `JSONDecodeError` compatibility. |
+| `json` | Pure in-memory `loads()` from `str` / `bytes` / `bytearray` values and subclasses, including UTF-8 BOM and UTF-16/UTF-32 encoded byte input, duplicate-object-key last-value behavior, JSON whitespace, integer/float number grammar edges, top-level scalars and empty containers, plus `dumps()` data model subset for common JSON values, `str` / `int` / `float` subclass and `IntEnum` values/keys, list/tuple/dict subclass and namedtuple containers, standard strings/escapes, finite and default non-finite float spelling, bool/null, lists/tuples/dicts, basic dict-key coercion, circular-reference rejection, and first-pass type/structural/literal/data error classification. | `cpython_json_loads_dumps_diff_subset`, `cpython_json_loads_escape_and_duplicate_key_diff_subset`, `cpython_json_dumps_string_escape_diff_subset`, `cpython_json_dumps_float_spelling_diff_subset`, `cpython_json_loads_number_and_whitespace_diff_subset`, `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, `cpython_json_loads_dumps_error_boundary_diff_subset`, `cpython_json_loads_string_error_boundary_diff_subset`. | File APIs, hooks, keyword options such as `allow_nan`, bytes/bytearray serialization, unpaired surrogate storage, and full `JSONDecodeError` compatibility. |
+
+## Runtime Compatibility Module Registry
+
+`src/stdlib.rs::create_module()` currently exposes additional pure-memory
+compatibility and test-support modules so migrated CPython public tests can run.
+These modules are not the default sandbox product scope unless a host allowlist
+explicitly permits them. New entries in `create_module()` must be added to this
+registry and classified before they are accepted.
+
+| Module | Registry classification |
+| --- | --- |
+| `_types` | compatibility support |
+| `_weakref` | compatibility support |
+| `annotationlib` | compatibility support |
+| `ast` | syntax/AST public-test support |
+| `decimal` | compatibility support |
+| `dis` | code/introspection public-test support |
+| `enum` | compatibility support |
+| `fractions` | numeric compatibility support |
+| `inspect` | introspection public-test support |
+| `os` | path-only compatibility shim |
+| `os.path` | path-only compatibility shim |
+| `pickle` | pure-memory test serialization support |
+| `re` | pure-memory regex compatibility support |
+| `string` | string public-test support |
+| `string.templatelib` | t-string public-test support |
+| `test` | CPython public-test package shim |
+| `test.typinganndata` | CPython typing test fixture shim |
+| `test.typinganndata.ann_module` | CPython typing test fixture shim |
+| `test.typinganndata.ann_module2` | CPython typing test fixture shim |
+| `test.typinganndata.ann_module3` | CPython typing test fixture shim |
+| `time` | deterministic/in-memory time compatibility support |
+| `typing` | typing public-test support |
+| `unittest` | CPython public-test support |
+| `unittest.mock` | CPython public-test support |
+| `warnings` | syntax warning public-test support |
+| `weakref` | weakref public-test support |
 
 `tests/cpython_test_manifest.md` tracks CPython test modules by source test
 method count. Use it to decide which CPython module or class group is actually
