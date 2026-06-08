@@ -745,6 +745,238 @@ print(operator.truth([]), operator.is_(None, None), operator.contains([1, 2], 2)
 }
 
 #[test]
+fn cpython_collections_counter_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py public Counter subset",
+        name: "collections-counter-public",
+        source: r#"from collections import Counter
+c = Counter('abracadabra')
+print(c['a'], c['z'], sorted(c.items()))
+print(sum(c.values()), sorted((c + Counter({'z': 2, 'a': -5})).items()))
+print(sorted((c - Counter('aaa')).items()))
+print(sorted((+Counter({'a': 2, 'b': 0, 'c': -1})).items()))
+print(sorted((-Counter({'a': 2, 'b': 0, 'c': -1})).items()))
+print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
+c.update('zz')
+c.subtract({'a': 1, 'z': 3})
+print(sorted(c.items()))
+print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_chainmap_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py public ChainMap subset",
+        name: "collections-chainmap-public",
+        source: r#"from collections import ChainMap
+base = {'a': 1, 'b': 2}
+override = {'b': 20, 'c': 30}
+cm = ChainMap(override, base)
+print(ChainMap().maps)
+print(ChainMap({'x': 1}).maps)
+print(bool(ChainMap()), bool(ChainMap({}, {})), bool(ChainMap({'x': 1}, {})), bool(ChainMap({}, {'x': 1})))
+print(list(cm.items()), list(cm), len(cm), dict(cm))
+print('a' in cm, 'b' in cm, 'c' in cm, 'z' in cm)
+print(cm['a'], cm['b'], cm['c'], cm.get('z', 100))
+child_source = {'d': 40}
+child = cm.new_child(child_source)
+print(child.maps, child.maps[0] is child_source, child.parents.maps == cm.maps)
+child['e'] = 50
+print(child.maps[0], 'e' in child, 'e' in cm)
+del child['d']
+print(child.maps[0], child.get('d', 'missing'))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_namedtuple_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py public namedtuple subset",
+        name: "collections-namedtuple-public",
+        source: r#"from collections import namedtuple
+Point = namedtuple('Point', 'x y')
+p = Point(11, 22)
+print(Point.__name__, Point.__slots__, Point._fields)
+print(p, p.x, p.y, p[0], p[-1])
+print(tuple(p), list(p), p == (11, 22), hash(p) == hash((11, 22)))
+print(Point._make([11, 22]) == p)
+print(p._replace(x=1))
+print(p._asdict())
+print(Point(x=11, y=22) == p, Point(y=22, x=11) == p)
+Zero = namedtuple('Zero', '')
+print(Zero(), Zero._fields, Zero()._asdict())
+Dot = namedtuple('Dot', 'd')
+print(Dot(1), Dot._make([1]), Dot(1)._replace(d=2), Dot(1)._asdict())
+bad = 0
+for typename, fields in [('class', 'x y'), ('Point', 'x x'), ('Point', '_x y'), ('9Point', 'x y')]:
+    try:
+        namedtuple(typename, fields)
+    except ValueError:
+        bad += 1
+print('bad', bad)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_userdict_userlist_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py public UserDict/UserList subset",
+        name: "collections-userdict-userlist-public",
+        source: r#"from collections import UserDict, UserList
+from copy import copy
+ud = UserDict()
+ud[123] = 'abc'
+print(ud[123], list(ud), len(ud), 123 in ud, ud.get(999))
+inner = ud.copy()
+print(inner.data is ud.data, inner.data == ud.data, type(inner).__name__)
+ud.test = [1234]
+outer = copy(ud)
+print(outer.data is ud.data, outer.data == ud.data, outer.test is ud.test)
+del ud[123]
+print(list(ud), len(ud))
+ul = UserList()
+print(ul.data, type(ul).__name__)
+ul.append(123)
+print(ul.data, list(ul), len(ul), 123 in ul)
+ul_copy = ul.copy()
+print(ul_copy.data is ul.data, ul_copy.data == ul.data, type(ul_copy).__name__)
+ul.test = [1234]
+ul_outer = copy(ul)
+print(ul_outer.data is ul.data, ul_outer.data == ul.data, ul_outer.test is ul.test)
+constructed = UserList([1, 2])
+from_userlist = UserList(constructed)
+print(constructed.data, from_userlist.data, from_userlist.data is constructed.data)
+from_userlist[0] = 9
+del from_userlist[1]
+print(from_userlist.data, constructed.data)"#,
+    });
+}
+
+#[test]
+fn cpython_operator_public_helpers_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py public helper subset",
+        name: "operator-public-helpers",
+        source: r#"import operator
+class Box:
+    pass
+box = Box()
+box.x = 7
+box.child = Box()
+box.child.y = 9
+print(operator.lt(1, 2), operator.eq('a', 'a'), operator.ne('a', 'b'))
+print(operator.truth([0]), operator.not_([]), operator.is_(None, None), operator.is_not(None, 0))
+print(operator.add(2, 3), operator.sub(5, 2), operator.mul('x', 3), operator.floordiv(7, 2), operator.mod(7, 2), operator.pow(2, 5))
+print(operator.and_(6, 3), operator.or_(4, 1), operator.xor(6, 3), operator.lshift(3, 2), operator.rshift(8, 1))
+print(operator.concat('py', 'thon'), operator.contains([1, 2, 3], 2), operator.countOf([1, 2, 1], 1), operator.indexOf(['a', 'b'], 'b'))
+items = [10, 20, 30]
+print(operator.getitem(items, 1))
+print(operator.setitem(items, 0, 99), items)
+print(operator.delitem(items, 1), items)
+print(operator.attrgetter('x')(box), operator.attrgetter('child.y')(box))
+print(operator.itemgetter(1)(['a', 'b', 'c']), operator.itemgetter(0, 2)(['a', 'b', 'c']))
+print(operator.methodcaller('replace', 'a', 'o')('banana'))"#,
+    });
+}
+
+#[test]
+fn cpython_copy_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public pure-memory subset",
+        name: "copy-public",
+        source: r#"import copy
+nested = [1, [2], {'a': [3]}]
+shallow = copy.copy(nested)
+deep = copy.deepcopy(nested)
+nested[1].append(4)
+nested[2]['a'].append(5)
+print(shallow is nested, deep is nested)
+print(shallow[1] is nested[1], deep[1] is nested[1], shallow[1], deep[1])
+print(shallow[2] is nested[2], deep[2] is nested[2], shallow[2], deep[2])
+for value in [None, True, 42, 'abc', b'abc', (1, 2)]:
+    print(type(value).__name__, copy.copy(value) == value, copy.deepcopy(value) == value)
+ba = bytearray(b'ab')
+ba_shallow = copy.copy(ba)
+ba_deep = copy.deepcopy(ba)
+ba.append(ord('c'))
+print(type(ba_shallow).__name__, ba_shallow == bytearray(b'ab'), ba_shallow is ba)
+print(type(ba_deep).__name__, ba_deep == bytearray(b'ab'), ba_deep is ba)
+d = {'x': [1]}
+ds = copy.copy(d)
+dd = copy.deepcopy(d)
+d['x'].append(2)
+print(ds is d, dd is d, ds['x'], dd['x'])
+for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_io_bytesio_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryio.py public BytesIO pure-memory subset",
+        name: "io-bytesio-public",
+        source: r#"import io
+bio = io.BytesIO(b'abc')
+print(type(bio).__name__, bio.read(1), bio.read(), bio.read())
+print(bio.getvalue())
+bio = io.BytesIO()
+print(bio.write(b'ab'), bio.write(bytearray(b'cd')), bio.getvalue())
+print(bio.read())
+bio = io.BytesIO(b'XYZW')
+target = bytearray(b'abc')
+print(bio.readinto(target), target)
+print(bio.readinto(target), target)
+for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:
+    obj = io.BytesIO() if source is None else io.BytesIO(source)
+    out = bytearray(4)
+    print(type(obj).__name__, obj.readinto(out), out, obj.getvalue())
+for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('getvalue-arg', lambda: io.BytesIO().getvalue(1))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_functools_public_helpers_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py public helper subset",
+        name: "functools-public-helpers",
+        source: r#"import functools
+print(functools.reduce(lambda a, b: a + b, [1, 2, 3]))
+print(functools.reduce(lambda a, b: a * b, [2, 3, 4], 1))
+pow2 = functools.partial(pow, 2)
+print(pow2(5), pow2.func is pow, pow2.args, pow2.keywords)
+mod10 = functools.partial(pow, mod=10)
+print(mod10(2, 6), mod10(exp=6, base=2))
+def wrapped(a=1):
+    'doc'
+    return a + 1
+@functools.wraps(wrapped)
+def wrapper(*args, **kwargs):
+    return wrapped(*args, **kwargs)
+print(wrapper.__name__, wrapper.__doc__, wrapper(4), wrapper.__wrapped__ is wrapped)
+def cmp(left, right):
+    return (left > right) - (left < right)
+key = functools.cmp_to_key(cmp)
+values = [3, 1, 2]
+print(sorted(values, key=key))
+print(key(1) < key(2), key(2) == key(2), key(3) > key(1))
+for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.partial(), lambda: functools.cmp_to_key(), lambda: functools.wraps()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count/repeat/chain/islice core subset",
@@ -881,9 +1113,17 @@ try:
 except TypeError as error:
     print(error.__class__.__name__)
 try:
+    itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left})
+except TypeError as error:
+    print(error.__class__.__name__, 'multiple values' in str(error))
+try:
     itertools.zip_longest(iterable=[1])
 except TypeError as error:
     print(error.__class__.__name__)
+try:
+    itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1})
+except TypeError as error:
+    print(error.__class__.__name__, 'multiple values' in str(error))
 try:
     itertools.cycle()
 except TypeError as error:

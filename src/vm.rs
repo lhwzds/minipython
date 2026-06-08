@@ -22272,6 +22272,7 @@ impl Vm {
         let mut iterable = args.first().cloned();
         let mut function = args.get(1).cloned().unwrap_or(Value::None);
         let mut initial = None;
+        let mut function_seen = args.len() >= 2;
         let mut total_count = args.len();
         for (keyword, value) in keywords {
             match keyword.as_str() {
@@ -22286,13 +22287,14 @@ impl Vm {
                     total_count += 1;
                 }
                 "func" => {
-                    if args.len() >= 2 {
+                    if function_seen {
                         return Err(
                             "TypeError: accumulate() got multiple values for argument 'func'"
                                 .to_string(),
                         );
                     }
                     function = value;
+                    function_seen = true;
                     total_count += 1;
                 }
                 "initial" => {
@@ -22395,13 +22397,21 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let mut fillvalue = Value::None;
+        let mut fillvalue_seen = false;
         for (keyword, value) in keywords {
             if keyword != "fillvalue" {
                 return Err(
                     "TypeError: zip_longest() got an unexpected keyword argument".to_string(),
                 );
             }
+            if fillvalue_seen {
+                return Err(
+                    "TypeError: zip_longest() got multiple values for keyword argument 'fillvalue'"
+                        .to_string(),
+                );
+            }
             fillvalue = value;
+            fillvalue_seen = true;
         }
         let iterators = args
             .into_iter()

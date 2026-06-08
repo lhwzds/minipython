@@ -196,6 +196,28 @@ Recent runtime migration notes:
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.
+- The bundled `collections` module includes
+  `cpython_collections_counter_public_diff_subset`, covering CPython public
+  `Counter` construction, missing-key zero lookup, values-based count totals,
+  update and subtract behavior, unary positive/negative filtering,
+  `elements()`, multiset arithmetic, and equality with matching counts.
+- The bundled `collections` module also includes
+  `cpython_collections_chainmap_public_diff_subset`, covering CPython public
+  `ChainMap` construction, truthiness, combined iteration/items/dict coercion,
+  membership and lookup across child/parent mappings, `get()` defaults,
+  first-map mutation, `parents`, and `new_child()` with a mapping input.
+- The bundled `collections` module also includes
+  `cpython_collections_namedtuple_public_diff_subset`, covering CPython public
+  `namedtuple()` factory basics, generated tuple-like instances, field
+  metadata, indexing, iteration, tuple/list conversion, `_make()`,
+  `_replace()`, `_asdict()`, zero/one-field namedtuples, keyword construction,
+  and representative invalid typename/field errors.
+- The bundled `collections` module also includes
+  `cpython_collections_userdict_userlist_public_diff_subset`, covering CPython
+  public `UserDict` and `UserList` construction, `.data` storage exposure,
+  item assignment/deletion, lookup, iteration, containment, `get()`, length,
+  `.copy()`, `copy.copy()`, shallow instance-attribute copying, and UserList
+  construction from lists and other UserList objects.
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_loads_dumps_diff_subset`, and
   `cpython_json_loads_dumps_error_boundary_diff_subset`, covering the pure
@@ -379,6 +401,10 @@ Recent runtime migration notes:
   overflow errors, non-finite propagation, signed-zero `tanh()` behavior,
   `__float__` and `__index__` input conversion, huge-index overflow,
   propagated conversion exceptions, and catchable error classes.
+- The bundled `functools` module includes
+  `cpython_functools_public_helpers_diff_subset`, covering direct CPython
+  output parity for representative public `reduce`, `partial`, `wraps`, and
+  `cmp_to_key` helper behavior plus basic TypeError classification.
 - The bundled `functools` module includes `cpython_functools_partial_subset`,
   covering CPython `test_functools.py::TestPartial` public call semantics,
   `func` / `args` / `keywords` attributes, caller keyword-dict isolation,
@@ -701,6 +727,22 @@ Recent runtime migration notes:
   covering CPython `test_enumerate.py` enumerate and reversed iterator pickle
   round trips, resumed already-advanced iterator pickles, empty enumerate, and
   ordinary plus large `start` values over MiniPython's internal pickle payload.
+- The bundled `operator` module includes
+  `cpython_operator_public_helpers_diff_subset`, covering CPython public helper
+  parity for representative comparison, predicate, arithmetic, bitwise,
+  sequence/member, item mutation, `attrgetter`, `itemgetter`, `methodcaller`,
+  and related callable-helper behavior.
+- The bundled `copy` module includes `cpython_copy_public_diff_subset`,
+  covering CPython public `copy.copy()` and `copy.deepcopy()` parity for
+  supported pure-memory scalar equality, nested list/dict shallow-vs-deep copy
+  behavior, independent bytearray copy buffers, dictionary copy independence,
+  and representative arity TypeError classification.
+- The bundled `io.BytesIO` subset includes
+  `cpython_io_bytesio_public_diff_subset`, covering CPython public in-memory
+  construction from bytes-like objects, `read()`, `write()`, `getvalue()`,
+  `readinto()` over writable bytearray targets, position advancement, and
+  representative constructor/method TypeError classification without host file
+  descriptors or buffering layers.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,
