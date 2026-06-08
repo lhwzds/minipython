@@ -591,6 +591,56 @@ for value in ['\x00\x1f', '\b\f\n\r\t', '"\\', 'é', '𝄠']:
 }
 
 #[test]
+fn cpython_json_dumps_ensure_ascii_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps ensure_ascii subset",
+        name: "json-dumps-ensure-ascii",
+        source: r#"import json
+for ensure_ascii in [False, 0, True, 1]:
+    print(json.dumps('é𝄠', ensure_ascii=ensure_ascii))
+    print(json.dumps({'é': ['𝄠']}, ensure_ascii=ensure_ascii))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_sort_keys_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps sort_keys subset",
+        name: "json-dumps-sort-keys",
+        source: r#"import json
+for sort_keys in [False, 0, True, 1]:
+    print(json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys))
+    print(json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys))
+    print(json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys))
+for value in [True, 1]:
+    try:
+        json.dumps({'2': 's', 1: 'i'}, sort_keys=value)
+    except Exception as error:
+        print(type(error).__name__, isinstance(error, TypeError))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_separators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps separators subset",
+        name: "json-dumps-separators",
+        source: r#"import json
+class Sep(str):
+    pass
+value = {'b': [1, 2], 'a': {'é': '𝄠'}}
+for separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => '))]:
+    print(json.dumps(value, separators=separators))
+print(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
+for separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:
+    try:
+        json.dumps(value, separators=separators)
+    except Exception as error:
+        print(type(error).__name__, isinstance(error, (TypeError, ValueError)))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_float_spelling_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps float spelling subset",

@@ -32217,6 +32217,64 @@ fn cpython_json_dumps_string_escape_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_ensure_ascii_subset() {
+    assert_output(
+        "import json\nfor ensure_ascii in [False, 0, True, 1]:\n    print(json.dumps('é𝄠', ensure_ascii=ensure_ascii))\n    print(json.dumps({'é': ['𝄠']}, ensure_ascii=ensure_ascii))",
+        &[
+            "\"é𝄠\"",
+            "{\"é\": [\"𝄠\"]}",
+            "\"é𝄠\"",
+            "{\"é\": [\"𝄠\"]}",
+            "\"\\u00e9\\ud834\\udd20\"",
+            "{\"\\u00e9\": [\"\\ud834\\udd20\"]}",
+            "\"\\u00e9\\ud834\\udd20\"",
+            "{\"\\u00e9\": [\"\\ud834\\udd20\"]}",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_sort_keys_subset() {
+    assert_output(
+        "import json\nfor sort_keys in [False, 0, True, 1]:\n    print(json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys))\n    print(json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys))\n    print(json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys))\nfor value in [True, 1]:\n    try:\n        json.dumps({'2': 's', 1: 'i'}, sort_keys=value)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))",
+        &[
+            "{\"b\": 1, \"a\": 2}",
+            "{\"outer\": {\"b\": 1, \"a\": 2}}",
+            "{\"2\": \"two\", \"1\": \"one\"}",
+            "{\"b\": 1, \"a\": 2}",
+            "{\"outer\": {\"b\": 1, \"a\": 2}}",
+            "{\"2\": \"two\", \"1\": \"one\"}",
+            "{\"a\": 2, \"b\": 1}",
+            "{\"outer\": {\"a\": 2, \"b\": 1}}",
+            "{\"1\": \"one\", \"2\": \"two\"}",
+            "{\"a\": 2, \"b\": 1}",
+            "{\"outer\": {\"a\": 2, \"b\": 1}}",
+            "{\"1\": \"one\", \"2\": \"two\"}",
+            "TypeError True",
+            "TypeError True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_separators_subset() {
+    assert_output(
+        "import json\nclass Sep(str):\n    pass\nvalue = {'b': [1, 2], 'a': {'é': '𝄠'}}\nfor separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => '))]:\n    print(json.dumps(value, separators=separators))\nprint(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\nfor separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:\n    try:\n        json.dumps(value, separators=separators)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, (TypeError, ValueError)))",
+        &[
+            "{\"b\": [1, 2], \"a\": {\"\\u00e9\": \"\\ud834\\udd20\"}}",
+            "{\"b\":[1,2],\"a\":{\"\\u00e9\":\"\\ud834\\udd20\"}}",
+            "{\"b\": [1,2],\"a\": {\"\\u00e9\": \"\\ud834\\udd20\"}}",
+            "{\"b\" => [1 | 2] | \"a\" => {\"\\u00e9\" => \"\\ud834\\udd20\"}}",
+            "{\"é\":[\"𝄠\",{\"a\":2,\"b\":1}]}",
+            "ValueError True",
+            "ValueError True",
+            "ValueError True",
+            "TypeError True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_float_spelling_subset() {
     assert_output(
         "import json\nfor value in [-0.0, 0.0, 1.0, -1.0, 1.2345, 1e-06, 1e+20]:\n    print(repr(value), json.dumps(value))",

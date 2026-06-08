@@ -22115,17 +22115,27 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        if !keywords.is_empty() {
-            return Err("TypeError: dumps() does not accept keyword arguments".to_string());
-        }
         let [value] = args.as_slice() else {
             return Err(format!(
                 "TypeError: dumps() expected 1 argument, got {}",
                 args.len()
             ));
         };
+        let mut options = JsonDumpsOptions::default();
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "ensure_ascii" => options.ensure_ascii = is_truthy(&value)?,
+                "sort_keys" => options.sort_keys = is_truthy(&value)?,
+                "separators" => json_dumps_apply_separators(&mut options, &value)?,
+                _ => return Err("TypeError: dumps() does not accept keyword arguments".to_string()),
+            }
+        }
         let mut active = HashSet::new();
-        Ok(Value::String(json_dumps_value(value, &mut active)?))
+        Ok(Value::String(json_dumps_value(
+            value,
+            &mut active,
+            &options,
+        )?))
     }
 
     fn call_itertools_count(
@@ -54040,19 +54050,82 @@ fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, 
     Ok(output)
 }
 
-fn json_dumps_value(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
+struct JsonDumpsOptions {
+    ensure_ascii: bool,
+    sort_keys: bool,
+    item_separator: String,
+    key_separator: String,
+}
+
+impl Default for JsonDumpsOptions {
+    fn default() -> Self {
+        Self {
+            ensure_ascii: true,
+            sort_keys: false,
+            item_separator: ", ".to_string(),
+            key_separator: ": ".to_string(),
+        }
+    }
+}
+
+fn json_dumps_apply_separators(
+    options: &mut JsonDumpsOptions,
+    value: &Value,
+) -> Result<(), String> {
+    if matches!(value, Value::None) {
+        return Ok(());
+    }
+    let values = match value {
+        Value::Tuple(values) => values.as_ref().clone(),
+        Value::List(values) => values.borrow().clone(),
+        _ => return Err("ValueError: too many values to unpack (expected 2)".to_string()),
+    };
+    let [item_separator, key_separator] = values.as_slice() else {
+        return if values.len() < 2 {
+            Err("ValueError: not enough values to unpack (expected 2, got 1)".to_string())
+        } else {
+            Err("ValueError: too many values to unpack (expected 2)".to_string())
+        };
+    };
+    options.item_separator = json_dumps_separator_string(item_separator, "item")?;
+    options.key_separator = json_dumps_separator_string(key_separator, "key")?;
+    Ok(())
+}
+
+fn json_dumps_separator_string(value: &Value, label: &str) -> Result<String, String> {
+    match value {
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        value if str_subclass_string(value).is_some() => {
+            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: json.dumps() {label} separator must be str, not {}",
+            type_name(value)
+        )),
+    }
+}
+
+fn json_dumps_value(
+    value: &Value,
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+) -> Result<String, String> {
     if let Some(identity) = json_dumps_container_identity(value) {
         if !active.insert(identity) {
             return Err("ValueError: Circular reference detected".to_string());
         }
-        let result = json_dumps_value_inner(value, active);
+        let result = json_dumps_value_inner(value, active, options);
         active.remove(&identity);
         return result;
     }
-    json_dumps_value_inner(value, active)
+    json_dumps_value_inner(value, active, options)
 }
 
-fn json_dumps_value_inner(value: &Value, active: &mut HashSet<usize>) -> Result<String, String> {
+fn json_dumps_value_inner(
+    value: &Value,
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+) -> Result<String, String> {
     match value {
         Value::None => Ok("null".to_string()),
         Value::Bool(true) => Ok("true".to_string()),
@@ -54067,27 +54140,30 @@ fn json_dumps_value_inner(value: &Value, active: &mut HashSet<usize>) -> Result<
             *float_subclass_float(value).expect("float subclass storage exists after guard"),
         )),
         Value::String(value) | Value::IdentityString { value, .. } => {
-            Ok(format!("\"{}\"", json_escape_string(value)))
+            Ok(format!("\"{}\"", json_escape_string(value, options)))
         }
         value if str_subclass_string(value).is_some() => Ok(format!(
             "\"{}\"",
             json_escape_string(
-                &str_subclass_string(value).expect("str subclass storage exists after guard")
+                &str_subclass_string(value).expect("str subclass storage exists after guard"),
+                options
             )
         )),
-        Value::List(items) => json_dumps_sequence(&items.borrow(), active),
-        Value::Tuple(items) => json_dumps_sequence(items, active),
-        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active),
-        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active),
+        Value::List(items) => json_dumps_sequence(&items.borrow(), active, options),
+        Value::Tuple(items) => json_dumps_sequence(items, active, options),
+        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active, options),
+        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active, options),
         value if list_subclass_storage(value).is_some() => json_dumps_sequence(
             &list_subclass_storage(value)
                 .expect("list subclass storage exists after guard")
                 .borrow(),
             active,
+            options,
         ),
         value if tuple_subclass_items(value).is_some() => json_dumps_sequence(
             &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
             active,
+            options,
         ),
         value if dict_subclass_entries(value).is_some() => json_dumps_dict(
             &dict_subclass_entries(value)
@@ -54095,11 +54171,12 @@ fn json_dumps_value_inner(value: &Value, active: &mut HashSet<usize>) -> Result<
                 .borrow()
                 .entries,
             active,
+            options,
         ),
         value if namedtuple_subclass_storage(value).is_some() => {
             let (_, values) = namedtuple_subclass_storage(value)
                 .expect("namedtuple subclass storage after guard");
-            json_dumps_sequence(&values, active)
+            json_dumps_sequence(&values, active, options)
         }
         value => Err(format!(
             "TypeError: Object of type {} is not JSON serializable",
@@ -54132,28 +54209,68 @@ fn json_dumps_container_identity(value: &Value) -> Option<usize> {
     }
 }
 
-fn json_dumps_sequence(items: &[Value], active: &mut HashSet<usize>) -> Result<String, String> {
+fn json_dumps_sequence(
+    items: &[Value],
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+) -> Result<String, String> {
     let mut parts = Vec::with_capacity(items.len());
     for item in items {
-        parts.push(json_dumps_value(item, active)?);
+        parts.push(json_dumps_value(item, active, options)?);
     }
-    Ok(format!("[{}]", parts.join(", ")))
+    Ok(format!("[{}]", parts.join(&options.item_separator)))
 }
 
 fn json_dumps_dict(
     entries: &[(Value, Value)],
     active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
 ) -> Result<String, String> {
+    let mut sorted_entries;
+    let entries = if options.sort_keys {
+        sorted_entries = entries.to_vec();
+        json_dumps_sort_dict_entries(&mut sorted_entries)?;
+        sorted_entries.as_slice()
+    } else {
+        entries
+    };
     let mut parts = Vec::with_capacity(entries.len());
     for (key, value) in entries {
         let key = json_dumps_dict_key(key)?;
         parts.push(format!(
-            "\"{}\": {}",
-            json_escape_string(&key),
-            json_dumps_value(value, active)?
+            "\"{}\"{}{}",
+            json_escape_string(&key, options),
+            options.key_separator,
+            json_dumps_value(value, active, options)?
         ));
     }
-    Ok(format!("{{{}}}", parts.join(", ")))
+    Ok(format!("{{{}}}", parts.join(&options.item_separator)))
+}
+
+fn json_dumps_sort_dict_entries(entries: &mut [(Value, Value)]) -> Result<(), String> {
+    for index in 1..entries.len() {
+        let mut current = index;
+        while current > 0 {
+            let ordering =
+                json_dumps_compare_dict_keys(&entries[current].0, &entries[current - 1].0)?;
+            if ordering != Ordering::Less {
+                break;
+            }
+            entries.swap(current, current - 1);
+            current -= 1;
+        }
+    }
+    Ok(())
+}
+
+fn json_dumps_compare_dict_keys(left: &Value, right: &Value) -> Result<Ordering, String> {
+    compare_values(left.clone(), right.clone()).map_err(|_| {
+        format!(
+            "TypeError: '<' not supported between instances of '{}' and '{}'",
+            type_name(left),
+            type_name(right)
+        )
+    })
 }
 
 fn json_dumps_dict_key(key: &Value) -> Result<String, String> {
@@ -54201,7 +54318,7 @@ fn json_dumps_float(value: f64) -> String {
     }
 }
 
-fn json_escape_string(value: &str) -> String {
+fn json_escape_string(value: &str, options: &JsonDumpsOptions) -> String {
     let mut escaped = String::new();
     for ch in value.chars() {
         match ch {
@@ -54213,7 +54330,7 @@ fn json_escape_string(value: &str) -> String {
             '\r' => escaped.push_str("\\r"),
             '\t' => escaped.push_str("\\t"),
             ch if ch <= '\u{001f}' => escaped.push_str(&format!("\\u{:04x}", ch as u32)),
-            ch if ch.is_ascii() => escaped.push(ch),
+            ch if ch.is_ascii() || !options.ensure_ascii => escaped.push(ch),
             ch => {
                 let mut units = [0_u16; 2];
                 for unit in ch.encode_utf16(&mut units) {

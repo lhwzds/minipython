@@ -228,22 +228,29 @@ Recent runtime migration notes:
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_loads_dumps_diff_subset`, and
   `cpython_json_loads_dumps_error_boundary_diff_subset`, plus
-  `cpython_json_loads_string_error_boundary_diff_subset`, covering the pure
-  in-memory first-pass `loads()` / `dumps()` public data model for objects,
+  `cpython_json_loads_string_error_boundary_diff_subset` and
+  `cpython_json_dumps_ensure_ascii_diff_subset` and
+  `cpython_json_dumps_sort_keys_diff_subset` and
+  `cpython_json_dumps_separators_diff_subset`, covering the pure in-memory
+  first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, strings and `str` / `int` / `float`
   subclass and `IntEnum` values/keys,
   list/tuple/dict subclass containers and namedtuples, standard string escapes,
-  paired UTF-16 surrogate escapes, duplicate-object-key last-value behavior,
-  JSON whitespace, integer/float number grammar edges, top-level scalar values,
-  empty containers, finite and default non-finite float spelling, booleans, null,
+  paired UTF-16 surrogate escapes, `ensure_ascii=False` direct non-ASCII
+  string/key rendering, `sort_keys` ordering for supported comparable keys,
+  `separators` compact/custom rendering for two-string list/tuple values,
+  duplicate-object-key last-value behavior, JSON whitespace, integer/float
+  number grammar edges, top-level scalar values, empty containers, finite and
+  default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   and first-pass type, structural, literal, and data error classification. File APIs,
-  encoder/decoder subclass hooks, keyword options, bytes/bytearray
-  serialization, unpaired surrogate storage, and full `JSONDecodeError`
-  compatibility remain intentionally outside this sandbox subset.
+  encoder/decoder subclass hooks, keyword options other than `ensure_ascii` /
+  `sort_keys` / `separators`, bytes/bytearray serialization, unpaired surrogate
+  storage, and full `JSONDecodeError` compatibility remain intentionally
+  outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_count_repeat_chain_subset` and
   `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
