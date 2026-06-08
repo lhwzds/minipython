@@ -556,6 +556,67 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
 }
 
 #[test]
+fn cpython_json_loads_escape_and_duplicate_key_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads escape and duplicate key subset",
+        name: "json-loads-escapes-duplicate-keys",
+        source: r#"import json
+print(json.loads('{"a": 1, "a": 2}'))
+print(repr(json.loads('"\\/\\b\\f\\r\\t"')))
+print(json.dumps(json.loads('"\\/\\b\\f\\r\\t"')))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_string_escape_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps string escape subset",
+        name: "json-dumps-string-escapes",
+        source: r#"import json
+for value in ['\x00\x1f', '\b\f\n\r\t', '"\\', 'é', '𝄠']:
+    print(json.dumps(value))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_float_spelling_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps float spelling subset",
+        name: "json-dumps-float-spelling",
+        source: r#"import json
+for value in [-0.0, 0.0, 1.0, -1.0, 1.2345, 1e-06, 1e+20]:
+    print(repr(value), json.dumps(value))"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_number_and_whitespace_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads number grammar and whitespace subset",
+        name: "json-loads-numbers-whitespace",
+        source: r#"import json
+print(json.loads(' \t\r\n[1, 2, 3]\n '))
+value = json.loads('{"negzero": -0, "negfloat": -0.0, "exp": 6.02e+23, "small": 1E-2}')
+print(value['negzero'], type(value['negzero']).__name__)
+print(value['negfloat'], type(value['negfloat']).__name__)
+print(value['exp'])
+print(value['small'])"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_top_level_scalar_and_empty_container_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads top-level scalar and empty container subset",
+        name: "json-loads-scalars-empty-containers",
+        source: r#"import json
+for source in ['null', 'true', 'false', '""', '[]', '{}', '[[], {}]', '{"empty_list": [], "empty_dict": {}}']:
+    value = json.loads(source)
+    print(source, repr(value), type(value).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_dumps_error_boundary_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps error boundary subset",
@@ -577,6 +638,11 @@ show('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))
 show('loads-memoryview', lambda: json.loads(memoryview(b'{}')))
 show('loads-invalid-utf8', lambda: json.loads(b'\xff'))
 show('loads-trailing-data', lambda: json.loads('{} []'))
+show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
+show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))
+show('loads-missing-colon', lambda: json.loads('{"a" 1}'))
+show('loads-uppercase-true', lambda: json.loads('True'))
+show('loads-uppercase-null', lambda: json.loads('NULL'))
 show('loads-leading-zero', lambda: json.loads('01'))
 show('loads-invalid-escape', lambda: json.loads('"\\x"'))
 show('loads-unclosed-array', lambda: json.loads('[1'))
@@ -694,6 +760,21 @@ print(list(itertools.repeat(object='y', times=2)))
 print(list(itertools.repeat('z', -1)))
 ch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))
 print(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))
+cf = itertools.chain.from_iterable([[1, 2], (), 'ab', itertools.repeat(9, 2)])
+print(callable(itertools.chain.from_iterable), type(cf).__name__, iter(cf) is cf, list(cf), list(cf))
+print(list(itertools.chain.from_iterable([])))
+print(list(itertools.chain.from_iterable(items for items in [[3], [4, 5], []])))
+comp = itertools.compress('abcdef', [1, 0, True, False, [], [1]])
+print(type(comp).__name__, iter(comp) is comp, list(comp), list(comp))
+print(list(itertools.compress([1, 2, 3], [0, 1])))
+print(list(itertools.compress(data='abc', selectors=[1, 0, 1])))
+print(list(itertools.compress((x for x in range(5)), (x % 2 for x in range(5)))))
+class Flag:
+    def __init__(self, value):
+        self.value = value
+    def __bool__(self):
+        return self.value
+print(list(itertools.compress('xy', [Flag(False), Flag(True)])))
 print(list(itertools.islice(range(10), 4)))
 print(list(itertools.islice(range(10), 2, None)))
 print(list(itertools.islice(range(10), 1, 8, 3)))
@@ -704,6 +785,22 @@ s = itertools.islice(range(3), 1)
 print(type(s).__name__, iter(s) is s)
 try:
     itertools.chain(iterable=[1])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.chain.from_iterable()
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.chain.from_iterable(iterable=[[1]])
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    list(itertools.chain.from_iterable([1]))
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.compress('abc')
 except TypeError as error:
     print(error.__class__.__name__)
 try:

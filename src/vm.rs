@@ -8381,6 +8381,12 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.chain" => {
                 self.call_itertools_chain(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.chain.from_iterable" => {
+                self.call_itertools_chain_from_iterable(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.compress" => {
+                self.call_itertools_compress(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.islice" => {
                 self.call_itertools_islice(args, keywords)
             }
@@ -22208,6 +22214,46 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_chain_from_iterable(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err(
+                "TypeError: chain.from_iterable() does not accept keyword arguments".to_string(),
+            );
+        }
+        let [iterable] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: chain.from_iterable() expected 1 argument, got {}",
+                args.len()
+            ));
+        };
+        Ok(shared_iterator(Value::ItertoolsChainFromIterable {
+            iterator: Box::new(get_iter(iterable.clone())?),
+            current: None,
+        }))
+    }
+
+    fn call_itertools_compress(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = bind_keyword_call("compress", &["data", "selectors"], 2, args, keywords)?;
+        let data = values[0]
+            .take()
+            .ok_or_else(|| "TypeError: compress() missing required argument 'data'".to_string())?;
+        let selectors = values[1].take().ok_or_else(|| {
+            "TypeError: compress() missing required argument 'selectors'".to_string()
+        })?;
+        Ok(shared_iterator(Value::ItertoolsCompress {
+            data: Box::new(get_iter(data)?),
+            selectors: Box::new(get_iter(selectors)?),
+        }))
+    }
+
     fn call_itertools_islice(
         &mut self,
         args: Vec<Value>,
@@ -27501,6 +27547,53 @@ impl Vm {
             Value::ZipIterator { iterators, strict } => {
                 return self.advance_zip_iterator(iterators, *strict);
             }
+            Value::ItertoolsChain { iterators, index } => {
+                while *index < iterators.len() {
+                    match self.advance_owned_iterator(&mut iterators[*index])? {
+                        IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
+                        IteratorAdvance::Complete(_) => *index += 1,
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                }
+                return Ok(IteratorAdvance::Complete(Value::None));
+            }
+            Value::ItertoolsChainFromIterable { iterator, current } => loop {
+                if let Some(current_iterator) = current.as_mut() {
+                    match self.advance_owned_iterator(current_iterator.as_mut())? {
+                        IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
+                        IteratorAdvance::Complete(_) => *current = None,
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                }
+                match self.advance_owned_iterator(iterator.as_mut())? {
+                    IteratorAdvance::Yield(iterable) => {
+                        *current = Some(Box::new(get_iter(iterable)?));
+                    }
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            },
+            Value::ItertoolsCompress { data, selectors } => loop {
+                let value = match self.advance_owned_iterator(data.as_mut())? {
+                    IteratorAdvance::Yield(value) => value,
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                let selector = match self.advance_owned_iterator(selectors.as_mut())? {
+                    IteratorAdvance::Yield(selector) => selector,
+                    IteratorAdvance::Complete(value) => {
+                        return Ok(IteratorAdvance::Complete(value));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                };
+                if self.truth_value(selector)? {
+                    return Ok(IteratorAdvance::Yield(value));
+                }
+            },
             Value::MapIterator {
                 function,
                 iterators,
@@ -49515,6 +49608,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if is_builtin_set_type_method(&function_name, name) => {
             Ok(Value::Builtin(format!("{function_name}.{name}")))
         }
+        Value::Builtin(function_name)
+            if function_name == "itertools.chain" && name == "from_iterable" =>
+        {
+            Ok(Value::Builtin("itertools.chain.from_iterable".to_string()))
+        }
         Value::Builtin(function_name) if function_name == "UserDict" && name == "__init__" => {
             Ok(Value::Builtin("UserDict.__init__".to_string()))
         }
@@ -51970,7 +52068,8 @@ fn type_name(value: &Value) -> &str {
         Value::FilterIterator { .. } => "filter",
         Value::ItertoolsCount { .. } => "count",
         Value::ItertoolsRepeat { .. } => "repeat",
-        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => "chain",
+        Value::ItertoolsCompress { .. } => "compress",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
@@ -52083,7 +52182,8 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::FilterIterator { .. } => "filter",
         Value::ItertoolsCount { .. } => "count",
         Value::ItertoolsRepeat { .. } => "repeat",
-        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => "chain",
+        Value::ItertoolsCompress { .. } => "compress",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",
@@ -66040,6 +66140,37 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             }
             Ok(IteratorAdvance::Complete(Value::None))
         }
+        Value::ItertoolsChainFromIterable { iterator, current } => loop {
+            if let Some(current_iterator) = current.as_mut() {
+                match advance_plain_iterator(current_iterator.as_mut())? {
+                    IteratorAdvance::Yield(value) => return Ok(IteratorAdvance::Yield(value)),
+                    IteratorAdvance::Complete(_) => *current = None,
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
+            match advance_plain_iterator(iterator.as_mut())? {
+                IteratorAdvance::Yield(iterable) => {
+                    *current = Some(Box::new(get_iter(iterable)?));
+                }
+                IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
+                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+            }
+        },
+        Value::ItertoolsCompress { data, selectors } => loop {
+            let value = match advance_plain_iterator(data.as_mut())? {
+                IteratorAdvance::Yield(value) => value,
+                IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
+                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+            };
+            let selector = match advance_plain_iterator(selectors.as_mut())? {
+                IteratorAdvance::Yield(selector) => selector,
+                IteratorAdvance::Complete(value) => return Ok(IteratorAdvance::Complete(value)),
+                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+            };
+            if is_truthy(&selector)? {
+                return Ok(IteratorAdvance::Yield(value));
+            }
+        },
         Value::ItertoolsIslice {
             iterator,
             position,
@@ -67287,6 +67418,8 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsCount { .. }
         | Value::ItertoolsRepeat { .. }
         | Value::ItertoolsChain { .. }
+        | Value::ItertoolsChainFromIterable { .. }
+        | Value::ItertoolsCompress { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
@@ -67495,6 +67628,8 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsCount { .. }
         | Value::ItertoolsRepeat { .. }
         | Value::ItertoolsChain { .. }
+        | Value::ItertoolsChainFromIterable { .. }
+        | Value::ItertoolsCompress { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::CallIterator { .. }
@@ -67809,6 +67944,18 @@ fn get_iter(value: Value) -> Result<Value, String> {
         }
         Value::ItertoolsChain { iterators, index } => {
             Ok(shared_iterator(Value::ItertoolsChain { iterators, index }))
+        }
+        Value::ItertoolsChainFromIterable { iterator, current } => {
+            Ok(shared_iterator(Value::ItertoolsChainFromIterable {
+                iterator,
+                current,
+            }))
+        }
+        Value::ItertoolsCompress { data, selectors } => {
+            Ok(shared_iterator(Value::ItertoolsCompress {
+                data,
+                selectors,
+            }))
         }
         Value::ItertoolsIslice {
             iterator,
@@ -73602,6 +73749,8 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsCount { .. } => Ok(true),
         Value::ItertoolsRepeat { .. } => Ok(true),
         Value::ItertoolsChain { .. } => Ok(true),
+        Value::ItertoolsChainFromIterable { .. } => Ok(true),
+        Value::ItertoolsCompress { .. } => Ok(true),
         Value::ItertoolsIslice { .. } => Ok(true),
         Value::ItertoolsPairwise { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),

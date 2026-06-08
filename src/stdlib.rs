@@ -682,6 +682,7 @@ pub(crate) fn create_module(
             "itertools",
             vec![
                 ("chain", Value::Builtin("itertools.chain".to_string())),
+                ("compress", Value::Builtin("itertools.compress".to_string())),
                 ("count", Value::Builtin("itertools.count".to_string())),
                 ("islice", Value::Builtin("itertools.islice".to_string())),
                 ("pairwise", Value::Builtin("itertools.pairwise".to_string())),
@@ -2130,7 +2131,8 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::FilterIterator { .. } => "filter",
         Value::ItertoolsCount { .. } => "count",
         Value::ItertoolsRepeat { .. } => "repeat",
-        Value::ItertoolsChain { .. } => "chain",
+        Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => "chain",
+        Value::ItertoolsCompress { .. } => "compress",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::CallIterator { .. } => "callable_iterator",

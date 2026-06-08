@@ -32116,9 +32116,72 @@ fn cpython_json_loads_dumps_basic_subset() {
 }
 
 #[test]
+fn cpython_json_loads_escape_and_duplicate_key_subset() {
+    assert_output(
+        "import json\nprint(json.loads('{\"a\": 1, \"a\": 2}'))\nprint(repr(json.loads('\"\\\\/\\\\b\\\\f\\\\r\\\\t\"')))\nprint(json.dumps(json.loads('\"\\\\/\\\\b\\\\f\\\\r\\\\t\"')))",
+        &["{'a': 2}", "'/\\x08\\x0c\\r\\t'", "\"/\\b\\f\\r\\t\""],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_string_escape_subset() {
+    assert_output(
+        "import json\nfor value in ['\\x00\\x1f', '\\b\\f\\n\\r\\t', '\"\\\\', 'é', '𝄠']:\n    print(json.dumps(value))",
+        &[
+            "\"\\u0000\\u001f\"",
+            "\"\\b\\f\\n\\r\\t\"",
+            "\"\\\"\\\\\"",
+            "\"\\u00e9\"",
+            "\"\\ud834\\udd20\"",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_float_spelling_subset() {
+    assert_output(
+        "import json\nfor value in [-0.0, 0.0, 1.0, -1.0, 1.2345, 1e-06, 1e+20]:\n    print(repr(value), json.dumps(value))",
+        &[
+            "-0.0 -0.0",
+            "0.0 0.0",
+            "1.0 1.0",
+            "-1.0 -1.0",
+            "1.2345 1.2345",
+            "1e-06 1e-06",
+            "1e+20 1e+20",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_loads_number_and_whitespace_subset() {
+    assert_output(
+        "import json\nprint(json.loads(' \\t\\r\\n[1, 2, 3]\\n '))\nvalue = json.loads('{\"negzero\": -0, \"negfloat\": -0.0, \"exp\": 6.02e+23, \"small\": 1E-2}')\nprint(value['negzero'], type(value['negzero']).__name__)\nprint(value['negfloat'], type(value['negfloat']).__name__)\nprint(value['exp'])\nprint(value['small'])",
+        &["[1, 2, 3]", "0 int", "-0.0 float", "6.02e+23", "0.01"],
+    );
+}
+
+#[test]
+fn cpython_json_loads_top_level_scalar_and_empty_container_subset() {
+    assert_output(
+        "import json\nfor source in ['null', 'true', 'false', '\"\"', '[]', '{}', '[[], {}]', '{\"empty_list\": [], \"empty_dict\": {}}']:\n    value = json.loads(source)\n    print(source, repr(value), type(value).__name__)",
+        &[
+            "null None NoneType",
+            "true True bool",
+            "false False bool",
+            "\"\" '' str",
+            "[] [] list",
+            "{} {} dict",
+            "[[], {}] [[], {}] list",
+            "{\"empty_list\": [], \"empty_dict\": {}} {'empty_list': [], 'empty_dict': {}} dict",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_dumps_error_boundary_subset() {
     assert_output(
-        "import json\nfrom collections import namedtuple\n\ndef show(label, callback):\n    try:\n        callback()\n    except Exception as error:\n        print(label, isinstance(error, TypeError), isinstance(error, ValueError))\n    else:\n        print(label, 'OK')\n\nshow('loads-no-args', lambda: json.loads())\nshow('loads-extra-arg', lambda: json.loads('{}', 1))\nshow('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))\nshow('loads-memoryview', lambda: json.loads(memoryview(b'{}')))\nshow('loads-invalid-utf8', lambda: json.loads(b'\\xff'))\nshow('loads-trailing-data', lambda: json.loads('{} []'))\nshow('loads-leading-zero', lambda: json.loads('01'))\nshow('loads-invalid-escape', lambda: json.loads('\"\\\\x\"'))\nshow('loads-unclosed-array', lambda: json.loads('[1'))\nshow('dumps-no-args', lambda: json.dumps())\nshow('dumps-extra-arg', lambda: json.dumps({}, 1))\nshow('dumps-unknown-keyword', lambda: json.dumps({}, unknown=1))\nshow('dumps-object', lambda: json.dumps(object()))\nshow('dumps-bytes', lambda: json.dumps(b'abc'))\nshow('dumps-bytearray', lambda: json.dumps(bytearray(b'abc')))\nshow('dumps-memoryview', lambda: json.dumps(memoryview(b'abc')))\nshow('dumps-bad-key', lambda: json.dumps({(1, 2): 3}))\ncycle_list = []\ncycle_list.append(cycle_list)\nshow('dumps-list-cycle', lambda: json.dumps(cycle_list))\ncycle_dict = {}\ncycle_dict['self'] = cycle_dict\nshow('dumps-dict-cycle', lambda: json.dumps(cycle_dict))\ninner = []\ncycle_tuple = (inner,)\ninner.append(cycle_tuple)\nshow('dumps-tuple-cycle', lambda: json.dumps(cycle_tuple))\nclass JsonList(list):\n    pass\nclass JsonDict(dict):\n    pass\nsub_list = JsonList()\nsub_list.append(sub_list)\nshow('dumps-list-subclass-cycle', lambda: json.dumps(sub_list))\nsub_dict = JsonDict()\nsub_dict['self'] = sub_dict\nshow('dumps-dict-subclass-cycle', lambda: json.dumps(sub_dict))\nitems = []\nCycle = namedtuple('Cycle', 'items')\ncycle_namedtuple = Cycle(items)\nitems.append(cycle_namedtuple)\nshow('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))",
+        "import json\nfrom collections import namedtuple\n\ndef show(label, callback):\n    try:\n        callback()\n    except Exception as error:\n        print(label, isinstance(error, TypeError), isinstance(error, ValueError))\n    else:\n        print(label, 'OK')\n\nshow('loads-no-args', lambda: json.loads())\nshow('loads-extra-arg', lambda: json.loads('{}', 1))\nshow('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))\nshow('loads-memoryview', lambda: json.loads(memoryview(b'{}')))\nshow('loads-invalid-utf8', lambda: json.loads(b'\\xff'))\nshow('loads-trailing-data', lambda: json.loads('{} []'))\nshow('loads-array-trailing-comma', lambda: json.loads('[1,]'))\nshow('loads-object-trailing-comma', lambda: json.loads('{\"a\": 1,}'))\nshow('loads-missing-colon', lambda: json.loads('{\"a\" 1}'))\nshow('loads-uppercase-true', lambda: json.loads('True'))\nshow('loads-uppercase-null', lambda: json.loads('NULL'))\nshow('loads-leading-zero', lambda: json.loads('01'))\nshow('loads-invalid-escape', lambda: json.loads('\"\\\\x\"'))\nshow('loads-unclosed-array', lambda: json.loads('[1'))\nshow('dumps-no-args', lambda: json.dumps())\nshow('dumps-extra-arg', lambda: json.dumps({}, 1))\nshow('dumps-unknown-keyword', lambda: json.dumps({}, unknown=1))\nshow('dumps-object', lambda: json.dumps(object()))\nshow('dumps-bytes', lambda: json.dumps(b'abc'))\nshow('dumps-bytearray', lambda: json.dumps(bytearray(b'abc')))\nshow('dumps-memoryview', lambda: json.dumps(memoryview(b'abc')))\nshow('dumps-bad-key', lambda: json.dumps({(1, 2): 3}))\ncycle_list = []\ncycle_list.append(cycle_list)\nshow('dumps-list-cycle', lambda: json.dumps(cycle_list))\ncycle_dict = {}\ncycle_dict['self'] = cycle_dict\nshow('dumps-dict-cycle', lambda: json.dumps(cycle_dict))\ninner = []\ncycle_tuple = (inner,)\ninner.append(cycle_tuple)\nshow('dumps-tuple-cycle', lambda: json.dumps(cycle_tuple))\nclass JsonList(list):\n    pass\nclass JsonDict(dict):\n    pass\nsub_list = JsonList()\nsub_list.append(sub_list)\nshow('dumps-list-subclass-cycle', lambda: json.dumps(sub_list))\nsub_dict = JsonDict()\nsub_dict['self'] = sub_dict\nshow('dumps-dict-subclass-cycle', lambda: json.dumps(sub_dict))\nitems = []\nCycle = namedtuple('Cycle', 'items')\ncycle_namedtuple = Cycle(items)\nitems.append(cycle_namedtuple)\nshow('dumps-namedtuple-cycle', lambda: json.dumps(cycle_namedtuple))",
         &[
             "loads-no-args True False",
             "loads-extra-arg True False",
@@ -32126,6 +32189,11 @@ fn cpython_json_loads_dumps_error_boundary_subset() {
             "loads-memoryview True False",
             "loads-invalid-utf8 False True",
             "loads-trailing-data False True",
+            "loads-array-trailing-comma False True",
+            "loads-object-trailing-comma False True",
+            "loads-missing-colon False True",
+            "loads-uppercase-true False True",
+            "loads-uppercase-null False True",
             "loads-leading-zero False True",
             "loads-invalid-escape False True",
             "loads-unclosed-array False True",
@@ -34711,7 +34779,7 @@ fn cpython_map_filter_builtin_subset() {
 #[test]
 fn cpython_itertools_count_repeat_chain_subset() {
     assert_output(
-        "import itertools\nc = itertools.count(2, 3)\nprint(type(c).__name__, iter(c) is c, next(c), next(c), next(c))\nck = itertools.count(start=-1, step=2)\nprint(next(ck), next(ck), next(ck))\nr = itertools.repeat('x', 3)\nprint(type(r).__name__, iter(r) is r, list(r), list(r))\nprint(list(itertools.repeat(object='y', times=2)))\nprint(list(itertools.repeat('z', -1)))\nch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))\nprint(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))\nprint(list(itertools.islice(range(10), 4)))\nprint(list(itertools.islice(range(10), 2, None)))\nprint(list(itertools.islice(range(10), 1, 8, 3)))\nprint(list(itertools.islice(itertools.count(10), 2, 8, 2)))\nit = iter(range(10))\nprint(list(itertools.islice(it, 2, 5)), next(it))\ns = itertools.islice(range(3), 1)\nprint(type(s).__name__, iter(s) is s)\np = itertools.pairwise('abcd')\nprint(type(p).__name__, iter(p) is p, list(p), list(p))\nprint(list(itertools.pairwise([1])), list(itertools.pairwise([])))\nprint(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))\nfor expr in [lambda: itertools.chain(iterable=[1]), lambda: itertools.count(0, 1, 2), lambda: itertools.repeat(), lambda: itertools.islice(range(3)), lambda: itertools.islice(range(3), -1), lambda: itertools.islice(range(3), 1, -1), lambda: itertools.islice(range(3), 1, 2, 0), lambda: itertools.islice(iterable=range(3), stop=2), lambda: itertools.pairwise(), lambda: itertools.pairwise(range(3), range(3)), lambda: itertools.pairwise(iterable=range(3))]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "import itertools\nc = itertools.count(2, 3)\nprint(type(c).__name__, iter(c) is c, next(c), next(c), next(c))\nck = itertools.count(start=-1, step=2)\nprint(next(ck), next(ck), next(ck))\nr = itertools.repeat('x', 3)\nprint(type(r).__name__, iter(r) is r, list(r), list(r))\nprint(list(itertools.repeat(object='y', times=2)))\nprint(list(itertools.repeat('z', -1)))\nch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))\nprint(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))\ncf = itertools.chain.from_iterable([[1, 2], (), 'ab', itertools.repeat(9, 2)])\nprint(callable(itertools.chain.from_iterable), type(cf).__name__, iter(cf) is cf, list(cf), list(cf))\nprint(list(itertools.chain.from_iterable([])))\nprint(list(itertools.chain.from_iterable(items for items in [[3], [4, 5], []])))\ncomp = itertools.compress('abcdef', [1, 0, True, False, [], [1]])\nprint(type(comp).__name__, iter(comp) is comp, list(comp), list(comp))\nprint(list(itertools.compress([1, 2, 3], [0, 1])))\nprint(list(itertools.compress(data='abc', selectors=[1, 0, 1])))\nprint(list(itertools.compress((x for x in range(5)), (x % 2 for x in range(5)))))\nclass Flag:\n    def __init__(self, value):\n        self.value = value\n    def __bool__(self):\n        return self.value\nprint(list(itertools.compress('xy', [Flag(False), Flag(True)])))\nprint(list(itertools.islice(range(10), 4)))\nprint(list(itertools.islice(range(10), 2, None)))\nprint(list(itertools.islice(range(10), 1, 8, 3)))\nprint(list(itertools.islice(itertools.count(10), 2, 8, 2)))\nit = iter(range(10))\nprint(list(itertools.islice(it, 2, 5)), next(it))\ns = itertools.islice(range(3), 1)\nprint(type(s).__name__, iter(s) is s)\np = itertools.pairwise('abcd')\nprint(type(p).__name__, iter(p) is p, list(p), list(p))\nprint(list(itertools.pairwise([1])), list(itertools.pairwise([])))\nprint(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))\nfor expr in [lambda: itertools.chain(iterable=[1]), lambda: itertools.chain.from_iterable(), lambda: itertools.chain.from_iterable(iterable=[[1]]), lambda: list(itertools.chain.from_iterable([1])), lambda: itertools.compress('abc'), lambda: itertools.count(0, 1, 2), lambda: itertools.repeat(), lambda: itertools.islice(range(3)), lambda: itertools.islice(range(3), -1), lambda: itertools.islice(range(3), 1, -1), lambda: itertools.islice(range(3), 1, 2, 0), lambda: itertools.islice(iterable=range(3), stop=2), lambda: itertools.pairwise(), lambda: itertools.pairwise(range(3), range(3)), lambda: itertools.pairwise(iterable=range(3))]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         &[
             "count True 2 5 8",
             "-1 1 3",
@@ -34719,6 +34787,14 @@ fn cpython_itertools_count_repeat_chain_subset() {
             "['y', 'y']",
             "[]",
             "chain True [1, 2, 'a', 'b', 9, 9] []",
+            "True chain True [1, 2, 'a', 'b', 9, 9] []",
+            "[]",
+            "[3, 4, 5]",
+            "compress True ['a', 'c', 'f'] []",
+            "[2]",
+            "['a', 'c']",
+            "[1, 3]",
+            "['y']",
             "[0, 1, 2, 3]",
             "[2, 3, 4, 5, 6, 7, 8, 9]",
             "[1, 4, 7]",
@@ -34728,6 +34804,10 @@ fn cpython_itertools_count_repeat_chain_subset() {
             "pairwise True [('a', 'b'), ('b', 'c'), ('c', 'd')] []",
             "[] []",
             "[(5, 6), (6, 7), (7, 8)]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
             "TypeError",
             "TypeError",
             "TypeError",

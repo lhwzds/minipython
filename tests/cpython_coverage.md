@@ -203,12 +203,14 @@ Recent runtime migration notes:
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, strings and `str` / `int` / `float`
   subclass and `IntEnum` values/keys,
-  list/tuple/dict subclass containers and namedtuples, escapes including paired
-  UTF-16 surrogate escapes, integers, finite and default non-finite floats,
-  booleans, null,
+  list/tuple/dict subclass containers and namedtuples, standard string escapes,
+  paired UTF-16 surrogate escapes, duplicate-object-key last-value behavior,
+  JSON whitespace, integer/float number grammar edges, top-level scalar values,
+  empty containers, finite and default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
-  container paths, and first-pass error classification. File APIs,
+  container paths, and first-pass type, structural, literal, and data error
+  classification. File APIs,
   encoder/decoder subclass hooks, keyword options, bytes/bytearray
   serialization, unpaired surrogate storage, and full `JSONDecodeError`
   compatibility remain intentionally outside this sandbox subset.
@@ -216,15 +218,16 @@ Recent runtime migration notes:
   `cpython_itertools_count_repeat_chain_subset` and
   `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, covering the pure in-memory
-  first-pass `count()`, `repeat()`, `chain()`, `islice()`, and `pairwise()`
-  iterator protocol behavior.
+  first-pass `count()`, `repeat()`, `chain()`, `chain.from_iterable()`,
+  `compress()`, `islice()`, and `pairwise()` iterator protocol behavior.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
-  arbitrary supported iterables, and non-negative integer `islice()` windows
-  over finite or infinite iterators, plus adjacent-pair iteration over finite
-  and infinite sources. The broader `itertools` module, floating/non-integer
-  `count()` arithmetic, `chain.from_iterable()`, combinatoric iterators, and
-  pickling/repr edge cases remain open.
+  arbitrary supported iterables, lazy `chain.from_iterable()` flattening,
+  selector-truthy `compress()` filtering with shortest-input exhaustion, and
+  non-negative integer `islice()` windows over finite or infinite iterators,
+  plus adjacent-pair iteration over finite and infinite sources. The broader
+  `itertools` module, floating/non-integer `count()` arithmetic, combinatoric
+  iterators, and pickling/repr edge cases remain open.
 - The bundled `math` module also includes `cpython_math_isclose_subset`,
   covering CPython `test_math.py::IsCloseTests` public relative and absolute
   tolerance behavior, identical values, near-zero comparisons, infinity/NaN

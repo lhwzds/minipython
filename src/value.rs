@@ -647,6 +647,14 @@ pub enum Value {
         iterators: Vec<Value>,
         index: usize,
     },
+    ItertoolsChainFromIterable {
+        iterator: Box<Value>,
+        current: Option<Box<Value>>,
+    },
+    ItertoolsCompress {
+        data: Box<Value>,
+        selectors: Box<Value>,
+    },
     ItertoolsIslice {
         iterator: Box<Value>,
         position: i64,
@@ -1064,6 +1072,10 @@ impl fmt::Display for Value {
             Value::ItertoolsCount { .. } => write!(f, "count(...)"),
             Value::ItertoolsRepeat { .. } => write!(f, "repeat(...)"),
             Value::ItertoolsChain { .. } => write!(f, "<itertools.chain object>"),
+            Value::ItertoolsChainFromIterable { .. } => {
+                write!(f, "<itertools.chain object>")
+            }
+            Value::ItertoolsCompress { .. } => write!(f, "<itertools.compress object>"),
             Value::ItertoolsIslice { .. } => write!(f, "<itertools.islice object>"),
             Value::ItertoolsPairwise { .. } => write!(f, "<itertools.pairwise object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
