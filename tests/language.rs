@@ -9,6 +9,23 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+const REQUIRED_SANDBOX_STDLIB_MODULES: &[&str] = &[
+    "builtins",
+    "sys",
+    "types",
+    "collections",
+    "collections.abc",
+    "math",
+    "math.integer",
+    "array",
+    "copy",
+    "io",
+    "operator",
+    "functools",
+    "itertools",
+    "json",
+];
+
 struct TestSandboxDir {
     path: PathBuf,
 }
@@ -990,6 +1007,24 @@ fn sandbox_policy_denies_stdlib_imports() {
 }
 
 #[test]
+fn sandbox_policy_denies_required_sandbox_stdlib_surface() {
+    let sandbox = TestSandboxDir::new("deny-required-stdlib");
+
+    for module in REQUIRED_SANDBOX_STDLIB_MODULES {
+        let error = run_source_with_sandbox_dir_and_policy(
+            &format!("import {module}"),
+            sandbox.path(),
+            SandboxPolicy::deny_stdlib(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            format!("runtime error: ModuleNotFoundError: No module named '{module}'")
+        );
+    }
+}
+
+#[test]
 fn sandbox_policy_allows_selected_stdlib_imports() {
     let sandbox = TestSandboxDir::new("allow-stdlib");
     let policy = SandboxPolicy::allow_stdlib_modules(["math"]).unwrap();
@@ -1027,6 +1062,54 @@ fn sandbox_policy_allows_selected_stdlib_package_children() {
         run_source_with_sandbox_dir_and_policy("import math", sandbox.path(), policy),
         Err("runtime error: ModuleNotFoundError: No module named 'math'".to_string())
     );
+}
+
+#[test]
+fn sandbox_policy_allows_required_sandbox_stdlib_surface() {
+    let sandbox = TestSandboxDir::new("allow-required-stdlib");
+    let policy =
+        SandboxPolicy::allow_stdlib_modules(REQUIRED_SANDBOX_STDLIB_MODULES.to_vec()).unwrap();
+
+    assert_eq!(
+        run_source_with_sandbox_dir_and_policy(
+            "import builtins, sys, types, collections, collections.abc, math, math.integer, array, copy, io, operator, functools, itertools, json\nprint(builtins.len([1, 2]))\nprint(isinstance(sys.modules, dict))\nprint(types.SimpleNamespace(x=1).x)\nprint(collections.Counter('aa')['a'], collections.abc.Sequence.__name__)\nprint(math.sqrt(4), math.integer.gcd(12, 18))\nprint(array.array('B', [65]).tobytes())\nprint(copy.copy([1]) == [1])\nbio = io.BytesIO(b'ab')\nprint(bio.read(1))\nprint(operator.add(2, 3), functools.reduce(lambda a, b: a + b, [1, 2, 3]))\nprint(next(itertools.count(4)))\nprint(json.loads('{\"a\": 1}')['a'])",
+            sandbox.path(),
+            policy,
+        ),
+        Ok(output_lines(&[
+            "2",
+            "True",
+            "1",
+            "2 Sequence",
+            "2.0 6",
+            "b'A'",
+            "True",
+            "b'a'",
+            "5 6",
+            "4",
+            "1",
+        ]))
+    );
+}
+
+#[test]
+fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
+    let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
+    let policy =
+        SandboxPolicy::allow_stdlib_modules(REQUIRED_SANDBOX_STDLIB_MODULES.to_vec()).unwrap();
+
+    for module in ["weakref", "time", "os", "typing"] {
+        let error = run_source_with_sandbox_dir_and_policy(
+            &format!("import {module}"),
+            sandbox.path(),
+            policy.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            format!("runtime error: ModuleNotFoundError: No module named '{module}'")
+        );
+    }
 }
 
 #[test]

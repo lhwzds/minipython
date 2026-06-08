@@ -22077,37 +22077,39 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let [source] = args.as_slice() else {
+        if args.len() > 1 {
             return Err(format!(
-                "TypeError: loads() expected 1 argument, got {}",
+                "TypeError: loads() takes 1 positional argument but {} were given",
                 args.len()
             ));
-        };
-        let mut strict = true;
-        for (keyword, value) in keywords {
-            match keyword.as_str() {
-                "strict" => strict = is_truthy(&value)?,
-                _ => return Err("TypeError: loads() does not accept keyword arguments".to_string()),
-            }
         }
+        let mut values = bind_keyword_call("loads", &["s", "strict"], 1, args, keywords)?;
+        let source = values[0]
+            .take()
+            .expect("required json.loads source is present after keyword binding");
+        let strict = values[1]
+            .as_ref()
+            .map(is_truthy)
+            .transpose()?
+            .unwrap_or(true);
         let source = match source {
             Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
             Value::Bytes(bytes) => json_loads_decode_bytes(bytes.as_ref())?,
             Value::ByteArray(bytes) => json_loads_decode_bytes(bytes.borrow().bytes())?,
-            value if str_subclass_string(value).is_some() => {
-                str_subclass_string(value).expect("str subclass storage exists after guard")
+            value if str_subclass_string(&value).is_some() => {
+                str_subclass_string(&value).expect("str subclass storage exists after guard")
             }
-            value if bytes_subclass_bytes(value).is_some() => json_loads_decode_bytes(
-                &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+            value if bytes_subclass_bytes(&value).is_some() => json_loads_decode_bytes(
+                &bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
             )?,
-            value if bytearray_subclass_bytes(value).is_some() => json_loads_decode_bytes(
-                &bytearray_subclass_bytes(value)
+            value if bytearray_subclass_bytes(&value).is_some() => json_loads_decode_bytes(
+                &bytearray_subclass_bytes(&value)
                     .expect("bytearray subclass storage exists after guard"),
             )?,
             value => {
                 return Err(format!(
                     "TypeError: the JSON object must be str, bytes or bytearray, not {}",
-                    type_name(value)
+                    type_name(&value)
                 ));
             }
         };
@@ -22119,35 +22121,61 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let [value] = args.as_slice() else {
+        if args.len() > 1 {
             return Err(format!(
-                "TypeError: dumps() expected 1 argument, got {}",
+                "TypeError: dumps() takes 1 positional argument but {} were given",
                 args.len()
             ));
-        };
+        }
+        let mut values = bind_keyword_call(
+            "dumps",
+            &[
+                "obj",
+                "allow_nan",
+                "check_circular",
+                "ensure_ascii",
+                "indent",
+                "skipkeys",
+                "sort_keys",
+                "separators",
+            ],
+            1,
+            args,
+            keywords,
+        )?;
+        let value = values[0]
+            .take()
+            .expect("required json.dumps object is present after keyword binding");
         let mut options = JsonDumpsOptions::default();
         let mut separators_explicit = false;
-        for (keyword, value) in keywords {
-            match keyword.as_str() {
-                "allow_nan" => options.allow_nan = is_truthy(&value)?,
-                "check_circular" => options.check_circular = is_truthy(&value)?,
-                "ensure_ascii" => options.ensure_ascii = is_truthy(&value)?,
-                "indent" => options.indent = json_dumps_indent_string(&value)?,
-                "skipkeys" => options.skip_keys = is_truthy(&value)?,
-                "sort_keys" => options.sort_keys = is_truthy(&value)?,
-                "separators" => {
-                    separators_explicit = true;
-                    json_dumps_apply_separators(&mut options, &value)?;
-                }
-                _ => return Err("TypeError: dumps() does not accept keyword arguments".to_string()),
-            }
+        if let Some(value) = values[1].as_ref() {
+            options.allow_nan = is_truthy(value)?;
+        }
+        if let Some(value) = values[2].as_ref() {
+            options.check_circular = is_truthy(value)?;
+        }
+        if let Some(value) = values[3].as_ref() {
+            options.ensure_ascii = is_truthy(value)?;
+        }
+        if let Some(value) = values[4].as_ref() {
+            options.indent = json_dumps_indent_string(value)?;
+        }
+        if let Some(value) = values[5].as_ref() {
+            options.skip_keys = is_truthy(value)?;
+        }
+        if let Some(value) = values[6].as_ref() {
+            options.sort_keys = is_truthy(value)?;
+        }
+        if let Some(value) = values[7].as_ref() {
+            separators_explicit = true;
+            json_dumps_apply_separators(&mut options, value)?;
         }
         if options.indent.is_some() && !separators_explicit {
             options.item_separator = ",".to_string();
         }
         let mut active = HashSet::new();
         Ok(Value::String(json_dumps_value(
-            value,
+            &value,
             &mut active,
             &options,
         )?))

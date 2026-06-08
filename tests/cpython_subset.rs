@@ -7433,6 +7433,37 @@ fn cpython_float_hex_fromhex_subclass_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py public pure-memory smoke coverage.
+#[test]
+fn cpython_math_core_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(round(math.pi, 3), round(math.e, 3), round(math.tau, 3))\n",
+            "print(math.isfinite(1.0), math.isfinite(math.inf), math.isinf(-math.inf), math.isnan(math.nan))\n",
+            "print(math.sqrt(9), math.gcd(12, 18), math.lcm(4, 6), math.factorial(5), math.isqrt(17))\n",
+            "print(math.comb(5, 2), math.perm(5, 2), math.prod([2, 3, 4]), math.isclose(1.0, 1.0 + 1e-10))\n",
+            "print(math.fabs(-3.5), math.trunc(3.9), math.floor(-1.2), math.ceil(-1.2))\n",
+            "for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd(1.2), lambda: math.isclose(1.0, 1.1, rel_tol=-1.0)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "3.142 2.718 6.283",
+            "True False True True",
+            "3.0 6 12 120 4",
+            "10 20 24 True",
+            "3.5 3 -2 -1",
+            "ValueError",
+            "ValueError",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testConstants,
 // ::testIsfinite, ::testIsnormal, ::testIssubnormal, ::testIsnan,
 // ::testIsinf, ::test_nan_constant, and ::test_inf_constant.
@@ -21045,6 +21076,106 @@ for tc, vals in [('B', [65, 66]), ('b', [65, -1])]:
     );
 }
 
+// Adapted from CPython Lib/copy.py public pure-memory behavior.
+#[test]
+fn cpython_copy_public_subset() {
+    assert_output(
+        concat!(
+            "import copy\n",
+            "nested = [1, [2], {'a': [3]}]\n",
+            "shallow = copy.copy(nested)\n",
+            "deep = copy.deepcopy(nested)\n",
+            "nested[1].append(4)\n",
+            "nested[2]['a'].append(5)\n",
+            "print(shallow is nested, deep is nested)\n",
+            "print(shallow[1] is nested[1], deep[1] is nested[1], shallow[1], deep[1])\n",
+            "print(shallow[2] is nested[2], deep[2] is nested[2], shallow[2], deep[2])\n",
+            "for value in [None, True, 42, 'abc', b'abc', (1, 2)]:\n",
+            "    print(type(value).__name__, copy.copy(value) == value, copy.deepcopy(value) == value)\n",
+            "ba = bytearray(b'ab')\n",
+            "ba_shallow = copy.copy(ba)\n",
+            "ba_deep = copy.deepcopy(ba)\n",
+            "ba.append(ord('c'))\n",
+            "print(type(ba_shallow).__name__, ba_shallow == bytearray(b'ab'), ba_shallow is ba)\n",
+            "print(type(ba_deep).__name__, ba_deep == bytearray(b'ab'), ba_deep is ba)\n",
+            "d = {'x': [1]}\n",
+            "ds = copy.copy(d)\n",
+            "dd = copy.deepcopy(d)\n",
+            "d['x'].append(2)\n",
+            "print(ds is d, dd is d, ds['x'], dd['x'])\n",
+            "for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "False False",
+            "True False [2, 4] [2]",
+            "True False {'a': [3, 5]} {'a': [3]}",
+            "NoneType True True",
+            "bool True True",
+            "int True True",
+            "str True True",
+            "bytes True True",
+            "tuple True True",
+            "bytearray True False",
+            "bytearray True False",
+            "False False [1, 2] [1]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
+// behavior.
+#[test]
+fn cpython_io_bytesio_public_subset() {
+    assert_output(
+        concat!(
+            "import io\n",
+            "bio = io.BytesIO(b'abc')\n",
+            "print(type(bio).__name__, bio.read(1), bio.read(), bio.read())\n",
+            "print(bio.getvalue())\n",
+            "bio = io.BytesIO()\n",
+            "print(bio.write(b'ab'), bio.write(bytearray(b'cd')), bio.getvalue())\n",
+            "print(bio.read())\n",
+            "bio = io.BytesIO(b'XYZW')\n",
+            "target = bytearray(b'abc')\n",
+            "print(bio.readinto(target), target)\n",
+            "print(bio.readinto(target), target)\n",
+            "for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:\n",
+            "    obj = io.BytesIO() if source is None else io.BytesIO(source)\n",
+            "    out = bytearray(4)\n",
+            "    print(type(obj).__name__, obj.readinto(out), out, obj.getvalue())\n",
+            "for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('getvalue-arg', lambda: io.BytesIO().getvalue(1))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, error.__class__.__name__)"
+        ),
+        &[
+            "BytesIO b'a' b'bc' b''",
+            "b'abc'",
+            "2 2 b'abcd'",
+            "b''",
+            "3 bytearray(b'XYZ')",
+            "1 bytearray(b'WYZ')",
+            "BytesIO 0 bytearray(b'\\x00\\x00\\x00\\x00') b''",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00') b'ab'",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00') b'ab'",
+            "BytesIO 2 bytearray(b'ab\\x00\\x00') b'ab'",
+            "bad-source TypeError",
+            "too-many TypeError",
+            "write-str TypeError",
+            "read-too-many TypeError",
+            "getvalue-arg TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public tofile/fromfile behavior
 // and the in-memory io.BytesIO methods needed to exercise it without host file
 // I/O. MiniPython currently supports the one-byte B/b array storage cases.
@@ -23200,6 +23331,19 @@ fn cpython_builtin_breakpoint_custom_hook_subset() {
             "module-call ret",
             "lost RuntimeError lost sys.breakpointhook",
             "reset-same True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_builtin_breakpoint_passthru_error_subset() {
+    assert_output(
+        "import sys\ndef hook(required):\n    return required\nsaved = sys.breakpointhook\nsys.breakpointhook = hook\ntry:\n    for label, callback in [\n        ('missing', lambda: breakpoint()),\n        ('extra', lambda: breakpoint(1, 2)),\n        ('keyword', lambda: breakpoint(required=1)),\n        ('unknown', lambda: breakpoint(unknown=1)),\n    ]:\n        try:\n            print(label, callback())\n        except Exception as error:\n            print(label, type(error).__name__, isinstance(error, TypeError))\nfinally:\n    sys.breakpointhook = saved",
+        &[
+            "missing TypeError True",
+            "extra TypeError True",
+            "keyword 1",
+            "unknown TypeError True",
         ],
     );
 }
@@ -32195,6 +32339,23 @@ fn cpython_json_loads_dumps_basic_subset() {
 }
 
 #[test]
+fn cpython_json_keyword_argument_binding_subset() {
+    assert_output(
+        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))",
+        &[
+            "1",
+            "[1, 2]",
+            "{\"b\": [2]}",
+            "\"é\"",
+            "loads-duplicate-s TypeError True",
+            "dumps-duplicate-obj TypeError True",
+            "loads-missing-s TypeError True",
+            "dumps-missing-obj TypeError True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_escape_and_duplicate_key_subset() {
     assert_output(
         "import json\nprint(json.loads('{\"a\": 1, \"a\": 2}'))\nprint(repr(json.loads('\"\\\\/\\\\b\\\\f\\\\r\\\\t\"')))\nprint(json.dumps(json.loads('\"\\\\/\\\\b\\\\f\\\\r\\\\t\"')))",
@@ -32495,6 +32656,34 @@ fn cpython_json_loads_dumps_error_boundary_subset() {
             "dumps-list-subclass-cycle False True",
             "dumps-dict-subclass-cycle False True",
             "dumps-namedtuple-cycle False True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_loads_string_error_boundary_subset() {
+    assert_output(
+        concat!(
+            "import json\n",
+            "def show(label, source):\n",
+            "    try:\n",
+            "        json.loads(source)\n",
+            "    except Exception as error:\n",
+            "        print(label, isinstance(error, ValueError))\n",
+            "    else:\n",
+            "        print(label, 'OK')\n",
+            "show('bad-escape', '\"\\\\q\"')\n",
+            "show('short-unicode-escape', '\"\\\\u12\"')\n",
+            "show('nonhex-unicode-escape', '\"\\\\u12xz\"')\n",
+            "show('raw-newline', '\"line\\nbreak\"')\n",
+            "show('raw-tab', '\"a\\tb\"')"
+        ),
+        &[
+            "bad-escape True",
+            "short-unicode-escape True",
+            "nonhex-unicode-escape True",
+            "raw-newline True",
+            "raw-tab True",
         ],
     );
 }
@@ -36594,6 +36783,47 @@ fn cpython_reversed_builtin_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_operator.py public helper smoke coverage.
+#[test]
+fn cpython_operator_public_helpers_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class Box:\n",
+            "    pass\n",
+            "box = Box()\n",
+            "box.x = 7\n",
+            "box.child = Box()\n",
+            "box.child.y = 9\n",
+            "print(operator.lt(1, 2), operator.eq('a', 'a'), operator.ne('a', 'b'))\n",
+            "print(operator.truth([0]), operator.not_([]), operator.is_(None, None), operator.is_not(None, 0))\n",
+            "print(operator.add(2, 3), operator.sub(5, 2), operator.mul('x', 3), operator.floordiv(7, 2), operator.mod(7, 2), operator.pow(2, 5))\n",
+            "print(operator.and_(6, 3), operator.or_(4, 1), operator.xor(6, 3), operator.lshift(3, 2), operator.rshift(8, 1))\n",
+            "print(operator.concat('py', 'thon'), operator.contains([1, 2, 3], 2), operator.countOf([1, 2, 1], 1), operator.indexOf(['a', 'b'], 'b'))\n",
+            "items = [10, 20, 30]\n",
+            "print(operator.getitem(items, 1))\n",
+            "print(operator.setitem(items, 0, 99), items)\n",
+            "print(operator.delitem(items, 1), items)\n",
+            "print(operator.attrgetter('x')(box), operator.attrgetter('child.y')(box))\n",
+            "print(operator.itemgetter(1)(['a', 'b', 'c']), operator.itemgetter(0, 2)(['a', 'b', 'c']))\n",
+            "print(operator.methodcaller('replace', 'a', 'o')('banana'))"
+        ),
+        &[
+            "True True True",
+            "True True True True",
+            "5 3 xxx 3 1 32",
+            "2 5 5 12 4",
+            "python True 2 1",
+            "20",
+            "None [99, 20, 30]",
+            "None [99, 30]",
+            "7 9",
+            "b ('a', 'c')",
+            "bonono",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test_length_hint
 // and Lib/test/test_enumerate.py::TestReversed::test_len. This covers the public
 // operator.length_hint fallback rules plus reversed iterator length hints.
@@ -37523,6 +37753,54 @@ fn cpython_pow_builtin_subset() {
             "TypeError",
             "TypeError",
             "ValueError",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_functools.py public helper smoke
+// coverage.
+#[test]
+fn cpython_functools_public_helpers_subset() {
+    assert_output(
+        concat!(
+            "import functools\n",
+            "print(functools.reduce(lambda a, b: a + b, [1, 2, 3]))\n",
+            "print(functools.reduce(lambda a, b: a * b, [2, 3, 4], 1))\n",
+            "pow2 = functools.partial(pow, 2)\n",
+            "print(pow2(5), pow2.func is pow, pow2.args, pow2.keywords)\n",
+            "mod10 = functools.partial(pow, mod=10)\n",
+            "print(mod10(2, 6), mod10(exp=6, base=2))\n",
+            "def wrapped(a=1):\n",
+            "    'doc'\n",
+            "    return a + 1\n",
+            "@functools.wraps(wrapped)\n",
+            "def wrapper(*args, **kwargs):\n",
+            "    return wrapped(*args, **kwargs)\n",
+            "print(wrapper.__name__, wrapper.__doc__, wrapper(4), wrapper.__wrapped__ is wrapped)\n",
+            "def cmp(left, right):\n",
+            "    return (left > right) - (left < right)\n",
+            "key = functools.cmp_to_key(cmp)\n",
+            "values = [3, 1, 2]\n",
+            "print(sorted(values, key=key))\n",
+            "print(key(1) < key(2), key(2) == key(2), key(3) > key(1))\n",
+            "for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.partial(), lambda: functools.cmp_to_key(), lambda: functools.wraps()]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "6",
+            "24",
+            "32 True (2,) {}",
+            "4 4",
+            "wrapped doc 5 True",
+            "[1, 2, 3]",
+            "True True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
         ],
     );
 }
@@ -43048,6 +43326,37 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py public Counter coverage.
+#[test]
+fn cpython_collections_counter_public_subset() {
+    assert_output(
+        concat!(
+            "from collections import Counter\n",
+            "c = Counter('abracadabra')\n",
+            "print(c['a'], c['z'], sorted(c.items()))\n",
+            "print(sum(c.values()), sorted((c + Counter({'z': 2, 'a': -5})).items()))\n",
+            "print(sorted((c - Counter('aaa')).items()))\n",
+            "print(sorted((+Counter({'a': 2, 'b': 0, 'c': -1})).items()))\n",
+            "print(sorted((-Counter({'a': 2, 'b': 0, 'c': -1})).items()))\n",
+            "print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))\n",
+            "c.update('zz')\n",
+            "c.subtract({'a': 1, 'z': 3})\n",
+            "print(sorted(c.items()))\n",
+            "print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"
+        ),
+        &[
+            "5 0 [('a', 5), ('b', 2), ('c', 1), ('d', 1), ('r', 2)]",
+            "11 [('b', 2), ('c', 1), ('d', 1), ('r', 2), ('z', 2)]",
+            "[('a', 2), ('b', 2), ('c', 1), ('d', 1), ('r', 2)]",
+            "[('a', 2)]",
+            "[('c', 1)]",
+            "['a', 'a']",
+            "[('a', 4), ('b', 2), ('c', 1), ('d', 1), ('r', 2), ('z', -1)]",
+            "True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap. This keeps
 // the broad public ChainMap behavior together; copy/pickle/eval identity
 // matrices are covered by the adjacent focused test.
@@ -43099,6 +43408,97 @@ fn cpython_collections_chainmap_public_methods_subset() {
             "True False True",
             "[('music', 'bach'), ('art', 'van gogh'), ('opera', 'carmen')] [('music', 'bach'), ('art', 'van gogh'), ('opera', 'carmen')]",
             "{'music': 'bach', 'art': 'van gogh', 'opera': 'carmen'} {'music': 'bach', 'art': 'van gogh', 'opera': 'carmen'}",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
+#[test]
+fn cpython_collections_namedtuple_public_subset() {
+    assert_output(
+        concat!(
+            "from collections import namedtuple\n",
+            "Point = namedtuple('Point', 'x y')\n",
+            "p = Point(11, 22)\n",
+            "print(Point.__name__, Point.__slots__, Point._fields)\n",
+            "print(p, p.x, p.y, p[0], p[-1])\n",
+            "print(tuple(p), list(p), p == (11, 22), hash(p) == hash((11, 22)))\n",
+            "print(Point._make([11, 22]) == p)\n",
+            "print(p._replace(x=1))\n",
+            "print(p._asdict())\n",
+            "print(Point(x=11, y=22) == p, Point(y=22, x=11) == p)\n",
+            "Zero = namedtuple('Zero', '')\n",
+            "print(Zero(), Zero._fields, Zero()._asdict())\n",
+            "Dot = namedtuple('Dot', 'd')\n",
+            "print(Dot(1), Dot._make([1]), Dot(1)._replace(d=2), Dot(1)._asdict())\n",
+            "bad = 0\n",
+            "for typename, fields in [('class', 'x y'), ('Point', 'x x'), ('Point', '_x y'), ('9Point', 'x y')]:\n",
+            "    try:\n",
+            "        namedtuple(typename, fields)\n",
+            "    except ValueError:\n",
+            "        bad += 1\n",
+            "print('bad', bad)"
+        ),
+        &[
+            "Point () ('x', 'y')",
+            "Point(x=11, y=22) 11 22 11 22",
+            "(11, 22) [11, 22] True True",
+            "True",
+            "Point(x=1, y=22)",
+            "{'x': 11, 'y': 22}",
+            "True True",
+            "Zero() () {}",
+            "Dot(d=1) Dot(d=1) Dot(d=2) {'d': 1}",
+            "bad 4",
+        ],
+    );
+}
+
+// Adapted from CPython Lib/test/test_collections.py public UserDict/UserList
+// coverage.
+#[test]
+fn cpython_collections_userdict_userlist_public_subset() {
+    assert_output(
+        concat!(
+            "from collections import UserDict, UserList\n",
+            "from copy import copy\n",
+            "ud = UserDict()\n",
+            "ud[123] = 'abc'\n",
+            "print(ud[123], list(ud), len(ud), 123 in ud, ud.get(999))\n",
+            "inner = ud.copy()\n",
+            "print(inner.data is ud.data, inner.data == ud.data, type(inner).__name__)\n",
+            "ud.test = [1234]\n",
+            "outer = copy(ud)\n",
+            "print(outer.data is ud.data, outer.data == ud.data, outer.test is ud.test)\n",
+            "del ud[123]\n",
+            "print(list(ud), len(ud))\n",
+            "ul = UserList()\n",
+            "print(ul.data, type(ul).__name__)\n",
+            "ul.append(123)\n",
+            "print(ul.data, list(ul), len(ul), 123 in ul)\n",
+            "ul_copy = ul.copy()\n",
+            "print(ul_copy.data is ul.data, ul_copy.data == ul.data, type(ul_copy).__name__)\n",
+            "ul.test = [1234]\n",
+            "ul_outer = copy(ul)\n",
+            "print(ul_outer.data is ul.data, ul_outer.data == ul.data, ul_outer.test is ul.test)\n",
+            "constructed = UserList([1, 2])\n",
+            "from_userlist = UserList(constructed)\n",
+            "print(constructed.data, from_userlist.data, from_userlist.data is constructed.data)\n",
+            "from_userlist[0] = 9\n",
+            "del from_userlist[1]\n",
+            "print(from_userlist.data, constructed.data)"
+        ),
+        &[
+            "abc [123] 1 True None",
+            "False True UserDict",
+            "False True True",
+            "[] 0",
+            "[] UserList",
+            "[123] [123] 1 True",
+            "False True UserList",
+            "False True True",
+            "[1, 2] [1, 2] False",
+            "[9] [1, 2]",
         ],
     );
 }

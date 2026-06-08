@@ -22,16 +22,48 @@ Recent runtime migration notes:
   `tests/cpython_migration.md`. Required modules are `builtins`, `sys`,
   `types`, `collections` / `collections.abc`, `math` / `math.integer`,
   `array`, `copy`, `io.BytesIO`, `operator`, `functools`, `itertools`, and
-  `json`. Each required module must keep concrete `cpython_diff` evidence, and
-  partial modules must keep their supported and excluded surfaces documented in
-  that manifest rather than implying full CPython stdlib parity.
+  `json`. Each required module must keep concrete `cpython_diff` evidence and
+  either matching `cpython_subset` or runtime guard evidence, and partial modules
+  must keep their supported and excluded surfaces documented in that manifest
+  rather than implying full CPython stdlib parity.
+- CPython remains the behavior oracle, not an implementation source to copy.
+  MiniPython must not wholesale port CPython `Lib/`; public behavior should be
+  migrated through local Rust/runtime shims plus direct differential evidence.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product
   scope: `sandbox_policy_denies_stdlib_imports`,
+  `sandbox_policy_denies_required_sandbox_stdlib_surface`,
+  `sandbox_policy_allows_required_sandbox_stdlib_surface`,
+  `sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims`,
   `sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
   `stdlib_create_module_registry_is_classified_by_scope` keep the runtime
   policy, registry classification, and documentation aligned.
+- Legacy sandbox stdlib evidence names from `tests/cpython_migration.md` are
+  intentionally kept visible here so the coverage manifest can guard them:
+  `globals-locals-builtins`, `exec-builtin`, `compile-code-object-builtin`,
+  `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`,
+  `iter-next-builtins`, `map-filter-builtins`, `float-hash-and-sys-info`,
+  `types-frame-locals-proxy-currentframe`, `types-method-descriptor-types`,
+  `types-int-dunder-format-matrix`, `types-float-dunder-format-matrix`,
+  `pure-memory-stdlib-core`, `array-one-byte-public-file-methods`,
+  `operator-precedence-and-associativity`, and `pow-builtin`.
+- Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
+  `cpython_math_core_diff_subset`,
+  `cpython_array_module_and_constructor_public_surface_diff_subset`,
+  `cpython_array_one_byte_public_sequence_diff_subset`,
+  `cpython_array_one_byte_public_file_methods_diff_subset`,
+  `cpython_copy_public_diff_subset`,
+  `cpython_array_one_byte_public_copy_byteswap_compare_diff_subset`,
+  `cpython_io_bytesio_public_diff_subset`,
+  `cpython_operator_public_helpers_diff_subset`,
+  `cpython_functools_public_helpers_diff_subset`,
+  `cpython_itertools_core_diff_subset`,
+  `cpython_itertools_pairwise_diff_subset`,
+  `cpython_collections_counter_public_diff_subset`,
+  `cpython_collections_chainmap_public_diff_subset`,
+  `cpython_collections_namedtuple_public_diff_subset`, and
+  `cpython_collections_userdict_userlist_public_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -227,16 +259,22 @@ Recent runtime migration notes:
   construction from lists and other UserList objects.
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_loads_dumps_diff_subset`, and
+  `cpython_json_keyword_argument_binding_diff_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset`, plus
+  `cpython_json_loads_escape_and_duplicate_key_diff_subset` and
   `cpython_json_loads_string_error_boundary_diff_subset` and
   `cpython_json_loads_strict_diff_subset` and
+  `cpython_json_loads_number_and_whitespace_diff_subset` and
+  `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset` and
+  `cpython_json_dumps_string_escape_diff_subset` and
   `cpython_json_dumps_allow_nan_diff_subset` and
   `cpython_json_dumps_check_circular_diff_subset` and
   `cpython_json_dumps_ensure_ascii_diff_subset` and
   `cpython_json_dumps_indent_diff_subset` and
   `cpython_json_dumps_skipkeys_diff_subset` and
   `cpython_json_dumps_sort_keys_diff_subset` and
-  `cpython_json_dumps_separators_diff_subset`, covering the pure in-memory
+  `cpython_json_dumps_separators_diff_subset` and
+  `cpython_json_dumps_float_spelling_diff_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, `strict=False` raw control-character
@@ -3440,13 +3478,15 @@ arguments.
 for `NotImplemented` and `Ellipsis`, their type objects being instances of
 `type`, instance attribute read/write rejection, and class attribute assignment
 rejection for the singleton type objects.
-Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset` and
-the differential `builtin-breakpoint-custom-hook` case cover the sandbox-safe
-public subset from `Lib/test/test_builtin.py::TestBreakpoint`: builtin and
-`builtins.breakpoint` visibility, `sys.breakpointhook` /
-`sys.__breakpointhook__` metadata, custom hook dispatch, positional/keyword
-passthrough, hook return values, reset identity, and the lost-hook
-`RuntimeError`. Default pdb-backed debugging, `PYTHONBREAKPOINT`, environment
+Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
+`cpython_builtin_breakpoint_passthru_error_subset`, and the differential
+`builtin-breakpoint-custom-hook` / `builtin-breakpoint-passthru-error` cases
+cover the sandbox-safe public subset from
+`Lib/test/test_builtin.py::TestBreakpoint`: builtin and `builtins.breakpoint`
+visibility, `sys.breakpointhook` / `sys.__breakpointhook__` metadata, custom
+hook dispatch, positional/keyword passthrough, hook return values, custom-hook
+TypeError propagation, reset identity, and the lost-hook `RuntimeError`.
+Default pdb-backed debugging, `PYTHONBREAKPOINT`, environment
 lookup, import warnings, and interactive debugger behavior remain
 runtime-blocked.
 `cpython_builtin_generator_dynamic_lookup_subset` now ports the public semantic

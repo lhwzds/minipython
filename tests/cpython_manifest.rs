@@ -1533,7 +1533,7 @@ fn cpython_test_manifest_builtin_test_breakpoint_method_audit_is_classified() {
         ("test_breakpoint_with_breakpointhook_set", "ported_public"),
         ("test_breakpoint_with_breakpointhook_reset", "partial"),
         ("test_breakpoint_with_args_and_keywords", "ported_public"),
-        ("test_breakpoint_with_passthru_error", "blocked_by_runtime"),
+        ("test_breakpoint_with_passthru_error", "ported_public"),
         ("test_envar_good_path_builtin", "blocked_by_runtime"),
         ("test_envar_good_path_other", "blocked_by_runtime"),
         ("test_envar_good_path_noop_0", "blocked_by_runtime"),
@@ -2080,8 +2080,43 @@ fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
                 "sandbox stdlib row `{}` cites missing cpython_diff evidence `{evidence}`",
                 row.module
             );
+            assert!(
+                sandbox_stdlib_evidence_has_runtime_subset(evidence),
+                "sandbox stdlib row `{}` cites evidence `{evidence}` without matching runtime subset evidence",
+                row.module
+            );
         }
     }
+}
+
+fn sandbox_stdlib_evidence_has_runtime_subset(evidence: &str) -> bool {
+    if sandbox_stdlib_legacy_runtime_evidence(evidence) {
+        return true;
+    }
+
+    let snake_case = evidence.replace('-', "_");
+    let mut candidates = vec![evidence.to_string(), snake_case.clone()];
+
+    if let Some(stripped) = snake_case.strip_suffix("_diff_subset") {
+        candidates.push(format!("{stripped}_subset"));
+        candidates.push(format!("{stripped}_methods_subset"));
+    }
+    if !snake_case.starts_with("cpython_") {
+        candidates.push(format!("cpython_{snake_case}_subset"));
+    }
+    if matches!(
+        evidence,
+        "cpython_itertools_core_diff_subset" | "cpython_itertools_pairwise_diff_subset"
+    ) {
+        candidates.push("cpython_itertools_count_repeat_chain_subset".to_string());
+    }
+    if evidence == "cpython_json_loads_dumps_diff_subset" {
+        candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
+    }
+
+    candidates
+        .iter()
+        .any(|candidate| CPYTHON_SUBSET.contains(candidate) || LANGUAGE_TESTS.contains(candidate))
 }
 
 fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
@@ -2091,6 +2126,7 @@ fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
             | "exec-builtin"
             | "compile-code-object-builtin"
             | "builtin-breakpoint-custom-hook"
+            | "builtin-breakpoint-passthru-error"
             | "iter-next-builtins"
             | "map-filter-builtins"
             | "float-hash-and-sys-info"
@@ -2101,12 +2137,34 @@ fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
     )
 }
 
+fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
+    matches!(
+        evidence,
+        "globals-locals-builtins"
+            | "exec-builtin"
+            | "compile-code-object-builtin"
+            | "builtin-breakpoint-custom-hook"
+            | "builtin-breakpoint-passthru-error"
+            | "iter-next-builtins"
+            | "map-filter-builtins"
+            | "float-hash-and-sys-info"
+            | "types-frame-locals-proxy-currentframe"
+            | "types-method-descriptor-types"
+            | "types-int-dunder-format-matrix"
+            | "types-float-dunder-format-matrix"
+            | "pure-memory-stdlib-core"
+            | "operator-precedence-and-associativity"
+    )
+}
+
 #[test]
 fn cpython_coverage_links_sandbox_stdlib_scope_to_manifest() {
     for required in [
         "Sandbox Stdlib Manifest",
         "tests/cpython_migration.md",
         "cpython_diff",
+        "cpython_subset",
+        "runtime guard evidence",
         "builtins",
         "sys",
         "types",
@@ -2122,12 +2180,47 @@ fn cpython_coverage_links_sandbox_stdlib_scope_to_manifest() {
         "Runtime Compatibility Module Registry",
         "src/stdlib.rs::create_module()",
         "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_denies_required_sandbox_stdlib_surface",
+        "sandbox_policy_allows_required_sandbox_stdlib_surface",
+        "sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims",
         "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
         "stdlib_create_module_registry_is_classified_by_scope",
     ] {
         assert!(
             CPYTHON_COVERAGE.contains(required),
             "coverage document must mention sandbox stdlib scope term `{required}`"
+        );
+    }
+}
+
+#[test]
+fn cpython_coverage_mentions_all_sandbox_stdlib_diff_evidence() {
+    for row in sandbox_stdlib_rows() {
+        for evidence in backtick_tokens(row.diff_evidence) {
+            assert!(
+                CPYTHON_COVERAGE.contains(evidence),
+                "coverage document must mention sandbox stdlib evidence `{evidence}` from row `{}`",
+                row.module
+            );
+        }
+    }
+}
+
+#[test]
+fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence() {
+    for required in [
+        "`cpython_diff` oracle evidence",
+        "and either local `cpython_subset`",
+        "local `cpython_subset`",
+        "runtime guard evidence",
+        "matching runtime subset evidence",
+        "local runtime evidence",
+        "direct CPython diff evidence plus local subset/runtime evidence",
+        "not that the full CPython module has been cloned",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must mention sandbox stdlib evidence rule `{required}`"
         );
     }
 }
@@ -2141,6 +2234,9 @@ fn cpython_migration_documents_sandbox_stdlib_allow_list_semantics() {
         "SandboxPolicy::deny_stdlib()",
         "must be explicitly allowed",
         "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_denies_required_sandbox_stdlib_surface",
+        "sandbox_policy_allows_required_sandbox_stdlib_surface",
+        "sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims",
         "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
         "stdlib_create_module_registry_is_classified_by_scope",
     ] {
@@ -2152,9 +2248,46 @@ fn cpython_migration_documents_sandbox_stdlib_allow_list_semantics() {
 }
 
 #[test]
+fn cpython_migration_documents_cpython_as_behavior_oracle_not_stdlib_source_drop() {
+    for required in [
+        "not a full CPython clone",
+        "Do not wholesale port CPython `Lib/`",
+        "Use CPython as an oracle",
+        "public behavior and tests",
+        "supported sandbox behavior",
+        "MiniPython's Rust runtime",
+        "standard-library",
+        "accepted only when",
+        "supported surface",
+        "excluded surface",
+        "concrete `cpython_diff` evidence",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must mention CPython migration boundary `{required}`"
+        );
+    }
+
+    for required in [
+        "CPython remains the behavior oracle",
+        "not an implementation source to copy",
+        "must not wholesale port CPython `Lib/`",
+        "direct differential evidence",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage document must mention CPython migration boundary `{required}`"
+        );
+    }
+}
+
+#[test]
 fn sandbox_policy_guard_names_reference_real_runtime_tests() {
     for guard in [
         "sandbox_policy_denies_stdlib_imports",
+        "sandbox_policy_denies_required_sandbox_stdlib_surface",
+        "sandbox_policy_allows_required_sandbox_stdlib_surface",
+        "sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims",
         "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
         "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
     ] {
@@ -2168,6 +2301,17 @@ fn sandbox_policy_guard_names_reference_real_runtime_tests() {
             "sandbox policy guard `{guard}` must be referenced by migration or coverage docs"
         );
     }
+}
+
+#[test]
+fn required_sandbox_stdlib_runtime_guard_matches_manifest_modules() {
+    let guard_modules = required_stdlib_runtime_guard_modules();
+    let manifest_modules = sandbox_stdlib_module_names();
+
+    assert_eq!(
+        guard_modules, manifest_modules,
+        "required sandbox stdlib runtime guard allow-list drifted from manifest modules"
+    );
 }
 
 #[test]
@@ -3406,6 +3550,50 @@ fn compatibility_module_registry_names() -> BTreeSet<String> {
     }
 
     modules
+}
+
+fn required_stdlib_runtime_guard_modules() -> BTreeSet<String> {
+    let constant = "const REQUIRED_SANDBOX_STDLIB_MODULES: &[&str] = &[";
+    let list_start = LANGUAGE_TESTS
+        .find(constant)
+        .map(|start| start + constant.len())
+        .expect("language.rs must define REQUIRED_SANDBOX_STDLIB_MODULES");
+    let list_end = LANGUAGE_TESTS[list_start..]
+        .find("];")
+        .map(|offset| list_start + offset)
+        .expect("REQUIRED_SANDBOX_STDLIB_MODULES must close with ];");
+    quoted_strings(&LANGUAGE_TESTS[list_start..list_end])
+        .into_iter()
+        .collect()
+}
+
+fn quoted_strings(source: &str) -> Vec<String> {
+    let mut strings = Vec::new();
+    let bytes = source.as_bytes();
+    let mut index = 0;
+
+    while let Some(&byte) = bytes.get(index) {
+        if byte != b'"' {
+            index += 1;
+            continue;
+        }
+        index += 1;
+        let literal_start = index;
+        while let Some(&inner) = bytes.get(index) {
+            if inner == b'\\' {
+                index += 2;
+                continue;
+            }
+            if inner == b'"' {
+                strings.push(source[literal_start..index].to_string());
+                index += 1;
+                break;
+            }
+            index += 1;
+        }
+    }
+
+    strings
 }
 
 fn backtick_tokens(text: &str) -> Vec<&str> {

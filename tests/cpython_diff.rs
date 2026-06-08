@@ -568,6 +568,30 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
 }
 
 #[test]
+fn cpython_json_keyword_argument_binding_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads/dumps keyword binding subset",
+        name: "json-loads-dumps-keyword-binding",
+        source: r#"import json
+
+def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, TypeError))
+
+print(json.loads(s='{"a": 1}')['a'])
+print(json.loads(s=b'[1, 2]', strict=True))
+print(json.dumps(obj={'b': [2]}, sort_keys=True))
+print(json.dumps(obj='é', ensure_ascii=False))
+show('loads-duplicate-s', lambda: json.loads('{}', s='[]'))
+show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
+show('loads-missing-s', lambda: json.loads(strict=False))
+show('dumps-missing-obj', lambda: json.dumps(sort_keys=True))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_escape_and_duplicate_key_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads escape and duplicate key subset",
@@ -4100,6 +4124,28 @@ except RuntimeError as error:
 finally:
     sys.breakpointhook = saved
 print('reset-same', sys.breakpointhook is sys.__breakpointhook__)"#,
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::TestBreakpoint passthru error rows",
+            name: "builtin-breakpoint-passthru-error",
+            source: r#"import sys
+def hook(required):
+    return required
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+try:
+    for label, callback in [
+        ('missing', lambda: breakpoint()),
+        ('extra', lambda: breakpoint(1, 2)),
+        ('keyword', lambda: breakpoint(required=1)),
+        ('unknown', lambda: breakpoint(unknown=1)),
+    ]:
+        try:
+            print(label, callback())
+        except Exception as error:
+            print(label, type(error).__name__, isinstance(error, TypeError))
+finally:
+    sys.breakpointhook = saved"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec_globals_dict_subclass / ::test_exec_builtins_mapping_import",

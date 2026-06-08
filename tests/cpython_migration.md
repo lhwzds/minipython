@@ -25,15 +25,21 @@ accepted programs and rejection status for invalid programs. It defaults to
 `python3`; set `MINIPYTHON_CPYTHON=/path/to/python` when validating newer
 syntax against a local CPython checkout.
 
-Every stdlib module added to the sandbox subset should carry a matching
-`cpython_diff` case before it is considered complete. Partial stdlib modules
-must document the supported public surface and the deliberately excluded APIs.
+Every stdlib module added to the sandbox subset should carry matching
+`cpython_diff` oracle evidence and either local `cpython_subset` evidence or runtime guard evidence
+before it is considered complete. Partial stdlib modules must document the
+supported public surface and the deliberately excluded APIs.
 
 ## Sandbox Runtime Scope
 
 MiniPython is a sandbox-focused Rust Python, not a full CPython clone. Migration
 work should make CPython public behavior true for the supported sandbox surface
 without treating CPython implementation internals as product requirements.
+Do not wholesale port CPython `Lib/` into the runtime. Use CPython as an oracle
+for public behavior and tests, then implement the supported sandbox behavior in
+MiniPython's Rust runtime and local pure-memory shims. A standard-library
+addition is accepted only when this file records its supported surface, excluded
+surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 
 The current runtime scope includes:
 
@@ -48,11 +54,14 @@ The current runtime scope includes:
 
 Additional pure-memory compatibility shims may exist to unblock migrated
 CPython public tests, but they do not expand the default product scope unless
-this manifest records their supported surface, excluded surface, and CPython
-diff evidence. Sandbox import policy is allow-list based: package entries cover
-their child modules, but compatibility shims outside the required surface remain
-blocked under `SandboxPolicy::deny_stdlib()` and must be explicitly allowed by
-the embedding host. `sandbox_policy_denies_stdlib_imports`,
+this manifest records their supported surface, excluded surface, CPython diff
+evidence, and local runtime evidence. Sandbox import policy is allow-list based:
+package entries cover their child modules, but compatibility shims outside the
+required surface remain blocked under `SandboxPolicy::deny_stdlib()` and must be explicitly allowed
+by the embedding host. `sandbox_policy_denies_stdlib_imports`,
+`sandbox_policy_denies_required_sandbox_stdlib_surface`,
+`sandbox_policy_allows_required_sandbox_stdlib_surface`,
+`sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims`,
 `sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
 `stdlib_create_module_registry_is_classified_by_scope` guard the runtime policy
 and registry classification contract.
@@ -81,12 +90,12 @@ accidentally.
 
 This table is the required sandbox stdlib surface. A module can be useful and
 still remain partial; "complete" here means the documented supported surface has
-direct CPython diff evidence, not that the full CPython module has been cloned.
+direct CPython diff evidence plus local subset/runtime evidence, not that the full CPython module has been cloned.
 
 | Module | Supported sandbox surface | CPython diff evidence | Excluded by default |
 | --- | --- | --- | --- |
-| `builtins` | Core constructors, exceptions, descriptors, import hook, `eval()` / `exec()` / `compile()`, iteration helpers, aggregates, numeric helpers, `breakpoint()` custom-hook path. | `globals-locals-builtins`, `exec-builtin`, `compile-code-object-builtin`, `builtin-breakpoint-custom-hook`, `iter-next-builtins`, `map-filter-builtins`. | `open()`, `input()`, host TTY behavior, default pdb-backed breakpoint behavior, and process/environment side effects. |
-| `sys` | In-memory module metadata, `modules`, stdio placeholders, `maxsize`, float/hash info, int digit-limit controls, frame inspection subset, breakpoint hook metadata. | `globals-locals-builtins`, `builtin-breakpoint-custom-hook`, `float-hash-and-sys-info`, `types-frame-locals-proxy-currentframe`. | Real argv/process state, real stdin/stdout/stderr streams, implementation refcount/GC/debug APIs. |
+| `builtins` | Core constructors, exceptions, descriptors, import hook, `eval()` / `exec()` / `compile()`, iteration helpers, aggregates, numeric helpers, `breakpoint()` custom-hook path. | `globals-locals-builtins`, `exec-builtin`, `compile-code-object-builtin`, `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`, `iter-next-builtins`, `map-filter-builtins`. | `open()`, `input()`, host TTY behavior, default pdb-backed breakpoint behavior, and process/environment side effects. |
+| `sys` | In-memory module metadata, `modules`, stdio placeholders, `maxsize`, float/hash info, int digit-limit controls, frame inspection subset, breakpoint hook metadata. | `globals-locals-builtins`, `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`, `float-hash-and-sys-info`, `types-frame-locals-proxy-currentframe`. | Real argv/process state, real stdin/stdout/stderr streams, implementation refcount/GC/debug APIs. |
 | `types` | Public type aliases and selected constructors/helpers for module/class creation, mappingproxy, simple namespace, generic alias/union, coroutine helpers, frame/code/traceback aliases. | `types-method-descriptor-types`, `types-frame-locals-proxy-currentframe`, `types-int-dunder-format-matrix`, `types-float-dunder-format-matrix`. | CPython object-layout internals, exact C descriptor types beyond the public aliases, and interpreter lifecycle behavior. |
 | `collections` / `collections.abc` | `namedtuple`, `Counter`, `ChainMap`, `UserDict`, `UserList`, `deque`, selected ABCs and mixins used by the runtime and migrated CPython tests. | `pure-memory-stdlib-core`, `cpython_collections_counter_public_diff_subset`, `cpython_collections_chainmap_public_diff_subset`, `cpython_collections_namedtuple_public_diff_subset`, `cpython_collections_userdict_userlist_public_diff_subset`. | Full deque performance/lifetime internals, thread-safety stress, and unported ABC edge matrices. |
 | `math` / `math.integer` | Constants, classification, elementary functions, integer math, selected IEEE edge behavior, and deterministic public numeric results. | `cpython_math_core_diff_subset`. | Platform/libm implementation quirks and locale-sensitive parsing/formatting. |
@@ -96,7 +105,7 @@ direct CPython diff evidence, not that the full CPython module has been cloned.
 | `operator` | Arithmetic/comparison helpers, sequence/member helpers, attrgetter/itemgetter/methodcaller, and selected signature/module metadata. | `pure-memory-stdlib-core`, `operator-precedence-and-associativity`, `cpython_operator_public_helpers_diff_subset`. | Full pickle metadata and every CPython helper edge case until separately migrated. |
 | `functools` | `partial`, `partialmethod`, `reduce`, `cmp_to_key`, wrapper helpers, cache/lru-cache/cached-property, singledispatch, singledispatchmethod, and total_ordering subsets. | `pure-memory-stdlib-core`, `cpython_functools_public_helpers_diff_subset`, `pow-builtin`. | Full CPython cache implementation internals, weakref/lifecycle subtleties, and unsupported descriptor edge cases. |
 | `itertools` | `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`, `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`, `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, and `pairwise()` pure iterator behavior. | `cpython_itertools_core_diff_subset`; `cpython_itertools_pairwise_diff_subset` is gated for CPython 3.10+ oracles. | Full itertools module, combinatoric iterators, floating `count()` arithmetic, pickling/repr exactness. |
-| `json` | Pure in-memory `loads()` from `str` / `bytes` / `bytearray` values and subclasses, including UTF-8 BOM and UTF-16/UTF-32 encoded byte input, `strict=False` raw control-character string parsing, duplicate-object-key last-value behavior, JSON whitespace, integer/float number grammar edges, top-level scalars and empty containers, plus `dumps()` data model subset for common JSON values, `str` / `int` / `float` subclass and `IntEnum` values/keys, list/tuple/dict subclass and namedtuple containers, standard strings/escapes, `allow_nan` rejection of non-finite floats, `check_circular` cycle-error behavior, `ensure_ascii` string/key rendering, `indent` pretty-print formatting for int/string indent values, `skipkeys` omission of unsupported dict keys, `sort_keys` ordering for supported comparable keys, `separators` compact/custom rendering for two-string list/tuple values, finite and default non-finite float spelling, bool/null, lists/tuples/dicts, basic dict-key coercion, circular-reference rejection, and first-pass type/structural/literal/data error classification. | `cpython_json_loads_dumps_diff_subset`, `cpython_json_loads_escape_and_duplicate_key_diff_subset`, `cpython_json_loads_strict_diff_subset`, `cpython_json_dumps_string_escape_diff_subset`, `cpython_json_dumps_allow_nan_diff_subset`, `cpython_json_dumps_check_circular_diff_subset`, `cpython_json_dumps_ensure_ascii_diff_subset`, `cpython_json_dumps_indent_diff_subset`, `cpython_json_dumps_skipkeys_diff_subset`, `cpython_json_dumps_sort_keys_diff_subset`, `cpython_json_dumps_separators_diff_subset`, `cpython_json_dumps_float_spelling_diff_subset`, `cpython_json_loads_number_and_whitespace_diff_subset`, `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, `cpython_json_loads_dumps_error_boundary_diff_subset`, `cpython_json_loads_string_error_boundary_diff_subset`. | File APIs, hooks, keyword options other than `strict` / `allow_nan` / `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` / `separators`, bytes/bytearray serialization, unpaired surrogate storage, and full `JSONDecodeError` compatibility. |
+| `json` | Pure in-memory `loads()` from `str` / `bytes` / `bytearray` values and subclasses, including UTF-8 BOM and UTF-16/UTF-32 encoded byte input, `loads(s=...)` keyword binding, `strict=False` raw control-character string parsing, duplicate-object-key last-value behavior, JSON whitespace, integer/float number grammar edges, top-level scalars and empty containers, plus `dumps()` data model subset for common JSON values, `dumps(obj=...)` keyword binding, `str` / `int` / `float` subclass and `IntEnum` values/keys, list/tuple/dict subclass and namedtuple containers, standard strings/escapes, `allow_nan` rejection of non-finite floats, `check_circular` cycle-error behavior, `ensure_ascii` string/key rendering, `indent` pretty-print formatting for int/string indent values, `skipkeys` omission of unsupported dict keys, `sort_keys` ordering for supported comparable keys, `separators` compact/custom rendering for two-string list/tuple values, finite and default non-finite float spelling, bool/null, lists/tuples/dicts, basic dict-key coercion, circular-reference rejection, and first-pass type/structural/literal/data error classification. | `cpython_json_loads_dumps_diff_subset`, `cpython_json_keyword_argument_binding_diff_subset`, `cpython_json_loads_escape_and_duplicate_key_diff_subset`, `cpython_json_loads_strict_diff_subset`, `cpython_json_dumps_string_escape_diff_subset`, `cpython_json_dumps_allow_nan_diff_subset`, `cpython_json_dumps_check_circular_diff_subset`, `cpython_json_dumps_ensure_ascii_diff_subset`, `cpython_json_dumps_indent_diff_subset`, `cpython_json_dumps_skipkeys_diff_subset`, `cpython_json_dumps_sort_keys_diff_subset`, `cpython_json_dumps_separators_diff_subset`, `cpython_json_dumps_float_spelling_diff_subset`, `cpython_json_loads_number_and_whitespace_diff_subset`, `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, `cpython_json_loads_dumps_error_boundary_diff_subset`, `cpython_json_loads_string_error_boundary_diff_subset`. | File APIs, hooks, keyword options other than `strict` / `allow_nan` / `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` / `separators`, bytes/bytearray serialization, unpaired surrogate storage, and full `JSONDecodeError` compatibility. |
 
 ## Runtime Compatibility Module Registry
 
@@ -5379,15 +5388,18 @@ Completed in the `test_builtin.py` singleton-attribute pass:
 
 Completed in the `test_builtin.py` breakpoint custom-hook pass:
 
-- Added `cpython_builtin_breakpoint_custom_hook_subset` and the differential
-  `builtin-breakpoint-custom-hook` case, adapted from the sandbox-safe public
-  rows in `Lib/test/test_builtin.py::TestBreakpoint`.
+- Added `cpython_builtin_breakpoint_custom_hook_subset`,
+  `cpython_builtin_breakpoint_passthru_error_subset`, and the differential
+  `builtin-breakpoint-custom-hook` / `builtin-breakpoint-passthru-error` cases,
+  adapted from the sandbox-safe public rows in
+  `Lib/test/test_builtin.py::TestBreakpoint`.
 - Added a `breakpoint` builtin plus `sys.breakpointhook` and
   `sys.__breakpointhook__` metadata.
 - `breakpoint()` now dynamically dispatches to the current
   `sys.breakpointhook`, preserves positional and keyword arguments, returns the
-  hook result, and raises `RuntimeError: lost sys.breakpointhook` when the hook
-  attribute has been deleted.
+  hook result, propagates custom-hook argument `TypeError`s, and raises
+  `RuntimeError: lost sys.breakpointhook` when the hook attribute has been
+  deleted.
 - The default pdb-backed hook, `PYTHONBREAKPOINT` environment behavior, import
   warnings, and interactive debugger integration remain classified as
   `blocked_by_runtime`.
