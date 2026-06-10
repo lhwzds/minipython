@@ -32364,6 +32364,30 @@ fn cpython_json_loads_escape_and_duplicate_key_subset() {
 }
 
 #[test]
+fn cpython_json_loads_unicode_escape_roundtrip_subset() {
+    assert_output(
+        "import json\nsources = [\n    '\"\\\\u0041\"',\n    '\"\\\\u00e9\"',\n    '\"\\\\u20ac\"',\n    '\"\\\\ud834\\\\udd20\"',\n    '{\"\\\\u0061\": \"\\\\u00e9\", \"music\": \"\\\\ud834\\\\udd20\"}',\n]\nfor source in sources:\n    value = json.loads(source)\n    print(repr(value))\n    print(json.dumps(value, ensure_ascii=True))\n    print(json.dumps(value, ensure_ascii=False))",
+        &[
+            "'A'",
+            "\"A\"",
+            "\"A\"",
+            "'é'",
+            "\"\\u00e9\"",
+            "\"é\"",
+            "'€'",
+            "\"\\u20ac\"",
+            "\"€\"",
+            "'𝄠'",
+            "\"\\ud834\\udd20\"",
+            "\"𝄠\"",
+            "{'a': 'é', 'music': '𝄠'}",
+            "{\"a\": \"\\u00e9\", \"music\": \"\\ud834\\udd20\"}",
+            "{\"a\": \"é\", \"music\": \"𝄠\"}",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_strict_subset() {
     assert_output(
         "import json\nsources = ['\"a' + chr(10) + 'b\"', '\"a' + chr(9) + 'b\"', '\"a' + chr(0) + 'b\"', '{\"x\": \"a' + chr(10) + 'b\"}']\nfor strict in [True, 1, False, 0, []]:\n    for source in sources:\n        try:\n            print(repr(strict), repr(json.loads(source, strict=strict)))\n        except Exception as error:\n            print(repr(strict), isinstance(error, ValueError))\ntry:\n    json.loads('{}', strict=False, unknown=1)\nexcept Exception as error:\n    print('unknown', type(error).__name__, isinstance(error, TypeError))",
@@ -32403,6 +32427,21 @@ fn cpython_json_dumps_string_escape_subset() {
             "\"\\\"\\\\\"",
             "\"\\u00e9\"",
             "\"\\ud834\\udd20\"",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_key_coercion_subset() {
+    assert_output(
+        "import json\nfrom enum import IntEnum\nclass S(str):\n    pass\nclass I(int):\n    pass\nclass F(float):\n    pass\nclass Code(IntEnum):\n    ok = 200\ncases = [\n    {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},\n    {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},\n    {Code.ok: Code.ok},\n]\nfor value in cases:\n    print(json.dumps(value))\n    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))",
+        &[
+            "{\"s\": 1, \"2\": \"two\", \"4.5\": \"float\", \"false\": \"no\", \"null\": \"nil\"}",
+            "{\"s\":1,\"2\":\"two\",\"4.5\":\"float\",\"false\":\"no\",\"null\":\"nil\"}",
+            "{\"sub\": \"value\", \"7\": 8, \"1.5\": 2.5}",
+            "{\"sub\":\"value\",\"7\":8,\"1.5\":2.5}",
+            "{\"200\": 200}",
+            "{\"200\":200}",
         ],
     );
 }
@@ -32619,6 +32658,30 @@ fn cpython_json_loads_top_level_scalar_and_empty_container_subset() {
             "{} {} dict",
             "[[], {}] [[], {}] list",
             "{\"empty_list\": [], \"empty_dict\": {}} {'empty_list': [], 'empty_dict': {}} dict",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_loads_nonfinite_constants_subset() {
+    assert_output(
+        "import json, math\nfor source in ['NaN', 'Infinity', '-Infinity', '[NaN, Infinity, -Infinity]', '{\"x\": NaN, \"y\": Infinity}']:\n    value = json.loads(source)\n    print(source, type(value).__name__, repr(value))\n    encoded = json.dumps(value)\n    print(encoded)\n    reparsed = json.loads(encoded)\n    if isinstance(reparsed, list):\n        print(math.isnan(reparsed[0]), math.isinf(reparsed[1]), math.isinf(reparsed[2]), reparsed[2] < 0)\n    elif isinstance(reparsed, dict):\n        print(math.isnan(reparsed['x']), math.isinf(reparsed['y']))\n    else:\n        print(math.isnan(reparsed) if source == 'NaN' else math.isinf(reparsed), reparsed < 0)",
+        &[
+            "NaN float nan",
+            "NaN",
+            "True False",
+            "Infinity float inf",
+            "Infinity",
+            "True False",
+            "-Infinity float -inf",
+            "-Infinity",
+            "True True",
+            "[NaN, Infinity, -Infinity] list [nan, inf, -inf]",
+            "[NaN, Infinity, -Infinity]",
+            "True True True True",
+            "{\"x\": NaN, \"y\": Infinity} dict {'x': nan, 'y': inf}",
+            "{\"x\": NaN, \"y\": Infinity}",
+            "True True",
         ],
     );
 }

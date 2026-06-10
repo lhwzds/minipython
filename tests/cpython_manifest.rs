@@ -2094,12 +2094,25 @@ fn sandbox_stdlib_evidence_has_runtime_subset(evidence: &str) -> bool {
         return true;
     }
 
+    let candidates = sandbox_stdlib_runtime_subset_candidates(evidence);
+    candidates
+        .iter()
+        .any(|candidate| CPYTHON_SUBSET.contains(candidate) || LANGUAGE_TESTS.contains(candidate))
+}
+
+fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
+    if sandbox_stdlib_legacy_runtime_evidence(evidence) {
+        return vec![evidence.to_string()];
+    }
+
     let snake_case = evidence.replace('-', "_");
-    let mut candidates = vec![evidence.to_string(), snake_case.clone()];
+    let mut candidates = Vec::new();
 
     if let Some(stripped) = snake_case.strip_suffix("_diff_subset") {
         candidates.push(format!("{stripped}_subset"));
         candidates.push(format!("{stripped}_methods_subset"));
+    } else {
+        candidates.push(snake_case.clone());
     }
     if !snake_case.starts_with("cpython_") {
         candidates.push(format!("cpython_{snake_case}_subset"));
@@ -2115,8 +2128,6 @@ fn sandbox_stdlib_evidence_has_runtime_subset(evidence: &str) -> bool {
     }
 
     candidates
-        .iter()
-        .any(|candidate| CPYTHON_SUBSET.contains(candidate) || LANGUAGE_TESTS.contains(candidate))
 }
 
 fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
@@ -2204,6 +2215,32 @@ fn cpython_coverage_mentions_all_sandbox_stdlib_diff_evidence() {
             );
         }
     }
+}
+
+#[test]
+fn cpython_coverage_mentions_all_sandbox_stdlib_runtime_evidence() {
+    let mut missing = Vec::new();
+
+    for row in sandbox_stdlib_rows() {
+        for evidence in backtick_tokens(row.diff_evidence) {
+            let candidates = sandbox_stdlib_runtime_subset_candidates(evidence);
+            if !candidates
+                .iter()
+                .any(|candidate| CPYTHON_COVERAGE.contains(candidate))
+            {
+                missing.push(format!(
+                    "{}: `{evidence}` expects one of {:?}",
+                    row.module, candidates
+                ));
+            }
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "coverage document must mention runtime subset evidence for every sandbox stdlib evidence:\n{}",
+        missing.join("\n")
+    );
 }
 
 #[test]
@@ -2299,6 +2336,32 @@ fn sandbox_policy_guard_names_reference_real_runtime_tests() {
         assert!(
             CPYTHON_MIGRATION.contains(guard) || CPYTHON_COVERAGE.contains(guard),
             "sandbox policy guard `{guard}` must be referenced by migration or coverage docs"
+        );
+    }
+}
+
+#[test]
+fn json_sandbox_hook_stop_line_is_documented_and_guarded() {
+    for term in [
+        "object_hook",
+        "object_pairs_hook",
+        "parse_float",
+        "parse_int",
+        "parse_constant",
+        "default",
+        "cls",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(term),
+            "migration document must mention json hook stop-line term `{term}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(term),
+            "coverage document must mention json hook stop-line term `{term}`"
+        );
+        assert!(
+            LANGUAGE_TESTS.contains(term),
+            "tests/language.rs must guard json hook stop-line term `{term}`"
         );
     }
 }

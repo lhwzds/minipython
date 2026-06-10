@@ -230,13 +230,15 @@ Recent runtime migration notes:
   skipping, and `float.fromhex()` subclass construction through
   user-defined `__new__` / `__init__`.
 - The runtime stdlib surface includes
+  `cpython_math_core_diff_subset`, `cpython_math_core_subset`, and
   `cpython_math_constants_and_classification_subset`, covering CPython
-  `test_math.py` public `pi` / `e` / `tau` / `inf` / `nan` constants plus
+  public `pi` / `e` / `tau` / `inf` / `nan` constants plus
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.
 - The bundled `collections` module includes
-  `cpython_collections_counter_public_diff_subset`, covering CPython public
+  `cpython_collections_counter_public_diff_subset` and
+  `cpython_collections_counter_public_subset`, covering CPython public
   `Counter` construction, missing-key zero lookup, values-based count totals,
   update and subtract behavior, unary positive/negative filtering,
   `elements()`, multiset arithmetic, and equality with matching counts.
@@ -246,39 +248,65 @@ Recent runtime migration notes:
   membership and lookup across child/parent mappings, `get()` defaults,
   first-map mutation, `parents`, and `new_child()` with a mapping input.
 - The bundled `collections` module also includes
-  `cpython_collections_namedtuple_public_diff_subset`, covering CPython public
+  `cpython_collections_namedtuple_public_diff_subset` and
+  `cpython_collections_namedtuple_public_subset`, covering CPython public
   `namedtuple()` factory basics, generated tuple-like instances, field
   metadata, indexing, iteration, tuple/list conversion, `_make()`,
   `_replace()`, `_asdict()`, zero/one-field namedtuples, keyword construction,
   and representative invalid typename/field errors.
 - The bundled `collections` module also includes
-  `cpython_collections_userdict_userlist_public_diff_subset`, covering CPython
+  `cpython_collections_userdict_userlist_public_diff_subset` and
+  `cpython_collections_userdict_userlist_public_subset`, covering CPython
   public `UserDict` and `UserList` construction, `.data` storage exposure,
   item assignment/deletion, lookup, iteration, containment, `get()`, length,
   `.copy()`, `copy.copy()`, shallow instance-attribute copying, and UserList
   construction from lists and other UserList objects.
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
-  `cpython_json_loads_dumps_diff_subset`, and
-  `cpython_json_keyword_argument_binding_diff_subset`,
-  `cpython_json_loads_dumps_error_boundary_diff_subset`, plus
-  `cpython_json_loads_escape_and_duplicate_key_diff_subset` and
-  `cpython_json_loads_string_error_boundary_diff_subset` and
-  `cpython_json_loads_strict_diff_subset` and
-  `cpython_json_loads_number_and_whitespace_diff_subset` and
-  `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset` and
-  `cpython_json_dumps_string_escape_diff_subset` and
-  `cpython_json_dumps_allow_nan_diff_subset` and
-  `cpython_json_dumps_check_circular_diff_subset` and
-  `cpython_json_dumps_ensure_ascii_diff_subset` and
-  `cpython_json_dumps_indent_diff_subset` and
-  `cpython_json_dumps_skipkeys_diff_subset` and
-  `cpython_json_dumps_sort_keys_diff_subset` and
-  `cpython_json_dumps_separators_diff_subset` and
-  `cpython_json_dumps_float_spelling_diff_subset`, covering the pure in-memory
+  `cpython_json_loads_dumps_diff_subset`,
+  `cpython_json_keyword_argument_binding_diff_subset` /
+  `cpython_json_keyword_argument_binding_subset`,
+  `cpython_json_loads_dumps_error_boundary_diff_subset` /
+  `cpython_json_loads_dumps_error_boundary_subset`, plus
+  `cpython_json_loads_escape_and_duplicate_key_diff_subset` /
+  `cpython_json_loads_escape_and_duplicate_key_subset`,
+  `cpython_json_loads_unicode_escape_roundtrip_diff_subset` /
+  `cpython_json_loads_unicode_escape_roundtrip_subset`,
+  `cpython_json_loads_string_error_boundary_diff_subset` /
+  `cpython_json_loads_string_error_boundary_subset`,
+  `cpython_json_loads_strict_diff_subset` /
+  `cpython_json_loads_strict_subset`,
+  `cpython_json_loads_number_and_whitespace_diff_subset` /
+  `cpython_json_loads_number_and_whitespace_subset`,
+  `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset` /
+  `cpython_json_loads_top_level_scalar_and_empty_container_subset`,
+  `cpython_json_loads_nonfinite_constants_diff_subset` /
+  `cpython_json_loads_nonfinite_constants_subset`,
+  `cpython_json_dumps_string_escape_diff_subset` /
+  `cpython_json_dumps_string_escape_subset`,
+  `cpython_json_dumps_key_coercion_diff_subset` /
+  `cpython_json_dumps_key_coercion_subset`,
+  `cpython_json_dumps_allow_nan_diff_subset` /
+  `cpython_json_dumps_allow_nan_subset`,
+  `cpython_json_dumps_check_circular_diff_subset` /
+  `cpython_json_dumps_check_circular_subset`,
+  `cpython_json_dumps_ensure_ascii_diff_subset` /
+  `cpython_json_dumps_ensure_ascii_subset`,
+  `cpython_json_dumps_indent_diff_subset` /
+  `cpython_json_dumps_indent_subset`,
+  `cpython_json_dumps_skipkeys_diff_subset` /
+  `cpython_json_dumps_skipkeys_subset`,
+  `cpython_json_dumps_sort_keys_diff_subset` /
+  `cpython_json_dumps_sort_keys_subset`,
+  `cpython_json_dumps_separators_diff_subset` /
+  `cpython_json_dumps_separators_subset`, and
+  `cpython_json_dumps_float_spelling_diff_subset` /
+  `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
-  and UTF-16/UTF-32 encoded byte input, `strict=False` raw control-character
-  string parsing, strings and `str` / `int` / `float`
+  and UTF-16/UTF-32 encoded byte input, ordinary `\uXXXX` escapes and valid
+  surrogate-pair Unicode escapes, `strict=False` raw control-character
+  string parsing, CPython default non-finite constants, strings and `str` /
+  `int` / `float`
   subclass and `IntEnum` values/keys,
   list/tuple/dict subclass containers and namedtuples, standard string escapes,
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite
@@ -295,10 +323,13 @@ Recent runtime migration notes:
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   and first-pass type, structural, literal, and data error classification. File APIs,
-  encoder/decoder subclass hooks, keyword options other than `strict` / `allow_nan` /
-  `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` / `separators`, bytes/bytearray serialization,
-  unpaired surrogate storage, and full `JSONDecodeError` compatibility remain intentionally
-  outside this sandbox subset.
+  encoder/decoder subclass hooks, `loads()` hooks/options other than `strict`
+  such as `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, and
+  `parse_constant`, `dumps()` hooks/options other than `allow_nan` /
+  `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` /
+  `separators` such as `default` and `cls`, bytes/bytearray serialization,
+  unpaired surrogate storage, and full `JSONDecodeError` compatibility remain
+  intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_count_repeat_chain_subset` and
   `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
@@ -465,7 +496,8 @@ Recent runtime migration notes:
   `__float__` and `__index__` input conversion, huge-index overflow,
   propagated conversion exceptions, and catchable error classes.
 - The bundled `functools` module includes
-  `cpython_functools_public_helpers_diff_subset`, covering direct CPython
+  `cpython_functools_public_helpers_diff_subset` and
+  `cpython_functools_public_helpers_subset`, covering direct CPython
   output parity for representative public `reduce`, `partial`, `wraps`, and
   `cmp_to_key` helper behavior plus basic TypeError classification.
 - The bundled `functools` module includes `cpython_functools_partial_subset`,
@@ -791,17 +823,20 @@ Recent runtime migration notes:
   round trips, resumed already-advanced iterator pickles, empty enumerate, and
   ordinary plus large `start` values over MiniPython's internal pickle payload.
 - The bundled `operator` module includes
-  `cpython_operator_public_helpers_diff_subset`, covering CPython public helper
+  `cpython_operator_public_helpers_diff_subset` and
+  `cpython_operator_public_helpers_subset`, covering CPython public helper
   parity for representative comparison, predicate, arithmetic, bitwise,
   sequence/member, item mutation, `attrgetter`, `itemgetter`, `methodcaller`,
   and related callable-helper behavior.
-- The bundled `copy` module includes `cpython_copy_public_diff_subset`,
+- The bundled `copy` module includes `cpython_copy_public_diff_subset` and
+  `cpython_copy_public_subset`,
   covering CPython public `copy.copy()` and `copy.deepcopy()` parity for
   supported pure-memory scalar equality, nested list/dict shallow-vs-deep copy
   behavior, independent bytearray copy buffers, dictionary copy independence,
   and representative arity TypeError classification.
 - The bundled `io.BytesIO` subset includes
-  `cpython_io_bytesio_public_diff_subset`, covering CPython public in-memory
+  `cpython_io_bytesio_public_diff_subset` and
+  `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `write()`, `getvalue()`,
   `readinto()` over writable bytearray targets, position advancement, and
   representative constructor/method TypeError classification without host file

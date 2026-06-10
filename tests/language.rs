@@ -5032,9 +5032,12 @@ fn json_sandbox_subset_excludes_file_apis_and_extension_hooks() {
 
     assert_eq!(
         run_source(
-            "import json\nchecks = [\n    lambda: json.loads('{}', object_hook=lambda value: value),\n    lambda: json.loads('{}', parse_float=float),\n    lambda: json.dumps({'a': 1}, default=lambda value: None),\n    lambda: json.dumps({'a': 1}, cls=object),\n]\nfor check in checks:\n    try:\n        check()\n    except TypeError as error:\n        print(error.__class__.__name__)"
+            "import json\nchecks = [\n    lambda: json.loads('{}', object_hook=lambda value: value),\n    lambda: json.loads('{}', object_pairs_hook=lambda value: value),\n    lambda: json.loads('{}', parse_float=float),\n    lambda: json.loads('{}', parse_int=int),\n    lambda: json.loads('NaN', parse_constant=lambda value: value),\n    lambda: json.dumps({'a': 1}, default=lambda value: None),\n    lambda: json.dumps({'a': 1}, cls=object),\n]\nfor check in checks:\n    try:\n        check()\n    except TypeError as error:\n        print(error.__class__.__name__)"
         ),
         Ok(output_lines(&[
+            "TypeError",
+            "TypeError",
+            "TypeError",
             "TypeError",
             "TypeError",
             "TypeError",

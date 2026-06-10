@@ -604,6 +604,27 @@ print(json.dumps(json.loads('"\\/\\b\\f\\r\\t"')))"#,
 }
 
 #[test]
+fn cpython_json_loads_unicode_escape_roundtrip_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public unicode escape round-trip subset",
+        name: "json-loads-unicode-escape-roundtrip",
+        source: r#"import json
+sources = [
+    '"\\u0041"',
+    '"\\u00e9"',
+    '"\\u20ac"',
+    '"\\ud834\\udd20"',
+    '{"\\u0061": "\\u00e9", "music": "\\ud834\\udd20"}',
+]
+for source in sources:
+    value = json.loads(source)
+    print(repr(value))
+    print(json.dumps(value, ensure_ascii=True))
+    print(json.dumps(value, ensure_ascii=False))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_strict_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads strict subset",
@@ -631,6 +652,32 @@ fn cpython_json_dumps_string_escape_diff_subset() {
         source: r#"import json
 for value in ['\x00\x1f', '\b\f\n\r\t', '"\\', 'é', '𝄠']:
     print(json.dumps(value))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_key_coercion_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps dict key coercion subset",
+        name: "json-dumps-key-coercion",
+        source: r#"import json
+from enum import IntEnum
+class S(str):
+    pass
+class I(int):
+    pass
+class F(float):
+    pass
+class Code(IntEnum):
+    ok = 200
+cases = [
+    {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
+    {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
+    {Code.ok: Code.ok},
+]
+for value in cases:
+    print(json.dumps(value))
+    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))"#,
     });
 }
 
@@ -846,6 +893,27 @@ fn cpython_json_loads_top_level_scalar_and_empty_container_diff_subset() {
 for source in ['null', 'true', 'false', '""', '[]', '{}', '[[], {}]', '{"empty_list": [], "empty_dict": {}}']:
     value = json.loads(source)
     print(source, repr(value), type(value).__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_nonfinite_constants_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads non-finite constant subset",
+        name: "json-loads-nonfinite-constants",
+        source: r#"import json, math
+for source in ['NaN', 'Infinity', '-Infinity', '[NaN, Infinity, -Infinity]', '{"x": NaN, "y": Infinity}']:
+    value = json.loads(source)
+    print(source, type(value).__name__, repr(value))
+    encoded = json.dumps(value)
+    print(encoded)
+    reparsed = json.loads(encoded)
+    if isinstance(reparsed, list):
+        print(math.isnan(reparsed[0]), math.isinf(reparsed[1]), math.isinf(reparsed[2]), reparsed[2] < 0)
+    elif isinstance(reparsed, dict):
+        print(math.isnan(reparsed['x']), math.isinf(reparsed['y']))
+    else:
+        print(math.isnan(reparsed) if source == 'NaN' else math.isinf(reparsed), reparsed < 0)"#,
     });
 }
 
