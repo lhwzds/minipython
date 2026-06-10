@@ -2479,6 +2479,12 @@ Recent runtime migration notes:
   attribute lookup, `from sys import stdin, stderr, stdout`, missing high
   Unicode-name attribute errors, and the rule that `hasattr()` only suppresses
   `AttributeError` while propagating `SystemExit` and `ValueError`.
+- `RUNTIME_BUILTINS` also includes `cpython_globals_locals_builtin_subset`,
+  `cpython_isinstance_builtin_subset`, `cpython_enumerate_zip_sorted_builtin_subset`,
+  `cpython_zip_strict_builtin_subset`, `cpython_map_filter_builtin_subset`, and
+  `cpython_abs_builtin_subset`, covering public namespace introspection,
+  class/type relationship checks, iterator-producing builtins, strict zip,
+  map/filter, and absolute-value behavior used by the sandbox builtin surface.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_builtin_code_object_subset`, covering first-pass
   `compile(source, filename, mode)` for string and bytes sources in `exec`,

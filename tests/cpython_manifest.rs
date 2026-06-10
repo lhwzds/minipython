@@ -2243,6 +2243,315 @@ fn cpython_coverage_mentions_all_sandbox_stdlib_runtime_evidence() {
     );
 }
 
+fn assert_sandbox_manifest_subset_evidence(
+    module: &str,
+    required_evidence: &[&str],
+    excluded_terms: &[&str],
+) {
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == module)
+        .unwrap_or_else(|| panic!("sandbox stdlib manifest must include {module}"));
+
+    for required in required_evidence {
+        assert!(
+            row.supported_surface.contains(required),
+            "{module} sandbox manifest must list runtime subset evidence `{required}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage document must describe {module} runtime subset evidence `{required}`"
+        );
+    }
+
+    for excluded in excluded_terms {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "{module} sandbox manifest must keep `{excluded}` outside the default surface"
+        );
+    }
+}
+
+#[test]
+fn functools_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "functools",
+        &[
+            "cpython_functools_public_helpers_subset",
+            "cpython_functools_partial_subset",
+            "cpython_functools_partialmethod_subset",
+            "cpython_functools_cmp_to_key_subset",
+            "cpython_functools_update_wrapper_wraps_subset",
+            "cpython_functools_total_ordering_subset",
+            "cpython_functools_cache_subset",
+            "cpython_functools_cached_property_subset",
+            "cpython_functools_reduce_subset",
+            "cpython_functools_singledispatch_subset",
+            "cpython_functools_singledispatchmethod_subset",
+        ],
+        &[],
+    );
+}
+
+#[test]
+fn itertools_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "itertools",
+        &["cpython_itertools_count_repeat_chain_subset"],
+        &[],
+    );
+}
+
+#[test]
+fn operator_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "operator",
+        &[
+            "cpython_operator_public_helpers_subset",
+            "cpython_operator_length_hint_subset",
+            "cpython_operator_comparison_predicate_subset",
+            "cpython_operator_arithmetic_bitwise_subset",
+            "cpython_operator_sequence_member_subset",
+            "cpython_operator_callable_helper_subset",
+            "cpython_operator_inplace_helper_subset",
+            "cpython_operator_module_metadata_subset",
+            "cpython_operator_signature_helper_subset",
+            "cpython_operator_helper_repr_subset",
+        ],
+        &[],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "operator")
+        .expect("sandbox stdlib manifest must include operator");
+    assert!(
+        !row.supported_surface
+            .contains("cpython_operator_pickle_helper_subset"),
+        "operator pickle helper subset must stay outside the default sandbox manifest surface"
+    );
+}
+
+#[test]
+fn array_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "array",
+        &[
+            "cpython_array_module_and_constructor_public_surface_subset",
+            "cpython_array_subclass_public_construction_subset",
+            "cpython_array_one_byte_public_sequence_subset",
+            "cpython_array_short_public_sequence_and_mutation_subset",
+            "cpython_array_int_public_sequence_and_mutation_subset",
+            "cpython_array_long_long_public_sequence_and_mutation_subset",
+            "cpython_array_native_long_public_sequence_and_mutation_subset",
+            "cpython_array_float_public_sequence_and_mutation_subset",
+            "cpython_array_unicode_public_sequence_and_mutation_subset",
+            "cpython_array_one_byte_public_mutation_methods_subset",
+            "cpython_array_one_byte_public_subscript_mutation_subset",
+            "cpython_array_one_byte_public_copy_byteswap_compare_subset",
+            "cpython_array_one_byte_public_concat_repeat_subset",
+            "cpython_array_one_byte_public_buffer_info_subset",
+            "cpython_array_one_byte_public_unicode_method_rejection_subset",
+            "cpython_array_one_byte_public_file_methods_subset",
+        ],
+        &["Real file descriptors"],
+    );
+}
+
+#[test]
+fn collections_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "collections / collections.abc",
+        &[
+            "cpython_collections_counter_public_subset",
+            "cpython_collections_chainmap_public_methods_subset",
+            "cpython_collections_namedtuple_public_subset",
+            "cpython_collections_userdict_userlist_public_subset",
+            "cpython_collections_userdict_public_methods_subset",
+            "cpython_collections_userlist_public_methods_subset",
+            "cpython_collections_userstring_protocol_and_userdict_missing_subset",
+            "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
+            "cpython_collections_chainmap_iter_does_not_call_getitem_subset",
+            "cpython_collections_chainmap_new_child_custom_mapping_subset",
+            "cpython_collections_chainmap_order_preservation_subset",
+            "cpython_collections_chainmap_union_operators_subset",
+        ],
+        &["pickle/eval identity matrices"],
+    );
+}
+
+#[test]
+fn copy_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "copy",
+        &["cpython_copy_public_subset"],
+        &["pickle protocol"],
+    );
+}
+
+#[test]
+fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "io.BytesIO",
+        &["cpython_io_bytesio_public_subset"],
+        &["Real files", "file descriptors"],
+    );
+}
+
+#[test]
+fn math_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "math / math.integer",
+        &[
+            "cpython_math_core_subset",
+            "cpython_math_constants_and_classification_subset",
+            "cpython_math_integer_subset",
+            "cpython_math_isclose_subset",
+            "cpython_math_hypot_dist_subset",
+            "cpython_math_copysign_subset",
+            "cpython_math_signbit_subset",
+            "cpython_math_trunc_subset",
+            "cpython_math_ceil_subset",
+            "cpython_math_floor_subset",
+            "cpython_math_degrees_radians_subset",
+            "cpython_math_cbrt_subset",
+            "cpython_math_exp_exp2_subset",
+            "cpython_math_log_family_subset",
+            "cpython_math_trig_subset",
+            "cpython_math_hyperbolic_subset",
+            "cpython_math_fabs_subset",
+            "cpython_math_fma_subset",
+            "cpython_math_fmax_fmin_subset",
+            "cpython_math_fmod_remainder_subset",
+            "cpython_math_frexp_ldexp_modf_subset",
+            "cpython_math_fsum_subset",
+            "cpython_math_sumprod_subset",
+            "cpython_math_nextafter_ulp_subset",
+            "cpython_math_pow_subset",
+            "cpython_math_sqrt_subset",
+            "cpython_math_gcd_subset",
+            "cpython_math_lcm_subset",
+            "cpython_math_prod_subset",
+        ],
+        &["Platform/libm", "locale-sensitive"],
+    );
+}
+
+#[test]
+fn sys_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "sys",
+        &[
+            "cpython_float_hash_and_sys_info_subset",
+            "cpython_builtin_negation_sys_maxsize_subset",
+            "cpython_attribute_introspection_builtins_subset",
+            "cpython_builtin_breakpoint_custom_hook_subset",
+            "cpython_builtin_breakpoint_passthru_error_subset",
+            "cpython_types_frame_locals_proxy_type_subset",
+        ],
+        &[
+            "Real argv/process state",
+            "real stdin/stdout/stderr",
+            "refcount/GC/debug APIs",
+        ],
+    );
+}
+
+#[test]
+fn builtins_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "builtins",
+        &[
+            "cpython_eval_builtin_subset",
+            "cpython_exec_builtin_subset",
+            "cpython_eval_exec_builtins_mapping_subset",
+            "cpython_compile_builtin_code_object_subset",
+            "cpython_globals_locals_builtin_subset",
+            "cpython_vars_dir_builtin_subset",
+            "cpython_isinstance_builtin_subset",
+            "cpython_issubclass_builtin_subset",
+            "cpython_attribute_introspection_builtins_subset",
+            "cpython_all_any_builtin_subset",
+            "cpython_len_builtin_subset",
+            "cpython_min_max_sum_builtin_subset",
+            "cpython_iter_next_builtin_subset",
+            "cpython_enumerate_zip_sorted_builtin_subset",
+            "cpython_builtin_sorted_exact_subset",
+            "cpython_zip_strict_builtin_subset",
+            "cpython_map_filter_builtin_subset",
+            "cpython_map_strict_builtin_subset",
+            "cpython_abs_builtin_subset",
+            "cpython_divmod_builtin_subset",
+            "cpython_round_builtin_subset",
+            "cpython_pow_builtin_subset",
+            "cpython_chr_ord_builtin_subset",
+            "cpython_format_builtin_and_custom_dunder_format_subset",
+            "cpython_ascii_builtin_subset",
+            "cpython_builtin_breakpoint_custom_hook_subset",
+            "cpython_builtin_breakpoint_passthru_error_subset",
+        ],
+        &[
+            "`open()`",
+            "`input()`",
+            "host TTY behavior",
+            "default pdb-backed breakpoint behavior",
+            "process/environment side effects",
+        ],
+    );
+}
+
+#[test]
+fn types_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "types",
+        &[
+            "cpython_types_names_public_surface_subset",
+            "cpython_types_singleton_type_aliases_subset",
+            "cpython_types_module_type_subset",
+            "cpython_types_runtime_type_aliases_subset",
+            "cpython_types_generic_alias_union_type_subset",
+            "cpython_types_union_public_operator_and_classinfo_subset",
+            "cpython_types_union_forward_ref_subset",
+            "cpython_types_union_typevar_parameter_subset",
+            "cpython_types_union_parameter_substitution_subset",
+            "cpython_types_union_bad_classinfo_checks_subset",
+            "cpython_types_union_newtype_subset",
+            "cpython_types_mappingproxy_exact_dict_subset",
+            "cpython_types_mappingproxy_method_surface_subset",
+            "cpython_types_mappingproxy_custom_mapping_subset",
+            "cpython_types_mappingproxy_union_subset",
+            "cpython_types_mappingproxy_hash_subset",
+            "cpython_types_mappingproxy_richcompare_subset",
+            "cpython_types_mappingproxy_contains_subset",
+            "cpython_types_mappingproxy_views_subset",
+            "cpython_types_mappingproxy_len_subset",
+            "cpython_types_mappingproxy_iterators_subset",
+            "cpython_types_mappingproxy_reversed_subset",
+            "cpython_types_mappingproxy_copy_subset",
+            "cpython_types_simple_namespace_basic_subset",
+            "cpython_types_simple_namespace_recursive_and_replace_subset",
+            "cpython_types_simple_namespace_new_and_invalid_replace_subset",
+            "cpython_types_simple_namespace_remaining_public_subset",
+            "cpython_types_class_creation_new_class_resolve_bases_subset",
+            "cpython_types_class_creation_prepare_resolve_bases_subset",
+            "cpython_types_class_creation_mro_entries_core_subset",
+            "cpython_types_class_creation_metaclass_derivation_subset",
+            "cpython_types_class_creation_one_argument_type_subset",
+            "cpython_types_coroutine_public_subset",
+            "cpython_types_function_type_subset",
+            "cpython_types_code_traceback_type_aliases_subset",
+            "cpython_types_frame_type_alias_subset",
+            "cpython_types_frame_locals_proxy_type_subset",
+        ],
+        &[
+            "CPython object-layout internals",
+            "exact C descriptor types",
+            "pickle identity matrices",
+            "interpreter lifecycle behavior",
+        ],
+    );
+}
+
 #[test]
 fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence() {
     for required in [
