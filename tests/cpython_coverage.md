@@ -1457,7 +1457,8 @@ Recent runtime migration notes:
   `BytesTest::test_repeat_id_preserving` for exact bytes repeat-by-one object
   identity in both operand orders, empty bytes singleton identity, and distinct
   exact bytes results for zero/negative/two repeats and bytes-subclass repeat
-  operations.
+  operations. Direct CPython diff evidence is in
+  `cpython_bytes_repeat_id_preserving_diff_subset`.
   `cpython_memoryview_bytesio_readinto_subset` covers the public read-only
   target rejection from CPython `BytesTest::test_buffer_is_readonly` through
   in-memory `io.BytesIO.readinto()`; the exact host raw-file fixture remains a

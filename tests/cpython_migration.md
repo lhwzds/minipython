@@ -299,7 +299,8 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   now preserve identity across ordinary variable access, `bytes.__bytes__()`,
   empty-bytes singleton comparisons, and repeat-by-one in both operand orders,
   while zero/negative/two repeats and bytes-subclass repeats return distinct
-  exact bytes objects.
+  exact bytes objects. Direct CPython diff evidence is in
+  `cpython_bytes_repeat_id_preserving_diff_subset`.
 - Added `cpython_bytes_bytearray_index_error_and_hash_subset`, adapted from
   CPython `Lib/test/test_bytes.py::BytesTest::test_getitem_error` and
   `ByteArrayTest::test_getitem_error`, `test_setitem_error`, and `test_nohash`.

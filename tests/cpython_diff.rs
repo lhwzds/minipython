@@ -8506,6 +8506,25 @@ fn cpython_bytes_format_method_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_repeat_id_preserving_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",
+        name: "bytes-repeat-id-preserving",
+        source: r#"a = b'123abc1@'
+b = b'456zyx-+'
+print(id(a) == id(a), id(a) != id(b), id(a) != id(a * -4), id(a) != id(a * 0))
+print(id(a) == id(a * 1), id(a) == id(1 * a), id(a) == id(a * True), id(a) != id(a * 2))
+print(b'' is bytes(), id(b'') == id(bytes()))
+class SubBytes(bytes):
+    pass
+s = SubBytes(b'qwerty()')
+print(id(s) == id(s), id(s) != id(s * -4), id(s) != id(s * 0))
+print(id(s) != id(s * 1), id(s) != id(1 * s), id(s) != id(s * True), id(s) != id(s * 2))
+print(type(s * 1).__name__, s * 1 == b'qwerty()')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
