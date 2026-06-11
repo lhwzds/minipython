@@ -4906,6 +4906,60 @@ print('bad', bad)"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_defaults_rename_readonly_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple defaults/rename/readonly subset",
+        name: "collections-namedtuple-defaults-rename-readonly",
+        source: r#"from collections import namedtuple
+import collections
+Point = namedtuple('Point', 'x y', defaults=(10, 20))
+print(Point._field_defaults)
+print(Point.__new__.__defaults__)
+print(Point(1, 2), Point(1), Point())
+Point = namedtuple('Point', 'x y', defaults=(20,))
+print(Point._field_defaults)
+print(Point.__new__.__defaults__)
+print(Point(1, 2), Point(1))
+Point = namedtuple('Point', 'x y', defaults=())
+print(Point._field_defaults)
+print(Point.__new__.__defaults__)
+print(Point(1, 2))
+bad = 0
+for call in [lambda: Point(1), lambda: Point(), lambda: Point(1, 2, 3), lambda: namedtuple('Point', 'x y', defaults=(10, 20, 30)), lambda: namedtuple('Point', 'x y', defaults=10), lambda: namedtuple('Point', 'x y', defaults=False)]:
+    try:
+        call()
+    except TypeError:
+        bad += 1
+print('bad-defaults', bad)
+Point = namedtuple('Point', 'x y', defaults=None)
+print(Point._field_defaults)
+print(Point.__new__.__defaults__)
+print(Point(10, 20))
+for defaults in [[10, 20], iter([10, 20])]:
+    Point = namedtuple('Point', 'x y', defaults=defaults)
+    print(Point._field_defaults)
+    print(Point.__new__.__defaults__)
+    print(Point(1, 2), Point(1), Point())
+for spec in [('efg', 'g%hi'), ('abc', 'class'), ('8efg', '9ghi'), ('abc', '_efg'), ('abc', 'efg', 'efg', 'ghi'), ('abc', '', 'x')]:
+    print(namedtuple('NT', spec, rename=True)._fields)
+NT = namedtuple('NT', ['x', 'y'], module=collections)
+print(NT.__module__ == collections)
+Point = namedtuple('Point', 'x y')
+print(Point.__doc__)
+Point.__doc__ = '2D point'
+print(Point.__doc__)
+p = Point(11, 22)
+bad_readonly = 0
+for action in [lambda: setattr(p, 'x', 33), lambda: delattr(p, 'x'), lambda: p.__setitem__(0, 33), lambda: p.__delitem__(0)]:
+    try:
+        action()
+    except (AttributeError, TypeError):
+        bad_readonly += 1
+print('readonly', bad_readonly, p.x, p[0])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",
