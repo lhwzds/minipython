@@ -2594,6 +2594,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_core_runtime_subset",
             "cpython_collections_abc_iterable_iterator_subset",
             "cpython_collections_abc_sequence_subset",
+            "cpython_collections_abc_sequence_mixins_subset",
             "cpython_collections_abc_mapping_subset",
             "cpython_collections_abc_mapping_view_subset",
             "cpython_collections_abc_mutable_sequence_subset",
@@ -2649,6 +2650,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_sequence_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Sequence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_sequence_mixins_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Sequence mixins"
     );
     assert!(
         row.diff_evidence

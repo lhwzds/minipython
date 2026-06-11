@@ -2372,6 +2372,13 @@ Recent runtime migration notes:
   Direct CPython diff evidence is in
   `cpython_collections_abc_sequence_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_sequence_mixins_subset`, covering CPython
+  `TestCollectionABCs::test_Sequence_mixins` for explicit `Sequence`
+  subclasses, `index()` parity against native list/string start-stop behavior,
+  `count()`, containment, iteration, reverse iteration, and keyword argument
+  binding. Direct CPython diff evidence is in
+  `cpython_collections_abc_sequence_mixins_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_subset`, covering `Mapping` and
   `MutableMapping` for registered `dict`, ABC inheritance, direct subclassing,
   and CPython's non-structural mapping behavior. Direct CPython diff evidence

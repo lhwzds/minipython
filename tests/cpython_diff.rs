@@ -2767,6 +2767,58 @@ print(issubclass(Direct, Sequence), issubclass(float, Direct))"#,
 }
 
 #[test]
+fn cpython_collections_abc_sequence_mixins_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs::test_Sequence_mixins",
+        name: "collections-abc-sequence-mixins",
+        source: r#"from collections.abc import Sequence
+class SequenceSubclass(Sequence):
+    def __init__(self, seq=()):
+        self.seq = seq
+    def __getitem__(self, index):
+        return self.seq[index]
+    def __len__(self):
+        return len(self.seq)
+def index_result(seq, args):
+    try:
+        return ('ok', seq.index(*args))
+    except ValueError:
+        return ('ValueError',)
+def compare_index(native, wrapped, args):
+    return index_result(native, args) == index_result(wrapped, args)
+total = 0
+mismatches = 0
+for native in [list('abracadabra'), 'abracadabra']:
+    wrapped = SequenceSubclass(native)
+    indexes = [-10000, -9999] + list(range(-3, len(native) + 3))
+    letters = set(native)
+    letters.add('z')
+    for letter in letters:
+        total += 1
+        if not compare_index(native, wrapped, (letter,)):
+            mismatches += 1
+        for start in indexes:
+            total += 1
+            if not compare_index(native, wrapped, (letter, start)):
+                mismatches += 1
+            for stop in indexes:
+                total += 1
+                if not compare_index(native, wrapped, (letter, start, stop)):
+                    mismatches += 1
+print(total, mismatches)
+wrapped = SequenceSubclass('abracadabra')
+print(''.join(wrapped), ''.join(reversed(wrapped)))
+print(wrapped.count('a'), wrapped.count('z'), wrapped.__contains__('c'), wrapped.__contains__('z'))
+print('a' in wrapped, 'z' in wrapped)
+print(wrapped.index(value='b'), wrapped.index('b', start=1), wrapped.count(value='a'))
+try:
+    wrapped.index('z')
+except ValueError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_mapping_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Mapping/MutableMapping ABC public runtime subset",
