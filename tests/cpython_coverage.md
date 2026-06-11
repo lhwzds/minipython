@@ -1095,7 +1095,8 @@ Recent runtime migration notes:
 - The bundled `types` module also includes
   `cpython_types_float_constructor_edges_subset`, covering the CPython
   `TypesTests::test_float_constructor` empty-string and embedded-NUL
-  `float()` constructor `ValueError` rows.
+  `float()` constructor `ValueError` rows. Direct output parity is guarded by
+  `cpython_types_float_constructor_edges_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_float_to_string_subset`, covering the CPython
   `TypesTests::test_float_to_string` exponent rendering matrix for `%e` and

@@ -6573,6 +6573,19 @@ except AttributeError as error:
 }
 
 #[test]
+fn cpython_types_float_constructor_edges_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_float_constructor public subset",
+        name: "types-float-constructor-edges",
+        source: r#"for text in ['', '5\0', '5_5\0']:
+    try:
+        float(text)
+    except ValueError as error:
+        print(repr(text), error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_runtime_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests runtime type aliases",
