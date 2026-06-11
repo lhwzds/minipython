@@ -57,6 +57,7 @@ Recent runtime migration notes:
   `cpython_math_integer_diff_subset`,
   `cpython_math_sqrt_diff_subset`,
   `cpython_math_fabs_diff_subset`,
+  `cpython_math_copysign_diff_subset`,
   `cpython_math_trunc_diff_subset`,
   `cpython_math_ceil_diff_subset`,
   `cpython_math_floor_diff_subset`,
@@ -470,10 +471,11 @@ Recent runtime migration notes:
   `test_math.py::MathTests::testSqrt` zero, positive integer/float, infinity,
   NaN, float-result, negative-domain `ValueError`, huge-integer overflow, and
   TypeError cases supported by the current runtime.
-- The bundled `math` module also includes `cpython_math_copysign_subset`,
-  covering CPython `test_math.py::MathTests::testCopysign` sign transfer for
-  zeroes, infinities, NaNs, huge-integer overflow, and TypeError cases supported
-  by the current runtime.
+- The bundled `math` module also includes `cpython_math_copysign_diff_subset`
+  and `cpython_math_copysign_subset`, covering CPython
+  `test_math.py::MathTests::testCopysign` sign transfer for zeroes,
+  infinities, NaNs, huge-integer overflow, and TypeError cases supported by the
+  current runtime.
 - The bundled `math` module also includes `cpython_math_signbit_subset`,
   covering CPython `test_math.py::MathTests::test_signbit` negative sign-bit
   detection for zeroes, finite values, infinities, NaNs, bool/int conversion,

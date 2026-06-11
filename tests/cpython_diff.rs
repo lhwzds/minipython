@@ -1332,6 +1332,43 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_copysign_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testCopysign public stable subset",
+        name: "math-copysign",
+        source: r#"import math
+INF = float('inf')
+NINF = float('-inf')
+NAN = float('nan')
+print(math.copysign(1, 42), math.copysign(0.0, 42))
+print(math.copysign(1.0, -42), math.copysign(3, 0.0), math.copysign(4.0, -0.0))
+print(math.copysign(1.0, 0.0), math.copysign(1.0, -0.0))
+print(math.copysign(INF, 0.0), math.copysign(INF, -0.0))
+print(math.copysign(NINF, 0.0), math.copysign(NINF, -0.0))
+print(math.copysign(1.0, INF), math.copysign(1.0, NINF))
+print(math.copysign(INF, INF), math.copysign(INF, NINF))
+print(math.copysign(NINF, INF), math.copysign(NINF, NINF))
+print(math.isnan(math.copysign(NAN, 1.0)))
+print(math.isnan(math.copysign(NAN, INF)), math.isnan(math.copysign(NAN, NINF)), math.isnan(math.copysign(NAN, NAN)))
+print(math.isinf(math.copysign(INF, NAN)), math.fabs(math.copysign(2.0, NAN)))
+for expr in [
+    lambda: math.copysign(),
+    lambda: math.copysign(1),
+    lambda: math.copysign(1, 2, 3),
+    lambda: math.copysign('x', 1),
+    lambda: math.copysign(1, 'x'),
+    lambda: math.copysign(10**10000, 1),
+    lambda: math.copysign(1, 10**10000),
+    lambda: math.copysign(x=1, y=2),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_trunc_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::test_trunc public stable subset",
