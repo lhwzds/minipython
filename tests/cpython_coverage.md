@@ -33,6 +33,10 @@ Recent runtime migration notes:
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`
   coverage row and migration notes.
+- Bytes/bytearray old-style `%` formatting and reflected modulo behavior also
+  have direct CPython output parity evidence in
+  `cpython_bytes_percent_format_and_rmod_diff_subset`; the broader subset tests
+  keep MiniPython-specific implementation-safety and diagnostic-shape coverage.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product

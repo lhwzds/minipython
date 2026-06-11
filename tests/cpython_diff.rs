@@ -8522,6 +8522,55 @@ fn cpython_bytes_format_method_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_percent_format_and_rmod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_mod, ::test_imod, and ::test_rmod public subset",
+        name: "bytes-percent-format-and-rmod",
+        source: r#"for ctor in [bytes, bytearray]:
+    fmt = ctor(b'hello, %b!')
+    result = fmt % b'world'
+    print(type(result).__name__, result, fmt == ctor(b'hello, %b!'))
+    fmt = ctor(b'%s / 100 = %d%%')
+    print(type((fmt % (b'seventy-nine', 79))).__name__, fmt % (b'seventy-nine', 79))
+    print(ctor(b'hello,\x00%b!') % b'world')
+    print(ctor(b'...%(foo)b...') % {b'foo': b'abc'})
+    print(ctor(b'...%(f(o)o)b...') % {b'f(o)o': b'abc', b'foo': b'bar'})
+    print(ctor(b'%*b') % (5, b'abc'))
+    print(ctor(b'%*b') % (-5, b'abc'))
+    print(ctor(b'%*.*b') % (5, 2, b'abc'))
+    print(ctor(b'%i%b %*.*b') % (10, b'3', 5, 3, b'abc'))
+    print(ctor(b'%b %s') % (memoryview(b'ab'), memoryview(b'cd')))
+    print(ctor(b'%c') % b'a')
+    print(ctor(b'%d') % 3.14)
+    print(ctor(b'%f %F %.2f %e %E %g %G') % (1.0, 1.0, 1.25, 1234.5, 1234.5, 1.25, 1.25))
+    print(ctor(b'%+08.2f') % 1.25)
+    holder = ctor(b'hello, %b!')
+    alias = holder
+    holder %= b'world'
+    print(type(holder).__name__, holder, alias == ctor(b'hello, %b!'))
+    if isinstance(alias, bytearray):
+        print(holder is alias, alias)
+    for expr in [
+        lambda: ctor(b'%x') % 3.14,
+        lambda: ctor(b'%c') % b'ab',
+        lambda: ctor(b'%c') % 256,
+        lambda: ctor(b'%b') % 'text',
+        lambda: ctor(b'%c') % memoryview(b'a'),
+    ]:
+        try:
+            expr()
+        except (TypeError, OverflowError, ValueError) as error:
+            print(error.__class__.__name__)
+    try:
+        object() % ctor(b'abc')
+    except TypeError as error:
+        print(error.__class__.__name__)
+    print(ctor(b'abc').__rmod__('%r') is NotImplemented)
+    print(ctor.__rmod__(ctor(b'abc'), '%r') is NotImplemented)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_repeat_id_preserving_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",

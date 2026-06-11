@@ -205,6 +205,11 @@ Completed in the `test_bytes.py` bytes percent-format pass:
   bytes/bytearray `__rmod__`, returns `NotImplemented` for direct reflected
   modulo calls with unsupported operands, and raises a catchable `TypeError`
   for `object() % bytes_like`.
+- Added direct CPython output parity evidence
+  `cpython_bytes_percent_format_and_rmod_diff_subset` for the stable public
+  value/type/error-class slice of bytes/bytearray old-style `%` formatting and
+  reflected modulo behavior. The local subset tests retain broader diagnostic
+  and bytearray re-entrancy safety coverage.
 
 Completed in the `test_bytes.py` bytes/bytearray format-method pass:
 
