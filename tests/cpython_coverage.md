@@ -1336,9 +1336,10 @@ Recent runtime migration notes:
 - `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset`,
   covering CPython `test_operator.py` callable helpers `call`, `attrgetter`,
   `itemgetter`, and `methodcaller`, including dotted attribute traversal,
-  multi-result tuple packing, subscript forwarding, stored method args/keywords,
-  many positional/keyword method arguments, callable forwarding, and public
-  exception propagation. Direct CPython diff evidence for the default-oracle
+  `str` subclass attrgetter/methodcaller names, multi-result tuple packing,
+  subscript forwarding, stored method args/keywords, many positional/keyword
+  method arguments, callable forwarding, and public exception propagation.
+  Direct CPython diff evidence for the default-oracle
   stable getter/methodcaller slice is in
   `cpython_operator_callable_helper_diff_subset`; `operator.call` stays covered
   by subset evidence because the default local CPython 3.9 oracle does not

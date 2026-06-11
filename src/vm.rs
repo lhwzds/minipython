@@ -27835,7 +27835,13 @@ impl Vm {
         let mut attrs = Vec::with_capacity(args.len());
         for arg in args {
             match arg {
-                Value::String(name) => attrs.push(name),
+                Value::String(name) | Value::IdentityString { value: name, .. } => attrs.push(name),
+                value if str_subclass_string(&value).is_some() => {
+                    attrs.push(
+                        str_subclass_string(&value)
+                            .expect("str subclass storage exists after guard"),
+                    );
+                }
                 value => {
                     return Err(format!(
                         "TypeError: attribute name must be a string, not '{}'",
@@ -27870,15 +27876,21 @@ impl Vm {
         let Some((name, bound_args)) = args.split_first() else {
             return Err("TypeError: methodcaller expected 1 argument, got 0".to_string());
         };
-        let Value::String(name) = name else {
-            return Err(format!(
-                "TypeError: method name must be a string, not '{}'",
-                type_name(name)
-            ));
+        let name = match name {
+            Value::String(name) | Value::IdentityString { value: name, .. } => name.clone(),
+            value if str_subclass_string(value).is_some() => {
+                str_subclass_string(value).expect("str subclass storage exists after guard")
+            }
+            value => {
+                return Err(format!(
+                    "TypeError: method name must be a string, not '{}'",
+                    type_name(value)
+                ));
+            }
         };
 
         Ok(Value::OperatorMethodCaller {
-            name: name.clone(),
+            name,
             args: bound_args.to_vec(),
             keywords,
             identity: Rc::new(()),

@@ -38179,6 +38179,8 @@ fn cpython_operator_callable_helper_subset() {
     assert_output(
         concat!(
             "import operator\n",
+            "class S(str):\n",
+            "    pass\n",
             "class A:\n",
             "    pass\n",
             "a = A()\n",
@@ -38188,6 +38190,8 @@ fn cpython_operator_callable_helper_subset() {
             "a.child.name = 'thomas'\n",
             "print(operator.attrgetter('child.name')(a))\n",
             "print(operator.attrgetter('name', 'child.name')(a))\n",
+            "print(operator.attrgetter(S('name'))(a))\n",
+            "print(operator.attrgetter(S('name'), S('child.name'))(a))\n",
             "for expr in [lambda: operator.attrgetter(), lambda: operator.attrgetter(2), lambda: operator.attrgetter('name')(), lambda: operator.attrgetter('name')(a, 'dent'), lambda: operator.attrgetter('name')(a, surname='dent')]:\n",
             "    try:\n",
             "        expr()\n",
@@ -38241,6 +38245,7 @@ fn cpython_operator_callable_helper_subset() {
             "m = M()\n",
             "print(operator.methodcaller('foo', 1, 2)(m))\n",
             "print(operator.methodcaller('bar')(m), operator.methodcaller('bar', f=5)(m))\n",
+            "print(operator.methodcaller(S('bar'))(m), operator.methodcaller(S('bar'), f=6)(m))\n",
             "print(operator.methodcaller('baz', name='spam', self='eggs')(m))\n",
             "print(operator.methodcaller('return_arguments', 0, 1, a=2)(m))\n",
             "many_positional_arguments = tuple(range(10))\n",
@@ -38264,6 +38269,8 @@ fn cpython_operator_callable_helper_subset() {
         &[
             "arthur",
             "thomas",
+            "('arthur', 'thomas')",
+            "arthur",
             "('arthur', 'thomas')",
             "TypeError",
             "TypeError",
@@ -38289,6 +38296,7 @@ fn cpython_operator_callable_helper_subset() {
             "SyntaxError",
             "3",
             "42 5",
+            "42 6",
             "('spam', 'eggs')",
             "((0, 1), {'a': 2})",
             "((0, 1, 2, 3, 4, 5, 6, 7, 8, 9), {})",

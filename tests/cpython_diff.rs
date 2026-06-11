@@ -10189,6 +10189,8 @@ fn cpython_operator_callable_helper_diff_subset() {
         origin: "Lib/test/test_operator.py::OperatorTestCase callable helper public subset stable on CPython 3.9",
         name: "operator-callable-helper",
         source: r#"import operator
+class S(str):
+    pass
 class A:
     pass
 a = A()
@@ -10198,6 +10200,8 @@ a.child = A()
 a.child.name = 'thomas'
 print(operator.attrgetter('child.name')(a))
 print(operator.attrgetter('name', 'child.name')(a))
+print(operator.attrgetter(S('name'))(a))
+print(operator.attrgetter(S('name'), S('child.name'))(a))
 for expr in [lambda: operator.attrgetter(), lambda: operator.attrgetter(2), lambda: operator.attrgetter('name')(), lambda: operator.attrgetter('name')(a, 'dent'), lambda: operator.attrgetter('name')(a, surname='dent')]:
     try:
         expr()
@@ -10251,6 +10255,7 @@ class M:
 m = M()
 print(operator.methodcaller('foo', 1, 2)(m))
 print(operator.methodcaller('bar')(m), operator.methodcaller('bar', f=5)(m))
+print(operator.methodcaller(S('bar'))(m), operator.methodcaller(S('bar'), f=6)(m))
 print(operator.methodcaller('baz', name='spam', self='eggs')(m))
 print(operator.methodcaller('return_arguments', 0, 1, a=2)(m))
 many_positional_arguments = tuple(range(10))
