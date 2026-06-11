@@ -5047,6 +5047,35 @@ print(a.__dict__ == {'w': 5})"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_large_size_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple large-size subset",
+        name: "collections-namedtuple-large-size",
+        source: r#"from collections import namedtuple
+n = 64
+names = ['f' + str(i) for i in range(n)]
+Big = namedtuple('Big', names)
+b = Big(*range(n))
+print(b == tuple(range(n)))
+print(Big._make(range(n)) == tuple(range(n)))
+ok = True
+for pos, name in enumerate(names):
+    if getattr(b, name) != pos:
+        ok = False
+print(ok)
+print(repr(b).startswith('Big('), repr(b).endswith(')'))
+d = b._asdict()
+print(d == dict(zip(names, range(n))))
+b2 = b._replace(**dict([(names[1], 999), (names[-5], 42)]))
+b2_expected = list(range(n))
+b2_expected[1] = 999
+b2_expected[-5] = 42
+print(b2 == tuple(b2_expected))
+print(b._fields == tuple(names))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",

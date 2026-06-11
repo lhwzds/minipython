@@ -161,6 +161,7 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_repr_diff_subset`,
   `cpython_collections_namedtuple_name_conflicts_diff_subset`,
   `cpython_collections_namedtuple_subclass_issue_24931_diff_subset`,
+  `cpython_collections_namedtuple_large_size_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
@@ -381,6 +382,11 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_subclass_issue_24931_subset`, covering
   CPython public subclassed `namedtuple` `_asdict()` output and instance
   `__dict__` storage behavior.
+- The bundled `collections` module also includes
+  `cpython_collections_namedtuple_large_size_diff_subset` and
+  `cpython_collections_namedtuple_large_size_subset`, covering deterministic
+  CPython public `namedtuple()` behavior for many fields, `_make()`,
+  `_replace()`, `_asdict()`, field lookup, and repr boundaries.
 - The bundled `collections` module also includes
   `cpython_collections_userdict_userlist_public_diff_subset` and
   `cpython_collections_userdict_userlist_public_subset`, covering CPython

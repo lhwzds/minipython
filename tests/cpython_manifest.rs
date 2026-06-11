@@ -2646,6 +2646,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_repr_subset",
             "cpython_collections_namedtuple_name_conflicts_subset",
             "cpython_collections_namedtuple_subclass_issue_24931_subset",
+            "cpython_collections_namedtuple_large_size_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
