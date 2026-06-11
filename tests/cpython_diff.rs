@@ -4572,6 +4572,19 @@ print('x' in view, 'y' in view)"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_len_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests len subset",
+        name: "types-mappingproxy-len",
+        source: r#"from types import MappingProxyType
+for expected in range(6):
+    data = dict.fromkeys('abcde'[:expected])
+    view = MappingProxyType(data)
+    print(len(data), len(view))"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
