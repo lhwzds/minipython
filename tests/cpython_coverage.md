@@ -3043,7 +3043,8 @@ Recent runtime migration notes:
   `ClassCreationTests::test_one_argument_type`: builtin `type(obj)` remains the
   only one-argument type-inspection form, type subclasses raise catchable
   `TypeError` when called with one argument, and type subclasses still support
-  the three-argument dynamic class-construction form.
+  the three-argument dynamic class-construction form. Direct output parity is
+  guarded by `cpython_types_class_creation_one_argument_type_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_metaclass_new_error_subset`, covering CPython
   `ClassCreationTests::test_metaclass_new_error`: three-argument `type()`

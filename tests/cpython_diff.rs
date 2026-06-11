@@ -5426,6 +5426,29 @@ for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: ty
 }
 
 #[test]
+fn cpython_types_class_creation_one_argument_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
+        name: "types-class-creation-one-argument-type",
+        source: r#"print(type(5) is int)
+class M(type):
+    pass
+try:
+    M(5)
+except TypeError as error:
+    print(type(error).__name__, str(error))
+class N(type, metaclass=M):
+    pass
+try:
+    N(5)
+except TypeError as error:
+    print(type(error).__name__, str(error))
+Created = M('Created', (), {'x': 3})
+print(type(Created) is M, Created.__class__ is M, Created.x)"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
