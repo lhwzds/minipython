@@ -5624,6 +5624,53 @@ for label, union in [('intT', int | T), ('Tint', T | int), ('Union-intT', typing
 }
 
 #[test]
+fn cpython_types_union_parameter_substitution_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nT = typing.TypeVar('T')\nx = int | T | bytes\nprint(x[str] == int | str | bytes)",
+    )
+    .expect("failed to probe CPython union parameter substitution support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union parameter substitution diff: CPython oracle lacks PEP 604 parameter substitution support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests parameter substitution public subset",
+        name: "types-union-parameter-substitution",
+        source: r#"import collections.abc
+import typing
+T = typing.TypeVar('T')
+S = typing.TypeVar('S')
+NT = typing.NewType('NT', str)
+x = int | T | bytes
+def check(label, actual, expected):
+    print(label, actual == expected, type(actual) is type(expected), tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in actual.__args__), tuple(param.__name__ for param in getattr(actual, '__parameters__', ())))
+check('str', x[str], int | str | bytes)
+check('list-int', x[list[int]], int | list[int] | bytes)
+check('typing-list', x[typing.List], int | typing.List | bytes)
+check('typing-list-int', x[typing.List[int]], int | typing.List[int] | bytes)
+check('typing-hashable', x[typing.Hashable], int | typing.Hashable | bytes)
+check('abc-hashable', x[collections.abc.Hashable], int | collections.abc.Hashable | bytes)
+check('typing-callable', x[typing.Callable[[int], str]], int | typing.Callable[[int], str] | bytes)
+check('abc-callable', x[collections.abc.Callable[[int], str]], int | collections.abc.Callable[[int], str] | bytes)
+check('typing-tuple', x[typing.Tuple[int, str]], int | typing.Tuple[int, str] | bytes)
+check('typing-literal', x[typing.Literal['none']], int | typing.Literal['none'] | bytes)
+check('typing-newtype', x[NT], int | NT | bytes)
+check('nested-pep604', x[str | list], int | str | list | bytes)
+check('nested-typing-union', x[typing.Union[str, list]], typing.Union[int, str, list, bytes])
+check('dedupe-pep604', x[str | int], int | str | bytes)
+check('dedupe-typing-union', x[typing.Union[str, int]], typing.Union[int, str, bytes])
+check('typevar-s', x[S], int | S | bytes)
+try:
+    x[int, str]
+except TypeError:
+    print('arity-error')"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

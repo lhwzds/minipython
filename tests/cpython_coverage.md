@@ -973,7 +973,8 @@ Recent runtime migration notes:
   `UnionTests` parameter substitution for supported builtin, generic-alias,
   legacy typing-alias, `collections.abc`, nested union, deduplicating union, and
   remaining-TypeVar operands, plus `typing.Literal` / `typing.NewType`
-  substitutions and the public arity `TypeError` path.
+  substitutions and the public arity `TypeError` path. Direct output parity is
+  guarded by `cpython_types_union_parameter_substitution_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_copy_pickle_subset`, covering CPython `UnionTests`
   `copy.copy()`, `copy.deepcopy()`, and all exposed pickle protocol round trips
