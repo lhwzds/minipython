@@ -950,7 +950,8 @@ Recent runtime migration notes:
   `get_args()`, `repr()` / `str()` for supported union operands, and
   `isinstance()` / `issubclass()` classinfo dispatch including
   `collections.abc.Mapping`, plus GenericAlias union repr and invalid classinfo
-  checks.
+  checks. Direct output parity is guarded by
+  `cpython_types_union_public_operator_and_classinfo_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_genericalias_subclass_bad_eq_subset`, covering
   `types.GenericAlias` subclasses, subclass alias attributes, payload

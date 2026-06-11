@@ -5463,6 +5463,81 @@ for expr in (lambda: types.GenericAlias(list), lambda: types.GenericAlias(list, 
 }
 
 #[test]
+fn cpython_types_union_public_operator_and_classinfo_diff_subset() {
+    let probe = run_cpython(
+        "import types, typing\nprint(hasattr(types, 'UnionType'), hasattr(typing, 'GenericAlias'))",
+    )
+    .expect("failed to probe CPython PEP 604 union support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types union public operator diff: CPython oracle lacks PEP 604 union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests public PEP 604 operator/classinfo subset",
+        name: "types-union-public-operator-classinfo",
+        source: r#"import collections.abc
+import types
+import typing
+from collections import namedtuple
+from typing import Union, get_args, get_origin
+print('eq-basic', int | str == Union[int, str], str | int == Union[int, str], int | list != Union[int, str])
+print('none', int | None == Union[int, None], None | int == Union[int, None], int | type(None) == int | None)
+print('none-extra', type(None) | int == None | int)
+print('flatten', int | str | list == Union[int, str, list], int | (str | list) == Union[int, str, list], (int | str) | (str | int) == int | str)
+print('flatten-extra', str | (int | list) == Union[int, str, list], str | float | int | complex | int == (int | str) | (float | complex))
+print('identity', int | int is int)
+print('hash', hash(int | str) == hash(str | int), hash(int | str) == hash(Union[int, str]))
+for label, expr in [('bad-rhs', lambda: int | 3), ('bad-lhs', lambda: 3 | int), ('bad-instance', lambda: object() | int)]:
+    try:
+        expr()
+    except TypeError:
+        print(label, 'TypeError')
+x = int | str
+print('x-eq', x == int | str, x == str | int, x != {})
+for label, expr in [('lt-self', lambda: x < x), ('le-self', lambda: x <= x), ('lt-typing', lambda: x < Union[str, int]), ('lt-union', lambda: x < (int | bool))]:
+    try:
+        expr()
+    except TypeError:
+        print(label, 'TypeError')
+print('typing-alias', typing.List | typing.Tuple == Union[typing.List, typing.Tuple], typing.List[int] | typing.Tuple[int] == Union[typing.List[int], typing.Tuple[int]], typing.List[int] | None == Union[typing.List[int], None], None | typing.List[int] == Union[None, typing.List[int]], Union[str, int, typing.List[int]] == str | int | typing.List[int])
+print('typing-list-str', list | str == Union[list, str], typing.List | str == Union[typing.List, str])
+ga_mix = list[int] | list[str] | dict[float, str]
+print('ga-mixed', ga_mix == Union[list[int], list[str], dict[float, str]], repr(ga_mix))
+for expr in [int | str, (int | str) | list, int | (str | list), (int | str) | int, int | (str | int), Union[int, str] | list, int | Union[str, list], (str | int) | Union[int, list], int | type(None), type(None) | int]:
+    print('args', tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in expr.__args__))
+for label, x in [('list-int', list[int]), ('typing-list-int', typing.List[int]), ('typing-tuple-int-int', typing.Tuple[int, int]), ('typing-callable', typing.Callable[[int], int]), ('typing-hashable', typing.Hashable)]:
+    print('args-extra', label, tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in (x | None).__args__), tuple(arg.__name__ if hasattr(arg, '__name__') else repr(arg) for arg in (None | x).__args__), x | None == Union[x, None], None | x == Union[None, x])
+for union in (int | str, Union[int, str]):
+    print('checks', isinstance(1, union), isinstance(True, union), isinstance('a', union), isinstance(None, union), issubclass(int, union), issubclass(bool, union), issubclass(str, union), issubclass(type(None), union))
+for union in (int | None, Union[int, None]):
+    print('none-checks', isinstance(None, union), issubclass(type(None), union))
+for union in (int | collections.abc.Mapping, Union[int, collections.abc.Mapping]):
+    print('mapping-checks', isinstance({}, union), isinstance((), union), issubclass(dict, union), issubclass(list, union))
+for label, union in [('list-str', list[str] | int), ('callable', collections.abc.Callable[..., str] | int)]:
+    for op, expr in [('isinstance', lambda union=union: isinstance(1, union)), ('issubclass', lambda union=union: issubclass(int, union))]:
+        try:
+            expr()
+        except TypeError:
+            print('ga-classinfo-error', label, op)
+chain = BaseException | bool | bytes | complex | float | int | list | map | set
+chain_expected = Union[BaseException, bool, bytes, complex, float, int, list, map, set]
+print('long-chain', chain == chain_expected, tuple(arg.__name__ for arg in chain.__args__))
+NT = namedtuple('A', ['B', 'C', 'D'])
+named_union = NT | str
+print('namedtuple', named_union == Union[NT, str], named_union.__args__[0].__name__, named_union.__args__[1].__name__)
+print('typing-genericalias', typing.GenericAlias is types.GenericAlias, repr(int | typing.GenericAlias(list, int)))
+for expr in (int | str, (int | str) | list, int | (str | list), int | None, int | type(None), int | typing.GenericAlias(list, int)):
+    print('repr', repr(expr))
+for expr in (int | str, int | None, int | typing.GenericAlias(list, int)):
+    print('str', str(expr))
+print('types', type(int | str) is types.UnionType, isinstance(int | str, types.UnionType), get_origin(int | str).__name__, tuple(arg.__name__ for arg in get_args(int | str)))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
