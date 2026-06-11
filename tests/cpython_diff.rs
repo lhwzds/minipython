@@ -4574,6 +4574,101 @@ for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: ty
 }
 
 #[test]
+fn cpython_types_function_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
+        name: "types-function-type",
+        source: r#"import types
+def ex(a, b):
+    return a + b
+func = types.FunctionType(ex.__code__, {}, 'func', (2,), None)
+print(func(4), func.__name__, func.__qualname__, func.__module__, type(func).__name__)
+print(func.__defaults__)
+print(type(func) is types.FunctionType, isinstance(func, types.FunctionType), func.__class__ is types.FunctionType)
+func2 = types.FunctionType(ex.__code__, {}, 'func', None, None)
+print(func2.__defaults__)
+func3 = types.FunctionType(ex.__code__, {'__name__': 'mod'}, None, (1,), None)
+print(func3(5), func3.__name__, func3.__qualname__, func3.__module__)
+func4 = types.FunctionType(ex.__code__, {}, 'func', (0, 1, 2), None)
+print(func4.__defaults__)
+for expr in [lambda: types.FunctionType(1, {}, 'func', (1,), None), lambda: types.FunctionType(ex.__code__, 1, 'func', (1,), None), lambda: types.FunctionType(ex.__code__, {}, 1, (1,), None), lambda: types.FunctionType(ex.__code__, {}, 'func', 1, None)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__, 'arg' in str(error) or 'closure' in str(error))"#,
+    });
+}
+
+#[test]
+fn cpython_types_code_traceback_type_aliases_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests CodeType/TracebackType aliases",
+        name: "types-code-traceback-type-aliases",
+        source: r#"import types
+def sample():
+    return 1
+code = sample.__code__
+print(type(code).__name__, type(code) is types.CodeType, isinstance(code, types.CodeType), code.__class__ is types.CodeType)
+print(types.CodeType.__name__, types.CodeType.__module__, types.CodeType.__qualname__)
+try:
+    raise OSError
+except OSError as error:
+    tb = error.__traceback__
+print(type(tb).__name__, type(tb) is types.TracebackType, isinstance(tb, types.TracebackType), tb.__class__ is types.TracebackType)
+print(types.TracebackType.__name__, types.TracebackType.__module__, types.TracebackType.__qualname__)"#,
+    });
+}
+
+#[test]
+fn cpython_types_runtime_type_aliases_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests runtime type aliases",
+        name: "types-runtime-type-aliases",
+        source: r#"import types
+def f(self):
+    return self
+lam = lambda: None
+def gen():
+    yield 1
+async def coro():
+    return 1
+async def agen():
+    yield 1
+class C:
+    def m(self):
+        return 'method'
+coro_obj = coro()
+agen_obj = agen()
+samples = [
+    ('function', f, types.FunctionType),
+    ('lambda', lam, types.LambdaType),
+    ('generator', gen(), types.GeneratorType),
+    ('coroutine', coro_obj, types.CoroutineType),
+    ('async_generator', agen_obj, types.AsyncGeneratorType),
+]
+for label, value, typ in samples:
+    print(label, type(value).__name__, type(value) is typ, isinstance(value, typ), value.__class__ is typ)
+print(types.LambdaType is types.FunctionType)
+print(type(len).__name__, type(len) is types.BuiltinFunctionType, isinstance(len, types.BuiltinFunctionType))
+print(type([].append).__name__, type([].append) is types.BuiltinMethodType, isinstance([].append, types.BuiltinMethodType))
+bound = C().m
+print(type(bound).__name__, type(bound) is types.MethodType, isinstance(bound, types.MethodType), bound.__class__ is types.MethodType)
+obj = C()
+constructed = types.MethodType(f, obj)
+print(constructed.__func__ is f, constructed.__self__ is obj, constructed() is obj)
+for alias in [types.GeneratorType, types.CoroutineType, types.AsyncGeneratorType, types.BuiltinFunctionType, types.BuiltinMethodType, types.MethodType]:
+    print(alias.__name__, alias.__module__, alias.__qualname__)
+required = ('FunctionType', 'LambdaType', 'GeneratorType', 'CoroutineType', 'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'MethodType')
+print(all(name in types.__all__ for name in required))
+for expr in [lambda: types.MethodType(), lambda: types.MethodType(f), lambda: types.MethodType(f, obj, 1), lambda: types.MethodType(1, obj), lambda: types.MethodType(f, None), lambda: types.MethodType(function=f, instance=obj)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_exact_dict_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::MappingProxyTests exact dict public subset",

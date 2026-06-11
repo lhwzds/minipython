@@ -3573,6 +3573,9 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_types_singleton_type_aliases_diff_subset",
         "cpython_types_module_type_diff_subset",
+        "cpython_types_function_type_diff_subset",
+        "cpython_types_code_traceback_type_aliases_diff_subset",
+        "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
