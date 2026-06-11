@@ -4940,6 +4940,25 @@ print(sorted(e.items()))"#,
 }
 
 #[test]
+fn cpython_collections_counter_copy_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter copy subclass subset",
+        name: "collections-counter-copy-subclass",
+        source: r#"from collections import Counter
+class MyCounter(Counter):
+    pass
+c = MyCounter('abracadabra')
+d = c.copy()
+print(type(d) is MyCounter)
+print(isinstance(d, Counter), isinstance(d, MyCounter))
+print(d == c, d is c)
+print(d['missing'])
+d['a'] += 10
+print(c['a'], d['a'])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",

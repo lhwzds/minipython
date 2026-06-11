@@ -2644,6 +2644,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_init_update_subset",
             "cpython_collections_counter_repr_nonsortable_subset",
             "cpython_collections_counter_subtract_unary_subset",
+            "cpython_collections_counter_copy_subclass_subset",
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_namedtuple_public_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
@@ -2723,6 +2724,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_counter_subtract_unary_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subtract/unary behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_copy_subclass_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter subclass copying"
     );
     assert!(
         row.diff_evidence
