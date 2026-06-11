@@ -465,8 +465,8 @@ fn cpython_json_loads_dumps_diff_subset() {
 import math
 from collections import namedtuple
 from enum import IntEnum
-print(json.loads.__name__, json.loads.__module__)
-print(json.dumps.__name__, json.dumps.__module__)
+print(json.loads.__name__, json.loads.__qualname__, json.loads.__module__)
+print(json.dumps.__name__, json.dumps.__qualname__, json.dumps.__module__)
 source = '{"a": 1, "b": [true, false, null], "c": "x\\ny"}'
 value = json.loads(source)
 print(value)
