@@ -1216,6 +1216,46 @@ fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
 }
 
 #[test]
+fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
+    let diff_name = "cpython_memoryview_rejection_and_hash_diff_subset";
+    let runtime_subsets = [
+        "cpython_memoryview_copy_rejection_subset",
+        "cpython_memoryview_pickle_rejection_subset",
+        "cpython_memoryview_hash_release_cache_subset",
+    ];
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview rejection/hash direct CPython diff evidence must exist"
+    );
+
+    for subset in runtime_subsets {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "memoryview runtime subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset),
+            "coverage document must mention memoryview runtime subset `{subset}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must mention memoryview runtime subset `{subset}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("copy rejection")
+                && document.contains("pickle rejection")
+                && document.contains("hash/release-cache"),
+            "memoryview docs must explain that `{diff_name}` covers copy, pickle, and hash/release-cache behavior"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_base_methods_are_tracked() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let expected_count = python_test_class_method_counts(&source)
@@ -1246,6 +1286,44 @@ fn cpython_test_manifest_bytes_base_methods_are_tracked() {
         missing.is_empty(),
         "BaseBytesTest methods are not tracked in manifest evidence: {missing:?}"
     );
+}
+
+#[test]
+fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
+    let diff_name = "cpython_bytes_basics_and_empty_index_diff_subset";
+    let runtime_subsets = [
+        "cpython_bytes_basics_and_ord_subset",
+        "cpython_bytes_empty_sequence_index_subset",
+    ];
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes basics direct CPython diff evidence must exist"
+    );
+
+    for subset in runtime_subsets {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "bytes runtime subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset),
+            "coverage document must mention bytes runtime subset `{subset}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must mention bytes runtime subset `{subset}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("empty")
+                && document.contains("[0, 65, 127, 128, 255]"),
+            "bytes docs must explain that `{diff_name}` covers one-byte ord samples and empty-index behavior"
+        );
+    }
 }
 
 #[test]

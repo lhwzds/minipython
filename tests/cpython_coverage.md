@@ -1688,7 +1688,8 @@ Recent runtime migration notes:
   `cpython_bytes_basics_and_ord_subset`, covering CPython
   `BaseBytesTest::test_basics` and `test_ord` public behavior for exact
   bytes/bytearray type and `__class__` identity plus `ord()` over one-byte
-  slices at representative byte boundaries. Direct CPython diff evidence is in
+  slices at representative byte boundaries `[0, 65, 127, 128, 255]`. Direct
+  CPython diff evidence is in
   `cpython_bytes_basics_and_empty_index_diff_subset`, which also covers empty
   sequence index-miss normalization.
 - `STRING_RUNTIME` also includes
