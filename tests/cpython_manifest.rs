@@ -4318,6 +4318,61 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
 }
 
 #[test]
+fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
+    let diff_name = "cpython_program_output_parity_smoke_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_grammar_additive_ops_subset",
+        "cpython_grammar_multiplicative_ops_subset",
+        "cpython_grammar_unary_ops_subset",
+        "cpython_grammar_bitwise_and_shift_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "grammar operator runtime subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "operator-precedence-and-associativity",
+        "1 & 1",
+        "1 ^ 1",
+        "1 | 1",
+        "1 << 1",
+        "8 >> 1",
+        "1 - 1 - 1",
+        "1 / 1 * 1 % 1",
+        "~1",
+        "---1",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "program output parity smoke diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("bitwise")
+                && document.contains("shift")
+                && document.contains("additive")
+                && document.contains("multiplicative")
+                && document.contains("unary"),
+            "operator docs must link `{diff_name}` to bitwise, shift, additive, multiplicative, and unary operator coverage"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     let methods =
         method_audit_methods("## `Lib/test/test_syntax.py::SyntaxWarningTest` Method Audit");
