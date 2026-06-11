@@ -1757,6 +1757,63 @@ print(calls)"#,
 }
 
 #[test]
+fn cpython_functools_singledispatch_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py singledispatch public stable subset",
+        name: "functools-singledispatch",
+        source: r#"from functools import singledispatch
+from collections.abc import Sized, MutableMapping, MutableSequence
+
+@singledispatch
+def g(obj):
+    return 'base:' + type(obj).__name__
+def g_int(i):
+    return 'int:' + str(i)
+g.register(int, g_int)
+print(g('x'))
+print(g(5), g(True), g([1, 2]))
+print(g.dispatch(int) is g_int, g.dispatch(object) is g.dispatch(str))
+
+@g.register(str)
+def g_str(s):
+    return 'str:' + s
+print(g('x'), g.dispatch(str) is g_str)
+
+class A: pass
+class C(A): pass
+class B(A): pass
+class D(C, B): pass
+def g_a(a): return 'A'
+def g_b(b): return 'B'
+g.register(A, g_a)
+g.register(B, g_b)
+print(g(A()), g(B()), g(C()), g(D()))
+
+@singledispatch
+def h(obj):
+    'Simple test'
+    return 'base'
+print(h.__name__, h.__doc__, h.__wrapped__(None))
+print(callable(h), type(h.registry).__name__, h.registry[object] is h.dispatch(object))
+h.register(Sized, lambda obj: 'sized')
+print(h({}), h([]), h(()))
+h.register(MutableMapping, lambda obj: 'mapping')
+h.register(MutableSequence, lambda obj: 'sequence')
+h.register(tuple, lambda obj: 'tuple')
+print(h({}), h([]), h(()))
+print(h.dispatch(dict)({}), h.dispatch(list)([]), h.dispatch(tuple)(()))
+print(h._clear_cache())
+print(singledispatch(42).dispatch(object))
+print(h.register(float, 42))
+try:
+    h(1.5)
+except TypeError as error:
+    print(error.__class__.__name__)
+print('done')"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",

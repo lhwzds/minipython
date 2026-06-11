@@ -64,6 +64,7 @@ Recent runtime migration notes:
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
   `cpython_functools_cached_property_diff_subset`,
+  `cpython_functools_singledispatch_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -585,6 +586,7 @@ Recent runtime migration notes:
   keyword `initial` binding, which stays out of the default diff because older
   system CPython oracles do not expose that keyword.
 - The bundled `functools` module also includes
+  `cpython_functools_singledispatch_diff_subset` and
   `cpython_functools_singledispatch_subset`, covering CPython
   `test_functools.py::TestSingleDispatch` public wrapper behavior, explicit
   type registration, decorator registration, `dispatch()` identity, registry
@@ -593,7 +595,10 @@ Recent runtime migration notes:
   registration over `Sized`, `MutableMapping`, and `MutableSequence`, no-op
   `_clear_cache()`, annotation-inferred registration, PEP 604 and
   `typing.Union` registration, lazy failure for non-callable implementations,
-  and TypeError rejection for non-class registration/dispatch keys.
+  and TypeError rejection for non-class registration/dispatch keys. The default
+  diff covers the stable explicit-registration core; current strict invalid-key
+  rejection stays in the local subset because older system CPython oracles
+  accept some of those boundary calls.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatchmethod_subset`, covering CPython
   `test_functools.py::TestSingleDispatchMethod` public descriptor behavior,
