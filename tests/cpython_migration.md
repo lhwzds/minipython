@@ -965,6 +965,13 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `cpython_memoryview_release_during_index_read_diff_subset` directly compares
   the read/getitem portion against CPython; the stricter write-after-release
   rejection remains MiniPython subset evidence.
+- Added `cpython_memoryview_bytesio_readinto_subset`, migrating the in-memory
+  `io.BytesIO.readinto()` slice from CPython
+  `Lib/test/test_memoryview.py::AbstractMemoryTests::test_writable_readonly`:
+  writable `bytearray` and bytearray-backed memoryview targets are filled,
+  read-only bytes-backed targets are rejected, stream position advances, and
+  `initial_bytes=` construction works. Direct CPython diff evidence is in
+  `cpython_memoryview_bytesio_readinto_diff_subset`.
 - Added `cpython_memoryview_weakref_live_subset`, migrating the live-reference
   slice of CPython
   `Lib/test/test_memoryview.py::AbstractMemoryTests::test_weakref`: supported
@@ -973,6 +980,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   classification works, callback arguments are accepted, and
   `callback=None` no longer raises at construction. Collection-time weakref
   clearing and callback invocation remain tied to the broader GC weakref model.
+  Direct CPython diff evidence is in
+  `cpython_memoryview_weakref_live_diff_subset`.
 - Added `cpython_weakref_ref_supported_target_matrix_subset`, a first-pass
   public `weakref.ref()` construction matrix aligned with CPython
   `Lib/test/test_weakref.py`: MiniPython now rejects weak references to

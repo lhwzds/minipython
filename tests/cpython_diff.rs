@@ -8266,6 +8266,60 @@ print('slice-method', list(m.__getitem__(slice(None, MyIndex()))), ba is not Non
 }
 
 #[test]
+fn cpython_memoryview_bytesio_readinto_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py writable/read-only BytesIO.readinto public in-memory subset",
+        name: "memoryview-bytesio-readinto",
+        source: r#"import io
+for target in [bytearray(b'abc'), memoryview(bytearray(b'abc'))]:
+    bio = io.BytesIO(b'XYZW')
+    n = bio.readinto(target)
+    print(type(target).__name__, n, bytes(target))
+for target in [b'abc', memoryview(b'abc')]:
+    bio = io.BytesIO(b'XYZW')
+    try:
+        bio.readinto(target)
+    except TypeError as error:
+        print(type(target).__name__, error.__class__.__name__)
+bio = io.BytesIO(b'XYZW')
+ba = bytearray(b'abc')
+print(bio.readinto(ba), ba, bio.readinto(ba), ba, bio.readinto(ba), ba)
+for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:
+    bio = io.BytesIO() if source is None else io.BytesIO(source)
+    target = bytearray(4)
+    print(type(bio).__name__, bio.readinto(target), target)
+for label, callback in [
+    ('int', lambda: io.BytesIO(123)),
+    ('two', lambda: io.BytesIO(b'a', b'b')),
+    ('kw', lambda: io.BytesIO(initial_bytes=b'ab')),
+    ('dup', lambda: io.BytesIO(b'a', initial_bytes=b'b')),
+]:
+    try:
+        obj = callback()
+        target = bytearray(3)
+        print(label, 'ok', obj.readinto(target), target)
+    except TypeError as error:
+        print(label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_weakref_live_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py live weakref construction public subset",
+        name: "memoryview-weakref-live",
+        source: r#"import weakref
+for source in [b'abcdef', bytearray(b'abcdef')]:
+    m = memoryview(source)
+    seen = []
+    def callback(wr, source=source):
+        seen.append(source)
+    refs = [weakref.ref(m), weakref.ref(m, callback), weakref.ref(m, None)]
+    print(type(source).__name__, all(ref() is m for ref in refs), all(callable(ref) for ref in refs), all(isinstance(ref, weakref.ReferenceType) for ref in refs), len(seen))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

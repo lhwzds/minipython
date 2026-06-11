@@ -2983,13 +2983,16 @@ Recent runtime migration notes:
   slice where `io.BytesIO.readinto()` fills writable `bytearray` and
   bytearray-backed `memoryview` targets, rejects read-only bytes-backed
   targets, advances the stream position, and accepts `initial_bytes=`.
+  `cpython_memoryview_bytesio_readinto_diff_subset` directly compares this
+  in-memory protocol surface against CPython.
 - `RUNTIME_BUILTINS` also includes `cpython_memoryview_weakref_live_subset`,
   covering the live-reference slice of CPython
   `test_memoryview.py::AbstractMemoryTests::test_weakref`: bytes- and
   bytearray-backed memoryviews can be wrapped by `weakref.ref()`, refs remain
   callable, calls return the live view, `ReferenceType` classification works,
   callback arguments are accepted, and `callback=None` is valid at
-  construction time.
+  construction time. `cpython_memoryview_weakref_live_diff_subset` directly
+  compares this live-reference construction surface against CPython.
 - `RUNTIME_BUILTINS` also includes
   `cpython_weakref_ref_supported_target_matrix_subset`, covering first-pass
   CPython public `weakref.ref()` construction behavior: unsupported built-in
