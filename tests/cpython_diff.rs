@@ -3245,6 +3245,29 @@ print(all(name in operator.__all__ for name in stable_exports), len(stable_expor
 }
 
 #[test]
+fn cpython_operator_helper_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorPickleTestCase repr public subset",
+        name: "operator-helper-repr",
+        source: r#"import operator
+helpers = [
+    operator.attrgetter('x'),
+    operator.attrgetter('x', 'y', 't.u.v'),
+    operator.itemgetter(2),
+    operator.itemgetter(2, 0, 4),
+    operator.itemgetter(slice(2, 4)),
+    operator.methodcaller('bar'),
+    operator.methodcaller('foo', 1, 2),
+    operator.methodcaller('bar', f=5),
+    operator.methodcaller('baz', self='eggs', name='spam'),
+]
+for helper in helpers:
+    print(repr(helper))
+    print(str(helper) == repr(helper))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
