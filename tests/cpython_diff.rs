@@ -5813,6 +5813,31 @@ print('after-new', isinstance(hash(A | B), int), single is A)"#,
 }
 
 #[test]
+fn cpython_types_union_newtype_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nUserId = typing.NewType('UserId', int)\nunion = UserId | str\nprint(union == typing.Union[UserId, str])",
+    )
+    .expect("failed to probe CPython union NewType support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union NewType diff: CPython oracle lacks PEP 604 NewType union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests NewType public subset",
+        name: "types-union-newtype",
+        source: r#"import typing
+UserId = typing.NewType('UserId', int)
+print('meta', UserId.__name__, UserId.__module__, UserId.__supertype__ is int, type(UserId).__name__, type(UserId).__module__)
+print('call', UserId(42), UserId('x'))
+union = UserId | str
+print('union', union == typing.Union[UserId, str], repr(union), tuple(arg.__name__ for arg in union.__args__))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

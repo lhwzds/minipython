@@ -1003,7 +1003,8 @@ Recent runtime migration notes:
   `cpython_types_union_dynamic_hashability_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_newtype_subset`, covering public `typing.NewType`
-  metadata, call pass-through behavior, and PEP 604 union equality.
+  metadata, call pass-through behavior, and PEP 604 union equality. Direct
+  output parity is guarded by `cpython_types_union_newtype_diff_subset`.
 - The bundled `types` module also includes `cpython_types_union_io_subset`,
   covering public `typing.IO` metadata, `typing.IO | str` equality with
   `typing.Union[typing.IO, str]`, `typing.IO[str]` generic alias union
