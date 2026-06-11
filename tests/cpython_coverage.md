@@ -56,6 +56,7 @@ Recent runtime migration notes:
   `cpython_math_prod_diff_subset`,
   `cpython_math_integer_diff_subset`,
   `cpython_math_sqrt_diff_subset`,
+  `cpython_math_fabs_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -416,10 +417,11 @@ Recent runtime migration notes:
   `start`, integer/float products, sequence repetition, zero, NaN/inf
   propagation, type preservation, and TypeError cases supported by the current
   runtime.
-- The bundled `math` module also includes `cpython_math_fabs_subset`, covering
-  CPython `test_math.py::MathTests::testFabs` real-number conversion, float
-  result, signed-zero normalization, NaN/inf propagation, huge-integer overflow,
-  and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_fabs_diff_subset` and
+  `cpython_math_fabs_subset`, covering CPython
+  `test_math.py::MathTests::testFabs` real-number conversion, float result,
+  signed-zero normalization, NaN/inf propagation, huge-integer overflow, and
+  TypeError cases supported by the current runtime.
 - The bundled `math` module also includes `cpython_math_fma_subset`, covering
   CPython `test_math.py::FMATests` public fused multiply-add behavior,
   single-round examples, signed-zero results, NaN propagation, infinity

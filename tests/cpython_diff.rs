@@ -1305,6 +1305,33 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_fabs_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testFabs public stable subset",
+        name: "math-fabs",
+        source: r#"import math
+print(math.fabs(-1), math.fabs(0), math.fabs(1))
+print(math.fabs(-3.5), math.fabs(3.5), math.fabs(True), math.fabs(False))
+print(math.copysign(1.0, math.fabs(-0.0)))
+print(math.isinf(math.fabs(float('-inf'))), math.fabs(float('-inf')) > 0)
+print(math.isnan(math.fabs(float('nan'))))
+print(type(math.fabs(1)).__name__, type(math.fabs(1.0)).__name__)
+for expr in [
+    lambda: math.fabs(),
+    lambda: math.fabs(1, 2),
+    lambda: math.fabs('x'),
+    lambda: math.fabs(1+2j),
+    lambda: math.fabs(10**10000),
+    lambda: math.fabs(value=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
