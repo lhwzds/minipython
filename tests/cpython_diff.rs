@@ -4821,6 +4821,67 @@ for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2
 }
 
 #[test]
+fn cpython_abs_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_abs",
+        name: "abs-builtin",
+        source: r#"print(abs(0), abs(1234), abs(-1234), abs(True), abs(False))
+print(abs(0.0), abs(3.14), abs(-3.14), abs(3 + 4j))
+class AbsClass:
+    def __abs__(self):
+        return -5
+print(abs(AbsClass()))
+for expr in [lambda: abs(), lambda: abs('a'), lambda: abs(None), lambda: abs(1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_round_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_round / ::test_round_large / ::test_bug_27936",
+        name: "round-builtin",
+        source: r#"print(round(0.0), round(1.0), round(10.0), round(1000000000.0), round(1e20))
+print(round(-1.0), round(-10.0), round(-1000000000.0), round(-1e20))
+print(round(0.1), round(1.1), round(10.1), round(1000000000.1))
+print(round(-1.1), round(-10.1), round(-1000000000.1))
+print(round(0.9), round(9.9), round(999999999.9))
+print(round(-0.9), round(-9.9), round(-999999999.9))
+print(round(5.5), round(6.5), round(-5.5), round(-6.5))
+print(round(-8.0, -1), type(round(-8.0, -1)).__name__)
+print(type(round(-8.0, 0)).__name__, type(round(-8.0, 1)).__name__)
+print(round(15.0, -1), round(25.0, -1), round(35.0, -1))
+print(round(0), round(8), round(-8), type(round(0)).__name__)
+print(round(-8, -1), type(round(-8, -1)).__name__)
+print(round(-8, 0), type(round(-8, 0)).__name__)
+print(round(-8, 1), type(round(-8, 1)).__name__)
+print(round(1234, None), round(1234.56, None), type(round(1234.56, None)).__name__)
+print(round(1234.56, 1), round(1234.56, -1))
+print(round(number=-8.0, ndigits=-1))
+class TestRound:
+    def __round__(self):
+        return 23
+class TestRoundWithDigits:
+    def __round__(self, ndigits):
+        return ndigits
+print(round(TestRound()))
+print(round(TestRoundWithDigits(), 4))
+class TestNoRound:
+    pass
+t = TestNoRound()
+t.__round__ = lambda *args: args
+for expr in [lambda: round(), lambda: round(1, 2, 3), lambda: round(TestNoRound()), lambda: round(t), lambda: round(t, 0), lambda: round(1.2, 'x')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
