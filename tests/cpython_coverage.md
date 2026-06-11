@@ -1558,7 +1558,9 @@ Recent runtime migration notes:
   partition/rpartition results, and no-op mutable bytearray methods including
   `zfill()`, `rjust()`, `ljust()`, `center()`, `split()`, `rsplit()`,
   `splitlines()`, `replace(b'', b'')`, and one-item `join()`. Direct CPython
-  diff evidence for the return-copy slice is in
+  diff evidence for the non-mutating copy-buffer slice is in
+  `cpython_bytearray_nonmutating_copy_buffers_diff_subset`; direct diff
+  evidence for the return-copy slice is in
   `cpython_bytearray_pep3137_returns_new_copy_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_join_custom_iterator_diff_subset` and

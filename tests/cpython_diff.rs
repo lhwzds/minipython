@@ -8960,6 +8960,37 @@ print('join', val == newval, val is newval)"#,
 }
 
 #[test]
+fn cpython_bytearray_nonmutating_copy_buffers_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_copied and ::test_partition_bytearray_doesnt_share_nullstring",
+        name: "bytearray-nonmutating-copy-buffers",
+        source: r#"b = bytearray(b'abc')
+r = b.replace(b'abc', b'cde', 0)
+print(r, r is b)
+r += b'!'
+print(b, r)
+t = bytearray([i for i in range(256)])
+x = bytearray(b'')
+y = x.translate(t)
+print(y, y is x)
+y += b'!'
+print(x, y)
+a, b, c = bytearray(b'x').partition(b'y')
+print(a, b, c, b is c)
+b += b'!'
+print(b, c)
+a, b, c = bytearray(b'x').partition(b'y')
+print(b, c)
+b, c, a = bytearray(b'x').rpartition(b'y')
+print(a, b, c, b is c)
+b += b'!'
+print(b, c)
+c, b, a = bytearray(b'x').rpartition(b'y')
+print(b, c)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

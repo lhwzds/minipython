@@ -3571,8 +3571,8 @@ Completed in the bytearray non-mutating copy-buffer pass:
 - Covered `bytearray.partition()` and `bytearray.rpartition()` returning
   independent empty bytearray objects when the separator is absent, so later
   in-place mutation of one empty result does not affect the other.
-- Added the same scenario to `tests/cpython_diff.rs` as a CPython oracle parity
-  case named `bytearray-nonmutating-copy-buffer-semantics`.
+- Direct CPython diff evidence is in
+  `cpython_bytearray_nonmutating_copy_buffers_diff_subset`.
 
 Completed in the bytearray PEP 3137 return-copy pass:
 
