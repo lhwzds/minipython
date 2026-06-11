@@ -4287,6 +4287,37 @@ fn cpython_test_manifest_grammar_tests_method_audit_is_complete() {
 }
 
 #[test]
+fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
+    for (subset, diff) in [
+        (
+            "cpython_tokenize_multiplicative_operators_subset",
+            "cpython_tokenize_multiplicative_operators_diff_subset",
+        ),
+        (
+            "cpython_tokenize_unary_operators_subset",
+            "cpython_tokenize_unary_operators_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "tokenizer operator runtime subset `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "tokenizer operator CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(diff),
+            "coverage document must mention tokenizer operator diff evidence `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(diff),
+            "migration document must mention tokenizer operator diff evidence `{diff}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     let methods =
         method_audit_methods("## `Lib/test/test_syntax.py::SyntaxWarningTest` Method Audit");

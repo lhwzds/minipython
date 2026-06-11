@@ -8018,8 +8018,11 @@ Completed in the compile-from-public-AST pass:
   `GrammarTests::test_multiplicative_ops`, and `GrammarTests::test_unary_ops`.
   Added the exact method-level assignment shapes for bitwise, shift, additive,
   multiplicative, and unary expressions, plus executable value checks for each
-  operator family. The method audit now marks all five operator methods as
-  ported.
+  operator family. Direct CPython output parity for the tokenizer-originated
+  multiplicative and unary operator spellings is covered by
+  `cpython_tokenize_multiplicative_operators_diff_subset` and
+  `cpython_tokenize_unary_operators_diff_subset`. The method audit now marks
+  all five operator methods as ported.
 - Audited CPython `GrammarTests::test_selectors` and added a method-level
   executable selector slice for module attribute calls, `sys.path[0]`,
   `sys.modules['time'].time()`, string index/slice forms, and tuple-key dict

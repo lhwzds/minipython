@@ -3836,22 +3836,22 @@ names like `from ._threading_handler import ...`.
 | `SEMI` | supported | `lexes_semicolon`, `cpython_grammar_semicolon_simple_statements_subset` |
 | `PLUS` | supported | `lexes_plus`, `cpython_grammar_additive_ops_subset` |
 | `MINUS` | supported | `lexes_arithmetic_operators`, `cpython_grammar_additive_ops_subset` |
-| `STAR` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset` |
-| `SLASH` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset` |
+| `STAR` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset` |
+| `SLASH` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset` |
 | `VBAR` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_bitwise_and_shift_subset` |
 | `AMPER` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_bitwise_and_shift_subset` |
 | `LESS` | supported | `lexes_comparison_operators`, `cpython_grammar_ordering_comparison_subset` |
 | `GREATER` | supported | `lexes_comparison_operators`, `cpython_grammar_ordering_comparison_subset` |
 | `EQUAL` | supported | `lexes_equal`, `assigns_and_reads_variable` |
 | `DOT` | supported | `lexes_attribute_dot_after_parenthesized_number`, `reports_attribute_errors` |
-| `PERCENT` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset` |
+| `PERCENT` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset` |
 | `LBRACE` | supported | `lexes_dict_braces`, `cpython_ast_dict_literal_subset`, `cpython_dict_display_unpacking_subset` |
 | `RBRACE` | supported | `lexes_dict_braces`, `cpython_ast_dict_literal_subset`, `cpython_dict_display_unpacking_subset` |
 | `EQEQUAL` | supported | `lexes_equal_equal`, `cpython_grammar_equal_comparison_subset` |
 | `NOTEQUAL` | supported | `lexes_comparison_operators`, `cpython_grammar_equal_comparison_subset` |
 | `LESSEQUAL` | supported | `lexes_comparison_operators`, `cpython_grammar_ordering_comparison_subset` |
 | `GREATEREQUAL` | supported | `lexes_comparison_operators`, `cpython_grammar_ordering_comparison_subset` |
-| `TILDE` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_unary_ops_subset` |
+| `TILDE` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_unary_ops_subset`, `cpython_tokenize_unary_operators_diff_subset` |
 | `CIRCUMFLEX` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_bitwise_and_shift_subset` |
 | `LEFTSHIFT` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_bitwise_and_shift_subset` |
 | `RIGHTSHIFT` | supported | `lexes_bitwise_and_shift_operators`, `cpython_grammar_bitwise_and_shift_subset` |
@@ -3867,7 +3867,7 @@ names like `from ._threading_handler import ...`.
 | `LEFTSHIFTEQUAL` | supported | `lexes_bitwise_augmented_assignment_operators`, `cpython_ast_bitwise_augmented_assignment_subset` |
 | `RIGHTSHIFTEQUAL` | supported | `lexes_bitwise_augmented_assignment_operators`, `cpython_ast_bitwise_augmented_assignment_subset` |
 | `DOUBLESTAREQUAL` | supported | `lexes_augmented_assignment_operators`, `cpython_ast_augmented_assignment_subset` |
-| `DOUBLESLASH` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset` |
+| `DOUBLESLASH` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset` |
 | `DOUBLESLASHEQUAL` | supported | `lexes_augmented_assignment_operators`, `cpython_ast_augmented_assignment_subset` |
 | `AT` | supported | `lexes_decorator_at_sign`, `cpython_tokenize_exact_type_subset` including CPython pathological trailing whitespace, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods` |
 | `ATEQUAL` | supported | `lexes_matrix_multiply_and_ellipsis_tokens`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods` |
@@ -4091,8 +4091,8 @@ names like `from ._threading_handler import ...`.
 | `bitwise_and` | supported | `cpython_grammar_bitwise_and_shift_subset`; CPython differential parity for bitwise operator precedence is covered by `cpython_program_output_parity_smoke_subset` |
 | `shift_expr` | supported | `cpython_grammar_bitwise_and_shift_subset`; CPython differential parity for shift associativity is covered by `cpython_program_output_parity_smoke_subset` |
 | `sum` | supported | `cpython_grammar_additive_ops_subset`, `runs_arithmetic_precedence`, and CPython differential parity for left-associative additive chains in `cpython_program_output_parity_smoke_subset` |
-| `term` | supported | Multiplication, division, floor division, modulo, matrix multiplication, and left-associative term chains are covered by `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods`, `runs_division_modulo_and_power`, `runs_sequence_repetition_and_basic_len_list_builtins`, `reports_arithmetic_type_errors`, `reports_division_by_zero`, and CPython differential parity for multiplicative and matrix-multiply special-method behavior in `cpython_program_output_parity_smoke_subset` |
-| `factor` | supported | `cpython_grammar_unary_ops_subset`, `runs_unary_arithmetic`, and CPython differential parity for unary precedence in `cpython_program_output_parity_smoke_subset` |
+| `term` | supported | Multiplication, division, floor division, modulo, matrix multiplication, and left-associative term chains are covered by `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods`, `runs_division_modulo_and_power`, `runs_sequence_repetition_and_basic_len_list_builtins`, `reports_arithmetic_type_errors`, `reports_division_by_zero`, and CPython differential parity for matrix-multiply special-method behavior in `cpython_program_output_parity_smoke_subset` |
+| `factor` | supported | `cpython_grammar_unary_ops_subset`, `cpython_tokenize_unary_operators_diff_subset`, `runs_unary_arithmetic`, and CPython differential parity for unary precedence in `cpython_program_output_parity_smoke_subset` |
 | `invalid_arithmetic` | supported | Unparenthesized `not` after `+`, `-`, `*`, `/`, `%`, `//`, and `@` is rejected by `cpython_invalid_arithmetic_and_factor_syntax_subset` |
 | `invalid_factor` | supported | Unparenthesized `not` after unary `+`, `-`, and `~` is rejected by `cpython_invalid_arithmetic_and_factor_syntax_subset` |
 | `power` | supported | `cpython_grammar_power_and_paren_precedence_subset`, `runs_division_modulo_and_power` |

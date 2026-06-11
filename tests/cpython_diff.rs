@@ -568,6 +568,24 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
 }
 
 #[test]
+fn cpython_tokenize_multiplicative_operators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::test_multiplicative public execution subset",
+        name: "tokenize-multiplicative-operators",
+        source: "print(8 // 2 * 3 / 4)\nprint(7 % 4)",
+    });
+}
+
+#[test]
+fn cpython_tokenize_unary_operators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::test_unary public execution subset",
+        name: "tokenize-unary-operators",
+        source: "print(-1, +1, -2 ** 2)",
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",
