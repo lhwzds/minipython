@@ -2383,6 +2383,14 @@ Recent runtime migration notes:
   ABC subclassing, and CPython's non-structural view behavior. Direct CPython
   diff evidence is in `cpython_collections_abc_mapping_view_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_mutable_sequence_subset`, covering
+  `MutableSequence` registrations for list, bytearray, `collections.deque`,
+  and `array.array`, inheritance through `Sequence` and related ABCs,
+  CPython's non-structural protocol behavior, explicit subclass mixins, and
+  self-extension. Direct CPython diff evidence is in capability-gated
+  `cpython_collections_abc_mutable_sequence_diff_subset` for CPython oracles
+  that expose the current `array.array` registration.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.

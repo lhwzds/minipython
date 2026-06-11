@@ -2839,6 +2839,82 @@ print(isinstance(Structural(), MappingView), issubclass(Structural, MappingView)
 }
 
 #[test]
+fn cpython_collections_abc_mutable_sequence_diff_subset() {
+    let probe = run_cpython(
+        "import array\nfrom collections.abc import MutableSequence\nprint(issubclass(array.array, MutableSequence))",
+    )
+    .expect("failed to run CPython MutableSequence array registration probe");
+    let probe_stdout = String::from_utf8(probe.stdout)
+        .expect("CPython MutableSequence array registration probe emitted non-UTF-8");
+    if probe_stdout.trim() != "True" {
+        eprintln!("skipping MutableSequence diff: CPython oracle lacks array.array registration");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py MutableSequence ABC public runtime subset",
+        name: "collections-abc-mutable-sequence",
+        source: r#"from collections.abc import MutableSequence, Sequence, Reversible
+from collections.abc import Collection, Sized, Iterable, Container
+from collections import deque
+import array
+non_samples = [(), '', b'', range(0), {}, set(), None, 42]
+print([isinstance(value, MutableSequence) for value in non_samples])
+print(issubclass(tuple, MutableSequence), issubclass(str, MutableSequence), issubclass(bytes, MutableSequence), issubclass(range, MutableSequence))
+samples = [[], bytearray(), deque()]
+print([isinstance(value, MutableSequence) for value in samples])
+print([issubclass(type(value), MutableSequence) for value in samples])
+print(issubclass(array.array, MutableSequence), issubclass(str, MutableSequence))
+print(issubclass(MutableSequence, Sequence), issubclass(MutableSequence, Reversible), issubclass(MutableSequence, Collection), issubclass(MutableSequence, Sized), issubclass(MutableSequence, Iterable), issubclass(MutableSequence, Container))
+class ProtocolOnly:
+    def __len__(self):
+        return 0
+    def __getitem__(self, index):
+        raise IndexError
+    def __setitem__(self, index, value):
+        pass
+    def __delitem__(self, index):
+        pass
+    def insert(self, index, value):
+        pass
+print(isinstance(ProtocolOnly(), MutableSequence), issubclass(ProtocolOnly, MutableSequence))
+class MutableSequenceSubclass(MutableSequence):
+    def __init__(self):
+        self.lst = []
+    def __setitem__(self, index, value):
+        self.lst[index] = value
+    def __getitem__(self, index):
+        return self.lst[index]
+    def __len__(self):
+        return len(self.lst)
+    def __delitem__(self, index):
+        del self.lst[index]
+    def insert(self, index, value):
+        self.lst.insert(index, value)
+mss = MutableSequenceSubclass()
+mss.append(0)
+mss.extend((1, 2, 3, 4))
+print(len(mss), mss[3], list(mss))
+mss.reverse()
+print(mss[3], list(mss))
+print(mss.pop(), len(mss), list(mss))
+mss.remove(3)
+print(len(mss), list(mss))
+mss += (10, 20, 30)
+print(len(mss), mss[-1], list(mss))
+mss.clear()
+print(len(mss), list(mss))
+items = 'ABCD'
+mss2 = MutableSequenceSubclass()
+mss2.extend(items + items)
+mss.clear()
+mss.extend(items)
+mss.extend(mss)
+print(len(mss), list(mss) == list(mss2), list(mss))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
