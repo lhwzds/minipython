@@ -4816,6 +4816,22 @@ for expr in [lambda: plain_left > plain_right, lambda: plain_left >= plain_right
 }
 
 #[test]
+fn cpython_types_simple_namespace_fake_comparison_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests fake comparison subset",
+        name: "types-simple-namespace-fake-comparison",
+        source: r#"import types
+class FakeSimpleNamespace(str):
+    __class__ = types.SimpleNamespace
+for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: types.SimpleNamespace() != FakeSimpleNamespace(), lambda: types.SimpleNamespace() < FakeSimpleNamespace(), lambda: types.SimpleNamespace() <= FakeSimpleNamespace(), lambda: types.SimpleNamespace() > FakeSimpleNamespace(), lambda: types.SimpleNamespace() >= FakeSimpleNamespace()]:
+    try:
+        print(expr())
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
