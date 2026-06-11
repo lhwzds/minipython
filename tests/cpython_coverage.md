@@ -106,8 +106,8 @@ Recent runtime migration notes:
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
-  and
-  `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`.
+  `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
+  and `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -2377,6 +2377,7 @@ Recent runtime migration notes:
   first-map `pop()`, `popitem()`, `clear()`, and subclass-backed item
   assignment/deletion.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset` and
   `cpython_collections_chainmap_iter_does_not_call_getitem_subset`, covering
   CPython `TestChainMap::test_iter_not_calling_getitem_on_maps` semantics:
   ChainMap iteration over a `UserDict` subclass must use keys without invoking

@@ -2783,6 +2783,26 @@ print(d.maps, d['missing'])"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap iteration avoids map __getitem__ subset",
+        name: "collections-chainmap-iter-no-getitem",
+        source: r#"from collections import ChainMap, UserDict
+class DictWithGetItem(UserDict):
+    def __init__(self, *args, **kwds):
+        self.called = False
+        UserDict.__init__(self, *args, **kwds)
+    def __getitem__(self, item):
+        self.called = True
+        UserDict.__getitem__(self, item)
+d = DictWithGetItem(a=1)
+c = ChainMap(d)
+d.called = False
+print(set(c), d.called)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
