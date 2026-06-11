@@ -2394,6 +2394,8 @@ Recent runtime migration notes:
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
+  Direct CPython diff evidence is in
+  `cpython_collections_abc_mapping_mixins_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixin_views_subset`, covering live
   `KeysView` / `ItemsView` / `ValuesView` objects returned by explicit

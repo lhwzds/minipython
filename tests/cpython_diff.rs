@@ -2915,6 +2915,60 @@ print(len(mss), list(mss) == list(mss2), list(mss))"#,
 }
 
 #[test]
+fn cpython_collections_abc_mapping_mixins_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Mapping/MutableMapping mixin public subset",
+        name: "collections-abc-mapping-mixins",
+        source: r#"from collections.abc import Mapping, MutableMapping
+class MappingSubclass(Mapping):
+    def __init__(self, pairs=()):
+        self.store = dict(pairs)
+    def __getitem__(self, key):
+        return self.store[key]
+    def __iter__(self):
+        return iter(self.store)
+    def __len__(self):
+        return len(self.store)
+m = MappingSubclass([('red', 5), ('blue', 7)])
+print(isinstance(m, Mapping), isinstance(m, MutableMapping))
+print(m.get('red'), m.get('missing'), m.get('missing', 99))
+print(m.__contains__('red'), m.__contains__('missing'))
+print(list(m.keys()), sorted(m.values()), sorted(m.items()))
+print(m.__eq__({'blue': 7, 'red': 5}), m.__eq__({'red': 5}), m.__eq__([('red', 5)]))
+try:
+    reversed(m)
+except TypeError as error:
+    print(error.__class__.__name__)
+class MutableMappingSubclass(MutableMapping):
+    def __init__(self, pairs=()):
+        self.store = dict(pairs)
+    def __getitem__(self, key):
+        return self.store[key]
+    def __setitem__(self, key, value):
+        self.store[key] = value
+    def __delitem__(self, key):
+        del self.store[key]
+    def __iter__(self):
+        return iter(self.store)
+    def __len__(self):
+        return len(self.store)
+mm = MutableMappingSubclass()
+mm.update({'a': 1}, b=2)
+print(sorted(mm.items()))
+print(mm.setdefault('a', 9), mm.setdefault('c', 3), sorted(mm.items()))
+print(mm.pop('b'), mm.pop('missing', 'fallback'), sorted(mm.items()))
+try:
+    mm.pop('missing')
+except KeyError as error:
+    print(error.__class__.__name__)
+mm.update([('d', 4), ('e', 5)])
+print(mm.popitem(), sorted(mm.items()))
+mm.clear()
+print(len(mm), list(mm.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
