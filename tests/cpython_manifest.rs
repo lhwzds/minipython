@@ -2651,6 +2651,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_helper_function_subset",
             "cpython_collections_counter_multiset_operations_subset",
             "cpython_collections_counter_inplace_operations_subset",
+            "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_namedtuple_public_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
@@ -2766,6 +2767,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_counter_inplace_operations_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter inplace operations"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_inplace_operations_matrix_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter inplace matrix"
     );
     assert!(
         row.diff_evidence

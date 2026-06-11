@@ -5126,6 +5126,52 @@ for op in ['+=', '-=', '|=', '&=']:
 }
 
 #[test]
+fn cpython_collections_counter_inplace_operations_matrix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter inplace operations matrix subset",
+        name: "collections-counter-inplace-operations-matrix",
+        source: r#"from collections import Counter
+seed = 8675309
+def randrange(start, stop):
+    global seed
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return start + seed % (stop - start)
+def random_counter(elements, start, stop):
+    c = Counter()
+    for elem in elements:
+        c[elem] = randrange(start, stop)
+    return c
+failures = 0
+elements = 'abcd'
+ops = [
+    ('iadd', Counter.__iadd__, Counter.__add__),
+    ('isub', Counter.__isub__, Counter.__sub__),
+    ('ior', Counter.__ior__, Counter.__or__),
+    ('iand', Counter.__iand__, Counter.__and__),
+]
+for i in range(1000):
+    p = random_counter(elements, -2, 4)
+    p.update(e=1, f=-1, g=0)
+    q = random_counter(elements, -2, 4)
+    q.update(h=1, i=-1, j=0)
+    for name, inplace_op, regular_op in ops:
+        c = p.copy()
+        c_id = id(c)
+        regular_result = regular_op(c, q)
+        inplace_result = inplace_op(c, q)
+        if not inplace_result == regular_result:
+            failures = failures + 1
+        if not c == regular_result:
+            failures = failures + 1
+        if not id(inplace_result) == c_id:
+            failures = failures + 1
+        if not id(c) == c_id:
+            failures = failures + 1
+print(failures)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
