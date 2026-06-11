@@ -2536,10 +2536,12 @@ Recent runtime migration notes:
   `aclose()` mixin behavior for coroutine object type / `Awaitable` /
   `Coroutine` parity, `.send(None)` drive-to-`StopIteration`, `.close()`,
   reuse errors, raised exception types, explicit exception instances with
-  `tb=None`, real traceback-object preservation, invalid non-traceback `tb`
-  rejection, swallowed `GeneratorExit` /
+  `tb=None`, accepted real traceback-object arguments with CPython's raised
+  traceback replacement behavior, invalid non-traceback `tb` rejection,
+  swallowed `GeneratorExit` /
   `StopAsyncIteration`, close-time error propagation, and ignored-exit
-  `RuntimeError`.
+  `RuntimeError`. Direct CPython diff evidence is in
+  `cpython_collections_abc_async_generator_throw_close_mixin_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_hashable_direct_subclass_subset`, covering
   CPython's `Hashable` direct-subclass mixin behavior where

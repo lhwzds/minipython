@@ -28731,17 +28731,22 @@ impl Vm {
                         exception_value,
                         "with_traceback",
                     )?;
-                    exception_value = match self.call_value_catching(with_traceback, vec![tb])? {
-                        Ok(value) => value,
-                        Err(exception) => {
-                            done.set(true);
-                            self.raise_exception(exception, true)?;
-                            return Ok(AwaitAdvance::Raised);
-                        }
-                    };
+                    exception_value =
+                        match self.call_value_catching(with_traceback, vec![tb.clone()])? {
+                            Ok(value) => value,
+                            Err(exception) => {
+                                done.set(true);
+                                self.raise_exception(exception, true)?;
+                                return Ok(AwaitAdvance::Raised);
+                            }
+                        };
                 }
 
-                exception_from_value(exception_value)?
+                let mut exception = exception_from_value(exception_value)?;
+                if !matches!(tb, Value::None) {
+                    set_exception_traceback_attr(&mut exception.attrs, new_traceback_value());
+                }
+                exception
             }
             AwaitResume::Throw(exception) => exception,
         };

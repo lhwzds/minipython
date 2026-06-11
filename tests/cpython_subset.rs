@@ -47053,7 +47053,7 @@ fn cpython_collections_abc_async_generator_throw_close_mixin_subset() {
             "None",
             "athrow ValueError",
             "athrow explicit explicit",
-            "athrow traceback object True",
+            "athrow traceback object False",
             "athrow traceback __traceback__ must be a traceback or None",
             "close-error bad close",
             "close-runtime asynchronous generator ignored GeneratorExit",

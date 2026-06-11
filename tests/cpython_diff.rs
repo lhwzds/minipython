@@ -3398,6 +3398,90 @@ except StopIteration:
 }
 
 #[test]
+fn cpython_collections_abc_async_generator_throw_close_mixin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/_collections_abc.py::AsyncGenerator / Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncGenerator",
+        name: "collections-abc-async-generator-throw-close-mixin",
+        source: r#"from collections.abc import AsyncGenerator, Awaitable, Coroutine
+class MinimalAGen(AsyncGenerator):
+    async def asend(self, value):
+        return value
+    async def athrow(self, typ, val=None, tb=None):
+        await super().athrow(typ, val, tb)
+class FailOnClose(AsyncGenerator):
+    async def asend(self, value):
+        return value
+    async def athrow(self, *args):
+        raise ValueError('bad close')
+class IgnoreGeneratorExit(AsyncGenerator):
+    async def asend(self, value):
+        return value
+    async def athrow(self, *args):
+        pass
+def run_async(coro):
+    result = None
+    while True:
+        try:
+            coro.send(None)
+        except StopIteration as ex:
+            result = ex.args[0] if ex.args else None
+            break
+    return result
+async def run():
+    mgen = MinimalAGen()
+    abc_throw = AsyncGenerator.athrow(mgen, ValueError)
+    print(type(abc_throw).__name__, isinstance(abc_throw, Awaitable), isinstance(abc_throw, Coroutine))
+    try:
+        run_async(abc_throw)
+    except ValueError:
+        print('abc athrow ValueError')
+    abc_close = AsyncGenerator.aclose(mgen)
+    print(type(abc_close).__name__, isinstance(abc_close, Awaitable), isinstance(abc_close, Coroutine))
+    print(run_async(abc_close))
+    closed = AsyncGenerator.aclose(mgen)
+    print(closed.close())
+    try:
+        closed.send(None)
+    except RuntimeError as error:
+        print('closed reuse', error)
+    print(await mgen.aclose())
+    try:
+        await mgen.athrow(ValueError)
+    except ValueError:
+        print('athrow ValueError')
+    try:
+        await mgen.athrow(ValueError, ValueError('explicit'), None)
+    except ValueError as error:
+        print('athrow explicit', error)
+    try:
+        raise IndexError(9)
+    except Exception as error:
+        tb = error.__traceback__
+    try:
+        await mgen.athrow(ValueError, None, tb)
+    except ValueError as error:
+        print('athrow traceback object', error.__traceback__ is tb)
+    try:
+        await mgen.athrow(ValueError, None, 5)
+    except TypeError as error:
+        print('athrow traceback', error)
+    try:
+        await FailOnClose().aclose()
+    except ValueError as error:
+        print('close-error', error)
+    try:
+        await IgnoreGeneratorExit().aclose()
+    except RuntimeError as error:
+        print('close-runtime', error)
+coro = run()
+try:
+    coro.send(None)
+except StopIteration:
+    pass"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
