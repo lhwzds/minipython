@@ -1030,7 +1030,8 @@ Recent runtime migration notes:
   `cpython_types_union_literal_subset`, covering `typing.Literal[...]` union
   args, repr, deduplication, bool-vs-int distinct literal aliases, and the
   public `enum.IntEnum` literal rows that keep enum-member literals distinct
-  from equal int/bool literals while preserving enum alias identity.
+  from equal int/bool literals while preserving enum alias identity. Direct
+  output parity is guarded by `cpython_types_union_literal_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_bad_module_guard_subset`, covering the CPython
   `UnionTests` bad-metaclass-module regression path by requiring catchable

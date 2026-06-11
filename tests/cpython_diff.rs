@@ -5955,6 +5955,46 @@ print('union-chain', chain == typing.Union[int, bool, str], repr(chain), tuple(a
 }
 
 #[test]
+fn cpython_types_union_literal_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nLiteral = typing.Literal\nalias = Literal[1] | Literal[2]\nprint(tuple(repr(arg) for arg in alias.__args__))",
+    )
+    .expect("failed to probe CPython union Literal support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('typing.Literal[1]', 'typing.Literal[2]')"
+    {
+        eprintln!(
+            "skipping types union Literal diff: CPython oracle lacks PEP 604 Literal union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests Literal public subset",
+        name: "types-union-literal",
+        source: r#"import typing
+from enum import IntEnum
+Literal = typing.Literal
+print('args', tuple(repr(arg) for arg in (Literal[1] | Literal[2]).__args__))
+print('false-distinct', tuple(repr(arg) for arg in (Literal[0] | Literal[False]).__args__))
+print('true-distinct', tuple(repr(arg) for arg in (Literal[1] | Literal[True]).__args__))
+print('dedupe-int', Literal[1] | Literal[1] == Literal[1])
+print('dedupe-str', Literal['a'] | Literal['a'] == Literal['a'])
+print('repr', repr(Literal['a'] | Literal['b']))
+class Ints(IntEnum):
+    A = 0
+    B = False
+    C = 1
+    D = True
+print('enum-values', repr(Ints.A), str(Ints.A), int(Ints.A), Ints.A == 0, type(Ints.A).__name__, Ints.A.name, Ints.A.value)
+print('enum-aliases', Ints.A is Ints.B, Ints.C is Ints.D, Ints(0) is Ints.A, Ints(False) is Ints.A)
+print('enum-members', tuple((name, repr(value)) for name, value in Ints.__members__.items()))
+for left, right in ((Ints.A, 0), (Ints.B, False), (Ints.C, 1), (Ints.D, True), (Ints.A, Ints.B), (Ints.C, Ints.D)):
+    alias = Literal[left] | Literal[right]
+    print('enum-union', repr(Literal[left]), repr(Literal[right]), tuple(repr(arg) for arg in alias.__args__), alias == Literal[left])"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
