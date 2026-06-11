@@ -1298,7 +1298,12 @@ impl fmt::Display for Value {
             } => {
                 write!(f, "{}", format_bound_method(function, receiver))
             }
-            Value::Partial { .. } => write!(f, "<functools.partial object>"),
+            Value::Partial {
+                function,
+                args,
+                keywords,
+                ..
+            } => write!(f, "{}", format_partial(function, args, keywords)),
             Value::PartialMethod { .. } => write!(f, "<functools.partialmethod object>"),
             Value::PartialMethodCall { .. } => write!(f, "<functools.partial object>"),
             Value::LruCacheWrapper { .. } => {
@@ -1388,6 +1393,21 @@ fn format_list_items(items: &[Value]) -> String {
         .map(format_value_repr)
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn format_partial(function: &Value, args: &[Value], keywords: &DictRef) -> String {
+    let keyword_entries = keywords.borrow();
+    let mut parts = Vec::with_capacity(1 + args.len() + keyword_entries.entries.len());
+    parts.push(format_value_repr(function));
+    parts.extend(args.iter().map(format_value_repr));
+    parts.extend(keyword_entries.entries.iter().map(|(key, value)| {
+        let key = match key {
+            Value::String(name) | Value::IdentityString { value: name, .. } => name.clone(),
+            value => format_value_repr(value),
+        };
+        format!("{key}={}", format_value_repr(value))
+    }));
+    format!("functools.partial({})", parts.join(", "))
 }
 
 fn format_operator_attrgetter(attrs: &[String]) -> String {
@@ -1670,7 +1690,12 @@ fn format_value_repr(value: &Value) -> String {
         Value::BoundMethod {
             function, receiver, ..
         } => format_bound_method(function, receiver),
-        Value::Partial { .. } => "<functools.partial object>".to_string(),
+        Value::Partial {
+            function,
+            args,
+            keywords,
+            ..
+        } => format_partial(function, args, keywords),
         Value::PartialMethod { .. } => "<functools.partialmethod object>".to_string(),
         Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
         Value::LruCacheWrapper { .. } => "<functools._lru_cache_wrapper object>".to_string(),

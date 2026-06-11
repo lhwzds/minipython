@@ -10596,6 +10596,9 @@ p = partial(capture, 1, 2, a=10, b=20)
 print(callable(p), type(p).__name__)
 print(p(3, 4, b=30, c=40))
 print(p.func is capture, p.args, p.keywords == {'a': 10, 'b': 20})
+rendered = repr(p)
+print(rendered.startswith('functools.partial(<function capture'), rendered.endswith(', 1, 2, a=10, b=20)'))
+print(repr(partial(int, base=2)))
 for expr in [lambda: partial(), lambda: partial(2), lambda: partial(2)()]:
     try:
         expr()

@@ -904,6 +904,7 @@ Recent runtime migration notes:
   `keywords` attributes, live `keywords` mapping mutation including `str`
   subclass keys and non-string-key call rejection, caller keyword-dict
   isolation, constructor keyword copying, positional/keyword combinations,
+  public `repr()` shape for function/type callables and stored arguments,
   exception propagation, nested partial calls, custom attributes, and readonly
   core attributes.
 - The bundled `functools` module also includes
