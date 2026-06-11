@@ -3524,6 +3524,55 @@ print(isinstance(CoroLike(), Coroutine), issubclass(CoroLike, Coroutine))"#,
 }
 
 #[test]
+fn cpython_collections_abc_coroutine_mixin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/_collections_abc.py::Coroutine / Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Coroutine",
+        name: "collections-abc-coroutine-mixin",
+        source: r#"from collections.abc import Awaitable, Coroutine
+class DefaultCoro(Coroutine):
+    def __await__(self):
+        yield
+    def send(self, value):
+        return super().send(value)
+    def throw(self, typ, val=None, tb=None):
+        return super().throw(typ, val, tb)
+coro = DefaultCoro()
+print(isinstance(coro, Awaitable), isinstance(coro, Coroutine), issubclass(DefaultCoro, Coroutine))
+try:
+    coro.send(None)
+except StopIteration as done:
+    print('send', done.__class__.__name__, done)
+try:
+    coro.throw(ValueError('bad'))
+except ValueError as error:
+    print('throw', error)
+print(coro.close())
+class IgnoreExit(Coroutine):
+    def __await__(self):
+        yield
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        return 'ignored'
+try:
+    IgnoreExit().close()
+except RuntimeError as error:
+    print('close', error)
+class FailClose(Coroutine):
+    def __await__(self):
+        yield
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        raise ValueError('bad close')
+try:
+    FailClose().close()
+except ValueError as error:
+    print('close-error', error)"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

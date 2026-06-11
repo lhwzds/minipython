@@ -2583,7 +2583,8 @@ Recent runtime migration notes:
   `cpython_collections_abc_coroutine_mixin_subset`, covering CPython's
   `Coroutine` direct-subclass mixins for default `send`, `throw`, and `close`,
   including `StopIteration`, exception propagation, swallowed `GeneratorExit`,
-  ignored-exit `RuntimeError`, and close-time error propagation.
+  ignored-exit `RuntimeError`, and close-time error propagation. Direct CPython
+  diff evidence is in `cpython_collections_abc_coroutine_mixin_diff_subset`.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_richcompare_subset`,
   covering set-style rich comparisons for dict key/item views and propagation
   of Python-level `__eq__` errors during item-view comparisons.
