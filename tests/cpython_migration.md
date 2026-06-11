@@ -1280,6 +1280,9 @@ Completed in the differential parity harness pass:
   and `::test_method` into `cpython_tokenize_selector_and_method_subset`,
   covering dotted/subscript selector spans and decorator/function-header token
   spans under MiniPython's keyword-token parser input model.
+- Added `cpython_tokenize_selector_and_method_diff_subset`, direct CPython
+  execution parity for the same selector and decorator/method source shapes, so
+  the tokenizer span subset is backed by an observable CPython oracle path.
 - Migrated representative CPython
   `Lib/test/test_tokenize.py::TokenizeTest::test_async` source shapes into
   `cpython_tokenize_async_await_subset`, covering `async` / `await` in

@@ -586,6 +586,26 @@ fn cpython_tokenize_unary_operators_diff_subset() {
 }
 
 #[test]
+fn cpython_tokenize_selector_and_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::TokenizeTest::test_selector / ::test_method public execution subset",
+        name: "tokenize-selector-and-method",
+        source: r#"class Box:
+    pass
+box = Box()
+box.items = {'time': [10, 20, 30]}
+print(box.items['time'][1])
+
+class C:
+    @staticmethod
+    def foo(x, y):
+        return x + y
+print(C.foo(2, 3))
+print(C().foo(4, 5))"#,
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",

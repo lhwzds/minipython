@@ -3816,7 +3816,9 @@ Recent runtime migration notes:
 - `cpython_tokenize_exact_type_subset` ports CPython's
   `TokenInfo.exact_type` operator table to MiniPython's exact lexer token
   variants, and `cpython_tokenize_selector_and_method_subset` ports CPython's
-  selector and decorator/method tokenizer span examples.
+  selector and decorator/method tokenizer span examples. The corresponding
+  `cpython_tokenize_selector_and_method_diff_subset` keeps those
+  selector/decorator source shapes tied to direct CPython execution parity.
 - `cpython_tokenize_async_await_subset` ports representative CPython
   `test_async` tokenizer source shapes while preserving MiniPython's
   parser-ready `async` / `await` keyword token variants.
