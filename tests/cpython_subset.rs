@@ -32489,12 +32489,14 @@ fn cpython_json_dumps_sort_keys_subset() {
 #[test]
 fn cpython_json_dumps_separators_subset() {
     assert_output(
-        "import json\nclass Sep(str):\n    pass\nvalue = {'b': [1, 2], 'a': {'é': '𝄠'}}\nfor separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => '))]:\n    print(json.dumps(value, separators=separators))\nprint(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\nfor separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:\n    try:\n        json.dumps(value, separators=separators)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, (TypeError, ValueError)))",
+        "import json\nclass Sep(str):\n    pass\nclass SepList(list):\n    pass\nclass SepTuple(tuple):\n    pass\nvalue = {'b': [1, 2], 'a': {'é': '𝄠'}}\nfor separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), SepList([',', ':']), SepTuple((Sep(' / '), Sep(' -> ')))]:\n    print(json.dumps(value, separators=separators))\nprint(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\nfor separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:\n    try:\n        json.dumps(value, separators=separators)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, (TypeError, ValueError)))",
         &[
             "{\"b\": [1, 2], \"a\": {\"\\u00e9\": \"\\ud834\\udd20\"}}",
             "{\"b\":[1,2],\"a\":{\"\\u00e9\":\"\\ud834\\udd20\"}}",
             "{\"b\": [1,2],\"a\": {\"\\u00e9\": \"\\ud834\\udd20\"}}",
             "{\"b\" => [1 | 2] | \"a\" => {\"\\u00e9\" => \"\\ud834\\udd20\"}}",
+            "{\"b\":[1,2],\"a\":{\"\\u00e9\":\"\\ud834\\udd20\"}}",
+            "{\"b\" -> [1 / 2] / \"a\" -> {\"\\u00e9\" -> \"\\ud834\\udd20\"}}",
             "{\"é\":[\"𝄠\",{\"a\":2,\"b\":1}]}",
             "ValueError True",
             "ValueError True",

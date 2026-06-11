@@ -403,7 +403,7 @@ Recent runtime migration notes:
   `indent` pretty-print formatting for int/string indent values,
   `skipkeys` omission of unsupported dict keys,
   `sort_keys` ordering for supported comparable keys, `separators`
-  compact/custom rendering for two-string list/tuple values,
+  compact/custom rendering for two-string list/tuple values and subclasses,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, top-level scalar values, empty containers, finite and
   default non-finite float spelling, booleans, null,

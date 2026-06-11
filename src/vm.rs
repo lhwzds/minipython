@@ -54161,6 +54161,13 @@ fn json_dumps_apply_separators(
     let values = match value {
         Value::Tuple(values) => values.as_ref().clone(),
         Value::List(values) => values.borrow().clone(),
+        value if tuple_subclass_items(value).is_some() => tuple_subclass_items(value)
+            .expect("tuple subclass items exist after guard")
+            .to_vec(),
+        value if list_subclass_storage(value).is_some() => list_subclass_storage(value)
+            .expect("list subclass storage exists after guard")
+            .borrow()
+            .clone(),
         _ => return Err("ValueError: too many values to unpack (expected 2)".to_string()),
     };
     let [item_separator, key_separator] = values.as_slice() else {

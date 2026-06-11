@@ -719,8 +719,12 @@ fn cpython_json_dumps_separators_diff_subset() {
         source: r#"import json
 class Sep(str):
     pass
+class SepList(list):
+    pass
+class SepTuple(tuple):
+    pass
 value = {'b': [1, 2], 'a': {'é': '𝄠'}}
-for separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => '))]:
+for separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), SepList([',', ':']), SepTuple((Sep(' / '), Sep(' -> ')))]:
     print(json.dumps(value, separators=separators))
 print(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
 for separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:
