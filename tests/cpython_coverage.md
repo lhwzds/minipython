@@ -102,8 +102,9 @@ Recent runtime migration notes:
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
-  `cpython_collections_userdict_userlist_public_diff_subset`, and
-  `cpython_collections_userdict_public_methods_diff_subset`.
+  `cpython_collections_userdict_userlist_public_diff_subset`,
+  `cpython_collections_userdict_public_methods_diff_subset`, and
+  `cpython_collections_userlist_public_methods_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -305,6 +306,9 @@ Recent runtime migration notes:
 - The bundled `collections` module also includes
   `cpython_collections_userdict_public_methods_diff_subset`, covering the
   CPython public `UserDict` method subset with direct output parity evidence.
+- The bundled `collections` module also includes
+  `cpython_collections_userlist_public_methods_diff_subset`, covering the
+  CPython public `UserList` method subset with direct output parity evidence.
 - The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_loads_dumps_diff_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
@@ -2338,6 +2342,7 @@ Recent runtime migration notes:
   containment, `get()`, `.data`, `.copy()`, and `copy.copy()` with shallow
   instance-attribute copying.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_public_methods_diff_subset` and
   `cpython_collections_userlist_public_methods_subset`, covering CPython
   `TestUserObjects` public `UserList` behavior for `dir(UserList)` protocol
   coverage against `list`, construction from lists and other UserList objects,
