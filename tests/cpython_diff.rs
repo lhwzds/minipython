@@ -5391,6 +5391,38 @@ print('bad', bad)"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_match_args_diff_subset() {
+    let probe = run_cpython(
+        "from collections import namedtuple\nPoint = namedtuple('Point', 'x y')\nprint(getattr(Point, '__match_args__', None))",
+    )
+    .expect("failed to run CPython namedtuple __match_args__ feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('x', 'y')" {
+        eprintln!(
+            "skipping namedtuple __match_args__ diff: CPython oracle lacks generated match args"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple match_args subset",
+        name: "collections-namedtuple-match-args",
+        source: r#"from collections import namedtuple
+Point = namedtuple('Point', 'x y')
+print(Point.__match_args__ == ('x', 'y'))
+match Point(1, 2):
+    case Point(a, b):
+        print(a, b)
+    case _:
+        print('no')
+match Point(1, 2):
+    case Point(1, y=value):
+        print(value)
+    case _:
+        print('no')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_namedtuple_defaults_rename_readonly_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestNamedTuple defaults/rename/readonly subset",

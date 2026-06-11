@@ -2664,6 +2664,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_repr_subset",
             "cpython_collections_namedtuple_name_conflicts_subset",
             "cpython_collections_namedtuple_subclass_issue_24931_subset",
+            "cpython_collections_namedtuple_match_args_subset",
             "cpython_collections_namedtuple_large_size_subset",
             "cpython_collections_namedtuple_field_doc_subset",
             "cpython_collections_namedtuple_copy_keyword_generic_alias_subset",
@@ -2749,6 +2750,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_namedtuple_new_builtins_globals_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for namedtuple new builtins globals"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_namedtuple_match_args_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for namedtuple match args"
     );
     assert!(
         row.diff_evidence
