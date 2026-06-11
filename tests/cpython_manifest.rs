@@ -2627,6 +2627,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_hashable_direct_subclass_subset",
             "cpython_collections_abc_registration_subset",
             "cpython_collections_abc_bytestring_buffer_subset",
+            "cpython_collections_abc_bytestring_deprecation_warnings_subset",
             "cpython_collections_abc_composite_abstract_methods_subset",
         ],
         &["pickle/eval identity matrices"],
@@ -2825,6 +2826,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_bytestring_buffer_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ByteString/Buffer"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_bytestring_deprecation_warnings_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ByteString deprecation warnings"
     );
     assert!(
         row.diff_evidence

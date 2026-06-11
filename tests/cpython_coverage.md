@@ -2477,7 +2477,9 @@ Recent runtime migration notes:
   `::test_ByteString_attribute_access` deprecation warnings for public
   `ByteString` import, fresh attribute access, `isinstance()`, class-statement
   subclass creation, and dynamic `type(..., (ByteString,), ...)` subclass
-  creation.
+  creation. Direct CPython diff evidence is in
+  `cpython_collections_abc_bytestring_deprecation_warnings_diff_subset`, gated
+  for CPython oracles that warn for `ByteString`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_issue26915_identity_first_object_subset`, covering
   CPython `TestCollectionABCs::test_issue26915` identity-first membership for

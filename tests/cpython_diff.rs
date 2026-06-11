@@ -4165,6 +4165,65 @@ print(issubclass(DirectBuffer, Buffer), issubclass(float, DirectBuffer))"#,
 }
 
 #[test]
+fn cpython_collections_abc_bytestring_deprecation_warnings_diff_subset() {
+    let probe = run_cpython(
+        r#"import sys, warnings
+for module in ('collections', '_collections_abc', 'collections.abc'):
+    sys.modules.pop(module, None)
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    from collections.abc import ByteString
+print(bool(caught) and caught[0].category is DeprecationWarning)
+"#,
+    )
+    .expect("failed to probe CPython ByteString deprecation-warning support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping collections.abc ByteString deprecation diff: CPython oracle does not warn for ByteString"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::test_ByteString and test_ByteString_attribute_access warnings",
+        name: "collections-abc-bytestring-deprecation-warnings",
+        source: r#"import sys, warnings
+for module in ('collections', '_collections_abc', 'collections.abc'):
+    sys.modules.pop(module, None)
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    from collections.abc import ByteString, Awaitable
+print('import', len(caught), caught[0].category is DeprecationWarning, 'ByteString' in str(caught[0].message))
+sys.modules.pop('collections.abc', None)
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    import collections.abc as abc
+    attr = abc.ByteString
+print('attr', len(caught), attr.__name__, caught[0].category is DeprecationWarning)
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    results = [isinstance(value, ByteString) for value in [b'', bytearray(), '', [], (), memoryview(b'')]]
+print('instance', results, len(caught), [wm.category is DeprecationWarning for wm in caught])
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    class X(ByteString):
+        pass
+    class Z(ByteString, Awaitable):
+        pass
+print('class', issubclass(X, ByteString), issubclass(Z, Awaitable), len(caught), [wm.category is DeprecationWarning for wm in caught])
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter('always')
+    C = type('C', (ByteString,), {'__getitem__': lambda self, index: 0, '__len__': lambda self: 0})
+    ok_name = type(C()).__name__
+    try:
+        type('C', (ByteString,), {'__len__': lambda self: 0})()
+    except TypeError as error:
+        missing_getitem = '__getitem__' in str(error)
+print('dynamic', ok_name, missing_getitem, len(caught), [wm.category is DeprecationWarning for wm in caught])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_composite_abstract_methods_diff_subset() {
     let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
         .expect("failed to probe CPython collections.abc.Buffer support");
