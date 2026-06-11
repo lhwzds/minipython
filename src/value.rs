@@ -21,6 +21,7 @@ pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
 pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
 pub type BytesIORef = Rc<RefCell<BytesIOState>>;
 pub type TeeRef = Rc<RefCell<TeeState>>;
+pub type GroupByRef = Rc<RefCell<GroupByState>>;
 pub type NamedTupleTypeRef = Rc<NamedTupleType>;
 pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
 pub type MockCallsRef = Rc<RefCell<Vec<Vec<Value>>>>;
@@ -104,6 +105,17 @@ pub struct BytesIOState {
 pub struct TeeState {
     pub iterator: Value,
     pub buffer: Vec<Value>,
+    pub exhausted: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct GroupByState {
+    pub iterator: Value,
+    pub key_func: Value,
+    pub current_key: Option<Value>,
+    pub pending_value: Option<Value>,
+    pub lookahead: Option<(Value, Value)>,
+    pub active_group_id: usize,
     pub exhausted: bool,
 }
 
@@ -748,6 +760,14 @@ pub enum Value {
         n: usize,
         strict: bool,
     },
+    ItertoolsGroupBy {
+        state: GroupByRef,
+    },
+    ItertoolsGroup {
+        state: GroupByRef,
+        key: Box<Value>,
+        group_id: usize,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1178,6 +1198,8 @@ impl fmt::Display for Value {
             }
             Value::ItertoolsTee { .. } => write!(f, "<itertools._tee object>"),
             Value::ItertoolsBatched { .. } => write!(f, "<itertools.batched object>"),
+            Value::ItertoolsGroupBy { .. } => write!(f, "<itertools.groupby object>"),
+            Value::ItertoolsGroup { .. } => write!(f, "<itertools._grouper object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),

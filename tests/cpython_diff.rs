@@ -11722,6 +11722,47 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_groupby_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public groupby core subset",
+        name: "itertools-groupby-core",
+        source: r#"import itertools
+gb_empty = itertools.groupby('')
+items = [(k, list(g)) for k, g in itertools.groupby('AAABBCDAA')]
+print(type(gb_empty).__name__, iter(gb_empty) is gb_empty, items)
+print([(k, list(g)) for k, g in itertools.groupby([1, 1, 2, 3, 3, 2], key=lambda value: value % 2)])
+source = (value for value in ['a', 'a', 'b', 'b', 'a'])
+gb = itertools.groupby(source)
+key1, group1 = next(gb)
+print(key1, type(group1).__name__, iter(group1) is group1, next(group1), list(group1))
+key2, group2 = next(gb)
+print(key2, list(group2))
+try:
+    print(next(group1))
+except StopIteration as error:
+    print(type(error).__name__)
+key3, group3 = next(gb)
+print(key3, list(group3))
+gb = itertools.groupby('AABB')
+key, group = next(gb)
+print(key, next(group))
+key2, group2 = next(gb)
+print(key2, list(group), list(group2))
+print([(k, list(g)) for k, g in itertools.groupby(iterable='aab', key=str.upper)])
+for expr in [
+    lambda: itertools.groupby(),
+    lambda: itertools.groupby('abc', str, 1),
+    lambda: itertools.groupby(iterable='abc', key=None, bad=1),
+    lambda: itertools.groupby(1),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

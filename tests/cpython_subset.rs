@@ -36320,6 +36320,62 @@ fn cpython_itertools_batched_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_groupby_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "gb_empty = itertools.groupby('')\n",
+            "items = [(k, list(g)) for k, g in itertools.groupby('AAABBCDAA')]\n",
+            "print(type(gb_empty).__name__, iter(gb_empty) is gb_empty, items)\n",
+            "print([(k, list(g)) for k, g in itertools.groupby([1, 1, 2, 3, 3, 2], key=lambda value: value % 2)])\n",
+            "source = (value for value in ['a', 'a', 'b', 'b', 'a'])\n",
+            "gb = itertools.groupby(source)\n",
+            "key1, group1 = next(gb)\n",
+            "print(key1, type(group1).__name__, iter(group1) is group1, next(group1), list(group1))\n",
+            "key2, group2 = next(gb)\n",
+            "print(key2, list(group2))\n",
+            "try:\n",
+            "    print(next(group1))\n",
+            "except StopIteration as error:\n",
+            "    print(type(error).__name__)\n",
+            "key3, group3 = next(gb)\n",
+            "print(key3, list(group3))\n",
+            "gb = itertools.groupby('AABB')\n",
+            "key, group = next(gb)\n",
+            "print(key, next(group))\n",
+            "key2, group2 = next(gb)\n",
+            "print(key2, list(group), list(group2))\n",
+            "print([(k, list(g)) for k, g in itertools.groupby(iterable='aab', key=str.upper)])\n",
+            "for expr in [\n",
+            "    lambda: itertools.groupby(),\n",
+            "    lambda: itertools.groupby('abc', str, 1),\n",
+            "    lambda: itertools.groupby(iterable='abc', key=None, bad=1),\n",
+            "    lambda: itertools.groupby(1),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)",
+        ),
+        &[
+            "groupby True [('A', ['A', 'A', 'A']), ('B', ['B', 'B']), ('C', ['C']), ('D', ['D']), ('A', ['A', 'A'])]",
+            "[(1, [1, 1]), (0, [2]), (1, [3, 3]), (0, [2])]",
+            "a _grouper True a ['a']",
+            "b ['b', 'b']",
+            "StopIteration",
+            "a ['a']",
+            "A A",
+            "B [] ['B', 'B']",
+            "[('A', ['a', 'a']), ('B', ['b'])]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.

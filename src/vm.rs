@@ -33,11 +33,12 @@ use crate::value::{
     ByteArrayRef, BytesIORef, COMPLEX_SUBCLASS_STORAGE_FIELD, CodeLineSpan, CodeMode,
     ConstEvaluatorKind, CoroutineState, DeferredTypeParamExpr, DictRef, DictStorage, DictViewKind,
     EXCEPTION_TRACEBACK_ATTR, FLOAT_SUBCLASS_STORAGE_FIELD, FROZEN_SET_SUBCLASS_STORAGE_FIELD,
-    FrozenSetRef, GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD, GeneratorState, INT_ENUM_MEMBER_NAME_FIELD,
-    INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef, LruCacheState, MemoryViewRef,
-    MockCallsRef, MockSideEffectRef, NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType,
-    NamedTupleTypeRef, SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD,
-    TeeState, TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
+    FrozenSetRef, GENERIC_ALIAS_SUBCLASS_STORAGE_FIELD, GeneratorState, GroupByRef, GroupByState,
+    INT_ENUM_MEMBER_NAME_FIELD, INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef,
+    LruCacheState, MemoryViewRef, MockCallsRef, MockSideEffectRef,
+    NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType, NamedTupleTypeRef,
+    SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeState,
+    TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
     code_metadata_namespace_entries_equal, complex_value, dict_value, dict_view_value,
     dict_view_values, float_value, format_float_display, frame_locals_proxy_value,
     frozen_set_value, generic_alias_subclass_alias, identity_string_value, list_value,
@@ -8599,6 +8600,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "itertools.filterfalse" => {
                 self.call_itertools_filterfalse(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.groupby" => {
+                self.call_itertools_groupby(args, keywords)
             }
             Value::Builtin(name) if name == "itertools.islice" => {
                 self.call_itertools_islice(args, keywords)
@@ -23260,6 +23264,37 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_groupby(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = bind_keyword_call("groupby", &["iterable", "key"], 1, args, keywords)?;
+        let iterable = values[0].take().ok_or_else(|| {
+            "TypeError: groupby() missing required argument 'iterable'".to_string()
+        })?;
+        let key_func = values[1].take().unwrap_or(Value::None);
+        Ok(shared_iterator(Value::ItertoolsGroupBy {
+            state: Rc::new(RefCell::new(GroupByState {
+                iterator: get_iter(iterable)?,
+                key_func,
+                current_key: None,
+                pending_value: None,
+                lookahead: None,
+                active_group_id: 0,
+                exhausted: false,
+            })),
+        }))
+    }
+
+    fn itertools_groupby_key(&mut self, key_func: &Value, value: &Value) -> Result<Value, String> {
+        if matches!(key_func, Value::None) {
+            Ok(value.clone())
+        } else {
+            self.call_value(key_func.clone(), vec![value.clone()])
+        }
+    }
+
     fn call_itertools_zip_longest(
         &mut self,
         args: Vec<Value>,
@@ -29333,6 +29368,20 @@ impl Vm {
                 }
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
+            Value::ItertoolsGroupBy { state } => {
+                return self.advance_itertools_groupby(state.clone());
+            }
+            Value::ItertoolsGroup {
+                state,
+                key,
+                group_id,
+            } => {
+                return self.advance_itertools_group(
+                    state.clone(),
+                    key.as_ref().clone(),
+                    *group_id,
+                );
+            }
             Value::MapIterator {
                 function,
                 iterators,
@@ -29637,6 +29686,99 @@ impl Vm {
                 }
                 Err(message)
             }
+        }
+    }
+
+    fn advance_itertools_groupby(&mut self, state: GroupByRef) -> Result<IteratorAdvance, String> {
+        let mut borrowed = state.borrow_mut();
+        if borrowed.exhausted {
+            return Ok(IteratorAdvance::Complete(Value::None));
+        }
+
+        let (key, value) = if let Some((key, value)) = borrowed.lookahead.take() {
+            (key, value)
+        } else if let Some(current_key) = borrowed.current_key.clone() {
+            borrowed.pending_value = None;
+            loop {
+                match self.advance_owned_iterator(&mut borrowed.iterator)? {
+                    IteratorAdvance::Yield(value) => {
+                        let key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
+                        if self.rich_equal_values(&current_key, &key)? {
+                            continue;
+                        }
+                        break (key, value);
+                    }
+                    IteratorAdvance::Complete(_) => {
+                        borrowed.exhausted = true;
+                        borrowed.current_key = None;
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
+            }
+        } else {
+            match self.advance_owned_iterator(&mut borrowed.iterator)? {
+                IteratorAdvance::Yield(value) => {
+                    let key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
+                    (key, value)
+                }
+                IteratorAdvance::Complete(_) => {
+                    borrowed.exhausted = true;
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+            }
+        };
+
+        borrowed.active_group_id = borrowed.active_group_id.saturating_add(1);
+        borrowed.current_key = Some(key.clone());
+        borrowed.pending_value = Some(value);
+        let group_id = borrowed.active_group_id;
+        drop(borrowed);
+
+        Ok(IteratorAdvance::Yield(tuple_value(vec![
+            key.clone(),
+            shared_iterator(Value::ItertoolsGroup {
+                state,
+                key: Box::new(key),
+                group_id,
+            }),
+        ])))
+    }
+
+    fn advance_itertools_group(
+        &mut self,
+        state: GroupByRef,
+        key: Value,
+        group_id: usize,
+    ) -> Result<IteratorAdvance, String> {
+        let mut borrowed = state.borrow_mut();
+        if borrowed.exhausted || borrowed.active_group_id != group_id {
+            return Ok(IteratorAdvance::Complete(Value::None));
+        }
+        if let Some(value) = borrowed.pending_value.take() {
+            return Ok(IteratorAdvance::Yield(value));
+        }
+        if borrowed.lookahead.is_some() {
+            return Ok(IteratorAdvance::Complete(Value::None));
+        }
+
+        match self.advance_owned_iterator(&mut borrowed.iterator)? {
+            IteratorAdvance::Yield(value) => {
+                let next_key = self.itertools_groupby_key(&borrowed.key_func, &value)?;
+                if self.rich_equal_values(&key, &next_key)? {
+                    Ok(IteratorAdvance::Yield(value))
+                } else {
+                    borrowed.lookahead = Some((next_key, value));
+                    Ok(IteratorAdvance::Complete(Value::None))
+                }
+            }
+            IteratorAdvance::Complete(_) => {
+                borrowed.exhausted = true;
+                borrowed.current_key = None;
+                Ok(IteratorAdvance::Complete(Value::None))
+            }
+            IteratorAdvance::Raised => Ok(IteratorAdvance::Raised),
         }
     }
 
@@ -53942,6 +54084,8 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
         Value::ItertoolsBatched { .. } => "batched",
+        Value::ItertoolsGroupBy { .. } => "groupby",
+        Value::ItertoolsGroup { .. } => "_grouper",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -54069,6 +54213,8 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
         Value::ItertoolsBatched { .. } => "batched",
+        Value::ItertoolsGroupBy { .. } => "groupby",
+        Value::ItertoolsGroup { .. } => "_grouper",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69773,6 +69919,8 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsPermutations { .. }
         | Value::ItertoolsTee { .. }
         | Value::ItertoolsBatched { .. }
+        | Value::ItertoolsGroupBy { .. }
+        | Value::ItertoolsGroup { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69996,6 +70144,8 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsPermutations { .. }
         | Value::ItertoolsTee { .. }
         | Value::ItertoolsBatched { .. }
+        | Value::ItertoolsGroupBy { .. }
+        | Value::ItertoolsGroup { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -70462,6 +70612,16 @@ fn get_iter(value: Value) -> Result<Value, String> {
             iterator,
             n,
             strict,
+        })),
+        Value::ItertoolsGroupBy { state } => Ok(shared_iterator(Value::ItertoolsGroupBy { state })),
+        Value::ItertoolsGroup {
+            state,
+            key,
+            group_id,
+        } => Ok(shared_iterator(Value::ItertoolsGroup {
+            state,
+            key,
+            group_id,
         })),
         Value::CallIterator {
             callable,
@@ -76266,6 +76426,8 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsPermutations { .. } => Ok(true),
         Value::ItertoolsTee { .. } => Ok(true),
         Value::ItertoolsBatched { .. } => Ok(true),
+        Value::ItertoolsGroupBy { .. } => Ok(true),
+        Value::ItertoolsGroup { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),
