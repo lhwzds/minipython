@@ -20107,7 +20107,7 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
 // __init__/__new__, and direct array.array.__new__ allocation.
 #[test]
 fn cpython_array_subclass_public_construction_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import array, copy
 class A(array.array):
     pass
@@ -20150,6 +20150,7 @@ print('visible', hasattr(array.array, '__new__'), hasattr(A, '__new__'))"#,
             "new-bad-class TypeError array.array.__new__(list): list is not a subtype of array.array",
             "visible True True",
         ],
+        8 * 1024 * 1024,
     );
 }
 
@@ -37843,7 +37844,7 @@ fn cpython_map_strict_builtin_subset() {
         "def pack(*values):\n    return values\nx = iter(range(5))\ny = [0]\nz = iter(range(5))\ntry:\n    list(map(pack, x, y, z, strict=True))\nexcept ValueError as error:\n    print(error.__class__.__name__)\nprint(next(x), next(z))",
         &["ValueError", "2 1"],
     );
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "def pack(*values):\n",
             "    return values\n",
@@ -37905,6 +37906,7 @@ fn cpython_map_strict_builtin_subset() {
             "s7 ValueError [(1, 'A'), (0, 'B')]",
             "s8 ValueError [(2, 'A'), (1, 'B')]",
         ],
+        8 * 1024 * 1024,
     );
 }
 
