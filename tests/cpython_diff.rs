@@ -8934,6 +8934,32 @@ print('__alloc__' in dir(bytearray), '__alloc__' in dir(BA), '__alloc__' in dir(
 }
 
 #[test]
+fn cpython_bytearray_pep3137_returns_new_copy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BytearrayPEP3137Test::test_returns_new_copy and AssortedBytesTest::test_return_self",
+        name: "bytearray-pep3137-returns-new-copy-named",
+        source: r#"val = bytearray(b'1234')
+for methname in ['zfill', 'rjust', 'ljust', 'center']:
+    newval = getattr(val, methname)(3)
+    print(methname, val == newval, val is newval)
+checks = [
+    ('split', lambda: val.split()[0]),
+    ('rsplit', lambda: val.rsplit()[0]),
+    ('partition', lambda: val.partition(b'.')[0]),
+    ('rpartition', lambda: val.rpartition(b'.')[2]),
+    ('splitlines', lambda: val.splitlines()[0]),
+    ('replace', lambda: val.replace(b'', b'')),
+]
+for name, maker in checks:
+    newval = maker()
+    print(name, val == newval, val is newval)
+sep = bytearray(b'')
+newval = sep.join([val])
+print('join', val == newval, val is newval)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

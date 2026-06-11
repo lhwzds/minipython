@@ -3584,8 +3584,8 @@ Completed in the bytearray PEP 3137 return-copy pass:
   but distinct bytearray objects: `zfill()`, `rjust()`, `ljust()`, `center()`,
   `split()`, `rsplit()`, absent-separator `partition()` / `rpartition()`,
   `splitlines()`, `replace(b'', b'')`, and one-item `join()`.
-- Added the same return-copy scenario to `tests/cpython_diff.rs` as a CPython
-  oracle parity case named `bytearray-pep3137-returns-new-copy`.
+- Direct CPython diff evidence is in
+  `cpython_bytearray_pep3137_returns_new_copy_diff_subset`.
 
 Completed in the bytes/bytearray assorted public pass:
 

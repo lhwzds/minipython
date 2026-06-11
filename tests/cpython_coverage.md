@@ -1559,7 +1559,7 @@ Recent runtime migration notes:
   `zfill()`, `rjust()`, `ljust()`, `center()`, `split()`, `rsplit()`,
   `splitlines()`, `replace(b'', b'')`, and one-item `join()`. Direct CPython
   diff evidence for the return-copy slice is in
-  `bytearray-pep3137-returns-new-copy`.
+  `cpython_bytearray_pep3137_returns_new_copy_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_join_custom_iterator_diff_subset` and
   `cpython_bytearray_join_reentrant_resize_subset`, covering CPython
