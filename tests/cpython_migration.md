@@ -5362,6 +5362,12 @@ Completed in the bytes hex/fromhex method pass:
   bytearray `hex()` separator/grouping/overflow and length/nibble-boundary
   output slice. Exact unbound descriptor diagnostics remain covered by the
   local subset test below rather than being required for this direct diff.
+- Added direct CPython output parity evidence
+  `cpython_bytes_fromhex_string_diff_subset` for the stable public
+  string-input bytes/bytearray `fromhex()` behavior, including ASCII whitespace
+  skipping and representative `ValueError` / `TypeError` classes. Bytes-like
+  `fromhex()` inputs remain subset evidence for the newer local CPython source
+  surface rather than default-oracle parity.
 - Added runtime support for `bytes.fromhex()` and `bytearray.fromhex()` over
   string input, plus MiniPython support for bytes/bytearray input matching the
   newer local CPython source.

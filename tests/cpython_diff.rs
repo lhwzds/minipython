@@ -8668,6 +8668,37 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_fromhex_string_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_fromhex stable string-input public subset",
+        name: "bytes-fromhex-string",
+        source: r#"print(bytes.fromhex(''), bytearray.fromhex(''))
+print(bytes.fromhex('1a2B30'))
+print(bytearray.fromhex('  1A 2B  30   '))
+print(bytes.fromhex(' 1A\n2B\t30\v'))
+print(bytes.fromhex('0000'))
+for ctor in [bytes, bytearray]:
+    for label, source in [
+        ('odd', 'a'),
+        ('letters', 'rt'),
+        ('split-pair', '1a b cd'),
+        ('nul', '\x00'),
+        ('next-line', '\u0085'),
+        ('nbsp', '\u00a0'),
+    ]:
+        try:
+            ctor.fromhex(source)
+        except ValueError as error:
+            print(ctor.__name__, label, error.__class__.__name__)
+    for source in [1, ()]:
+        try:
+            ctor.fromhex(source)
+        except TypeError as error:
+            print(ctor.__name__, type(source).__name__, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_repeat_id_preserving_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",

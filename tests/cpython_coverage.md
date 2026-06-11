@@ -47,6 +47,10 @@ Recent runtime migration notes:
   boundary output now has direct CPython output parity evidence in
   `cpython_bytes_hex_separator_diff_subset`; exact unbound descriptor
   diagnostics remain in `cpython_bytes_hex_descriptor_error_messages_subset`.
+- Bytes/bytearray `fromhex()` over stable string input now has direct CPython
+  output parity evidence in `cpython_bytes_fromhex_string_diff_subset`;
+  bytes-like `fromhex()` inputs remain subset evidence for the newer local
+  CPython source surface.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product
