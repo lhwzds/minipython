@@ -2979,6 +2979,46 @@ except ZeroDivisionError as error:
 }
 
 #[test]
+fn cpython_operator_comparison_predicate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase comparison and predicate helpers public subset",
+        name: "operator-comparison-predicate",
+        source: r#"import operator
+print(operator.lt(1, 0), operator.lt(1, 1), operator.lt(1, 2))
+print(operator.le(1, 0), operator.le(1, 1), operator.le(1, 2))
+print(operator.eq(1, 0), operator.eq(1, 1), operator.eq(1, 2))
+print(operator.ne(1, 0), operator.ne(1, 1), operator.ne(1, 2))
+print(operator.ge(1, 0), operator.ge(1, 1), operator.ge(1, 2))
+print(operator.gt(1, 0), operator.gt(1, 1), operator.gt(1, 2))
+class EqBoom:
+    def __eq__(self, other):
+        raise SyntaxError
+class NeBoom:
+    def __ne__(self, other):
+        raise SyntaxError
+class TruthBoom:
+    def __bool__(self):
+        raise SyntaxError
+for expr in [lambda: operator.eq(EqBoom(), EqBoom()), lambda: operator.ne(NeBoom(), NeBoom()), lambda: operator.truth(TruthBoom()), lambda: operator.not_(TruthBoom())]:
+    try:
+        expr()
+    except SyntaxError as error:
+        print(type(error).__name__)
+print(operator.truth(5), operator.truth([0]), operator.truth(0), operator.truth([]))
+print(operator.not_(5), operator.not_([0]), operator.not_(0), operator.not_([]))
+a = []
+b = a
+c = []
+print(operator.is_(a, b), operator.is_(a, c), operator.is_not(a, b), operator.is_not(a, c))
+for expr in [lambda: operator.lt(), lambda: operator.truth(), lambda: operator.is_()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

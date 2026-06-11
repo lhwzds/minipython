@@ -993,7 +993,11 @@ Recent runtime migration notes:
   `cpython_operator_comparison_predicate_subset`, covering CPython
   `test_operator.py` comparison and predicate helpers `lt/le/eq/ne/ge/gt`,
   `truth`, `not_`, identity helpers, and None predicates, including custom rich
-  comparison/truth exception propagation.
+  comparison/truth exception propagation. Direct CPython diff evidence for the
+  default-oracle stable slice is in
+  `cpython_operator_comparison_predicate_diff_subset`; `is_none` /
+  `is_not_none` stay covered by subset evidence because the default local
+  CPython 3.9 oracle does not expose those newer helpers.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_arithmetic_bitwise_subset`, covering CPython
   `test_operator.py` arithmetic and bitwise helpers `abs`, `add`, `sub`, `mul`,
