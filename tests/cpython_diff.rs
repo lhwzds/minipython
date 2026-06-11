@@ -4807,6 +4807,86 @@ print(all(bounded(pos) for pos in f.__code__.co_positions()))"#,
 }
 
 #[test]
+fn cpython_compile_specifics_lineno_public_invariants_diff_subset() {
+    let probe = run_cpython("print(hasattr(compile('x = 1', '<test>', 'exec'), 'co_lines'))")
+        .expect("failed to probe CPython co_lines support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping compile lineno diff: CPython oracle lacks code.co_lines");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_compile.py::TestSpecifics public line-number invariants",
+        name: "compile-specifics-lineno-public-invariants",
+        source: r#"def get_code_lines(code):
+    last_line = -2
+    result = []
+    for _, _, line in code.co_lines():
+        if line is not None and line != last_line:
+            result.append(line - code.co_firstlineno)
+            last_line = line
+    return result
+
+def call():
+    (
+        print()
+    )
+print(call.__code__.co_firstlineno + 1 not in [line for _, _, line in call.__code__.co_lines()])
+
+def no_code1():
+    "doc string"
+
+def no_code2():
+    a: int
+
+for func in (no_code1, no_code2):
+    lines = list(func.__code__.co_lines())
+    print(len(lines) == 1, lines[0][2] == func.__code__.co_firstlineno)
+
+def load_attr():
+    return (
+        o.
+        a
+    )
+
+def load_method():
+    return (
+        o.
+        m(
+            0
+        )
+    )
+
+for func in (load_attr, load_method):
+    lines = get_code_lines(func.__code__)
+    print(lines[0] == 0, lines[-1] == 1, all(line >= 0 for line in lines), 2 in lines, 3 in lines)
+
+TRUE = True
+def if1(x):
+    x()
+    if TRUE:
+        pass
+
+def if4(x):
+    x()
+    if not TRUE:
+        pass
+
+for func in (if1, if4):
+    lines = get_code_lines(func.__code__)
+    print(lines[0] == 0, lines[1] == 1, lines[-1] == 2, 3 in lines)
+
+def loop_conditional():
+    for i in x:
+        if y:
+            pass
+
+loop_lines = get_code_lines(loop_conditional.__code__)
+print(loop_lines[0] == 0, loop_lines[-1] == 1, 2 in loop_lines, 3 in loop_lines)"#,
+    });
+}
+
+#[test]
 fn cpython_ast_dump_public_diff_subset() {
     let probe = run_cpython("import ast\nprint('ctx=Load' in ast.dump(ast.parse('x')))")
         .expect("failed to probe CPython ast.dump default-field support");

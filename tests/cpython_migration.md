@@ -10229,6 +10229,12 @@ Completed in the CPython collections manifest expansion pass:
   span membership, lambda body bounds, multi-statement source-line coverage,
   and ordered multiline attribute-chain bounds while deliberately avoiding
   opcode-count, opcode identity, specialization, or `co_stacksize` parity.
+- Added `cpython_compile_specifics_lineno_public_invariants_diff_subset`, a
+  gated direct CPython diff for public `code.co_lines()` / frame line-number
+  invariants from `Lib/test/test_compile.py::TestSpecifics`. The diff covers
+  procedure-call opening-paren suppression, no-code function line spans,
+  multiline attribute line tables, implicit-return `if` line tables, and loop
+  conditional backedge line coverage while avoiding `dis` opcode assertions.
 - Added `cpython_ast_literal_eval_public_diff_subset`, direct CPython output
   parity for the stable public `ast.literal_eval()` surface from
   `ASTHelpers_Test.test_literal_eval` and `test_literal_eval_complex`. The

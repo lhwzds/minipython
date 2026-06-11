@@ -4593,6 +4593,60 @@ fn cpython_compile_source_positions_diff_covers_public_invariants() {
 }
 
 #[test]
+fn cpython_compile_specifics_lineno_diff_covers_public_invariants() {
+    let diff_name = "cpython_compile_specifics_lineno_public_invariants_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("compile lineno diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_compile_specifics_lineno_procedure_call_subset",
+        "cpython_compile_specifics_lineno_attribute_subset",
+        "cpython_compile_specifics_lineno_after_no_code_first_pass_subset",
+        "cpython_compile_specifics_lineno_after_implicit_return_subset",
+        "cpython_compile_specifics_lineno_of_backward_jump_conditional_in_loop_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "compile lineno subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "compile-specifics-lineno-public-invariants",
+        "TestSpecifics public line-number invariants",
+        "code.co_lines",
+        "def call()",
+        "def no_code1()",
+        "def load_attr()",
+        "def load_method()",
+        "def if1(x)",
+        "def loop_conditional()",
+        "CPython oracle lacks code.co_lines",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "compile lineno diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("co_lines()")
+                && document.contains("public")
+                && document.contains("opcode"),
+            "compile lineno docs must link `{diff_name}` to public non-opcode invariants"
+        );
+    }
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_covers_exact_subsets() {
     let diff_name = "cpython_ast_literal_eval_public_diff_subset";
     let diff_start = CPYTHON_DIFF

@@ -2270,6 +2270,9 @@ Recent runtime migration notes:
   `cpython_compile_specifics_lineno_attribute_subset` extends the first-pass
   function line-table model to CPython's public multiline attribute load,
   method-call, store, and augmented-store `co_lines()` sequences.
+  `cpython_compile_specifics_lineno_public_invariants_diff_subset` provides
+  gated direct CPython output parity for these public `co_lines()` line-number
+  invariants while deliberately avoiding `dis` opcode-line assertions.
   `cpython_compile_specifics_line_number_implicit_return_after_async_for_subset`
   ports CPython's public async-function `co_lines()` sequence for an implicit
   return after an `async for` loop.
