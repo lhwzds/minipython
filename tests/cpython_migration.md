@@ -268,6 +268,8 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
 - Fixed bytearray subclass construction so a class with a custom `__init__`
   receives the original positional and keyword constructor arguments, including
   keyword `source`, instead of having them pre-consumed by `bytearray()`.
+- Direct CPython diff evidence is in
+  `cpython_bytearray_subclass_init_override_diff_subset`.
 - Added `cpython_bytes_bytearray_subclass_copy_subset`, adapted from CPython
   `Lib/test/test_bytes.py::SubclassTest::test_copy`.
 - Covered `copy.copy()` and `copy.deepcopy()` for bytes and bytearray

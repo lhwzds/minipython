@@ -9025,6 +9025,26 @@ for source in [by('Hello, world'), b'Hi, Bob_2!', memoryview(b'xy 99')]:
 }
 
 #[test]
+fn cpython_bytearray_subclass_init_override_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArraySubclassTest::test_init_override",
+        name: "bytearray-subclass-init-override-named",
+        source: r#"class Sub(bytearray):
+    def __init__(self, newarg=1, *args, **kwargs):
+        print('init', newarg, args, kwargs.get('source', None))
+        bytearray.__init__(self, *args, **kwargs)
+for factory in [lambda: Sub(4, b'abcd'), lambda: Sub(4, source=b'abcd'), lambda: Sub(newarg=4, source=b'abcd')]:
+    value = factory()
+    print(type(value).__name__, value == b'abcd', bytes(value), isinstance(value, bytearray))
+class Empty(bytearray):
+    def __init__(self, value):
+        print('empty init', value)
+empty = Empty(b'abc')
+print(type(empty).__name__, len(empty), bytes(empty))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
