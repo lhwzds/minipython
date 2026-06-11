@@ -529,6 +529,8 @@ pub(crate) fn create_module(
                 ("degrees", Value::Builtin("math.degrees".to_string())),
                 ("radians", Value::Builtin("math.radians".to_string())),
                 ("cbrt", Value::Builtin("math.cbrt".to_string())),
+                ("erf", Value::Builtin("math.erf".to_string())),
+                ("erfc", Value::Builtin("math.erfc".to_string())),
                 ("exp", Value::Builtin("math.exp".to_string())),
                 ("exp2", Value::Builtin("math.exp2".to_string())),
                 ("expm1", Value::Builtin("math.expm1".to_string())),

@@ -9696,6 +9696,24 @@ impl Vm {
 
                 call_math_cbrt(self, args)
             }
+            Value::Builtin(name) if name == "math.erf" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_erf(self, args)
+            }
+            Value::Builtin(name) if name == "math.erfc" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_erfc(self, args)
+            }
             Value::Builtin(name) if name == "math.exp" => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -58686,6 +58704,14 @@ fn call_math_cbrt(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     call_math_unary_float(vm, args, "cbrt", f64::cbrt)
 }
 
+fn call_math_erf(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_unary_float(vm, args, "erf", math_erf_value)
+}
+
+fn call_math_erfc(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_unary_float(vm, args, "erfc", math_erfc_value)
+}
+
 fn call_math_exp(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     call_math_exponential(vm, args, "exp", f64::exp)
 }
@@ -59060,6 +59086,54 @@ fn call_math_unary_float(
     };
 
     Ok(float_value(op(math_real_number_as_f64(vm, value.clone())?)))
+}
+
+fn math_erf_value(value: f64) -> f64 {
+    if value == 0.0 || value.is_nan() {
+        return value;
+    }
+    if value.is_infinite() {
+        return if value.is_sign_negative() { -1.0 } else { 1.0 };
+    }
+
+    let tau = math_erfc_positive_approx(value.abs());
+    if value.is_sign_negative() {
+        tau - 1.0
+    } else {
+        1.0 - tau
+    }
+}
+
+fn math_erfc_value(value: f64) -> f64 {
+    if value == 0.0 {
+        return 1.0;
+    }
+    if value.is_nan() {
+        return f64::NAN;
+    }
+    if value.is_infinite() {
+        return if value.is_sign_negative() { 2.0 } else { 0.0 };
+    }
+
+    let tau = math_erfc_positive_approx(value.abs());
+    if value.is_sign_negative() {
+        2.0 - tau
+    } else {
+        tau
+    }
+}
+
+fn math_erfc_positive_approx(value: f64) -> f64 {
+    let t = 1.0 / (1.0 + 0.5 * value);
+    let polynomial = -value * value - 1.26551223
+        + t * (1.00002368
+            + t * (0.37409196
+                + t * (0.09678418
+                    + t * (-0.18628806
+                        + t * (0.27886807
+                            + t * (-1.13520398
+                                + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))));
+    t * polynomial.exp()
 }
 
 fn math_real_number_as_f64(vm: &mut Vm, value: Value) -> Result<f64, String> {

@@ -8212,6 +8212,78 @@ fn cpython_math_cbrt_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py::MathTests erf/erfc cases.
+// MiniPython ports representative public values, signed zero, non-finite
+// propagation, `__float__` / `__index__` conversion, and catchable error
+// classes without claiming exact platform libm precision.
+#[test]
+fn cpython_math_erf_erfc_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "for fn in [math.erf, math.erfc]:\n",
+            "    print(fn.__name__, type(fn(0)).__name__)\n",
+            "    for value in [-2.0, -1.0, 0.5, 1.0, 2.0]:\n",
+            "        print(value, round(fn(value), 6))\n",
+            "    print('zero', repr(fn(-0.0)), repr(fn(0.0)))\n",
+            "    print('special', fn(math.inf), fn(-math.inf), math.isnan(fn(math.nan)))\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(round(math.erf(FloatLike(1.0)), 6), round(math.erfc(FloatLike(1.0)), 6))\n",
+            "print(math.erf(IndexLike(0)), math.erfc(IndexLike(0)))\n",
+            "for label, expr in [('erf-0', lambda: math.erf()), ('erfc-0', lambda: math.erfc()), ('erf-2', lambda: math.erf(1, 2)), ('erfc-2', lambda: math.erfc(1, 2)), ('erf-str', lambda: math.erf('1.0')), ('erfc-complex', lambda: math.erfc(1+2j)), ('erf-big-index', lambda: math.erf(IndexLike(10**10000))), ('erfc-bad-float', lambda: math.erfc(BadFloat())), ('erf-raises', lambda: math.erf(RaisesFloat())), ('erfc-keyword', lambda: math.erfc(x=1))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(label, error.__class__.__name__)"
+        ),
+        &[
+            "erf float",
+            "-2.0 -0.995322",
+            "-1.0 -0.842701",
+            "0.5 0.5205",
+            "1.0 0.842701",
+            "2.0 0.995322",
+            "zero -0.0 0.0",
+            "special 1.0 -1.0 True",
+            "erfc float",
+            "-2.0 1.995322",
+            "-1.0 1.842701",
+            "0.5 0.4795",
+            "1.0 0.157299",
+            "2.0 0.004678",
+            "zero 1.0 1.0",
+            "special 0.0 2.0 True",
+            "0.842701 0.157299",
+            "0.0 1.0",
+            "erf-0 TypeError",
+            "erfc-0 TypeError",
+            "erf-2 TypeError",
+            "erfc-2 TypeError",
+            "erf-str TypeError",
+            "erfc-complex TypeError",
+            "erf-big-index OverflowError",
+            "erfc-bad-float TypeError",
+            "erf-raises ValueError",
+            "erfc-keyword TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testExp and
 // ::testExp2. MiniPython ports public exponential behavior, float result
 // semantics, non-finite propagation, finite-input overflow errors, `__float__`

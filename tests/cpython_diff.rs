@@ -2083,6 +2083,57 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_erf_erfc_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests erf/erfc public stable subset",
+        name: "math-erf-erfc",
+        source: r#"import math
+for fn in [math.erf, math.erfc]:
+    print(fn.__name__, type(fn(0)).__name__)
+    for value in [-2.0, -1.0, 0.5, 1.0, 2.0]:
+        print(value, round(fn(value), 6))
+    print('zero', repr(fn(-0.0)), repr(fn(0.0)))
+    print('special', fn(math.inf), fn(-math.inf), math.isnan(fn(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(round(math.erf(FloatLike(1.0)), 6), round(math.erfc(FloatLike(1.0)), 6))
+print(math.erf(IndexLike(0)), math.erfc(IndexLike(0)))
+for label, expr in [
+    ('erf-0', lambda: math.erf()),
+    ('erfc-0', lambda: math.erfc()),
+    ('erf-2', lambda: math.erf(1, 2)),
+    ('erfc-2', lambda: math.erfc(1, 2)),
+    ('erf-str', lambda: math.erf('1.0')),
+    ('erfc-complex', lambda: math.erfc(1+2j)),
+    ('erf-big-index', lambda: math.erf(IndexLike(10**10000))),
+    ('erfc-bad-float', lambda: math.erfc(BadFloat())),
+    ('erf-raises', lambda: math.erf(RaisesFloat())),
+    ('erfc-keyword', lambda: math.erfc(x=1)),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_fma_diff_subset() {
     let probe = run_cpython("import math; print(hasattr(math, 'fma'))")
         .expect("failed to probe CPython math.fma support");
