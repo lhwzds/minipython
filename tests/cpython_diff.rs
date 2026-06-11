@@ -1332,6 +1332,52 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_trunc_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_trunc public stable subset",
+        name: "math-trunc",
+        source: r#"import math
+print(math.trunc(1), math.trunc(-1))
+print(type(math.trunc(1)).__name__, type(math.trunc(1.5)).__name__)
+print(math.trunc(1.5), math.trunc(-1.5))
+print(math.trunc(1.999999), math.trunc(-1.999999))
+print(math.trunc(-0.999999), math.trunc(-100.999))
+print(math.trunc(False), math.trunc(True), math.trunc(10**30))
+print(math.trunc(1e20) == 100000000000000000000)
+
+class TestTrunc:
+    def __trunc__(self):
+        return 23
+class TestRaises:
+    def __trunc__(self):
+        raise ValueError('bad trunc')
+class FloatTruncResult:
+    def __trunc__(self):
+        return 23.5
+class TestNoTrunc:
+    pass
+
+print(math.trunc(TestTrunc()))
+print(type(math.trunc(FloatTruncResult())).__name__)
+for expr in [
+    lambda: math.trunc(),
+    lambda: math.trunc(1, 2),
+    lambda: math.trunc('1.0'),
+    lambda: math.trunc(1+2j),
+    lambda: math.trunc(float('nan')),
+    lambda: math.trunc(float('inf')),
+    lambda: math.trunc(TestNoTrunc()),
+    lambda: math.trunc(TestRaises()),
+    lambda: math.trunc(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

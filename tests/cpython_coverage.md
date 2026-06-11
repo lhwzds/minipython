@@ -57,6 +57,7 @@ Recent runtime migration notes:
   `cpython_math_integer_diff_subset`,
   `cpython_math_sqrt_diff_subset`,
   `cpython_math_fabs_diff_subset`,
+  `cpython_math_trunc_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -475,12 +476,13 @@ Recent runtime migration notes:
   covering CPython `test_math.py::MathTests::test_signbit` negative sign-bit
   detection for zeroes, finite values, infinities, NaNs, bool/int conversion,
   huge-integer overflow, and TypeError cases supported by the current runtime.
-- The bundled `math` module also includes `cpython_math_trunc_subset`, covering
-  CPython `test_math.py::MathTests::test_trunc` integer/float truncation,
-  bool and big-integer preservation, exact large finite-float integer results,
-  normal `__trunc__` special-method dispatch with direct return-value
-  propagation, propagated exceptions, NaN/inf integer conversion errors, and
-  TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_trunc_diff_subset` and
+  `cpython_math_trunc_subset`, covering CPython
+  `test_math.py::MathTests::test_trunc` integer/float truncation, bool and
+  big-integer preservation, exact large finite-float integer results, normal
+  `__trunc__` special-method dispatch with direct return-value propagation,
+  propagated exceptions, NaN/inf integer conversion errors, and TypeError cases
+  supported by the current runtime.
 - The bundled `math` module also includes `cpython_math_ceil_subset` and
   `cpython_math_floor_subset`, covering CPython
   `test_math.py::MathTests::testCeil` and `::testFloor` public numeric
