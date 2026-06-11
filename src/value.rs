@@ -1311,8 +1311,8 @@ impl fmt::Display for Value {
                 ..
             } => write!(f, "{}", format_partialmethod(function, args, keywords)),
             Value::PartialMethodCall { .. } => write!(f, "<functools.partial object>"),
-            Value::LruCacheWrapper { .. } => {
-                write!(f, "<functools._lru_cache_wrapper object>")
+            Value::LruCacheWrapper { identity, .. } => {
+                write!(f, "{}", format_lru_cache_wrapper(identity))
             }
             Value::SingleDispatch { .. } => write!(f, "<function singledispatch wrapper>"),
             Value::SingleDispatchRegister { .. } => {
@@ -1429,6 +1429,13 @@ fn format_partialmethod(function: &Value, args: &[Value], keywords: &[(String, V
     format!(
         "functools.partialmethod({}, {args}, {keywords})",
         format_value_repr(function)
+    )
+}
+
+fn format_lru_cache_wrapper(identity: &Rc<()>) -> String {
+    format!(
+        "<functools._lru_cache_wrapper object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
     )
 }
 
@@ -1725,7 +1732,7 @@ fn format_value_repr(value: &Value) -> String {
             ..
         } => format_partialmethod(function, args, keywords),
         Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
-        Value::LruCacheWrapper { .. } => "<functools._lru_cache_wrapper object>".to_string(),
+        Value::LruCacheWrapper { identity, .. } => format_lru_cache_wrapper(identity),
         Value::SingleDispatch { .. } => "<function singledispatch wrapper>".to_string(),
         Value::SingleDispatchRegister { .. } => "<function singledispatch register>".to_string(),
         Value::SingleDispatchMethod { .. } => "<functools.singledispatchmethod object>".to_string(),

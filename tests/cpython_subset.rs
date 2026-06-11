@@ -39726,6 +39726,8 @@ fn cpython_functools_cache_subset() {
             "def cache_params():\n",
             "    return 1\n",
             "print(sorted(cache_params.cache_parameters().items()))\n",
+            "rendered = repr(cache_params)\n",
+            "print(rendered.startswith('<functools._lru_cache_wrapper object at 0x'), rendered.endswith('>'), str(cache_params) == rendered)\n",
         ),
         &[
             "[0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610]",
@@ -39782,6 +39784,7 @@ fn cpython_functools_cache_subset() {
             "True True",
             "decorated_source f doc string __main__ decorated_source True",
             "[('maxsize', 1000), ('typed', True)]",
+            "True True True",
         ],
     );
 }

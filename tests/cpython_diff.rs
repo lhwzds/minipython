@@ -11228,6 +11228,8 @@ def identify(value):
 print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(identify.cache_info()))
 cached_repr = lru_cache(typed=True)(repr)
 print(cached_repr(1), cached_repr(True), cached_repr(1.0), tuple(cached_repr.cache_info()))
+rendered = repr(cached_repr)
+print(rendered.startswith('<functools._lru_cache_wrapper object at 0x'), rendered.endswith('>'), str(cached_repr) == rendered)
 
 @lru_cache(maxsize=10)
 def kwargs_order(**kwargs):

@@ -945,10 +945,11 @@ Recent runtime migration notes:
   `test_functools.py::TestCache` and public `TestLRU` cache-wrapper behavior
   for `cache`, unbounded `lru_cache`, finite LRU eviction, `cache_info`,
   `cache_clear`, `cache_parameters`, `__wrapped__`, wrapper instance attributes,
-  direct `@lru_cache` decoration, zero and negative maxsize behavior,
-  user-function exceptions not being cached, `typed=True` top-level key
-  separation, non-recursive typed tuple behavior, keyword-order-sensitive cache
-  keys, full keyword-recursive `maxsize=None` statistics and clearing,
+  public wrapper `repr()` / `str()` shape, direct `@lru_cache` decoration, zero
+  and negative maxsize behavior, user-function exceptions not being cached,
+  `typed=True` top-level key separation, non-recursive typed tuple behavior,
+  keyword-order-sensitive cache keys, full keyword-recursive `maxsize=None`
+  statistics and clearing,
   recursive calls that mutate the cache during a miss, empty `**{}`
   equivalence with no keywords, `*args` key shape, cached method descriptor
   binding with shared cache statistics, wrapper-assignment metadata,
