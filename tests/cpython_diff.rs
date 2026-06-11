@@ -8525,6 +8525,58 @@ print(type(s * 1).__name__, s * 1 == b'qwerty()')"#,
 }
 
 #[test]
+fn cpython_bytearray_inplace_concat_repeat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iconcat, ::test_irepeat, and ::test_irepeat_1char",
+        name: "bytearray-inplace-concat-repeat",
+        source: r#"class I:
+    def __index__(self):
+        return 2
+b = bytearray(b'abc')
+b1 = b
+b += b'def'
+print(b, b == b1, b is b1)
+b += bytearray(b'xyz')
+print(b, b == b1, b is b1)
+b += memoryview(b'!')
+print(b, b is b1)
+try:
+    b += ''
+except TypeError as error:
+    print(error.__class__.__name__)
+b = bytearray(b'abc')
+b1 = b
+b *= 3
+print(b, b == b1, b is b1)
+b = bytearray(b'x')
+b1 = b
+b *= 100
+print(len(b), b[:5], b is b1)
+for count in [0, -1, False, True]:
+    b = bytearray(b'ab')
+    alias = b
+    b *= count
+    print(count, b, b is alias)
+for value in [b'b', bytearray(b'b'), memoryview(b'b')]:
+    b = bytearray(b'a')
+    result = b.__iadd__(value)
+    print(b, result is b)
+b = bytearray(b'a')
+result = b.__imul__(3)
+print(b, result is b)
+b = bytearray(b'a')
+result = b.__imul__(I())
+print(b, result is b)
+for expr in [lambda: bytearray(b'a').__iadd__('b'), lambda: bytearray(b'a').__iadd__([98]), lambda: bytearray(b'a').__imul__('3'), lambda: bytearray(b'a').__imul__(None), lambda: bytearray(b'a').__iadd__(), lambda: bytearray(b'a').__imul__()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+print('__iadd__' in dir(bytearray), '__imul__' in dir(bytearray))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

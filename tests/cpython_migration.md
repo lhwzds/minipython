@@ -3519,7 +3519,9 @@ Completed in the bytearray inplace concat/repeat pass:
 - Extended bytearray `+=`, `*=`, `__iadd__`, and `__imul__` behavior to mutate
   the original bytearray object, return the same object, expose the special
   methods through `dir(bytearray)`, accept bytes-like concat operands, and route
-  representative `TypeError` paths through catchable Python exceptions.
+  representative `TypeError` paths through catchable Python exceptions. Direct
+  CPython diff evidence is in
+  `cpython_bytearray_inplace_concat_repeat_diff_subset`.
 
 Completed in the bytearray non-mutating copy-buffer pass:
 

@@ -1503,7 +1503,8 @@ Recent runtime migration notes:
   `cpython_bytearray_inplace_concat_repeat_subset`, covering bytearray `+=`,
   `*=`, `__iadd__`, and `__imul__` alias-preserving in-place mutation,
   bytes-like concat operands, repeat counts, and representative catchable
-  `TypeError` paths.
+  `TypeError` paths. Direct CPython diff evidence is in
+  `cpython_bytearray_inplace_concat_repeat_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_nonmutating_methods_copy_buffers_subset` and
   `cpython_bytearray_pep3137_returns_new_copy_subset`, covering CPython
