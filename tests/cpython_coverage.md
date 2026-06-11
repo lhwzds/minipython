@@ -1487,6 +1487,8 @@ Recent runtime migration notes:
   `__bytes__ = None` fallback blocking. Direct CPython diff evidence for the
   stable `bytes(obj)` dispatch/blocking surface is in
   `cpython_bytes_dunder_bytes_dispatch_diff_subset`.
+  Direct CPython diff evidence for the bytes/bytearray subclass construction
+  basics slice is in `cpython_bytes_bytearray_subclass_basics_diff_subset`.
   Direct CPython diff evidence for bytearray subclass initializer override
   binding is in `cpython_bytearray_subclass_init_override_diff_subset`.
   Direct CPython diff evidence for bytes/bytearray subclass shallow/deep copy

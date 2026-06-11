@@ -248,7 +248,8 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   bytes/bytearray subclass construction, `isinstance()` / `issubclass()`,
   `bytes()` conversion, length, and truthiness slice from CPython
   `BaseBytesTest::test_custom`, `AssortedBytesTest`, and the module-level
-  subclass definitions.
+  subclass definitions. Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_subclass_basics_diff_subset`.
 - Added `cpython_bytes_bytearray_subclass_ops_and_join_subset`, adapted from
   CPython `Lib/test/test_bytes.py::SubclassTest::test_basic` and `::test_join`
   as applied by `BytesSubclassTest` and `ByteArraySubclassTest`.

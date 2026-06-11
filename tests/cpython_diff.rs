@@ -9098,6 +9098,22 @@ for T in [B, BA]:
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_basics_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and module-level bytes/bytearray subclass definitions public subset",
+        name: "bytes-bytearray-subclass-basics",
+        source: r#"class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+b = B(b'ab')
+ba = BA(b'cd')
+print(isinstance(b, bytes), issubclass(B, bytes), bytes(b), len(b), bool(B(b'')), bool(b))
+print(isinstance(ba, bytearray), issubclass(BA, bytearray), bytes(ba), len(ba), bool(BA()), bool(ba))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
