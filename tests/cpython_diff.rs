@@ -3050,6 +3050,56 @@ for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:
 }
 
 #[test]
+fn cpython_operator_sequence_member_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase sequence and member helper public subset",
+        name: "operator-sequence-member",
+        source: r#"import operator
+class Seq:
+    def __init__(self, lst):
+        self.lst = lst
+    def __len__(self):
+        return len(self.lst)
+    def __getitem__(self, i):
+        return self.lst[i]
+    def __add__(self, other):
+        return self.lst + other.lst
+class BadIterable:
+    def __iter__(self):
+        raise ZeroDivisionError
+print(operator.concat('py', 'thon'))
+print(operator.concat([1, 2], [3, 4]))
+print(operator.concat(Seq([5, 6]), Seq([7])))
+print(operator.countOf([1, 2, 1, 3, 1, 4], 3), operator.countOf([1, 2, 1, 3, 1, 4], 5))
+nan = float('nan')
+print(operator.countOf([nan, nan, 21], nan), operator.countOf([{}, 1, {}, 2], {}))
+print(operator.indexOf([4, 3, 2, 1], 3))
+try:
+    operator.indexOf([4, 3, 2, 1], 0)
+except ValueError as error:
+    print(type(error).__name__)
+print(operator.indexOf([nan, nan, 21], nan), operator.indexOf([{}, 1, {}, 2], {}))
+it = iter('leave the iterator at exactly the position after the match')
+print(operator.indexOf(it, 'a'), next(it))
+print(operator.contains(range(4), 2), operator.contains(range(4), 5))
+a = list(range(4))
+print(operator.getitem(a, 2))
+print(operator.setitem(a, 0, 9), a)
+print(operator.delitem(a, 1), a)
+for expr in [lambda: operator.concat(), lambda: operator.concat(None, None), lambda: operator.countOf(), lambda: operator.getitem(), lambda: operator.getitem(a, None), lambda: operator.setitem(a), lambda: operator.delitem(a)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)
+for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexOf(BadIterable(), 1)]:
+    try:
+        expr()
+    except ZeroDivisionError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
