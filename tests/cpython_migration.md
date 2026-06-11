@@ -10203,6 +10203,12 @@ Completed in the CPython collections manifest expansion pass:
   keep core iterator evidence, duplicate-keyword diagnostics, and CPython
   3.10+ `pairwise()` behavior from drifting back into a single ambiguous
   subset.
+- Extended `cpython_program_output_parity_smoke_subset` with
+  `comparison-operators-and-chaining`, a direct CPython diff case covering
+  equality, ordering, membership, identity, and chained-comparison observable
+  behavior from `Lib/test/test_grammar.py::test_comparison`. Added a manifest
+  guard that keeps the comparison, boolean, `while`, `for`, and control-flow
+  grammar subset evidence linked to that executable CPython parity smoke.
 
 Next:
 

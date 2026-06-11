@@ -4373,6 +4373,70 @@ fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
 }
 
 #[test]
+fn cpython_control_flow_smoke_diff_covers_grammar_runtime_subsets() {
+    let diff_name = "cpython_program_output_parity_smoke_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_grammar_equal_comparison_subset",
+        "cpython_grammar_ordering_comparison_subset",
+        "cpython_grammar_membership_comparison_subset",
+        "cpython_grammar_identity_comparison_subset",
+        "cpython_grammar_chained_comparison_subset",
+        "cpython_grammar_boolean_operations_subset",
+        "cpython_grammar_if_else_subset",
+        "cpython_grammar_elif_subset",
+        "cpython_grammar_while_subset",
+        "cpython_grammar_for_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "grammar runtime subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "boolean-expression-short-circuit-identity",
+        "while-else",
+        "for-else-continue",
+        "for-break-skips-else",
+        "conditional-expression-precedence",
+        "custom-bool-and-len-truth-protocol",
+        "1 < 2",
+        "True and False",
+        "while",
+        "else",
+        "for",
+        "break",
+        "continue",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "program output parity smoke diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("boolean")
+                && document.contains("comparison")
+                && document.contains("while")
+                && document.contains("for")
+                && document.contains("control flow"),
+            "control-flow docs must link `{diff_name}` to boolean, comparison, while, for, and control-flow coverage"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     let methods =
         method_audit_methods("## `Lib/test/test_syntax.py::SyntaxWarningTest` Method Audit");

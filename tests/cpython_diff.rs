@@ -11576,6 +11576,11 @@ except SyntaxError as error:
             source: "class Value:\n    def __init__(self):\n        self.called = 0\n    def __bool__(self):\n        self.called += 1\n        return self.value\nclass Yes(Value):\n    value = True\nclass No(Value):\n    value = False\nv = [Yes(), No(), Yes()]\nres = v[0] and v[1] and v[0]\nprint(res is v[1], [e.called for e in v])\nv = [No(), Yes(), No()]\nres = v[0] or v[1] or v[0]\nprint(res is v[1], [e.called for e in v])\nv = [No(), Yes(), Yes(), Yes()]\nres = v[0] and v[1] or v[2] or v[3]\nprint(res is v[2], [e.called for e in v])\nv = [No(), No(), Yes(), Yes(), No()]\nres = v[0] or v[1] and v[2] or v[3] or v[4]\nprint(res is v[3], [e.called for e in v])\nclass Foo:\n    def __bool__(self):\n        raise NotImplementedError()\na = Foo()\nb = Foo()\ntry:\n    bool(a)\nexcept NotImplementedError:\n    print('bool error')\ntry:\n    a or b\nexcept NotImplementedError:\n    print('or error')",
         },
         DiffCase {
+            origin: "Lib/test/test_grammar.py::test_comparison",
+            name: "comparison-operators-and-chaining",
+            source: "x = [1, 2]\ny = x\nprint(1 == 1, 1 != 2, 1 < 2, 2 <= 2, 3 > 2, 3 >= 3)\nprint(True and False, False or True, not False)\nprint(1 in x, 3 not in x, x is y, x is not [1, 2])\nprint(1 < 2 < 3, 1 < 2 > 3, 3 > 2 >= 2)\nprint(2 < 1 < missing_name)",
+        },
+        DiffCase {
             origin: "Lib/test/test_grammar.py::test_while",
             name: "while-else",
             source: "x = 0\nwhile x < 3:\n    print(x)\n    x += 1\nelse:\n    print(\"done\")",
