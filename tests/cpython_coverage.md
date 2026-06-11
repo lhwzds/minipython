@@ -966,7 +966,8 @@ Recent runtime migration notes:
   semantics for unresolved TypeVars,
   one-parameter substitution that simplifies duplicate union operands,
   `__parameters__` tracking, nested generic-alias substitution, multi-TypeVar
-  substitution, and post-substitution deduplication.
+  substitution, and post-substitution deduplication. Direct output parity is
+  guarded by `cpython_types_union_typevar_parameter_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_parameter_substitution_subset`, covering CPython
   `UnionTests` parameter substitution for supported builtin, generic-alias,

@@ -5581,6 +5581,49 @@ for label, expr in [('int-str', lambda: int | 'Forward'), ('str-int', lambda: 'F
 }
 
 #[test]
+fn cpython_types_union_typevar_parameter_diff_subset() {
+    let probe = run_cpython("import typing\nT = typing.TypeVar('T')\nprint((int | T)[int] is int)")
+        .expect("failed to probe CPython TypeVar union substitution support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union TypeVar parameter diff: CPython oracle lacks PEP 604 TypeVar substitution support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests TypeVar parameter public subset",
+        name: "types-union-typevar-parameter",
+        source: r#"import typing
+T = typing.TypeVar('T')
+S = typing.TypeVar('S')
+print('typevar-eq', T | str == typing.Union[T, str], str | T == typing.Union[str, T])
+print('typevar-sub', (int | T)[int] is int, (T | int)[int] is int)
+print('args-none', tuple(arg.__name__ for arg in (T | None).__args__), tuple(arg.__name__ for arg in (None | T).__args__))
+print('params', tuple(param.__name__ for param in (int | T).__parameters__), tuple(param.__name__ for param in (list[T] | list[S]).__parameters__))
+print('chain', (float | list[T])[int] == float | list[int])
+print('nested-params', tuple(param.__name__ for param in list[int | list[T]].__parameters__))
+print('nested-sub', list[int | list[T]][str] == list[int | list[str]])
+print('pair-sub', (list[T] | list[S])[int, T] == list[int] | list[T])
+print('pair-dedupe', (list[T] | list[S])[int, int] == list[int])
+for label, union in [('intT', int | T), ('Union-intT', typing.Union[int, T])]:
+    print('classinfo-resolve', label, isinstance(1, union), issubclass(int, union))
+for label, union in [('Tint', T | int), ('Union-Tint', typing.Union[T, int])]:
+    for op, expr in [('isinstance-1', lambda union=union: isinstance(1, union)), ('issubclass-int', lambda union=union: issubclass(int, union))]:
+        try:
+            expr()
+        except TypeError:
+            print('classinfo-error', label, op)
+for label, union in [('intT', int | T), ('Tint', T | int), ('Union-intT', typing.Union[int, T]), ('Union-Tint', typing.Union[T, int])]:
+    for op, expr in [('isinstance-object', lambda union=union: isinstance(object(), union)), ('issubclass-object', lambda union=union: issubclass(object, union))]:
+        try:
+            expr()
+        except TypeError:
+            print('classinfo-object-error', label, op)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
