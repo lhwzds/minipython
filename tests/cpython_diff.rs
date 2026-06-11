@@ -1369,6 +1369,41 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_signbit_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'signbit'))")
+        .expect("failed to probe CPython math.signbit support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping math.signbit diff: CPython oracle lacks math.signbit");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_signbit public stable subset",
+        name: "math-signbit",
+        source: r#"import math
+INF = float('inf')
+NAN = float('nan')
+print(type(math.signbit(1.0)).__name__)
+for arg in [0.0, 1.0, INF, NAN]:
+    print(math.signbit(arg), math.signbit(-arg))
+print(math.signbit(False), math.signbit(True))
+print(math.signbit(-0), math.signbit(-1))
+for expr in [
+    lambda: math.signbit(),
+    lambda: math.signbit(1, 2),
+    lambda: math.signbit('1.0'),
+    lambda: math.signbit(1+2j),
+    lambda: math.signbit(10**10000),
+    lambda: math.signbit(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_trunc_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::test_trunc public stable subset",
