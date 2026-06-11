@@ -2358,6 +2358,13 @@ Recent runtime migration notes:
   dump edge cases, deeper `literal_eval()` edge cases such as integer digit
   limits, and broader compile-from-public-AST parity remain open.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_core_runtime_subset`, covering the supported
+  `Hashable`, `Sized`, `Container`, `Callable`, and `Collection` ABC public
+  runtime surface, built-in container/type relationships, structural user
+  classes, direct ABC subclassing, and CPython-style `None` blocking for
+  special methods. Direct CPython diff evidence is in
+  `cpython_collections_abc_core_runtime_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.

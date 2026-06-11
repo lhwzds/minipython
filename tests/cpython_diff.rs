@@ -2596,6 +2596,89 @@ print(issubclass(deque, MutableSequence))"#,
 }
 
 #[test]
+fn cpython_collections_abc_core_runtime_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py core collections.abc public runtime subset",
+        name: "collections-abc-core-runtime",
+        source: r#"from collections.abc import Hashable, Sized, Container, Callable, Collection
+from collections.abc import Iterable, Iterator, Sequence, Mapping, MutableMapping, Set, MutableSet
+hashable_samples = [None, 0, 0.0, 0j, '', (), range(0), int, list, object, type, b'']
+print([isinstance(value, Hashable) for value in hashable_samples])
+print([isinstance(value, Hashable) for value in [bytearray(), [], set(), {}]])
+class DefaultHash:
+    pass
+class ExplicitHash:
+    def __hash__(self):
+        return 1
+class NoHash:
+    __hash__ = None
+print(isinstance(DefaultHash(), Hashable), issubclass(DefaultHash, Hashable))
+print(isinstance(ExplicitHash(), Hashable), issubclass(ExplicitHash, Hashable))
+print(isinstance(NoHash(), Hashable), issubclass(NoHash, Hashable))
+sized_samples = [b'', '', (), [], {}, set(), range(0), {}.keys(), {}.items(), {}.values()]
+print([isinstance(value, Sized) for value in sized_samples])
+print([isinstance(value, Sized) for value in [None, 42, 3.14, 1j, iter([])]])
+container_samples = [b'', '', (), [], {}, set(), range(0), {}.keys(), {}.items(), {}.values()]
+print([isinstance(value, Container) for value in container_samples])
+print([isinstance(value, Container) for value in [None, 42, 3.14, 1j, iter([])]])
+class HasLen:
+    def __len__(self):
+        return 0
+class LenBlocked(HasLen):
+    __len__ = None
+class HasContains:
+    def __contains__(self, item):
+        return False
+class ContainsBlocked(HasContains):
+    __contains__ = None
+print(isinstance(HasLen(), Sized), issubclass(HasLen, Sized), isinstance(LenBlocked(), Sized), issubclass(LenBlocked, Sized))
+print(isinstance(HasContains(), Container), issubclass(HasContains, Container), isinstance(ContainsBlocked(), Container), issubclass(ContainsBlocked, Container))
+def f():
+    pass
+class CallMe:
+    def __call__(self):
+        return 1
+class CallBlocked(CallMe):
+    __call__ = None
+print(isinstance(f, Callable), isinstance(len, Callable), isinstance(list, Callable), isinstance([].append, Callable))
+print(isinstance(CallMe(), Callable), issubclass(CallMe, Callable), isinstance(CallBlocked(), Callable), issubclass(CallBlocked, Callable))
+print([isinstance(value, Callable) for value in [None, 42, '', b'', (), [], {}, set(), iter([])]])
+collection_samples = [b'', '', (), [], {}, set(), range(0), {}.keys(), {}.items(), {}.values()]
+print([isinstance(value, Collection) for value in collection_samples])
+print([isinstance(value, Collection) for value in [None, 42, 3.14, 1j, iter([]), f]])
+class Col:
+    def __iter__(self):
+        return iter([])
+    def __len__(self):
+        return 0
+    def __contains__(self, item):
+        return False
+class ColNoIter:
+    def __len__(self):
+        return 0
+    def __contains__(self, item):
+        return False
+class ColNoSize:
+    def __iter__(self):
+        return iter([])
+    def __contains__(self, item):
+        return False
+class ColNoCont:
+    def __iter__(self):
+        return iter([])
+    def __len__(self):
+        return 0
+print(isinstance(Col(), Collection), issubclass(Col, Collection))
+print(isinstance(ColNoIter(), Collection), isinstance(ColNoSize(), Collection), isinstance(ColNoCont(), Collection))
+class C(Collection):
+    pass
+print(issubclass(C, Collection), issubclass(Sequence, Collection), issubclass(Mapping, Collection))
+print(issubclass(MutableMapping, Collection), issubclass(Set, Collection), issubclass(MutableSet, Collection))
+print(issubclass(Iterator, Iterable), issubclass(Collection, Sized), issubclass(Collection, Iterable), issubclass(Collection, Container))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
