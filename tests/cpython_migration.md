@@ -5357,6 +5357,11 @@ Completed in the bytes hex/fromhex method pass:
   counts, bool and `__index__` grouping arguments, catchable C-int overflow
   errors, and public `hex()` output correctness across length and nibble
   boundary samples.
+- Added direct CPython output parity evidence
+  `cpython_bytes_hex_separator_diff_subset` for the stable public bytes and
+  bytearray `hex()` separator/grouping/overflow and length/nibble-boundary
+  output slice. Exact unbound descriptor diagnostics remain covered by the
+  local subset test below rather than being required for this direct diff.
 - Added runtime support for `bytes.fromhex()` and `bytearray.fromhex()` over
   string input, plus MiniPython support for bytes/bytearray input matching the
   newer local CPython source.

@@ -43,6 +43,10 @@ Recent runtime migration notes:
   re-entrancy protection remains subset/default-oracle boundary evidence
   because the default CPython oracle accepts the mutation while the migrated
   subset pins the current public safety behavior.
+- Bytes/bytearray `hex()` separator, grouping, overflow, and nibble/length
+  boundary output now has direct CPython output parity evidence in
+  `cpython_bytes_hex_separator_diff_subset`; exact unbound descriptor
+  diagnostics remain in `cpython_bytes_hex_descriptor_error_messages_subset`.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product

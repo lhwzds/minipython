@@ -8626,6 +8626,48 @@ print(bytearray.__mod__(BA(b'%s'), b'a'))"#,
 }
 
 #[test]
+fn cpython_bytes_hex_separator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest hex/fromhex separator public output subset",
+        name: "bytes-hex-separator",
+        source: r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+
+for ctor in [bytes, bytearray]:
+    three = ctor(b'\xb9\x01\xef')
+    print(ctor.__name__, repr(three.hex(b'\x00')), repr(three.hex('\x00')))
+    print(ctor.__name__, repr(three.hex(b'\x7f')), repr(three.hex('\x7f')), three.hex(b'$'))
+    print(ctor.__name__, three.hex(':', 3), three.hex(':', -3), three.hex(':', 2**31 - 1), three.hex(':', -(2**31 - 1)), three.hex(':', -2**31))
+    print(ctor.__name__, three.hex(':', Indexable(2)), three.hex(':', True), three.hex(':', False))
+    for n in [2**31, -2**31 - 1, 2**1000, -2**1000]:
+        try:
+            three.hex(':', n)
+        except OverflowError as error:
+            print(ctor.__name__, 'overflow', n.bit_length(), error.__class__.__name__)
+    six = ctor(x * 3 for x in range(1, 7))
+    print(ctor.__name__, six.hex(':', 5), six.hex(b'@', -5), six.hex(':', -6), six.hex(' ', -95))
+
+five = bytes(range(90, 95))
+print('five', five.hex())
+value = b'{s\005\000\000\000worldi\002\000\000\000s\005\000\000\000helloi\001\000\000\0000'
+print('long', value.hex('.', 8))
+boundary_bytes = bytes([0x09, 0x0a, 0x90, 0x99, 0x9a, 0xa0, 0xa9, 0xaa, 0x00, 0xff])
+full = bytes(range(65)).hex()
+for ctor in [bytes, bytearray]:
+    ok = True
+    for length in (14, 15, 16, 17, 31, 32, 33, 64, 65):
+        data = ctor(bytes(range(length)))
+        if data.hex() != full[:length * 2]:
+            ok = False
+    boundary = ctor(boundary_bytes)
+    print(ctor.__name__, ok, boundary.hex(), (boundary * 2).hex() == '090a90999aa0a9aa00ff' * 2)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_repeat_id_preserving_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",
