@@ -67,6 +67,7 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_diff_subset`,
   `cpython_functools_cache_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
+  `cpython_functools_singledispatchmethod_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -604,13 +605,17 @@ Recent runtime migration notes:
   rejection stays in the local subset because older system CPython oracles
   accept some of those boundary calls.
 - The bundled `functools` module also includes
+  `cpython_functools_singledispatchmethod_diff_subset` and
   `cpython_functools_singledispatchmethod_subset`, covering CPython
   `test_functools.py::TestSingleDispatchMethod` public descriptor behavior,
   including instance and class access, descriptor `func` / `dispatcher` /
   `register` attributes, explicit and decorator registration through raw,
   class-bound, and instance-bound access, `staticmethod` and `classmethod`
   implementations, annotation-inferred registration, PEP 604 and
-  `typing.Union` registration, and public TypeError paths.
+  `typing.Union` registration, and public TypeError paths. The default diff
+  covers stable explicit-registration and descriptor-composition behavior;
+  missing-argument error classification stays in the local subset because older
+  system CPython oracles raise a different exception class on that boundary.
 - The bundled `typing` module includes
   `cpython_typing_get_origin_args_subset`, covering CPython public
   `get_args()` and `get_origin()` behavior for builtin and user generic aliases,

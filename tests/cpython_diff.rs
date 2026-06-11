@@ -1986,6 +1986,72 @@ print('done')"#,
 }
 
 #[test]
+fn cpython_functools_singledispatchmethod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestSingleDispatchMethod public stable subset",
+        name: "functools-singledispatchmethod",
+        source: r#"from functools import singledispatchmethod
+
+class C:
+    @singledispatchmethod
+    def m(self, arg):
+        return 'base:' + type(arg).__name__
+    @m.register(int)
+    def _(self, arg):
+        return 'int:' + str(arg)
+    @m.register(str)
+    @classmethod
+    def _(cls, arg):
+        return 'cls:' + cls.__name__ + ':' + arg
+
+c = C()
+print(c.m(1), c.m(True), c.m([]), c.m('x'))
+print(C.m(c, 1), C.m(c, 'x'))
+descriptor = C.__dict__['m']
+print(callable(descriptor), type(descriptor).__name__, descriptor.func.__name__, descriptor.dispatcher.dispatch(int)(c, 2))
+
+def c_float(self, arg):
+    return 'float:' + str(arg)
+print(descriptor.register(float, c_float) is c_float, c.m(1.5))
+
+@C.m.register(tuple)
+def _(self, arg):
+    return 'tuple:' + str(len(arg))
+@c.m.register(bytes)
+def _(self, arg):
+    return 'bytes:' + str(len(arg))
+print(c.m((1, 2)), c.m(b'abc'))
+print(C.m.__name__, c.m.__name__)
+try:
+    singledispatchmethod()
+except TypeError as error:
+    print(error.__class__.__name__)
+
+class S:
+    @singledispatchmethod
+    @staticmethod
+    def m(arg):
+        return 'base:' + str(arg)
+    @m.register(int)
+    @staticmethod
+    def _(arg):
+        return 'int:' + str(arg)
+print(S.m(1), S().m(1), S.m('x'), S().m('x'))
+
+class K:
+    @singledispatchmethod
+    @classmethod
+    def m(cls, arg):
+        return 'base:' + cls.__name__ + ':' + str(arg)
+    @m.register(int)
+    @classmethod
+    def _(cls, arg):
+        return 'int:' + cls.__name__ + ':' + str(arg)
+print(K.m(1), K().m(1), K.m('x'), K().m('x'))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
