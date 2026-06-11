@@ -6586,6 +6586,46 @@ fn cpython_types_float_constructor_edges_diff_subset() {
 }
 
 #[test]
+fn cpython_types_normal_integers_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_normal_integers public arithmetic rows",
+        name: "types-normal-integers",
+        source: r#"import sys
+print('add', 12 + 24, 12 + (-24), (-12) + 24, (-12) + (-24))
+print('compare', 12 < 24, -24 < -12)
+xsize, ysize, zsize = 238, 356, 4
+print('mul', xsize * ysize * zsize == zsize * xsize * ysize, xsize * ysize * zsize)
+m = -sys.maxsize - 1
+min_exact = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor
+    prod = divisor * j
+    min_exact.append((prod == m, type(prod) is int))
+print('min-exact', min_exact)
+min_under = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor - 1
+    prod = divisor * j
+    min_under.append((prod < m, type(prod) is int))
+print('min-under', min_under)
+m = sys.maxsize
+max_over = []
+for divisor in (1, 2, 4, 8, 16, 32):
+    j = m // divisor + 1
+    prod = divisor * j
+    max_over.append((prod > m, type(prod) is int))
+print('max-over', max_over)
+x = sys.maxsize
+print('instances', isinstance(x + 1, int), isinstance(-x - 1, int), isinstance(-x - 2, int))
+for label, expr in [('left', lambda: 5 << -5), ('right', lambda: 5 >> -5)]:
+    try:
+        expr()
+    except ValueError as error:
+        print('shift', label, error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_runtime_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests runtime type aliases",

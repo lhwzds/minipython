@@ -1110,7 +1110,8 @@ Recent runtime migration notes:
   around `sys.maxsize`, unified `int` result type checks, boundary
   `isinstance()` checks, and negative-shift `ValueError` behavior while
   leaving CPython's small-integer object-sharing assertion outside the
-  MiniPython contract.
+  MiniPython contract. Direct output parity is guarded by
+  `cpython_types_normal_integers_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_int_format_subset`, covering CPython
   `TypesTests::test_int__format__` for the complete non-locale direct
