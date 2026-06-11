@@ -74,6 +74,7 @@ Recent runtime migration notes:
   `cpython_math_frexp_ldexp_modf_diff_subset`,
   `cpython_math_fsum_diff_subset`,
   `cpython_math_sumprod_diff_subset`,
+  `cpython_math_nextafter_ulp_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -481,7 +482,9 @@ Recent runtime migration notes:
   behavior supported by the current runtime: strict paired iteration, exact
   integer results, float/mixed numeric summation accuracy, NaN/inf handling,
   huge-integer float overflow, and catchable error classes.
-- The bundled `math` module also includes `cpython_math_nextafter_ulp_subset`,
+- The bundled `math` module also includes
+  `cpython_math_nextafter_ulp_diff_subset`, gated for newer CPython oracles
+  with `nextafter(steps=...)`, and `cpython_math_nextafter_ulp_subset`,
   covering CPython `test_math.py::MathTests::test_nextafter` and `::test_ulp`
   IEEE-754 adjacent-float behavior, `steps`, signed-zero/subnormal
   transitions, infinity/NaN cases, ULP magnitudes, real-number input

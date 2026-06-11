@@ -2262,6 +2262,94 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_nextafter_ulp_diff_subset() {
+    let probe =
+        run_cpython("import math\ntry:\n    math.nextafter(1.0, 2.0, steps=0)\n    print(True)\nexcept TypeError:\n    print(False)")
+            .expect("failed to probe CPython math.nextafter steps support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping math.nextafter/ulp diff: CPython oracle lacks math.nextafter steps support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_nextafter/test_ulp public stable subset",
+        name: "math-nextafter-ulp",
+        source: r#"import math
+print(math.nextafter(4503599627370496.0, -math.inf), math.nextafter(4503599627370496.0, math.inf))
+print(math.nextafter(9223372036854775808.0, 0.0), math.nextafter(-9223372036854775808.0, 0.0))
+print(math.nextafter(1.0, -math.inf), math.nextafter(1.0, math.inf))
+print(math.nextafter(1.0, -math.inf, steps=3), math.nextafter(1.0, math.inf, steps=3))
+print(math.nextafter(2.0, 2.0), math.copysign(1.0, math.nextafter(-0.0, +0.0)), math.copysign(1.0, math.nextafter(+0.0, -0.0)))
+print(math.nextafter(+0.0, math.inf), math.nextafter(-0.0, math.inf), math.nextafter(+0.0, -math.inf), math.nextafter(-0.0, -math.inf))
+smallest = float('2.2250738585072014e-308') * 2.220446049250313e-16
+print(math.copysign(1.0, math.nextafter(smallest, +0.0)), math.copysign(1.0, math.nextafter(-smallest, +0.0)), math.copysign(1.0, math.nextafter(smallest, -0.0)), math.copysign(1.0, math.nextafter(-smallest, -0.0)))
+print(math.nextafter(math.inf, 0.0), math.nextafter(-math.inf, 0.0))
+largest = float('1.7976931348623157e+308')
+print(math.nextafter(largest, math.inf), math.nextafter(-largest, -math.inf))
+print(math.isnan(math.nextafter(math.nan, 1.0)), math.isnan(math.nextafter(1.0, math.nan)), math.isnan(math.nextafter(math.nan, math.nan)), math.nextafter(1.0, math.inf, steps=0))
+print(math.ulp(1.0), math.ulp(2 ** 52), math.ulp(2 ** 53), math.ulp(2 ** 64))
+print(math.ulp(0.0), math.ulp(largest))
+print(math.ulp(math.inf), math.isnan(math.ulp(math.nan)))
+print(math.ulp(-0.0), math.ulp(-1.0), math.ulp(-(2 ** 64)), math.ulp(-math.inf))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+class BadIndex:
+    def __index__(self):
+        return 1.0
+class RaisesIndex:
+    def __index__(self):
+        raise ValueError('bad index')
+
+print(math.nextafter(FloatLike(1.0), FloatLike(2.0)), math.nextafter(1.0, math.inf, steps=IndexLike(2)), math.nextafter(1.0, math.inf, steps=True), math.nextafter(1.0, math.inf, steps=False), math.nextafter(1.0, math.inf, steps=None), math.ulp(FloatLike(1.0)), math.ulp(IndexLike(2**64)))
+for expr in [
+    lambda: math.nextafter(),
+    lambda: math.nextafter(1),
+    lambda: math.nextafter(1, 2, 3),
+    lambda: math.nextafter(1, 2, 3, 4),
+    lambda: math.nextafter(x=1, y=2),
+    lambda: math.nextafter(1, 2, steps=-1),
+    lambda: math.nextafter(1, 2, steps=1.0),
+    lambda: math.nextafter(1, 2, steps=BadIndex()),
+    lambda: math.nextafter(1, 2, steps=RaisesIndex()),
+    lambda: math.nextafter('x', 1),
+    lambda: math.nextafter(1+2j, 1),
+    lambda: math.nextafter(IndexLike(10**10000), 1),
+    lambda: math.nextafter(BadFloat(), 1),
+    lambda: math.nextafter(RaisesFloat(), 1),
+    lambda: math.ulp(),
+    lambda: math.ulp(1, 2),
+    lambda: math.ulp(x=1),
+    lambda: math.ulp('x'),
+    lambda: math.ulp(1+2j),
+    lambda: math.ulp(IndexLike(10**10000)),
+    lambda: math.ulp(BadFloat()),
+    lambda: math.ulp(RaisesFloat()),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
