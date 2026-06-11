@@ -7698,6 +7698,99 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_bytes_basics_and_empty_index_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_basics, ::test_ord, and ::test_empty_sequence public subset",
+        name: "bytes-basics-and-empty-index",
+        source: r#"import sys
+for ctor in [bytes, bytearray]:
+    b = ctor()
+    print(ctor.__name__, type(b) is ctor, b.__class__ is ctor, object.__getattribute__(b, '__class__') is ctor)
+    b = ctor(b'\0A\x7f\x80\xff')
+    print(ctor.__name__, [ord(b[i:i+1]) for i in range(len(b))])
+
+indices = [0, 1, sys.maxsize, sys.maxsize + 1, 10**100, -1, -2, -sys.maxsize, -sys.maxsize - 1, -sys.maxsize - 2, -10**100]
+for ctor in [bytes, bytearray]:
+    b = ctor()
+    results = []
+    for index in indices:
+        try:
+            b[index]
+            results.append('ok')
+        except Exception as error:
+            results.append(error.__class__.__name__)
+    print(ctor.__name__, len(b), results)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_search_compare_slice_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest search, compare, reversed, and slice public subset",
+        name: "bytes-search-compare-slice",
+        source: r#"import sys
+
+for ctor in [bytes, bytearray]:
+    b = ctor(b'mississippi')
+    print(b.count(b'i'), b.count(b'ss'), b.count(b'w'))
+    print(b.count(105), b.count(119))
+    print(b.count(b'i', 6), b.count(b'p', 6), b.count(b'i', 1, 3), b.count(b'p', 7, 9))
+    print(b.find(b'ss'), b.find(b'w'), b.find(b'mississippian'))
+    print(b.find(105), b.find(119))
+    print(b.find(b'ss', 3), b.find(b'ss', 1, 7), b.find(b'ss', 1, 3))
+    print(b.rfind(b'ss'), b.rfind(b'w'), b.rfind(b'mississippian'))
+    print(b.rfind(105), b.rfind(119))
+    print(b.rfind(b'ss', 3), b.rfind(b'ss', 0, 6))
+    print(b.index(b'ss'), b.index(105), b.rindex(b'ss'), b.rindex(105))
+    print(b.find(bytearray(b'i')), b.find(memoryview(b'i')))
+    print(b.find(b'm', None, None), b.rfind(b's', None), b.index(b's', None, -2), b.rindex(b's', None, -2), b.count(b's', None, None))
+    for method_name in ['count', 'find', 'index', 'rfind', 'rindex']:
+        method = getattr(b, method_name)
+        errors = []
+        for value in [-1, 256, 9999]:
+            try:
+                method(value)
+            except (TypeError, ValueError) as error:
+                errors.append(error.__class__.__name__)
+        print(ctor.__name__, method_name, errors)
+    for expr in [lambda: b.index(b'w'), lambda: b.rindex(b'w'), lambda: b.find('i')]:
+        try:
+            expr()
+        except (TypeError, ValueError) as error:
+            print(ctor.__name__, error.__class__.__name__)
+
+for ctor in [bytes, bytearray]:
+    b1 = ctor([1, 2, 3])
+    b2 = ctor([1, 2, 3])
+    b3 = ctor([1, 3])
+    print(b1 == b2, b2 != b3, b1 <= b2, b1 <= b3, b1 < b3)
+    print(b1 >= b2, b3 >= b2, b3 > b2)
+    print(b1 != b2, b2 == b3, b1 > b2, b1 > b3, b1 >= b3, b1 < b2, b3 < b2, b3 <= b2)
+    print(ctor(b'\0a\0b\0c') == 'abc', ctor(b'\0\0\0a\0\0\0b\0\0\0c') == 'abc', ctor(b'a\0b\0c\0') == 'abc', ctor(b'a\0\0\0b\0\0\0c\0\0\0') == 'abc', ctor() == str(), ctor() != str())
+    input_values = list(map(ord, 'Hello'))
+    b = ctor(input_values)
+    output = list(reversed(b))
+    input_values.reverse()
+    print(output == input_values)
+    def by(text):
+        return ctor(map(ord, text))
+    b = by('Hello, world')
+    print(b[:5] == by('Hello'), b[1:5] == by('ello'), b[5:7] == by(', '), b[7:] == by('world'), b[7:12] == by('world'), b[7:100] == by('world'))
+    print(b[:-7] == by('Hello'), b[-11:-7] == by('ello'), b[-7:-5] == by(', '), b[-5:] == by('world'), b[-5:100] == by('world'), b[-100:5] == by('Hello'))
+    L = list(range(255))
+    b = ctor(L)
+    indices = (0, None, 1, 3, 19, 100, sys.maxsize, -1, -2, -31, -100)
+    ok = True
+    for start in indices:
+        for stop in indices:
+            for step in indices[1:]:
+                if b[start:stop:step] != ctor(L[start:stop:step]):
+                    ok = False
+    print(ok)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

@@ -1192,7 +1192,9 @@ Recent runtime migration notes:
   `index()`, and `rindex()` behavior for bytes-like and integer byte needles,
   the search/count side of `test_none_arguments` with `None` start/stop bounds,
   missing-value results/errors, and `test_integer_arguments_out_of_byte_range`
-  `ValueError` rejection for both bytes and bytearray.
+  `ValueError` rejection for both bytes and bytearray. Direct CPython diff
+  evidence for this search surface plus bytes/bytearray compare, reversed, and
+  slice behavior is in `cpython_bytes_search_compare_slice_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_search_prefix_suffix_error_messages_subset`, covering CPython
   `BaseBytesTest::test_find_etc_raise_correct_error_messages` public
@@ -1320,7 +1322,9 @@ Recent runtime migration notes:
   `cpython_bytes_basics_and_ord_subset`, covering CPython
   `BaseBytesTest::test_basics` and `test_ord` public behavior for exact
   bytes/bytearray type and `__class__` identity plus `ord()` over one-byte
-  slices at representative byte boundaries.
+  slices at representative byte boundaries. Direct CPython diff evidence is in
+  `cpython_bytes_basics_and_empty_index_diff_subset`, which also covers empty
+  sequence index-miss normalization.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_mutating_list_constructor_subset`, covering CPython
   `BaseBytesTest::test_from_mutating_list` public behavior where bytes and

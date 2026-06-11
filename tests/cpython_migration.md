@@ -2985,11 +2985,13 @@ Completed in the bytes iterable-constructor pass:
   reusing the existing `type()` result object mapping, covering bytes and
   bytearray through both direct attribute access and `object.__getattribute__`.
 - Covered `ord()` over one-byte bytes/bytearray slices for the CPython boundary
-  sample `[0, 65, 127, 128, 255]`.
+  sample `[0, 65, 127, 128, 255]`. Direct CPython diff evidence is in
+  `cpython_bytes_basics_and_empty_index_diff_subset`.
 - Added `cpython_bytes_empty_sequence_index_subset`, adapted from CPython
   `Lib/test/test_bytes.py::BaseBytesTest::test_empty_sequence`, covering empty
   bytes/bytearray length and `IndexError` normalization for ordinary,
   `sys.maxsize`-sized, and arbitrary large positive/negative subscript indices.
+  The same direct diff covers this empty-index behavior.
 - Added `cpython_bytes_length_constructor_boundary_subset`, adapted from
   `BaseBytesTest::test_from_int` and `test_from_ssize`, covering zero-filled
   integer-length construction, string/buffer source construction, `__index__`
@@ -3070,7 +3072,9 @@ Completed in the bytes compare/slice/reversed pass:
 - Extended CPython parity evidence for bytes and bytearray lexicographic
   comparisons, all four CPython byte-order comparison-against-`str` rows,
   reversed iteration over byte values, positive/negative ordinary slices, and
-  CPython's extended-slice matrix against equivalent list slicing.
+  CPython's extended-slice matrix against equivalent list slicing. Direct
+  CPython diff evidence is in
+  `cpython_bytes_search_compare_slice_diff_subset`.
 - Adjusted slice index iteration so an overflowing next index from an already
   normalized huge `step` stops the slice rather than raising an overflow error,
   matching CPython behavior for cases such as `seq[-100:sys.maxsize:sys.maxsize]`.
@@ -3093,7 +3097,8 @@ Completed in the bytes search-method pass:
   `BaseBytesTest::test_integer_arguments_out_of_byte_range` for both `bytes`
   and `bytearray`, covering `count()`, `find()`, `index()`, `rfind()`, and
   `rindex()` rejecting `-1`, `256`, and larger integer needles with catchable
-  `ValueError`.
+  `ValueError`. Direct CPython diff evidence is in
+  `cpython_bytes_search_compare_slice_diff_subset`.
 
 Completed in the bytes prefix/suffix-method pass:
 
