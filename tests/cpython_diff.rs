@@ -1454,6 +1454,59 @@ for check in [lambda: reduce(add, TestFailingIter()), lambda: reduce(42, BadSeq(
 }
 
 #[test]
+fn cpython_functools_cmp_to_key_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestCmpToKey public subset",
+        name: "functools-cmp-to-key",
+        source: r#"from functools import cmp_to_key
+def mycmp(x, y):
+    return (x > y) - (x < y)
+K = cmp_to_key(mycmp)
+a = K(1)
+b = K(2)
+same = K(1)
+print(callable(K), callable(a), a.obj, b.obj)
+again = a(2)
+print(again.obj, again > same)
+print(a < b, a <= b, a == b, a != b, a > b, a >= b)
+print(a == same, a <= same, a >= same)
+print(sorted([5, 2, 4, 1, 3], key=K))
+a.obj = 3
+print(a.obj, a > b)
+del a.obj
+print(a.obj is None)
+print(cmp_to_key(mycmp=mycmp)(obj='x').obj)
+
+def len_cmp(x, y):
+    return (len(x) > len(y)) - (len(x) < len(y))
+print(sorted(['aaa', 'b', 'cc'], key=cmp_to_key(len_cmp)))
+K_reverse = cmp_to_key(lambda x, y: (y > x) - (y < x))
+print(sorted([1, 2, 3], key=K_reverse))
+
+def bad(x, y):
+    raise ValueError('bad')
+for expr in [
+    lambda: K(1) < 1,
+    lambda: K(1) == 1,
+    lambda: K(1) != 1,
+    lambda: hash(K),
+    lambda: hash(K(1)),
+    lambda: K(),
+    lambda: K(1, 2),
+    lambda: K(other=1),
+    lambda: cmp_to_key(),
+    lambda: cmp_to_key(mycmp=mycmp, other=1),
+    lambda: cmp_to_key(3)(1) < cmp_to_key(3)(2),
+    lambda: cmp_to_key(bad)(1) < cmp_to_key(bad)(2),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",

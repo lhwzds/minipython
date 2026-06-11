@@ -60,6 +60,7 @@ Recent runtime migration notes:
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
+  `cpython_functools_cmp_to_key_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -522,6 +523,7 @@ Recent runtime migration notes:
   keyword override behavior, bound and unbound `__self__` visibility, invalid
   constructor forms, and raw descriptor non-callability/type reporting.
 - The bundled `functools` module also includes
+  `cpython_functools_cmp_to_key_diff_subset` and
   `cpython_functools_cmp_to_key_subset`, covering CPython
   `test_functools.py::TestCmpToKey` public key-wrapper behavior, direct rich
   comparisons, `sorted(..., key=cmp_to_key(...))`, callable wrappers, mutable
