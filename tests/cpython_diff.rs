@@ -4602,6 +4602,24 @@ print(set(view.items()) == set(items))"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_reversed_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests reversed subset",
+        name: "types-mappingproxy-reversed",
+        source: r#"from types import MappingProxyType
+d = {'a': 1, 'b': 2, 'foo': 0, 'c': 3, 'd': 4}
+mp = MappingProxyType(d)
+del d['foo']
+r = reversed(mp)
+print(list(r))
+try:
+    next(r)
+except StopIteration as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
