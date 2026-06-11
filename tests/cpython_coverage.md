@@ -2749,7 +2749,9 @@ Recent runtime migration notes:
   read-only assignment errors, deletion errors, bounds checks, one-dimensional
   tuple-key scalar get/set behavior, tuple-key `NotImplementedError` for
   unsupported subviews and multidimensional slicing, mixed tuple-key
-  `TypeError`, and no-resize assignment errors.
+  `TypeError`, and no-resize assignment errors. Direct CPython diff evidence is
+  split across `cpython_memoryview_writable_setitem_diff_subset` and
+  `cpython_memoryview_tuple_key_setitem_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_slice_reference_subset`, covering the first CPython
   `test_memoryview.py` one-dimensional slice-reference behavior: sliced
@@ -2765,7 +2767,9 @@ Recent runtime migration notes:
   `toreadonly()`, slice exporter preservation, positive/negative/empty-slice
   `strides`, `c_contiguous`, `f_contiguous`, `contiguous`, bytes-backed
   exporter values, released-attribute `ValueError`, and bytearray identity for
-  `is` / `id()` semantics.
+  `is` / `id()` semantics. `cpython_memoryview_slice_and_attributes_diff_subset`
+  directly compares the slice-reference and public-attribute surface against
+  CPython.
 - `RUNTIME_BUILTINS` also has direct CPython diff evidence for the supported
   public memoryview constructor/equality/hash surface in
   `cpython_memoryview_minimal_runtime_diff_subset` and the supported

@@ -728,7 +728,10 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   self-copy, read-only assignment `TypeError`, memoryview deletion `TypeError`,
   bounds errors, one-dimensional tuple-key scalar get/set behavior, tuple-key
   `NotImplementedError` for unsupported subviews and multidimensional slicing,
-  mixed tuple-key `TypeError`, and no-resize assignment checks.
+  mixed tuple-key `TypeError`, and no-resize assignment checks. Direct CPython
+  diff evidence now covers ordinary writable assignment through
+  `cpython_memoryview_writable_setitem_diff_subset` and tuple-key behavior
+  through `cpython_memoryview_tuple_key_setitem_diff_subset`.
 - Added `cpython_memoryview_slice_reference_subset`, migrating the first
   supported one-dimensional slice-reference behavior from CPython
   `Lib/test/test_memoryview.py::BaseMemorySliceTests` and
@@ -747,6 +750,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   semantics, `c_contiguous`, `f_contiguous`, and `contiguous` follow CPython's
   one-dimensional rules, bytes-backed views expose the original bytes object by
   value, and released views reject the new public attributes with `ValueError`.
+  `cpython_memoryview_slice_and_attributes_diff_subset` directly compares the
+  slice-reference and public-attribute surface against CPython.
 - Added `cpython_memoryview_array_b_buffer_subset` and
   `cpython_memoryview_array_b_buffer_diff_subset`, migrating the CPython public
   one-byte `array.array('B')` exporter slice for `memoryview()`: MiniPython now

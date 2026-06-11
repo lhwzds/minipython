@@ -7937,6 +7937,177 @@ for expr in [
 }
 
 #[test]
+fn cpython_memoryview_writable_setitem_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py writable bytearray-backed setitem public subset",
+        name: "memoryview-writable-setitem",
+        source: r#"base = bytearray(b'abcdef')
+alias = base
+alias[0] = ord('z')
+print(base)
+base[0] = ord('a')
+m = memoryview(base)
+m[0] = ord('1')
+print(base, m.tolist())
+m[0:1] = bytearray(b'0')
+print(base)
+m[1:3] = bytearray(b'12')
+print(base)
+m[1:1] = bytearray(b'')
+print(base)
+m[:] = bytearray(b'abcdef')
+print(base)
+m[0:3] = m[2:5]
+print(base)
+m[:] = bytearray(b'abcdef')
+m[2:5] = m[0:3]
+print(base)
+
+readonly = memoryview(b'abcdef')
+for expr in [
+    lambda: readonly.__setitem__(0, ord('1')),
+    lambda: readonly.__setitem__(0, b'1'),
+    lambda: readonly.__setitem__(0, memoryview(b'1')),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+for source in [memoryview(b'abcdef'), memoryview(bytearray(b'abcdef'))]:
+    for expr in [
+        lambda source=source: source.__delitem__(1),
+        lambda source=source: source.__delitem__(slice(1, 4)),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)
+base = bytearray(b'abcdef')
+m = memoryview(base)
+for expr in [
+    lambda: m.__setitem__(6, b'a'),
+    lambda: m.__setitem__(-7, b'a'),
+    lambda: m.__setitem__(0, b''),
+    lambda: m.__setitem__(0, b'ab'),
+    lambda: m.__setitem__(slice(1, 1), b'a'),
+    lambda: m.__setitem__(slice(0, 2), b'a'),
+]:
+    try:
+        expr()
+    except (IndexError, ValueError, TypeError) as error:
+        print(error.__class__.__name__)
+print(base)"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_tuple_key_setitem_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py tuple-key getitem/setitem public subset",
+        name: "memoryview-tuple-key-setitem",
+        source: r#"base = bytearray(b'abcdef')
+m = memoryview(base)
+for label, key in [
+    ('get-empty', ()),
+    ('get-scalar', (0,)),
+    ('get-bool', (True,)),
+    ('get-oob', (99,)),
+    ('get-one-slice', (slice(0, 1, 1),)),
+    ('get-two-slice', (slice(0, 1, 1), slice(0, 1, 1))),
+    ('get-slice-int', (slice(0, 1, 1), 0)),
+    ('get-int-slice', (0, slice(0, 1, 1))),
+    ('get-two-int', (0, 0)),
+    ('get-float', (0.0,)),
+]:
+    try:
+        result = m.__getitem__(key)
+        print(label, result)
+    except (TypeError, IndexError, NotImplementedError) as error:
+        print(label, error.__class__.__name__)
+base = bytearray(b'abcdef')
+m = memoryview(base)
+for label, key, value in [
+    ('set-scalar', (0,), 90),
+    ('set-empty', (), 90),
+    ('set-one-slice', (slice(0, 1, 1),), b'Z'),
+    ('set-two-slice', (slice(0, 1, 1), slice(0, 1, 1)), b'Z'),
+    ('set-slice-int', (slice(0, 1, 1), 0), b'Z'),
+    ('set-int-slice', (0, slice(0, 1, 1)), b'Z'),
+    ('set-two-int', (0, 0), 90),
+    ('set-float', (0.0,), 90),
+    ('set-bytes-scalar', (0,), b'Z'),
+]:
+    try:
+        result = m.__setitem__(key, value)
+        print(label, result, base)
+    except (TypeError, IndexError, NotImplementedError) as error:
+        print(label, error.__class__.__name__, base)"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_slice_and_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py one-dimensional slice reference and public buffer attributes subset",
+        name: "memoryview-slice-and-attributes",
+        source: r#"base = bytearray(b'XabcdefY')
+m = memoryview(base)[1:7]
+print(m.tobytes(), m.tolist(), m.readonly, m.nbytes)
+m[0] = ord('1')
+print(base, m.tobytes())
+base[2] = ord('2')
+print(base, m.tobytes())
+m[2:4] = b'34'
+print(base, m.tobytes())
+base = bytearray(b'XabcdefY')
+s = memoryview(base)[:7][1:]
+s[5] = ord('!')
+print(base, s.tobytes())
+rev_base = bytearray(b'abcdef')
+rev = memoryview(rev_base)[::-1]
+print(rev.tolist(), rev.tobytes())
+rev[0] = ord('Z')
+rev[5] = ord('A')
+print(rev_base, rev.tobytes())
+readonly = memoryview(b'XabcdefY')[1:7]
+try:
+    readonly[0] = ord('x')
+except TypeError as error:
+    print(error.__class__.__name__)
+
+base = bytearray(b'ab')
+view = memoryview(base)
+copy = memoryview(view)
+readonly = view.toreadonly()
+print(view.obj is base, copy.obj is base, readonly.obj is base, readonly.readonly)
+for name, m in [
+    ('full', view),
+    ('empty', view[0:0]),
+    ('empty-step', view[0:0:2]),
+    ('empty-neg', view[0:0:-1]),
+    ('skip', view[::2]),
+    ('reverse', view[::-1]),
+    ('one-reverse', view[:0:-1]),
+]:
+    print(name, m.tolist(), m.strides, m.c_contiguous, m.f_contiguous, m.contiguous, m.obj is base)
+bytes_view = memoryview(b'abcdef')[1:5]
+print(bytes_view.obj == b'abcdef', bytes_view.obj, bytes_view.strides, bytes_view.c_contiguous)
+released = memoryview(base)
+released.release()
+for expr in [
+    lambda: released.obj,
+    lambda: released.c_contiguous,
+    lambda: released.f_contiguous,
+    lambda: released.contiguous,
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(error.__class__.__name__, 'released' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",
