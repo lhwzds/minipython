@@ -2767,6 +2767,39 @@ print(issubclass(Direct, Sequence), issubclass(float, Direct))"#,
 }
 
 #[test]
+fn cpython_collections_abc_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Mapping/MutableMapping ABC public runtime subset",
+        name: "collections-abc-mapping",
+        source: r#"from collections.abc import Mapping, MutableMapping, Collection, Sized, Iterable, Container
+print(isinstance({}, Mapping), isinstance({}, MutableMapping), issubclass(dict, Mapping), issubclass(dict, MutableMapping))
+print(issubclass(MutableMapping, Mapping), issubclass(Mapping, Collection), issubclass(Mapping, Sized), issubclass(Mapping, Iterable), issubclass(Mapping, Container))
+class MapLike:
+    def __iter__(self):
+        return iter(())
+    def __len__(self):
+        return 0
+    def __getitem__(self, key):
+        raise KeyError(key)
+class MutMapLike(MapLike):
+    def __setitem__(self, key, value):
+        pass
+    def __delitem__(self, key):
+        pass
+print(isinstance(MapLike(), Mapping), issubclass(MapLike, Mapping), isinstance(MutMapLike(), MutableMapping), issubclass(MutMapLike, MutableMapping))
+class M(Mapping):
+    pass
+class MM(MutableMapping):
+    pass
+print(issubclass(M, Mapping), issubclass(M, Collection), issubclass(float, M))
+print(issubclass(MM, MutableMapping), issubclass(MM, Mapping), issubclass(MM, Collection), issubclass(float, MM))
+class Blocked(MutMapLike):
+    __setitem__ = None
+print(isinstance(Blocked(), MutableMapping), issubclass(Blocked, MutableMapping), isinstance(Blocked(), Mapping), issubclass(Blocked, Mapping))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
