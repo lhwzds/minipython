@@ -10253,7 +10253,17 @@ print(bio.seek(10), bio.tell(), bio.write(b'Z'), bio.getvalue())
 bio = io.BytesIO(b'abcdef')
 print(bio.truncate(3), bio.getvalue(), bio.tell())
 print(bio.seek(2), bio.truncate(), bio.getvalue(), bio.tell())
-for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
+bio = io.BytesIO(b'a\nbc\n')
+print(hasattr(bio, 'readline'), hasattr(bio, 'readlines'))
+print(bio.readline(), bio.tell())
+print(bio.readline(1), bio.tell())
+print(bio.readline(), bio.tell())
+print(bio.readline(), bio.tell())
+for hint in [-1, 0, 1, 2, 3, None]:
+    bio = io.BytesIO(b'a\nbc\n')
+    lines = bio.readlines() if hint is None else bio.readlines(hint)
+    print(hint, lines, bio.tell())
+for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
     try:
         expr()
     except Exception as error:

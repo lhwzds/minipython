@@ -985,6 +985,22 @@ fn bytes_io_read_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     chunk
 }
 
+fn bytes_io_readline_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
+    let mut state = bytes_io.borrow_mut();
+    let remaining = state.buffer.len().saturating_sub(state.position);
+    let max_count = size.unwrap_or(remaining).min(remaining);
+    let start = state.position;
+    let limit = start + max_count;
+    let newline_end = state.buffer[start..limit]
+        .iter()
+        .position(|byte| *byte == b'\n')
+        .map(|offset| start + offset + 1)
+        .unwrap_or(limit);
+    let chunk = state.buffer[start..newline_end].to_vec();
+    state.position = newline_end;
+    chunk
+}
+
 fn bytes_io_write_chunk(bytes_io: &BytesIORef, bytes: &[u8]) -> usize {
     let mut state = bytes_io.borrow_mut();
     let start = state.position;
@@ -8611,6 +8627,12 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO" => self.call_io_bytesio(args, keywords),
             Value::Builtin(name) if name == "io.BytesIO.read" => {
                 self.call_io_bytesio_read(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.readline" => {
+                self.call_io_bytesio_readline(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.readlines" => {
+                self.call_io_bytesio_readlines(args, keywords)
             }
             Value::Builtin(name) if name == "io.BytesIO.write" => {
                 self.call_io_bytesio_write(args, keywords)
@@ -17569,6 +17591,89 @@ impl Vm {
             _ => unreachable!("BytesIO.read arity is checked before reading size"),
         };
         Ok(bytes_value(bytes_io_read_chunk(bytes_io, size)))
+    }
+
+    fn call_io_bytesio_readline(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.readline", &keywords)?;
+        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: readline expected at most 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "TypeError: readline expected at most 1 argument, got {}",
+                rest.len()
+            ));
+        }
+        let size = match rest {
+            [] | [Value::None] => None,
+            [value] => {
+                let size = self.index_i64(value.clone(), "argument")?;
+                if size < 0 {
+                    None
+                } else {
+                    Some(usize::try_from(size).map_err(|_| {
+                        "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
+                    })?)
+                }
+            }
+            _ => unreachable!("BytesIO.readline arity is checked before reading size"),
+        };
+        Ok(bytes_value(bytes_io_readline_chunk(bytes_io, size)))
+    }
+
+    fn call_io_bytesio_readlines(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.readlines", &keywords)?;
+        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: readlines expected at most 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "TypeError: readlines expected at most 1 argument, got {}",
+                rest.len()
+            ));
+        }
+        let hint = match rest {
+            [] | [Value::None] => None,
+            [value] => {
+                let hint = self.index_i64(value.clone(), "argument")?;
+                if hint <= 0 {
+                    None
+                } else {
+                    Some(usize::try_from(hint).map_err(|_| {
+                        "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
+                    })?)
+                }
+            }
+            _ => unreachable!("BytesIO.readlines arity is checked before reading hint"),
+        };
+        let mut lines = Vec::new();
+        let mut total = 0_usize;
+        loop {
+            let line = bytes_io_readline_chunk(bytes_io, None);
+            if line.is_empty() {
+                break;
+            }
+            total = total.saturating_add(line.len());
+            lines.push(bytes_value(line));
+            if hint.is_some_and(|limit| total >= limit) {
+                break;
+            }
+        }
+        Ok(list_value(lines))
     }
 
     fn call_io_bytesio_write(
@@ -49563,13 +49668,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-            "getvalue" | "read" | "readinto" | "seek" | "tell" | "truncate" | "write" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
-                    receiver: Box::new(Value::BytesIO(bytes_io)),
-                    identity: Rc::new(()),
-                })
-            }
+            "getvalue" | "read" | "readinto" | "readline" | "readlines" | "seek" | "tell"
+            | "truncate" | "write" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
+                receiver: Box::new(Value::BytesIO(bytes_io)),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!(
                 "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
             )),
