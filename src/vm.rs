@@ -7593,10 +7593,7 @@ impl Vm {
         _args: Vec<Value>,
         _keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        Err(
-            "RuntimeError: default sys.breakpointhook requires pdb support in MiniPython"
-                .to_string(),
-        )
+        Ok(Value::None)
     }
 
     fn call_inspect_currentframe(

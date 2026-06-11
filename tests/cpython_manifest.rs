@@ -3372,6 +3372,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_int_max_str_digits_runtime_subset",
             "cpython_attribute_introspection_builtins_subset",
             "cpython_builtin_breakpoint_custom_hook_subset",
+            "cpython_builtin_breakpoint_default_stub_subset",
             "cpython_builtin_breakpoint_passthru_error_subset",
             "cpython_types_frame_locals_proxy_type_subset",
         ],
@@ -3440,6 +3441,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_hash_builtin_subset",
             "cpython_id_builtin_subset",
             "cpython_builtin_breakpoint_custom_hook_subset",
+            "cpython_builtin_breakpoint_default_stub_subset",
             "cpython_builtin_breakpoint_passthru_error_subset",
         ],
         &[

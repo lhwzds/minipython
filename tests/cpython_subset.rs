@@ -23393,7 +23393,8 @@ fn cpython_attribute_introspection_builtins_subset() {
 
 // Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
 // dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
-// hook-loss errors; the default pdb-backed hook remains runtime integration work.
+// hook-loss errors. The default hook is a sandbox no-op stub; pdb integration
+// and `PYTHONBREAKPOINT` environment behavior remain runtime integration work.
 #[test]
 fn cpython_builtin_breakpoint_custom_hook_subset() {
     assert_output(
@@ -23410,6 +23411,14 @@ fn cpython_builtin_breakpoint_custom_hook_subset() {
             "lost RuntimeError lost sys.breakpointhook",
             "reset-same True",
         ],
+    );
+}
+
+#[test]
+fn cpython_builtin_breakpoint_default_stub_subset() {
+    assert_output(
+        "import sys\nfor label, callback in [\n    ('breakpoint', lambda: breakpoint()),\n    ('hook', lambda: sys.breakpointhook()),\n    ('dunder', lambda: sys.__breakpointhook__(1, key=2)),\n]:\n    print(label, callback())",
+        &["breakpoint None", "hook None", "dunder None"],
     );
 }
 

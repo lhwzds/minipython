@@ -4356,6 +4356,7 @@ for `NotImplemented` and `Ellipsis`, their type objects being instances of
 rejection for the singleton type objects. Direct CPython output parity for both
 methods is in `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
+`cpython_builtin_breakpoint_default_stub_subset`,
 `cpython_builtin_breakpoint_passthru_error_subset`,
 `cpython_builtin_breakpoint_custom_hook_diff_subset`, and
 `cpython_builtin_breakpoint_passthru_error_diff_subset`
@@ -4363,7 +4364,8 @@ cover the sandbox-safe public subset from
 `Lib/test/test_builtin.py::TestBreakpoint`: builtin and `builtins.breakpoint`
 visibility, `sys.breakpointhook` / `sys.__breakpointhook__` metadata, custom
 hook dispatch, positional/keyword passthrough, hook return values, custom-hook
-TypeError propagation, reset identity, and the lost-hook `RuntimeError`.
+TypeError propagation, reset identity, a sandbox no-op default hook returning
+`None`, and the lost-hook `RuntimeError`.
 Default pdb-backed debugging, `PYTHONBREAKPOINT`, environment
 lookup, import warnings, and interactive debugger behavior remain
 runtime-blocked.

@@ -1179,12 +1179,9 @@ fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
 
     assert_eq!(
         run_source(
-            "import sys\nfor expr in [lambda: breakpoint(), lambda: sys.__breakpointhook__()]:\n    try:\n        expr()\n    except RuntimeError as error:\n        print(str(error))"
+            "import sys\nfor expr in [lambda: breakpoint(), lambda: sys.breakpointhook(), lambda: sys.__breakpointhook__(1, key=2)]:\n    print(expr())"
         ),
-        Ok(output_lines(&[
-            "default sys.breakpointhook requires pdb support in MiniPython",
-            "default sys.breakpointhook requires pdb support in MiniPython",
-        ]))
+        Ok(output_lines(&["None", "None", "None"]))
     );
 }
 
