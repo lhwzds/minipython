@@ -1033,7 +1033,9 @@ Recent runtime migration notes:
   for wrong arguments, non-generator return values, native coroutine
   pass-through, coroutine-like and coroutine-generator-like object pass-through,
   returning already iterable-coroutine generators, generator-function decorator
-  identity, and iterable-coroutine flags. `cpython_types_coroutine_async_def_subset`
+  identity, and iterable-coroutine flags. Direct output parity is guarded by
+  `cpython_types_coroutine_public_diff_subset`.
+  `cpython_types_coroutine_async_def_subset`
   covers stable function `__code__` identity and native coroutine `cr_code`
   flags. `cpython_types_coroutine_generator_wrapper_subset`,
   `cpython_types_coroutine_generator_frame_subset`,

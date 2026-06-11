@@ -5663,6 +5663,86 @@ print('tuple-new', TupleNew.__bases__ == (int,), type(TupleNew.__bases__).__name
 }
 
 #[test]
+fn cpython_types_coroutine_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests public types.coroutine subset",
+        name: "types-coroutine-public",
+        source: r#"import types, inspect
+for expr in [lambda: types.coroutine(None), lambda: types.coroutine(1), lambda: types.coroutine(object())]:
+    try:
+        expr()
+    except TypeError as error:
+        print('wrong', type(error).__name__, 'expects a callable' in str(error))
+@types.coroutine
+def non_gen_string():
+    return 'spam'
+print('non-gen-string', non_gen_string())
+class Awaitable:
+    def __await__(self):
+        return iter(())
+aw = Awaitable()
+@types.coroutine
+def non_gen_awaitable():
+    return aw
+print('non-gen-awaitable', non_gen_awaitable() is aw)
+non_gen_awaitable = types.coroutine(non_gen_awaitable)
+print('non-gen-awaitable-2', non_gen_awaitable() is aw)
+async def native():
+    return 'native'
+decorated_native = types.coroutine(native)
+print('native-identity', decorated_native is native)
+coro = decorated_native()
+print('native-type', type(coro).__name__, isinstance(coro, types.CoroutineType), coro.__class__ is types.CoroutineType)
+print('native-close', coro.close())
+class CoroLike:
+    def send(self, value=None):
+        return value
+    def throw(self, *args):
+        return args
+    def close(self):
+        return None
+    def __await__(self):
+        return self
+coro_like = CoroLike()
+@types.coroutine
+def returns_coro_like():
+    return coro_like
+print('duck-coro', returns_coro_like() is coro_like, returns_coro_like().__await__() is coro_like)
+class CoroGenLike(CoroLike):
+    def __iter__(self):
+        return self
+    def __next__(self):
+        raise StopIteration
+coro_gen_like = CoroGenLike()
+@types.coroutine
+def returns_coro_gen_like():
+    return coro_gen_like
+print('duck-corogen', returns_coro_gen_like() is coro_gen_like, returns_coro_gen_like().__await__() is coro_gen_like)
+@types.coroutine
+def iterable_coro():
+    yield 'tick'
+gencoro = iterable_coro()
+@types.coroutine
+def returns_itercoro():
+    return gencoro
+print('returning-itercoro', returns_itercoro() is gencoro)
+returns_itercoro = types.coroutine(returns_itercoro)
+print('returning-itercoro-2', returns_itercoro() is gencoro)
+def gen():
+    yield 'x'
+print('genfunc-id', types.coroutine(gen) is gen, types.coroutine(types.coroutine(gen)) is gen)
+print('gen-flags', bool(gen.__code__.co_flags & inspect.CO_ITERABLE_COROUTINE), bool(gen.__code__.co_flags & inspect.CO_COROUTINE))
+g = gen()
+print('gen-code-flags', bool(g.gi_code.co_flags & inspect.CO_ITERABLE_COROUTINE), bool(g.gi_code.co_flags & inspect.CO_COROUTINE))
+print('gen-run', next(g), type(g).__name__)
+try:
+    next(g)
+except StopIteration:
+    print('gen-stop')"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",

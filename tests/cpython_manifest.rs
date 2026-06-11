@@ -3558,6 +3558,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",
         "cpython_types_class_creation_metaclass_derivation_diff_subset",
         "cpython_types_class_creation_new_class_resolve_bases_diff_subset",
+        "cpython_types_coroutine_public_diff_subset",
         "cpython_types_function_type_diff_subset",
         "cpython_types_code_traceback_type_aliases_diff_subset",
         "cpython_types_frame_type_alias_diff_subset",
