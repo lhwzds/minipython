@@ -3087,6 +3087,13 @@ Recent runtime migration notes:
   including propagated exceptions, non-integer and negative return rejection,
   `sys.maxsize + 1` overflow rejection, large negative return rejection, missing
   `__len__`, and argument-count `TypeError`s.
+- `RUNTIME_BUILTINS` also includes `cpython_hash_builtin_subset` and
+  `cpython_id_builtin_subset` with direct CPython output parity in
+  `cpython_hash_id_builtins_diff_subset`, covering CPython
+  `BuiltinTest::test_hash`, `::test_invalid_hash_typeerror`, and `::test_id`
+  through portable hash invariants, hash TypeError paths, process-specific id
+  return typing, and stable identity relationships without comparing concrete
+  randomized hash values or process-specific ids.
 - `RUNTIME_BUILTINS` also includes
   `cpython_min_max_sum_builtin_subset`, covering CPython
   `BuiltinTest::test_max`, `::test_min`, and `::test_sum` public aggregate

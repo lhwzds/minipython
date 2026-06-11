@@ -4468,6 +4468,53 @@ for singleton in [NotImplemented, Ellipsis]:
 }
 
 #[test]
+fn cpython_hash_id_builtins_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
+        name: "hash-id-builtins-portable-invariants",
+        source: r#"print(type(hash(None)).__name__)
+print(hash(1) == hash(1), hash(1) == hash(1.0), hash(True) == hash(1))
+print(type(hash('spam')).__name__, hash('spam') == hash(b'spam'))
+print(type(hash((0, 1, 2, 3))).__name__)
+def f():
+    pass
+print(type(hash(f)).__name__)
+class X:
+    def __hash__(self):
+        return 2 ** 100
+class Bad:
+    def __hash__(self):
+        return 1.0
+class NoHash:
+    __hash__ = None
+print(type(hash(X())).__name__)
+for expr in [lambda: hash(), lambda: hash(1, 2), lambda: hash([]), lambda: hash({}), lambda: hash(([1],)), lambda: hash(Bad()), lambda: hash(NoHash())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+class IntHash(int):
+    def __hash__(self):
+        return self
+value = IntHash(42)
+print(hash(value) == 42, type(hash(value)).__name__)
+print(type(id(None)).__name__, type(id(1)).__name__, type(id(1.0)).__name__)
+print(type(id('spam')).__name__, type(id((0, 1, 2, 3))).__name__)
+items = [0, 1, 2, 3]
+alias = items
+other = [0, 1, 2, 3]
+print(id(items) == id(alias), id(items) == id(other))
+d = {'spam': 1, 'eggs': 2, 'ham': 3}
+print(type(id(d)).__name__, id(d) == id(d))
+for expr in [lambda: id(), lambda: id(1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",

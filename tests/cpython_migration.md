@@ -5889,13 +5889,16 @@ Completed in the hash/id builtin pass:
   integer/large-integer return values, int-subclass return values,
   `__hash__ = None`, and TypeError rejection when `__hash__` returns a
   non-integer or when mutable containers are hashed.
-- Added a CPython/MiniPython differential parity case for the portable
-  `test_hash` subset; exact process-randomized hash values are intentionally not
-  compared.
+- Added direct CPython output parity in `cpython_hash_id_builtins_diff_subset`
+  for the portable `test_hash` subset; exact process-randomized hash values are
+  intentionally not compared.
 - Added `cpython_id_builtin_subset`, adapted from
   `Lib/test/test_builtin.py::BuiltinTest::test_id`, covering the portable
   return-type guarantee and stable identity relationships for aliases versus
   separate mutable objects without comparing process-specific address values.
+- The same `cpython_hash_id_builtins_diff_subset` case compares the portable
+  `id()` return-type and identity-relationship behavior against CPython without
+  comparing concrete process-specific ids.
 
 Completed in the len builtin pass:
 
