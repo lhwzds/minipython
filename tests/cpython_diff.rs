@@ -11071,6 +11071,8 @@ class CachedCostItem:
 item = CachedCostItem()
 print(item.cost, item.cost, sorted(item.__dict__.items()))
 print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__ in ('__main__', 'functools'), CachedCostItem.cost.attrname)
+rendered = repr(CachedCostItem.__dict__['cost'])
+print(rendered.startswith('<functools.cached_property object at 0x'), rendered.endswith('>'), str(CachedCostItem.__dict__['cost']) == rendered)
 
 class OptionallyCachedCostItem:
     _cost = 1

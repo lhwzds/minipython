@@ -963,12 +963,12 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_subset`, covering CPython
   `test_functools.py::TestCachedProperty` public descriptor behavior for
   instance `__dict__` caching, class-level descriptor access, doc/module and
-  `attrname` metadata, attributes whose names differ from the wrapped function,
-  reuse rejection under different names, reuse under the same name across
-  classes, explicit post-class assignment before `__set_name__`, slot-only
-  instances without `__dict__`, and the shared user-descriptor `__set_name__`
-  hook plus exception propagation for both class statements and `type()`
-  dynamic class creation.
+  `attrname` metadata, public descriptor `repr()` / `str()` shape, attributes
+  whose names differ from the wrapped function, reuse rejection under different
+  names, reuse under the same name across classes, explicit post-class
+  assignment before `__set_name__`, slot-only instances without `__dict__`, and
+  the shared user-descriptor `__set_name__` hook plus exception propagation for
+  both class statements and `type()` dynamic class creation.
 - The bundled `functools` module also includes
   `cpython_functools_reduce_diff_subset` and
   `cpython_functools_reduce_subset`, covering CPython

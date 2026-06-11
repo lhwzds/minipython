@@ -1337,7 +1337,9 @@ impl fmt::Display for Value {
                     format_singledispatchmethod_callable(descriptor, identity)
                 )
             }
-            Value::CachedProperty { .. } => write!(f, "<functools.cached_property object>"),
+            Value::CachedProperty { identity, .. } => {
+                write!(f, "{}", format_cached_property(identity))
+            }
             Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
                 write!(f, "<functools.KeyWrapper object>")
             }
@@ -1464,6 +1466,13 @@ fn format_singledispatch(function: &Value, attrs: &Scope, identity: &Rc<()>) -> 
 fn format_singledispatchmethod(identity: &Rc<()>) -> String {
     format!(
         "<functools.singledispatchmethod object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
+    )
+}
+
+fn format_cached_property(identity: &Rc<()>) -> String {
+    format!(
+        "<functools.cached_property object at 0x{:x}>",
         Rc::as_ptr(identity) as usize
     )
 }
@@ -1811,7 +1820,7 @@ fn format_value_repr(value: &Value) -> String {
             identity,
             ..
         } => format_singledispatchmethod_callable(descriptor, identity),
-        Value::CachedProperty { .. } => "<functools.cached_property object>".to_string(),
+        Value::CachedProperty { identity, .. } => format_cached_property(identity),
         Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
             "<functools.KeyWrapper object>".to_string()
         }

@@ -39809,6 +39809,8 @@ fn cpython_functools_cached_property_subset() {
             "item = CachedCostItem()\n",
             "print(item.cost, item.cost, sorted(item.__dict__.items()))\n",
             "print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)\n",
+            "rendered = repr(CachedCostItem.__dict__['cost'])\n",
+            "print(rendered.startswith('<functools.cached_property object at 0x'), rendered.endswith('>'), str(CachedCostItem.__dict__['cost']) == rendered)\n",
             "\n",
             "class OptionallyCachedCostItem:\n",
             "    _cost = 1\n",
@@ -39894,6 +39896,7 @@ fn cpython_functools_cached_property_subset() {
         &[
             "2 2 [('_cost', 2), ('cost', 2)]",
             "cached_property The cost of the item. __main__ cost",
+            "True True True",
             "2 3 4 3 [('_cost', 4), ('cached_cost', 3)]",
             "TypeError Cannot assign the same cached_property to two different names ('a' and 'b').",
             "1 2 1 cp",
