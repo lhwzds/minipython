@@ -3147,7 +3147,8 @@ Completed in the bytes join-method pass:
   `bytes`, `bytearray`, and `memoryview` sequence items.
 - Covered empty joins, list/tuple/iterator inputs, empty separators, reduced
   stress joins, and representative `TypeError` paths for non-iterable inputs
-  and non-bytes-like items.
+  and non-bytes-like items. Direct CPython diff evidence is in
+  `cpython_bytes_join_diff_subset`.
 - Added `cpython_bytes_join_translate_maketrans_typeerror_messages_subset` to
   pin CPython's exact public `TypeError.args[0]` diagnostics for bytes and
   bytearray `join()` unbound, missing-argument, over-arity, and non-iterable
@@ -3556,7 +3557,8 @@ Completed in the bytes copy-module pass:
   now also copies bytearray buffers instead of sharing them.
 - Covered positional and keyword `x` argument binding, bytes/bytearray type and
   equality preservation, bytearray shallow/deep copy independence, and
-  representative `TypeError` paths.
+  representative `TypeError` paths. Direct CPython diff evidence is in
+  `cpython_bytes_copy_module_diff_subset`.
 
 Completed in the bytes pickle round-trip pass:
 

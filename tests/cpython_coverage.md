@@ -1497,6 +1497,11 @@ Recent runtime migration notes:
   iterable so re-entrant separator resizing raises `BufferError`. The
   re-entrant resize check remains local runtime evidence because it differs
   across default system CPython versions.
+- `STRING_RUNTIME` also includes `cpython_bytes_join_subset`, covering
+  bytes/bytearray `join()` receiver-driven result types, list/tuple/iterator
+  inputs, bytes-like items, empty joins/separators, reduced stress joins, and
+  representative TypeError paths. Direct CPython diff evidence is in
+  `cpython_bytes_join_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and
@@ -1507,7 +1512,8 @@ Recent runtime migration notes:
 - `STRING_RUNTIME` also includes `cpython_bytes_copy_module_subset`, covering
   CPython `BaseBytesTest::test_copy` for bytes/bytearray through the supported
   `copy.copy()` / `copy.deepcopy()` module surface, including independent
-  bytearray buffers for shallow and deep copies.
+  bytearray buffers for shallow and deep copies. Direct CPython diff evidence
+  is in `cpython_bytes_copy_module_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_pickle_roundtrip_subset`,
   covering CPython `BaseBytesTest::test_pickling` public value/type
   round-trips for supported bytes and bytearray values through MiniPython's

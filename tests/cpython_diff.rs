@@ -8188,6 +8188,72 @@ fn cpython_bytes_maketrans_translate_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_join_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_join public subset",
+        name: "bytes-join",
+        source: r#"for ctor in [bytes, bytearray]:
+    empty = ctor(b'')
+    print(empty.join([]))
+    print(empty.join([b'']))
+    for parts in [[b'abc'], [b'a', b'bc'], [b'ab', b'c'], [b'a', b'b', b'c']]:
+        values = list(map(ctor, parts))
+        print(empty.join(values), empty.join(tuple(values)), empty.join(iter(values)))
+    dot_join = ctor(b'.:').join
+    print(dot_join([b'ab', b'cd']))
+    print(dot_join([memoryview(b'ab'), b'cd']))
+    print(dot_join([b'ab', memoryview(b'cd')]))
+    print(dot_join([bytearray(b'ab'), b'cd']))
+    print(dot_join([b'ab', bytearray(b'cd')]))
+    seq = [b'abc'] * 100
+    joined = dot_join(seq)
+    expected = b'abc' + b'.:abc' * 99
+    print(joined == ctor(expected), len(joined))
+    joined = empty.join(seq)
+    expected = b'abc' * 100
+    print(joined == ctor(expected), len(joined))
+    for expr in [
+        lambda: ctor(b' ').join(None),
+        lambda: dot_join([bytearray(b'ab'), 'cd', b'ef']),
+        lambda: dot_join([memoryview(b'ab'), 'cd', b'ef']),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_copy_module_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_copy public subset",
+        name: "bytes-copy-module",
+        source: r#"import copy
+for ctor in [bytes, bytearray]:
+    original = ctor(b'abcd')
+    shallow = copy.copy(original)
+    deep = copy.deepcopy(original)
+    print(type(shallow).__name__, shallow == original, type(deep).__name__, deep == original)
+    if isinstance(original, bytearray):
+        print(shallow is original, deep is original)
+        shallow.append(ord('x'))
+        deep.append(ord('y'))
+        print(original, shallow, deep)
+print(copy.copy(x=b'kw'))
+for expr in [
+    lambda: copy.copy(),
+    lambda: copy.copy(b'a', b'b'),
+    lambda: copy.copy(b'a', x=b'b'),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
