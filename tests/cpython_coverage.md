@@ -142,6 +142,8 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
+  `cpython_types_mappingproxy_hash_diff_subset`,
+  `cpython_types_mappingproxy_contains_diff_subset`,
   `cpython_types_mappingproxy_views_diff_subset`,
   `cpython_types_mappingproxy_missing_diff_subset`,
   `cpython_types_mappingproxy_len_diff_subset`,

@@ -3576,6 +3576,8 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
+        "cpython_types_mappingproxy_hash_diff_subset",
+        "cpython_types_mappingproxy_contains_diff_subset",
         "cpython_types_mappingproxy_views_diff_subset",
         "cpython_types_mappingproxy_missing_diff_subset",
         "cpython_types_mappingproxy_len_diff_subset",
@@ -3615,6 +3617,22 @@ fn types_singleton_alias_diff_evidence_stays_capability_gated() {
             && body.contains("hasattr(types, 'EllipsisType')")
             && body.contains("skipping types singleton aliases diff"),
         "types singleton alias diff evidence must stay gated for older CPython oracles"
+    );
+}
+
+#[test]
+fn types_mappingproxy_hash_diff_evidence_stays_capability_gated() {
+    let start = CPYTHON_DIFF
+        .find("fn cpython_types_mappingproxy_hash_diff_subset()")
+        .expect("types mappingproxy hash diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    assert!(
+        body.contains("hash(MappingProxyType(M()))")
+            && body.contains("skipping types mappingproxy hash diff"),
+        "types mappingproxy hash diff evidence must stay gated for older CPython oracles"
     );
 }
 

@@ -4663,6 +4663,52 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_hash_diff_subset() {
+    let probe = run_cpython(
+        "from types import MappingProxyType\nclass M:\n    def __getitem__(self, key):\n        raise KeyError(key)\n    def __hash__(self):\n        return 1\ntry:\n    hash(MappingProxyType(M()))\n    print(True)\nexcept TypeError:\n    print(False)",
+    )
+    .expect("failed to probe CPython mappingproxy hash support");
+    if probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping types mappingproxy hash diff: CPython oracle lacks hashable mappingproxy support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests hash subset",
+        name: "types-mappingproxy-hash",
+        source: r#"from types import MappingProxyType
+view = MappingProxyType({'a': 1, 'b': 2})
+try:
+    hash(view)
+except TypeError as error:
+    print(error.__class__.__name__)
+class HashableMapping:
+    def __getitem__(self, key):
+        raise KeyError(key)
+    def __hash__(self):
+        return 3844817361
+mapping = HashableMapping()
+view = MappingProxyType(mapping)
+print(hash(view) == hash(mapping))
+d = {view: 'ok'}
+print(d[view])"#,
+    });
+}
+
+#[test]
+fn cpython_types_mappingproxy_contains_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests contains subset",
+        name: "types-mappingproxy-contains",
+        source: r#"from types import MappingProxyType
+view = MappingProxyType(dict.fromkeys('abc'))
+print('a' in view, 'b' in view, 'c' in view, 'xxx' in view)"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_views_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::MappingProxyTests contains/views subset",
