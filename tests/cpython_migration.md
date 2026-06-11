@@ -152,7 +152,7 @@ ported, partial, blocked by runtime/AST-module work, or not started.
 
 | Area | Current state | Next migration pressure |
 | --- | --- | --- |
-| Tokens | Many operator and indentation tokens are covered; numeric literal valid and invalid underscore/prefix forms are better covered; `lex_with_spans()` now exposes token start/end locations; string, f-string, t-string, and tokenizer error cases are still partial. | Continue from `Lib/test/test_tokenize.py`, f-string/t-string suites, and remaining tokenizer error forms. |
+| Tokens | Many operator, selector, async/await, and indentation tokens are covered; numeric literal valid and invalid underscore/prefix forms are better covered; `lex_with_spans()` now exposes token start/end locations; string, f-string, t-string, and tokenizer error cases are still partial. `cpython_tokenize_async_await_diff_subset` keeps the async/await tokenizer slice tied to direct CPython execution parity. | Continue from `Lib/test/test_tokenize.py`, f-string/t-string suites, and remaining tokenizer error forms. |
 | Statements | Core simple and compound statement grammar rows are covered; remaining statement work is mostly runtime-coupled edge behavior and broader integration. | Continue CPython-derived runtime edge tests where syntax depends on VM behavior. |
 | Expressions | Arithmetic, boolean-as-int numeric behavior, comparison, displays, comprehensions, calls, lambdas, slices, and user-defined subscript protocol exist as subsets. | Audit illegal expressions, generator parenthesization, walrus restrictions, and full call argument ordering. |
 | Parameters | Positional-only, keyword-only, `*args`, and `**kwargs` exist as subsets. | Finish invalid parameter ordering and duplicate-name coverage from CPython. |

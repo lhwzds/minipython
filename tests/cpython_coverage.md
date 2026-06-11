@@ -3821,7 +3821,9 @@ Recent runtime migration notes:
   selector/decorator source shapes tied to direct CPython execution parity.
 - `cpython_tokenize_async_await_subset` ports representative CPython
   `test_async` tokenizer source shapes while preserving MiniPython's
-  parser-ready `async` / `await` keyword token variants.
+  parser-ready `async` / `await` keyword token variants. The corresponding
+  `cpython_tokenize_async_await_diff_subset` keeps valid async/await source
+  shapes tied to direct CPython execution parity.
 - `cpython_grammar_tests_eval_and_var_annotation_first_pass_subset` starts
   method-oriented `Lib/test/test_grammar.py::GrammarTests` migration with
   eval input, variable annotation basics and syntax errors, annotation target

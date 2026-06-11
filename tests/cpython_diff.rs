@@ -606,6 +606,34 @@ print(C().foo(4, 5))"#,
 }
 
 #[test]
+fn cpython_tokenize_async_await_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::test_async public execution subset",
+        name: "tokenize-async-await",
+        source: r#"async def identity(value):
+    return value
+
+class Awaitable:
+    def __await__(self):
+        yield "pause"
+        return 40
+
+async def main():
+    print(await identity("ok"))
+    result = await Awaitable()
+    print(result + 2)
+    return "done"
+
+coro = main()
+print(coro.send(None))
+try:
+    coro.send(None)
+except StopIteration as done:
+    print(done)"#,
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",

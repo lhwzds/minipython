@@ -4301,6 +4301,10 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
             "cpython_tokenize_selector_and_method_subset",
             "cpython_tokenize_selector_and_method_diff_subset",
         ),
+        (
+            "cpython_tokenize_async_await_subset",
+            "cpython_tokenize_async_await_diff_subset",
+        ),
     ] {
         assert!(
             CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
