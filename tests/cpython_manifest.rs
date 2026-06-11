@@ -2059,9 +2059,9 @@ fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
             "sandbox stdlib row `{}` must cite concrete cpython_diff evidence",
             row.module
         );
-        let has_direct_diff_evidence = evidence_names.iter().any(|evidence| {
-            evidence.starts_with("cpython_") || sandbox_stdlib_legacy_direct_evidence(evidence)
-        });
+        let has_direct_diff_evidence = evidence_names
+            .iter()
+            .any(|evidence| evidence.starts_with("cpython_"));
         assert!(
             has_direct_diff_evidence,
             "sandbox stdlib row `{}` must cite at least one direct CPython diff evidence test",
@@ -2090,10 +2090,6 @@ fn cpython_migration_sandbox_stdlib_manifest_is_guarded_by_diff_evidence() {
 }
 
 fn sandbox_stdlib_evidence_has_runtime_subset(evidence: &str) -> bool {
-    if sandbox_stdlib_legacy_runtime_evidence(evidence) {
-        return true;
-    }
-
     let candidates = sandbox_stdlib_runtime_subset_candidates(evidence);
     candidates
         .iter()
@@ -2101,10 +2097,6 @@ fn sandbox_stdlib_evidence_has_runtime_subset(evidence: &str) -> bool {
 }
 
 fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
-    if sandbox_stdlib_legacy_runtime_evidence(evidence) {
-        return vec![evidence.to_string()];
-    }
-
     let snake_case = evidence.replace('-', "_");
     let mut candidates = Vec::new();
 
@@ -2151,16 +2143,6 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     }
 
     candidates
-}
-
-fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
-    let _ = evidence;
-    false
-}
-
-fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
-    let _ = evidence;
-    false
 }
 
 #[test]
