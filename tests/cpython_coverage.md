@@ -2955,7 +2955,11 @@ Recent runtime migration notes:
   class-based and call-based `typing.NamedTuple` / `typing.TypedDict`
   original-bases preservation with their public tuple/dict runtime bases,
   `__mro_entries__` replacement/removal, `__orig_bases__` preservation, and
-  non-tuple `__mro_entries__` rejection.
+  non-tuple `__mro_entries__` rejection. The stable core of this public slice
+  is guarded by `cpython_types_class_creation_new_class_resolve_bases_diff_subset`;
+  generic-alias base-resolution behavior is guarded separately by
+  `cpython_types_class_creation_mro_entries_core_diff_subset` and
+  `cpython_types_class_creation_prepare_resolve_bases_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_new_class_meta_helper_subset`, covering CPython
   `ClassCreationTests::test_new_class_basics` through

@@ -5585,6 +5585,84 @@ print('E', type(E) is BMeta, new_calls, 'BMeta_was_here' in E.__dict__)"#,
 }
 
 #[test]
+fn cpython_types_class_creation_new_class_resolve_bases_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests public new_class core",
+        name: "types-class-creation-new-class-resolve-bases",
+        source: r#"import types
+print('new_class' in types.__all__, 'prepare_class' in types.__all__, 'resolve_bases' in types.__all__)
+print(types.new_class('C').__name__, types.new_class('C').__bases__[0] is object)
+C = types.new_class('C', (int,))
+print(issubclass(C, int), C.__bases__[0] is int)
+def body(ns):
+    ns['x'] = 42
+D = types.new_class('D', (), {}, body)
+print(D.x, D.__name__)
+settings = {'metaclass': lambda name, bases, ns, **kw: (name, bases, sorted(ns.items()), kw), 'z': 2}
+print(types.new_class('E', (), settings, body))
+print(settings['z'], 'metaclass' in settings)
+meta, ns, kw = types.prepare_class('P')
+print(meta is type, type(ns).__name__, kw == {})
+class Meta(type):
+    def __prepare__(name, bases, z=0):
+        return {'prepared': z, 'base_count': len(bases)}
+class Direct(metaclass=Meta):
+    pass
+class Derived(Direct):
+    pass
+print(Direct.__class__ is Meta, type(Direct) is Meta, isinstance(Direct, Meta), isinstance(Direct, type), Direct.prepared, Direct.base_count)
+print(Derived.__class__ is Meta, type(Derived) is Meta, isinstance(Derived, Meta), isinstance(Derived, type), Derived.prepared, Derived.base_count)
+meta, ns, kw = types.prepare_class('P', (), {'metaclass': Meta, 'z': 2})
+print(meta is Meta, ns, kw)
+Prepared = types.new_class('Prepared', (), {'metaclass': Meta})
+PreparedChild = types.new_class('PreparedChild', (Prepared,))
+print(Prepared.__class__ is Meta, type(Prepared) is Meta, isinstance(Prepared, Meta), isinstance(Prepared, type), Prepared.prepared, Prepared.base_count)
+print(PreparedChild.__class__ is Meta, type(PreparedChild) is Meta, isinstance(PreparedChild, Meta), isinstance(PreparedChild, type), PreparedChild.prepared, PreparedChild.base_count)
+class MetaConstruct(type):
+    def __new__(mcls, name, bases, ns, marker='x'):
+        print('new', mcls.__name__, name, len(bases), ns.get('body_value', 'missing'), marker)
+        ns['from_new'] = marker
+        return type.__new__(mcls, name, bases, ns)
+    def __init__(cls, name, bases, ns, marker='x'):
+        print('init', cls.__name__, name, len(bases), ns.get('from_new'), marker)
+        cls.from_init = marker + '-init'
+class ConstructBase(metaclass=MetaConstruct, marker='base'):
+    body_value = 1
+class ConstructChild(ConstructBase, marker='child'):
+    pass
+print(ConstructBase.from_new, ConstructBase.from_init, ConstructChild.from_new, ConstructChild.from_init)
+def construct_body(ns):
+    ns['body_value'] = 7
+ConstructDyn = types.new_class('ConstructDyn', (), {'metaclass': MetaConstruct, 'marker': 'dyn'}, construct_body)
+print(ConstructDyn.from_new, ConstructDyn.from_init)
+class HookBase:
+    def __init_subclass__(cls, **kw):
+        print('sub', cls.__name__, kw['flag'])
+class InitOnlyMeta(type):
+    def __init__(cls, name, bases, ns, **kw):
+        print('meta-init', cls.__name__, kw['flag'])
+class HookChild(HookBase, metaclass=InitOnlyMeta, flag=3):
+    pass
+class AMeta(type): pass
+class BMeta(type): pass
+class A(metaclass=AMeta): pass
+class B(metaclass=BMeta): pass
+try:
+    class Bad(A, B): pass
+except TypeError as error:
+    print('conflict', type(error).__name__)
+class TupleSubclass(tuple):
+    pass
+tuple_bases = TupleSubclass((int, object))
+TupleDyn = type('TupleDyn', tuple_bases, {})
+print('tuple-bases', type(tuple_bases).__name__, len(tuple_bases), isinstance(tuple_bases, tuple), TupleDyn.__bases__ == (int, object), type(TupleDyn.__bases__).__name__, TupleDyn.__bases__ is tuple_bases, TupleDyn.__bases__[0] is int, TupleDyn.__bases__[1] is object)
+tuple_new_bases = TupleSubclass((int,))
+TupleNew = types.new_class('TupleNew', tuple_new_bases, {})
+print('tuple-new', TupleNew.__bases__ == (int,), type(TupleNew.__bases__).__name__, TupleNew.__bases__ is tuple_new_bases)"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
