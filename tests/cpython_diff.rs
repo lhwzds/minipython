@@ -5702,6 +5702,43 @@ print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)"#,
 }
 
 #[test]
+fn cpython_types_union_bad_classinfo_checks_diff_subset() {
+    let probe = run_cpython(
+        "class BadInstanceMeta(type):\n    def __instancecheck__(cls, inst):\n        1/0\nx = int | BadInstanceMeta('A', (), {})\nprint(isinstance(1, x))",
+    )
+    .expect("failed to probe CPython union bad classinfo support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union bad classinfo diff: CPython oracle lacks PEP 604 metaclass union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests bad classinfo public subset",
+        name: "types-union-bad-classinfo-checks",
+        source: r#"class BadInstanceMeta(type):
+    def __instancecheck__(cls, inst):
+        1/0
+x = int | BadInstanceMeta('A', (), {})
+print('isinstance-int', isinstance(1, x))
+try:
+    isinstance([], x)
+except ZeroDivisionError as exc:
+    print('isinstance-list-error', type(exc).__name__, str(exc))
+class BadSubclassMeta(type):
+    def __subclasscheck__(cls, sub):
+        1/0
+y = int | BadSubclassMeta('B', (), {})
+print('issubclass-int', issubclass(int, y))
+try:
+    issubclass(list, y)
+except ZeroDivisionError as exc:
+    print('issubclass-list-error', type(exc).__name__, str(exc))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

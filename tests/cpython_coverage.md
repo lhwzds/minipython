@@ -986,7 +986,8 @@ Recent runtime migration notes:
   `cpython_types_union_bad_classinfo_checks_subset`, covering CPython
   `UnionTests` propagation of custom metaclass `__instancecheck__` and
   `__subclasscheck__` exceptions through PEP 604 union classinfo after leading
-  concrete union members short-circuit successfully.
+  concrete union members short-circuit successfully. Direct output parity is
+  guarded by `cpython_types_union_bad_classinfo_checks_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_unhashable_metaclass_subset`, covering CPython
   `UnionTests` custom metaclass `__hash__ = None` behavior for PEP 604 union
