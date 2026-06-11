@@ -1444,11 +1444,15 @@ Recent runtime migration notes:
   precedence over `__index__`, str-subclass `__bytes__` / explicit-encoding
   precedence from `BytesTest::test_custom`, bytes-subclass `__bytes__`
   regression cases, `str.__new__` returning concrete str subclasses, and
-  `__bytes__ = None` fallback blocking.
+  `__bytes__ = None` fallback blocking. Direct CPython diff evidence for the
+  stable `bytes(obj)` dispatch/blocking surface is in
+  `cpython_bytes_dunder_bytes_dispatch_diff_subset`.
   `cpython_bytes_dunder_bytes_method_subset` covers direct
   `BytesTest::test__bytes__` method calls on exact bytes and bytes subclasses,
   exact bytes result type, exact bytes self identity, bytes-subclass copy-out
-  identity, inherited descriptor calls, and `dir()` visibility.
+  identity, inherited descriptor calls, and `dir()` visibility; this remains
+  local subset evidence because the default system CPython oracle used for
+  `cpython_diff` does not expose direct `bytes.__bytes__` method calls.
   `cpython_bytes_repeat_id_preserving_subset` covers CPython
   `BytesTest::test_repeat_id_preserving` for exact bytes repeat-by-one object
   identity in both operand orders, empty bytes singleton identity, and distinct

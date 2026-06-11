@@ -8444,6 +8444,100 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
+        name: "bytes-dunder-bytes-dispatch",
+        source: r#"class B(bytes):
+    pass
+class WithBytes:
+    def __init__(self, value):
+        self.value = value
+    def __bytes__(self):
+        return self.value
+class IndexWithBytes:
+    def __bytes__(self):
+        return b'a'
+    def __index__(self):
+        return 42
+class Iterable:
+    def __iter__(self):
+        return iter([0, 1, 2])
+class IterableBlocked:
+    __bytes__ = None
+    def __iter__(self):
+        return iter([0, 1, 2])
+class IntBlocked(int):
+    __bytes__ = None
+class BytesSubclassBlocked(bytes):
+    __bytes__ = None
+class BufferBlocked(bytearray):
+    __bytes__ = None
+
+print(bytes(WithBytes(b'abc')))
+result = bytes(WithBytes(B(b'abc')))
+print(type(result).__name__, result == b'abc')
+print(bytes(IndexWithBytes()))
+print(bytes(Iterable()))
+print(bytes(3), bytes(b'ab'), bytes(bytearray(b'ab')))
+for expr in [
+    lambda: bytes(WithBytes(bytearray(b'abc'))),
+    lambda: bytes(WithBytes('abc')),
+    lambda: bytes(WithBytes(None)),
+    lambda: bytes(IterableBlocked()),
+    lambda: bytes(IntBlocked(3)),
+    lambda: bytes(BytesSubclassBlocked(b'ab')),
+    lambda: bytes(BufferBlocked(b'ab')),
+    lambda: bytearray(WithBytes(b'abc')),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+
+class BytesSubclass(bytes):
+    pass
+class OtherBytesSubclass(bytes):
+    pass
+class StrWithBytes(str):
+    def __new__(cls, value):
+        self = str.__new__(cls, '\u20ac')
+        self.value = value
+        return self
+    def __bytes__(self):
+        return self.value
+class BytesWithBytes(bytes):
+    def __new__(cls, value):
+        self = bytes.__new__(cls, b'\xa4')
+        self.value = value
+        return self
+    def __bytes__(self):
+        return self.value
+samples = [
+    ('str-bytes', lambda: bytes(StrWithBytes(b'abc')), b'abc'),
+    ('str-encoding', lambda: bytes(StrWithBytes(b'abc'), 'iso8859-15'), b'\xa4'),
+    ('str-subbytes', lambda: bytes(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),
+    ('sub-str-bytes', lambda: BytesSubclass(StrWithBytes(b'abc')), b'abc'),
+    ('sub-str-encoding', lambda: BytesSubclass(StrWithBytes(b'abc'), 'iso8859-15'), b'\xa4'),
+    ('sub-str-subbytes', lambda: BytesSubclass(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),
+    ('sub-str-other', lambda: BytesSubclass(StrWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),
+    ('byteswithbytes', lambda: bytes(BytesWithBytes(b'abc')), b'abc'),
+    ('sub-byteswithbytes', lambda: BytesSubclass(BytesWithBytes(b'abc')), b'abc'),
+    ('byteswithbytes-sub', lambda: bytes(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),
+    ('sub-byteswithbytes-sub', lambda: BytesSubclass(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),
+    ('sub-byteswithbytes-other', lambda: BytesSubclass(BytesWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),
+]
+for label, callback, expected in samples:
+    result = callback()
+    print(label, type(result).__name__, result == expected, result)
+plain = str.__new__(str, 'plain')
+custom = str.__new__(StrWithBytes, 'stored')
+print(type(plain).__name__, plain)
+print(type(custom).__name__, str(custom), hasattr(custom, 'value'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
