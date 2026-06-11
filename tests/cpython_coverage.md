@@ -1034,7 +1034,11 @@ Recent runtime migration notes:
   module metadata: the exported `operator.__all__` names, `operator.*`
   callable `__module__` / `__name__` introspection, and dunder aliases such as
   `__add__`, `__not__`, `__iconcat__`, and `__call__` preserving object
-  identity with their public helpers.
+  identity with their public helpers. Direct CPython diff evidence for the
+  default-oracle stable metadata slice is in
+  `cpython_operator_module_metadata_diff_subset`; newer `operator.__all__`
+  entries such as `call`, `is_none`, and `is_not_none` stay covered by subset
+  evidence under the current default CPython 3.9 oracle.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_signature_helper_subset`, covering CPython
   `test_operator.py` signature assertions for `operator.attrgetter`,

@@ -3229,6 +3229,22 @@ for expr in [lambda: operator.iadd(), lambda: operator.ifloordiv(1), lambda: ope
 }
 
 #[test]
+fn cpython_operator_module_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase::test___all__ and ::test_dunder_is_original public metadata subset stable on CPython 3.9",
+        name: "operator-module-metadata",
+        source: r#"import operator
+for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:
+    value = getattr(operator, name)
+    print(name, getattr(value, '__name__', None), getattr(value, '__module__', None) in ('operator', '_operator'))
+print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat)
+print(hasattr(operator, '__countOf__'), hasattr(operator, '__length_hint__'))
+stable_exports = ['abs', 'add', 'and_', 'attrgetter', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_not', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']
+print(all(name in operator.__all__ for name in stable_exports), len(stable_exports))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
