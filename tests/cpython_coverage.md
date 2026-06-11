@@ -2607,7 +2607,8 @@ Recent runtime migration notes:
   `Generator` public non-sample/sample matrix, including lambda-yield generator
   sources, direct `Generator` subclass mixins for `__iter__`, `__next__`, default
   `throw`, `close`, and the `FailOnClose` / `IgnoreGeneratorExit` close
-  edge cases. Direct CPython diff evidence for the mixin behavior is in
+  edge cases. Direct CPython diff evidence is in
+  `cpython_collections_abc_generator_sample_matrix_diff_subset` and
   `cpython_collections_abc_generator_mixin_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_coroutine_mixin_subset`, covering CPython's

@@ -3659,6 +3659,49 @@ except RuntimeError as error:
 }
 
 #[test]
+fn cpython_collections_abc_generator_sample_matrix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Generator sample matrix",
+        name: "collections-abc-generator-sample-matrix",
+        source: r#"from collections.abc import Generator, Iterator
+class NonGen1:
+    def __iter__(self): return self
+    def __next__(self): return None
+    def close(self): pass
+    def throw(self, typ, val=None, tb=None): pass
+class NonGen2:
+    def __iter__(self): return self
+    def __next__(self): return None
+    def close(self): pass
+    def send(self, value): return value
+class NonGen3:
+    def close(self): pass
+    def send(self, value): return value
+    def throw(self, typ, val=None, tb=None): pass
+non_samples = [None, 42, 3.14, 1j, b'', '', (), [], {}, set(), iter(()), iter([]), NonGen1(), NonGen2(), NonGen3()]
+print([isinstance(x, Generator) for x in non_samples])
+print([issubclass(type(x), Generator) for x in non_samples])
+class Gen:
+    def __iter__(self): return self
+    def __next__(self): return None
+    def close(self): pass
+    def send(self, value): return value
+    def throw(self, typ, val=None, tb=None): pass
+class MinimalGen(Generator):
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        super().throw(typ, val, tb)
+def gen():
+    yield 1
+samples = [gen(), (lambda: (yield))(), Gen(), MinimalGen()]
+print([isinstance(x, Iterator) for x in samples])
+print([isinstance(x, Generator) for x in samples])
+print([issubclass(type(x), Generator) for x in samples])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_types_coroutine_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Awaitable / ::test_Coroutine",
