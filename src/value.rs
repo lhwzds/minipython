@@ -955,7 +955,7 @@ pub enum Value {
     Partial {
         function: Box<Value>,
         args: Vec<Value>,
-        keywords: Vec<(String, Value)>,
+        keywords: DictRef,
         attrs: Scope,
         identity: Rc<()>,
     },

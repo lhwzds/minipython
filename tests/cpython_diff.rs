@@ -10610,6 +10610,22 @@ p = partial(capture, 1, 2)
 print(p(), p(3, 4))
 p = partial(capture, a=1)
 print(p.keywords, p(), p(b=2), p(a=3, b=2))
+class S(str):
+    pass
+p = partial(capture, a=1)
+live = p.keywords
+live['a'] = 2
+live['b'] = 3
+print(p(), live is p.keywords)
+p.keywords[S('c')] = 4
+print(p())
+p.keywords[1] = 5
+try:
+    p()
+except TypeError as error:
+    print(type(error).__name__, str(error))
+del p.keywords[1]
+print(p())
 for args in [(), (0,), (0, 1), (0, 1, 2), (0, 1, 2, 3)]:
     got, empty = partial(capture, *args)('x')
     print(got == args + ('x',), empty == {})

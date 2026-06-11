@@ -6562,6 +6562,33 @@ impl Vm {
         self.call_value_with_keywords(function, bound_args, bound_keywords)
     }
 
+    fn partial_keywords_dict(keywords: Vec<(String, Value)>) -> DictRef {
+        Rc::new(RefCell::new(DictStorage::new(
+            keywords
+                .into_iter()
+                .map(|(name, value)| (Value::String(name), value))
+                .collect(),
+        )))
+    }
+
+    fn partial_keywords_from_dict(keywords: &DictRef) -> Result<Vec<(String, Value)>, String> {
+        keywords
+            .borrow()
+            .entries
+            .iter()
+            .map(|(key, value)| {
+                let name = match key {
+                    Value::String(name) | Value::IdentityString { value: name, .. } => name.clone(),
+                    value if str_subclass_string(value).is_some() => {
+                        str_subclass_string(value).expect("str subclass storage exists after guard")
+                    }
+                    _ => return Err("TypeError: keywords must be strings".to_string()),
+                };
+                Ok((name, value.clone()))
+            })
+            .collect()
+    }
+
     fn call_partialmethod_callable(
         &mut self,
         function: Value,
@@ -6602,7 +6629,7 @@ impl Vm {
         Ok(Value::Partial {
             function: Box::new(function),
             args,
-            keywords,
+            keywords: Self::partial_keywords_dict(keywords),
             attrs: new_scope(),
             identity: Rc::new(()),
         })
@@ -6815,10 +6842,10 @@ impl Vm {
         Ok(Value::Partial {
             function: Box::new(Value::Builtin("functools.lru_cache.wrap".to_string())),
             args: Vec::new(),
-            keywords: vec![
+            keywords: Self::partial_keywords_dict(vec![
                 ("maxsize".to_string(), lru_cache_maxsize_value(maxsize)),
                 ("typed".to_string(), Value::Bool(typed)),
-            ],
+            ]),
             attrs: new_scope(),
             identity: Rc::new(()),
         })
@@ -7447,11 +7474,11 @@ impl Vm {
         Ok(Value::Partial {
             function: Box::new(Value::Builtin("functools.update_wrapper".to_string())),
             args: Vec::new(),
-            keywords: vec![
+            keywords: Self::partial_keywords_dict(vec![
                 ("wrapped".to_string(), wrapped),
                 ("assigned".to_string(), assigned),
                 ("updated".to_string(), updated),
-            ],
+            ]),
             attrs: new_scope(),
             identity: Rc::new(()),
         })
@@ -7963,7 +7990,10 @@ impl Vm {
                 args: bound_args,
                 keywords: bound_keywords,
                 ..
-            } => self.call_partial(*function, bound_args, bound_keywords, args, keywords),
+            } => {
+                let bound_keywords = Self::partial_keywords_from_dict(&bound_keywords)?;
+                self.call_partial(*function, bound_args, bound_keywords, args, keywords)
+            }
             Value::PartialMethodCall {
                 function,
                 receiver,
@@ -15060,7 +15090,7 @@ impl Vm {
             return Ok(Value::Partial {
                 function: Box::new(bound_function),
                 args,
-                keywords,
+                keywords: Self::partial_keywords_dict(keywords),
                 attrs: new_scope(),
                 identity: Rc::new(()),
             });
@@ -50028,12 +50058,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 },
                 "func" => Ok(*function),
                 "args" => Ok(tuple_value(args)),
-                "keywords" => Ok(dict_value(
-                    keywords
-                        .into_iter()
-                        .map(|(name, value)| (Value::String(name), value))
-                        .collect(),
-                )),
+                "keywords" => Ok(Value::Dict(keywords)),
                 "__dict__" => Ok(Value::ScopeDict(attrs)),
                 _ => attrs.borrow().get(name).cloned().ok_or_else(|| {
                     format!("AttributeError: partial object has no attribute '{name}'")

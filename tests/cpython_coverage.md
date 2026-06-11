@@ -896,9 +896,11 @@ Recent runtime migration notes:
   `cpython_functools_partial_diff_subset` and
   `cpython_functools_partial_subset`, covering CPython
   `test_functools.py::TestPartial` public call semantics, `func` / `args` /
-  `keywords` attributes, caller keyword-dict isolation, constructor keyword
-  copying, positional/keyword combinations, exception propagation, nested
-  partial calls, custom attributes, and readonly core attributes.
+  `keywords` attributes, live `keywords` mapping mutation including `str`
+  subclass keys and non-string-key call rejection, caller keyword-dict
+  isolation, constructor keyword copying, positional/keyword combinations,
+  exception propagation, nested partial calls, custom attributes, and readonly
+  core attributes.
 - The bundled `functools` module also includes
   `cpython_functools_partialmethod_diff_subset` and
   `cpython_functools_partialmethod_subset`, covering CPython
