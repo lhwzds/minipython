@@ -6336,6 +6336,33 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_class_creation_mro_entries_multiple_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_new_class_with_mro_entry_multiple and ::test_new_class_with_mro_entry_multiple_2",
+        name: "types-class-creation-mro-entries-multiple",
+        source: r#"import types
+class A1: pass
+class A2: pass
+class A3: pass
+class B1: pass
+class B2: pass
+class A:
+    def __mro_entries__(self, bases):
+        print('A-bases', len(bases), bases[0].__class__ is A, bases[1] is C, bases[2].__class__ is B)
+        return (A1, A2, A3)
+class B:
+    def __mro_entries__(self, bases):
+        print('B-bases', len(bases), bases[0].__class__ is A, bases[1] is C, bases[2].__class__ is B)
+        return (B1, B2)
+class C: pass
+D = types.new_class('D', (A(), C, B()), {})
+print(D.__bases__ == (A1, A2, A3, C, B1, B2))
+print(D.__orig_bases__[0].__class__ is A, D.__orig_bases__[1] is C, D.__orig_bases__[2].__class__ is B)
+print(D.__mro__[0] is D, D.__mro__[1] is A1, D.__mro__[2] is A2, D.__mro__[3] is A3, D.__mro__[4] is C, D.__mro__[5] is B1, D.__mro__[6] is B2, D.__mro__[7] is object)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_prepare_resolve_bases_diff_subset() {
     let probe = run_cpython("import types\nprint(types.resolve_bases((list[int],)) == (list,))")
         .expect("failed to probe CPython types.resolve_bases generic alias support");

@@ -159,6 +159,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_copy_diff_subset`,
   `cpython_types_mappingproxy_richcompare_diff_subset`,
   `cpython_types_mappingproxy_custom_mapping_diff_subset`,
+  `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_types_simple_namespace_recursive_diff_subset`,
   `cpython_types_simple_namespace_state_order_diff_subset`,
@@ -3045,7 +3046,8 @@ Recent runtime migration notes:
   `__mro_entries__` providers each receive the original bases tuple, returned
   tuples expand left-to-right around ordinary class bases, `__orig_bases__`
   preserves the original provider instances, and the public `__mro__` reflects
-  the expanded bases.
+  the expanded bases. Direct output parity is guarded by
+  `cpython_types_class_creation_mro_entries_multiple_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_metaclass_derivation_subset`, covering CPython
   `ClassCreationTests::test_metaclass_derivation`: `types.new_class()` derives
