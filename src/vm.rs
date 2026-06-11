@@ -24177,7 +24177,7 @@ impl Vm {
             "__length_hint__" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "__length_hint__() expected 0 arguments, got {}",
+                        "TypeError: __length_hint__() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -28205,6 +28205,15 @@ impl Vm {
                     Ok(Some(current.min(length)))
                 }
             }
+            Value::ItertoolsRepeat { remaining, .. } => match remaining {
+                Some(remaining) => {
+                    let length = remaining
+                        .to_usize()
+                        .ok_or_else(|| "__length_hint__() result is too large".to_string())?;
+                    Ok(Some(length))
+                }
+                None => Err("TypeError: len() of unsized object".to_string()),
+            },
             value => Err(format!(
                 "AttributeError: {} has no attribute '__length_hint__'",
                 type_name(&value)
@@ -48168,6 +48177,7 @@ fn iterator_has_length_hint(value: &Value) -> bool {
             | Value::DictReverseIterator { .. }
             | Value::SequenceIterator { .. }
             | Value::SequenceReverseIterator { .. }
+            | Value::ItertoolsRepeat { .. }
     )
 }
 
@@ -51254,6 +51264,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::ZipIterator { iterators, strict } => {
             iterator_protocol_method("zip", Value::ZipIterator { iterators, strict }, name)
         }
+        Value::ItertoolsRepeat { value, remaining } => length_hint_iterator_protocol_method(
+            "repeat",
+            Value::ItertoolsRepeat { value, remaining },
+            name,
+        ),
         Value::MapIterator {
             function,
             iterators,

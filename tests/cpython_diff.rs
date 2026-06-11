@@ -10019,6 +10019,7 @@ fn cpython_operator_length_hint_diff_subset() {
         origin: "Lib/test/test_operator.py::OperatorTestCase::test_length_hint and Lib/test/test_enumerate.py::TestReversed::test_len public subset",
         name: "operator-length-hint",
         source: r#"import operator
+import itertools
 class X:
     def __init__(self, value):
         self.value = value
@@ -10058,6 +10059,17 @@ class SeqWithWeirdLen:
 try:
     operator.length_hint(reversed(SeqWithWeirdLen()))
 except ZeroDivisionError as error:
+    print(type(error).__name__)
+r = itertools.repeat('x', 3)
+print(operator.length_hint(r), next(r), operator.length_hint(r), list(r), operator.length_hint(r))
+print(operator.length_hint(itertools.repeat('x')), operator.length_hint(itertools.repeat('x'), 9))
+try:
+    itertools.repeat('x').__length_hint__()
+except TypeError as error:
+    print(type(error).__name__, str(error))
+try:
+    itertools.repeat('x', 1).__length_hint__(1)
+except TypeError as error:
     print(type(error).__name__)"#,
     });
 }

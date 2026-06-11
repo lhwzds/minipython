@@ -37919,6 +37919,7 @@ fn cpython_operator_length_hint_subset() {
     assert_output(
         concat!(
             "import operator\n",
+            "import itertools\n",
             "class X:\n",
             "    def __init__(self, value):\n",
             "        self.value = value\n",
@@ -37959,6 +37960,17 @@ fn cpython_operator_length_hint_subset() {
             "    operator.length_hint(reversed(SeqWithWeirdLen()))\n",
             "except ZeroDivisionError as error:\n",
             "    print(type(error).__name__)\n",
+            "r = itertools.repeat('x', 3)\n",
+            "print(operator.length_hint(r), next(r), operator.length_hint(r), list(r), operator.length_hint(r))\n",
+            "print(operator.length_hint(itertools.repeat('x')), operator.length_hint(itertools.repeat('x'), 9))\n",
+            "try:\n",
+            "    itertools.repeat('x').__length_hint__()\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__, str(error))\n",
+            "try:\n",
+            "    itertools.repeat('x', 1).__length_hint__(1)\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__)\n",
         ),
         &[
             "0 3",
@@ -37969,6 +37981,10 @@ fn cpython_operator_length_hint_subset() {
             "TypeError",
             "[(5, 5), 0, (5, 5), 0, (5, 5), 0, (5, 5), 0]",
             "ZeroDivisionError",
+            "3 x 2 ['x', 'x'] 0",
+            "0 9",
+            "TypeError len() of unsized object",
+            "TypeError",
         ],
     );
 }
