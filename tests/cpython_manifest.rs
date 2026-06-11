@@ -2898,6 +2898,20 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         &["cpython_copy_public_subset"],
         &["pickle protocol"],
     );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "copy")
+        .expect("sandbox stdlib manifest must include copy");
+    for evidence in [
+        "cpython_copy_public_diff_subset",
+        "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "copy sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
@@ -2915,6 +2929,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         .into_iter()
         .find(|row| row.module == "io.BytesIO")
         .expect("sandbox stdlib manifest must include io.BytesIO");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_io_bytesio_public_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for public BytesIO behavior"
+    );
     assert!(
         row.diff_evidence
             .contains("cpython_memoryview_bytesio_readinto_diff_subset"),
