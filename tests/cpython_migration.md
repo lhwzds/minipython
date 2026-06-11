@@ -210,6 +210,14 @@ Completed in the `test_bytes.py` bytes percent-format pass:
   value/type/error-class slice of bytes/bytearray old-style `%` formatting and
   reflected modulo behavior. The local subset tests retain broader diagnostic
   and bytearray re-entrancy safety coverage.
+- Added direct CPython output parity evidence
+  `cpython_bytes_percent_dunder_bytes_diff_subset` for `%b` / `%s`
+  `__bytes__` dispatch, non-bytes result rejection, propagated user
+  exceptions, non-ASCII `%r` / `%a` repr escaping, direct `__mod__` descriptor
+  calls, and bytes/bytearray subclass receiver dispatch. The bytearray
+  concurrent-mutation case remains local subset/default-oracle boundary
+  evidence because the default CPython oracle accepts that mutation while the
+  migrated subset pins the current safety behavior.
 
 Completed in the `test_bytes.py` bytes/bytearray format-method pass:
 

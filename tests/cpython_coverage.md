@@ -37,6 +37,12 @@ Recent runtime migration notes:
   have direct CPython output parity evidence in
   `cpython_bytes_percent_format_and_rmod_diff_subset`; the broader subset tests
   keep MiniPython-specific implementation-safety and diagnostic-shape coverage.
+- Bytes/bytearray `%b` / `%s` `__bytes__` dispatch and direct `__mod__`
+  descriptor behavior have direct CPython output parity evidence in
+  `cpython_bytes_percent_dunder_bytes_diff_subset`. Bytearray format-string
+  re-entrancy protection remains subset/default-oracle boundary evidence
+  because the default CPython oracle accepts the mutation while the migrated
+  subset pins the current public safety behavior.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product

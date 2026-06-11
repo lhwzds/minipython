@@ -8571,6 +8571,61 @@ fn cpython_bytes_percent_format_and_rmod_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_percent_dunder_bytes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_mod direct dunder behavior public subset",
+        name: "bytes-percent-dunder-bytes",
+        source: r#"class BytesResult:
+    def __bytes__(self):
+        return b'xx'
+class StrResult:
+    def __bytes__(self):
+        return 'not bytes'
+class Raises:
+    def __bytes__(self):
+        raise RuntimeError('boom')
+class NonAsciiRepr:
+    def __repr__(self):
+        return chr(233)
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+
+for ctor in [bytes, bytearray]:
+    print(ctor(b'%b') % BytesResult())
+    print(ctor(b'%s') % BytesResult())
+    for expr in [
+        lambda: ctor(b'%b') % StrResult(),
+        lambda: ctor(b'%b') % Raises(),
+        lambda: ctor(b'%(x)*b') % {b'x': b'a'},
+        lambda: ctor(b'%(x)b %b') % {b'x': b'a'},
+        lambda: ctor(b'%(x)*b') % ({b'x': b'a'}, 3),
+        lambda: ctor(b'%f') % 'text',
+    ]:
+        try:
+            expr()
+        except Exception as error:
+            print(error.__class__.__name__, error.args[0])
+    try:
+        ctor(b'%(x)b') % {b'y': b'a'}
+    except KeyError as error:
+        print(error.__class__.__name__, error.args)
+    print(ctor(b'%r') % NonAsciiRepr())
+    print(ctor(b'%a') % NonAsciiRepr())
+
+for receiver in [b'%s', B(b'%s'), bytearray(b'%s'), BA(b'%s')]:
+    result = receiver.__mod__(b'a')
+    print(type(receiver).__name__, type(result).__name__, result, result is receiver)
+for typ, receiver in [(bytes, b'%s'), (bytes, B(b'%s')), (bytearray, bytearray(b'%s')), (bytearray, BA(b'%s'))]:
+    result = typ.__mod__(receiver, b'a')
+    print('unbound', typ.__name__, type(receiver).__name__, type(result).__name__, result)
+print('__mod__' in dir(bytes), '__mod__' in dir(bytearray), '__mod__' in dir(B), '__mod__' in dir(BA))
+print(bytearray.__mod__(BA(b'%s'), b'a'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_repeat_id_preserving_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",
