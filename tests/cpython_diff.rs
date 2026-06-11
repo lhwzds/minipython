@@ -6762,6 +6762,58 @@ for index in range(2):
 }
 
 #[test]
+fn cpython_types_coroutine_generator_wrapper_diff_subset() {
+    let probe = run_cpython(
+        "import types\n@types.coroutine\ndef f():\n    yield 1\nwrapper = f()\nprint(hasattr(wrapper, 'gi_suspended'), hasattr(wrapper, 'cr_suspended'))",
+    )
+    .expect("failed to probe CPython _GeneratorWrapper suspended alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types coroutine generator wrapper diff: CPython oracle lacks _GeneratorWrapper suspended aliases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests _GeneratorWrapper public subset",
+        name: "types-coroutine-generator-wrapper",
+        source: r#"import types, inspect, collections.abc
+def wrapper_gen():
+    received = yield 1
+    return (yield received)
+exact_gen = wrapper_gen()
+@types.coroutine
+def returns_plain_gen():
+    return exact_gen
+wrapper = returns_plain_gen()
+print('wrapper-type', type(wrapper).__name__, isinstance(wrapper, types._GeneratorWrapper), isinstance(wrapper, collections.abc.Coroutine), isinstance(wrapper, collections.abc.Awaitable))
+print('wrapper-await', wrapper.__await__() is exact_gen, iter(wrapper) is exact_gen)
+print('wrapper-names', wrapper.__name__, wrapper.__qualname__)
+print('wrapper-attr-identity', all(getattr(wrapper, name) is getattr(exact_gen, name) for name in ['__name__', '__qualname__', 'gi_code', 'gi_running', 'gi_frame', 'gi_suspended']), wrapper.cr_code is exact_gen.gi_code)
+print('wrapper-flags', bool(wrapper.gi_code.co_flags & inspect.CO_GENERATOR), bool(wrapper.cr_code.co_flags & inspect.CO_GENERATOR))
+print('wrapper-state0', wrapper.gi_running, wrapper.gi_frame is None, wrapper.gi_frame is exact_gen.gi_frame, wrapper.cr_frame is exact_gen.gi_frame, wrapper.gi_yieldfrom is None, wrapper.gi_suspended)
+print('wrapper-run', next(wrapper), wrapper.send('two'))
+try:
+    wrapper.send('spam')
+except StopIteration as error:
+    print('wrapper-stop', error.args[0])
+throw_gen = wrapper_gen()
+throw_wrapper = types.coroutine(lambda: throw_gen)()
+next(throw_wrapper)
+try:
+    throw_wrapper.throw(Exception('ham'))
+except Exception as error:
+    print('wrapper-throw', error.args[0])
+returns_plain_gen = types.coroutine(returns_plain_gen)
+print('wrapper-double', returns_plain_gen().__await__() is exact_gen)
+wrapper2 = types.coroutine(lambda: wrapper_gen())()
+names = dir(wrapper2)
+print('wrapper-repr', 'GeneratorWrapper' in repr(wrapper2), repr(wrapper2) == str(wrapper2))
+print('wrapper-dir', all(name in names for name in ['__await__', '__iter__', '__next__', 'cr_code', 'cr_running', 'cr_frame', 'cr_suspended', 'gi_code', 'gi_frame', 'gi_running', 'gi_suspended', 'send', 'close', 'throw']))"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
