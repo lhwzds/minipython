@@ -21265,7 +21265,23 @@ fn cpython_io_bytesio_public_subset() {
             "        expr()\n",
             "    except Exception as error:\n",
             "        print(label, error.__class__.__name__, isinstance(error, ValueError))\n",
-            "for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('writelines-arity0', lambda: io.BytesIO().writelines()), ('writelines-arity2', lambda: io.BytesIO().writelines([], [])), ('writelines-noniter', lambda: io.BytesIO().writelines(1)), ('writelines-stritem', lambda: io.BytesIO().writelines(['x'])), ('writelines-intitem', lambda: io.BytesIO().writelines([1])), ('close-arg', lambda: io.BytesIO().close(1)), ('readable-arg', lambda: io.BytesIO().readable(1)), ('writable-arg', lambda: io.BytesIO().writable(1)), ('seekable-arg', lambda: io.BytesIO().seekable(1)), ('isatty-arg', lambda: io.BytesIO().isatty(1)), ('flush-arg', lambda: io.BytesIO().flush(1)), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:\n",
+            "bio = io.BytesIO(b'cm')\n",
+            "print(hasattr(bio, '__enter__'), hasattr(bio, '__exit__'), bio.__enter__() is bio, bio.closed)\n",
+            "print(bio.__exit__(None, None, None), bio.closed)\n",
+            "with io.BytesIO(b'xy') as inside:\n",
+            "    print('with-inside', inside.read(), inside.closed)\n",
+            "print('with-after', inside.closed)\n",
+            "for args in [(), (None,), (None, None), (None, None, None), (None, None, None, None)]:\n",
+            "    bio = io.BytesIO()\n",
+            "    print('exit-args', len(args), bio.__exit__(*args), bio.closed)\n",
+            "bio = io.BytesIO()\n",
+            "bio.close()\n",
+            "for label, expr in [('enter-closed', bio.__enter__), ('exit-closed', lambda: bio.__exit__(None, None, None))]:\n",
+            "    try:\n",
+            "        print(label, expr(), bio.closed)\n",
+            "    except Exception as error:\n",
+            "        print(label, error.__class__.__name__, isinstance(error, ValueError), bio.closed)\n",
+            "for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('writelines-arity0', lambda: io.BytesIO().writelines()), ('writelines-arity2', lambda: io.BytesIO().writelines([], [])), ('writelines-noniter', lambda: io.BytesIO().writelines(1)), ('writelines-stritem', lambda: io.BytesIO().writelines(['x'])), ('writelines-intitem', lambda: io.BytesIO().writelines([1])), ('close-arg', lambda: io.BytesIO().close(1)), ('enter-arg', lambda: io.BytesIO().__enter__(1)), ('readable-arg', lambda: io.BytesIO().readable(1)), ('writable-arg', lambda: io.BytesIO().writable(1)), ('seekable-arg', lambda: io.BytesIO().seekable(1)), ('isatty-arg', lambda: io.BytesIO().isatty(1)), ('flush-arg', lambda: io.BytesIO().flush(1)), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:\n",
             "    try:\n",
             "        expr()\n",
             "    except Exception as error:\n",
@@ -21323,6 +21339,17 @@ fn cpython_io_bytesio_public_subset() {
             "closed-seekable ValueError True",
             "closed-isatty ValueError True",
             "closed-flush ValueError True",
+            "True True True False",
+            "None True",
+            "with-inside b'xy' False",
+            "with-after True",
+            "exit-args 0 None True",
+            "exit-args 1 None True",
+            "exit-args 2 None True",
+            "exit-args 3 None True",
+            "exit-args 4 None True",
+            "enter-closed ValueError True True",
+            "exit-closed None True",
             "bad-source TypeError True",
             "too-many TypeError True",
             "write-str TypeError True",
@@ -21332,6 +21359,7 @@ fn cpython_io_bytesio_public_subset() {
             "writelines-stritem TypeError True",
             "writelines-intitem TypeError True",
             "close-arg TypeError True",
+            "enter-arg TypeError True",
             "readable-arg TypeError True",
             "writable-arg TypeError True",
             "seekable-arg TypeError True",
@@ -42587,7 +42615,7 @@ fn cpython_collections_abc_issue26915_identity_first_object_subset() {
 // errors from Python-level __eq__ methods.
 #[test]
 fn cpython_dict_view_richcompare_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "def compare_views(fn):\n",
             "    empty = fn(dict())\n",
@@ -42642,6 +42670,7 @@ fn cpython_dict_view_richcompare_subset() {
             "RuntimeError",
             "RuntimeError",
         ],
+        64 * 1024 * 1024,
     );
 }
 

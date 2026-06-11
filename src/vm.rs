@@ -8651,6 +8651,12 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.close" => {
                 self.call_io_bytesio_close(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.__enter__" => {
+                self.call_io_bytesio_enter(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.__exit__" => {
+                self.call_io_bytesio_exit(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readable" => {
                 self.call_io_bytesio_bool_noarg_method(args, keywords, "readable", true)
             }
@@ -17815,6 +17821,38 @@ impl Vm {
         Ok(Value::None)
     }
 
+    fn call_io_bytesio_enter(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.__enter__", &keywords)?;
+        let [receiver @ Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: _IOBase.__enter__() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io_ensure_open(bytes_io)?;
+        Ok(receiver.clone())
+    }
+
+    fn call_io_bytesio_exit(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.__exit__", &keywords)?;
+        let [Value::BytesIO(bytes_io), ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: _IOBase.__exit__() missing required receiver ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io.borrow_mut().closed = true;
+        Ok(Value::None)
+    }
+
     fn call_io_bytesio_getvalue(
         &mut self,
         args: Vec<Value>,
@@ -26072,6 +26110,10 @@ impl Vm {
         }
 
         if let Some(value) = self.counter_equal_values(left, right)? {
+            return Ok(value);
+        }
+
+        if let Some(value) = self.dict_item_view_equal(left, right)? {
             return Ok(value);
         }
 
@@ -49789,9 +49831,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-            "close" | "flush" | "getvalue" | "isatty" | "read" | "readable" | "readinto"
-            | "readline" | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write"
-            | "writable" | "writelines" => Ok(Value::BoundMethod {
+            "__enter__" | "__exit__" | "close" | "flush" | "getvalue" | "isatty" | "read"
+            | "readable" | "readinto" | "readline" | "readlines" | "seek" | "seekable" | "tell"
+            | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
