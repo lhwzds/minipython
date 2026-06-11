@@ -29,6 +29,10 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
+- `collections.deque` is currently a minimal sandbox type surface only:
+  `cpython_collections_deque_public_surface_subset` and
+  `cpython_collections_deque_public_surface_diff_subset` cover empty
+  construction, concrete type identity, and `MutableSequence` registration.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`

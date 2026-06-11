@@ -2582,6 +2582,20 @@ print(operator.truth([]), operator.is_(None, None), operator.contains([1, 2], 2)
 }
 
 #[test]
+fn cpython_collections_deque_public_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py deque public type and ABC registration subset",
+        name: "collections-deque-public-surface",
+        source: r#"from collections import deque
+from collections.abc import MutableSequence
+d = deque()
+print(type(d).__name__)
+print(isinstance(d, deque), isinstance(d, MutableSequence))
+print(issubclass(deque, MutableSequence))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",

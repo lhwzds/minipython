@@ -2572,6 +2572,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
+            "cpython_collections_deque_public_surface_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
             "cpython_collections_chainmap_iter_does_not_call_getitem_subset",
             "cpython_collections_chainmap_new_child_custom_mapping_subset",
@@ -2579,6 +2580,16 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_union_operators_subset",
         ],
         &["pickle/eval identity matrices"],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "collections / collections.abc")
+        .expect("sandbox stdlib manifest must include collections / collections.abc");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_deque_public_surface_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for deque public surface"
     );
 }
 

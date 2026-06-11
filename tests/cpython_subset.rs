@@ -43434,6 +43434,25 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
     );
 }
 
+// Minimal public deque surface supported by MiniPython's sandbox stdlib:
+// empty construction, concrete type identity, and MutableSequence registration.
+// Full deque construction, mutation, pickling, and performance semantics remain
+// outside the default sandbox surface.
+#[test]
+fn cpython_collections_deque_public_surface_subset() {
+    assert_output(
+        concat!(
+            "from collections import deque\n",
+            "from collections.abc import MutableSequence\n",
+            "d = deque()\n",
+            "print(type(d).__name__)\n",
+            "print(isinstance(d, deque), isinstance(d, MutableSequence))\n",
+            "print(issubclass(deque, MutableSequence))"
+        ),
+        &["deque", "True True", "True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public Counter coverage.
 #[test]
 fn cpython_collections_counter_public_subset() {
