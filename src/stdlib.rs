@@ -531,6 +531,7 @@ pub(crate) fn create_module(
                 ("cbrt", Value::Builtin("math.cbrt".to_string())),
                 ("exp", Value::Builtin("math.exp".to_string())),
                 ("exp2", Value::Builtin("math.exp2".to_string())),
+                ("expm1", Value::Builtin("math.expm1".to_string())),
                 ("log", Value::Builtin("math.log".to_string())),
                 ("log1p", Value::Builtin("math.log1p".to_string())),
                 ("log2", Value::Builtin("math.log2".to_string())),

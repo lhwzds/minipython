@@ -8281,6 +8281,59 @@ fn cpython_math_exp_exp2_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py::MathTests::test_expm1.
+// MiniPython ports public exponential-minus-one behavior, signed zero,
+// non-finite propagation, finite-input overflow errors, `__float__` /
+// `__index__` conversion, and catchable error classes.
+#[test]
+fn cpython_math_expm1_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "print(type(math.expm1(0)).__name__)\n",
+            "print(math.expm1(0), repr(math.expm1(-0.0)), round(math.expm1(1), 12), round(math.expm1(-1), 12))\n",
+            "print(math.expm1(math.inf), math.expm1(-math.inf), math.isnan(math.expm1(math.nan)))\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(round(math.expm1(FloatLike(1.0)), 12), math.expm1(IndexLike(0)))\n",
+            "for expr in [lambda: math.expm1(), lambda: math.expm1(1, 2), lambda: math.expm1('1.0'), lambda: math.expm1(1+2j), lambda: math.expm1(1000000), lambda: math.expm1(IndexLike(10**10000)), lambda: math.expm1(BadFloat()), lambda: math.expm1(RaisesFloat()), lambda: math.expm1(x=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "float",
+            "0.0 -0.0 1.718281828459 -0.632120558829",
+            "inf -1.0 True",
+            "1.718281828459 0.0",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "OverflowError",
+            "OverflowError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testLog,
 // ::testLog1p, ::testLog2, ::testLog2Exact, and ::testLog10. MiniPython ports
 // public logarithm behavior, optional-base division, non-finite propagation,

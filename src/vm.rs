@@ -9714,6 +9714,15 @@ impl Vm {
 
                 call_math_exp2(self, args)
             }
+            Value::Builtin(name) if name == "math.expm1" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_expm1(self, args)
+            }
             Value::Builtin(name) if name == "math.log" => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -58683,6 +58692,10 @@ fn call_math_exp(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
 
 fn call_math_exp2(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     call_math_exponential(vm, args, "exp2", f64::exp2)
+}
+
+fn call_math_expm1(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    call_math_exponential(vm, args, "expm1", f64::exp_m1)
 }
 
 fn call_math_log(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {

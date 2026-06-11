@@ -2264,6 +2264,52 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_expm1_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_expm1 public stable subset",
+        name: "math-expm1",
+        source: r#"import math
+print(type(math.expm1(0)).__name__)
+print(math.expm1(0), repr(math.expm1(-0.0)), round(math.expm1(1), 12), round(math.expm1(-1), 12))
+print(math.expm1(math.inf), math.expm1(-math.inf), math.isnan(math.expm1(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(round(math.expm1(FloatLike(1.0)), 12), math.expm1(IndexLike(0)))
+for expr in [
+    lambda: math.expm1(),
+    lambda: math.expm1(1, 2),
+    lambda: math.expm1('1.0'),
+    lambda: math.expm1(1+2j),
+    lambda: math.expm1(1000000),
+    lambda: math.expm1(IndexLike(10**10000)),
+    lambda: math.expm1(BadFloat()),
+    lambda: math.expm1(RaisesFloat()),
+    lambda: math.expm1(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_log_family_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::testLog/log1p/log2/log10 public stable subset",

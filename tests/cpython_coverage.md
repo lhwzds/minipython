@@ -91,6 +91,7 @@ Recent runtime migration notes:
   `cpython_math_fma_diff_subset`,
   `cpython_math_fmax_fmin_diff_subset`,
   `cpython_math_exp_exp2_diff_subset`,
+  `cpython_math_expm1_diff_subset`,
   `cpython_math_log_family_diff_subset`,
   `cpython_math_trig_diff_subset`,
   `cpython_math_hyperbolic_diff_subset`,
@@ -805,6 +806,13 @@ Recent runtime migration notes:
   finite-input overflow errors, `__float__` and `__index__` input conversion,
   huge-index overflow, propagated conversion exceptions, and TypeError cases
   supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_expm1_diff_subset` and
+  `cpython_math_expm1_subset`, covering CPython
+  `test_math.py::MathTests::test_expm1` public exponential-minus-one behavior,
+  signed zero, non-finite propagation, finite-input overflow errors,
+  `__float__` and `__index__` input conversion, huge-index overflow,
+  propagated conversion exceptions, and TypeError cases supported by the
+  current runtime.
 - The bundled `math` module also includes `cpython_math_log_family_diff_subset`
   and `cpython_math_log_family_subset`, covering CPython
   `test_math.py::MathTests::testLog`, `::testLog1p`, `::testLog2`,
