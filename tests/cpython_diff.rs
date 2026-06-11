@@ -9045,6 +9045,26 @@ print(type(empty).__name__, len(empty), bytes(empty))"#,
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_copy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::SubclassTest::test_copy",
+        name: "bytes-bytearray-subclass-copy",
+        source: r#"import copy
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for T in [B, BA]:
+    a = T(b'abcd')
+    a.x = 10
+    a.z = T(b'efgh')
+    for label, method in [('copy', copy.copy), ('deepcopy', copy.deepcopy)]:
+        b = method(a)
+        print(T.__name__, label, type(b).__name__, b == a, b is a, getattr(b, 'x', 'none'), type(getattr(b, 'z', None)).__name__, getattr(b, 'z', b'') == T(b'efgh'), hasattr(b, 'y'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

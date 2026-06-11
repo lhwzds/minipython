@@ -275,7 +275,8 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
 - Covered `copy.copy()` and `copy.deepcopy()` for bytes and bytearray
   subclasses, preserving concrete subclass type, value equality, user
   attributes, nested subclass attribute values, and distinct top-level copy
-  identity.
+  identity. Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_subclass_copy_diff_subset`.
 - Added `cpython_bytes_bytearray_subclass_pickle_subset`, adapted from CPython
   `Lib/test/test_bytes.py::SubclassTest::test_pickle`.
 - Covered bytes and bytearray subclass pickle round trips across supported
