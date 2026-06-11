@@ -2163,9 +2163,7 @@ fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
 fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
     matches!(
         evidence,
-        "builtin-breakpoint-custom-hook"
-            | "builtin-breakpoint-passthru-error"
-            | "pure-memory-stdlib-core"
+        "builtin-breakpoint-custom-hook" | "builtin-breakpoint-passthru-error"
     )
 }
 
