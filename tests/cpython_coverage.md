@@ -1240,7 +1240,8 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `read1()`, `readline()`,
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `readinto()` /
-  `readinto1()` over writable bytearray targets, `tell()`, `seek()`,
+  `readinto1()` over writable bytearray targets, `tell()`, `seek()` with
+  public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
   `truncate()`, position advancement, sequential bytes-like line writes,
   sparse write NUL filling,
   size/sizehint line reads, line iteration through `__iter__()` / `__next__()`

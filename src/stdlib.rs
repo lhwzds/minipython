@@ -469,7 +469,12 @@ pub(crate) fn create_module(
         )),
         "io" => Ok(module_value(
             "io",
-            vec![("BytesIO", Value::Builtin("io.BytesIO".to_string()))],
+            vec![
+                ("BytesIO", Value::Builtin("io.BytesIO".to_string())),
+                ("SEEK_SET", Value::Number(0)),
+                ("SEEK_CUR", Value::Number(1)),
+                ("SEEK_END", Value::Number(2)),
+            ],
         )),
         "math" => Ok(module_value(
             "math",
