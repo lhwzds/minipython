@@ -2389,16 +2389,6 @@ except SyntaxError as error:
             source: "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
         },
         DiffCase {
-            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_length_hint / ::test_repeat_after_setslice",
-            name: "bytearray-iterator-length-hint-and-repeat-regressions",
-            source: "ba = bytearray(b'ab')\nit = iter(ba)\nprint(next(it), it.__length_hint__())\nba.clear()\nprint(it.__length_hint__(), list(it))\nb = bytearray(b'abc')\nb[:2] = b'x'\nb1 = b * 1\nb3 = b * 3\nprint(b, b1, b1 == b'xc', b1 == b)\nprint(b3)",
-        },
-        DiffCase {
-            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",
-            name: "bytearray-exhausted-iterator",
-            source: "a = bytearray([1, 2, 3])\nexhit = iter(a)\nempit = iter(a)\nfor x in exhit:\n    next(empit)\na.append(9)\nprint(list(exhit), list(empit), a)\nexhit = iter(bytearray([1, 2, 3]))\nseen = []\nfor _ in exhit:\n    seen.append(next(exhit, 1))\nprint(seen)",
-        },
-        DiffCase {
             origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index_inbounds skip_bounds_safety_slice",
             name: "bytearray-mutating-index-slice-inbounds-safety",
             source: "class MutatesOnIndex:\n    def __init__(self):\n        self.ba = bytearray(0x180)\n    def __index__(self):\n        self.ba.clear()\n        self.new_ba = bytearray(0x180)\n        self.ba.extend([0] * 0x180)\n        return 0\ninstance = MutatesOnIndex()\ninstance.ba[instance:1] = [ord('?')]\nprint(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))",
@@ -5286,6 +5276,45 @@ def iterator():
     yield b'A'
     yield b'B'
 print(array.join(iterator()))"#,
+    });
+}
+
+#[test]
+fn cpython_bytearray_iterator_length_hint_and_repeat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_length_hint / ::test_repeat_after_setslice",
+        name: "bytearray-iterator-length-hint-and-repeat-regressions",
+        source: r#"ba = bytearray(b'ab')
+it = iter(ba)
+print(next(it), it.__length_hint__())
+ba.clear()
+print(it.__length_hint__(), list(it))
+b = bytearray(b'abc')
+b[:2] = b'x'
+b1 = b * 1
+b3 = b * 3
+print(b, b1, b1 == b'xc', b1 == b)
+print(b3)"#,
+    });
+}
+
+#[test]
+fn cpython_bytearray_exhausted_iterator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",
+        name: "bytearray-exhausted-iterator",
+        source: r#"a = bytearray([1, 2, 3])
+exhit = iter(a)
+empit = iter(a)
+for x in exhit:
+    next(empit)
+a.append(9)
+print(list(exhit), list(empit), a)
+exhit = iter(bytearray([1, 2, 3]))
+seen = []
+for _ in exhit:
+    seen.append(next(exhit, 1))
+print(seen)"#,
     });
 }
 

@@ -1168,6 +1168,8 @@ Recent runtime migration notes:
   dispatch, and `dir(bytearray)` visibility without exposing the method on
   `bytes`.
 - `STRING_RUNTIME` also includes
+  `cpython_bytearray_iterator_length_hint_and_repeat_diff_subset`,
+  `cpython_bytearray_exhausted_iterator_diff_subset`,
   `cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset`
   and `cpython_bytearray_exhausted_iterator_subset`,
   covering current CPython `ByteArrayTest::test_iterator_length_hint` and

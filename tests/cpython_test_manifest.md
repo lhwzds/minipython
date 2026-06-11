@@ -994,7 +994,8 @@ source-group buffer protocol gap.
 `ByteArrayTest::test_resize`, covering truncation, zero-filled growth,
 `__index__` length conversion, catchable public error classes, method
 visibility, and sandbox-safe `MemoryError` behavior for impractically large
-sizes. `cpython_bytearray_resize_forbidden_subset` ports the public behavior of
+sizes.
+`cpython_bytearray_resize_forbidden_subset` ports the public behavior of
 current CPython `ByteArrayTest::test_resize_forbidden`, covering active
 memoryview exports blocking all resizing bytearray operations before mutation.
 `cpython_bytearray_alloc_and_subclass_mutation_subset` ports the public behavior
@@ -1011,11 +1012,13 @@ classes, inherited method dispatch for `bytearray` subclasses, and method
 visibility. The
 remaining `take_bytes` gaps are exact allocation-size accounting,
 `sys.getsizeof()` parity, and CPython-only optimization checks.
-`cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset` ports the
+`cpython_bytearray_iterator_length_hint_and_repeat_diff_subset` and
+`cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset` port the
 public behavior of current CPython `ByteArrayTest::test_iterator_length_hint`
 and `test_repeat_after_setslice`, covering bytearray iterator exhaustion after
 clearing the original bytearray plus repetition after resizing slice
-assignment. `cpython_bytearray_exhausted_iterator_subset` ports
+assignment. `cpython_bytearray_exhausted_iterator_diff_subset` and
+`cpython_bytearray_exhausted_iterator_subset` port
 `ByteArrayTest::test_exhausted_iterator`, covering the distinction between an
 already exhausted bytearray iterator and a sibling iterator that can still
 observe appended bytes, plus the no-crash exhausted-iterator regression.
