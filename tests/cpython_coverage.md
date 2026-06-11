@@ -64,6 +64,8 @@ Recent runtime migration notes:
   `cpython_math_floor_diff_subset`,
   `cpython_math_degrees_radians_diff_subset`,
   `cpython_math_cbrt_diff_subset`,
+  `cpython_math_fma_diff_subset`,
+  `cpython_math_fmax_fmin_diff_subset`,
   `cpython_math_exp_exp2_diff_subset`,
   `cpython_math_log_family_diff_subset`,
   `cpython_math_trig_diff_subset`,
@@ -434,12 +436,14 @@ Recent runtime migration notes:
   `test_math.py::MathTests::testFabs` real-number conversion, float result,
   signed-zero normalization, NaN/inf propagation, huge-integer overflow, and
   TypeError cases supported by the current runtime.
-- The bundled `math` module also includes `cpython_math_fma_subset`, covering
+- The bundled `math` module also includes `cpython_math_fma_diff_subset`,
+  gated for newer CPython oracles, and `cpython_math_fma_subset`, covering
   CPython `test_math.py::FMATests` public fused multiply-add behavior,
   single-round examples, signed-zero results, NaN propagation, infinity
   invalid-operation cases, finite overflow, real-number input conversion, and
   catchable error classes.
-- The bundled `math` module also includes `cpython_math_fmax_fmin_subset`,
+- The bundled `math` module also includes `cpython_math_fmax_fmin_diff_subset`,
+  gated for newer CPython oracles, and `cpython_math_fmax_fmin_subset`,
   covering CPython `test_math.py::MathTests::test_fmax`, `::test_fmax_nans`,
   `::test_fmin`, and `::test_fmin_nans` public two-argument floating min/max
   behavior, NaN elision, infinity handling, real-number input conversion, and

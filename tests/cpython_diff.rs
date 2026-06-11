@@ -1661,6 +1661,128 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_fma_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'fma'))")
+        .expect("failed to probe CPython math.fma support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping math.fma diff: CPython oracle lacks math.fma");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::FMATests public stable subset",
+        name: "math-fma",
+        source: r#"import math
+print(math.fma(2.0, 3.0, 4.0), math.fma(-2.0, 3.0, 4.0), math.fma(2, 3, 4))
+a = 2.0 ** -50
+print(math.fma(a - 1.0, a + 1.0, 1.0) == a * a, math.fma(2.0 ** 512, 2.0 ** 512, -(2.0 ** 1023)) == 2.0 ** 1023)
+print(math.copysign(1.0, math.fma(2.0, 2.0, -4.0)), math.copysign(1.0, math.fma(0.0, -2.3, -0.0)), math.copysign(1.0, math.fma(1e-300, -1e-300, 0.0)))
+print(math.isnan(math.fma(math.nan, 2.0, 3.0)), math.isnan(math.fma(2.0, math.nan, 3.0)), math.isnan(math.fma(2.0, 3.0, math.nan)), math.isnan(math.fma(0.0, math.inf, math.nan)))
+print(math.fma(math.inf, 2.0, 3.0), math.fma(-math.inf, 2.0, 3.0), math.fma(2.0, math.inf, math.inf), math.fma(2.0, -math.inf, -math.inf))
+print(math.fma(2.0, 3.0, math.inf), math.fma(2.0, 3.0, -math.inf))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.fma(FloatLike(2.0), FloatLike(3.0), FloatLike(4.0)), math.fma(IndexLike(2), IndexLike(3), IndexLike(4)), math.fma(True, False, True))
+for expr in [
+    lambda: math.fma(),
+    lambda: math.fma(1),
+    lambda: math.fma(1, 2),
+    lambda: math.fma(1, 2, 3, 4),
+    lambda: math.fma(x=1, y=2, z=3),
+    lambda: math.fma('x', 1, 1),
+    lambda: math.fma(1+2j, 1, 1),
+    lambda: math.fma(10**10000, 1, 1),
+    lambda: math.fma(math.inf, 0.0, 1.0),
+    lambda: math.fma(0.0, -math.inf, 0.0),
+    lambda: math.fma(math.inf, 2.0, -math.inf),
+    lambda: math.fma(1e308, 1e308, 0.0),
+    lambda: math.fma(BadFloat(), 1, 1),
+    lambda: math.fma(RaisesFloat(), 1, 1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_math_fmax_fmin_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'fmax'), hasattr(math, 'fmin'))")
+        .expect("failed to probe CPython math.fmax/fmin support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True True\n" {
+        eprintln!("skipping math.fmax/fmin diff: CPython oracle lacks math.fmax/fmin");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_fmax/test_fmin public stable subset",
+        name: "math-fmax-fmin",
+        source: r#"import math
+print(math.fmax(0., 0.), math.fmax(1., 2.), math.fmax(2., 1.))
+print(math.fmax(+1., +0.) == 1., math.fmax(+0., +1.) == 1., math.fmax(+1., -0.) == 1., math.fmax(-0., +1.) == 1.)
+print(math.fmax(-1., +0.) == 0., math.fmax(+0., -1.) == 0., math.fmax(-1., -0.) == 0., math.fmax(-0., -1.) == 0.)
+print(math.fmax(math.inf, -1.), math.fmax(-1., math.inf), math.fmax(-math.inf, -1.), math.fmax(-1., -math.inf))
+print(math.isnan(math.fmax(math.nan, 1.)), math.fmax(math.nan, 1.), math.isnan(math.fmax(1., math.nan)), math.fmax(1., math.nan), math.isnan(math.fmax(math.nan, math.nan)))
+print(math.fmin(0., 0.), math.fmin(1., 2.), math.fmin(2., 1.))
+print(math.fmin(+1., +0.) == 0., math.fmin(+0., +1.) == 0., math.fmin(+1., -0.) == 0., math.fmin(-0., +1.) == 0.)
+print(math.fmin(-1., +0.) == -1., math.fmin(+0., -1.) == -1., math.fmin(-1., -0.) == -1., math.fmin(-0., -1.) == -1.)
+print(math.fmin(math.inf, -1.), math.fmin(-1., math.inf), math.fmin(-math.inf, -1.), math.fmin(-1., -math.inf))
+print(math.isnan(math.fmin(math.nan, 1.)), math.fmin(math.nan, 1.), math.isnan(math.fmin(1., math.nan)), math.fmin(1., math.nan), math.isnan(math.fmin(math.nan, math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.fmax(FloatLike(1.25), FloatLike(2.5)), math.fmin(IndexLike(-1), IndexLike(3)), math.fmax(True, False), math.fmin(True, False))
+for expr in [
+    lambda: math.fmax(),
+    lambda: math.fmin(1),
+    lambda: math.fmax(1, 2, 3),
+    lambda: math.fmax(x=1, y=2),
+    lambda: math.fmin('x', 1),
+    lambda: math.fmax(1+2j, 1),
+    lambda: math.fmin(IndexLike(10**10000), 1),
+    lambda: math.fmax(BadFloat(), 1),
+    lambda: math.fmin(RaisesFloat(), 1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_exp_exp2_diff_subset() {
     let probe = run_cpython("import math; print(hasattr(math, 'exp2'))")
         .expect("failed to probe CPython math.exp2 support");
