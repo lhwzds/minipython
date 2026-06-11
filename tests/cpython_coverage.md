@@ -104,7 +104,8 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`, and
-  `cpython_collections_userlist_public_methods_diff_subset`.
+  `cpython_collections_userlist_public_methods_diff_subset`,
+  `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -2349,11 +2350,12 @@ Recent runtime migration notes:
   `.data`, list mutation/iteration/length/containment, `.copy()`, and
   `copy.copy()` with shallow instance-attribute copying.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`
+  and
   `cpython_collections_userstring_protocol_and_userdict_missing_subset`,
   covering the remaining CPython `TestUserObjects` public behavior for
   `dir(UserString)` protocol coverage against `str` plus `UserDict` subclass
-  `__missing__` dispatch for subscript lookup while preserving `get()` as a
-  non-`__missing__` lookup.
+  `__missing__` dispatch for subscript lookup and `.get()`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_public_methods_subset`, covering CPython
   `TestChainMap` public behavior for construction, truthiness, first-map

@@ -63085,6 +63085,28 @@ fn call_user_dict_method(
         return vm.load_user_dict_subclass_subscript(receiver.clone(), data, key.clone());
     }
 
+    if method == "get" {
+        reject_method_keywords(name, &keywords)?;
+        let [key, rest @ ..] = rest else {
+            return Err(format!(
+                "get() expected at least 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "get() expected at most 2 arguments, got {}",
+                rest.len() + 1
+            ));
+        }
+        let default = rest.first().cloned().unwrap_or(Value::None);
+        return match vm.load_user_dict_subclass_subscript(receiver.clone(), data, key.clone()) {
+            Ok(value) => Ok(value),
+            Err(message) if message.starts_with("KeyError:") => Ok(default),
+            Err(message) => Err(message),
+        };
+    }
+
     let dict_receiver = Value::Dict(data.clone());
     let mut dict_args = Vec::with_capacity(args.len());
     dict_args.push(dict_receiver);

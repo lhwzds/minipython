@@ -2734,6 +2734,24 @@ print(from_userlist.data, constructed.data)"#,
 }
 
 #[test]
+fn cpython_collections_userstring_protocol_and_userdict_missing_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestUserObjects UserString protocol and UserDict missing subset",
+        name: "collections-userstring-protocol-userdict-missing",
+        source: r#"from collections import UserDict, UserString
+print(set(dir(UserString)) >= set(dir(str)))
+class A(UserDict):
+    def __missing__(self, key):
+        return 456
+print(A()[123])
+print(A().get(123) is None)
+obj = A({1: 2})
+print(obj[1], obj.get(999, 'fallback'), obj.data)
+print(obj.__getitem__(123))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
