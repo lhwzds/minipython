@@ -1835,6 +1835,62 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_hyperbolic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testAcosh/Asinh/Atanh/Cosh/Sinh/Tanh public stable subset",
+        name: "math-hyperbolic",
+        source: r#"import math
+print(math.acosh(1), round(math.acosh(2), 12), math.acosh(math.inf))
+print(math.asinh(0), round(math.asinh(1), 12), round(math.asinh(-1), 12), math.asinh(math.inf), math.asinh(-math.inf))
+print(math.atanh(0), round(math.atanh(0.5), 12), round(math.atanh(-0.5), 12))
+print(math.cosh(0), round(math.cosh(2) - 2 * math.cosh(1) ** 2, 12), math.cosh(math.inf), math.cosh(-math.inf))
+print(math.sinh(0), round(math.sinh(1) ** 2 - math.cosh(1) ** 2, 12), round(math.sinh(1) + math.sinh(-1), 12), math.sinh(math.inf), math.sinh(-math.inf))
+print(math.tanh(0), round(math.tanh(1) + math.tanh(-1), 12), math.tanh(math.inf), math.tanh(-math.inf))
+print(math.copysign(1.0, math.tanh(-0.0)), math.isnan(math.acosh(math.nan)), math.isnan(math.asinh(math.nan)), math.isnan(math.atanh(math.nan)), math.isnan(math.cosh(math.nan)), math.isnan(math.sinh(math.nan)), math.isnan(math.tanh(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.acosh(FloatLike(1.0)), round(math.sinh(IndexLike(1)), 12), math.tanh(IndexLike(0)))
+for expr in [
+    lambda: math.acosh(),
+    lambda: math.asinh(1, 2),
+    lambda: math.acosh(0),
+    lambda: math.acosh(-math.inf),
+    lambda: math.atanh(1),
+    lambda: math.atanh(-1),
+    lambda: math.atanh(math.inf),
+    lambda: math.cosh(1000000),
+    lambda: math.sinh(1000000),
+    lambda: math.cosh('x'),
+    lambda: math.sinh(1+2j),
+    lambda: math.tanh(IndexLike(10**10000)),
+    lambda: math.cosh(BadFloat()),
+    lambda: math.asinh(RaisesFloat()),
+    lambda: math.tanh(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
