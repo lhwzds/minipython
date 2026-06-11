@@ -1076,6 +1076,126 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_gcd_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testGcd public stable subset",
+        name: "math-gcd",
+        source: r#"import math
+gcd = math.gcd
+print(gcd(0, 0), gcd(1, 0), gcd(-1, 0), gcd(0, 1), gcd(0, -1))
+print(gcd(7, 1), gcd(7, -1), gcd(-23, 15), gcd(120, 84), gcd(84, -120))
+print(gcd(1216342683557601535506311712, 436522681849110124616458784))
+print(gcd(), gcd(120), gcd(-120), gcd(120, 84, 102), gcd(120, 1, 84))
+class MyIndexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadIndex:
+    def __index__(self):
+        return 1.5
+class Boom:
+    def __index__(self):
+        raise RuntimeError('boom')
+print(gcd(MyIndexable(120), MyIndexable(84)))
+print(gcd(True, False), gcd(False, False))
+for expr in [
+    lambda: gcd(120.0),
+    lambda: gcd(120.0, 84),
+    lambda: gcd(120, 84.0),
+    lambda: gcd(120, 1, 84.0),
+    lambda: gcd(1, 1.5),
+    lambda: gcd(BadIndex()),
+    lambda: gcd(Boom()),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_math_lcm_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_lcm public stable subset",
+        name: "math-lcm",
+        source: r#"import math
+lcm = math.lcm
+print(lcm(0, 0), lcm(1, 0), lcm(-1, 0), lcm(0, 1), lcm(0, -1))
+print(lcm(7, 1), lcm(7, -1), lcm(-23, 15), lcm(120, 84), lcm(84, -120))
+print(lcm(1216342683557601535506311712, 436522681849110124616458784))
+print(lcm(), lcm(120), lcm(-120), lcm(120, 84, 102), lcm(120, 0, 84))
+class MyIndexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadIndex:
+    def __index__(self):
+        return 1.5
+class Boom:
+    def __index__(self):
+        raise RuntimeError('boom')
+print(lcm(MyIndexable(120), MyIndexable(84)))
+print(lcm(True, False), lcm(True, True), lcm(False, False))
+for expr in [
+    lambda: lcm(120.0),
+    lambda: lcm(120.0, 84),
+    lambda: lcm(120, 84.0),
+    lambda: lcm(120, 0, 84.0),
+    lambda: lcm(1, 1.5),
+    lambda: lcm(0, 0.5),
+    lambda: lcm(BadIndex()),
+    lambda: lcm(0, Boom()),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_math_prod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::test_prod public stable subset",
+        name: "math-prod",
+        source: r#"import math
+prod = math.prod
+print(prod([]), prod([], start=5), prod(list(range(2, 8))))
+print(prod(iter(list(range(2, 8)))), prod(range(1, 10), start=10))
+print(prod([1, 2, 3, 4, 5]), prod([1.0, 2.0, 3.0, 4.0, 5.0]))
+print(prod([1, 2, 3, 4.0, 5.0]), prod([1.0, 2.0, 3.0, 4, 5]))
+print(prod([1, 1, 2**32, 1, 1]), prod([1.0, 1.0, 2**32, 1, 1]))
+print(prod([2, 3], start='ab'))
+print(prod([2, 3], start=[1, 2]))
+print(prod([], start={2: 3}))
+print(prod([0, 1, 2, 3]), prod([1, 0, 2, 3]), prod([1, 2, 3, 0]))
+print(math.isnan(prod([1, 2, 3, float('nan'), 2, 3])))
+print(math.isinf(prod([1, 2, 3, float('inf'), -3, 4])), prod([1, 2, 3, float('inf'), -3, 4]) < 0)
+print(type(prod([1, 2, 3, 4, 5, 6])).__name__, type(prod([1, 2.0, 3, 4, 5, 6])).__name__)
+values = [bytearray(b'a'), bytearray(b'b')]
+for expr in [
+    lambda: prod(),
+    lambda: prod(42),
+    lambda: prod(['a', 'b', 'c']),
+    lambda: prod(['a', 'b', 'c'], start=''),
+    lambda: prod([b'a', b'c'], start=b''),
+    lambda: prod(values, start=bytearray(b'')),
+    lambda: prod([[1], [2], [3]]),
+    lambda: prod([{2: 3}]),
+    lambda: prod([10, 20], 1),
+    lambda: prod([1], missing=2),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

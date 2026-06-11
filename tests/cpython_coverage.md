@@ -51,6 +51,9 @@ Recent runtime migration notes:
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_math_core_diff_subset`,
   `cpython_math_isclose_diff_subset`,
+  `cpython_math_gcd_diff_subset`,
+  `cpython_math_lcm_diff_subset`,
+  `cpython_math_prod_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -382,11 +385,13 @@ Recent runtime migration notes:
   `dist()` inputs, real-number conversion, signed-zero normalization, NaN/inf
   propagation, large/small-value scaling, dimension validation, and catchable
   error classes.
-- The bundled `math` module also includes `cpython_math_gcd_subset`, covering
-  CPython `test_math.py::MathTests::testGcd` integer, big-integer, variadic,
+- The bundled `math` module also includes `cpython_math_gcd_diff_subset` and
+  `cpython_math_gcd_subset`, covering CPython
+  `test_math.py::MathTests::testGcd` integer, big-integer, variadic,
   empty-call, negative-input, `__index__`, and non-integer rejection behavior.
-- The bundled `math` module also includes `cpython_math_lcm_subset`, covering
-  CPython `test_math.py::MathTests::test_lcm` integer, big-integer, variadic,
+- The bundled `math` module also includes `cpython_math_lcm_diff_subset` and
+  `cpython_math_lcm_subset`, covering CPython
+  `test_math.py::MathTests::test_lcm` integer, big-integer, variadic,
   empty-call, zero, negative-input, `__index__`, and non-integer rejection
   behavior.
 - The bundled `math` module also includes `cpython_math_integer_subset`,
@@ -400,11 +405,12 @@ Recent runtime migration notes:
   NaN/inf special cases, zero and signed-zero semantics, negative-base domain
   errors for non-integral exponents, finite overflow handling, `__float__` and
   `__index__` input conversion, and catchable error classes.
-- The bundled `math` module also includes `cpython_math_prod_subset`, covering
-  CPython `test_math.py::MathTests::test_prod` iterable multiplication,
-  keyword-only `start`, integer/float products, sequence repetition, zero,
-  NaN/inf propagation, type preservation, and TypeError cases supported by the
-  current runtime.
+- The bundled `math` module also includes `cpython_math_prod_diff_subset` and
+  `cpython_math_prod_subset`, covering CPython
+  `test_math.py::MathTests::test_prod` iterable multiplication, keyword-only
+  `start`, integer/float products, sequence repetition, zero, NaN/inf
+  propagation, type preservation, and TypeError cases supported by the current
+  runtime.
 - The bundled `math` module also includes `cpython_math_fabs_subset`, covering
   CPython `test_math.py::MathTests::testFabs` real-number conversion, float
   result, signed-zero normalization, NaN/inf propagation, huge-integer overflow,
