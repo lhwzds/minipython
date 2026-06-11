@@ -676,6 +676,31 @@ except StopIteration as done:
 }
 
 #[test]
+fn cpython_tokenize_comments_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py COMMENT/NL public execution subset",
+        name: "tokenize-comments",
+        source: r#"# leading comment
+value = 1  # inline comment
+# comment-only physical line
+
+if True:
+    # block comment-only line
+    value += 2  # type: int
+    # type: ignore[comment]
+    print(value)  # trailing block comment
+
+items = [
+    1,  # item comment
+    # skipped comment line
+    2,
+]
+print(sum(items))
+# final trailing comment"#,
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",
