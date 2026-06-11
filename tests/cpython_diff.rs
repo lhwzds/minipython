@@ -2803,6 +2803,33 @@ print(set(c), d.called)"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_new_child_custom_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap new_child custom mapping subset",
+        name: "collections-chainmap-new-child-custom-mapping",
+        source: r#"from collections import ChainMap
+class lowerdict(dict):
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            key = key.lower()
+        return dict.__getitem__(self, key)
+    def __contains__(self, key):
+        if isinstance(key, str):
+            key = key.lower()
+        return dict.__contains__(self, key)
+c = ChainMap()
+c['a'] = 1
+c['b'] = 2
+m = lowerdict(b=20, c=30)
+d = c.new_child(m)
+print(d.maps[0] is m)
+print('a' in d, 'b' in d, 'c' in d, 'B' in d, 'C' in d)
+print(d.get('a', 100), d.get('B', 100), d.get('C', 100), d.get('z', 100))
+print(d['B'], d['C'])"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
