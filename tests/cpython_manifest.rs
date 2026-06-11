@@ -2129,6 +2129,14 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if evidence == "cpython_json_loads_dumps_diff_subset" {
         candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
     }
+    if evidence == "cpython_builtin_singleton_construction_and_attributes_diff_subset" {
+        candidates.push("cpython_builtin_construct_singletons_subset".to_string());
+        candidates.push("cpython_builtin_singleton_attribute_access_subset".to_string());
+    }
+    if evidence == "cpython_hash_id_builtins_diff_subset" {
+        candidates.push("cpython_hash_builtin_subset".to_string());
+        candidates.push("cpython_id_builtin_subset".to_string());
+    }
     if evidence == "cpython_array_one_byte_public_clear_diff_subset" {
         candidates.push("cpython_array_one_byte_public_mutation_methods_subset".to_string());
     }
@@ -3460,6 +3468,12 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_chr_ord_builtin_subset",
             "cpython_format_builtin_and_custom_dunder_format_subset",
             "cpython_ascii_builtin_subset",
+            "cpython_builtin_cmp_absent_subset",
+            "cpython_builtin_bool_notimplemented_subset",
+            "cpython_builtin_construct_singletons_subset",
+            "cpython_builtin_singleton_attribute_access_subset",
+            "cpython_hash_builtin_subset",
+            "cpython_id_builtin_subset",
             "cpython_builtin_breakpoint_custom_hook_subset",
             "cpython_builtin_breakpoint_passthru_error_subset",
         ],
@@ -3483,6 +3497,10 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_ascii_builtin_diff_subset",
         "cpython_chr_ord_builtin_diff_subset",
+        "cpython_builtin_cmp_absent_diff_subset",
+        "cpython_builtin_bool_notimplemented_diff_subset",
+        "cpython_builtin_singleton_construction_and_attributes_diff_subset",
+        "cpython_hash_id_builtins_diff_subset",
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
         "iter-next-builtins",
