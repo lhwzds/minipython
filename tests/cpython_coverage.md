@@ -2592,7 +2592,8 @@ Recent runtime migration notes:
   CPython's `Collection` direct-subclass runtime behavior, derived-subclass
   iteration, generated-subclass rejection for unrelated builtin classes,
   missing-method non-samples, direct `None` blocking, and inherited
-  `__contains__ = None` blocking.
+  `__contains__ = None` blocking. Direct CPython diff evidence is in
+  `cpython_collections_abc_collection_direct_subclass_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_iterator_sample_matrix_subset`, covering CPython's
   `Iterator` public sample matrix with non-iterator scalar/container values,

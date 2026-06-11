@@ -3364,6 +3364,70 @@ print(issubclass(float, R))"#,
 }
 
 #[test]
+fn cpython_collections_abc_collection_direct_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Collection",
+        name: "collections-abc-collection-direct-subclass",
+        source: r#"from collections.abc import Collection
+class Col(Collection):
+    def __iter__(self):
+        return iter(list())
+    def __len__(self):
+        return 0
+    def __contains__(self, item):
+        return False
+class DerCol(Col):
+    pass
+print(list(iter(Col())))
+print(issubclass(list, Col), issubclass(set, Col), issubclass(float, Col))
+print(list(iter(DerCol())))
+print(issubclass(list, DerCol), issubclass(set, DerCol), issubclass(float, DerCol))
+class ColNoIter:
+    def __len__(self):
+        return 0
+    def __contains__(self, item):
+        return False
+class ColNoSize:
+    def __iter__(self):
+        return iter([])
+    def __contains__(self, item):
+        return False
+class ColNoCont:
+    def __iter__(self):
+        return iter([])
+    def __len__(self):
+        return 0
+print(issubclass(ColNoIter, Collection), isinstance(ColNoIter(), Collection))
+print(issubclass(ColNoSize, Collection), isinstance(ColNoSize(), Collection))
+print(issubclass(ColNoCont, Collection), isinstance(ColNoCont(), Collection))
+class SizeBlock:
+    def __iter__(self):
+        return iter([])
+    def __contains__(self):
+        return False
+    __len__ = None
+class IterBlock:
+    def __len__(self):
+        return 0
+    def __contains__(self):
+        return True
+    __iter__ = None
+print(issubclass(SizeBlock, Collection), isinstance(SizeBlock(), Collection))
+print(issubclass(IterBlock, Collection), isinstance(IterBlock(), Collection))
+class ColImpl:
+    def __iter__(self):
+        return iter(list())
+    def __len__(self):
+        return 0
+    def __contains__(self, item):
+        return False
+class NonCol(ColImpl):
+    __contains__ = None
+print(issubclass(NonCol, Collection), isinstance(NonCol(), Collection))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_async_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Awaitable/Coroutine/AsyncIterable/AsyncIterator public subset",
