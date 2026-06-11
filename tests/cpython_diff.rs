@@ -1076,6 +1076,72 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_hypot_dist_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testHypot/testDist public stable subset",
+        name: "math-hypot-dist",
+        source: r#"import math
+print(math.hypot(), math.hypot(3, 4), math.hypot(3, 4, 12))
+print(math.hypot(0.75, -1), math.hypot(-1, 0.75), math.hypot(-10.5))
+print(math.hypot(True, False, True, True, True))
+print(math.copysign(1.0, math.hypot(-0.0)))
+print(math.hypot(math.inf), math.hypot(math.nan, math.inf), math.hypot(-math.inf, -math.inf))
+print(math.isnan(math.hypot(math.nan)), math.isnan(math.hypot(10, math.nan)))
+print(math.hypot(1e308, 1e308) > 1e308, math.isinf(math.hypot(1e308, 1e308)))
+scale = 2.2250738585072014e-308 / 2
+print(math.hypot(4 * scale, 3 * scale) == 5 * scale)
+print(math.dist((1.0, 2.0, 3.0), (4.0, 2.0, -1.0)))
+print(math.dist([1, 2, 3], [4, 2, -1]), math.dist(iter([1, 2, 3]), iter([4, 2, -1])))
+print(math.dist((), ()), math.dist((True, True, False, False, True, True), (True, False, True, False, False, False)))
+print(math.copysign(1.0, math.dist((-0.0,), (0.0,))), math.copysign(1.0, math.dist((0.0,), (-0.0,))))
+print(math.dist((1e308, 1e308), (0.0, 0.0)) > 1e308, math.isinf(math.dist((1e308, 1e308), (0.0, 0.0))))
+print(math.dist((math.inf,), (-math.inf,)), math.isnan(math.dist((math.nan,), (math.inf,))), math.isnan(math.dist((10,), (math.nan,))))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.hypot(FloatLike(-1.0), 0.75), math.hypot(IndexLike(3), 4))
+print(math.dist((FloatLike(14.0), 1), (2, -4)), math.dist((11, 1), (FloatLike(-1.0), -4)))
+for expr in [
+    lambda: math.hypot(x=1),
+    lambda: math.hypot(1.1, 'string', 2.2),
+    lambda: math.hypot(1, 10**10000),
+    lambda: math.hypot(BadFloat()),
+    lambda: math.hypot(RaisesFloat()),
+    lambda: math.dist(),
+    lambda: math.dist((1, 2)),
+    lambda: math.dist((1,), (2,), (3,)),
+    lambda: math.dist(p=(1,), q=(2,)),
+    lambda: math.dist((1,), (1, 2)),
+    lambda: math.dist('a', 'b'),
+    lambda: math.dist((1, 'x'), (2, 3)),
+    lambda: math.dist((1,), (10**10000,)),
+    lambda: math.dist((BadFloat(),), (0,)),
+    lambda: math.dist((RaisesFloat(),), (0,)),
+    lambda: math.dist((1,), 2),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_gcd_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::testGcd public stable subset",

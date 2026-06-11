@@ -51,6 +51,7 @@ Recent runtime migration notes:
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_math_core_diff_subset`,
   `cpython_math_isclose_diff_subset`,
+  `cpython_math_hypot_dist_diff_subset`,
   `cpython_math_gcd_diff_subset`,
   `cpython_math_lcm_diff_subset`,
   `cpython_math_prod_diff_subset`,
@@ -401,12 +402,12 @@ Recent runtime migration notes:
   identical values, near-zero comparisons, infinity/NaN handling, keyword-only
   tolerances, real-number input conversion, negative tolerance rejection, and
   catchable error classes.
-- The bundled `math` module also includes `cpython_math_hypot_dist_subset`,
-  covering CPython `test_math.py::MathTests::testHypot` and `::testDist`
-  public Euclidean norm/distance behavior, variadic `hypot()`, iterable
-  `dist()` inputs, real-number conversion, signed-zero normalization, NaN/inf
-  propagation, large/small-value scaling, dimension validation, and catchable
-  error classes.
+- The bundled `math` module also includes `cpython_math_hypot_dist_diff_subset`
+  and `cpython_math_hypot_dist_subset`, covering CPython
+  `test_math.py::MathTests::testHypot` and `::testDist` public Euclidean
+  norm/distance behavior, variadic `hypot()`, iterable `dist()` inputs,
+  real-number conversion, signed-zero normalization, NaN/inf propagation,
+  large/small-value scaling, dimension validation, and catchable error classes.
 - The bundled `math` module also includes `cpython_math_gcd_diff_subset` and
   `cpython_math_gcd_subset`, covering CPython
   `test_math.py::MathTests::testGcd` integer, big-integer, variadic,
