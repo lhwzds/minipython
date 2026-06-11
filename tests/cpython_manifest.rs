@@ -2161,8 +2161,6 @@ fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
             | "compile-code-object-builtin"
             | "builtin-breakpoint-custom-hook"
             | "builtin-breakpoint-passthru-error"
-            | "iter-next-builtins"
-            | "map-filter-builtins"
             | "float-hash-and-sys-info"
             | "types-frame-locals-proxy-currentframe"
             | "types-method-descriptor-types"
@@ -2177,8 +2175,6 @@ fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
             | "compile-code-object-builtin"
             | "builtin-breakpoint-custom-hook"
             | "builtin-breakpoint-passthru-error"
-            | "iter-next-builtins"
-            | "map-filter-builtins"
             | "float-hash-and-sys-info"
             | "types-frame-locals-proxy-currentframe"
             | "types-method-descriptor-types"
@@ -3515,8 +3511,6 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_hash_id_builtins_diff_subset",
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
-        "iter-next-builtins",
-        "map-filter-builtins",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),

@@ -69,7 +69,7 @@ Recent runtime migration notes:
   intentionally kept visible here so the coverage manifest can guard them:
   `globals-locals-builtins`, `exec-builtin`, `compile-code-object-builtin`,
   `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`,
-  `iter-next-builtins`, `map-filter-builtins`, `float-hash-and-sys-info`,
+  `float-hash-and-sys-info`,
   `types-frame-locals-proxy-currentframe`, `types-method-descriptor-types`,
   `pure-memory-stdlib-core`, `array-one-byte-public-file-methods`,
   `operator-precedence-and-associativity`, and `pow-builtin`.
