@@ -11287,6 +11287,12 @@ c = itertools.count(2, 3)
 print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
 ck = itertools.count(start=-1, step=2)
 print(next(ck), next(ck), next(ck))
+cf_count = itertools.count(1.5, 0.25)
+print([next(cf_count) for _ in range(5)])
+cc_count = itertools.count(1+2j, 2-1j)
+print([next(cc_count) for _ in range(5)])
+cb_count = itertools.count(True, False)
+print([next(cb_count) for _ in range(5)])
 r = itertools.repeat('x', 3)
 print(type(r).__name__, iter(r) is r, list(r), list(r))
 print(list(itertools.repeat(object='y', times=2)))
@@ -11427,6 +11433,14 @@ except TypeError as error:
     print(error.__class__.__name__)
 try:
     itertools.count(0, 1, 2)
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.count('a')
+except TypeError as error:
+    print(error.__class__.__name__)
+try:
+    itertools.count(1, 'x')
 except TypeError as error:
     print(error.__class__.__name__)
 try:

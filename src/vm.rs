@@ -22938,15 +22938,25 @@ impl Vm {
             }
             values[index] = Some(value);
         }
-        let current = match values[0].take() {
-            Some(value) => self.index_big_int(value)?,
-            None => BigInt::from(0),
-        };
-        let step = match values[1].take() {
-            Some(value) => self.index_big_int(value)?,
-            None => BigInt::from(1),
-        };
-        Ok(shared_iterator(Value::ItertoolsCount { current, step }))
+        let current = values[0].take().unwrap_or(Value::Number(0));
+        let step = values[1].take().unwrap_or(Value::Number(1));
+        self.itertools_count_number(&current)?;
+        self.itertools_count_number(&step)?;
+        Ok(shared_iterator(Value::ItertoolsCount {
+            current: Box::new(current),
+            step: Box::new(step),
+        }))
+    }
+
+    fn itertools_count_number(&self, value: &Value) -> Result<(), String> {
+        if matches!(
+            numeric_bool_value(value.clone()),
+            Value::Number(_) | Value::BigInt(_) | Value::Float(_) | Value::Complex { .. }
+        ) {
+            Ok(())
+        } else {
+            Err("TypeError: a number is required".to_string())
+        }
     }
 
     fn call_itertools_repeat(
@@ -28882,6 +28892,11 @@ impl Vm {
                 return self.advance_owned_iterator(iterator.as_mut());
             }
             Value::Iterator(state) => return self.advance_shared_iterator(state.clone()),
+            Value::ItertoolsCount { current, step } => {
+                let value = current.as_ref().clone();
+                *current = Box::new(self.add_values(value.clone(), step.as_ref().clone())?);
+                return Ok(IteratorAdvance::Yield(value));
+            }
             Value::EnumerateIterator { iterator, index } => {
                 return match self.advance_owned_iterator(iterator.as_mut())? {
                     IteratorAdvance::Yield(value) => {
@@ -68563,10 +68578,8 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             }
         }
         Value::ZipIterator { iterators, strict } => advance_plain_zip_iterator(iterators, *strict),
-        Value::ItertoolsCount { current, step } => {
-            let value = current.clone();
-            *current += step.clone();
-            Ok(IteratorAdvance::Yield(normalize_big_int(value)))
+        Value::ItertoolsCount { .. } => {
+            Err("count iterator requires runtime arithmetic".to_string())
         }
         Value::ItertoolsRepeat { value, remaining } => {
             if let Some(remaining) = remaining {

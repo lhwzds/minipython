@@ -658,8 +658,8 @@ pub enum Value {
         iterator: Box<Value>,
     },
     ItertoolsCount {
-        current: BigInt,
-        step: BigInt,
+        current: Box<Value>,
+        step: Box<Value>,
     },
     ItertoolsRepeat {
         value: Box<Value>,

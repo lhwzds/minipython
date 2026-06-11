@@ -660,7 +660,8 @@ Recent runtime migration notes:
   `product()`, `combinations()`, `combinations_with_replacement()`, and
   `permutations()`, `tee()`, `batched()`, and `groupby()` iterator protocol behavior, plus duplicate-keyword diagnostics for
   `accumulate()` and `zip_longest()`.
-  This subset supports integer `count()` arguments, finite and infinite
+  This subset supports integer, float, complex, and bool `count()` arguments,
+  nonnumeric `count()` argument rejection, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
   arbitrary supported iterables, lazy `chain.from_iterable()` flattening,
   default and callable `accumulate()` reduction with `initial`, cached
@@ -689,10 +690,8 @@ Recent runtime migration notes:
   truth-tested `strict`, and incomplete-batch `ValueError`, and lazy
   `groupby()` runs with optional key functions, generator-backed input,
   shared `_grouper` invalidation when the parent advances, and keyword
-  binding. The broader
-  `itertools` module, floating/non-integer `count()` arithmetic,
-  `tee()` cache compaction, pickling/repr edge cases, and remaining
-  public/helper types remain open.
+  binding. The broader `itertools` module, `tee()` cache compaction,
+  pickling/repr edge cases, and remaining public/helper types remain open.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
   and `cpython_math_isclose_subset`, covering CPython
   `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,
