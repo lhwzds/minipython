@@ -5052,6 +5052,36 @@ print(all(name in operator.__all__ for name in stable_exports), len(stable_expor
 }
 
 #[test]
+fn cpython_operator_signature_helper_diff_subset() {
+    let probe =
+        run_cpython("import inspect, operator\nprint(inspect.signature(operator.attrgetter))")
+            .expect("failed to probe CPython operator signature support");
+    if !probe.status.success() {
+        eprintln!(
+            "skipping operator signature helper diff: CPython oracle lacks operator helper signatures"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase signature helper public subset",
+        name: "operator-signature-helper",
+        source: r#"import inspect, operator
+print(str(inspect.signature(operator.attrgetter)))
+print(str(inspect.signature(operator.attrgetter('x', 'z', 'y'))))
+print(str(inspect.signature(operator.itemgetter)))
+print(str(inspect.signature(operator.itemgetter(2, 3, 5))))
+print(str(inspect.signature(operator.methodcaller)))
+print(str(inspect.signature(operator.methodcaller('foo', 2, y=3))))
+for expr in [lambda: inspect.signature(), lambda: inspect.signature(1), lambda: inspect.signature(operator.add)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_helper_repr_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorPickleTestCase repr public subset",

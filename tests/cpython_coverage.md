@@ -1048,9 +1048,10 @@ Recent runtime migration notes:
   `test_operator.py` signature assertions for `operator.attrgetter`,
   `itemgetter`, and `methodcaller` constructors plus their helper instances via
   the public `str(inspect.signature(...))` surface, without claiming full
-  `inspect.Signature` or broad callable signature introspection support. This
-  remains subset-only under the current default CPython 3.9 oracle, where
-  `inspect.signature(operator.attrgetter)` raises `ValueError`.
+  `inspect.Signature` or broad callable signature introspection support. Direct
+  CPython diff evidence is in `cpython_operator_signature_helper_diff_subset`,
+  gated for CPython oracles where `inspect.signature(operator.attrgetter)` is
+  supported.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_helper_repr_subset`,
   covering the public helper object repr/str shape exercised by CPython
   `test_operator.py::OperatorPickleTestCase` repr checks for `attrgetter`,
