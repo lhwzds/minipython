@@ -30084,8 +30084,8 @@ fn cpython_string_maketrans_translate_subset() {
 // Adapted from CPython's Lib/test/test_str.py::test_codecs and
 // Lib/test/test_bytes.py::BaseBytesTest::test_encoding / ::test_decode.
 // MiniPython covers the first codec slice for str.encode(), bytes.decode(),
-// str(bytes, encoding), bytes(str, encoding), bytearray(str, encoding), and
-// representative errors.
+// bytearray.decode(), str(bytes, encoding), bytes(str, encoding),
+// bytearray(str, encoding), and representative errors.
 #[test]
 fn cpython_string_bytes_codec_subset() {
     assert_output(
@@ -30102,10 +30102,11 @@ fn cpython_string_bytes_codec_subset() {
         &["b'Andr x'", "b'Andr? x'", "b'Andr? x'"],
     );
     assert_output(
-        "print(b'hello'.decode('ascii'), b'\\xe2\\x98\\x83'.decode())\nprint(b'caf\\xe9'.decode('latin-1'))\nprint(b'Hello \\xff world'.decode('utf-8', 'ignore'))\nprint(b'Hello \\xff world'.decode('utf-8', 'replace'))\nprint(str(b'caf\\xe9', 'latin-1'))\nprint(bytes('caf\\xe9', 'latin-1'), bytearray('caf\\xe9', 'latin-1'))",
+        "print(b'hello'.decode('ascii'), b'\\xe2\\x98\\x83'.decode())\nprint(b'caf\\xe9'.decode('latin-1'))\nprint(bytearray(b'caf\\xe9').decode('latin-1'), bytearray(b'Hello \\xff world').decode('utf-8', 'ignore'))\nprint(b'Hello \\xff world'.decode('utf-8', 'ignore'))\nprint(b'Hello \\xff world'.decode('utf-8', 'replace'))\nprint(str(b'caf\\xe9', 'latin-1'))\nprint(bytes('caf\\xe9', 'latin-1'), bytearray('caf\\xe9', 'latin-1'))",
         &[
             "hello ☃",
             "café",
+            "café Hello  world",
             "Hello  world",
             "Hello � world",
             "café",
@@ -30132,10 +30133,11 @@ fn cpython_string_bytes_codec_subset() {
         &["b'\\xcf'", "П", "b'snowman '", "b'snowman ?'", "", "�"],
     );
     assert_output(
-        "for expr in [lambda: '\\xe9'.encode('ascii'), lambda: '\\u2603'.encode('latin-1'), lambda: b'\\xff'.decode('utf-8'), lambda: b'\\x81'.decode('cp1252'), lambda: 'x'.encode('unknown'), lambda: 'x'.encode(1), lambda: b'x'.decode(errors=1), lambda: bytes('x'), lambda: bytes(3, encoding='utf-8'), lambda: bytes(errors='ignore'), lambda: str('x', encoding='utf-8'), lambda: str(3, encoding='utf-8'), lambda: str(errors=1)]:\n    try:\n        expr()\n    except (UnicodeEncodeError, UnicodeDecodeError, LookupError, TypeError) as error:\n        print(error.__class__.__name__)",
+        "for expr in [lambda: '\\xe9'.encode('ascii'), lambda: '\\u2603'.encode('latin-1'), lambda: b'\\xff'.decode('utf-8'), lambda: bytearray(b'\\xff').decode('utf-8'), lambda: b'\\x81'.decode('cp1252'), lambda: 'x'.encode('unknown'), lambda: 'x'.encode(1), lambda: b'x'.decode(errors=1), lambda: bytes('x'), lambda: bytes(3, encoding='utf-8'), lambda: bytes(errors='ignore'), lambda: str('x', encoding='utf-8'), lambda: str(3, encoding='utf-8'), lambda: str(errors=1)]:\n    try:\n        expr()\n    except (UnicodeEncodeError, UnicodeDecodeError, LookupError, TypeError) as error:\n        print(error.__class__.__name__)",
         &[
             "UnicodeEncodeError",
             "UnicodeEncodeError",
+            "UnicodeDecodeError",
             "UnicodeDecodeError",
             "UnicodeDecodeError",
             "LookupError",

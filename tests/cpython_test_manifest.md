@@ -865,7 +865,8 @@ one-byte bytes/bytearray slices for `[0, 65, 127, 128, 255]`.
 `cpython_string_bytes_codec_subset` ports `BaseBytesTest::test_encoding` and
 `test_decode`, covering bytes/bytearray construction from text under `utf-8`
 and `utf-16`, Latin-1 strict encode errors and `ignore`, UTF-8 decode errors
-and `ignore` through positional and keyword arguments, and default UTF-8 decode.
+and `ignore` through positional and keyword arguments, direct
+`bytearray.decode()` success/error paths, and default UTF-8 decode.
 `cpython_bytes_empty_sequence_index_subset` ports the public behavior of
 `BaseBytesTest::test_empty_sequence`, covering empty bytes/bytearray length and
 `IndexError` normalization for ordinary, `sys.maxsize`-sized, and arbitrary

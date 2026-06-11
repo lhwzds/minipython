@@ -5381,6 +5381,9 @@ Completed in the string/bytes codec method pass:
   bytes and bytearray text constructors under UTF-8/UTF-16, Latin-1
   strict/ignore encode behavior, UTF-8 strict/ignore decode behavior through
   positional and keyword arguments, and default UTF-8 decode.
+- Extended the matching CPython differential case with direct
+  `bytearray.decode()` success and `UnicodeDecodeError` paths so bytearray
+  decoding is covered by both local subset and oracle evidence.
 - Extended the same runtime codec path to `cp1251` and `cp1252`, including
   CPython's undefined-byte behavior under `strict`, `ignore`, and `replace`.
 - Extended constructors for `str(bytes, encoding)`, `bytes(str, encoding)`, and
