@@ -174,6 +174,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
+  `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
   `cpython_collections_namedtuple_repr_diff_subset`,
@@ -3985,6 +3986,7 @@ names like `from ._threading_handler import ...`.
 | `invalid_kwarg` | supported | Singleton keyword targets, `__debug__`, expression keyword targets, generator expressions after keyword assignment, and `**kwargs=...` forms are rejected by `cpython_invalid_call_argument_syntax_subset` and `cpython_invalid_call_argument_helper_rules_subset` |
 
 Namedtuple coverage note: `cpython_collections_namedtuple_factory_instance_subset`,
+`cpython_collections_namedtuple_factory_instance_diff_subset`,
 `cpython_collections_namedtuple_defaults_rename_readonly_subset`,
 `cpython_collections_namedtuple_field_doc_subset`,
 `cpython_collections_namedtuple_name_conflicts_subset`,

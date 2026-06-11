@@ -5423,6 +5423,91 @@ match Point(1, 2):
 }
 
 #[test]
+fn cpython_collections_namedtuple_factory_instance_diff_subset() {
+    let probe = run_cpython(
+        "from collections import namedtuple\nPoint = namedtuple('Point', 'x y')\nprint(getattr(Point, '__match_args__', None))",
+    )
+    .expect("failed to run CPython namedtuple factory feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('x', 'y')" {
+        eprintln!(
+            "skipping namedtuple factory/instance diff: CPython oracle lacks generated match args"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple factory/instance subset",
+        name: "collections-namedtuple-factory-instance",
+        source: r#"from collections import namedtuple
+Point = namedtuple('Point', 'x y')
+print(Point.__name__)
+print(Point.__slots__)
+print(Point.__module__)
+print(Point._fields)
+print(Point.__match_args__)
+print(Point.__getitem__ == tuple.__getitem__)
+bad_specs = [('abc%', 'efg ghi'), ('class', 'efg ghi'), ('9abc', 'efg ghi'), ('abc', 'efg g%hi'), ('abc', 'abc class'), ('abc', '8efg 9ghi'), ('abc', '_efg ghi'), ('abc', 'efg efg ghi')]
+bad_count = 0
+for typename, fields in bad_specs:
+    try:
+        namedtuple(typename, fields)
+    except ValueError:
+        bad_count += 1
+print('factory-errors', bad_count, len(bad_specs))
+Point0 = namedtuple('Point0', 'x1 y2')
+Under = namedtuple('_', 'a b c')
+print(Point0._fields, Under.__name__)
+nt = namedtuple('nt', 'the quick brown fox')
+nt2 = namedtuple('nt', ('the', 'quick'))
+print("u'" in repr(nt._fields), "u'" in repr(nt2._fields))
+p = Point(11, 22)
+print(p)
+print(Point.__getitem__(p, 0), tuple.__getitem__(p, 1))
+print(p == Point(x=11, y=22))
+print(p == Point(11, y=22))
+print(p == Point(y=22, x=11))
+print(p == Point(*(11, 22)))
+print(p == Point(**dict(x=11, y=22)))
+print(isinstance(p, tuple))
+print(p == (11, 22), tuple(p), list(p), max(p), max(*p))
+print(hash(p) == hash((11, 22)))
+x, y = p
+print(x, y, p.x, p.y, p[0], p[-1])
+print('__weakref__' in dir(p))
+print(p[:], p[0:1], p.count(11), p.count(99), p.index(22))
+print(p._fields)
+print(Point._make([11, 22]) == p)
+print(p._replace(x=1))
+print(p._asdict())
+for call in [lambda: Point(1), lambda: Point(1, 2, 3), lambda: Point(XXX=1, y=2), lambda: Point(x=1), lambda: Point._make([11]), lambda: Point._make([11, 22, 33]), lambda: p._replace(x=1, error=2)]:
+    try:
+        call()
+    except TypeError:
+        print('TypeError')
+try:
+    p.z
+except AttributeError:
+    print('AttributeError')
+try:
+    p[3]
+except IndexError:
+    print('IndexError')
+try:
+    p.index(99)
+except ValueError:
+    print('ValueError')
+Point = namedtuple('Point', 'x, y')
+print(Point(x=11, y=22))
+Point = namedtuple('Point', ('x', 'y'))
+print(Point(x=11, y=22))
+Zero = namedtuple('Zero', '')
+print(Zero(), Zero._make([]), Zero()._asdict(), Zero()._fields)
+Dot = namedtuple('Dot', 'd')
+print(Dot(1), Dot._make([1]), Dot(1).d, Dot(1)._asdict(), Dot(1)._replace(d=999), Dot(1)._fields)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_namedtuple_defaults_rename_readonly_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestNamedTuple defaults/rename/readonly subset",
