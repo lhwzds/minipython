@@ -4673,6 +4673,40 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_map_strict_builtin_diff_subset() {
+    let probe = run_cpython(
+        "def pack(*values):\n    return values\nprint(list(map(pack, [1], [2], strict=True)))",
+    )
+    .expect("failed to probe CPython map(strict=...) support");
+    if !probe.status.success() {
+        eprintln!("skipping map(strict) diff: CPython oracle lacks map strict support");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_map_strict / ::test_map_strict_iterators / ::test_map_strict_error_handling",
+        name: "map-strict-builtin",
+        source: r#"def pack(*values):
+    return values
+print(list(map(pack, (1, 2, 3), 'abc', strict=True)))
+print(list(map(pack, (1, 2), 'abc', strict=False)))
+for expr in [lambda: list(map(pack, (1, 2, 3, 4), 'abc', strict=True)), lambda: list(map(pack, (1, 2), 'abc', strict=True)), lambda: list(map(pack, (1, 2), (1, 2), 'abc', strict=True)), lambda: map(pack, [1], bad=True)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__, error)
+x = iter(range(5))
+y = [0]
+z = iter(range(5))
+try:
+    list(map(pack, x, y, z, strict=True))
+except ValueError as error:
+    print(error.__class__.__name__)
+print(next(x), next(z))"#,
+    });
+}
+
+#[test]
 fn cpython_enumerate_zip_sorted_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_enumerate.py::EnumerateTestCase and Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted",

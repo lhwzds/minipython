@@ -3507,6 +3507,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_min_max_sum_builtin_diff_subset",
         "cpython_iter_next_builtin_diff_subset",
         "cpython_map_filter_builtin_diff_subset",
+        "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_zip_strict_builtin_diff_subset",
         "cpython_divmod_builtin_diff_subset",
@@ -3664,6 +3665,22 @@ fn zip_strict_diff_evidence_stays_capability_gated() {
     assert!(
         body.contains("zip([1], [2], strict=True)") && body.contains("skipping zip(strict) diff"),
         "zip strict diff evidence must stay gated for older CPython oracles"
+    );
+}
+
+#[test]
+fn map_strict_diff_evidence_stays_capability_gated() {
+    let start = CPYTHON_DIFF
+        .find("fn cpython_map_strict_builtin_diff_subset()")
+        .expect("map strict diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    assert!(
+        body.contains("map(pack, [1], [2], strict=True)")
+            && body.contains("skipping map(strict) diff"),
+        "map strict diff evidence must stay gated for older CPython oracles"
     );
 }
 
