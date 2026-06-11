@@ -531,6 +531,8 @@ pub(crate) fn create_module(
                 ("cbrt", Value::Builtin("math.cbrt".to_string())),
                 ("erf", Value::Builtin("math.erf".to_string())),
                 ("erfc", Value::Builtin("math.erfc".to_string())),
+                ("gamma", Value::Builtin("math.gamma".to_string())),
+                ("lgamma", Value::Builtin("math.lgamma".to_string())),
                 ("exp", Value::Builtin("math.exp".to_string())),
                 ("exp2", Value::Builtin("math.exp2".to_string())),
                 ("expm1", Value::Builtin("math.expm1".to_string())),

@@ -9732,6 +9732,24 @@ impl Vm {
 
                 call_math_erfc(self, args)
             }
+            Value::Builtin(name) if name == "math.gamma" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_gamma(self, args)
+            }
+            Value::Builtin(name) if name == "math.lgamma" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "TypeError: {name}() does not accept keyword arguments"
+                    ));
+                }
+
+                call_math_lgamma(self, args)
+            }
             Value::Builtin(name) if name == "math.exp" => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -59242,6 +59260,30 @@ fn call_math_erfc(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     call_math_unary_float(vm, args, "erfc", math_erfc_value)
 }
 
+fn call_math_gamma(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: gamma() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_number_as_f64(vm, value.clone())?;
+    Ok(float_value(math_gamma_value(value)?))
+}
+
+fn call_math_lgamma(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
+    let [value] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: lgamma() expected 1 argument, got {}",
+            args.len()
+        ));
+    };
+
+    let value = math_real_number_as_f64(vm, value.clone())?;
+    Ok(float_value(math_lgamma_value(value)?))
+}
+
 fn call_math_exp(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     call_math_exponential(vm, args, "exp", f64::exp)
 }
@@ -59664,6 +59706,94 @@ fn math_erfc_positive_approx(value: f64) -> f64 {
                             + t * (-1.13520398
                                 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))));
     t * polynomial.exp()
+}
+
+fn math_gamma_value(value: f64) -> Result<f64, String> {
+    if value.is_nan() {
+        return Ok(f64::NAN);
+    }
+    if value == f64::INFINITY {
+        return Ok(f64::INFINITY);
+    }
+    if value == f64::NEG_INFINITY {
+        return Err(format!(
+            "ValueError: expected a noninteger or positive integer, got {value}"
+        ));
+    }
+    if math_gamma_has_pole(value) {
+        return Err(format!(
+            "ValueError: expected a noninteger or positive integer, got {value}"
+        ));
+    }
+
+    let magnitude = math_lgamma_abs_approx(value).exp();
+    if value < 0.0 && math_gamma_sign(value).is_sign_negative() {
+        Ok(-magnitude)
+    } else {
+        Ok(magnitude)
+    }
+}
+
+fn math_lgamma_value(value: f64) -> Result<f64, String> {
+    if value.is_nan() {
+        return Ok(f64::NAN);
+    }
+    if value.is_infinite() {
+        return Ok(f64::INFINITY);
+    }
+    if math_gamma_has_pole(value) {
+        return Err(format!(
+            "ValueError: expected a noninteger or positive integer, got {value}"
+        ));
+    }
+
+    let result = math_lgamma_abs_approx(value);
+    if result.abs() < 1e-15 {
+        Ok(0.0)
+    } else {
+        Ok(result)
+    }
+}
+
+fn math_gamma_has_pole(value: f64) -> bool {
+    value == 0.0 || (value.is_finite() && value < 0.0 && value.fract() == 0.0)
+}
+
+fn math_gamma_sign(value: f64) -> f64 {
+    if value >= 0.0 {
+        1.0
+    } else {
+        (std::f64::consts::PI * value).sin().signum()
+    }
+}
+
+fn math_lgamma_abs_approx(value: f64) -> f64 {
+    const LANCZOS_G: f64 = 7.0;
+    const HALF_LN_TWO_PI: f64 = 0.9189385332046727;
+    const COEFFS: [f64; 9] = [
+        0.9999999999998099,
+        676.5203681218851,
+        -1259.1392167224028,
+        771.3234287776531,
+        -176.6150291621406,
+        12.507343278686905,
+        -0.13857109526572012,
+        9.984369578019572e-6,
+        1.5056327351493116e-7,
+    ];
+
+    if value < 0.5 {
+        let reflected = std::f64::consts::PI / (std::f64::consts::PI * value).sin().abs();
+        return reflected.ln() - math_lgamma_abs_approx(1.0 - value);
+    }
+
+    let z = value - 1.0;
+    let mut x = COEFFS[0];
+    for (index, coefficient) in COEFFS.iter().enumerate().skip(1) {
+        x += coefficient / (z + index as f64);
+    }
+    let t = z + LANCZOS_G + 0.5;
+    HALF_LN_TWO_PI + (z + 0.5) * t.ln() - t + x.ln()
 }
 
 fn math_real_number_as_f64(vm: &mut Vm, value: Value) -> Result<f64, String> {

@@ -8284,6 +8284,86 @@ fn cpython_math_erf_erfc_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_math.py::MathTests gamma/lgamma cases.
+// MiniPython ports representative public values, non-finite propagation, pole
+// errors, `__float__` / `__index__` conversion, and catchable error classes.
+// Exact platform libm special-function precision stays out of scope.
+#[test]
+fn cpython_math_gamma_lgamma_subset() {
+    assert_output(
+        concat!(
+            "import math\n",
+            "for fn in [math.gamma, math.lgamma]:\n",
+            "    print(fn.__name__, type(fn(1)).__name__)\n",
+            "    for value in [0.5, 1.0, 2.0, 3.5, 5.0, -0.5, -1.5]:\n",
+            "        print(value, round(fn(value), 6))\n",
+            "    result = fn(math.inf)\n",
+            "    print('inf', result)\n",
+            "    print('nan', math.isnan(fn(math.nan)))\n",
+            "class FloatLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __float__(self):\n",
+            "        return self.value\n",
+            "class IndexLike:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __index__(self):\n",
+            "        return self.value\n",
+            "class BadFloat:\n",
+            "    def __float__(self):\n",
+            "        return 1\n",
+            "class RaisesFloat:\n",
+            "    def __float__(self):\n",
+            "        raise ValueError('bad float')\n",
+            "print(round(math.gamma(FloatLike(3.5)), 6), round(math.lgamma(FloatLike(3.5)), 6))\n",
+            "print(round(math.gamma(IndexLike(5)), 6), round(math.lgamma(IndexLike(5)), 6))\n",
+            "for label, expr in [('gamma-0', lambda: math.gamma()), ('lgamma-0', lambda: math.lgamma()), ('gamma-2', lambda: math.gamma(1, 2)), ('lgamma-2', lambda: math.lgamma(1, 2)), ('gamma-str', lambda: math.gamma('1.0')), ('lgamma-complex', lambda: math.lgamma(1+2j)), ('gamma-zero', lambda: math.gamma(0.0)), ('lgamma-neg-int', lambda: math.lgamma(-2.0)), ('gamma-neg-inf', lambda: math.gamma(-math.inf)), ('gamma-big-index', lambda: math.gamma(IndexLike(10**10000))), ('lgamma-bad-float', lambda: math.lgamma(BadFloat())), ('gamma-raises', lambda: math.gamma(RaisesFloat())), ('lgamma-keyword', lambda: math.lgamma(x=1))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(label, error.__class__.__name__)"
+        ),
+        &[
+            "gamma float",
+            "0.5 1.772454",
+            "1.0 1.0",
+            "2.0 1.0",
+            "3.5 3.323351",
+            "5.0 24.0",
+            "-0.5 -3.544908",
+            "-1.5 2.363272",
+            "inf inf",
+            "nan True",
+            "lgamma float",
+            "0.5 0.572365",
+            "1.0 0.0",
+            "2.0 0.0",
+            "3.5 1.200974",
+            "5.0 3.178054",
+            "-0.5 1.265512",
+            "-1.5 0.860047",
+            "inf inf",
+            "nan True",
+            "3.323351 1.200974",
+            "24.0 3.178054",
+            "gamma-0 TypeError",
+            "lgamma-0 TypeError",
+            "gamma-2 TypeError",
+            "lgamma-2 TypeError",
+            "gamma-str TypeError",
+            "lgamma-complex TypeError",
+            "gamma-zero ValueError",
+            "lgamma-neg-int ValueError",
+            "gamma-neg-inf ValueError",
+            "gamma-big-index OverflowError",
+            "lgamma-bad-float TypeError",
+            "gamma-raises ValueError",
+            "lgamma-keyword TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testExp and
 // ::testExp2. MiniPython ports public exponential behavior, float result
 // semantics, non-finite propagation, finite-input overflow errors, `__float__`

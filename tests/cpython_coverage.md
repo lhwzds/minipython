@@ -89,6 +89,7 @@ Recent runtime migration notes:
   `cpython_math_degrees_radians_diff_subset`,
   `cpython_math_cbrt_diff_subset`,
   `cpython_math_erf_erfc_diff_subset`,
+  `cpython_math_gamma_lgamma_diff_subset`,
   `cpython_math_fma_diff_subset`,
   `cpython_math_fmax_fmin_diff_subset`,
   `cpython_math_exp_exp2_diff_subset`,
@@ -834,6 +835,13 @@ Recent runtime migration notes:
   `__index__` input conversion, huge-index overflow, propagated conversion
   exceptions, and TypeError cases. Exact platform libm precision remains out
   of scope unless separately promoted.
+- The bundled `math` module also includes `cpython_math_gamma_lgamma_diff_subset`
+  and `cpython_math_gamma_lgamma_subset`, covering representative CPython
+  `test_math.py::MathTests` public `gamma()` / `lgamma()` values with
+  six-decimal stable checks, non-finite propagation, pole/domain errors,
+  `__float__` and `__index__` input conversion, huge-index overflow,
+  propagated conversion exceptions, and TypeError cases. Exact platform libm
+  special-function precision remains out of scope unless separately promoted.
 - The bundled `math` module also includes the newer-CPython-oracle-gated
   `cpython_math_exp_exp2_diff_subset` and `cpython_math_exp_exp2_subset`,
   covering CPython `test_math.py::MathTests::testExp` and `::testExp2`

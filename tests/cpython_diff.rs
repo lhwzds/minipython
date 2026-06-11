@@ -2134,6 +2134,61 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_math_gamma_lgamma_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests gamma/lgamma public stable subset",
+        name: "math-gamma-lgamma",
+        source: r#"import math
+for fn in [math.gamma, math.lgamma]:
+    print(fn.__name__, type(fn(1)).__name__)
+    for value in [0.5, 1.0, 2.0, 3.5, 5.0, -0.5, -1.5]:
+        print(value, round(fn(value), 6))
+    result = fn(math.inf)
+    print('inf', result)
+    print('nan', math.isnan(fn(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(round(math.gamma(FloatLike(3.5)), 6), round(math.lgamma(FloatLike(3.5)), 6))
+print(round(math.gamma(IndexLike(5)), 6), round(math.lgamma(IndexLike(5)), 6))
+for label, expr in [
+    ('gamma-0', lambda: math.gamma()),
+    ('lgamma-0', lambda: math.lgamma()),
+    ('gamma-2', lambda: math.gamma(1, 2)),
+    ('lgamma-2', lambda: math.lgamma(1, 2)),
+    ('gamma-str', lambda: math.gamma('1.0')),
+    ('lgamma-complex', lambda: math.lgamma(1+2j)),
+    ('gamma-zero', lambda: math.gamma(0.0)),
+    ('lgamma-neg-int', lambda: math.lgamma(-2.0)),
+    ('gamma-neg-inf', lambda: math.gamma(-math.inf)),
+    ('gamma-big-index', lambda: math.gamma(IndexLike(10**10000))),
+    ('lgamma-bad-float', lambda: math.lgamma(BadFloat())),
+    ('gamma-raises', lambda: math.gamma(RaisesFloat())),
+    ('lgamma-keyword', lambda: math.lgamma(x=1)),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_fma_diff_subset() {
     let probe = run_cpython("import math; print(hasattr(math, 'fma'))")
         .expect("failed to probe CPython math.fma support");
