@@ -72,6 +72,7 @@ Recent runtime migration notes:
   `cpython_math_hyperbolic_diff_subset`,
   `cpython_math_fmod_remainder_diff_subset`,
   `cpython_math_frexp_ldexp_modf_diff_subset`,
+  `cpython_math_fsum_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -466,7 +467,8 @@ Recent runtime migration notes:
   propagation, denormal `ldexp()` output, real-number input conversion,
   `ldexp()`'s strict integer exponent rule, overflow/underflow behavior, and
   catchable error classes.
-- The bundled `math` module also includes `cpython_math_fsum_subset`, covering
+- The bundled `math` module also includes `cpython_math_fsum_diff_subset` and
+  `cpython_math_fsum_subset`, covering
   CPython `test_math.py::MathTests::testFsum` full-precision summation
   behavior, cancellation-sensitive inputs, half-even rounding boundaries,
   iterable input conversion, NaN/inf handling, finite overflow detection,

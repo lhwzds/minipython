@@ -2153,6 +2153,67 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_fsum_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testFsum public stable subset",
+        name: "math-fsum",
+        source: r#"import math
+print(math.fsum([]), math.fsum([0.0]), math.fsum([1, 2, 3]))
+print(math.fsum([0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]))
+print(math.fsum([1e100, 1.0, -1e100]))
+print(math.fsum([1e100, 1.0, -1e100, 1e-100, 1e50, -1.0, -1e50]))
+print(math.fsum([2.0**53, -0.5, -2.0**-54]))
+print(math.fsum([2.0**53, 1.0, 2.0**-100]))
+print(math.fsum([2.0**53 + 10.0, 1.0, 2.0**-100]))
+print(math.fsum([2.0**53 - 4.0, 0.5, 2.0**-54]))
+print(math.fsum([1e16, 1.0, 1e-16]))
+print(math.fsum([1e16 - 2.0, 1.0 - 2.0**-53, -(1e16 - 2.0), -(1.0 - 2.0**-53)]))
+print(math.copysign(1.0, math.fsum([-0.0])), math.copysign(1.0, math.fsum([0.0, -0.0])))
+print(math.fsum([1.0, math.inf]), math.fsum([1.0, -math.inf]), math.isnan(math.fsum([math.nan, 1.0])), math.isnan(math.fsum([math.inf, math.nan])))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+def bad_iter():
+    yield 1.0
+    1 / 0
+
+print(math.fsum([FloatLike(1.25), FloatLike(2.75)]), math.fsum([IndexLike(2), IndexLike(3)]), math.fsum([True, False, True]))
+for expr in [
+    lambda: math.fsum(),
+    lambda: math.fsum([], []),
+    lambda: math.fsum(iterable=[]),
+    lambda: math.fsum(1),
+    lambda: math.fsum(['spam']),
+    lambda: math.fsum([1+2j]),
+    lambda: math.fsum([IndexLike(10**10000)]),
+    lambda: math.fsum([BadFloat()]),
+    lambda: math.fsum([RaisesFloat()]),
+    lambda: math.fsum([1e308, 1e308]),
+    lambda: math.fsum([math.inf, -math.inf]),
+    lambda: math.fsum(bad_iter()),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
