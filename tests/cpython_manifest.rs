@@ -2740,6 +2740,12 @@ fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries()
         "does not expose `bytearray.resize()`",
         "does not expose `bytearray.take_bytes()`",
         "local subset evidence rather than direct `cpython_diff` evidence",
+        "does not expose",
+        "current public `__buffer__`",
+        "protocol behavior",
+        "historical corrupted-bytearray",
+        "current",
+        "CPython's regression test prevents",
     ] {
         assert!(
             CPYTHON_MIGRATION.contains(required),
@@ -2754,6 +2760,12 @@ fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries()
         "does not expose",
         "`bytearray.take_bytes()`",
         "remains local subset evidence",
+        "does not expose the",
+        "current public `__buffer__`",
+        "protocol behavior",
+        "historical corrupted-bytearray",
+        "current",
+        "CPython's regression test prevents",
     ] {
         assert!(
             CPYTHON_COVERAGE.contains(required),

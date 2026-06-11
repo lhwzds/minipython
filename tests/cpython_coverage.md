@@ -1365,12 +1365,17 @@ Recent runtime migration notes:
   CPython `ByteArrayTest::test_search_methods_reentrancy_raises_buffererror`
   public behavior for bytearray search, membership, `split()`, and `rsplit()`
   when `__buffer__` argument conversion re-enters and attempts to resize the
-  locked receiver bytearray.
+  locked receiver bytearray. This remains local subset evidence because the
+  local default oracle is system CPython 3.9.6, which does not expose the
+  current public `__buffer__` protocol behavior needed by this test.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_extend_empty_buffer_overflow_subset`, covering current
   CPython `ByteArrayTest::test_extend_empty_buffer_overflow` public behavior for
   `bytearray.extend()` over zero-length-hint iterators and catchable
-  `float(bytearray())` `ValueError` parsing failures.
+  `float(bytearray())` `ValueError` parsing failures. This remains local subset
+  evidence because the local default oracle is system CPython 3.9.6, which
+  still exhibits the historical corrupted-bytearray behavior that current
+  CPython's regression test prevents.
 - `STRING_RUNTIME` also includes `cpython_bytearray_regexps_subset`, covering
   CPython `ByteArrayTest::test_regexps` public behavior for the supported
   `re.findall()` bytes-pattern subset: ASCII `\w+` over bytes-like subjects
