@@ -4389,6 +4389,24 @@ for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x11
 }
 
 #[test]
+fn cpython_builtin_cmp_absent_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
+        name: "builtin-cmp-absent",
+        source: r#"import builtins
+print(hasattr(builtins, 'cmp'))
+try:
+    builtins.cmp
+except AttributeError as error:
+    print(error.__class__.__name__)
+try:
+    cmp(1, 2)
+except NameError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",

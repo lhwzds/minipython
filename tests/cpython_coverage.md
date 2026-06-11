@@ -3101,9 +3101,11 @@ Recent runtime migration notes:
   compensated-floating algorithm remains treated as implementation-specific
   rather than a MiniPython portability requirement.
 - `RUNTIME_BUILTINS` also includes
-  `cpython_builtin_cmp_absent_subset`, covering CPython
+  `cpython_builtin_cmp_absent_subset` with direct CPython output parity in
+  `cpython_builtin_cmp_absent_diff_subset`, covering CPython
   `BuiltinTest::test_cmp` by proving `builtins.cmp` is absent and attribute
-  access raises `AttributeError`.
+  access raises `AttributeError`, and by proving bare `cmp(1, 2)` raises
+  `NameError`.
 - `RUNTIME_BUILTINS` also includes
   expanded `cpython_attribute_introspection_builtins_subset` with direct
   CPython output parity in

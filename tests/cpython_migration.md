@@ -1702,7 +1702,9 @@ Completed in the differential parity harness pass:
   MiniPython currently stores strings as UTF-8.
 - Added `cpython_builtin_cmp_absent_subset`, adapted from
   `Lib/test/test_builtin.py::BuiltinTest::test_cmp`, keeping Python 3's public
-  behavior that `cmp` is not present in the `builtins` namespace.
+  behavior that `cmp` is not present in the `builtins` namespace. Added direct
+  CPython output parity in `cpython_builtin_cmp_absent_diff_subset`, including
+  both `builtins.cmp` attribute lookup and bare `cmp(1, 2)` name resolution.
 - Migrated first-pass `bin()`, `oct()`, and `hex()` coverage from
   `Lib/test/test_builtin.py::test_bin`, `::test_oct`, and `::test_hex`. The VM
   now exposes the three integer-base builtins for small ints, arbitrary-precision
