@@ -3086,7 +3086,9 @@ Recent runtime migration notes:
   `ClassCreationTests::test_metaclass_new_error`: three-argument `type()`
   derives the winning metaclass from base classes, `super().__new__` in a
   metaclass reaches `type.__new__`, and exceptions raised by the winning
-  metaclass constructor propagate as catchable Python exceptions.
+  metaclass constructor propagate as catchable Python exceptions. Direct output
+  parity is guarded by
+  `cpython_types_class_creation_metaclass_new_error_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_subclass_inherited_slot_update_subset`, covering
   CPython `ClassCreationTests::test_subclass_inherited_slot_update`: dict

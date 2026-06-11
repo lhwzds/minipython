@@ -6169,6 +6169,28 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_class_creation_metaclass_new_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_new_error",
+        name: "types-class-creation-metaclass-new-error",
+        source: r#"class ModelBase(type):
+    def __new__(cls, name, bases, attrs):
+        super_new = super().__new__
+        new_class = super_new(cls, name, bases, {})
+        if name != 'Model':
+            raise RuntimeWarning(f'{name=}')
+        return new_class
+class Model(metaclass=ModelBase):
+    pass
+print(type(Model) is ModelBase, Model.__class__ is ModelBase)
+try:
+    type('SouthPonies', (Model,), {})
+except RuntimeWarning as error:
+    print(type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
