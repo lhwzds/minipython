@@ -61,6 +61,7 @@ Recent runtime migration notes:
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_cmp_to_key_diff_subset`,
+  `cpython_functools_total_ordering_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -536,6 +537,7 @@ Recent runtime migration notes:
   assigned/updated attributes, callable `wraps()` decorators, missing-attribute
   handling, and the supported eager-annotation bridge through `__annotate__`.
 - The bundled `functools` module also includes
+  `cpython_functools_total_ordering_diff_subset` and
   `cpython_functools_total_ordering_subset`, covering CPython
   `test_functools.py::TestTotalOrdering` public decorator behavior for all four
   root ordering methods, generated method metadata, no-overwrite behavior,

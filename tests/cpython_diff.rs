@@ -1507,6 +1507,100 @@ for expr in [
 }
 
 #[test]
+fn cpython_functools_total_ordering_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestTotalOrdering public subset",
+        name: "functools-total-ordering",
+        source: r#"from functools import total_ordering
+
+def show(label, cls):
+    a = cls(1)
+    b = cls(2)
+    c = cls(2)
+    print(label, a < b, b > a, a <= b, b >= a, c <= b, c >= b)
+
+@total_ordering
+class LT:
+    def __init__(self, value):
+        self.value = value
+    def __lt__(self, other):
+        return self.value < other.value
+    def __eq__(self, other):
+        return self.value == other.value
+show('lt', LT)
+print(LT.__le__.__name__, LT.__gt__.__name__, LT.__ge__.__module__)
+
+@total_ordering
+class LE:
+    def __init__(self, value):
+        self.value = value
+    def __le__(self, other):
+        return self.value <= other.value
+    def __eq__(self, other):
+        return self.value == other.value
+show('le', LE)
+
+@total_ordering
+class GT:
+    def __init__(self, value):
+        self.value = value
+    def __gt__(self, other):
+        return self.value > other.value
+    def __eq__(self, other):
+        return self.value == other.value
+show('gt', GT)
+
+@total_ordering
+class GE:
+    def __init__(self, value):
+        self.value = value
+    def __ge__(self, other):
+        return self.value >= other.value
+    def __eq__(self, other):
+        return self.value == other.value
+show('ge', GE)
+
+@total_ordering
+class Keep:
+    def __init__(self, value):
+        self.value = value
+    def __lt__(self, other):
+        return self.value < other.value
+    def __le__(self, other):
+        return 'kept'
+    def __eq__(self, other):
+        return self.value == other.value
+print('keep', Keep(1).__le__(Keep(2)), Keep.__le__.__name__)
+
+try:
+    @total_ordering
+    class Empty:
+        pass
+except ValueError as error:
+    print('empty', error.__class__.__name__, 'ordering operation' in str(error))
+
+@total_ordering
+class N:
+    def __init__(self, value):
+        self.value = value
+    def __eq__(self, other):
+        if isinstance(other, N):
+            return self.value == other.value
+        return False
+    def __lt__(self, other):
+        if isinstance(other, N):
+            return self.value < other.value
+        return NotImplemented
+n = N(1)
+print('notimpl', n.__le__(1) is NotImplemented, n.__gt__(1) is NotImplemented, n.__ge__(1) is NotImplemented)
+try:
+    n < 1
+except TypeError as error:
+    print('type', error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
