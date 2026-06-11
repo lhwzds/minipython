@@ -2156,28 +2156,15 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
 fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
     matches!(
         evidence,
-        "globals-locals-builtins"
-            | "exec-builtin"
-            | "compile-code-object-builtin"
-            | "builtin-breakpoint-custom-hook"
-            | "builtin-breakpoint-passthru-error"
-            | "float-hash-and-sys-info"
-            | "types-frame-locals-proxy-currentframe"
-            | "types-method-descriptor-types"
+        "builtin-breakpoint-custom-hook" | "builtin-breakpoint-passthru-error"
     )
 }
 
 fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
     matches!(
         evidence,
-        "globals-locals-builtins"
-            | "exec-builtin"
-            | "compile-code-object-builtin"
-            | "builtin-breakpoint-custom-hook"
+        "builtin-breakpoint-custom-hook"
             | "builtin-breakpoint-passthru-error"
-            | "float-hash-and-sys-info"
-            | "types-frame-locals-proxy-currentframe"
-            | "types-method-descriptor-types"
             | "pure-memory-stdlib-core"
             | "operator-precedence-and-associativity"
     )
