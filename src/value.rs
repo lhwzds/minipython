@@ -703,6 +703,12 @@ pub enum Value {
         previous: Option<Box<Value>>,
         initialized: bool,
     },
+    ItertoolsProduct {
+        pools: Vec<Vec<Value>>,
+        indices: Vec<usize>,
+        first: bool,
+        done: bool,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1121,6 +1127,7 @@ impl fmt::Display for Value {
             Value::ItertoolsZipLongest { .. } => write!(f, "<itertools.zip_longest object>"),
             Value::ItertoolsIslice { .. } => write!(f, "<itertools.islice object>"),
             Value::ItertoolsPairwise { .. } => write!(f, "<itertools.pairwise object>"),
+            Value::ItertoolsProduct { .. } => write!(f, "<itertools.product object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),

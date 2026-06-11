@@ -11439,6 +11439,38 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_product_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public product core subset",
+        name: "itertools-product-core",
+        source: r#"import itertools
+p = itertools.product('AB', [1, 2])
+print(type(p).__name__, iter(p) is p, list(p), list(p))
+print(list(itertools.product()))
+print(list(itertools.product('AB')))
+print(list(itertools.product('AB', repeat=2)))
+print(list(itertools.product('AB', repeat=0)))
+print(list(itertools.product('AB', [])))
+it = itertools.product((value for value in [1, 2]), 'ab')
+print(next(it), list(it))
+class IndexLike:
+    def __index__(self):
+        return 2
+print(list(itertools.product([1, 2], repeat=IndexLike())))
+for expr in [
+    lambda: itertools.product([1], repeat=-1),
+    lambda: itertools.product([1], repeat='x'),
+    lambda: itertools.product([1], unknown=1),
+    lambda: itertools.product(1),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

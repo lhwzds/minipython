@@ -8597,6 +8597,9 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.pairwise" => {
                 self.call_itertools_pairwise(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.product" => {
+                self.call_itertools_product(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.starmap" => {
                 self.call_itertools_starmap(args, keywords)
             }
@@ -23320,6 +23323,53 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_product(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut repeat = BigInt::from(1);
+        let mut repeat_seen = false;
+        for (keyword, value) in keywords {
+            if keyword != "repeat" {
+                return Err(format!(
+                    "TypeError: product() got an unexpected keyword argument '{keyword}'"
+                ));
+            }
+            if repeat_seen {
+                return Err(
+                    "TypeError: product() got multiple values for keyword argument 'repeat'"
+                        .to_string(),
+                );
+            }
+            repeat = self.index_big_int(value)?;
+            if repeat.is_negative() {
+                return Err("ValueError: repeat argument cannot be negative".to_string());
+            }
+            repeat_seen = true;
+        }
+
+        let repeat = repeat
+            .to_usize()
+            .ok_or_else(|| "OverflowError: repeat argument is too large".to_string())?;
+        let base_pools = args
+            .into_iter()
+            .map(|value| self.collect_iterable_values(value))
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut pools = Vec::with_capacity(base_pools.len().saturating_mul(repeat));
+        for _ in 0..repeat {
+            pools.extend(base_pools.iter().cloned());
+        }
+        let done = pools.iter().any(Vec::is_empty);
+        let indices = vec![0; pools.len()];
+        Ok(shared_iterator(Value::ItertoolsProduct {
+            pools,
+            indices,
+            first: true,
+            done,
+        }))
+    }
+
     fn call_ast_replace_method(
         &mut self,
         args: Vec<Value>,
@@ -28796,6 +28846,44 @@ impl Vm {
                     }
                     IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
+            }
+            Value::ItertoolsProduct {
+                pools,
+                indices,
+                first,
+                done,
+            } => {
+                if *done {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                if *first {
+                    *first = false;
+                } else if indices.is_empty() {
+                    *done = true;
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                } else {
+                    let mut position = indices.len();
+                    loop {
+                        if position == 0 {
+                            *done = true;
+                            return Ok(IteratorAdvance::Complete(Value::None));
+                        }
+                        position -= 1;
+                        indices[position] += 1;
+                        if indices[position] < pools[position].len() {
+                            for index in indices.iter_mut().skip(position + 1) {
+                                *index = 0;
+                            }
+                            break;
+                        }
+                    }
+                }
+                let values = pools
+                    .iter()
+                    .zip(indices.iter())
+                    .map(|(pool, index)| pool[*index].clone())
+                    .collect();
+                return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
             Value::MapIterator {
                 function,
@@ -53400,6 +53488,7 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsZipLongest { .. } => "zip_longest",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
+        Value::ItertoolsProduct { .. } => "product",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -53521,6 +53610,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsZipLongest { .. } => "zip_longest",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
+        Value::ItertoolsProduct { .. } => "product",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69107,6 +69197,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsZipLongest { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
+        | Value::ItertoolsProduct { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69324,6 +69415,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsZipLongest { .. }
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
+        | Value::ItertoolsProduct { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -69724,6 +69816,17 @@ fn get_iter(value: Value) -> Result<Value, String> {
             iterator,
             previous,
             initialized,
+        })),
+        Value::ItertoolsProduct {
+            pools,
+            indices,
+            first,
+            done,
+        } => Ok(shared_iterator(Value::ItertoolsProduct {
+            pools,
+            indices,
+            first,
+            done,
         })),
         Value::CallIterator {
             callable,
@@ -75522,6 +75625,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsZipLongest { .. } => Ok(true),
         Value::ItertoolsIslice { .. } => Ok(true),
         Value::ItertoolsPairwise { .. } => Ok(true),
+        Value::ItertoolsProduct { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

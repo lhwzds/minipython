@@ -711,6 +711,7 @@ pub(crate) fn create_module(
                 ),
                 ("islice", Value::Builtin("itertools.islice".to_string())),
                 ("pairwise", Value::Builtin("itertools.pairwise".to_string())),
+                ("product", Value::Builtin("itertools.product".to_string())),
                 ("repeat", Value::Builtin("itertools.repeat".to_string())),
                 ("starmap", Value::Builtin("itertools.starmap".to_string())),
                 (
@@ -2176,6 +2177,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::ItertoolsZipLongest { .. } => "zip_longest",
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
+        Value::ItertoolsProduct { .. } => "product",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),
@@ -2282,6 +2284,7 @@ fn stdlib_iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsTakewhile { .. } => "takewhile",
         Value::ItertoolsStarmap { .. } => "starmap",
         Value::ItertoolsZipLongest { .. } => "zip_longest",
+        Value::ItertoolsProduct { .. } => "product",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),

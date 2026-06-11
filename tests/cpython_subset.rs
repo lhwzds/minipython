@@ -35921,6 +35921,52 @@ fn cpython_itertools_pairwise_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_product_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "p = itertools.product('AB', [1, 2])\n",
+            "print(type(p).__name__, iter(p) is p, list(p), list(p))\n",
+            "print(list(itertools.product()))\n",
+            "print(list(itertools.product('AB')))\n",
+            "print(list(itertools.product('AB', repeat=2)))\n",
+            "print(list(itertools.product('AB', repeat=0)))\n",
+            "print(list(itertools.product('AB', [])))\n",
+            "it = itertools.product((value for value in [1, 2]), 'ab')\n",
+            "print(next(it), list(it))\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return 2\n",
+            "print(list(itertools.product([1, 2], repeat=IndexLike())))\n",
+            "for expr in [\n",
+            "    lambda: itertools.product([1], repeat=-1),\n",
+            "    lambda: itertools.product([1], repeat='x'),\n",
+            "    lambda: itertools.product([1], unknown=1),\n",
+            "    lambda: itertools.product(1),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)",
+        ),
+        &[
+            "product True [('A', 1), ('A', 2), ('B', 1), ('B', 2)] []",
+            "[()]",
+            "[('A',), ('B',)]",
+            "[('A', 'A'), ('A', 'B'), ('B', 'A'), ('B', 'B')]",
+            "[()]",
+            "[]",
+            "(1, 'a') [(1, 'b'), (2, 'a'), (2, 'b')]",
+            "[(1, 1), (1, 2), (2, 1), (2, 2)]",
+            "ValueError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.
