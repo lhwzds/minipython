@@ -3357,6 +3357,22 @@ print([isinstance(value, AsyncIterable) for value in [None, object(), []]])"#,
 }
 
 #[test]
+fn cpython_collections_abc_async_iterator_mixin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/_collections_abc.py::AsyncIterator / Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncIterator",
+        name: "collections-abc-async-iterator-mixin",
+        source: r#"from collections.abc import AsyncIterable, AsyncIterator
+class AI(AsyncIterator):
+    async def __anext__(self):
+        raise StopAsyncIteration
+ai = AI()
+print(isinstance(ai, AsyncIterable), isinstance(ai, AsyncIterator), issubclass(AI, AsyncIterator))
+print(ai.__aiter__() is ai)
+print(AsyncIterator.__aiter__(ai) is ai)"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

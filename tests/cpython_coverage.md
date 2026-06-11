@@ -2514,7 +2514,8 @@ Recent runtime migration notes:
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_async_iterator_mixin_subset`, covering CPython's
   `AsyncIterator` direct-subclass mixin behavior where inherited
-  `__aiter__()` returns `self`.
+  `__aiter__()` returns `self`. Direct CPython diff evidence is in
+  `cpython_collections_abc_async_iterator_mixin_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_async_generator_core_mixin_subset`, covering
   CPython's `AsyncGenerator` direct-subclass `__aiter__` and `__anext__`
