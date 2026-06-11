@@ -4270,6 +4270,9 @@ Completed in the tokenizer max-indent pass:
 - Added `cpython_tokenize_indentation_blank_line_diff_subset` as direct CPython
   output parity evidence that LF and CRLF blank physical lines do not disturb
   block indentation or dedentation semantics.
+- Added `cpython_tokenize_nested_indentation_diff_subset` as direct CPython
+  output parity evidence for nested `INDENT` / `DEDENT` execution order across
+  multiple block levels.
 
 - Added CPython's `MAXINDENT` behavior from
   `Lib/test/test_tokenize.py::test_max_indent`: 99 nested indentation levels are

@@ -736,6 +736,23 @@ fn cpython_tokenize_indentation_blank_line_diff_subset() {
 }
 
 #[test]
+fn cpython_tokenize_nested_indentation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py nested INDENT/DEDENT public execution subset",
+        name: "tokenize-nested-indentation",
+        source: r#"if True:
+  print("level1")
+  if True:
+    print("level2")
+    if True:
+      print("level3")
+    print("back2")
+  print("back1")
+print("done")"#,
+    });
+}
+
+#[test]
 fn cpython_tokenize_implicit_line_joining_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",

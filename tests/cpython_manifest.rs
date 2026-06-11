@@ -4322,6 +4322,10 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
             "cpython_tokenize_indentation_blank_line_diff_subset",
         ),
         (
+            "cpython_tokenize_nested_indentation_subset",
+            "cpython_tokenize_nested_indentation_diff_subset",
+        ),
+        (
             "cpython_tokenize_implicit_line_joining_subset",
             "cpython_tokenize_implicit_line_joining_diff_subset",
         ),
