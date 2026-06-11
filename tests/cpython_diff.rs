@@ -4673,6 +4673,111 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_enumerate_zip_sorted_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_enumerate.py::EnumerateTestCase and Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted",
+        name: "enumerate-zip-sorted-builtins",
+        source: r#"class G:
+    def __init__(self, seqn):
+        self.seqn = seqn
+    def __getitem__(self, index):
+        return self.seqn[index]
+class I:
+    def __init__(self, seqn):
+        self.seqn = seqn
+        self.index = 0
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self.index >= len(self.seqn):
+            raise StopIteration
+        value = self.seqn[self.index]
+        self.index += 1
+        return value
+class Ig:
+    def __init__(self, seqn):
+        self.seqn = seqn
+    def __iter__(self):
+        for value in self.seqn:
+            yield value
+seq = 'abc'
+e = enumerate(seq)
+print(iter(e) is e)
+print(list(enumerate(seq)))
+print(list(enumerate(G(seq))))
+print(list(enumerate(I(seq))))
+print(list(enumerate(Ig(seq))))
+for empty in [G(''), I(''), Ig('')]:
+    try:
+        next(enumerate(empty))
+    except StopIteration:
+        print('stopped')
+print(list(enumerate(iterable=Ig(seq))))
+print(list(enumerate(iterable=Ig(seq), start=0)))
+print(list(enumerate(start=0, iterable=Ig(seq))))
+for expr in [lambda: enumerate(), lambda: enumerate(1), lambda: enumerate('abc', 'a'), lambda: enumerate('abc', 2, 3), lambda: enumerate(iterable=[], x=3), lambda: enumerate(start=0, x=3), lambda: enumerate(x=0, y=3), lambda: enumerate(x=0)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+a = (1, 2, 3)
+b = (4, 5, 6)
+print(list(zip(a, b)))
+print(list(zip(a, [4, 5, 6])))
+print(list(zip(a, (4, 5, 6, 7))))
+class Z:
+    def __getitem__(self, index):
+        if index < 0 or index > 2:
+            raise IndexError
+        return index + 4
+print(list(zip(a, Z())))
+print(list(zip()), list(zip(*[])))
+print(list(zip(range(5), range(10))))
+print(sorted([3, 1, 2]))
+print(sorted([1, 2, 3], key=lambda x: -x))
+print(sorted([3, 1, 2], reverse=True))
+class Bad:
+    pass
+for expr in [lambda: zip(None), lambda: zip(a, Bad()), lambda: sorted(), lambda: sorted([], bad=True)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_zip_strict_builtin_diff_subset() {
+    let probe = run_cpython("print(list(zip([1], [2], strict=True)))")
+        .expect("failed to probe CPython zip(strict=...) support");
+    if !probe.status.success() {
+        eprintln!("skipping zip(strict) diff: CPython oracle lacks zip strict support");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_zip_strict / ::test_zip_strict_iterators",
+        name: "zip-strict-builtin",
+        source: r#"print(list(zip((1, 2, 3), 'abc', strict=True)))
+print(list(zip((1, 2), 'abc', strict=False)))
+print(list(zip(strict=True)))
+for expr in [lambda: list(zip((1, 2, 3, 4), 'abc', strict=True)), lambda: list(zip((1, 2), 'abc', strict=True)), lambda: list(zip((1, 2), (1, 2), 'abc', strict=True)), lambda: zip([1], bad=True)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__, error)
+x = iter(range(5))
+y = [0]
+z = iter(range(5))
+try:
+    list(zip(x, y, z, strict=True))
+except ValueError as error:
+    print(error.__class__.__name__)
+print(next(x), next(z))"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",

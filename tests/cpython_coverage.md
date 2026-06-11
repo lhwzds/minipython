@@ -165,6 +165,8 @@ Recent runtime migration notes:
   `cpython_min_max_sum_builtin_diff_subset`,
   `cpython_iter_next_builtin_diff_subset`,
   `cpython_map_filter_builtin_diff_subset`,
+  `cpython_enumerate_zip_sorted_builtin_diff_subset`,
+  `cpython_zip_strict_builtin_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_most_common_diff_subset`,
