@@ -7200,6 +7200,91 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_simple_namespace_remaining_public_diff_subset() {
+    let probe = run_cpython(
+        "import types\ntry:\n    ns = types.SimpleNamespace({'x': 1}, y=2)\n    print(list(vars(ns).items()))\nexcept TypeError as error:\n    print(type(error).__name__)",
+    )
+    .expect("failed to run CPython SimpleNamespace positional mapping capability probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "[('x', 1), ('y', 2)]" {
+        eprintln!(
+            "skipping SimpleNamespace remaining public diff: CPython oracle lacks positional mapping construction"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests remaining public subset",
+        name: "types-simple-namespace-remaining-public",
+        source: r#"import pickle, types
+ordered = types.SimpleNamespace({'x': 1, 'y': 2}, x=4, z=3)
+print(list(vars(ordered).items()))
+pair_ordered = types.SimpleNamespace([['x', 1], ['y', 2]], x=4, z=3)
+print(list(vars(pair_ordered).items()))
+print(list(vars(types.SimpleNamespace([], x=4, z=3)).items()))
+print(list(vars(types.SimpleNamespace({})).items()))
+ns1 = types.SimpleNamespace()
+ns2 = types.SimpleNamespace(x=1, y=2)
+ns3 = types.SimpleNamespace(a=True, b=False)
+mapping = ns3.__dict__
+del ns3
+print(sorted(vars(ns1).items()), sorted(vars(ns2).items()), sorted(mapping.items()))
+try:
+    del ns1.spam
+except AttributeError as error:
+    print(type(error).__name__)
+ns2 = types.SimpleNamespace(x=1, y=2, w=3)
+try:
+    del ns2.spam
+except AttributeError as error:
+    print(type(error).__name__)
+del ns2.y
+print(sorted(vars(ns2).items()))
+ns2.y = 'spam'
+print(sorted(vars(ns2).items()))
+del ns2.y
+print(sorted(vars(ns2).items()))
+ns1.spam = 5
+print(sorted(vars(ns1).items()))
+del ns1.spam
+print(sorted(vars(ns1).items()))
+ns1 = types.SimpleNamespace(a=1, b=2)
+ns2 = types.SimpleNamespace()
+ns3 = types.SimpleNamespace(x=ns1)
+ns2.spam = ns1
+ns2.ham = '?'
+ns2.spam = ns3
+print(sorted(vars(ns1).items()))
+print(vars(ns2)['spam'] is ns3, vars(ns2)['ham'], vars(ns3)['x'] is ns1, ns3.x.a)
+print(repr(types.SimpleNamespace(x=1, y=2, w=3)))
+ns = types.SimpleNamespace()
+ns.x = 'spam'
+ns._y = 5
+print(repr(ns))
+ns = types.SimpleNamespace(breakfast='spam', lunch='spam')
+checked = 0
+for protocol in range(pickle.HIGHEST_PROTOCOL + 1):
+    restored = pickle.loads(pickle.dumps(ns, protocol))
+    if restored == ns and restored is not ns and type(restored) is types.SimpleNamespace and sorted(vars(restored).items()) == sorted(vars(ns).items()):
+        checked += 1
+print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)
+plain_left = types.SimpleNamespace(x=1)
+plain_right = types.SimpleNamespace(y=2)
+for expr in [lambda: plain_left > plain_right, lambda: plain_left >= plain_right, lambda: plain_left < plain_right, lambda: plain_left <= plain_right]:
+    try:
+        print(expr())
+    except TypeError as error:
+        print(type(error).__name__)
+class FakeSimpleNamespace(str):
+    __class__ = types.SimpleNamespace
+for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: types.SimpleNamespace() != FakeSimpleNamespace(), lambda: types.SimpleNamespace() < FakeSimpleNamespace(), lambda: types.SimpleNamespace() <= FakeSimpleNamespace(), lambda: types.SimpleNamespace() > FakeSimpleNamespace(), lambda: types.SimpleNamespace() >= FakeSimpleNamespace()]:
+    try:
+        print(expr())
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_state_order_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests state/order subset",

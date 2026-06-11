@@ -3135,7 +3135,9 @@ Recent runtime migration notes:
   missing-attribute deletion, delete/reassign cycles, nested namespace
   references, repr insertion order, MiniPython internal-payload pickle round
   trips across exposed protocols, unsupported rich ordering, and fake-namespace
-  comparison safety.
+  comparison safety. Direct output parity is guarded by
+  `cpython_types_simple_namespace_remaining_public_diff_subset`, gated for
+  CPython oracles with positional mapping construction.
 - `CONTAINER_RUNTIME` also includes
   `cpython_set_and_frozenset_subclass_subset`, covering first-pass CPython
   set/frozenset subclass construction, iteration, membership, `len`, conversion

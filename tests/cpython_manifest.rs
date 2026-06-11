@@ -3605,6 +3605,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_simple_namespace_basic_diff_subset",
         "cpython_types_simple_namespace_recursive_diff_subset",
         "cpython_types_simple_namespace_new_and_invalid_replace_diff_subset",
+        "cpython_types_simple_namespace_remaining_public_diff_subset",
         "cpython_types_simple_namespace_state_order_diff_subset",
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
         "cpython_types_method_descriptor_types_diff_subset",
