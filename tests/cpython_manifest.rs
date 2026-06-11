@@ -2606,8 +2606,21 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
 fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "io.BytesIO",
-        &["cpython_io_bytesio_public_subset"],
+        &[
+            "cpython_io_bytesio_public_subset",
+            "cpython_memoryview_bytesio_readinto_subset",
+        ],
         &["Real files", "file descriptors"],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "io.BytesIO")
+        .expect("sandbox stdlib manifest must include io.BytesIO");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_memoryview_bytesio_readinto_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for readinto(memoryview)"
     );
 }
 
