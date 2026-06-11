@@ -5925,6 +5925,36 @@ print('protocol-union', union == typing.Union[Proto, str], tuple(arg.__name__ fo
 }
 
 #[test]
+fn cpython_types_union_special_form_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nany_union = typing.Any | str\nprint(any_union == typing.Union[typing.Any, str])",
+    )
+    .expect("failed to probe CPython union SpecialForm support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union SpecialForm diff: CPython oracle lacks PEP 604 SpecialForm union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests SpecialForm public subset",
+        name: "types-union-special-form",
+        source: r#"import typing
+any_union = typing.Any | str
+print('any', any_union == typing.Union[typing.Any, str], repr(any_union), tuple(repr(arg) for arg in any_union.__args__))
+noreturn_union = typing.NoReturn | str
+print('noreturn', noreturn_union == typing.Union[typing.NoReturn, str], repr(noreturn_union), tuple(repr(arg) for arg in noreturn_union.__args__))
+optional_union = typing.Optional[int] | str
+print('optional-alias', repr(typing.Optional[int]), tuple(repr(arg) for arg in typing.Optional[int].__args__))
+print('optional-union', optional_union == typing.Union[typing.Optional[int], str], repr(optional_union), tuple(repr(arg) for arg in optional_union.__args__))
+print('optional-flat', optional_union == typing.Union[int, str, None])
+chain = typing.Union[int, bool] | str
+print('union-chain', chain == typing.Union[int, bool, str], repr(chain), tuple(arg.__name__ for arg in chain.__args__))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

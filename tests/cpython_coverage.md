@@ -1024,6 +1024,8 @@ Recent runtime migration notes:
   `cpython_types_union_special_form_subset`, covering public PEP 604 union
   behavior for `typing.Any`, `typing.NoReturn`, `typing.Optional[int]`,
   optional-union flattening, and extending existing `typing.Union` aliases.
+  Direct output parity is guarded by
+  `cpython_types_union_special_form_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_literal_subset`, covering `typing.Literal[...]` union
   args, repr, deduplication, bool-vs-int distinct literal aliases, and the
