@@ -4759,6 +4759,63 @@ print(ns2)"#,
 }
 
 #[test]
+fn cpython_types_simple_namespace_state_order_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests state/order subset",
+        name: "types-simple-namespace-state-order",
+        source: r#"import types
+ordered = types.SimpleNamespace(x=4, y=2, z=3)
+print(list(vars(ordered).items()))
+print(list(vars(types.SimpleNamespace()).items()))
+ns1 = types.SimpleNamespace()
+ns2 = types.SimpleNamespace(x=1, y=2)
+ns3 = types.SimpleNamespace(a=True, b=False)
+mapping = ns3.__dict__
+del ns3
+print(sorted(vars(ns1).items()), sorted(vars(ns2).items()), sorted(mapping.items()))
+try:
+    del ns1.spam
+except AttributeError as error:
+    print(type(error).__name__)
+ns2 = types.SimpleNamespace(x=1, y=2, w=3)
+try:
+    del ns2.spam
+except AttributeError as error:
+    print(type(error).__name__)
+del ns2.y
+print(sorted(vars(ns2).items()))
+ns2.y = 'spam'
+print(sorted(vars(ns2).items()))
+del ns2.y
+print(sorted(vars(ns2).items()))
+ns1.spam = 5
+print(sorted(vars(ns1).items()))
+del ns1.spam
+print(sorted(vars(ns1).items()))
+ns1 = types.SimpleNamespace(a=1, b=2)
+ns2 = types.SimpleNamespace()
+ns3 = types.SimpleNamespace(x=ns1)
+ns2.spam = ns1
+ns2.ham = '?'
+ns2.spam = ns3
+print(sorted(vars(ns1).items()))
+print(vars(ns2)['spam'] is ns3, vars(ns2)['ham'], vars(ns3)['x'] is ns1, ns3.x.a)
+print(repr(types.SimpleNamespace(x=1, y=2, w=3)))
+ns = types.SimpleNamespace()
+ns.x = 'spam'
+ns._y = 5
+print(repr(ns))
+plain_left = types.SimpleNamespace(x=1)
+plain_right = types.SimpleNamespace(y=2)
+for expr in [lambda: plain_left > plain_right, lambda: plain_left >= plain_right, lambda: plain_left < plain_right, lambda: plain_left <= plain_right]:
+    try:
+        print(expr())
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",

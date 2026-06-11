@@ -152,6 +152,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_custom_mapping_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_types_simple_namespace_recursive_diff_subset`,
+  `cpython_types_simple_namespace_state_order_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
