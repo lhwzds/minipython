@@ -4489,6 +4489,59 @@ fn cpython_ast_dump_public_diff_covers_exact_subsets() {
 }
 
 #[test]
+fn cpython_ast_parse_public_diff_covers_core_subset() {
+    let diff_name = "cpython_ast_parse_public_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("ast.parse public diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_ast_module_parse_dump_first_pass_subset",
+        "cpython_ast_parse_null_bytes_subset",
+        "cpython_ast_parse_invalid_ast_subset",
+        "cpython_ast_parse_optimize_debug_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "ast.parse runtime subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "ast-parse-public",
+        "Lib/ast.py::parse public wrapper",
+        "ast.parse('x = 1')",
+        "mode='eval'",
+        "mode='single'",
+        "mode='func_type'",
+        "ast.parse(node) is node",
+        "ast.PyCF_ONLY_AST",
+        "legacy ast.dump default-field rendering",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "ast.parse public diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("ast.parse")
+                && document.contains("exec")
+                && document.contains("eval")
+                && document.contains("func_type"),
+            "ast.parse docs must link `{diff_name}` to exec/eval/single/func_type coverage"
+        );
+    }
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_covers_exact_subsets() {
     let diff_name = "cpython_ast_literal_eval_public_diff_subset";
     let diff_start = CPYTHON_DIFF

@@ -10216,6 +10216,12 @@ Completed in the CPython collections manifest expansion pass:
   `python3` oracles whose default `ast.dump()` still includes legacy
   `ctx=Load()` / empty-field output, and the manifest now guards that the
   exact `ast.dump` subsets remain linked to this default-field parity evidence.
+- Added `cpython_ast_parse_public_diff_subset`, a gated direct CPython diff for
+  the public `ast.parse()` wrapper across default `exec`, `eval`, `single`, and
+  `func_type` modes, public node fields, AST input pass-through, basic argument
+  errors, and `ast.PyCF_ONLY_AST`. It uses the same default-field oracle probe
+  as `cpython_ast_dump_public_diff_subset` because the stable comparison prints
+  public `ast.dump()` output.
 - Added `cpython_ast_literal_eval_public_diff_subset`, direct CPython output
   parity for the stable public `ast.literal_eval()` surface from
   `ASTHelpers_Test.test_literal_eval` and `test_literal_eval_complex`. The

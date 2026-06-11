@@ -1987,7 +1987,10 @@ Recent runtime migration notes:
   exposes Python-visible `ast.parse()` / `ast.dump()` across `exec`, `eval`,
   `single`, and `func_type` modes, plus first-pass public node fields such as
   `Module.body`, `Assign.targets`, `Name.id`, `_fields`, and
-  `isinstance(..., ast.AST)`. `cpython_ast_parse_null_bytes_subset` ports
+  `isinstance(..., ast.AST)`. `cpython_ast_parse_public_diff_subset` provides
+  gated direct CPython output parity for the same public `ast.parse()` wrapper
+  surface when the oracle has current default-field `ast.dump()` behavior.
+  `cpython_ast_parse_null_bytes_subset` ports
   CPython `AST_Tests::test_null_bytes`, requiring `ast.parse()` over source
   strings containing NUL bytes to raise `SyntaxError` with CPython's public
   `source code string cannot contain null bytes` message.

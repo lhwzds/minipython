@@ -4784,6 +4784,46 @@ print(ast.dump(ast.arguments(), annotate_fields=False))"#,
 }
 
 #[test]
+fn cpython_ast_parse_public_diff_subset() {
+    let probe = run_cpython("import ast\nprint('ctx=Load' in ast.dump(ast.parse('x')))")
+        .expect("failed to probe CPython ast.parse public dump support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "False" {
+        eprintln!(
+            "skipping ast.parse public diff: CPython oracle has legacy ast.dump default-field rendering"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/ast.py::parse public wrapper and Lib/test/test_ast/test_ast.py::AST_Tests smoke cases",
+        name: "ast-parse-public",
+        source: r#"import ast
+node = ast.parse('x = 1')
+print(type(node).__name__, type(node) == ast.Module)
+assign = node.body[0]
+target = assign.targets[0]
+print(node._fields, assign._fields)
+print(type(assign).__name__, isinstance(assign, ast.Assign), isinstance(node, ast.AST))
+print(target.id, type(target.ctx).__name__, assign.value.value)
+print(ast.dump(node))
+expr = ast.parse('1 + 2', mode='eval')
+print(type(expr).__name__)
+print(type(expr.body).__name__, type(expr.body.op).__name__, ast.dump(expr))
+single = ast.parse('1 + 2', mode='single')
+print(type(single).__name__, ast.dump(single))
+func_type = ast.parse('(int, str) -> bool', mode='func_type')
+print(type(func_type).__name__, ast.dump(func_type))
+print(ast.parse(node) is node)
+print(ast.PyCF_ONLY_AST)
+for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.parse('1', mode='bad')]:
+    try:
+        call()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",
