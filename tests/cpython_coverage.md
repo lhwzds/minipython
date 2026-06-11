@@ -59,6 +59,7 @@ Recent runtime migration notes:
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_itertools_core_diff_subset`,
+  `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
@@ -331,13 +332,17 @@ Recent runtime migration notes:
   unpaired surrogate storage, and full `JSONDecodeError` compatibility remain
   intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
-  `cpython_itertools_count_repeat_chain_subset` and
-  `cpython_itertools_core_diff_subset`, plus the CPython 3.10+ gated
+  `cpython_itertools_core_iterator_subset`,
+  `cpython_itertools_keyword_error_subset`,
+  `cpython_itertools_pairwise_subset`, and
+  `cpython_itertools_core_diff_subset`,
+  `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, covering the pure in-memory
   first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, and `pairwise()`
-  iterator protocol behavior.
+  iterator protocol behavior, plus duplicate-keyword diagnostics for
+  `accumulate()` and `zip_longest()`.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
   arbitrary supported iterables, lazy `chain.from_iterable()` flattening,

@@ -1303,8 +1303,8 @@ for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.par
 #[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
-        origin: "Lib/test/test_itertools.py public count/repeat/chain/islice core subset",
-        name: "itertools-count-repeat-chain-islice-core",
+        origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
+        name: "itertools-core-iterators",
         source: r#"import itertools
 c = itertools.count(2, 3)
 print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
@@ -1437,17 +1437,9 @@ try:
 except TypeError as error:
     print(error.__class__.__name__)
 try:
-    itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left})
-except TypeError as error:
-    print(error.__class__.__name__, 'multiple values' in str(error))
-try:
     itertools.zip_longest(iterable=[1])
 except TypeError as error:
     print(error.__class__.__name__)
-try:
-    itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1})
-except TypeError as error:
-    print(error.__class__.__name__, 'multiple values' in str(error))
 try:
     itertools.cycle()
 except TypeError as error:
@@ -1475,6 +1467,23 @@ for expr in [
         expr()
     except (TypeError, ValueError) as error:
         print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_itertools_keyword_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public duplicate-keyword error subset",
+        name: "itertools-keyword-errors",
+        source: r#"import itertools
+try:
+    itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left})
+except TypeError as error:
+    print(error.__class__.__name__, 'multiple values' in str(error))
+try:
+    itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1})
+except TypeError as error:
+    print(error.__class__.__name__, 'multiple values' in str(error))"#,
     });
 }
 

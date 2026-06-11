@@ -2117,11 +2117,14 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if !snake_case.starts_with("cpython_") {
         candidates.push(format!("cpython_{snake_case}_subset"));
     }
-    if matches!(
-        evidence,
-        "cpython_itertools_core_diff_subset" | "cpython_itertools_pairwise_diff_subset"
-    ) {
-        candidates.push("cpython_itertools_count_repeat_chain_subset".to_string());
+    if evidence == "cpython_itertools_core_diff_subset" {
+        candidates.push("cpython_itertools_core_iterator_subset".to_string());
+    }
+    if evidence == "cpython_itertools_keyword_error_diff_subset" {
+        candidates.push("cpython_itertools_keyword_error_subset".to_string());
+    }
+    if evidence == "cpython_itertools_pairwise_diff_subset" {
+        candidates.push("cpython_itertools_pairwise_subset".to_string());
     }
     if evidence == "cpython_json_loads_dumps_diff_subset" {
         candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
@@ -2297,8 +2300,95 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
 fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "itertools",
-        &["cpython_itertools_count_repeat_chain_subset"],
+        &[
+            "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_keyword_error_subset",
+            "cpython_itertools_pairwise_subset",
+        ],
         &[],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "itertools")
+        .expect("sandbox stdlib manifest must include itertools");
+    for evidence in [
+        "cpython_itertools_core_diff_subset",
+        "cpython_itertools_keyword_error_diff_subset",
+        "cpython_itertools_pairwise_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "itertools sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
+    let core_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_core_iterator_subset()")
+        .expect("itertools core runtime subset evidence must exist");
+    let keyword_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_keyword_error_subset()")
+        .expect("itertools keyword error runtime subset evidence must exist");
+    let pairwise_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_pairwise_subset()")
+        .expect("itertools pairwise runtime subset evidence must exist");
+    let pairwise_end = CPYTHON_SUBSET[pairwise_start..]
+        .find("\n// Adapted from CPython Lib/test/test_list.py")
+        .map(|offset| pairwise_start + offset)
+        .expect("itertools pairwise subset must end before sequence constructor tests");
+
+    let core_source = &CPYTHON_SUBSET[core_start..keyword_start];
+    let keyword_source = &CPYTHON_SUBSET[keyword_start..pairwise_start];
+    let pairwise_source = &CPYTHON_SUBSET[pairwise_start..pairwise_end];
+
+    assert!(
+        !core_source.contains("pairwise"),
+        "itertools core runtime evidence must not cover pairwise()"
+    );
+    assert!(
+        keyword_source.contains("multiple values"),
+        "itertools keyword-error runtime evidence must assert duplicate keyword diagnostics"
+    );
+    assert!(
+        pairwise_source.contains("itertools.pairwise"),
+        "itertools pairwise runtime evidence must cover pairwise()"
+    );
+}
+
+#[test]
+fn itertools_core_and_pairwise_diff_evidence_stay_split() {
+    let core_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_core_diff_subset()")
+        .expect("itertools core diff evidence must exist");
+    let pairwise_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_pairwise_diff_subset()")
+        .expect("itertools pairwise diff evidence must exist");
+    let keyword_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_keyword_error_diff_subset()")
+        .expect("itertools keyword-error diff evidence must exist");
+    let pairwise_end = CPYTHON_DIFF[pairwise_start..]
+        .find("\n// Differential smoke tests")
+        .map(|offset| pairwise_start + offset)
+        .expect("itertools pairwise diff subset must end before smoke tests");
+
+    let core_source = &CPYTHON_DIFF[core_start..keyword_start];
+    let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
+    let pairwise_source = &CPYTHON_DIFF[pairwise_start..pairwise_end];
+
+    assert!(
+        !core_source.contains("pairwise"),
+        "itertools core CPython diff evidence must not cover pairwise()"
+    );
+    assert!(
+        keyword_source.contains("multiple values"),
+        "itertools keyword-error CPython diff evidence must assert duplicate keyword diagnostics"
+    );
+    assert!(
+        pairwise_source.contains("itertools.pairwise"),
+        "itertools pairwise CPython diff evidence must cover pairwise()"
     );
 }
 
