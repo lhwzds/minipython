@@ -2399,6 +2399,12 @@ Recent runtime migration notes:
   Direct CPython diff evidence is in
   `cpython_collections_abc_set_mutable_set_mixins_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_set_from_iterable_operator_subset`, covering CPython
+  `test_Set_from_iterable` operator dispatch through `MutableSet` mixins,
+  instance `_from_iterable` overrides, and `^=` with a non-Set iterable.
+  Direct CPython diff evidence is in
+  `cpython_collections_abc_set_from_iterable_operator_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.

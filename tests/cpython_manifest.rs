@@ -2601,6 +2601,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_mapping_mixin_views_subset",
             "cpython_collections_abc_userdict_view_snapshot_subset",
             "cpython_collections_abc_set_mutable_set_mixins_subset",
+            "cpython_collections_abc_set_from_iterable_operator_subset",
         ],
         &["pickle/eval identity matrices"],
     );
@@ -2668,6 +2669,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_set_mutable_set_mixins_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Set/MutableSet mixins"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_set_from_iterable_operator_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Set._from_iterable operator dispatch"
     );
 }
 

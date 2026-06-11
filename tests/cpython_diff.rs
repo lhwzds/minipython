@@ -3123,6 +3123,38 @@ print(len(m))"#,
 }
 
 #[test]
+fn cpython_collections_abc_set_from_iterable_operator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::test_Set_from_iterable public subset",
+        name: "collections-abc-set-from-iterable-operator",
+        source: r#"from collections.abc import MutableSet
+class SetUsingInstanceFromIterable(MutableSet):
+    def __init__(self, values, created_by):
+        if not created_by:
+            raise ValueError('created_by must be specified')
+        self.created_by = created_by
+        self._values = set(values)
+    def _from_iterable(self, values):
+        return type(self)(values, 'from_iterable')
+    def __contains__(self, value):
+        return value in self._values
+    def __iter__(self):
+        yield from self._values
+    def __len__(self):
+        return len(self._values)
+    def add(self, value):
+        self._values.add(value)
+    def discard(self, value):
+        self._values.discard(value)
+impl = SetUsingInstanceFromIterable([1, 2, 3], 'test')
+for actual in [impl - {1}, impl | {4}, impl & {2}, impl ^ {3, 4}]:
+    print(isinstance(actual, SetUsingInstanceFromIterable), actual.created_by, sorted(list(actual)))
+impl ^= [3, 4]
+print(isinstance(impl, SetUsingInstanceFromIterable), impl.created_by, sorted(list(impl)))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
