@@ -263,6 +263,9 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   rather than subclass instances.
 - Added `cpython_bytes_bytearray_subclass_fromhex_subset`, adapted from
   CPython `Lib/test/test_bytes.py::SubclassTest::test_fromhex`.
+- Direct CPython diff evidence for subclass-preserving `fromhex()` and the
+  related public bytes/bytearray `__new__` / `__init__` descriptor surface is
+  in `cpython_bytes_bytearray_subclass_fromhex_diff_subset`.
 - Added subclass-preserving `fromhex()` classmethod behavior for bytes and
   bytearray subclasses, plus public `bytes.__new__`, `bytearray.__new__`, and
   `bytearray.__init__` descriptor support needed for custom subclass

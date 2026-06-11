@@ -1492,6 +1492,10 @@ Recent runtime migration notes:
   Direct CPython diff evidence for bytes/bytearray subclass operations and
   base-type `join()` result behavior is in
   `cpython_bytes_bytearray_subclass_ops_and_join_diff_subset`.
+  Direct CPython diff evidence for subclass-preserving `fromhex()` and the
+  public `bytes.__new__` / `bytearray.__new__` / `bytearray.__init__`
+  descriptor surface is in
+  `cpython_bytes_bytearray_subclass_fromhex_diff_subset`.
   Direct CPython diff evidence for bytearray subclass initializer override
   binding is in `cpython_bytearray_subclass_init_override_diff_subset`.
   Direct CPython diff evidence for bytes/bytearray subclass shallow/deep copy

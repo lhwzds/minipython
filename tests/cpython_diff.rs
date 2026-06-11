@@ -9141,6 +9141,48 @@ print(hasattr(B(b''), 'join'), hasattr(BA(b''), 'join'), hasattr(bytes, 'join'),
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_fromhex_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::SubclassTest::test_fromhex as applied to BytesSubclassTest and ByteArraySubclassTest",
+        name: "bytes-bytearray-subclass-fromhex",
+        source: r#"class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for T in [B, BA]:
+    x = T.fromhex('1a2B30')
+    print(T.__name__, type(x).__name__, x == b'\x1a+0', isinstance(x, T), getattr(x, 'foo', 'none'))
+class B1(bytes):
+    def __new__(cls, value):
+        me = bytes.__new__(cls, value)
+        me.foo = 'bar'
+        return me
+class BA1(bytearray):
+    def __new__(cls, value):
+        me = bytearray.__new__(cls, value)
+        me.foo = 'bar'
+        return me
+for T in [B1, BA1]:
+    x = T.fromhex('1a2B30')
+    print(T.__name__, type(x).__name__, x == b'\x1a+0', getattr(x, 'foo', 'none'))
+class B2(bytes):
+    def __init__(self, value):
+        self.foo = 'bar'
+class BA2(bytearray):
+    def __init__(self, *args):
+        bytearray.__init__(self, *args)
+        self.foo = 'bar'
+for T in [B2, BA2]:
+    x = T.fromhex('1a2B30')
+    print(T.__name__, type(x).__name__, x == b'\x1a+0', getattr(x, 'foo', 'none'))
+y = bytearray.__new__(BA, b'abc', spam='ignored')
+print(type(y).__name__, y, y == b'abc')
+print(bytearray.__init__(y, b'abc'), y, y == b'abc')
+print(hasattr(bytes, '__new__'), hasattr(bytearray, '__new__'), hasattr(bytearray, '__init__'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
