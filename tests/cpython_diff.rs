@@ -727,6 +727,15 @@ print(sum(items))
 }
 
 #[test]
+fn cpython_tokenize_indentation_blank_line_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py INDENT/DEDENT blank-line public execution subset",
+        name: "tokenize-indentation-blank-line",
+        source: "if True:\n\n    print('body')\nif True:\r\n    print('crlf')\r\n\r\nif True:\n    print('a')\n\n    print('b')\nprint('done')",
+    });
+}
+
+#[test]
 fn cpython_tokenize_implicit_line_joining_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",

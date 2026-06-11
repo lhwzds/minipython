@@ -4267,6 +4267,10 @@ Completed in the explicit line-joining tokenizer pass:
 
 Completed in the tokenizer max-indent pass:
 
+- Added `cpython_tokenize_indentation_blank_line_diff_subset` as direct CPython
+  output parity evidence that LF and CRLF blank physical lines do not disturb
+  block indentation or dedentation semantics.
+
 - Added CPython's `MAXINDENT` behavior from
   `Lib/test/test_tokenize.py::test_max_indent`: 99 nested indentation levels are
   accepted, while the 100th nested level is rejected during lexing.
