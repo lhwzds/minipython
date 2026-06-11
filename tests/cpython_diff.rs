@@ -13472,6 +13472,34 @@ for label, rhs in [('bytes', b'\x01\x02'), ('B-view', memoryview(array.array('B'
 }
 
 #[test]
+fn cpython_memoryview_array_non_byte_public_read_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py array-backed public non-byte read behavior",
+        name: "memoryview-array-non-byte-public-read",
+        source: r#"import array
+
+cases = [
+    ('h', [-2, 0, 258]),
+    ('H', [0, 258, 65535]),
+    ('i', [-123456, 0, 123456]),
+    ('I', [0, 123456, 3000000000]),
+    ('f', [1.25, -0.5]),
+    ('d', [1.25, -0.5]),
+]
+
+for typecode, values in cases:
+    arr = array.array(typecode, values)
+    view = memoryview(arr)
+    print('view', typecode, view.format, view.itemsize, len(view), view.shape, view.strides, view.nbytes, view.c_contiguous, view.tolist())
+    print('index', typecode, view[0], view[-1], view.tobytes() == arr.tobytes())
+    sub = view[1:]
+    print('slice', typecode, sub.format, len(sub), sub.shape, sub.strides, sub.nbytes, sub.c_contiguous, sub.tolist(), sub.tobytes() == arr[1:].tobytes())
+    cast = view.cast('B')
+    print('cast', typecode, cast.format, len(cast), cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())"#,
+    });
+}
+
+#[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py::MiscTest public constructor/module behavior",

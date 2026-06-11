@@ -19980,6 +19980,42 @@ fn cpython_memoryview_array_signed_byte_buffer_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_memoryview.py array-backed exporter
+// coverage for non-byte numeric formats. Writable non-byte item assignment
+// remains out of scope until full typed buffer writeback is implemented.
+#[test]
+fn cpython_memoryview_array_non_byte_public_read_subset() {
+    assert_output(
+        "import array\n\ncases = [\n    ('h', [-2, 0, 258]),\n    ('H', [0, 258, 65535]),\n    ('i', [-123456, 0, 123456]),\n    ('I', [0, 123456, 3000000000]),\n    ('f', [1.25, -0.5]),\n    ('d', [1.25, -0.5]),\n]\n\nfor typecode, values in cases:\n    arr = array.array(typecode, values)\n    view = memoryview(arr)\n    print('view', typecode, view.format, view.itemsize, len(view), view.shape, view.strides, view.nbytes, view.c_contiguous, view.tolist())\n    print('index', typecode, view[0], view[-1], view.tobytes() == arr.tobytes())\n    sub = view[1:]\n    print('slice', typecode, sub.format, len(sub), sub.shape, sub.strides, sub.nbytes, sub.c_contiguous, sub.tolist(), sub.tobytes() == arr[1:].tobytes())\n    cast = view.cast('B')\n    print('cast', typecode, cast.format, len(cast), cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())",
+        &[
+            "view h h 2 3 (3,) (2,) 6 True [-2, 0, 258]",
+            "index h -2 258 True",
+            "slice h h 2 (2,) (2,) 4 True [0, 258] True",
+            "cast h B 6 (6,) 6 True",
+            "view H H 2 3 (3,) (2,) 6 True [0, 258, 65535]",
+            "index H 0 65535 True",
+            "slice H H 2 (2,) (2,) 4 True [258, 65535] True",
+            "cast H B 6 (6,) 6 True",
+            "view i i 4 3 (3,) (4,) 12 True [-123456, 0, 123456]",
+            "index i -123456 123456 True",
+            "slice i i 2 (2,) (4,) 8 True [0, 123456] True",
+            "cast i B 12 (12,) 12 True",
+            "view I I 4 3 (3,) (4,) 12 True [0, 123456, 3000000000]",
+            "index I 0 3000000000 True",
+            "slice I I 2 (2,) (4,) 8 True [123456, 3000000000] True",
+            "cast I B 12 (12,) 12 True",
+            "view f f 4 2 (2,) (4,) 8 True [1.25, -0.5]",
+            "index f 1.25 -0.5 True",
+            "slice f f 1 (1,) (4,) 4 True [-0.5] True",
+            "cast f B 8 (8,) 8 True",
+            "view d d 8 2 (2,) (8,) 16 True [1.25, -0.5]",
+            "index d 1.25 -0.5 True",
+            "slice d d 1 (1,) (8,) 8 True [-0.5] True",
+            "cast d B 16 (16,) 16 True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public array module and
 // constructor behavior.
 #[test]

@@ -3275,6 +3275,14 @@ Recent runtime migration notes:
   scalar write range/type errors, same-format memoryview slice assignment, and
   structure mismatch errors for bytes and unsigned-byte views.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_memoryview_array_non_byte_public_read_subset`, covering the CPython
+  public one-dimensional non-byte numeric `array.array` exporter read surface
+  for `memoryview()`: element-sized `len()` / `itemsize` / `shape` /
+  `strides` / `nbytes` attributes, scalar getitem, `tolist()`, logical
+  `tobytes()`, slicing, `c_contiguous`, and byte casts for `h`, `H`, `i`,
+  `I`, `f`, and `d` formats. Non-byte writable item/slice assignment remains
+  outside the current sandbox stdlib scope.
+- `RUNTIME_BUILTINS` also includes
   `cpython_array_module_and_constructor_public_surface_subset`, covering the
   CPython public `array` module constructor surface: `array.typecodes`,
   legacy typecode construction, str-subclass typecode arguments, invalid

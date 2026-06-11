@@ -662,13 +662,17 @@ fn memoryview_state_bytes(state: &crate::value::MemoryViewState) -> Result<Vec<u
     if state.released {
         return Err(released_memoryview_error());
     }
+    let itemsize = memoryview_itemsize_for_format(&state.format)?;
     let bytes = state.bytes.borrow();
-    let mut view = Vec::with_capacity(state.len);
+    let mut view = Vec::with_capacity(state.len.saturating_mul(itemsize));
     for logical_index in 0..state.len {
         let physical_index = memoryview_physical_index(state, logical_index)?;
-        view.push(
-            *bytes
-                .get(physical_index)
+        let end = physical_index
+            .checked_add(itemsize)
+            .ok_or_else(|| "memoryview index out of range".to_string())?;
+        view.extend_from_slice(
+            bytes
+                .get(physical_index..end)
                 .ok_or_else(|| "memoryview index out of range".to_string())?,
         );
     }
@@ -712,6 +716,30 @@ fn memoryview_len(view: &MemoryViewRef) -> Result<usize, String> {
     Ok(view.len)
 }
 
+fn memoryview_itemsize(view: &MemoryViewRef) -> Result<usize, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    memoryview_itemsize_for_format(&view.format)
+}
+
+fn memoryview_itemsize_for_format(format: &str) -> Result<usize, String> {
+    if format == "c" {
+        return Ok(1);
+    }
+    array_array_itemsize_for_typecode(format).ok_or_else(|| {
+        format!("NotImplementedError: memoryview format '{format}' is not supported")
+    })
+}
+
+fn memoryview_nbytes(view: &MemoryViewRef) -> Result<usize, String> {
+    let len = memoryview_len(view)?;
+    let itemsize = memoryview_itemsize(view)?;
+    len.checked_mul(itemsize)
+        .ok_or_else(|| "memoryview byte length is too large".to_string())
+}
+
 fn memoryview_readonly(view: &MemoryViewRef) -> Result<bool, String> {
     let view = view.borrow();
     if view.released {
@@ -749,7 +777,8 @@ fn memoryview_is_contiguous(view: &MemoryViewRef) -> Result<bool, String> {
     if view.released {
         return Err(released_memoryview_error());
     }
-    Ok(view.stride == 1 || view.len == 1)
+    let itemsize = memoryview_itemsize_for_format(&view.format)?;
+    Ok(view.stride == itemsize as isize || view.len == 1)
 }
 
 fn release_memoryview(view: &MemoryViewRef) {
@@ -879,20 +908,20 @@ fn memoryview_typed_slice_assignment_value(format: &str, value: Value) -> Result
     }
 }
 
-fn memoryview_item_from_byte(format: &str, byte: u8) -> Value {
-    match format {
-        "c" => bytes_value(vec![byte]),
-        "b" => Value::Number(i64::from(byte as i8)),
-        _ => Value::Number(i64::from(byte)),
+fn memoryview_item_from_bytes(format: &str, bytes: &[u8]) -> Value {
+    if format == "c" {
+        return bytes_value(bytes.to_vec());
     }
+    array_array_decode_item(format, bytes)
 }
 
 fn memoryview_values(view: &MemoryViewRef) -> Result<Vec<Value>, String> {
     let format = memoryview_format(view)?;
+    let itemsize = memoryview_itemsize_for_format(&format)?;
     let bytes = memoryview_bytes(view)?;
     Ok(bytes
-        .into_iter()
-        .map(|byte| memoryview_item_from_byte(&format, byte))
+        .chunks_exact(itemsize)
+        .map(|chunk| memoryview_item_from_bytes(&format, chunk))
         .collect())
 }
 
@@ -907,12 +936,15 @@ fn memoryview_item_value(view: &MemoryViewRef, index: Value) -> Result<Value, St
     }
     let index = normalized_index(index, state.len, "memoryview")?;
     let physical_index = memoryview_physical_index(&state, index)?;
-    let byte = *state
-        .bytes
-        .borrow()
-        .get(physical_index)
+    let itemsize = memoryview_itemsize_for_format(&state.format)?;
+    let end = physical_index
+        .checked_add(itemsize)
         .ok_or_else(|| "memoryview index out of range".to_string())?;
-    Ok(memoryview_item_from_byte(&state.format, byte))
+    let borrowed = state.bytes.borrow();
+    let bytes = borrowed
+        .get(physical_index..end)
+        .ok_or_else(|| "memoryview index out of range".to_string())?;
+    Ok(memoryview_item_from_bytes(&state.format, bytes))
 }
 
 fn bytesio_initial_bytes(value: Value) -> Result<Vec<u8>, String> {
@@ -17279,10 +17311,14 @@ impl Vm {
             value if array_array_storage(&value).is_some() => {
                 let storage =
                     array_array_storage(&value).expect("array storage exists after guard");
-                let len = storage.borrow().len();
                 let format = array_array_typecode(&value).unwrap_or_else(|| "B".to_string());
+                let itemsize = array_array_itemsize_for_typecode(&format)
+                    .ok_or_else(|| "TypeError: unsupported array typecode".to_string())?;
+                let len = storage.borrow().len() / itemsize;
+                let stride = isize::try_from(itemsize)
+                    .map_err(|_| "memoryview stride is too large".to_string())?;
                 Ok(memory_view_from_parts_with_format(
-                    storage, value, 0, len, 1, false, format,
+                    storage, value, 0, len, stride, false, format,
                 ))
             }
             Value::MemoryView(view) => {
@@ -17714,7 +17750,10 @@ impl Vm {
             );
         }
         let len = view_state.len;
-        let cast_len = self.memoryview_cast_shape_len(shape, len)?;
+        let byte_len = len
+            .checked_mul(memoryview_itemsize_for_format(&view_state.format)?)
+            .ok_or_else(|| "memoryview byte length is too large".to_string())?;
+        let cast_len = self.memoryview_cast_shape_len(shape, byte_len)?;
         Ok(memory_view_from_parts_with_format(
             view_state.bytes.clone(),
             view_state.obj.clone(),
@@ -18065,13 +18104,19 @@ impl Vm {
         view: &MemoryViewRef,
         value: Value,
     ) -> Result<u8, String> {
-        match memoryview_format(view)?.as_str() {
+        let format = memoryview_format(view)?;
+        match format.as_str() {
             "c" => return memoryview_c_assignment_byte(value),
             "b" => {
                 let value = self.maybe_index_integer_value(value)?;
                 return memoryview_assignment_signed_byte(value);
             }
-            _ => {}
+            "B" => {}
+            _ => {
+                return Err(format!(
+                    "NotImplementedError: memoryview item assignment for format '{format}' is not supported"
+                ));
+            }
         }
         let value = self.maybe_index_integer_value(value)?;
         memoryview_assignment_byte(value)
@@ -49227,7 +49272,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }),
         Value::MemoryView(view) => match name {
             "format" => Ok(Value::String(memoryview_format(&view)?)),
-            "itemsize" | "ndim" => {
+            "itemsize" => Ok(Value::Number(
+                i64::try_from(memoryview_itemsize(&view)?).unwrap_or(i64::MAX),
+            )),
+            "ndim" => {
                 memoryview_len(&view)?;
                 Ok(Value::Number(1))
             }
@@ -49249,7 +49297,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 Ok(Value::Bool(memoryview_is_contiguous(&view)?))
             }
             "nbytes" => Ok(Value::Number(
-                i64::try_from(memoryview_len(&view)?).unwrap_or(i64::MAX),
+                i64::try_from(memoryview_nbytes(&view)?).unwrap_or(i64::MAX),
             )),
             "tobytes" | "tolist" | "hex" | "cast" | "toreadonly" | "release" | "__enter__"
             | "__exit__" | "count" | "index" | "__contains__" | "__getitem__" | "__setitem__"
@@ -70094,10 +70142,16 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
                     let physical_index = memoryview_physical_index(&state, logical_index)?;
                     (state.bytes.clone(), physical_index)
                 };
-                let byte = if memoryview_format(&view)? == "c" {
-                    memoryview_c_assignment_byte(value)?
-                } else {
-                    memoryview_assignment_byte(value)?
+                let format = memoryview_format(&view)?;
+                let byte = match format.as_str() {
+                    "c" => memoryview_c_assignment_byte(value)?,
+                    "b" => memoryview_assignment_signed_byte(value)?,
+                    "B" => memoryview_assignment_byte(value)?,
+                    _ => {
+                        return Err(format!(
+                            "NotImplementedError: memoryview item assignment for format '{format}' is not supported"
+                        ));
+                    }
                 };
                 bytes.borrow_mut()[physical_index] = byte;
                 Ok(Value::MemoryView(view))
