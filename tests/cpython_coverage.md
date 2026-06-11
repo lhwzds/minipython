@@ -3047,7 +3047,8 @@ Recent runtime migration notes:
   `ClassCreationTests::test_get_original_bases`: ordinary classes without
   explicit bases report `object`, generic user classes preserve original
   subscripted bases, builtin classes return their public direct bases, and
-  non-type arguments raise catchable `TypeError`.
+  non-type arguments raise catchable `TypeError`. Direct output parity is
+  guarded by `cpython_types_class_creation_get_original_bases_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_prepare_and_metaclass_callable_subset`,
   covering the next CPython `ClassCreationTests` public slice for bad

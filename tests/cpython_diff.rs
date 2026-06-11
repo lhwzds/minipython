@@ -6127,6 +6127,48 @@ print(type(Created) is M, Created.__class__ is M, Created.x)"#,
 }
 
 #[test]
+fn cpython_types_class_creation_get_original_bases_diff_subset() {
+    let probe = run_cpython("import types\nprint(hasattr(types, 'get_original_bases'))")
+        .expect("failed to probe CPython get_original_bases support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types class creation get_original_bases diff: CPython oracle lacks types.get_original_bases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_get_original_bases",
+        name: "types-class-creation-get-original-bases",
+        source: r#"import types, typing
+T = typing.TypeVar('T')
+class A:
+    pass
+class B(typing.Generic[T]):
+    pass
+class C(B[int]):
+    pass
+class D(B[str], float):
+    pass
+print(types.get_original_bases(A)[0] is object)
+print(types.get_original_bases(B)[0] == typing.Generic[T])
+print(types.get_original_bases(C)[0] == B[int])
+print(types.get_original_bases(int)[0] is object)
+orig_d = types.get_original_bases(D)
+print(orig_d[0] == B[str], orig_d[1] is float)
+class E(list[T]):
+    pass
+class F(list[int]):
+    pass
+print(types.get_original_bases(E)[0] == list[T], types.get_original_bases(F)[0] == list[int])
+try:
+    types.get_original_bases(object())
+except TypeError as error:
+    print(type(error).__name__, 'Expected an instance of type' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
