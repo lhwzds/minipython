@@ -3534,6 +3534,51 @@ except StopIteration:
 }
 
 #[test]
+fn cpython_collections_abc_generator_mixin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Generator",
+        name: "collections-abc-generator-mixin",
+        source: r#"from collections.abc import Generator
+class MinimalGen(Generator):
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        super().throw(typ, val, tb)
+mgen = MinimalGen()
+print(iter(mgen) is mgen)
+print(mgen.send(None) is next(mgen))
+print(mgen.send(2))
+print(mgen.close())
+try:
+    mgen.throw(ValueError)
+except ValueError as error:
+    print(error.__class__.__name__, str(error) == '')
+try:
+    mgen.throw(ValueError, ValueError('huhu'))
+except ValueError as error:
+    print(error.__class__.__name__, str(error))
+try:
+    mgen.throw(StopIteration())
+except StopIteration as error:
+    print(error.__class__.__name__, str(error) == '')
+class FailOnClose(Generator):
+    def send(self, value): return value
+    def throw(self, *args): raise ValueError
+try:
+    FailOnClose().close()
+except ValueError as error:
+    print(error.__class__.__name__, str(error) == '')
+class IgnoreGeneratorExit(Generator):
+    def send(self, value): return value
+    def throw(self, *args): pass
+try:
+    IgnoreGeneratorExit().close()
+except RuntimeError as error:
+    print(error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_types_coroutine_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Awaitable / ::test_Coroutine",

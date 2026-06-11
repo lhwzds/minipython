@@ -2611,6 +2611,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_async_iterator_mixin_subset",
             "cpython_collections_abc_async_generator_core_mixin_subset",
             "cpython_collections_abc_async_generator_throw_close_mixin_subset",
+            "cpython_collections_abc_generator_mixin_subset",
             "cpython_collections_abc_types_coroutine_subset",
             "cpython_collections_abc_coroutine_mixin_subset",
             "cpython_collections_abc_abstract_methods_subset",
@@ -2735,6 +2736,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_async_generator_throw_close_mixin_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for AsyncGenerator throw/close mixin"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_generator_mixin_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Generator mixin behavior"
     );
     assert!(
         row.diff_evidence
