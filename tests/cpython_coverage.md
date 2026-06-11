@@ -62,6 +62,7 @@ Recent runtime migration notes:
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_cmp_to_key_diff_subset`,
   `cpython_functools_total_ordering_diff_subset`,
+  `cpython_functools_partialmethod_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -517,6 +518,7 @@ Recent runtime migration notes:
   copying, positional/keyword combinations, exception propagation, nested
   partial calls, custom attributes, and readonly core attributes.
 - The bundled `functools` module also includes
+  `cpython_functools_partialmethod_diff_subset` and
   `cpython_functools_partialmethod_subset`, covering CPython
   `test_functools.py::TestPartialMethod` public descriptor behavior, instance
   and class access call argument order, nested `partialmethod` flattening,

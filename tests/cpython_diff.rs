@@ -1601,6 +1601,73 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_functools_partialmethod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestPartialMethod public subset",
+        name: "functools-partialmethod",
+        source: r#"from functools import partial, partialmethod
+
+def normalize(value):
+    if isinstance(value, A):
+        return 'self'
+    if value is A:
+        return 'A'
+    return value
+
+def capture(*args, **kwargs):
+    normalized = []
+    for arg in args:
+        normalized.append(normalize(arg))
+    return tuple(normalized), sorted(kwargs.items())
+
+class A:
+    nothing = partialmethod(capture)
+    positional = partialmethod(capture, 1)
+    keywords = partialmethod(capture, a=2)
+    both = partialmethod(capture, 3, b=4)
+    spec_keywords = partialmethod(capture, self=1, func=2)
+    nested = partialmethod(positional, 5)
+    over_partial = partialmethod(partial(capture, c=6), 7)
+    static = partialmethod(staticmethod(capture), 8)
+    cls = partialmethod(classmethod(capture), d=9)
+
+a = A()
+for call in [
+    lambda: a.nothing(),
+    lambda: a.nothing(5, c=6),
+    lambda: a.positional(),
+    lambda: a.keywords(c=6),
+    lambda: a.both(5, c=6),
+    lambda: A.both(a, 5, c=6),
+    lambda: a.spec_keywords(),
+    lambda: a.nested(6, d=7),
+    lambda: A.nested(a, 6, d=7),
+    lambda: a.over_partial(5, d=8),
+    lambda: A.over_partial(a, 5, d=8),
+    lambda: a.static(5, d=8),
+    lambda: A.static(5, d=8),
+    lambda: a.cls(5, c=8),
+    lambda: A.cls(5, c=8),
+    lambda: a.keywords(a=3),
+]:
+    print(call())
+print(hasattr(a.both, '__self__'), a.both.__self__ is a)
+print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
+print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
+for expr in [
+    lambda: partialmethod(None, 1),
+    lambda: partialmethod(),
+    lambda: partialmethod(func=capture, a=1),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
