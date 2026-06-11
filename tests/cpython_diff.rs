@@ -10263,7 +10263,12 @@ for hint in [-1, 0, 1, 2, 3, None]:
     bio = io.BytesIO(b'a\nbc\n')
     lines = bio.readlines() if hint is None else bio.readlines(hint)
     print(hint, lines, bio.tell())
-for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
+bio = io.BytesIO()
+print(hasattr(bio, 'writelines'))
+print(bio.writelines([b'a', bytearray(b'b'), memoryview(b'c')]), bio.getvalue(), bio.tell())
+bio = io.BytesIO(b'XYZ')
+print(bio.seek(1), bio.writelines([b'a', b'b']), bio.getvalue(), bio.tell())
+for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('writelines-arity0', lambda: io.BytesIO().writelines()), ('writelines-arity2', lambda: io.BytesIO().writelines([], [])), ('writelines-noniter', lambda: io.BytesIO().writelines(1)), ('writelines-stritem', lambda: io.BytesIO().writelines(['x'])), ('writelines-intitem', lambda: io.BytesIO().writelines([1])), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
     try:
         expr()
     except Exception as error:

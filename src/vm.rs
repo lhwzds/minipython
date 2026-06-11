@@ -8637,6 +8637,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.write" => {
                 self.call_io_bytesio_write(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.writelines" => {
+                self.call_io_bytesio_writelines(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.getvalue" => {
                 self.call_io_bytesio_getvalue(args, keywords)
             }
@@ -17697,6 +17700,31 @@ impl Vm {
         i64::try_from(bytes_io_write_chunk(bytes_io, &bytes))
             .map(Value::Number)
             .map_err(|_| "write() result is too large".to_string())
+    }
+
+    fn call_io_bytesio_writelines(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.writelines", &keywords)?;
+        let [Value::BytesIO(bytes_io), lines] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.writelines() takes exactly one argument ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        let bytes_io = bytes_io.clone();
+        for line in self.collect_iterable_values_propagating(lines.clone())? {
+            let Some(bytes) = bytes_buffer_value_bytes(&line)? else {
+                return Err(format!(
+                    "TypeError: a bytes-like object is required, not '{}'",
+                    type_name(&line)
+                ));
+            };
+            bytes_io_write_chunk(&bytes_io, &bytes);
+        }
+        Ok(Value::None)
     }
 
     fn call_io_bytesio_getvalue(
@@ -49669,7 +49697,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "getvalue" | "read" | "readinto" | "readline" | "readlines" | "seek" | "tell"
-            | "truncate" | "write" => Ok(Value::BoundMethod {
+            | "truncate" | "write" | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
