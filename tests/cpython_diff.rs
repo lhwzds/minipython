@@ -11038,6 +11038,7 @@ for call in [
 print(hasattr(a.both, '__self__'), a.both.__self__ is a)
 print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
 print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
+print(A.__dict__['both'].__module__)
 print(type(A.both).__name__, callable(A.both), hasattr(A.both, '__self__'))
 print(A.both.__name__, A.both.__qualname__, A.both.__module__)
 rendered = repr(A.both)
@@ -11080,7 +11081,7 @@ class CachedCostItem:
 
 item = CachedCostItem()
 print(item.cost, item.cost, sorted(item.__dict__.items()))
-print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__ in ('__main__', 'functools'), CachedCostItem.cost.attrname)
+print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)
 rendered = repr(CachedCostItem.__dict__['cost'])
 print(rendered.startswith('<functools.cached_property object at 0x'), rendered.endswith('>'), str(CachedCostItem.__dict__['cost']) == rendered)
 

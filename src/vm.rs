@@ -6701,9 +6701,6 @@ impl Vm {
             Err(exception) => return Err(format_exception_error(&exception)),
         };
         attrs.borrow_mut().insert("__doc__".to_string(), doc);
-        if let Ok(module) = self.load_attribute_value(function.clone(), "__module__") {
-            attrs.borrow_mut().insert("__module__".to_string(), module);
-        }
 
         Ok(Value::CachedProperty {
             function: Box::new(function),
@@ -50103,6 +50100,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__dict__" {
                 return Ok(Value::ScopeDict(attrs));
             }
+            if name == "__module__" {
+                return Ok(Value::String("functools".to_string()));
+            }
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);
             }
@@ -50302,6 +50302,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => {
             if name == "__dict__" {
                 return Ok(Value::ScopeDict(attrs));
+            }
+            if name == "__module__" {
+                return Ok(Value::String("functools".to_string()));
             }
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);

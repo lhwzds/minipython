@@ -914,10 +914,10 @@ Recent runtime migration notes:
   and class access call argument order, nested `partialmethod` flattening,
   partial-over-partial calls, `staticmethod` and `classmethod` descriptors,
   keyword override behavior, bound and unbound `__self__` visibility,
-  class-access `_method` function metadata, public `repr()` shape for empty,
-  positional/keyword, and partial-over-partial descriptors plus instance-bound
-  partialmethod calls, invalid constructor forms, and raw descriptor
-  non-callability/type reporting.
+  descriptor `__module__`, class-access `_method` function metadata, public
+  `repr()` shape for empty, positional/keyword, and partial-over-partial
+  descriptors plus instance-bound partialmethod calls, invalid constructor
+  forms, and raw descriptor non-callability/type reporting.
 - The bundled `functools` module also includes
   `cpython_functools_cmp_to_key_diff_subset` and
   `cpython_functools_cmp_to_key_subset`, covering CPython
@@ -964,8 +964,9 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_diff_subset` and
   `cpython_functools_cached_property_subset`, covering CPython
   `test_functools.py::TestCachedProperty` public descriptor behavior for
-  instance `__dict__` caching, class-level descriptor access, doc/module and
-  `attrname` metadata, public descriptor `repr()` / `str()` shape, attributes
+  instance `__dict__` caching, class-level descriptor access, copied doc,
+  fixed `functools` module, and `attrname` metadata, public descriptor
+  `repr()` / `str()` shape, attributes
   whose names differ from the wrapped function, reuse rejection under different
   names, reuse under the same name across classes, explicit post-class
   assignment before `__set_name__`, slot-only instances without `__dict__`, and
