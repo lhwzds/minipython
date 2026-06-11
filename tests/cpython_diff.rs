@@ -6814,6 +6814,44 @@ print('wrapper-dir', all(name in names for name in ['__await__', '__iter__', '__
 }
 
 #[test]
+fn cpython_types_coroutine_generator_frame_diff_subset() {
+    let probe = run_cpython(
+        "import types\n@types.coroutine\ndef f():\n    yield 1\nwrapper = f()\nprint(hasattr(wrapper, 'cr_frame'), hasattr(wrapper, 'cr_code'))",
+    )
+    .expect("failed to probe CPython _GeneratorWrapper frame alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types coroutine generator frame diff: CPython oracle lacks _GeneratorWrapper frame aliases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests _GeneratorWrapper frame public subset",
+        name: "types-coroutine-generator-frame",
+        source: r#"import types
+def gen_func():
+    yield 1
+    return (yield 2)
+gen = gen_func()
+@types.coroutine
+def foo():
+    return gen
+wrapper = foo()
+print('frame-created', type(gen.gi_frame).__name__, gen.gi_frame is gen.gi_frame, wrapper.gi_frame is gen.gi_frame, wrapper.cr_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code, wrapper.cr_code is gen.gi_code)
+print('run1', next(wrapper))
+print('frame-suspended1', gen.gi_frame is not None, wrapper.gi_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code)
+print('run2', wrapper.send(None))
+print('frame-suspended2', gen.gi_frame is not None, wrapper.gi_frame is gen.gi_frame, gen.gi_frame.f_code is gen.gi_code)
+try:
+    wrapper.send('spam')
+except StopIteration as error:
+    print('stop', error.args[0])
+print('frame-closed', gen.gi_frame is None, wrapper.gi_frame is None, wrapper.cr_frame is None)"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",

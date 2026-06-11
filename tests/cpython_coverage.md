@@ -146,6 +146,7 @@ Recent runtime migration notes:
   `cpython_types_frame_locals_proxy_type_diff_subset`,
   `cpython_types_coroutine_async_def_diff_subset`,
   `cpython_types_coroutine_generator_wrapper_diff_subset`,
+  `cpython_types_coroutine_generator_frame_diff_subset`,
   `cpython_types_int_format_diff_subset`,
   `cpython_types_float_format_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
@@ -1088,7 +1089,8 @@ Recent runtime migration notes:
   TypeErrors, propagated throw exceptions, double-wrap avoidance, and
   `weakref.ref(wrapper)` alive-reference identity. Direct output parity for
   the native generator wrapper slice is guarded by
-  `cpython_types_coroutine_generator_wrapper_diff_subset`.
+  `cpython_types_coroutine_generator_wrapper_diff_subset`; frame alias parity
+  is guarded by `cpython_types_coroutine_generator_frame_diff_subset`.
 - The bundled `types` module also includes `cpython_types_function_type_subset`,
   covering CPython `Lib/test/test_types.py::FunctionTests` public
   `types.FunctionType` construction over MiniPython code objects, globals
