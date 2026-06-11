@@ -176,6 +176,7 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_subclass_issue_24931_diff_subset`,
   `cpython_collections_namedtuple_large_size_diff_subset`,
   `cpython_collections_namedtuple_field_doc_diff_subset`,
+  `cpython_collections_namedtuple_copy_keyword_generic_alias_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
@@ -475,6 +476,11 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_field_doc_subset`, covering CPython public
   namedtuple field descriptor docs, independent descriptor doc mutation, and
   descriptor access through the class and instance.
+- The bundled `collections` module also includes
+  `cpython_collections_namedtuple_copy_keyword_generic_alias_diff_subset` and
+  `cpython_collections_namedtuple_copy_keyword_generic_alias_subset`, covering
+  CPython public namedtuple copy/deepcopy behavior, keyword-only factory
+  argument handling, and generic alias construction/calls.
 - The bundled `collections` module also includes
   `cpython_collections_userdict_userlist_public_diff_subset` and
   `cpython_collections_userdict_userlist_public_subset`, covering CPython

@@ -5474,6 +5474,37 @@ print(Point.x.__get__(Point(11, 22), Point))"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_copy_keyword_generic_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple copy/keyword/generic subset",
+        name: "collections-namedtuple-copy-keyword-generic",
+        source: r#"from collections import namedtuple
+import collections
+import copy
+Point = namedtuple('Point', 'x y z')
+p = Point(10, 20, 30)
+for copier in [copy.copy, copy.deepcopy]:
+    q = copier(p)
+    print(p == q, p._fields == q._fields, q)
+try:
+    namedtuple('NT', ['x', 'y'], True)
+except TypeError:
+    print('TypeError')
+NT = namedtuple('NT', ['abc', 'def'], rename=True)
+print(NT._fields)
+try:
+    namedtuple('NT', ['abc', 'def'], False, True)
+except TypeError:
+    print('TypeError')
+Group = collections.namedtuple('Group', 'key group')
+A = Group[int, list[int]]
+print(A.__origin__ == Group, A.__parameters__, A.__args__ == (int, list[int]))
+a = A(1, [2])
+print(type(a) is Group, a == (1, [2]), a)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",

@@ -2661,6 +2661,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_namedtuple_subclass_issue_24931_subset",
             "cpython_collections_namedtuple_large_size_subset",
             "cpython_collections_namedtuple_field_doc_subset",
+            "cpython_collections_namedtuple_copy_keyword_generic_alias_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
@@ -2727,6 +2728,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_public_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_namedtuple_copy_keyword_generic_alias_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for namedtuple copy/generic alias behavior"
     );
     assert!(
         row.diff_evidence
