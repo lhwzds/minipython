@@ -4959,6 +4959,29 @@ print(c['a'], d['a'])"#,
 }
 
 #[test]
+fn cpython_collections_counter_copying_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter copying subset",
+        name: "collections-counter-copying",
+        source: r#"from collections import Counter
+import copy
+words = Counter('which witch had which witches wrist watch'.split())
+def check(label, dup):
+    print(label, dup == words, dup is words, type(dup) is type(words), len(dup))
+    dup.update(['extra'])
+    print(label + '_independent', words['extra'], dup['extra'])
+check('copy_method', words.copy())
+check('copy.copy', copy.copy(words))
+check('copy.deepcopy', copy.deepcopy(words))
+check('eval_repr', eval(repr(words)))
+update_test = Counter()
+update_test.update(words)
+check('update', update_test)
+check('constructor', Counter(words))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
