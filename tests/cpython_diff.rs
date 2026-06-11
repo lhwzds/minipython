@@ -8422,6 +8422,28 @@ fn cpython_bytes_mutating_list_constructor_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_bytearray_index_error_and_hash_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BytesTest::test_getitem_error and ByteArrayTest getitem/setitem/nohash public subset",
+        name: "bytes-bytearray-index-error-and-hash",
+        source: r#"for name, expr in [
+    ('bytes-getitem', lambda: b'python'['a']),
+    ('bytearray-getitem', lambda: bytearray(b'python')['a']),
+    ('bytearray-hash', lambda: hash(bytearray())),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(name, str(error))
+b = bytearray(b'python')
+try:
+    b['a'] = 'python'
+except TypeError as error:
+    print('bytearray-setitem', str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

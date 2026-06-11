@@ -1461,7 +1461,8 @@ Recent runtime migration notes:
   `cpython_bytes_bytearray_index_error_and_hash_subset` covers CPython
   `BytesTest::test_getitem_error` and `ByteArrayTest::test_getitem_error`,
   `test_setitem_error`, and `test_nohash` public error paths for invalid
-  bytes/bytearray indices and bytearray hashing.
+  bytes/bytearray indices and bytearray hashing. Direct CPython diff evidence
+  is in `cpython_bytes_bytearray_index_error_and_hash_diff_subset`.
   `cpython_bytes_format_method_subset` covers CPython
   `AssortedBytesTest::test_format` public bytes/bytearray formatting behavior:
   omitted/empty specs render through `str()`, non-empty specs raise catchable

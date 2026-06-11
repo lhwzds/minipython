@@ -301,7 +301,9 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   `byte indices must be integers or slices, not <type>`, invalid bytearray
   indices report `bytearray indices must be integers or slices, not <type>`,
   and bytearray item assignment checks the index before converting the assigned
-  value. The slice also pins bytearray's public unhashable `TypeError`.
+  value. The slice also pins bytearray's public unhashable `TypeError`. Direct
+  CPython diff evidence is in
+  `cpython_bytes_bytearray_index_error_and_hash_diff_subset`.
 - Added `cpython_bytes_bytearray_subclass_repr_and_compare_subset`, extending
   that CPython slice to bytes subclass `repr()` / `str()`, bytearray subclass
   class-name repr, bytes-like equality against builtin `bytes`, `bytearray`,
