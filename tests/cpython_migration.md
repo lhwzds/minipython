@@ -3418,6 +3418,11 @@ Completed in the bytearray allocation/subclass mutation pass:
   storage so subclass instances can use `append`, `extend`, `insert`, `pop`,
   `remove`, `reverse`, `copy`, `resize`, direct `__setitem__` /
   `__delitem__`, and identity-preserving `__iadd__` / `__imul__`.
+- Direct CPython diff evidence for the stable `__alloc__()` /
+  generator-driven `__init__()` / subclass mutation slice is in
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; the subclass
+  `resize()` branch remains local subset evidence because the default oracle
+  does not expose `bytearray.resize()`.
 
 Completed in the bytearray iterator/repeat regression pass:
 

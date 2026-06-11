@@ -1322,7 +1322,11 @@ Recent runtime migration notes:
   behavior, including empty allocation value, allocation-greater-than-length
   semantics, generator-driven `bytearray.__init__()` intermediate mutation, and
   inherited bytearray mutation methods on subclasses without copying CPython's
-  exact allocator growth policy.
+  exact allocator growth policy. Direct CPython diff evidence for the stable
+  allocation/subclass mutation slice is in
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; the subclass
+  `resize()` branch remains local subset evidence because the default oracle
+  does not expose `bytearray.resize()`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_resize_forbidden_subset`,
   covering current CPython `ByteArrayTest::test_resize_forbidden` public
   behavior for active memoryview exports blocking bytearray resizing through

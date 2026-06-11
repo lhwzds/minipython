@@ -8688,6 +8688,48 @@ for expr in [lambda: a.extend('def'), lambda: a.extend(1.0)]:
 }
 
 #[test]
+fn cpython_bytearray_alloc_and_subclass_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_alloc, ::test_init_alloc, and public subclass mutation slice",
+        name: "bytearray-alloc-and-subclass-mutation",
+        source: r#"b = bytearray()
+print(b.__alloc__(), b.__alloc__() >= len(b))
+ok = True
+for _ in range(5):
+    b += b'x'
+    ok = ok and b.__alloc__() > len(b)
+print(len(b), ok, b.__alloc__() > len(b))
+b = bytearray()
+checks = []
+def g():
+    for i in range(1, 5):
+        yield i
+        checks.append((list(b), len(b), b.__alloc__() > len(b)))
+print(b.__init__(g()), list(b), len(b), b.__alloc__() > len(b), checks)
+class BA(bytearray):
+    pass
+ba = BA(b'abc')
+print(ba.append(100), type(ba).__name__, ba)
+print(ba.extend(memoryview(b'ef')), ba)
+print(ba.insert(1, 90), ba)
+print(ba.pop(), ba)
+print(ba.remove(ord('Z')), ba)
+print(ba.reverse(), ba)
+copy = ba.copy()
+print(type(copy).__name__, copy == ba, copy is ba)
+ba = BA(b'ab')
+result = ba.__iadd__(b'c')
+print(type(result).__name__, result is ba, ba)
+result = ba.__imul__(2)
+print(type(result).__name__, result is ba, ba)
+print(ba.__setitem__(slice(1, 4), b'XYZ'), ba)
+print(ba.__delitem__(slice(None, None, 2)), ba)
+print(BA(b'abc').__alloc__() > len(BA(b'abc')))
+print('__alloc__' in dir(bytearray), '__alloc__' in dir(BA), '__alloc__' in dir(BA()))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
