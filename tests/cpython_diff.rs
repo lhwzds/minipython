@@ -6987,6 +6987,101 @@ except StopIteration as ex:
 }
 
 #[test]
+fn cpython_types_coroutine_duck_generator_proxy_diff_subset() {
+    let probe = run_cpython(
+        "import types, unittest.mock\nclass GenLike:\n    def send(self): pass\n    def throw(self): pass\n    def close(self): pass\n    def __iter__(self): pass\n    def __next__(self): pass\ngen = unittest.mock.MagicMock(GenLike)\ngen.__iter__ = lambda gen: gen\n@types.coroutine\ndef f():\n    return gen\nwrapper = f()\ngen.gi_suspended = object()\nprint(hasattr(wrapper, 'cr_suspended'), wrapper.cr_suspended is gen.gi_suspended if hasattr(wrapper, 'cr_suspended') else False)",
+    )
+    .expect("failed to probe CPython _GeneratorWrapper duck proxy alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types coroutine duck generator proxy diff: CPython oracle lacks _GeneratorWrapper cr_suspended proxy alias"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests duck-generator proxy public subset",
+        name: "types-coroutine-duck-generator-proxy",
+        source: r#"import types, collections.abc, weakref, unittest.mock
+class GenLike:
+    def send(self):
+        pass
+    def throw(self):
+        pass
+    def close(self):
+        pass
+    def __iter__(self):
+        pass
+    def __next__(self):
+        pass
+gen = unittest.mock.MagicMock(GenLike)
+gen.__iter__ = lambda gen: gen
+gen.__name__ = 'gen'
+gen.__qualname__ = 'test.gen'
+print('gen', isinstance(gen, collections.abc.Generator), iter(gen) is gen)
+@types.coroutine
+def foo():
+    return gen
+wrapper = foo()
+print('types', type(wrapper).__name__, isinstance(wrapper, types._GeneratorWrapper), isinstance(wrapper, collections.abc.Coroutine), isinstance(wrapper, collections.abc.Awaitable))
+print('await-iter', wrapper.__await__() is wrapper, iter(wrapper) is wrapper)
+print('names', wrapper.__name__ is gen.__name__, wrapper.__qualname__ is gen.__qualname__)
+for name in ['gi_running', 'gi_frame', 'gi_code', 'gi_yieldfrom', 'gi_suspended', 'cr_running', 'cr_frame', 'cr_code', 'cr_await', 'cr_suspended']:
+    try:
+        getattr(wrapper, name)
+        print('missing-attr', name, 'no-error')
+    except AttributeError:
+        print('missing-attr', name, 'AttributeError')
+gen.gi_running = object()
+gen.gi_frame = object()
+gen.gi_code = object()
+gen.gi_yieldfrom = object()
+gen.gi_suspended = object()
+print('attrs', wrapper.gi_running is gen.gi_running, wrapper.gi_frame is gen.gi_frame, wrapper.gi_code is gen.gi_code, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.gi_suspended is gen.gi_suspended)
+print('crattrs', wrapper.cr_running is gen.gi_running, wrapper.cr_frame is gen.gi_frame, wrapper.cr_code is gen.gi_code, wrapper.cr_await is gen.gi_yieldfrom, wrapper.cr_suspended is gen.gi_suspended)
+wrapper.close()
+gen.close.assert_called_once_with()
+print('close-called')
+wrapper.send(1)
+gen.send.assert_called_once_with(1)
+gen.reset_mock()
+next(wrapper)
+gen.__next__.assert_called_once_with()
+gen.reset_mock()
+wrapper.throw(1, 2, 3)
+gen.throw.assert_called_once_with(1, 2, 3)
+gen.reset_mock()
+wrapper.throw(1, 2)
+gen.throw.assert_called_once_with(1, 2)
+gen.reset_mock()
+wrapper.throw(1)
+gen.throw.assert_called_once_with(1)
+gen.reset_mock()
+print('call-matrix')
+error = Exception()
+gen.throw.side_effect = error
+try:
+    wrapper.throw(1)
+except Exception as ex:
+    print('throw-prop', ex is error)
+gen.throw.side_effect = None
+gen.reset_mock()
+for label, call in [('throw0', lambda: wrapper.throw()), ('close1', lambda: wrapper.close(1)), ('send0', lambda: wrapper.send())]:
+    try:
+        call()
+    except TypeError:
+        print(label, 'TypeError')
+print('invalid-no-forward', not gen.throw.called, not gen.close.called, not gen.send.called)
+@types.coroutine
+def bar():
+    return wrapper
+print('double', bar() is wrapper)
+ref = weakref.ref(wrapper)
+print('weakref', ref() is wrapper, callable(ref), isinstance(ref, weakref.ReferenceType))"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
