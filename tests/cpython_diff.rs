@@ -14488,6 +14488,60 @@ print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
 }
 
 #[test]
+fn cpython_int_max_str_digits_runtime_diff_subset() {
+    let oracle_probe = run_cpython(
+        "import sys; print(hasattr(sys, 'get_int_max_str_digits'), hasattr(sys, 'set_int_max_str_digits'))",
+    )
+    .expect("failed to run CPython int max string digits capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython int max string digits probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True True" {
+        eprintln!("skipping int max string digits diff: CPython oracle lacks sys digit-limit APIs");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_int.py::IntStrDigitLimitsTests runtime public subset",
+        name: "int-max-str-digits-runtime",
+        source: r#"import sys
+old_limit = sys.get_int_max_str_digits()
+sys.set_int_max_str_digits(640)
+try:
+    maxdigits = sys.get_int_max_str_digits()
+    int('1' * maxdigits)
+    int(' ' + '1' * maxdigits)
+    int('1' * maxdigits + ' ')
+    int('+' + '1' * maxdigits)
+    int('-' + '1' * maxdigits)
+    print(len(str(10 ** (maxdigits - 1))))
+    for text in ['1' * (maxdigits + 1), ' ' + '1' * (maxdigits + 1), '1' * (maxdigits + 1) + ' ', '+' + '1' * (maxdigits + 1), '-' + '1' * (maxdigits + 1)]:
+        try:
+            int(text)
+        except ValueError as error:
+            message = str(error)
+            print('int', 'Exceeds the limit' in message, 'conversion' in message)
+    too_big = 10 ** maxdigits
+    for expr in [lambda: str(too_big), lambda: repr(too_big), lambda: repr([too_big])]:
+        try:
+            expr()
+        except ValueError as error:
+            message = str(error)
+            print('render', 'Exceeds the limit' in message, 'conversion' in message)
+    for base in [2, 4, 8, 16, 32]:
+        int('1' * (maxdigits + 1), base)
+    print('power-bases')
+    int('1_1' * (maxdigits // 2))
+    try:
+        int('1_1' * (maxdigits // 2) + '_1')
+    except ValueError as error:
+        message = str(error)
+        print('underscore', 'Exceeds the limit' in message, 'conversion' in message)
+finally:
+    sys.set_int_max_str_digits(old_limit)"#,
+    });
+}
+
+#[test]
 fn cpython_float_int_comparison_boundaries_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_float.py::GeneralFloatCases::test_issue_gh143006 and public float/int exact-comparison boundaries",

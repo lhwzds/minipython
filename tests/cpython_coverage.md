@@ -232,6 +232,11 @@ Recent runtime migration notes:
   and `sys.hash_info` attributes used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, and float-subclass NaN hash inheritance.
+- `NUMBER` also includes `cpython_int_max_str_digits_runtime_subset`, covering
+  `sys.set_int_max_str_digits()` / `sys.get_int_max_str_digits()` enforcement
+  for decimal integer parsing and rendering. Direct CPython output parity is in
+  capability-gated `cpython_int_max_str_digits_runtime_diff_subset` for oracles
+  that expose those `sys` digit-limit APIs.
 - `NUMBER` also includes CPython
   `test_float.py::GeneralFloatCases::test_issue_gh143006` through
   `cpython_float_int_comparison_boundaries_subset`, covering float/int-subclass

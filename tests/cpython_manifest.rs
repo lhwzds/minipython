@@ -3407,6 +3407,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_float_hash_and_sys_info_subset",
             "cpython_builtin_negation_sys_maxsize_subset",
+            "cpython_int_max_str_digits_runtime_subset",
             "cpython_attribute_introspection_builtins_subset",
             "cpython_builtin_breakpoint_custom_hook_subset",
             "cpython_builtin_breakpoint_passthru_error_subset",
@@ -3426,6 +3427,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "globals-locals-builtins",
         "cpython_attribute_introspection_builtins_diff_subset",
+        "cpython_int_max_str_digits_runtime_diff_subset",
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
         "float-hash-and-sys-info",
