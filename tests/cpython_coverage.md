@@ -998,7 +998,9 @@ Recent runtime migration notes:
   `cpython_types_union_dynamic_hashability_subset`, covering CPython
   `UnionTests` dynamic unhashable-to-hashable metaclass behavior for PEP 604
   union hashing, including the cached `union contains N unhashable elements`
-  error on old union objects and immediate hashability for fresh unions.
+  error on old union objects and immediate hashability for fresh unions. Direct
+  output parity is guarded by
+  `cpython_types_union_dynamic_hashability_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_newtype_subset`, covering public `typing.NewType`
   metadata, call pass-through behavior, and PEP 604 union equality.

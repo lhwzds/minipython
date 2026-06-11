@@ -5770,6 +5770,49 @@ for label, union in [('AB', A | B), ('intB', int | B), ('Aint', A | int)]:
 }
 
 #[test]
+fn cpython_types_union_dynamic_hashability_diff_subset() {
+    let probe = run_cpython(
+        "is_hashable = False\nclass DynamicHashMeta(type):\n    def __hash__(self):\n        if is_hashable:\n            return 1\n        raise TypeError('not hashable')\nclass A(metaclass=DynamicHashMeta):\n    pass\nclass B(metaclass=DynamicHashMeta):\n    pass\nunion = A | B\nprint(tuple(arg.__name__ for arg in union.__args__))",
+    )
+    .expect("failed to probe CPython union dynamic hashability support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('A', 'B')" {
+        eprintln!(
+            "skipping types union dynamic hashability diff: CPython oracle lacks PEP 604 metaclass union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests dynamic hashability public subset",
+        name: "types-union-dynamic-hashability",
+        source: r#"is_hashable = False
+class DynamicHashMeta(type):
+    def __hash__(self):
+        if is_hashable:
+            return 1
+        raise TypeError('not hashable')
+class A(metaclass=DynamicHashMeta):
+    pass
+class B(metaclass=DynamicHashMeta):
+    pass
+union = A | B
+print('args', tuple(arg.__name__ for arg in union.__args__))
+try:
+    hash(union)
+except TypeError as exc:
+    print('before', type(exc).__name__, str(exc))
+is_hashable = True
+print('class-hash', hash(A), hash(B))
+try:
+    hash(union)
+except TypeError as exc:
+    print('after-old', type(exc).__name__, str(exc))
+single = A | A
+print('after-new', isinstance(hash(A | B), int), single is A)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
