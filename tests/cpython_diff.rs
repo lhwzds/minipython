@@ -5594,6 +5594,46 @@ for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(
 }
 
 #[test]
+fn cpython_aiter_anext_builtin_diff_subset() {
+    let probe = run_cpython("import builtins; print(hasattr(builtins, 'aiter'))")
+        .expect("failed to probe CPython aiter support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping aiter/anext builtin diff: CPython oracle lacks builtins.aiter");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py aiter()/anext() public async-iterator subset",
+        name: "aiter-anext-builtins",
+        source: r#"import builtins
+class AI:
+    def __aiter__(self):
+        return self
+    async def __anext__(self):
+        raise StopAsyncIteration
+class AiterRaises:
+    def __aiter__(self):
+        raise ValueError("bad")
+class BadAiter:
+    def __aiter__(self):
+        return 42
+ai = AI()
+print(hasattr(builtins, "aiter"), callable(aiter), aiter(ai) is ai)
+for label, callback in [
+    ("missing", lambda: aiter(())),
+    ("raises", lambda: aiter(AiterRaises())),
+    ("bad", lambda: aiter(BadAiter())),
+    ("arity0", lambda: aiter()),
+    ("arity2", lambda: aiter(ai, ai)),
+]:
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_stop_iteration_value_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_generator.py public StopIteration.value behavior",

@@ -8347,6 +8347,13 @@ impl Vm {
 
                 self.call_iter(args)
             }
+            Value::Builtin(name) if name == "aiter" => {
+                if !keywords.is_empty() {
+                    return Err(format!("{name}() does not accept keyword arguments"));
+                }
+
+                self.call_aiter(args)
+            }
             Value::Builtin(name) if name == "anext" => {
                 if !keywords.is_empty() {
                     return Err(format!("{name}() does not accept keyword arguments"));
@@ -20254,6 +20261,38 @@ impl Vm {
                 "anext() expected 1 or 2 arguments, got {}",
                 values.len()
             )),
+        }
+    }
+
+    fn call_aiter(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let [value] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: aiter() takes exactly one argument ({} given)",
+                args.len()
+            ));
+        };
+
+        let aiter = match self.load_attribute_catching(value.clone(), "__aiter__")? {
+            Ok(aiter) => aiter,
+            Err(exception) if exception.type_name == "AttributeError" => {
+                return Err(format!(
+                    "TypeError: '{}' object is not an async iterable",
+                    type_name(value)
+                ));
+            }
+            Err(exception) => return Err(format_exception_error(&exception)),
+        };
+        let iterator = match self.call_value_catching(aiter, Vec::new())? {
+            Ok(iterator) => iterator,
+            Err(exception) => return Err(format_exception_error(&exception)),
+        };
+        match self.load_attribute_catching(iterator.clone(), "__anext__")? {
+            Ok(_) => Ok(iterator),
+            Err(exception) if exception.type_name == "AttributeError" => Err(format!(
+                "TypeError: aiter() returned not an async iterator of type '{}'",
+                type_name(&iterator)
+            )),
+            Err(exception) => Err(format_exception_error(&exception)),
         }
     }
 
@@ -53168,6 +53207,7 @@ fn is_builtin_name(name: &str) -> bool {
             | "range"
             | "next"
             | "iter"
+            | "aiter"
             | "anext"
             | "len"
             | "max"

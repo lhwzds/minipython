@@ -28611,6 +28611,46 @@ except StopIteration:
     );
 }
 
+// CPython builtin async-iterator entrypoint public behavior. This keeps
+// `aiter()` protocol validation separate from async-for lowering tests.
+#[test]
+fn cpython_aiter_anext_builtin_subset() {
+    assert_output(
+        r#"class AI:
+    def __aiter__(self):
+        return self
+    async def __anext__(self):
+        raise StopAsyncIteration
+class AiterRaises:
+    def __aiter__(self):
+        raise ValueError("bad")
+class BadAiter:
+    def __aiter__(self):
+        return 42
+ai = AI()
+print(hasattr(__import__("builtins"), "aiter"), callable(aiter), aiter(ai) is ai)
+for label, callback in [
+    ("missing", lambda: aiter(())),
+    ("raises", lambda: aiter(AiterRaises())),
+    ("bad", lambda: aiter(BadAiter())),
+    ("arity0", lambda: aiter()),
+    ("arity2", lambda: aiter(ai, ai)),
+]:
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "True True True",
+            "missing TypeError 'tuple' object is not an async iterable",
+            "raises ValueError bad",
+            "bad TypeError aiter() returned not an async iterator of type 'int'",
+            "arity0 TypeError aiter() takes exactly one argument (0 given)",
+            "arity2 TypeError aiter() takes exactly one argument (2 given)",
+        ],
+    );
+}
+
 // Adapted from CPython
 // Lib/test/test_grammar.py::GrammarTests.test_comprehension_specials.
 #[test]

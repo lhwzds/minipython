@@ -4435,6 +4435,13 @@ version-stable singleton identity/equality and unsupported set-dunder
 rejection, because older default system `python3` oracles can still have the
 legacy deprecation-warning behavior.
 
+Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
+`cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin
+alongside existing `anext()` async-generator coverage: one-argument arity,
+`__aiter__` dispatch, async-iterator return validation through `__anext__`,
+missing-protocol `TypeError`s, and propagation of exceptions raised by
+`__aiter__`.
+
 Builtin singleton note: `cpython_builtin_construct_singletons_subset` now ports
 `BuiltinTest::test_construct_singletons`, covering zero-argument construction of
 `NoneType`, `ellipsis`, and `NotImplementedType` back to the existing singleton

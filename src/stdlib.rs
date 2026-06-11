@@ -159,6 +159,7 @@ pub(crate) const DEFAULT_BUILTIN_ENTRY_NAMES: &[&str] = &[
     "range",
     "next",
     "iter",
+    "aiter",
     "anext",
     "len",
     "max",
