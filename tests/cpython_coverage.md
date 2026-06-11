@@ -2426,6 +2426,13 @@ Recent runtime migration notes:
   evidence is in
   `cpython_collections_abc_set_noncomparable_comparison_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_reversible_subset`, covering `Reversible` for
+  supported built-in reversible containers/views, non-reversible scalar,
+  container, and iterator samples, `Sequence` inheritance, structural
+  `__iter__` + `__reversed__` user classes, direct ABC subclassing, and `None`
+  blocking. Direct CPython diff evidence is in
+  `cpython_collections_abc_reversible_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.

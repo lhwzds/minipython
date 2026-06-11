@@ -3257,6 +3257,45 @@ print(ncs >= cs)"#,
 }
 
 #[test]
+fn cpython_collections_abc_reversible_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::test_Reversible public subset",
+        name: "collections-abc-reversible",
+        source: r#"from collections.abc import Reversible, Sequence, Mapping, MutableMapping
+non_samples = [None, 42, 3.14, 1j, set(), iter([]), reversed([])]
+print([isinstance(value, Reversible) for value in non_samples])
+samples = [b'', '', (), [], {}, range(0), {}.keys(), {}.items(), {}.values()]
+print([isinstance(value, Reversible) for value in samples])
+print([issubclass(type(value), Reversible) for value in samples])
+print(issubclass(Sequence, Reversible), issubclass(Mapping, Reversible), issubclass(MutableMapping, Reversible))
+print(issubclass(list, Reversible), issubclass(dict, Reversible), issubclass(set, Reversible))
+class RevNoIter:
+    def __reversed__(self):
+        return reversed([])
+class RevPlusIter(RevNoIter):
+    def __iter__(self):
+        return iter([])
+print(isinstance(RevNoIter(), Reversible), issubclass(RevNoIter, Reversible))
+print(isinstance(RevPlusIter(), Reversible), issubclass(RevPlusIter, Reversible))
+class Rev:
+    def __iter__(self):
+        return iter([])
+    def __reversed__(self):
+        return reversed([])
+class RevItBlocked(Rev):
+    __iter__ = None
+class RevRevBlocked(Rev):
+    __reversed__ = None
+print(isinstance(Rev(), Reversible), issubclass(Rev, Reversible))
+print(isinstance(RevItBlocked(), Reversible), issubclass(RevItBlocked, Reversible))
+print(isinstance(RevRevBlocked(), Reversible), issubclass(RevRevBlocked, Reversible))
+class R(Reversible):
+    pass
+print(issubclass(R, Reversible), issubclass(float, R))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
