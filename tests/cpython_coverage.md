@@ -79,6 +79,7 @@ Recent runtime migration notes:
   `cpython_eval_builtin_diff_subset`,
   `cpython_exec_builtin_diff_subset`,
   `cpython_compile_builtin_code_object_diff_subset`,
+  `cpython_float_hash_and_sys_info_diff_subset`,
   `cpython_math_core_diff_subset`,
   `cpython_math_constants_and_classification_diff_subset`,
   `cpython_math_isclose_diff_subset`,

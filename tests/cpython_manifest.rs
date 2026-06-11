@@ -3425,12 +3425,12 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "sys")
         .expect("sandbox stdlib manifest must include sys");
     for evidence in [
-        "globals-locals-builtins",
+        "cpython_globals_locals_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_int_max_str_digits_runtime_diff_subset",
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
-        "float-hash-and-sys-info",
+        "cpython_float_hash_and_sys_info_diff_subset",
         "types-frame-locals-proxy-currentframe",
     ] {
         assert!(
