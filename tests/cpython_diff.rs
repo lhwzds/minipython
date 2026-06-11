@@ -3482,6 +3482,48 @@ except StopIteration:
 }
 
 #[test]
+fn cpython_collections_abc_types_coroutine_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Awaitable / ::test_Coroutine",
+        name: "collections-abc-types-coroutine",
+        source: r#"import types
+from collections.abc import Awaitable, Coroutine
+def plain_gen():
+    yield 'plain'
+@types.coroutine
+def iterable_coro():
+    yield 'tick'
+    return 'done'
+async def native_coro():
+    return 'native'
+plain = plain_gen()
+wrapped = iterable_coro()
+native = native_coro()
+print(types.coroutine(plain_gen) is plain_gen)
+print(isinstance(plain, Awaitable), isinstance(plain, Coroutine))
+print(isinstance(wrapped, Awaitable), isinstance(wrapped, Coroutine))
+print(issubclass(type(wrapped), Awaitable), issubclass(type(wrapped), Coroutine))
+print(isinstance(native, Awaitable), isinstance(native, Coroutine))
+print(native.close())
+async def main():
+    result = await iterable_coro()
+    print('result', result)
+    return 'outer'
+c = main()
+print(c.send(None))
+try:
+    c.send(None)
+except StopIteration as done:
+    print(done)
+class CoroLike:
+    pass
+Coroutine.register(CoroLike)
+print(isinstance(CoroLike(), Awaitable), issubclass(CoroLike, Awaitable))
+print(isinstance(CoroLike(), Coroutine), issubclass(CoroLike, Coroutine))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

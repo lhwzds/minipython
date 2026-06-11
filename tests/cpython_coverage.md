@@ -2543,6 +2543,13 @@ Recent runtime migration notes:
   `RuntimeError`. Direct CPython diff evidence is in
   `cpython_collections_abc_async_generator_throw_close_mixin_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_types_coroutine_subset`, covering public
+  `types.coroutine()` generator-function behavior, the CPython distinction
+  that iterable-coroutine generators can be awaited but are not
+  `Awaitable` / `Coroutine` ABC instances, and `Coroutine.register()`
+  propagation through `Awaitable`. Direct CPython diff evidence is in
+  `cpython_collections_abc_types_coroutine_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_hashable_direct_subclass_subset`, covering
   CPython's `Hashable` direct-subclass mixin behavior where
   `super().__hash__()` returns the ABC fallback value `0` and unrelated builtin
