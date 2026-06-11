@@ -250,6 +250,7 @@ pub struct Vm {
     is_class_body: bool,
     captures_locals: bool,
     output: Vec<String>,
+    output_pending: String,
     exception_handlers: Vec<ExceptionHandlerFrame>,
     current_exception: Option<MiniException>,
     pending_exception_after_clear: Option<MiniException>,
@@ -1019,6 +1020,20 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
 
 fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) {
     bytes_io.borrow_mut().buffer.resize(size, 0);
+}
+
+fn print_separator_or_end(name: &str, value: Value) -> Result<String, String> {
+    match value {
+        Value::None => Ok(if name == "sep" { " " } else { "\n" }.to_string()),
+        Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        value if str_subclass_string(&value).is_some() => {
+            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: {name} must be None or a string, not {}",
+            type_name(&value)
+        )),
+    }
 }
 
 fn readinto_buffer_type_error(value: &Value) -> String {
@@ -4091,6 +4106,7 @@ impl Vm {
             is_class_body: false,
             captures_locals: false,
             output: Vec::new(),
+            output_pending: String::new(),
             exception_handlers: Vec::new(),
             current_exception: None,
             pending_exception_after_clear: None,
@@ -4158,6 +4174,7 @@ impl Vm {
             is_class_body: false,
             captures_locals: true,
             output: Vec::new(),
+            output_pending: String::new(),
             exception_handlers: Vec::new(),
             current_exception: None,
             pending_exception_after_clear: None,
@@ -4199,6 +4216,7 @@ impl Vm {
             is_class_body: true,
             captures_locals: false,
             output: Vec::new(),
+            output_pending: String::new(),
             exception_handlers: Vec::new(),
             current_exception: None,
             pending_exception_after_clear: None,
@@ -4242,6 +4260,7 @@ impl Vm {
             is_class_body: false,
             captures_locals: false,
             output: Vec::new(),
+            output_pending: String::new(),
             exception_handlers: Vec::new(),
             current_exception: None,
             pending_exception_after_clear: None,
@@ -4263,9 +4282,49 @@ impl Vm {
 
     pub fn run(&mut self) -> Result<Vec<String>, String> {
         match self.run_inner()? {
-            ExecutionExit::Halt => Ok(std::mem::take(&mut self.output)),
+            ExecutionExit::Halt => Ok(self.take_output_flushed()),
             ExecutionExit::Return(_) => Err("return outside function".to_string()),
             ExecutionExit::Yield { .. } => Err("yield outside function".to_string()),
+        }
+    }
+
+    fn take_output_flushed(&mut self) -> Vec<String> {
+        if !self.output_pending.is_empty() {
+            self.output.push(std::mem::take(&mut self.output_pending));
+        }
+        std::mem::take(&mut self.output)
+    }
+
+    fn push_output_line(&mut self, line: String) {
+        if self.output_pending.is_empty() {
+            self.output.push(line);
+        } else {
+            let mut pending = std::mem::take(&mut self.output_pending);
+            pending.push_str(&line);
+            self.output.push(pending);
+        }
+    }
+
+    fn emit_print_output(&mut self, text: &str, end: &str) {
+        let mut combined = String::with_capacity(text.len() + end.len());
+        combined.push_str(text);
+        combined.push_str(end);
+        if combined.ends_with('\n') {
+            combined.pop();
+            self.push_output_line(combined);
+        } else {
+            self.output_pending.push_str(&combined);
+        }
+    }
+
+    fn absorb_output_from(&mut self, other: &mut Vm) {
+        let lines = std::mem::take(&mut other.output);
+        for line in lines {
+            self.push_output_line(line);
+        }
+        if !other.output_pending.is_empty() {
+            self.output_pending
+                .push_str(&std::mem::take(&mut other.output_pending));
         }
     }
 
@@ -5243,7 +5302,7 @@ impl Vm {
                     let exit = match class_vm.run_inner() {
                         Ok(exit) => exit,
                         Err(message) => {
-                            self.output.append(&mut class_vm.output);
+                            self.absorb_output_from(&mut class_vm);
                             if let Some(exception) = class_vm.current_exception {
                                 self.raise_exception(exception, true)?;
                                 continue;
@@ -5260,7 +5319,7 @@ impl Vm {
                             return Err("yield outside function".to_string());
                         }
                     }
-                    self.output.append(&mut class_vm.output);
+                    self.absorb_output_from(&mut class_vm);
                     let static_attributes = tuple_value(
                         static_attributes
                             .into_iter()
@@ -5709,7 +5768,7 @@ impl Vm {
                 Instruction::Display { src } => {
                     let value = self.read_register(src)?;
                     if !matches!(value, Value::None) {
-                        self.output.push(value.to_string());
+                        self.push_output_line(value.to_string());
                     }
                 }
                 Instruction::Halt => return Ok(ExecutionExit::Halt),
@@ -6156,11 +6215,13 @@ impl Vm {
 
         match module_vm.run() {
             Ok(output) => {
-                self.output.extend(output);
+                for line in output {
+                    self.push_output_line(line);
+                }
                 Ok(())
             }
             Err(message) => {
-                self.output.extend(module_vm.output);
+                self.absorb_output_from(&mut module_vm);
                 if let Some(exception) = module_vm.current_exception {
                     Err(format_exception_error(&exception))
                 } else {
@@ -7960,16 +8021,72 @@ impl Vm {
                 ..
             } => self.call_operator_methodcaller(name, bound_args, bound_keywords, args, keywords),
             Value::Builtin(name) if name == "print" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                let mut sep = " ".to_string();
+                let mut end = "\n".to_string();
+                let mut seen_sep = false;
+                let mut seen_end = false;
+                let mut seen_file = false;
+                let mut seen_flush = false;
+                for (keyword, value) in keywords {
+                    match keyword.as_str() {
+                        "sep" => {
+                            if seen_sep {
+                                return Err(
+                                    "TypeError: print() got multiple values for keyword argument 'sep'"
+                                        .to_string(),
+                                );
+                            }
+                            seen_sep = true;
+                            sep = print_separator_or_end("sep", value)?;
+                        }
+                        "end" => {
+                            if seen_end {
+                                return Err(
+                                    "TypeError: print() got multiple values for keyword argument 'end'"
+                                        .to_string(),
+                                );
+                            }
+                            seen_end = true;
+                            end = print_separator_or_end("end", value)?;
+                        }
+                        "file" => {
+                            if seen_file {
+                                return Err(
+                                    "TypeError: print() got multiple values for keyword argument 'file'"
+                                        .to_string(),
+                                );
+                            }
+                            seen_file = true;
+                            if !matches!(value, Value::None) {
+                                return Err(
+                                    "TypeError: print() file must be None in MiniPython sandbox"
+                                        .to_string(),
+                                );
+                            }
+                        }
+                        "flush" => {
+                            if seen_flush {
+                                return Err(
+                                    "TypeError: print() got multiple values for keyword argument 'flush'"
+                                        .to_string(),
+                                );
+                            }
+                            seen_flush = true;
+                            let _ = is_truthy(&value)?;
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: '{keyword}' is an invalid keyword argument for print()"
+                            ));
+                        }
+                    }
                 }
-
                 let mut parts = Vec::with_capacity(args.len());
                 for arg in &args {
                     parts.push(self.str_value(arg)?);
                 }
-                let line = parts.join(" ");
-                self.output.push(line);
+                let text = parts.join(&sep);
+                self.emit_print_output(&text, &end);
                 Ok(Value::None)
             }
             Value::Builtin(name) if name == "object" => {
@@ -10636,7 +10753,7 @@ impl Vm {
         let exit = match function_vm.run_inner() {
             Ok(exit) => exit,
             Err(message) => {
-                self.output.extend(function_vm.output);
+                self.absorb_output_from(&mut function_vm);
                 if let Some(exception) = function_vm.current_exception {
                     self.raise_exception(exception, true)?;
                     return Ok(Value::None);
@@ -10644,7 +10761,7 @@ impl Vm {
                 return Err(message);
             }
         };
-        self.output.extend(function_vm.output);
+        self.absorb_output_from(&mut function_vm);
 
         match exit {
             ExecutionExit::Return(value) => Ok(value),
@@ -13774,7 +13891,7 @@ impl Vm {
             self.frame_stack.clone(),
         );
         let result = eval_vm.run_eval();
-        self.output.extend(eval_vm.output);
+        self.absorb_output_from(&mut eval_vm);
         result
     }
 
@@ -16721,7 +16838,7 @@ impl Vm {
 
         if value_context && mode == CodeMode::Eval {
             let result = code_vm.run_eval();
-            self.output.extend(code_vm.output);
+            self.absorb_output_from(&mut code_vm);
             return match result {
                 Ok(value) => Ok(value),
                 Err(message) => {
@@ -16737,7 +16854,7 @@ impl Vm {
 
         if !value_context && mode == CodeMode::Eval {
             let result = code_vm.run_eval();
-            self.output.extend(code_vm.output);
+            self.absorb_output_from(&mut code_vm);
             return match result {
                 Ok(_) => Ok(Value::None),
                 Err(message) => {
@@ -16753,13 +16870,12 @@ impl Vm {
 
         match code_vm.run_inner() {
             Ok(ExecutionExit::Halt | ExecutionExit::Return(_)) => {
-                let output = std::mem::take(&mut code_vm.output);
-                self.output.extend(output);
+                self.absorb_output_from(&mut code_vm);
                 Ok(Value::None)
             }
             Ok(ExecutionExit::Yield { .. }) => Err("yield outside exec".to_string()),
             Err(message) => {
-                self.output.extend(code_vm.output);
+                self.absorb_output_from(&mut code_vm);
                 if let Some(exception) = code_vm.current_exception {
                     self.raise_exception(exception, true)?;
                     Ok(Value::None)
@@ -30083,6 +30199,7 @@ impl Vm {
                 first_arg_name: state.first_arg_name.clone(),
                 qualname_prefix: state.qualname_prefix.clone(),
                 output: Vec::new(),
+                output_pending: String::new(),
                 exception_handlers: state
                     .exception_handlers
                     .iter()
@@ -30126,7 +30243,7 @@ impl Vm {
                 if coroutine_is_suspended_on_await(&state.borrow()) {
                     coroutine_vm.resume_exception = Some(exception);
                 } else if let Err(message) = coroutine_vm.raise_exception(exception, true) {
-                    self.output.extend(coroutine_vm.output);
+                    self.absorb_output_from(&mut coroutine_vm);
                     state.borrow_mut().done = true;
                     if let Some(exception) = coroutine_vm.current_exception {
                         self.raise_exception(exception, true)?;
@@ -30150,7 +30267,7 @@ impl Vm {
                     identity: Rc::new(()),
                 };
                 if let Err(message) = coroutine_vm.raise_exception(exception, true) {
-                    self.output.extend(coroutine_vm.output);
+                    self.absorb_output_from(&mut coroutine_vm);
                     state.borrow_mut().done = true;
                     if let Some(exception) = coroutine_vm.current_exception {
                         if exception.type_name == "GeneratorExit" {
@@ -30167,7 +30284,7 @@ impl Vm {
         let exit = match coroutine_vm.run_inner() {
             Ok(exit) => exit,
             Err(message) => {
-                self.output.extend(coroutine_vm.output);
+                self.absorb_output_from(&mut coroutine_vm);
                 state.borrow_mut().done = true;
                 if let Some(exception) = coroutine_vm.current_exception {
                     if is_closing
@@ -30186,7 +30303,7 @@ impl Vm {
             }
         };
 
-        self.output.extend(coroutine_vm.output);
+        self.absorb_output_from(&mut coroutine_vm);
         let mut state = state.borrow_mut();
         state.ip = coroutine_vm.ip;
         state.registers = coroutine_vm.registers;
@@ -30268,6 +30385,7 @@ impl Vm {
                     first_arg_name: state.first_arg_name.clone(),
                     qualname_prefix: state.qualname_prefix.clone(),
                     output: Vec::new(),
+                    output_pending: String::new(),
                     exception_handlers: state
                         .exception_handlers
                         .iter()
@@ -30316,7 +30434,7 @@ impl Vm {
             }
             GeneratorResume::Throw(exception) => {
                 if let Err(message) = generator_vm.raise_exception(exception, true) {
-                    self.output.extend(generator_vm.output);
+                    self.absorb_output_from(&mut generator_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
                     state.frame_fields = None;
@@ -30343,7 +30461,7 @@ impl Vm {
                     identity: Rc::new(()),
                 };
                 if let Err(message) = generator_vm.raise_exception(exception, true) {
-                    self.output.extend(generator_vm.output);
+                    self.absorb_output_from(&mut generator_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
                     state.frame_fields = None;
@@ -30363,7 +30481,7 @@ impl Vm {
         let exit = match generator_vm.run_inner() {
             Ok(exit) => exit,
             Err(message) => {
-                self.output.extend(generator_vm.output);
+                self.absorb_output_from(&mut generator_vm);
                 let mut state = state.borrow_mut();
                 state.done = true;
                 state.frame_fields = None;
@@ -30384,7 +30502,7 @@ impl Vm {
             }
         };
 
-        self.output.extend(generator_vm.output);
+        self.absorb_output_from(&mut generator_vm);
         let mut state = state.borrow_mut();
         state.ip = generator_vm.ip;
         state.registers = generator_vm.registers;

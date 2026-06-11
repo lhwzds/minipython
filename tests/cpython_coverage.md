@@ -186,6 +186,7 @@ Recent runtime migration notes:
   `cpython_divmod_builtin_diff_subset`,
   `cpython_pow_builtin_diff_subset`,
   `cpython_abs_builtin_diff_subset`,
+  `cpython_builtin_print_keyword_diff_subset`,
   `cpython_round_builtin_diff_subset`,
   `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
   `cpython_builtin_breakpoint_custom_hook_diff_subset`,
@@ -4400,3 +4401,9 @@ runtime-blocked.
 part of `BuiltinTest::test_all_any_tuple_list_set_optimization`, covering
 dynamic global and builtins-module lookup for `all`, `any`, `tuple`, `list`,
 and `set` when used around generator expressions.
+`cpython_builtin_print_keyword_diff_subset` and
+`cpython_builtin_print_keyword_subset` cover the sandbox-safe `print()` keyword
+surface: `sep`, `end`, `file=None`, `flush`, string-subclass separators/endings,
+partial-line output joining for `end=''`, and representative keyword/type
+errors. Non-`None` `file` targets remain outside the sandbox subset because
+they imply file-like write dispatch.

@@ -5717,6 +5717,33 @@ for expr in [lambda: abs(), lambda: abs('a'), lambda: abs(None), lambda: abs(1, 
 }
 
 #[test]
+fn cpython_builtin_print_keyword_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py public print keyword subset",
+        name: "builtin-print-keywords",
+        source: r#"print('a', 'b', sep='-', end='!\n')
+print('x', sep=None, end=None)
+print('left', end='')
+print('right')
+print('solo', end='')
+print()
+print('file-none', file=None, flush=True)
+class S(str):
+    pass
+print('sub', 'class', sep=S('|'), end=S(' END\n'))
+for label, expr in [
+    ('bad-sep', lambda: print('a', sep=1)),
+    ('bad-end', lambda: print('a', end=1)),
+    ('unknown', lambda: print('a', bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, isinstance(error, TypeError))"#,
+    });
+}
+
+#[test]
 fn cpython_round_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_round / ::test_round_large / ::test_bug_27936",

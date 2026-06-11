@@ -34593,6 +34593,43 @@ fn cpython_abs_builtin_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_builtin.py public print keyword behavior.
+#[test]
+fn cpython_builtin_print_keyword_subset() {
+    assert_output(
+        r#"print('a', 'b', sep='-', end='!\n')
+print('x', sep=None, end=None)
+print('left', end='')
+print('right')
+print('solo', end='')
+print()
+print('file-none', file=None, flush=True)
+class S(str):
+    pass
+print('sub', 'class', sep=S('|'), end=S(' END\n'))
+for label, expr in [
+    ('bad-sep', lambda: print('a', sep=1)),
+    ('bad-end', lambda: print('a', end=1)),
+    ('unknown', lambda: print('a', bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, isinstance(error, TypeError))"#,
+        &[
+            "a-b!",
+            "x",
+            "leftright",
+            "solo",
+            "file-none",
+            "sub|class END",
+            "bad-sep TypeError True",
+            "bad-end TypeError True",
+            "unknown TypeError True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_neg.
 #[test]
 fn cpython_builtin_negation_sys_maxsize_subset() {
