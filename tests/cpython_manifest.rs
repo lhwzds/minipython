@@ -3174,6 +3174,22 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "interpreter lifecycle behavior",
         ],
     );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "types")
+        .expect("sandbox stdlib manifest must include types");
+    for evidence in [
+        "types-method-descriptor-types",
+        "types-frame-locals-proxy-currentframe",
+        "types-int-dunder-format-matrix",
+        "types-float-dunder-format-matrix",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "types sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
