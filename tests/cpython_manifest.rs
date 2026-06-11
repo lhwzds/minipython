@@ -3167,6 +3167,63 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn math_newer_oracle_diff_evidence_stays_capability_gated() {
+    for (function, probe, skip) in [
+        (
+            "cpython_math_constants_and_classification_diff_subset",
+            "hasattr(math, 'isnormal')",
+            "skipping math constants/classification diff",
+        ),
+        (
+            "cpython_math_signbit_diff_subset",
+            "hasattr(math, 'signbit')",
+            "skipping math.signbit diff",
+        ),
+        (
+            "cpython_math_cbrt_diff_subset",
+            "hasattr(math, 'cbrt')",
+            "skipping math.cbrt diff",
+        ),
+        (
+            "cpython_math_fma_diff_subset",
+            "hasattr(math, 'fma')",
+            "skipping math.fma diff",
+        ),
+        (
+            "cpython_math_fmax_fmin_diff_subset",
+            "hasattr(math, 'fmax')",
+            "skipping math.fmax/fmin diff",
+        ),
+        (
+            "cpython_math_exp_exp2_diff_subset",
+            "hasattr(math, 'exp2')",
+            "skipping math.exp/exp2 diff",
+        ),
+        (
+            "cpython_math_sumprod_diff_subset",
+            "hasattr(math, 'sumprod')",
+            "skipping math.sumprod diff",
+        ),
+        (
+            "cpython_math_nextafter_ulp_diff_subset",
+            "math.nextafter(1.0, 2.0, steps=0)",
+            "skipping math.nextafter/ulp diff",
+        ),
+    ] {
+        let start = CPYTHON_DIFF
+            .find(&format!("fn {function}()"))
+            .unwrap_or_else(|| panic!("math gated diff evidence `{function}` must exist"));
+        let body = &CPYTHON_DIFF[start..];
+        let end = body.find("\n#[test]").unwrap_or(body.len());
+        let body = &body[..end];
+        assert!(
+            body.contains(probe) && body.contains(skip),
+            "math gated diff evidence `{function}` must keep probe `{probe}` and skip text `{skip}`"
+        );
+    }
+}
+
+#[test]
 fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "sys",
