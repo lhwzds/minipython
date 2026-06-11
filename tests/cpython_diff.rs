@@ -5538,6 +5538,49 @@ print('types', type(int | str) is types.UnionType, isinstance(int | str, types.U
 }
 
 #[test]
+fn cpython_types_union_forward_ref_diff_subset() {
+    let probe = run_cpython(
+        "import types, typing\nprint(hasattr(types, 'UnionType'), hasattr(typing, 'ForwardRef'))",
+    )
+    .expect("failed to probe CPython forward-ref union support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types union forward-ref diff: CPython oracle lacks public UnionType/ForwardRef support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests forward-reference public subset",
+        name: "types-union-forward-ref",
+        source: r#"import types
+import typing
+class OnlyForwardArg:
+    def __init__(self, forward_arg):
+        self.__forward_arg__ = forward_arg
+class EqualToForwardRef:
+    def __init__(self, forward_arg):
+        self.__forward_arg__ = forward_arg
+    def __eq__(self, other):
+        return getattr(other, '__forward_arg__', None) == self.__forward_arg__
+fr = typing.ForwardRef('str')
+print(type(fr).__name__, isinstance(fr, typing.ForwardRef), repr(fr), fr.__forward_arg__, fr.__forward_module__, fr.__forward_is_argument__, fr.__forward_is_class__)
+print(fr == typing.ForwardRef('str'), fr == typing.ForwardRef('int'), fr == OnlyForwardArg('str'), fr == EqualToForwardRef('str'))
+for label, union in [('typing', typing.Union[int, 'str']), ('uniontype', types.UnionType[int, 'str']), ('optional', typing.Optional['str'])]:
+    print(label, isinstance(union, types.UnionType), repr(union), tuple(repr(arg) for arg in union.__args__))
+print('tuple-custom', typing.Union[int, 'str'].__args__ == (int, EqualToForwardRef('str')))
+T = typing.TypeVar('T')
+for label, union in [('after', T | 'Forward'), ('before', 'Forward' | T), ('fr-after', typing.ForwardRef('A') | 'B'), ('fr-before', 'B' | typing.ForwardRef('A'))]:
+    print(label, isinstance(union, types.UnionType), tuple(repr(arg) for arg in union.__args__))
+for label, expr in [('int-str', lambda: int | 'Forward'), ('str-int', lambda: 'Forward' | int), ('str-str', lambda: 'A' | 'B')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
