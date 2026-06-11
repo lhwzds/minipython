@@ -3155,6 +3155,55 @@ print(isinstance(impl, SetUsingInstanceFromIterable), impl.created_by, sorted(li
 }
 
 #[test]
+fn cpython_collections_abc_set_real_set_interoperability_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::test_Set_interoperability_with_real_sets public subset",
+        name: "collections-abc-set-real-set-interoperability",
+        source: r#"from collections.abc import Set
+class ListSet(Set):
+    def __init__(self, elements=()):
+        self.data = []
+        for elem in elements:
+            if elem not in self.data:
+                self.data.append(elem)
+    def __contains__(self, elem):
+        return elem in self.data
+    def __iter__(self):
+        return iter(self.data)
+    def __len__(self):
+        return len(self.data)
+r1 = set('abc')
+r2 = set('bcd')
+r3 = set('abcde')
+f1 = ListSet('abc')
+f2 = ListSet('bcd')
+f3 = ListSet('abcde')
+l1 = list('abccba')
+l2 = list('bcddcb')
+l3 = list('abcdeedcba')
+for value in [f1 & f2, f1 & r2, r2 & f1, f1 & l2]:
+    print(sorted(list(value)))
+for value in [f1 | f2, f1 | r2, r2 | f1, f1 | l2]:
+    print(sorted(list(value)))
+for value in [f1 - f2, f2 - f1, f1 - r2, f2 - r1, r1 - f2, r2 - f1, f1 - l2, f2 - l1]:
+    print(sorted(list(value)))
+for value in [f1 ^ f2, f1 ^ r2, r2 ^ f1, f1 ^ l2]:
+    print(sorted(list(value)))
+print(f1 < f3, f1 < f1, f1 < f2, r1 < f3, r1 < f1, r1 < f2, r1 < r3, r1 < r1, r1 < r2)
+for expr in [lambda: f1 < l3, lambda: f1 <= l1, lambda: f1 > l2, lambda: f1 >= l3]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+print(f1 <= f3, f1 <= f1, f1 <= f2, r1 <= f3, r1 <= f1, r1 <= f2)
+print(f3 > f1, f1 > f1, f2 > f1, r3 > r1, f1 > r1, f2 > r1)
+print(f3 >= f1, f1 >= f1, f2 >= f1, r3 >= r1, f1 >= r1, f2 >= r1)
+print(f1 == f1, r1 == f1, f1 == r1, f1 == f3, r1 == f3, f1 == r3, f1 == l3)
+print(f1 != f1, r1 != f1, f1 != r1, f1 != f3, r1 != f3, f1 != r3, f1 != l3)"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

@@ -2405,6 +2405,13 @@ Recent runtime migration notes:
   Direct CPython diff evidence is in
   `cpython_collections_abc_set_from_iterable_operator_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_set_real_set_interoperability_subset`, covering
+  CPython `test_Set_interoperability_with_real_sets` for custom `Set`
+  subclasses interacting with built-in `set` and plain iterables across `&`,
+  `|`, `-`, `^`, ordering, equality, inequality, and TypeError paths for
+  non-Set ordering operands. Direct CPython diff evidence is in
+  `cpython_collections_abc_set_real_set_interoperability_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
