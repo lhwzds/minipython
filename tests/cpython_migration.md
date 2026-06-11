@@ -3234,7 +3234,8 @@ Completed in the bytes alignment-method pass:
   `bytearray.rjust()`, preserving receiver-driven result types.
 - Covered default space fill, `bytes` and `bytearray` single-byte fill
   arguments, unchanged-width cases, and representative TypeError paths for
-  missing, integer-fill, empty-fill, and multi-byte fill arguments.
+  missing, integer-fill, empty-fill, and multi-byte fill arguments. Direct
+  CPython diff evidence is in `cpython_bytes_alignment_methods_diff_subset`.
 
 Completed in the bytes method TypeError diagnostics pass:
 
@@ -3306,7 +3307,10 @@ Completed in the bytes replace/partition-method pass:
   `partition()`, and `rpartition()` over bytes-like arguments, preserving the
   receiver-dependent result type, positional and keyword replacement count
   handling, empty-needle insertion behavior, empty-separator `ValueError`, and
-  representative TypeError paths for non-bytes-like arguments.
+  representative TypeError paths for non-bytes-like arguments. Direct CPython
+  diff evidence for the portable public replace and partition surface is in
+  `cpython_bytes_replace_partition_methods_diff_subset`; the current
+  CPython-main keyword `count=` row remains covered by the local subset case.
 
 Completed in the bytearray mutation-method pass:
 

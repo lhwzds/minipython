@@ -7921,6 +7921,77 @@ fn cpython_bytes_remove_affix_methods_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_alignment_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_center, ::test_ljust, ::test_rjust, and ::test_xjust_int_error public subset",
+        name: "bytes-alignment-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'abc')
+    for fill_type in [bytes, bytearray]:
+        print(b.center(7, fill_type(b'-')), b.ljust(7, fill_type(b'-')), b.rjust(7, fill_type(b'-')))
+    print(b.center(6), b.center(3), b.center(2))
+    print(b.ljust(6), b.ljust(3), b.ljust(2))
+    print(b.rjust(6), b.rjust(3), b.rjust(2))
+    for expr in [
+        lambda: b.center(),
+        lambda: b.ljust(),
+        lambda: b.rjust(),
+        lambda: b.center(7, 32),
+        lambda: b.ljust(7, 32),
+        lambda: b.rjust(7, 32),
+        lambda: b.center(7, b''),
+        lambda: b.ljust(7, b'--'),
+        lambda: b.rjust(7, bytearray(b'--')),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_replace_partition_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_replace, ::test_partition, ::test_rpartition, and public error subset",
+        name: "bytes-replace-partition-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'mississippi')
+    print(b.replace(b'i', b'a'))
+    print(b.replace(b'ss', b'x'))
+    print(b.replace(bytearray(b'i'), memoryview(b'a')))
+    print(b.replace(b'i', b'a', 2), b.replace(b'i', b'a', 0))
+    print(b.replace(b'', b'-'))
+    print(b.replace(b'', b'-', 2))
+    print(b.partition(b'ss'))
+    print(b.partition(b'w'))
+    print(b.rpartition(b'ss'))
+    print(b.rpartition(b'i'))
+    print(b.rpartition(b'w'))
+
+b = b'a b'
+for expr in [
+    lambda: b.replace(32, b''),
+    lambda: b.partition(' '),
+    lambda: b.partition(32),
+    lambda: b.rpartition(' '),
+    lambda: b.rpartition(32),
+    lambda: b.partition(b''),
+    lambda: b.rpartition(b''),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+
+for ctor in [bytes, bytearray]:
+    b = ctor(b'aa')
+    for count in [0, 1, 2, 3]:
+        print(ctor.__name__, count, b.replace(b'a', b'b', count))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

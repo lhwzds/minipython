@@ -1233,6 +1233,11 @@ Recent runtime migration notes:
   `split()` / `rsplit()`, search, prefix/suffix, strip, alignment,
   partition, and replace unbound, arity, bound-index, width, maxsplit, and
   count-conversion edge calls.
+- `STRING_RUNTIME` also includes `cpython_bytes_alignment_methods_subset`,
+  covering bytes/bytearray `center()`, `ljust()`, and `rjust()` width and
+  fill-byte behavior, unchanged-width cases, receiver-driven result types, and
+  representative TypeError paths. Direct CPython diff evidence is in
+  `cpython_bytes_alignment_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_strip_methods_subset`,
   covering bytes/bytearray `strip()`, `lstrip()`, and `rstrip()` over default
   ASCII whitespace, explicit bytes-like strip sets including `memoryview` and
@@ -1244,6 +1249,13 @@ Recent runtime migration notes:
   CPython `BaseBytesTest` public exact TypeError diagnostics for bytes and
   bytearray `join()`, `translate()`, and `maketrans()` unbound, missing
   argument, over-arity, non-iterable, and no-argument calls.
+- `STRING_RUNTIME` also includes
+  `cpython_bytes_replace_partition_methods_subset`, covering bytes/bytearray
+  `replace()`, `partition()`, and `rpartition()` result-type behavior,
+  bytes-like arguments, positional and keyword replacement counts, empty-needle
+  replacement, empty separators, and representative TypeError/ValueError
+  paths. Direct CPython diff evidence for the portable public replace and
+  partition surface is in `cpython_bytes_replace_partition_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_splitlines_methods_subset`,
   covering bytes/bytearray `splitlines()` over CR, LF, and CRLF boundaries,
   `keepends`, receiver-driven result types, bytes-specific non-splitting
