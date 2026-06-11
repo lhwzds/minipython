@@ -136,6 +136,7 @@ Recent runtime migration notes:
   `cpython_types_names_public_surface_diff_subset`,
   `cpython_types_singleton_type_aliases_diff_subset`,
   `cpython_types_module_type_diff_subset`,
+  `cpython_types_class_creation_new_class_meta_helper_diff_subset`,
   `cpython_types_function_type_diff_subset`,
   `cpython_types_code_traceback_type_aliases_diff_subset`,
   `cpython_types_frame_type_alias_diff_subset`,
@@ -3004,13 +3005,16 @@ Recent runtime migration notes:
   staticmethod metaclass `__new__` can delegate to `super().__new__`, metaclass
   `__init__` can delegate to `super().__init__`, `types.new_class()` preserves
   the caller's `kwds` mapping, accepts `exec_body=None`, and supports the
-  keyword API with an explicit builtin base.
+  keyword API with an explicit builtin base. Direct output parity is guarded by
+  `cpython_types_class_creation_new_class_meta_helper_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_new_class_metaclass_keywords_subset`, covering
   CPython `ClassCreationTests::test_new_class_metaclass_keywords`: a callable
   metaclass passed to `types.new_class()` receives the requested class name,
   original bases including `(int, object)`, an empty prepared namespace, and
-  class keywords with the `metaclass` entry consumed before dispatch.
+  class keywords with the `metaclass` entry consumed before dispatch. Direct
+  output parity is included in
+  `cpython_types_class_creation_new_class_meta_helper_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_mro_entries_core_subset`, covering CPython
   `ClassCreationTests::test_new_class_with_mro_entry`,

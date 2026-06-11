@@ -6143,6 +6143,49 @@ print(types.NoneType is type(None), types.EllipsisType is type(Ellipsis), types.
 }
 
 #[test]
+fn cpython_types_class_creation_new_class_meta_helper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_new_class_basics through ::test_new_class_metaclass_keywords",
+        name: "types-class-creation-new-class-meta-helper",
+        source: r#"import types
+class Meta(type):
+    def __init__(cls, name, bases, ns, **kw):
+        super().__init__(name, bases, ns)
+    @staticmethod
+    def __new__(mcls, name, bases, ns, **kw):
+        return super().__new__(mcls, name, bases, ns)
+    @classmethod
+    def __prepare__(mcls, name, bases, **kw):
+        ns = super().__prepare__(name, bases)
+        ns['y'] = 1
+        ns.update(kw)
+        return ns
+print(type(type.__prepare__('Raw', (), z=9)).__name__)
+C = types.new_class('C')
+print(C.__name__, C.__bases__[0] is object)
+Sub = types.new_class('Sub', (int,))
+print(issubclass(Sub, int), Sub.__bases__[0] is int)
+settings = {'metaclass': Meta, 'z': 2}
+for i in range(2):
+    M = types.new_class('M' + str(i), (), settings)
+    print(isinstance(M, Meta), M.y, M.z, settings['z'], 'metaclass' in settings)
+def body(ns):
+    ns['x'] = 0
+D = types.new_class('D', (), {'metaclass': Meta, 'z': 2}, body)
+print(isinstance(D, Meta), D.x, D.y, D.z)
+E = types.new_class('E', (), {}, None)
+print(E.__name__, E.__bases__[0] is object)
+F = types.new_class(name='F', bases=(int,), kwds=dict(metaclass=Meta, z=2), exec_body=body)
+print(issubclass(F, int), isinstance(F, Meta), F.x, F.y, F.z, F.__bases__[0] is int)
+print(super(Meta, F).__self_class__ is Meta)
+def meta_func(name, bases, ns, **kw):
+    return name, bases, ns, kw
+res = types.new_class('X', (int, object), dict(metaclass=meta_func, x=0))
+print(res[0], res[1][0] is int, res[1][1] is object, res[2] == {}, res[3] == {'x': 0})"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
