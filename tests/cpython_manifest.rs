@@ -2407,6 +2407,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_itertools_tee_subset",
             "cpython_itertools_batched_subset",
             "cpython_itertools_groupby_subset",
+            "cpython_itertools_repr_subset",
         ],
         &[],
     );
@@ -2426,6 +2427,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_itertools_tee_diff_subset",
         "cpython_itertools_batched_diff_subset",
         "cpython_itertools_groupby_diff_subset",
+        "cpython_itertools_repr_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
@@ -2556,10 +2558,13 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let groupby_start = CPYTHON_DIFF
         .find("fn cpython_itertools_groupby_diff_subset()")
         .expect("itertools groupby diff evidence must exist");
-    let groupby_end = CPYTHON_DIFF[groupby_start..]
+    let repr_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_repr_diff_subset()")
+        .expect("itertools repr diff evidence must exist");
+    let repr_end = CPYTHON_DIFF[repr_start..]
         .find("\n// Differential smoke tests")
-        .map(|offset| groupby_start + offset)
-        .expect("itertools groupby diff subset must end before smoke tests");
+        .map(|offset| repr_start + offset)
+        .expect("itertools repr diff subset must end before smoke tests");
 
     let core_source = &CPYTHON_DIFF[core_start..keyword_start];
     let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
@@ -2570,7 +2575,8 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let permutations_source = &CPYTHON_DIFF[permutations_start..tee_start];
     let tee_source = &CPYTHON_DIFF[tee_start..batched_start];
     let batched_source = &CPYTHON_DIFF[batched_start..groupby_start];
-    let groupby_source = &CPYTHON_DIFF[groupby_start..groupby_end];
+    let groupby_source = &CPYTHON_DIFF[groupby_start..repr_start];
+    let repr_source = &CPYTHON_DIFF[repr_start..repr_end];
 
     assert!(
         !core_source.contains("pairwise"),
@@ -2616,6 +2622,10 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     assert!(
         groupby_source.contains("itertools.groupby"),
         "itertools groupby CPython diff evidence must cover groupby()"
+    );
+    assert!(
+        repr_source.contains("repr("),
+        "itertools repr CPython diff evidence must cover public repr() behavior"
     );
 }
 

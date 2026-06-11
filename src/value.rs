@@ -1603,6 +1603,10 @@ fn format_value_repr(value: &Value) -> String {
             target, identity, ..
         } => format_weakproxy_repr(target, identity),
         Value::Generator(state) => format!("<generator object {}>", state.borrow().name),
+        Value::Iterator(state) => {
+            let iterator = state.borrow();
+            format_iterator_repr(&iterator).unwrap_or_else(|| "<iterator>".to_string())
+        }
         Value::GeneratorWrapper { .. } => "<types._GeneratorWrapper object>".to_string(),
         Value::Coroutine(state) => format!("<coroutine object {}>", state.borrow().name),
         Value::CoroutineAwait(_) => "<coroutine_wrapper object>".to_string(),
@@ -1709,6 +1713,62 @@ fn format_value_repr(value: &Value) -> String {
         } => format!("{type_name}{}", format_exception_args_repr(args)),
         value => value.to_string(),
     }
+}
+
+pub(crate) fn format_iterator_repr(iterator: &Value) -> Option<String> {
+    match iterator {
+        Value::ItertoolsCount { current, step } => {
+            let current = format_value_repr(current);
+            if itertools_count_step_is_default(step) {
+                Some(format!("count({current})"))
+            } else {
+                Some(format!("count({current}, {})", format_value_repr(step)))
+            }
+        }
+        Value::ItertoolsRepeat { value, remaining } => {
+            let value = format_value_repr(value);
+            match remaining {
+                Some(remaining) => Some(format!("repeat({value}, {remaining})")),
+                None => Some(format!("repeat({value})")),
+            }
+        }
+        Value::ItertoolsCycle { .. } => Some(itertools_object_repr("cycle")),
+        Value::ItertoolsChain { .. } | Value::ItertoolsChainFromIterable { .. } => {
+            Some(itertools_object_repr("chain"))
+        }
+        Value::ItertoolsAccumulate { .. } => Some(itertools_object_repr("accumulate")),
+        Value::ItertoolsCompress { .. } => Some(itertools_object_repr("compress")),
+        Value::ItertoolsFilterFalse { .. } => Some(itertools_object_repr("filterfalse")),
+        Value::ItertoolsTakewhile { .. } => Some(itertools_object_repr("takewhile")),
+        Value::ItertoolsDropwhile { .. } => Some(itertools_object_repr("dropwhile")),
+        Value::ItertoolsStarmap { .. } => Some(itertools_object_repr("starmap")),
+        Value::ItertoolsZipLongest { .. } => Some(itertools_object_repr("zip_longest")),
+        Value::ItertoolsIslice { .. } => Some(itertools_object_repr("islice")),
+        Value::ItertoolsPairwise { .. } => Some(itertools_object_repr("pairwise")),
+        Value::ItertoolsProduct { .. } => Some(itertools_object_repr("product")),
+        Value::ItertoolsCombinations { .. } => Some(itertools_object_repr("combinations")),
+        Value::ItertoolsCombinationsWithReplacement { .. } => {
+            Some(itertools_object_repr("combinations_with_replacement"))
+        }
+        Value::ItertoolsPermutations { .. } => Some(itertools_object_repr("permutations")),
+        Value::ItertoolsTee { .. } => Some(itertools_object_repr("_tee")),
+        Value::ItertoolsBatched { .. } => Some(itertools_object_repr("batched")),
+        Value::ItertoolsGroupBy { .. } => Some(itertools_object_repr("groupby")),
+        Value::ItertoolsGroup { .. } => Some(itertools_object_repr("_grouper")),
+        _ => None,
+    }
+}
+
+fn itertools_count_step_is_default(step: &Value) -> bool {
+    match step {
+        Value::Number(value) => *value == 1,
+        Value::BigInt(value) => value == &BigInt::from(1),
+        _ => false,
+    }
+}
+
+fn itertools_object_repr(name: &str) -> String {
+    format!("<itertools.{name} object at 0x0>")
 }
 
 fn format_weakref_repr(target: &Value, identity: &Rc<()>) -> String {

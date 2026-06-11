@@ -11856,6 +11856,32 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public iterator repr subset",
+        name: "itertools-repr",
+        source: r#"import itertools
+for value in [itertools.count(), itertools.count(3), itertools.count(3, 2), itertools.count(True, False), itertools.count(1.5, 0.25), itertools.count(1+2j, 3+0j)]:
+    print(repr(value))
+r = itertools.repeat('x', 3)
+print(repr(r))
+next(r)
+print(repr(r))
+list(r)
+print(repr(r))
+print(repr(itertools.repeat('x')))
+print(repr(itertools.repeat(1, -1)))
+for value, prefix in [
+    (itertools.cycle('ab'), '<itertools.cycle object at '),
+    (itertools.tee([1], 1)[0], '<itertools._tee object at '),
+    (itertools.groupby([1, 1]), '<itertools.groupby object at '),
+]:
+    rendered = repr(value)
+    print(type(value).__name__, rendered.startswith(prefix), rendered.endswith('>'))"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

@@ -36431,6 +36431,48 @@ fn cpython_itertools_groupby_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_repr_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "for value in [itertools.count(), itertools.count(3), itertools.count(3, 2), itertools.count(True, False), itertools.count(1.5, 0.25), itertools.count(1+2j, 3+0j)]:\n",
+            "    print(repr(value))\n",
+            "r = itertools.repeat('x', 3)\n",
+            "print(repr(r))\n",
+            "next(r)\n",
+            "print(repr(r))\n",
+            "list(r)\n",
+            "print(repr(r))\n",
+            "print(repr(itertools.repeat('x')))\n",
+            "print(repr(itertools.repeat(1, -1)))\n",
+            "for value, prefix in [\n",
+            "    (itertools.cycle('ab'), '<itertools.cycle object at '),\n",
+            "    (itertools.tee([1], 1)[0], '<itertools._tee object at '),\n",
+            "    (itertools.groupby([1, 1]), '<itertools.groupby object at '),\n",
+            "]:\n",
+            "    rendered = repr(value)\n",
+            "    print(type(value).__name__, rendered.startswith(prefix), rendered.endswith('>'))",
+        ),
+        &[
+            "count(0)",
+            "count(3)",
+            "count(3, 2)",
+            "count(True, False)",
+            "count(1.5, 0.25)",
+            "count((1+2j), (3+0j))",
+            "repeat('x', 3)",
+            "repeat('x', 2)",
+            "repeat('x', 0)",
+            "repeat('x')",
+            "repeat(1, 0)",
+            "cycle True True",
+            "_tee True True",
+            "groupby True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.

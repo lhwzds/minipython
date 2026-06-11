@@ -644,6 +644,7 @@ Recent runtime migration notes:
   `cpython_itertools_tee_subset`, and
   `cpython_itertools_batched_subset`, and
   `cpython_itertools_groupby_subset`, and
+  `cpython_itertools_repr_subset`, and
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
@@ -653,7 +654,8 @@ Recent runtime migration notes:
   `cpython_itertools_permutations_diff_subset`, and
   `cpython_itertools_tee_diff_subset`, and
   `cpython_itertools_batched_diff_subset`, and
-  `cpython_itertools_groupby_diff_subset`, covering the pure in-memory
+  `cpython_itertools_groupby_diff_subset`, and
+  `cpython_itertools_repr_diff_subset`, covering the pure in-memory
   first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, `pairwise()`, and
@@ -690,9 +692,11 @@ Recent runtime migration notes:
   `batched()` tuple batches with generator inputs, `n` via `__index__`, keyword binding,
   truth-tested `strict`, and incomplete-batch `ValueError`, and lazy
   `groupby()` runs with optional key functions, generator-backed input,
-  shared `_grouper` invalidation when the parent advances, and keyword
-  binding. The broader `itertools` module, `tee()` cache compaction,
-  pickling/repr edge cases, and remaining public/helper types remain open.
+  shared `_grouper` invalidation when the parent advances, keyword binding,
+  and public `repr()` shapes for `count()`, `repeat()`, `cycle()`, `_tee`, and
+  `groupby()` without binding object addresses. The broader `itertools` module,
+  `tee()` cache compaction, pickling edge cases, and remaining public/helper
+  types remain open.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
   and `cpython_math_isclose_subset`, covering CPython
   `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,

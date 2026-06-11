@@ -40,10 +40,11 @@ use crate::value::{
     SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState,
     TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
     code_metadata_namespace_entries_equal, complex_value, dict_value, dict_view_value,
-    dict_view_values, float_value, format_float_display, frame_locals_proxy_value,
-    frozen_set_value, generic_alias_subclass_alias, identity_string_value, list_value,
-    mapping_proxy_value, mapping_view_value, memory_view_from_byte_array,
-    memory_view_from_parts_with_format, memory_view_value, set_value, tuple_value,
+    dict_view_values, float_value, format_float_display, format_iterator_repr,
+    frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
+    identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
+    memory_view_from_byte_array, memory_view_from_parts_with_format, memory_view_value, set_value,
+    tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
@@ -1430,6 +1431,10 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         }
         Value::FrameLocalsProxy { .. } => Ok("<frame locals proxy object>".to_string()),
         Value::SimpleNamespace { fields } => repr_simple_namespace_checked(fields, active),
+        Value::Iterator(state) => {
+            let iterator = state.borrow();
+            Ok(format_iterator_repr(&iterator).unwrap_or_else(|| "<iterator>".to_string()))
+        }
         Value::Exception {
             type_name, args, ..
         } => Ok(format!("{type_name}{}", repr_exception_args_checked(args)?)),
