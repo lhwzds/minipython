@@ -5022,6 +5022,25 @@ for op in ['+=', '-=', '|=', '&=', 'update', 'subtract']:
 }
 
 #[test]
+fn cpython_collections_counter_update_reentrant_add_clears_counter_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter update reentrant subset",
+        name: "collections-counter-update-reentrant",
+        source: r#"from collections import Counter
+c = Counter()
+key = object()
+class Evil(int):
+    def __add__(self, other):
+        c.clear()
+        return NotImplemented
+c[key] = Evil()
+c.update([key])
+print(c[key])
+print(len(c))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
