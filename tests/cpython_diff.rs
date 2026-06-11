@@ -6191,6 +6191,22 @@ except RuntimeWarning as error:
 }
 
 #[test]
+fn cpython_types_class_creation_subclass_inherited_slot_update_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_subclass_inherited_slot_update",
+        name: "types-class-creation-subclass-inherited-slot-update",
+        source: r#"class D(dict):
+    pass
+d = D({None: None})
+print(d[None] is None)
+D.__getitem__ = lambda self, item: 42
+print(d[None])
+D.__getitem__ = dict.__getitem__
+print(d[None] is None)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_mro_entries_core_diff_subset() {
     let probe = run_cpython(
         "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",

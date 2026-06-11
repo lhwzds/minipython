@@ -3093,7 +3093,9 @@ Recent runtime migration notes:
   `cpython_types_class_creation_subclass_inherited_slot_update_subset`, covering
   CPython `ClassCreationTests::test_subclass_inherited_slot_update`: dict
   subclasses honor dynamic `__getitem__` replacement for subscript lookup and
-  delegate back to `dict.__getitem__` after reassignment.
+  delegate back to `dict.__getitem__` after reassignment. Direct output parity
+  is guarded by
+  `cpython_types_class_creation_subclass_inherited_slot_update_diff_subset`.
 - `Lib/test/test_types.py::ClassCreationTests` is now method-audited as
   `ported` in `tests/cpython_test_manifest.md`; all 25 current CPython methods
   have Rust evidence covering the public class-creation helper, metaclass,

@@ -3574,6 +3574,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_class_creation_one_argument_type_diff_subset",
         "cpython_types_class_creation_get_original_bases_diff_subset",
         "cpython_types_class_creation_metaclass_new_error_diff_subset",
+        "cpython_types_class_creation_subclass_inherited_slot_update_diff_subset",
         "cpython_types_class_creation_mro_entries_core_diff_subset",
         "cpython_types_class_creation_prepare_resolve_bases_diff_subset",
         "cpython_types_class_creation_metaclass_derivation_diff_subset",
