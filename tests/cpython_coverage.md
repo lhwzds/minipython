@@ -992,7 +992,8 @@ Recent runtime migration notes:
   `cpython_types_union_unhashable_metaclass_subset`, covering CPython
   `UnionTests` custom metaclass `__hash__ = None` behavior for PEP 604 union
   hashing, including preserved `__args__` ordering and catchable `TypeError`
-  propagation with the metaclass name.
+  propagation with the metaclass name. Direct output parity is guarded by
+  `cpython_types_union_unhashable_metaclass_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_dynamic_hashability_subset`, covering CPython
   `UnionTests` dynamic unhashable-to-hashable metaclass behavior for PEP 604

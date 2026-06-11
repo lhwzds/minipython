@@ -5739,6 +5739,37 @@ except ZeroDivisionError as exc:
 }
 
 #[test]
+fn cpython_types_union_unhashable_metaclass_diff_subset() {
+    let probe = run_cpython(
+        "class UnhashableMeta(type):\n    __hash__ = None\nclass A(metaclass=UnhashableMeta):\n    pass\nclass B(metaclass=UnhashableMeta):\n    pass\nunion = A | B\nprint(tuple(arg.__name__ for arg in union.__args__))",
+    )
+    .expect("failed to probe CPython union unhashable metaclass support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('A', 'B')" {
+        eprintln!(
+            "skipping types union unhashable metaclass diff: CPython oracle lacks PEP 604 metaclass union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests unhashable metaclass public subset",
+        name: "types-union-unhashable-metaclass",
+        source: r#"class UnhashableMeta(type):
+    __hash__ = None
+class A(metaclass=UnhashableMeta):
+    pass
+class B(metaclass=UnhashableMeta):
+    pass
+for label, union in [('AB', A | B), ('intB', int | B), ('Aint', A | int)]:
+    print(label, tuple(arg.__name__ for arg in union.__args__))
+    try:
+        hash(union)
+    except TypeError as exc:
+        print(label, type(exc).__name__, str(exc))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
