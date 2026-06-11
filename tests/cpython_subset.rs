@@ -20016,6 +20016,48 @@ fn cpython_memoryview_array_non_byte_public_read_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_memoryview.py array-backed exporter
+// coverage for one-dimensional non-byte writeback through memoryview.
+#[test]
+fn cpython_memoryview_array_non_byte_writeback_subset() {
+    assert_output(
+        "import array\n\nclass I:\n    def __index__(self):\n        return 7\n\ndef show(label, callback):\n    try:\n        callback()\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, OverflowError)))\n    else:\n        print(label, 'OK')\n\nfor typecode, values, scalar, replacement in [\n    ('h', [1, 2, 3, 4], -7, [8, 9]),\n    ('H', [1, 2, 3, 4], 65535, [8, 9]),\n    ('i', [1, 2, 3, 4], -70000, [80000, 90000]),\n    ('f', [1.0, 2.0, 3.0, 4.0], 1.25, [8.5, 9.5]),\n    ('d', [1.0, 2.0, 3.0, 4.0], 1.25, [8.5, 9.5]),\n]:\n    arr = array.array(typecode, values)\n    view = memoryview(arr)\n    view[1] = scalar\n    print('scalar', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())\n    view[1:3] = memoryview(array.array(typecode, replacement))\n    print('slice', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())\n    view[::2] = memoryview(array.array(typecode, replacement))\n    print('extended', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())\n    show('mismatch-' + typecode, lambda view=view: view.__setitem__(slice(0, 2), memoryview(array.array('B', [1, 2]))))\n    show('bytes-' + typecode, lambda view=view: view.__setitem__(slice(0, 2), b'ab'))\n    show('bad-scalar-' + typecode, lambda view=view: view.__setitem__(0, object()))\n\narr = array.array('h', [1, 2])\nview = memoryview(arr)\nview[0] = I()\nprint('index-object', arr.tolist(), view.tolist())",
+        &[
+            "scalar h [1, -7, 3, 4] [1, -7, 3, 4] True",
+            "slice h [1, 8, 9, 4] [1, 8, 9, 4] True",
+            "extended h [8, 8, 9, 4] [8, 8, 9, 4] True",
+            "mismatch-h ValueError True",
+            "bytes-h ValueError True",
+            "bad-scalar-h TypeError True",
+            "scalar H [1, 65535, 3, 4] [1, 65535, 3, 4] True",
+            "slice H [1, 8, 9, 4] [1, 8, 9, 4] True",
+            "extended H [8, 8, 9, 4] [8, 8, 9, 4] True",
+            "mismatch-H ValueError True",
+            "bytes-H ValueError True",
+            "bad-scalar-H TypeError True",
+            "scalar i [1, -70000, 3, 4] [1, -70000, 3, 4] True",
+            "slice i [1, 80000, 90000, 4] [1, 80000, 90000, 4] True",
+            "extended i [80000, 80000, 90000, 4] [80000, 80000, 90000, 4] True",
+            "mismatch-i ValueError True",
+            "bytes-i ValueError True",
+            "bad-scalar-i TypeError True",
+            "scalar f [1.0, 1.25, 3.0, 4.0] [1.0, 1.25, 3.0, 4.0] True",
+            "slice f [1.0, 8.5, 9.5, 4.0] [1.0, 8.5, 9.5, 4.0] True",
+            "extended f [8.5, 8.5, 9.5, 4.0] [8.5, 8.5, 9.5, 4.0] True",
+            "mismatch-f ValueError True",
+            "bytes-f ValueError True",
+            "bad-scalar-f TypeError True",
+            "scalar d [1.0, 1.25, 3.0, 4.0] [1.0, 1.25, 3.0, 4.0] True",
+            "slice d [1.0, 8.5, 9.5, 4.0] [1.0, 8.5, 9.5, 4.0] True",
+            "extended d [8.5, 8.5, 9.5, 4.0] [8.5, 8.5, 9.5, 4.0] True",
+            "mismatch-d ValueError True",
+            "bytes-d ValueError True",
+            "bad-scalar-d TypeError True",
+            "index-object [7, 2] [7, 2]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public array module and
 // constructor behavior.
 #[test]

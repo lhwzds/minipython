@@ -18122,6 +18122,20 @@ impl Vm {
         memoryview_assignment_byte(value)
     }
 
+    fn memoryview_assignment_bytes_value(
+        &mut self,
+        view: &MemoryViewRef,
+        value: Value,
+    ) -> Result<Vec<u8>, String> {
+        let format = memoryview_format(view)?;
+        match format.as_str() {
+            "c" | "b" | "B" => self
+                .memoryview_assignment_byte_value(view, value)
+                .map(|byte| vec![byte]),
+            _ => self.array_array_item_bytes(&format, value),
+        }
+    }
+
     fn store_memoryview_item_value(
         &mut self,
         view: MemoryViewRef,
@@ -18140,7 +18154,7 @@ impl Vm {
             let physical_index = memoryview_physical_index(&state, logical_index)?;
             (state.bytes.clone(), physical_index)
         };
-        let byte = self.memoryview_assignment_byte_value(&view, value)?;
+        let item = self.memoryview_assignment_bytes_value(&view, value)?;
         {
             let state = view.borrow();
             if state.released {
@@ -18150,7 +18164,14 @@ impl Vm {
                 return Err("TypeError: cannot modify read-only memory".to_string());
             }
         }
-        bytes.borrow_mut()[physical_index] = byte;
+        let mut borrowed = bytes.borrow_mut();
+        let end = physical_index
+            .checked_add(item.len())
+            .ok_or_else(|| "memoryview index out of range".to_string())?;
+        let Some(slot) = borrowed.get_mut(physical_index..end) else {
+            return Err("memoryview index out of range".to_string());
+        };
+        slot.copy_from_slice(&item);
         Ok(Value::MemoryView(view))
     }
 
@@ -70419,7 +70440,7 @@ fn store_slice(
             let stop = slice_bound(stop)?;
             let step = slice_bound(step)?;
             let replacement = memoryview_slice_assignment_value(&view, value)?;
-            let (bytes, physical_indices) = {
+            let (bytes, physical_indices, itemsize) = {
                 let state = view.borrow();
                 if state.released {
                     return Err(released_memoryview_error());
@@ -70427,15 +70448,16 @@ fn store_slice(
                 if state.readonly {
                     return Err("TypeError: cannot modify read-only memory".to_string());
                 }
+                let itemsize = memoryview_itemsize_for_format(&state.format)?;
                 let logical_indices = slice_indices(state.len, start, stop, step)?;
                 let physical_indices = logical_indices
                     .into_iter()
                     .map(|index| memoryview_physical_index(&state, index))
                     .collect::<Result<Vec<_>, _>>()?;
-                (state.bytes.clone(), physical_indices)
+                (state.bytes.clone(), physical_indices, itemsize)
             };
 
-            if replacement.len() != physical_indices.len() {
+            if replacement.len() != physical_indices.len().saturating_mul(itemsize) {
                 return Err(
                     "ValueError: memoryview assignment: lvalue and rvalue have different structures"
                         .to_string(),
@@ -70443,8 +70465,17 @@ fn store_slice(
             }
 
             let mut borrowed = bytes.borrow_mut();
-            for (index, byte) in physical_indices.into_iter().zip(replacement) {
-                borrowed[index] = byte;
+            for (index, chunk) in physical_indices
+                .into_iter()
+                .zip(replacement.chunks_exact(itemsize))
+            {
+                let end = index
+                    .checked_add(itemsize)
+                    .ok_or_else(|| "memoryview index out of range".to_string())?;
+                let Some(slot) = borrowed.get_mut(index..end) else {
+                    return Err("memoryview index out of range".to_string());
+                };
+                slot.copy_from_slice(chunk);
             }
 
             drop(borrowed);

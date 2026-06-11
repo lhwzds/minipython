@@ -3280,8 +3280,14 @@ Recent runtime migration notes:
   for `memoryview()`: element-sized `len()` / `itemsize` / `shape` /
   `strides` / `nbytes` attributes, scalar getitem, `tolist()`, logical
   `tobytes()`, slicing, `c_contiguous`, and byte casts for `h`, `H`, `i`,
-  `I`, `f`, and `d` formats. Non-byte writable item/slice assignment remains
-  outside the current sandbox stdlib scope.
+  `I`, `f`, and `d` formats.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_memoryview_array_non_byte_writeback_subset`, covering the CPython
+  public one-dimensional same-format writeback surface for non-byte numeric
+  `array.array` exporters through `memoryview()`: scalar item assignment,
+  contiguous and extended slice assignment, backing-array visibility,
+  `__index__` scalar conversion, and structure-mismatch rejection for bytes
+  and differently formatted memoryviews.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_module_and_constructor_public_surface_subset`, covering the
   CPython public `array` module constructor surface: `array.typecodes`,

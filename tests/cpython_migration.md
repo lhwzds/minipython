@@ -796,8 +796,7 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   preserves `obj` identity for array-backed views, exposes writable `B` format
   attributes, keeps scalar and same-size slice writes visible through both the
   view and original array, preserves stride metadata for sliced views, and keeps
-  the same exporter through `toreadonly()`. Non-byte array formats and
-  multi-byte itemsize behavior remain open.
+  the same exporter through `toreadonly()`.
 - Added `cpython_memoryview_array_signed_byte_buffer_subset` and
   `cpython_memoryview_array_signed_byte_buffer_diff_subset`, migrating the
   CPython public signed-byte `array.array('b')` exporter slice for
@@ -807,7 +806,19 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   and writes, rejects out-of-range and wrong-type scalar writes with CPython
   exception shapes, and rejects slice assignment from mismatched bytes or
   unsigned-byte views while accepting same-format signed-byte memoryviews.
-  Multi-byte array itemsize behavior remains open.
+- Added `cpython_memoryview_array_non_byte_public_read_subset` /
+  `cpython_memoryview_array_non_byte_public_read_diff_subset` and
+  `cpython_memoryview_array_non_byte_writeback_subset` /
+  `cpython_memoryview_array_non_byte_writeback_diff_subset`, migrating the
+  CPython public one-dimensional non-byte numeric `array.array` exporter
+  surface for `memoryview()`: MiniPython now uses element-sized `len()`,
+  `itemsize`, `shape`, `strides`, and `nbytes`, preserves backing-array bytes
+  through `tobytes()` / byte casts, decodes scalar and sliced values through
+  `tolist()` / getitem, writes scalar items using the array typecode
+  conversion rules including `__index__`, writes same-format contiguous and
+  extended slices back to the original array, and rejects bytes or differently
+  formatted memoryviews as structure mismatches. Multidimensional views,
+  refcount/GC-specific matrices, and the full buffer protocol remain open.
 - Added `cpython_array_module_and_constructor_public_surface_subset` and
   `cpython_array_module_and_constructor_public_surface_diff_subset`, covering
   CPython public `array` module and constructor behavior before item-specific

@@ -13500,6 +13500,51 @@ for typecode, values in cases:
 }
 
 #[test]
+fn cpython_memoryview_array_non_byte_writeback_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py array-backed public non-byte writeback behavior",
+        name: "memoryview-array-non-byte-writeback",
+        source: r#"import array
+
+class I:
+    def __index__(self):
+        return 7
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, OverflowError)))
+    else:
+        print(label, 'OK')
+
+for typecode, values, scalar, replacement in [
+    ('h', [1, 2, 3, 4], -7, [8, 9]),
+    ('H', [1, 2, 3, 4], 65535, [8, 9]),
+    ('i', [1, 2, 3, 4], -70000, [80000, 90000]),
+    ('f', [1.0, 2.0, 3.0, 4.0], 1.25, [8.5, 9.5]),
+    ('d', [1.0, 2.0, 3.0, 4.0], 1.25, [8.5, 9.5]),
+]:
+    arr = array.array(typecode, values)
+    view = memoryview(arr)
+    view[1] = scalar
+    print('scalar', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())
+    view[1:3] = memoryview(array.array(typecode, replacement))
+    print('slice', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())
+    view[::2] = memoryview(array.array(typecode, replacement))
+    print('extended', typecode, arr.tolist(), view.tolist(), view.tobytes() == arr.tobytes())
+    show('mismatch-' + typecode, lambda view=view: view.__setitem__(slice(0, 2), memoryview(array.array('B', [1, 2]))))
+    show('bytes-' + typecode, lambda view=view: view.__setitem__(slice(0, 2), b'ab'))
+    show('bad-scalar-' + typecode, lambda view=view: view.__setitem__(0, object()))
+
+arr = array.array('h', [1, 2])
+view = memoryview(arr)
+view[0] = I()
+print('index-object', arr.tolist(), view.tolist())"#,
+    });
+}
+
+#[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py::MiscTest public constructor/module behavior",
