@@ -2263,6 +2263,10 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::BoundMethod { .. } => "method",
         Value::Partial { .. } => "partial",
         Value::PartialMethod { .. } => "partialmethod",
+        Value::PartialMethodCall {
+            expects_self_arg: true,
+            ..
+        } => "function",
         Value::PartialMethodCall { .. } => "partial",
         Value::LruCacheWrapper { .. } => "_lru_cache_wrapper",
         Value::SingleDispatch { .. }

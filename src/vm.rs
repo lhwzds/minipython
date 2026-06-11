@@ -50136,9 +50136,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             receiver,
             args,
             keywords,
-            expects_self_arg: _,
+            expects_self_arg,
             ..
         } => match name {
+            "__name__" if expects_self_arg => Ok(Value::String("_method".to_string())),
+            "__qualname__" if expects_self_arg => Ok(Value::String(
+                "partialmethod._make_unbound_method.<locals>._method".to_string(),
+            )),
+            "__module__" if expects_self_arg => Ok(Value::String("functools".to_string())),
             "__self__" => receiver
                 .map(|value| *value)
                 .ok_or_else(|| format!("AttributeError: partial object has no attribute '{name}'")),
@@ -54280,6 +54285,10 @@ fn type_name(value: &Value) -> &str {
         Value::BoundMethod { .. } => "method",
         Value::Partial { .. } => "partial",
         Value::PartialMethod { .. } => "partialmethod",
+        Value::PartialMethodCall {
+            expects_self_arg: true,
+            ..
+        } => "function",
         Value::PartialMethodCall { .. } => "partial",
         Value::LruCacheWrapper { .. } => "_lru_cache_wrapper",
         Value::SingleDispatch { .. }

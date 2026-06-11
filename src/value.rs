@@ -1315,6 +1315,14 @@ impl fmt::Display for Value {
                 receiver,
                 args,
                 keywords,
+                expects_self_arg,
+                ..
+            } if *expects_self_arg => write!(f, "{}", format_partialmethod_unbound_method()),
+            Value::PartialMethodCall {
+                function,
+                receiver,
+                args,
+                keywords,
                 ..
             } => write!(
                 f,
@@ -1476,6 +1484,10 @@ fn format_partialmethod_call(
             .map(|(name, value)| format!("{name}={}", format_value_repr(value))),
     );
     format!("functools.partial({})", parts.join(", "))
+}
+
+fn format_partialmethod_unbound_method() -> &'static str {
+    "<function partialmethod._make_unbound_method.<locals>._method>"
 }
 
 fn format_lru_cache_wrapper(identity: &Rc<()>) -> String {
@@ -1843,6 +1855,14 @@ fn format_value_repr(value: &Value) -> String {
             keywords,
             ..
         } => format_partialmethod(function, args, keywords),
+        Value::PartialMethodCall {
+            function,
+            receiver,
+            args,
+            keywords,
+            expects_self_arg,
+            ..
+        } if *expects_self_arg => format_partialmethod_unbound_method().to_string(),
         Value::PartialMethodCall {
             function,
             receiver,
