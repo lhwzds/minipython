@@ -3224,6 +3224,39 @@ for sample in samples:
 }
 
 #[test]
+fn cpython_collections_abc_set_noncomparable_comparison_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs::test_issue16373 public subset",
+        name: "collections-abc-set-noncomparable-comparison",
+        source: r#"from collections.abc import Set
+class MyComparableSet(Set):
+    def __contains__(self, x):
+        return False
+    def __len__(self):
+        return 0
+    def __iter__(self):
+        return iter([])
+class MyNonComparableSet(Set):
+    def __contains__(self, x):
+        return False
+    def __len__(self):
+        return 0
+    def __iter__(self):
+        return iter([])
+    def __le__(self, x):
+        return NotImplemented
+    def __lt__(self, x):
+        return NotImplemented
+cs = MyComparableSet()
+ncs = MyNonComparableSet()
+print(ncs < cs)
+print(ncs <= cs)
+print(ncs > cs)
+print(ncs >= cs)"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

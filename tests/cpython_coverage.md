@@ -2420,6 +2420,12 @@ Recent runtime migration notes:
   Direct CPython diff evidence is in
   `cpython_collections_abc_set_hash_matches_frozenset_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_set_noncomparable_comparison_subset`, covering
+  CPython `TestCollectionABCs::test_issue16373` for `Set` subclass comparison
+  fallback when the left operand returns `NotImplemented`. Direct CPython diff
+  evidence is in
+  `cpython_collections_abc_set_noncomparable_comparison_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
