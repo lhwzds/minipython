@@ -2645,6 +2645,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_comparison_subset",
             "cpython_collections_counter_fromkeys_subset",
             "cpython_collections_counter_most_common_subset",
+            "cpython_collections_counter_mapping_mutation_subset",
             "cpython_collections_counter_repr_nonsortable_subset",
             "cpython_collections_counter_subtract_unary_subset",
             "cpython_collections_counter_copy_subclass_subset",
@@ -2763,6 +2764,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_counter_most_common_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter most_common behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_mapping_mutation_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter mapping mutation behavior"
     );
     assert!(
         row.diff_evidence

@@ -44584,6 +44584,27 @@ fn cpython_collections_counter_most_common_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
+// Splits Counter's mapping mutation helpers out of the broad basics coverage.
+#[test]
+fn cpython_collections_counter_mapping_mutation_subset() {
+    assert_output(
+        concat!(
+            "from collections import Counter\n",
+            "c = Counter(a=4, b=0, c=-2)\n",
+            "print(c.pop('a'), 'a' in c, c['a'])\n",
+            "print(c.pop('missing', 99))\n",
+            "print(c.setdefault('d', 5), c['d'])\n",
+            "print(c.setdefault('b', 7), c['b'])\n",
+            "key, value = c.popitem()\n",
+            "print(key in c, value)\n",
+            "c.clear()\n",
+            "print(c, list(c.items()))\n",
+        ),
+        &["4 False 0", "99", "5 5", "0 0", "False 5", "Counter() []"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_init
 // and ::test_update. The keyword names `self` and `iterable` are real Counter
 // keys here because Counter's iterable parameter is positional-only.

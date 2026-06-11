@@ -4881,6 +4881,24 @@ print([c.most_common(i) for i in range(5)])"#,
 }
 
 #[test]
+fn cpython_collections_counter_mapping_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter mapping mutation subset",
+        name: "collections-counter-mapping-mutation",
+        source: r#"from collections import Counter
+c = Counter(a=4, b=0, c=-2)
+print(c.pop('a'), 'a' in c, c['a'])
+print(c.pop('missing', 99))
+print(c.setdefault('d', 5), c['d'])
+print(c.setdefault('b', 7), c['b'])
+key, value = c.popitem()
+print(key in c, value)
+c.clear()
+print(c, list(c.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_conversions_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter conversions subset",
