@@ -2072,6 +2072,87 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_frexp_ldexp_modf_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testFrexp/testLdexp/testLdexp_denormal/testModf public stable subset",
+        name: "math-frexp-ldexp-modf",
+        source: r#"import math
+print(math.frexp(-1), math.frexp(0), math.frexp(1), math.frexp(2))
+m, e = math.frexp(-0.0)
+print(m, e, math.copysign(1.0, m))
+print(math.frexp(math.inf)[0], math.frexp(-math.inf)[0], math.isnan(math.frexp(math.nan)[0]), math.frexp(math.inf)[1], math.frexp(math.nan)[1])
+print(math.ldexp(0, 1), math.ldexp(1, 1), math.ldexp(1, -1), math.ldexp(-1, 1))
+print(math.ldexp(1.0, -1000000), math.ldexp(-1.0, -1000000), math.copysign(1.0, math.ldexp(-1.0, -1000000)))
+print(math.ldexp(math.inf, 30), math.ldexp(-math.inf, -213), math.isnan(math.ldexp(math.nan, 0)))
+print(math.ldexp(6993274598585239, -1126))
+print(math.ldexp(1.5, True), math.ldexp(1.5, False))
+print(math.modf(1.5), math.modf(-1.5))
+part, whole = math.modf(-1.0)
+print(part, whole, math.copysign(1.0, part))
+part, whole = math.modf(-0.0)
+print(part, whole, math.copysign(1.0, part), math.copysign(1.0, whole))
+print(math.modf(math.inf), math.modf(-math.inf), math.copysign(1.0, math.modf(-math.inf)[0]))
+print(math.isnan(math.modf(math.nan)[0]), math.isnan(math.modf(math.nan)[1]))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+class RaisesIndex:
+    def __index__(self):
+        raise ValueError('bad index')
+
+print(math.frexp(FloatLike(8.0)), math.modf(IndexLike(3)))
+print(math.ldexp(FloatLike(1.5), 2), math.ldexp(IndexLike(3), 2))
+for expr in [
+    lambda: math.frexp(),
+    lambda: math.frexp(1, 2),
+    lambda: math.frexp('x'),
+    lambda: math.frexp(1+2j),
+    lambda: math.frexp(IndexLike(10**10000)),
+    lambda: math.frexp(BadFloat()),
+    lambda: math.frexp(RaisesFloat()),
+    lambda: math.frexp(x=1),
+    lambda: math.modf(),
+    lambda: math.modf(1, 2),
+    lambda: math.modf('x'),
+    lambda: math.modf(1+2j),
+    lambda: math.modf(IndexLike(10**10000)),
+    lambda: math.modf(BadFloat()),
+    lambda: math.modf(RaisesFloat()),
+    lambda: math.modf(x=1),
+    lambda: math.ldexp(),
+    lambda: math.ldexp(1),
+    lambda: math.ldexp(1, 2, 3),
+    lambda: math.ldexp(2.0, 1.1),
+    lambda: math.ldexp(1.0, IndexLike(2)),
+    lambda: math.ldexp(1.0, RaisesIndex()),
+    lambda: math.ldexp(1.0, 1000000),
+    lambda: math.ldexp(-1.0, 1000000),
+    lambda: math.ldexp(IndexLike(10**10000), 1),
+    lambda: math.ldexp(1.0, 10**10000),
+    lambda: math.ldexp(x=1.0, i=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

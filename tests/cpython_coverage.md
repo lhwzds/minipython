@@ -71,6 +71,7 @@ Recent runtime migration notes:
   `cpython_math_trig_diff_subset`,
   `cpython_math_hyperbolic_diff_subset`,
   `cpython_math_fmod_remainder_diff_subset`,
+  `cpython_math_frexp_ldexp_modf_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -457,6 +458,7 @@ Recent runtime migration notes:
   `__float__` and `__index__` input conversion, huge-index overflow,
   propagated conversion exceptions, and catchable error classes.
 - The bundled `math` module also includes
+  `cpython_math_frexp_ldexp_modf_diff_subset` and
   `cpython_math_frexp_ldexp_modf_subset`, covering CPython
   `test_math.py::MathTests::testFrexp`, `::testLdexp`,
   `::testLdexp_denormal`, and `::testModf` public floating
