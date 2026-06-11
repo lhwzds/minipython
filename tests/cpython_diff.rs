@@ -4982,6 +4982,46 @@ check('constructor', Counter(words))"#,
 }
 
 #[test]
+fn cpython_collections_counter_order_preservation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter order preservation subset",
+        name: "collections-counter-order-preservation",
+        source: r#"from collections import Counter
+print(list(Counter('abracadabra').items()) == [('a', 5), ('b', 2), ('r', 2), ('c', 1), ('d', 1)])
+print(list(Counter('xyzpdqqdpzyx').items()) == [('x', 2), ('y', 2), ('z', 2), ('p', 2), ('d', 2), ('q', 2)])
+print(list(Counter('abracadabra simsalabim').elements()) == ['a', 'a', 'a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'r', 'r', 'c', 'd', ' ', 's', 's', 'i', 'i', 'm', 'm', 'l'])
+ps = 'aaabbcdddeefggghhijjjkkl'
+qs = 'abbcccdeefffhkkllllmmnno'
+order = {letter: i for i, letter in enumerate(dict.fromkeys(ps + qs))}
+def correctly_ordered(seq):
+    positions = [order[letter] for letter in seq]
+    return positions == sorted(positions)
+p, q = Counter(ps), Counter(qs)
+print(correctly_ordered(+p))
+print(correctly_ordered(-p))
+print(correctly_ordered(p + q))
+print(correctly_ordered(p - q))
+print(correctly_ordered(p | q))
+print(correctly_ordered(p & q))
+for op in ['+=', '-=', '|=', '&=', 'update', 'subtract']:
+    p, q = Counter(ps), Counter(qs)
+    if op == '+=':
+        p += q
+    elif op == '-=':
+        p -= q
+    elif op == '|=':
+        p |= q
+    elif op == '&=':
+        p &= q
+    elif op == 'update':
+        p.update(q)
+    else:
+        p.subtract(q)
+    print(op, correctly_ordered(p))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",

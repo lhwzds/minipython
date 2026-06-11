@@ -161,6 +161,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_subtract_unary_diff_subset`,
   `cpython_collections_counter_copy_subclass_diff_subset`,
   `cpython_collections_counter_copying_diff_subset`,
+  `cpython_collections_counter_order_preservation_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
@@ -387,6 +388,12 @@ Recent runtime migration notes:
   `cpython_collections_counter_copying_subset`, covering CPython public
   `Counter.copy()`, `copy.copy()`, `copy.deepcopy()`, `eval(repr(...))`,
   update, and constructor copying behavior.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_order_preservation_diff_subset` and
+  `cpython_collections_counter_order_preservation_subset`, covering CPython
+  public Counter insertion-order preservation across construction,
+  `elements()`, supported arithmetic and in-place arithmetic, `update()`, and
+  `subtract()`.
 - The bundled `collections` module also includes
   `cpython_collections_chainmap_public_diff_subset`, covering CPython public
   `ChainMap` construction, truthiness, combined iteration/items/dict coercion,
