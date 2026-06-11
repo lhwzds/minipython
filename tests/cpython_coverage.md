@@ -1498,7 +1498,8 @@ Recent runtime migration notes:
   `cpython_bytearray_extended_slice_assignment_subset`, covering bytearray
   extended slice assignment/deletion, integer-iterable RHS conversion,
   self-slice assignment, special method dispatch, and saturated large slice
-  bounds.
+  bounds. Direct CPython diff evidence is in
+  `cpython_bytearray_extended_slice_assignment_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_inplace_concat_repeat_subset`, covering bytearray `+=`,
   `*=`, `__iadd__`, and `__imul__` alias-preserving in-place mutation,

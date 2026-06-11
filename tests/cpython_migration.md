@@ -3506,7 +3506,8 @@ Completed in the bytearray extended slice-assignment pass:
 - Covered assignment/deletion parity against list slicing for large positive
   and negative slice bounds, tuple/range/list RHS inputs, direct
   `__setitem__` / `__delitem__`, self-slice assignment, and
-  `dir(bytearray)` visibility for the special methods.
+  `dir(bytearray)` visibility for the special methods. Direct CPython diff
+  evidence is in `cpython_bytearray_extended_slice_assignment_diff_subset`.
 
 Completed in the bytearray inplace concat/repeat pass:
 

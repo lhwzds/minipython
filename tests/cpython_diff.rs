@@ -8577,6 +8577,47 @@ print('__iadd__' in dir(bytearray), '__imul__' in dir(bytearray))"#,
 }
 
 #[test]
+fn cpython_bytearray_extended_slice_assignment_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_extended_set_del_slice and ::test_setslice_trap",
+        name: "bytearray-extended-slice-assignment",
+        source: r#"import sys
+indices = (0, None, 1, 3, 19, 300, 1<<333, sys.maxsize, -1, -2, -31, -300)
+ok = True
+for start in indices:
+    for stop in indices:
+        for step in indices[1:]:
+            L = list(range(255))
+            b = bytearray(L)
+            data = L[start:stop:step]
+            data.reverse()
+            L[start:stop:step] = data
+            b[start:stop:step] = data
+            if b != bytearray(L):
+                ok = False
+            del L[start:stop:step]
+            del b[start:stop:step]
+            if b != bytearray(L):
+                ok = False
+print(ok)
+for rhs in [(65, 66), range(65, 68), [65, True, False], [65, 'x'], [256], [-1]]:
+    b = bytearray(b'abc')
+    try:
+        b[1:2] = rhs
+        print(type(rhs).__name__, b)
+    except (TypeError, ValueError) as error:
+        print(type(rhs).__name__, error.__class__.__name__)
+b = bytearray(b'abcdef')
+print(b.__setitem__(slice(1, 3), [88, 89]), b)
+print(b.__delitem__(slice(None, None, 2)), b)
+b = bytearray(range(10))
+b[8:] = b
+print(len(b), b[:5], b[8:13])
+print('__setitem__' in dir(bytearray), '__delitem__' in dir(bytearray))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
