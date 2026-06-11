@@ -4489,6 +4489,56 @@ fn cpython_ast_dump_public_diff_covers_exact_subsets() {
 }
 
 #[test]
+fn cpython_ast_literal_eval_public_diff_covers_exact_subsets() {
+    let diff_name = "cpython_ast_literal_eval_public_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("ast.literal_eval public diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_ast_literal_eval_first_pass_subset",
+        "cpython_ast_literal_eval_exact_subset",
+        "cpython_ast_literal_eval_complex_full_subset",
+        "cpython_ast_literal_eval_complex_exact_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "ast.literal_eval runtime subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "ast-literal-eval-public",
+        "ASTHelpers_Test::test_literal_eval",
+        "::test_literal_eval_complex",
+        "ast.literal_eval('[1, 2, 3]')",
+        "ast.literal_eval('set()')",
+        "ast.parse('[1, 2]', mode='eval').body",
+        "'3.25+6.75j'",
+        "'3+(0+6j)'",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "ast.literal_eval public diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("ast.literal_eval")
+                && document.contains("complex"),
+            "ast.literal_eval docs must link `{diff_name}` to literal and complex coverage"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     let methods =
         method_audit_methods("## `Lib/test/test_syntax.py::SyntaxWarningTest` Method Audit");

@@ -4784,6 +4784,47 @@ print(ast.dump(ast.arguments(), annotate_fields=False))"#,
 }
 
 #[test]
+fn cpython_ast_literal_eval_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",
+        name: "ast-literal-eval-public",
+        source: r#"import ast
+print(ast.literal_eval('[1, 2, 3]') == [1, 2, 3])
+print(ast.literal_eval('{"foo": 42}') == {'foo': 42})
+print(ast.literal_eval('(True, False, None)') == (True, False, None))
+print(ast.literal_eval('{1, 2, 3}') == {1, 2, 3})
+print(ast.literal_eval('b"hi"') == b'hi')
+print(ast.literal_eval('set()') == set())
+print(ast.literal_eval('6'), ast.literal_eval('+6'), ast.literal_eval('-6'))
+print(ast.literal_eval('3.25'), ast.literal_eval('+3.25'), ast.literal_eval('-3.25'))
+print(repr(ast.literal_eval('-0.0')))
+node = ast.parse('[1, 2]', mode='eval').body
+print(ast.literal_eval(node))
+for source, expected in [
+    ('6j', 6j),
+    ('-6j', -6j),
+    ('6.75j', 6.75j),
+    ('-6.75j', -6.75j),
+    ('3+6j', 3+6j),
+    ('-3+6j', -3+6j),
+    ('3-6j', 3-6j),
+    ('-3-6j', -3-6j),
+    ('3.25+6.75j', 3.25+6.75j),
+    ('-3.25+6.75j', -3.25+6.75j),
+    ('3.25-6.75j', 3.25-6.75j),
+    ('-3.25-6.75j', -3.25-6.75j),
+    ('(3+6j)', 3+6j),
+]:
+    print(ast.literal_eval(source) == expected)
+for source in ['foo()', '++6', '+True', '2+3', '-6j+3', '-6j+3j', '3+-6j', '3+(0+6j)', '-(3+6j)']:
+    try:
+        ast.literal_eval(source)
+    except ValueError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_all_any_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_all / ::test_any",

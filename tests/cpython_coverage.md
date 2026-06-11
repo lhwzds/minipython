@@ -2186,6 +2186,9 @@ Recent runtime migration notes:
   numeric signs, complex literals, AST-node input, and malformed expression
   rejection. `cpython_ast_literal_eval_exact_subset` splits CPython
   `ASTHelpers_Test::test_literal_eval` into direct method-level coverage.
+  `cpython_ast_literal_eval_public_diff_subset` provides direct CPython output
+  parity for the stable public literal, AST-node input, complex-literal, and
+  malformed-expression rejection surface.
   `cpython_ast_literal_eval_complex_full_subset` ports CPython
   `ASTHelpers_Test::test_literal_eval_complex`, including signed real-plus-
   imaginary forms, parenthesized complex literals, and CPython's rejected
