@@ -5873,6 +5873,32 @@ for name in ('TextIO', 'BinaryIO'):
 }
 
 #[test]
+fn cpython_types_union_typed_dict_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nclass Point2D(typing.TypedDict):\n    x: int\n    y: int\n    label: str\nunion = Point2D | str\nprint(union == typing.Union[Point2D, str])",
+    )
+    .expect("failed to probe CPython union TypedDict support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union TypedDict diff: CPython oracle lacks PEP 604 TypedDict union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests TypedDict public subset",
+        name: "types-union-typed-dict",
+        source: r#"import typing
+class Point2D(typing.TypedDict):
+    x: int
+    y: int
+    label: str
+union = Point2D | str
+print('typed-dict', union == typing.Union[Point2D, str], tuple(arg.__name__ for arg in union.__args__), Point2D(x=1, y=2, label='p')['label'])"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

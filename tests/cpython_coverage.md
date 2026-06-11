@@ -1013,7 +1013,8 @@ Recent runtime migration notes:
 - The bundled `types` module also includes
   `cpython_types_union_typed_dict_subset`, covering class-based
   `typing.TypedDict` creation, call construction as a dict, and PEP 604 union
-  equality with `typing.Union`.
+  equality with `typing.Union`. Direct output parity is guarded by
+  `cpython_types_union_typed_dict_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_protocol_subset`, covering class-based
   `typing.Protocol` subclass creation and PEP 604 union equality with
