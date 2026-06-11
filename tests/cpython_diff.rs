@@ -2720,6 +2720,53 @@ print(issubclass(Iterator, Iterable), issubclass(Iterable, Iterator))"#,
 }
 
 #[test]
+fn cpython_collections_abc_sequence_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Sequence ABC public runtime subset",
+        name: "collections-abc-sequence",
+        source: r#"from collections.abc import Sequence, Reversible, Collection, Sized, Iterable, Container
+samples = [(), [], b'', bytearray(), '', range(0), memoryview(b'')]
+print([isinstance(value, Sequence) for value in samples])
+print([issubclass(type(value), Sequence) for value in samples])
+print([isinstance(value, Sequence) for value in [{}, set(), iter([]), None, 42, 3.14, 1j]])
+print(issubclass(list, Sequence), issubclass(tuple, Sequence), issubclass(str, Sequence), issubclass(bytes, Sequence), issubclass(bytearray, Sequence), issubclass(range, Sequence), issubclass(memoryview, Sequence))
+print(issubclass(dict, Sequence), issubclass(set, Sequence))
+print(issubclass(Sequence, Reversible), issubclass(Sequence, Collection), issubclass(Sequence, Sized), issubclass(Sequence, Iterable), issubclass(Sequence, Container))
+print(isinstance(memoryview(b''), Reversible), isinstance(memoryview(b''), Collection), isinstance(memoryview(b''), Sized), isinstance(memoryview(b''), Iterable), isinstance(memoryview(b''), Container))
+print(issubclass(memoryview, Reversible), issubclass(memoryview, Collection), issubclass(memoryview, Sized), issubclass(memoryview, Iterable), issubclass(memoryview, Container))
+class Seq:
+    def __len__(self):
+        return 0
+    def __getitem__(self, index):
+        raise IndexError
+class GetOnly:
+    def __getitem__(self, index):
+        raise IndexError
+class LenOnly:
+    def __len__(self):
+        return 0
+class LenBlocked(Seq):
+    __len__ = None
+class GetBlocked(Seq):
+    __getitem__ = None
+print(isinstance(Seq(), Sequence), issubclass(Seq, Sequence))
+print(isinstance(GetOnly(), Sequence), issubclass(GetOnly, Sequence))
+print(isinstance(LenOnly(), Sequence), issubclass(LenOnly, Sequence))
+print(isinstance(LenBlocked(), Sequence), issubclass(LenBlocked, Sequence))
+print(isinstance(GetBlocked(), Sequence), issubclass(GetBlocked, Sequence))
+class Concrete(Sequence):
+    def __len__(self):
+        return 0
+    def __getitem__(self, index):
+        raise IndexError
+class Direct(Sequence):
+    pass
+print(isinstance(Concrete(), Sequence), issubclass(Concrete, Sequence))
+print(issubclass(Direct, Sequence), issubclass(float, Direct))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

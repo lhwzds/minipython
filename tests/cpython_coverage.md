@@ -2365,6 +2365,13 @@ Recent runtime migration notes:
   special methods. Direct CPython diff evidence is in
   `cpython_collections_abc_core_runtime_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_sequence_subset`, covering `Sequence` for supported
+  built-in sequence registrations including `memoryview`, explicit Sequence
+  subclassing, CPython's non-structural Sequence behavior, and inheritance
+  through `Reversible`, `Collection`, `Sized`, `Iterable`, and `Container`.
+  Direct CPython diff evidence is in
+  `cpython_collections_abc_sequence_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
