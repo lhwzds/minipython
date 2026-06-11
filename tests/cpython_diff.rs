@@ -3204,6 +3204,26 @@ print(f1 != f1, r1 != f1, f1 != r1, f1 != f3, r1 != f3, f1 != r3, f1 != l3)"#,
 }
 
 #[test]
+fn cpython_collections_abc_set_hash_matches_frozenset_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::test_Set_hash_matches_frozenset public subset",
+        name: "collections-abc-set-hash-matches-frozenset",
+        source: r#"import sys
+from collections.abc import Set
+samples = [
+    (), (1,), (None,), (-1,), (0.0,), ('abc',), (1, 2, 3),
+    (10**100, 10**101), ('a', 'b', 'ab', ''), (False, True),
+    (object(), object(), object()), (float('nan'),), (frozenset(),),
+    tuple(range(1000)), tuple(x for x in range(1000) if x not in (100, 200, 300)),
+    tuple(range(sys.maxsize - 10, sys.maxsize + 10)),
+]
+for sample in samples:
+    fs = frozenset(sample)
+    print(hash(fs) == Set._hash(fs))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

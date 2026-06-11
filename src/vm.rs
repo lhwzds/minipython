@@ -26230,21 +26230,23 @@ impl Vm {
     }
 
     fn set_abc_hash(&mut self, receiver: Value) -> Result<Value, String> {
-        match &receiver {
-            Value::FrozenSet(_) => return hash_value(&receiver),
-            value if frozen_set_subclass_items(value).is_some() => {
-                let items = frozen_set_subclass_items(value)
-                    .expect("frozenset subclass items exist after guard");
-                return hash_value(&Value::FrozenSet(items));
-            }
-            _ => {}
+        let values = self.collect_iterable_values(receiver)?;
+        let mask = u64::MAX;
+        let mut hash = 1_927_868_237_u64.wrapping_mul(values.len() as u64 + 1) & mask;
+        for value in values {
+            let item_hash = call_hash_builtin(self, vec![value], Vec::new())?;
+            let item_hash = py_hash_to_u64(item_hash)?;
+            let mixed = (item_hash ^ item_hash.wrapping_shl(16) ^ 89_869_747_u64)
+                .wrapping_mul(3_644_798_167_u64);
+            hash = (hash ^ mixed) & mask;
         }
-
-        let mut values = Vec::new();
-        for value in self.collect_iterable_values(receiver)? {
-            push_unique_set_value(&mut values, value)?;
+        hash = hash.wrapping_mul(69_069).wrapping_add(907_133_923) & mask;
+        let signed = hash as i64;
+        if signed == -1 {
+            Ok(Value::Number(590_923_713))
+        } else {
+            Ok(normalize_big_int(BigInt::from(signed)))
         }
-        hash_value(&frozen_set_value(values))
     }
 
     fn set_abc_contains(&mut self, receiver: Value, value: Value) -> Result<bool, String> {
@@ -67654,6 +67656,20 @@ fn hash_result_from_special_method(value: Value) -> Result<Value, String> {
         Value::BigInt(value) => Ok(python_integer_hash_value(&value)),
         _ => Err("TypeError: __hash__ method should return an integer".to_string()),
     }
+}
+
+fn py_hash_to_u64(value: Value) -> Result<u64, String> {
+    let value = match numeric_bool_value(value) {
+        Value::Bool(value) => BigInt::from(bool_as_i64(value)),
+        Value::Number(value) => BigInt::from(value),
+        Value::BigInt(value) => value,
+        _ => return Err("TypeError: __hash__ method should return an integer".to_string()),
+    };
+    let modulus = BigInt::from(1_u128 << 64);
+    let masked = value.mod_floor(&modulus);
+    masked
+        .to_u64()
+        .ok_or_else(|| "TypeError: __hash__ method should return an integer".to_string())
 }
 
 fn identity_value(value: &Value) -> Value {

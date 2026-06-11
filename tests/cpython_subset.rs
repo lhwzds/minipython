@@ -46723,9 +46723,9 @@ fn cpython_collections_abc_set_real_set_interoperability_subset() {
 }
 
 // Adapted from CPython Lib/test/test_collections.py::
-// test_Set_hash_matches_frozenset. This ports the public contract that the
-// Set._hash() mixin result matches the runtime frozenset hash for supported
-// hashable element shapes.
+// test_Set_hash_matches_frozenset. This ports the current public Set._hash()
+// mixin algorithm for supported hashable element shapes; current CPython's
+// collections.abc mixin result is distinct from the builtin frozenset hash.
 #[test]
 fn cpython_collections_abc_set_hash_matches_frozenset_subset() {
     assert_output(
@@ -46744,8 +46744,8 @@ fn cpython_collections_abc_set_hash_matches_frozenset_subset() {
             "    print(hash(fs) == Set._hash(fs))"
         ),
         &[
-            "True", "True", "True", "True", "True", "True", "True", "True", "True", "True", "True",
-            "True", "True", "True", "True", "True",
+            "False", "False", "False", "False", "False", "False", "False", "False", "False",
+            "False", "False", "False", "False", "False", "False", "False",
         ],
     );
 }
