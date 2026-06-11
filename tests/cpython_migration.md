@@ -3374,11 +3374,16 @@ Completed in the bytearray resize pass:
   negative-length `ValueError`, type/arity `TypeError`, `dir(bytearray)`
   visibility, and a sandbox-safe `MemoryError` guard for impractically large
   sizes such as `sys.maxsize`.
+- This remains local subset evidence rather than direct `cpython_diff` evidence
+  because the default CPython oracle used by `cpython_diff` in this workspace
+  does not expose `bytearray.resize()`.
 - Added `cpython_bytearray_resize_forbidden_subset`, adapted from current
   CPython `Lib/test/test_bytes.py::ByteArrayTest::test_resize_forbidden`,
   covering active memoryview exports blocking `bytearray.resize()`, resizing
   slice assignment, `pop()`, `remove()`, item deletion, and non-contiguous
-  slice-size changes before mutating the original bytearray.
+  slice-size changes before mutating the original bytearray. This remains local
+  subset evidence for the same default-oracle `bytearray.resize()` availability
+  boundary.
 
 Completed in the bytearray take-bytes pass:
 
@@ -3390,6 +3395,9 @@ Completed in the bytearray take-bytes pass:
   active memoryview exporter `BufferError`, `IndexError` / `TypeError` paths,
   inherited method dispatch for `bytearray` subclasses, and `dir(bytearray)`
   visibility without exposing the method on `bytes`.
+- This remains local subset evidence rather than direct `cpython_diff` evidence
+  because the default CPython oracle used by `cpython_diff` in this workspace
+  does not expose `bytearray.take_bytes()`.
 - Left exact allocation-size accounting, `sys.getsizeof()`, and the CPython-only
   `test_take_bytes_optimization` as allocation/internal optimization work
   outside this public semantic slice.

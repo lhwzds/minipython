@@ -2734,6 +2734,35 @@ fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence()
 }
 
 #[test]
+fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries() {
+    for required in [
+        "default CPython oracle used by `cpython_diff` in this workspace",
+        "does not expose `bytearray.resize()`",
+        "does not expose `bytearray.take_bytes()`",
+        "local subset evidence rather than direct `cpython_diff` evidence",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must mention default-oracle bytearray subset boundary `{required}`"
+        );
+    }
+
+    for required in [
+        "default CPython",
+        "oracle used by `cpython_diff` in this workspace",
+        "does not expose `bytearray.resize()`",
+        "does not expose",
+        "`bytearray.take_bytes()`",
+        "remains local subset evidence",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage document must mention default-oracle bytearray subset boundary `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_migration_documents_sandbox_stdlib_allow_list_semantics() {
     for required in [
         "Sandbox import policy is allow-list based",

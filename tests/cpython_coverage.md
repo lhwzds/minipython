@@ -1313,7 +1313,9 @@ Recent runtime migration notes:
   current CPython `ByteArrayTest::test_resize` public behavior for bytearray
   truncation, zero-filled growth, `__index__` length conversion, catchable
   arity/type/negative-length errors, `dir(bytearray)` visibility, and
-  sandbox-safe `MemoryError` behavior for impractically large sizes.
+  sandbox-safe `MemoryError` behavior for impractically large sizes. This
+  remains local subset evidence because the default CPython oracle used by
+  `cpython_diff` in this workspace does not expose `bytearray.resize()`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_alloc_and_subclass_mutation_subset`, covering CPython
   `ByteArrayTest::test_alloc` and `test_init_alloc` public `__alloc__()`
@@ -1325,14 +1327,17 @@ Recent runtime migration notes:
   covering current CPython `ByteArrayTest::test_resize_forbidden` public
   behavior for active memoryview exports blocking bytearray resizing through
   `resize()`, slice assignment, `pop()`, `remove()`, and deletion while
-  preserving the original bytes.
+  preserving the original bytes. This remains local subset evidence for the
+  same default-oracle `bytearray.resize()` availability boundary.
 - `STRING_RUNTIME` also includes `cpython_bytearray_take_bytes_subset`, covering
   current CPython `ByteArrayTest::test_take_bytes` public behavior for
   take-and-delete bytearray prefix extraction, negative stop normalization,
   `None` stop, `__index__` stop conversion, active memoryview exporter
   `BufferError`, public error classes, inherited `bytearray` subclass method
   dispatch, and `dir(bytearray)` visibility without exposing the method on
-  `bytes`.
+  `bytes`. This remains local subset evidence because the default CPython
+  oracle used by `cpython_diff` in this workspace does not expose
+  `bytearray.take_bytes()`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_iterator_length_hint_and_repeat_diff_subset`,
   `cpython_bytearray_exhausted_iterator_diff_subset`,
