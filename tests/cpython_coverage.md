@@ -2415,6 +2415,12 @@ Recent runtime migration notes:
   generators, generator expressions, direct-subclass `super().__iter__()`
   mixin behavior, and `__iter__ = None` blocking.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_iterable_iterator_subset`, covering the supported
+  `Iterable` and `Iterator` public ABC surface for built-in containers,
+  iterators, scalar non-samples, structural user classes, direct ABC
+  subclassing, and `Iterator` inheritance through `Iterable`. Direct CPython
+  diff evidence is in `cpython_collections_abc_iterable_iterator_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_validate_isinstance_subset`, covering the public
   `ABCTestCase.validate_isinstance` helper behavior used by CPython's one-trick
   pony ABC tests for `Hashable`, `AsyncIterable`, `Iterable`, `Sized`,

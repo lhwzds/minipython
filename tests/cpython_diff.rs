@@ -2679,6 +2679,47 @@ print(issubclass(Iterator, Iterable), issubclass(Collection, Sized), issubclass(
 }
 
 #[test]
+fn cpython_collections_abc_iterable_iterator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Iterable/Iterator ABC public runtime subset",
+        name: "collections-abc-iterable-iterator",
+        source: r#"from collections.abc import Iterable, Iterator
+iterable_samples = [b'', '', (), [], {}, set(), range(0)]
+print([isinstance(value, Iterable) for value in iterable_samples])
+print([isinstance(value, Iterator) for value in iterable_samples])
+iterator_samples = [iter(b''), iter(''), iter(()), iter([]), iter({}), iter(set()), iter(range(0))]
+print([isinstance(value, Iterator) for value in iterator_samples])
+print([isinstance(value, Iterable) for value in iterator_samples])
+non_samples = [None, 42, 3.14, 1j]
+print([isinstance(value, Iterable) for value in non_samples])
+class CustomIterable:
+    def __iter__(self):
+        return iter([])
+class NextOnly:
+    def __next__(self):
+        return 1
+class CustomIterator:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        raise StopIteration
+print(isinstance(CustomIterable(), Iterable), isinstance(CustomIterable(), Iterator))
+print(isinstance(NextOnly(), Iterable), isinstance(NextOnly(), Iterator))
+print(isinstance(CustomIterator(), Iterable), isinstance(CustomIterator(), Iterator))
+print(issubclass(CustomIterable, Iterable), issubclass(CustomIterable, Iterator))
+print(issubclass(NextOnly, Iterable), issubclass(NextOnly, Iterator))
+print(issubclass(CustomIterator, Iterable), issubclass(CustomIterator, Iterator))
+class I(Iterable):
+    pass
+class It(Iterator):
+    pass
+print(issubclass(I, Iterable), issubclass(I, Iterator))
+print(issubclass(It, Iterable), issubclass(It, Iterator))
+print(issubclass(Iterator, Iterable), issubclass(Iterable, Iterator))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

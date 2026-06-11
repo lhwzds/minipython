@@ -2592,6 +2592,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_order_preservation_subset",
             "cpython_collections_chainmap_union_operators_subset",
             "cpython_collections_abc_core_runtime_subset",
+            "cpython_collections_abc_iterable_iterator_subset",
         ],
         &["pickle/eval identity matrices"],
     );
@@ -2614,6 +2615,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_core_runtime_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for collections.abc core runtime"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_iterable_iterator_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Iterable/Iterator"
     );
 }
 
