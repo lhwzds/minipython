@@ -2605,6 +2605,33 @@ fn cpython_attribute_introspection_builtins_diff_subset() {
 }
 
 #[test]
+fn cpython_ascii_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",
+        name: "ascii-builtin",
+        source: r#"print(ascii(''))
+print(ascii(0), ascii(()), ascii([]), ascii({}))
+a = []
+a.append(a)
+print(ascii(a))
+d = {}
+d[0] = d
+print(ascii(d))
+for item in ["'", '"', '"\'', '\0', '\r\n\t .']:
+    print(ascii(item))
+for item in ['\x85', '\u1fff', '\U00012fff', '\U0001d121', 'é']:
+    print(ascii(item))
+supplement = '\U0001d121'
+print(f'{"é"!a}', f'{supplement!a}')
+for expr in [lambda: ascii(), lambda: ascii(1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
