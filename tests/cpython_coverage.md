@@ -2981,7 +2981,8 @@ Recent runtime migration notes:
   `typing.List[int]` and `list[int]` generic aliases resolve to their public
   runtime bases with `__orig_bases__` preserved, empty tuple results remove
   a base while preserving the original bases, and non-tuple provider results
-  raise a catchable `TypeError`.
+  raise a catchable `TypeError`. Direct output parity is guarded by
+  `cpython_types_class_creation_mro_entries_core_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_prepare_resolve_bases_subset`, covering CPython
   `ClassCreationTests::test_prepare_class`, `::test_resolve_bases`, and

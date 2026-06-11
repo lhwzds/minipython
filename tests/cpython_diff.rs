@@ -5449,6 +5449,53 @@ print(type(Created) is M, Created.__class__ is M, Created.x)"#,
 }
 
 #[test]
+fn cpython_types_class_creation_mro_entries_core_diff_subset() {
+    let probe = run_cpython(
+        "import types\nT = types.new_class('T', (list[int],), {})\nprint(T.__bases__[0] is list)",
+    )
+    .expect("failed to probe CPython types.new_class generic alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types class creation mro entries diff: CPython oracle lacks generic alias new_class support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests __mro_entries__ public core",
+        name: "types-class-creation-mro-entries-core",
+        source: r#"import types, typing
+class A: pass
+class B: pass
+class C:
+    def __mro_entries__(self, bases):
+        print('single-bases', len(bases), bases[0] is c)
+        return (A,)
+c = C()
+D = types.new_class('D', (c,), {})
+print('single', D.__bases__[0] is A, D.__orig_bases__[0] is c, D.__mro__[0] is D, D.__mro__[1] is A, D.__mro__[2] is object)
+L1 = types.new_class('L1', (typing.List[int],), {})
+print('typing-list', L1.__bases__[0] is list, L1.__bases__[1] is typing.Generic, L1.__orig_bases__[0] == typing.List[int], L1.__mro__[1] is list, L1.__mro__[2] is typing.Generic)
+L2 = types.new_class('L2', (list[int],), {})
+print('list', L2.__bases__[0] is list, len(L2.__bases__), L2.__orig_bases__[0] == list[int], L2.__mro__[1] is list, L2.__mro__[2] is object)
+class Drop:
+    def __mro_entries__(self, bases):
+        print('drop-bases', len(bases), bases[0] is A, bases[1] is drop, bases[2] is B)
+        return ()
+drop = Drop()
+Dropped = types.new_class('Dropped', (A, drop, B), {})
+print('drop', Dropped.__bases__ == (A, B), Dropped.__orig_bases__[0] is A, Dropped.__orig_bases__[1] is drop, Dropped.__orig_bases__[2] is B, Dropped.__mro__[1] is A, Dropped.__mro__[2] is B, Dropped.__mro__[3] is object)
+class Bad:
+    def __mro_entries__(self, bases):
+        return A
+try:
+    types.new_class('BadClass', (Bad(),), {})
+except TypeError as error:
+    print('bad', type(error).__name__, 'tuple' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
