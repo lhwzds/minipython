@@ -2607,6 +2607,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_set_hash_matches_frozenset_subset",
             "cpython_collections_abc_set_noncomparable_comparison_subset",
             "cpython_collections_abc_reversible_subset",
+            "cpython_collections_abc_reversible_direct_subclass_subset",
             "cpython_collections_abc_async_runtime_subset",
             "cpython_collections_abc_async_iterator_mixin_subset",
             "cpython_collections_abc_async_generator_core_mixin_subset",
@@ -2717,6 +2718,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_reversible_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Reversible"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_reversible_direct_subclass_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Reversible direct subclassing"
     );
     assert!(
         row.diff_evidence

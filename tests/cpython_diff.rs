@@ -3348,6 +3348,22 @@ print(issubclass(R, Reversible), issubclass(float, R))"#,
 }
 
 #[test]
+fn cpython_collections_abc_reversible_direct_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Reversible",
+        name: "collections-abc-reversible-direct-subclass",
+        source: r#"from collections.abc import Reversible
+class R(Reversible):
+    def __iter__(self):
+        return iter(list())
+    def __reversed__(self):
+        return iter(list())
+print(list(reversed(R())))
+print(issubclass(float, R))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_async_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Awaitable/Coroutine/AsyncIterable/AsyncIterator public subset",

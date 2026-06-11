@@ -2585,7 +2585,8 @@ Recent runtime migration notes:
   CPython's `Reversible` direct-subclass runtime behavior where a subclass
   implementing `__iter__` and `__reversed__` returns an empty iterator through
   `reversed()` and unrelated builtin types are not subclasses of that generated
-  subclass.
+  subclass. Direct CPython diff evidence is in
+  `cpython_collections_abc_reversible_direct_subclass_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_collection_direct_subclass_subset`, covering
   CPython's `Collection` direct-subclass runtime behavior, derived-subclass
