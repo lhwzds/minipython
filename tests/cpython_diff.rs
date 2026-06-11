@@ -8522,6 +8522,17 @@ fn cpython_bytes_format_method_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_bytearray_type_doc_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::AssortedBytesTest::test_doc public subset",
+        name: "bytes-bytearray-type-doc",
+        source: r#"for typ, prefix in [(bytes, 'bytes('), (bytearray, 'bytearray(')]:
+    doc = typ.__doc__
+    print(typ.__name__, doc is not None, doc.startswith(prefix), doc.splitlines()[0], '__doc__' in dir(typ))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_percent_format_and_rmod_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_mod, ::test_imod, and ::test_rmod public subset",

@@ -239,6 +239,8 @@ Completed in the `test_bytes.py` bytes/bytearray type-doc pass:
 - Added public `bytes.__doc__` and `bytearray.__doc__` metadata with
   constructor-signature prefixes and kept the existing `dir()` visibility for
   `__doc__`.
+- Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_type_doc_diff_subset`.
 
 Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
 

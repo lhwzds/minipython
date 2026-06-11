@@ -1515,6 +1515,8 @@ Recent runtime migration notes:
   `cpython_bytes_bytearray_type_doc_subset` covers CPython
   `AssortedBytesTest::test_doc` public type docstrings for bytes and
   bytearray, including constructor-signature prefixes and `dir()` visibility.
+  Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_type_doc_diff_subset`.
   `cpython_bytes_bytearray_subclass_repr_and_compare_subset` covers repr/str
   rendering, bytes-like equality against builtin bytes, bytearray, and
   memoryview values, bytewise ordering for supported bytes-like values. Direct
