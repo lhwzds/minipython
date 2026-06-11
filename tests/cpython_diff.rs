@@ -1556,6 +1556,56 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_degrees_radians_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testDegrees and testRadians public stable subset",
+        name: "math-degrees-radians",
+        source: r#"import math
+print(type(math.degrees(0)).__name__, type(math.radians(0)).__name__)
+print(math.degrees(math.pi), math.degrees(math.pi / 2), math.degrees(-math.pi / 4), math.degrees(0))
+print(math.radians(180) == math.pi, math.radians(90) == math.pi / 2, math.radians(-45) == -math.pi / 4, math.radians(0))
+print(math.isinf(math.degrees(math.inf)), math.degrees(-math.inf) < 0, math.isnan(math.degrees(math.nan)))
+print(math.isinf(math.radians(math.inf)), math.radians(-math.inf) < 0, math.isnan(math.radians(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.degrees(FloatLike(math.pi)), math.radians(FloatLike(180.0)) == math.pi)
+print(round(math.degrees(IndexLike(1)), 6), math.radians(IndexLike(180)) == math.pi)
+for expr in [
+    lambda: math.degrees(),
+    lambda: math.radians(),
+    lambda: math.degrees(1, 2),
+    lambda: math.radians(1, 2),
+    lambda: math.degrees('1.0'),
+    lambda: math.radians(1+2j),
+    lambda: math.degrees(IndexLike(10**10000)),
+    lambda: math.radians(BadFloat()),
+    lambda: math.degrees(RaisesFloat()),
+    lambda: math.radians(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

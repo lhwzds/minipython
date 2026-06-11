@@ -62,6 +62,7 @@ Recent runtime migration notes:
   `cpython_math_trunc_diff_subset`,
   `cpython_math_ceil_diff_subset`,
   `cpython_math_floor_diff_subset`,
+  `cpython_math_degrees_radians_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -498,11 +499,13 @@ Recent runtime migration notes:
   direct return-value propagation, `__float__` and `__index__` fallback,
   NaN/inf integer conversion errors, huge-index overflow, and TypeError cases
   supported by the current runtime.
-- The bundled `math` module also includes `cpython_math_degrees_radians_subset`,
-  covering CPython `test_math.py::MathTests::testDegrees` and `::testRadians`
-  angle conversion, float result semantics, non-finite propagation,
-  `__float__` and `__index__` input conversion, huge-index overflow, propagated
-  conversion exceptions, and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes
+  `cpython_math_degrees_radians_diff_subset` and
+  `cpython_math_degrees_radians_subset`, covering CPython
+  `test_math.py::MathTests::testDegrees` and `::testRadians` angle conversion,
+  float result semantics, non-finite propagation, `__float__` and `__index__`
+  input conversion, huge-index overflow, propagated conversion exceptions, and
+  TypeError cases supported by the current runtime.
 - The bundled `math` module also includes `cpython_math_cbrt_subset`, covering
   CPython `test_math.py::MathTests::testCbrt` cube-root behavior, float result
   semantics, signed zero, non-finite propagation, `__float__` and `__index__`
