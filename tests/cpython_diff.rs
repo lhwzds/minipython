@@ -5075,6 +5075,30 @@ print(c.called, c['a'], c['b'], c['r'], c['c'], c['d'])"#,
 }
 
 #[test]
+fn cpython_collections_counter_multiset_operations_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter multiset operations subset",
+        name: "collections-counter-multiset-operations",
+        source: r#"from collections import Counter
+p = Counter(a=3, b=-1, c=0, e=1, f=-1, g=0)
+q = Counter(a=1, b=2, d=4, h=1, i=-1, j=0)
+print(dict(Counter(a=10, b=-2, c=0) + Counter()))
+print(dict(p + q))
+print(dict(p - q))
+print(dict(p | q))
+print(dict(p & q))
+print(Counter.__add__(p, q) == p + q, Counter.__sub__(p, q) == p - q)
+print(Counter.__or__(p, q) == (p | q), Counter.__and__(p, q) == (p & q))
+for result in [p + q, p - q, p | q, p & q]:
+    ok = True
+    for value in result.values():
+        if not value > 0:
+            ok = False
+    print(ok)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
