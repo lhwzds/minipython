@@ -2613,6 +2613,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_types_coroutine_subset",
             "cpython_collections_abc_coroutine_mixin_subset",
             "cpython_collections_abc_abstract_methods_subset",
+            "cpython_collections_abc_composite_abstract_methods_subset",
         ],
         &["pickle/eval identity matrices"],
     );
@@ -2740,6 +2741,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_abstract_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ABC abstract methods"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_composite_abstract_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for composite ABC abstract methods"
     );
 }
 

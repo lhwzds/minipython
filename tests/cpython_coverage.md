@@ -2475,7 +2475,9 @@ Recent runtime migration notes:
   CPython `TestCollectionABCs` abstract-method rejection behavior for `Set`,
   `MutableSet`, `Mapping`, `MutableMapping`, `Sequence`, `MutableSequence`,
   `ByteString`, and `Buffer`, including direct ABC constructor rejection and
-  incomplete explicit-subclass rejection.
+  incomplete explicit-subclass rejection. Direct CPython diff evidence is in
+  `cpython_collections_abc_composite_abstract_methods_diff_subset`, gated for
+  CPython oracles with collections.abc.Buffer.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_abstract_methods_subset`, covering the public
   `ABCTestCase.validate_abstract_methods` behavior used by CPython's

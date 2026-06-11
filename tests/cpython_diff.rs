@@ -3624,6 +3624,116 @@ for abc, names in cases:
 }
 
 #[test]
+fn cpython_collections_abc_composite_abstract_methods_diff_subset() {
+    let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
+        .expect("failed to probe CPython collections.abc.Buffer support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping collections.abc composite abstract-method diff: CPython oracle lacks collections.abc.Buffer"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs validate_abstract_methods calls",
+        name: "collections-abc-composite-abstract-methods",
+        source: r#"from collections.abc import Buffer, ByteString, Mapping, MutableMapping
+from collections.abc import MutableSequence, MutableSet, Sequence, Set
+def show_direct(abc):
+    try:
+        abc()
+    except TypeError as error:
+        print(abc.__name__, 'direct', str(error))
+for abc in [Set, MutableSet, Mapping, MutableMapping, Sequence, MutableSequence, ByteString, Buffer]:
+    show_direct(abc)
+def show(label, cls):
+    try:
+        obj = cls()
+    except TypeError as error:
+        print(label, 'ERR', str(error))
+    else:
+        print(label, 'OK', isinstance(obj, cls))
+class CompleteSet(Set):
+    def __contains__(self, x): return False
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+class MissingSet(Set):
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+show('CompleteSet', CompleteSet)
+show('MissingSet', MissingSet)
+class CompleteMutableSet(MutableSet):
+    def __contains__(self, x): return False
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+    def add(self, x): pass
+    def discard(self, x): pass
+class MissingMutableSet(MutableSet):
+    def __contains__(self, x): return False
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+    def add(self, x): pass
+show('CompleteMutableSet', CompleteMutableSet)
+show('MissingMutableSet', MissingMutableSet)
+class CompleteMapping(Mapping):
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+    def __getitem__(self, key): raise KeyError(key)
+class MissingMapping(Mapping):
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+show('CompleteMapping', CompleteMapping)
+show('MissingMapping', MissingMapping)
+class CompleteMutableMapping(MutableMapping):
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+    def __getitem__(self, key): raise KeyError(key)
+    def __setitem__(self, key, value): pass
+    def __delitem__(self, key): pass
+class MissingMutableMapping(MutableMapping):
+    def __iter__(self): return iter([])
+    def __len__(self): return 0
+    def __getitem__(self, key): raise KeyError(key)
+    def __setitem__(self, key, value): pass
+show('CompleteMutableMapping', CompleteMutableMapping)
+show('MissingMutableMapping', MissingMutableMapping)
+class CompleteSequence(Sequence):
+    def __len__(self): return 0
+    def __getitem__(self, index): raise IndexError
+class MissingSequence(Sequence):
+    def __len__(self): return 0
+show('CompleteSequence', CompleteSequence)
+show('MissingSequence', MissingSequence)
+class CompleteMutableSequence(MutableSequence):
+    def __len__(self): return 0
+    def __getitem__(self, index): raise IndexError
+    def __setitem__(self, index, value): pass
+    def __delitem__(self, index): pass
+    def insert(self, index, value): pass
+class MissingMutableSequence(MutableSequence):
+    def __len__(self): return 0
+    def __getitem__(self, index): raise IndexError
+    def __setitem__(self, index, value): pass
+    def __delitem__(self, index): pass
+show('CompleteMutableSequence', CompleteMutableSequence)
+show('MissingMutableSequence', MissingMutableSequence)
+class CompleteByteString(ByteString):
+    def __len__(self): return 0
+    def __getitem__(self, index): raise IndexError
+class MissingByteString(ByteString):
+    def __len__(self): return 0
+show('CompleteByteString', CompleteByteString)
+show('MissingByteString', MissingByteString)
+class CompleteBuffer(Buffer):
+    def __buffer__(self, flags=0): return memoryview(b'')
+class MissingBuffer(Buffer):
+    pass
+show('CompleteBuffer', CompleteBuffer)
+show('MissingBuffer', MissingBuffer)"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
