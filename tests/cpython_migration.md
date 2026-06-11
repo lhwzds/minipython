@@ -216,6 +216,8 @@ Completed in the `test_bytes.py` bytes/bytearray format-method pass:
 - Matched CPython's public behavior where omitted and empty format specs render
   as `str(value)`, non-empty specs raise catchable `TypeError`, and explicit
   `!s` f-string conversion still permits ordinary string formatting.
+- Direct CPython diff evidence is in
+  `cpython_bytes_format_method_diff_subset`.
 
 Completed in the `test_bytes.py` bytes/bytearray type-doc pass:
 

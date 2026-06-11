@@ -1470,7 +1470,8 @@ Recent runtime migration notes:
   `cpython_bytes_format_method_subset` covers CPython
   `AssortedBytesTest::test_format` public bytes/bytearray formatting behavior:
   omitted/empty specs render through `str()`, non-empty specs raise catchable
-  `TypeError`, and explicit `!s` conversion remains string-formattable.
+  `TypeError`, and explicit `!s` conversion remains string-formattable. Direct
+  CPython diff evidence is in `cpython_bytes_format_method_diff_subset`.
   `cpython_bytes_bytearray_type_doc_subset` covers CPython
   `AssortedBytesTest::test_doc` public type docstrings for bytes and
   bytearray, including constructor-signature prefixes and `dir()` visibility.

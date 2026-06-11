@@ -8481,6 +8481,26 @@ print('bytearray-left-false', bytearray(b'abc') != b'abc', bytearray(b'ab') == b
 }
 
 #[test]
+fn cpython_bytes_format_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::AssortedBytesTest::test_format",
+        name: "bytes-format-method",
+        source: r#"for value in [b'abc', bytearray(b'abc')]:
+    print(type(value).__name__, format(value), format(value, ''), value.__format__(''))
+    print(f'{value!s:>18}')
+    for spec in ['s', '>8', '.2s']:
+        try:
+            format(value, spec)
+        except TypeError as error:
+            print(type(value).__name__, spec, error.__class__.__name__, type(value).__name__ in str(error))
+    try:
+        value.__format__('s')
+    except TypeError as error:
+        print(type(value).__name__, 'dunder', error.__class__.__name__, type(value).__name__ in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
