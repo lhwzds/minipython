@@ -2735,7 +2735,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
-            .contains("cpython_collections_chainmap_public_diff_subset"),
+            .contains("cpython_collections_chainmap_public_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
     );
     assert!(

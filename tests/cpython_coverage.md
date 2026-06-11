@@ -172,7 +172,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_multiset_operations_matrix_diff_subset`,
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
-  `cpython_collections_chainmap_public_diff_subset`,
+  `cpython_collections_chainmap_public_methods_diff_subset`,
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
@@ -445,7 +445,7 @@ Recent runtime migration notes:
   and `&=` result parity and identity preservation. `^=` remains subset-only
   for the current local CPython oracle.
 - The bundled `collections` module also includes
-  `cpython_collections_chainmap_public_diff_subset`, covering CPython public
+  `cpython_collections_chainmap_public_methods_diff_subset`, covering CPython public
   `ChainMap` construction, truthiness, combined iteration/items/dict coercion,
   membership and lookup across child/parent mappings, `get()` defaults,
   first-map mutation, `parents`, and `new_child()` with a mapping input.

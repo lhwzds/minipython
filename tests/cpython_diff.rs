@@ -5313,7 +5313,7 @@ print(failures)"#,
 }
 
 #[test]
-fn cpython_collections_chainmap_public_diff_subset() {
+fn cpython_collections_chainmap_public_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
         name: "collections-chainmap-public",
