@@ -4468,6 +4468,117 @@ for singleton in [NotImplemented, Ellipsis]:
 }
 
 #[test]
+fn cpython_all_any_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_all / ::test_any",
+        name: "all-any-builtins",
+        source: r#"class TestFailingBool:
+    def __bool__(self):
+        raise RuntimeError('bool fail')
+class TestFailingIter:
+    def __iter__(self):
+        raise RuntimeError('iter fail')
+print(all([2, 4, 6]), all([2, None, 6]), all([]), all([0, TestFailingBool()]))
+print(any([None, None, None]), any([None, 4, None]), any([]), any([1, TestFailingBool()]))
+print(all(x > 42 for x in [50, 60]), all(x > 42 for x in [50, 40, 60]))
+print(any(x > 42 for x in [40, 60, 30]), any(x > 42 for x in [10, 20, 30]))
+for expr in [lambda: all([2, TestFailingBool(), 6]), lambda: all(TestFailingIter()), lambda: any([None, TestFailingBool(), 6]), lambda: any(TestFailingIter())]:
+    try:
+        expr()
+    except RuntimeError as error:
+        print(error.__class__.__name__, str(error))
+for expr in [lambda: all(10), lambda: all(), lambda: all([2, 4, 6], []), lambda: any(10), lambda: any(), lambda: any([2, 4, 6], [])]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_len_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_len",
+        name: "len-builtin",
+        source: r#"import sys
+print(len('123'), len(()), len((1, 2, 3, 4)), len([1, 2, 3, 4]))
+print(len({}), len({'a': 1, 'b': 2}))
+class BadSeq:
+    def __len__(self):
+        raise ValueError
+class InvalidLen:
+    def __len__(self):
+        return None
+class FloatLen:
+    def __len__(self):
+        return 4.5
+class NegativeLen:
+    def __len__(self):
+        return -10
+class HugeLen:
+    def __len__(self):
+        return sys.maxsize + 1
+class HugeNegativeLen:
+    def __len__(self):
+        return -sys.maxsize - 10
+class NoLenMethod:
+    pass
+for value in [BadSeq(), InvalidLen(), FloatLen(), NegativeLen(), HugeLen(), HugeNegativeLen(), NoLenMethod()]:
+    try:
+        len(value)
+    except Exception as error:
+        print(error.__class__.__name__)
+for expr in [lambda: len(), lambda: len([], [])]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_min_max_sum_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_max / ::test_min / ::test_sum",
+        name: "min-max-sum-builtins",
+        source: r#"print(max('123123'), min('123123'))
+print(max(1, 2, 3), max((1, 2, 3, 1, 2, 3)), max([1, 2, 3, 1, 2, 3]))
+print(min(1, 2, 3), min((1, 2, 3, 1, 2, 3)), min([1, 2, 3, 1, 2, 3]))
+def neg(x):
+    return -x
+print(max((1,), key=neg), max((1, 2), key=neg), max(1, 2, key=neg))
+print(min((1,), key=neg), min((1, 2), key=neg), min(1, 2, key=neg))
+print(max((), default=None), max((1,), default=None), max((1, 2), default=None))
+print(min((), default=None), min((1,), default=None), min((1, 2), default=None))
+print(max((1, 2), key=None), min((1, 2), key=None))
+class BadSeq:
+    def __getitem__(self, index):
+        raise ValueError('badseq')
+for expr in [lambda: max(BadSeq()), lambda: min(BadSeq())]:
+    try:
+        expr()
+    except ValueError as error:
+        print(error.__class__.__name__, str(error))
+for expr in [lambda: max(), lambda: max(42), lambda: max(()), lambda: max(key=int), lambda: max(default=None), lambda: max(1, 2, default=None), lambda: max(1, 2, key=1), lambda: min(), lambda: min(42), lambda: min(()), lambda: min(1, 2, default=None), lambda: min(1, 2, key=1)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+print(sum([]), sum(list(range(2, 8))), sum(iter(list(range(2, 8)))))
+print(sum([[1], [2], [3]], []))
+print(sum(range(10), 1000), sum(range(10), start=1000))
+print(sum(i % 2 != 0 for i in range(10)))
+print(sum([], False) is False)
+print(sum(i / 2 for i in range(10)))
+for expr in [lambda: sum(), lambda: sum(42), lambda: sum(['a', 'b', 'c']), lambda: sum(['a', 'b', 'c'], ''), lambda: sum([b'a', b'c'], b''), lambda: sum([1], start=2, bad=3), lambda: sum([1], 2, start=3)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
