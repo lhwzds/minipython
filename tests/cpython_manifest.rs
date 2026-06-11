@@ -2502,6 +2502,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_operator_comparison_predicate_diff_subset"),
         "operator sandbox manifest must cite CPython comparison/predicate diff evidence"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_arithmetic_bitwise_diff_subset"),
+        "operator sandbox manifest must cite CPython arithmetic/bitwise diff evidence"
+    );
 }
 
 #[test]

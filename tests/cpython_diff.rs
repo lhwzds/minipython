@@ -3019,6 +3019,37 @@ for expr in [lambda: operator.lt(), lambda: operator.truth(), lambda: operator.i
 }
 
 #[test]
+fn cpython_operator_arithmetic_bitwise_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
+        name: "operator-arithmetic-bitwise",
+        source: r#"import operator
+print(operator.abs(-1), operator.abs(1))
+print(operator.add(3, 4), operator.sub(5, 2), operator.mul(5, 2), operator.floordiv(5, 2), operator.truediv(5, 2), operator.mod(5, 2), operator.pow(3, 5))
+print(operator.and_(0xf, 0xa), operator.or_(0xa, 0x5), operator.xor(0xf, 0xa), operator.lshift(5, 1), operator.rshift(5, 1))
+print(operator.neg(5), operator.neg(-5), operator.pos(5), operator.pos(-5), operator.inv(4), operator.invert(4))
+class M:
+    def __matmul__(self, other):
+        return other - 1
+print(operator.matmul(M(), 42))
+class X:
+    def __index__(self):
+        return 1
+print(operator.index(X()), operator.index(0), operator.index(2))
+for expr in [lambda: operator.abs(), lambda: operator.abs(None), lambda: operator.add(None, None), lambda: operator.sub(None, None), lambda: operator.truediv(None, None), lambda: operator.pow(1), lambda: operator.pow(1, 2, 3), lambda: operator.neg(None), lambda: operator.pos(None), lambda: operator.invert(None), lambda: operator.matmul(42, 42), lambda: operator.index(1.5)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)
+for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:
+    try:
+        expr()
+    except ValueError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
