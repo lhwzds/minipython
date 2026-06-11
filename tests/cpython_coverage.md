@@ -2551,7 +2551,9 @@ Recent runtime migration notes:
 - `COLLECTIONS_ABC_RUNTIME` also includes expanded
   `cpython_collections_abc_generator_runtime_subset` evidence for CPython's
   `AsyncGenerator` negative protocol matrix, including the exact `NonAGen1`,
-  `NonAGen2`, and `NonAGen3` shapes from `TestOneTrickPonyABCs`.
+  `NonAGen2`, and `NonAGen3` shapes from `TestOneTrickPonyABCs`. Direct
+  CPython diff evidence is in
+  `cpython_collections_abc_generator_runtime_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_set_noncomparable_comparison_subset`, covering
   CPython `TestCollectionABCs::test_issue16373` for `Set` subclass rich

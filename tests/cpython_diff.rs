@@ -3702,6 +3702,105 @@ print([issubclass(type(x), Generator) for x in samples])"#,
 }
 
 #[test]
+fn cpython_collections_abc_generator_runtime_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Generator and AsyncGenerator ABC runtime subset",
+        name: "collections-abc-generator-runtime",
+        source: r#"from collections.abc import Generator, Iterator, AsyncGenerator, AsyncIterator
+def gen():
+    yield 1
+class GenLike:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return None
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        pass
+    def close(self):
+        pass
+class MissingSend:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return None
+    def throw(self, typ, val=None, tb=None):
+        pass
+    def close(self):
+        pass
+print(isinstance(gen(), Iterator), isinstance(gen(), Generator), issubclass(type(gen()), Generator), issubclass(Generator, Iterator))
+print(isinstance(GenLike(), Generator), issubclass(GenLike, Generator))
+print(isinstance(MissingSend(), Generator), issubclass(MissingSend, Generator))
+class GenBlocked(GenLike):
+    send = None
+print(isinstance(GenBlocked(), Generator), issubclass(GenBlocked, Generator))
+class G(Generator):
+    pass
+print(issubclass(G, Generator), issubclass(float, G))
+async def agen():
+    yield 1
+class AGenLike:
+    def __aiter__(self):
+        return self
+    async def __anext__(self):
+        raise StopAsyncIteration
+    async def asend(self, value):
+        return value
+    async def athrow(self, typ, val=None, tb=None):
+        pass
+    async def aclose(self):
+        pass
+class MissingASend:
+    def __aiter__(self):
+        return self
+    async def __anext__(self):
+        raise StopAsyncIteration
+    async def athrow(self, typ, val=None, tb=None):
+        pass
+    async def aclose(self):
+        pass
+class NonAGen1:
+    def __aiter__(self):
+        return self
+    def __anext__(self):
+        return None
+    def aclose(self):
+        pass
+    def athrow(self, typ, val=None, tb=None):
+        pass
+class NonAGen2:
+    def __aiter__(self):
+        return self
+    def __anext__(self):
+        return None
+    def aclose(self):
+        pass
+    def asend(self, value):
+        return value
+class NonAGen3:
+    def aclose(self):
+        pass
+    def asend(self, value):
+        return value
+    def athrow(self, typ, val=None, tb=None):
+        pass
+ag = agen()
+print(isinstance(ag, AsyncIterator), isinstance(ag, AsyncGenerator), issubclass(type(ag), AsyncGenerator), issubclass(AsyncGenerator, AsyncIterator))
+print(isinstance(AGenLike(), AsyncGenerator), issubclass(AGenLike, AsyncGenerator))
+print(isinstance(MissingASend(), AsyncGenerator), issubclass(MissingASend, AsyncGenerator))
+for value in [NonAGen1(), NonAGen2(), NonAGen3()]:
+    print(type(value).__name__, isinstance(value, AsyncGenerator), issubclass(type(value), AsyncGenerator))
+class AGenBlocked(AGenLike):
+    asend = None
+print(isinstance(AGenBlocked(), AsyncGenerator), issubclass(AGenBlocked, AsyncGenerator))
+class AG(AsyncGenerator):
+    pass
+print(issubclass(AG, AsyncGenerator), issubclass(float, AG))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_types_coroutine_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Awaitable / ::test_Coroutine",
