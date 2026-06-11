@@ -1371,6 +1371,14 @@ Recent runtime migration notes:
   `cpython_bytes_basics_and_empty_index_diff_subset`, which also covers empty
   sequence index-miss normalization.
 - `STRING_RUNTIME` also includes
+  `cpython_bytes_iterable_constructor_subset` and
+  `cpython_bytes_constructor_exception_subset`, covering bytes/bytearray
+  construction from integer iterables, `__getitem__` sequences, sets,
+  generators, `__index__` elements, constructor argument error classes, and
+  propagation of exceptions raised by `__index__` / `__iter__`. Direct CPython
+  diff evidence is in `cpython_bytes_iterable_constructor_diff_subset` and
+  `cpython_bytes_constructor_exception_diff_subset`.
+- `STRING_RUNTIME` also includes
   `cpython_bytes_mutating_list_constructor_subset`, covering CPython
   `BaseBytesTest::test_from_mutating_list` public behavior where bytes and
   bytearray constructors consume live list iterators that observe source list

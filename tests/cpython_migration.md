@@ -3009,7 +3009,8 @@ Completed in the bytes iterable-constructor pass:
   iterable items.
 - Extended that iterable-constructor subset to cover the current CPython
   `test_from_iterable` set-input cases and generator-without-`__length_hint__`
-  path for both bytes and bytearray.
+  path for both bytes and bytearray. Direct CPython diff evidence is in
+  `cpython_bytes_iterable_constructor_diff_subset`.
 - Added `cpython_bytes_buffer_constructor_subset`, adapted from the portable
   public part of CPython `Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer`.
 - Added first-pass `array.array('B')` byte storage and bytes-like buffer
@@ -3033,6 +3034,8 @@ Completed in the bytes iterable-constructor pass:
 - Added `cpython_bytes_constructor_exception_subset`, adapted from
   `BaseBytesTest::test_constructor_exceptions`, preserving exceptions raised by
   `__index__` and `__iter__` during `bytes()` / `bytearray()` construction.
+  Direct CPython diff evidence is in
+  `cpython_bytes_constructor_exception_diff_subset`.
 - Extended `bytes()` and `bytearray()` so non-string, non-buffer sources first
   use integer/`__index__` length construction when possible, then fall back to
   iterable construction; iterable items are converted through `__index__` and

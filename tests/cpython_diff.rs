@@ -8294,6 +8294,110 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_iterable_constructor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest iterable-constructor public subset",
+        name: "bytes-iterable-constructor",
+        source: r#"import sys
+
+class Indexable:
+    def __init__(self, value=0):
+        self.value = value
+    def __index__(self):
+        return self.value
+class S:
+    def __getitem__(self, index):
+        return (1, 2, 3)[index]
+class C:
+    pass
+
+for ctor in [bytes, bytearray]:
+    print(ctor(range(5)))
+    print(list(ctor(iter(range(5)))))
+    print(ctor({42}))
+    print(sorted(list(ctor({43, 45}))))
+    odd = ctor(i for i in range(10) if i % 2)
+    print(len(odd), list(odd))
+    print(ctor([1, 2, 3]))
+    print(ctor((1, 2, 3)))
+    print(ctor(S()))
+    print(list(ctor([Indexable(), Indexable(1), Indexable(254), Indexable(255)])))
+
+for expr in [
+    lambda: bytes([Indexable(-1)]),
+    lambda: bytes([Indexable(256)]),
+    lambda: bytearray([Indexable(-1)]),
+    lambda: bytearray([Indexable(256)]),
+    lambda: bytes(0.0),
+    lambda: bytearray(0.0),
+    lambda: bytes(['0']),
+    lambda: bytes([0.0]),
+    lambda: bytes([None]),
+    lambda: bytes([C()]),
+    lambda: bytearray(['0']),
+    lambda: bytearray([0.0]),
+    lambda: bytearray([None]),
+    lambda: bytearray([C()]),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+
+cases = [
+    ('encoding-only', lambda ctor: ctor(encoding='ascii')),
+    ('errors-only', lambda ctor: ctor(errors='ignore')),
+    ('int-encoding', lambda ctor: ctor(0, 'ascii')),
+    ('bytes-encoding', lambda ctor: ctor(b'', 'ascii')),
+    ('int-errors', lambda ctor: ctor(0, errors='ignore')),
+    ('bytes-errors', lambda ctor: ctor(b'', errors='ignore')),
+    ('empty-str', lambda ctor: ctor('')),
+    ('empty-str-errors', lambda ctor: ctor('', errors='ignore')),
+    ('encoding-bytes', lambda ctor: ctor('', b'ascii')),
+    ('errors-bytes', lambda ctor: ctor('', 'ascii', b'ignore')),
+    ('min-item', lambda ctor: ctor([-sys.maxsize])),
+    ('min1-item', lambda ctor: ctor([-sys.maxsize - 1])),
+    ('underflow-item', lambda ctor: ctor([-sys.maxsize - 2])),
+    ('huge-neg-item', lambda ctor: ctor([-10**100])),
+    ('257-item', lambda ctor: ctor([257])),
+    ('max-item', lambda ctor: ctor([sys.maxsize])),
+    ('overflow-item', lambda ctor: ctor([sys.maxsize + 1])),
+    ('huge-pos-item', lambda ctor: ctor([10**100])),
+]
+for ctor in [bytes, bytearray]:
+    for label, factory in cases:
+        try:
+            factory(ctor)
+        except (TypeError, ValueError) as error:
+            print(ctor.__name__, label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_constructor_exception_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_constructor_exceptions public subset",
+        name: "bytes-constructor-exception",
+        source: r#"class BadInt:
+    def __index__(self):
+        1/0
+class BadIterable:
+    def __iter__(self):
+        1/0
+for ctor in [bytes, bytearray]:
+    for expr in [
+        lambda ctor=ctor: ctor(BadInt()),
+        lambda ctor=ctor: ctor([BadInt()]),
+        lambda ctor=ctor: ctor(BadIterable()),
+    ]:
+        try:
+            expr()
+        except ZeroDivisionError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
