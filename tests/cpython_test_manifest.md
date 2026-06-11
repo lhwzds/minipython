@@ -1022,12 +1022,15 @@ assignment. `cpython_bytearray_exhausted_iterator_diff_subset` and
 `ByteArrayTest::test_exhausted_iterator`, covering the distinction between an
 already exhausted bytearray iterator and a sibling iterator that can still
 observe appended bytes, plus the no-crash exhausted-iterator regression.
-`cpython_bytearray_mutating_index_safety_subset` ports the Python-level public
+`cpython_bytearray_mutating_index_conversion_diff_subset` and
+`cpython_bytearray_mutating_index_safety_subset` port the Python-level public
 behavior of current CPython `ByteArrayTest::test_mutating_index` and
 `test_mutating_index_inbounds`, covering `__index__` conversion and reentrant
 mutation safety during bytearray item/slice assignment and byte-valued mutation
-methods. `_testlimitedcapi.sequence_setitem` branches remain classified as C API
-coverage outside MiniPython's runtime surface.
+methods. The reentrant safety rows stay as local runtime evidence because
+default system CPython versions disagree on those crash-regression branches.
+`_testlimitedcapi.sequence_setitem` branches remain classified as C API coverage
+outside MiniPython's runtime surface.
 `cpython_bytearray_search_reentrancy_buffererror_subset` ports the public
 behavior of current CPython
 `ByteArrayTest::test_search_methods_reentrancy_raises_buffererror`, covering

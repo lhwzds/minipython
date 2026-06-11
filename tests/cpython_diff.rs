@@ -2389,11 +2389,6 @@ except SyntaxError as error:
             source: "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
         },
         DiffCase {
-            origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index_inbounds skip_bounds_safety_slice",
-            name: "bytearray-mutating-index-slice-inbounds-safety",
-            source: "class MutatesOnIndex:\n    def __init__(self):\n        self.ba = bytearray(0x180)\n    def __index__(self):\n        self.ba.clear()\n        self.new_ba = bytearray(0x180)\n        self.ba.extend([0] * 0x180)\n        return 0\ninstance = MutatesOnIndex()\ninstance.ba[instance:1] = [ord('?')]\nprint(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))",
-        },
-        DiffCase {
             origin: "Lib/test/test_fstring.py::test_yield / ::test_yield_send",
             name: "f-string-yield-expressions",
             source: "def fn(y):\n    f'y:{yield y * 2}'\n    f'{yield}'\ng = fn(4)\nprint(next(g))\nprint(next(g))\ndef send_fn(x):\n    yield f'x:{yield (lambda i: x * i)}'\nsent = send_fn(10)\nthe_lambda = next(sent)\nprint(the_lambda(4))\nprint(sent.send('string'))",
@@ -5315,6 +5310,24 @@ seen = []
 for _ in exhit:
     seen.append(next(exhit, 1))
 print(seen)"#,
+    });
+}
+
+#[test]
+fn cpython_bytearray_mutating_index_conversion_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index public __index__ conversion subset",
+        name: "bytearray-mutating-index-conversion",
+        source: r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+
+b = bytearray()
+print(b.append(Indexable(ord('A'))), b)
+b = bytearray(b'xy')
+print(b.insert(1, Indexable(ord('A'))), b)"#,
     });
 }
 

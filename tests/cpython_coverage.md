@@ -1177,11 +1177,14 @@ Recent runtime migration notes:
   clearing the original bytearray, exhausted iterators staying exhausted after
   exporter growth while sibling iterators can observe appended bytes, and
   repetition after resizing slice assignment.
-- `STRING_RUNTIME` also includes `cpython_bytearray_mutating_index_safety_subset`,
-  covering current CPython `ByteArrayTest::test_mutating_index` and
-  `test_mutating_index_inbounds` Python-level safety behavior for `__index__`
-  reentrancy during bytearray item and slice assignment, plus `__index__`
-  conversion for bytearray byte-valued mutation methods.
+- `STRING_RUNTIME` also includes
+  `cpython_bytearray_mutating_index_conversion_diff_subset` and
+  `cpython_bytearray_mutating_index_safety_subset`, covering current CPython
+  `ByteArrayTest::test_mutating_index` and
+  `test_mutating_index_inbounds` Python-level behavior for `__index__`
+  conversion plus reentrancy during bytearray item and slice assignment. The
+  reentrant safety rows remain local runtime evidence because default system
+  CPython versions disagree on those crash-regression branches.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_search_reentrancy_buffererror_subset`, covering current
   CPython `ByteArrayTest::test_search_methods_reentrancy_raises_buffererror`
