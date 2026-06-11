@@ -2752,6 +2752,37 @@ print(obj.__getitem__(123))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap missing and first-map mutation subset",
+        name: "collections-chainmap-missing-first-map-mutation",
+        source: r#"from collections import ChainMap
+class DefaultChainMap(ChainMap):
+    def __missing__(self, key):
+        return 999
+d = DefaultChainMap(dict(a=1, b=2), dict(b=20, c=30))
+print(type(d).__name__, d.maps)
+print([d[k] for k in ['a', 'b', 'c', 'd']])
+print([d.get(k, 77) for k in ['a', 'b', 'c', 'd']])
+print([k in d for k in ['a', 'b', 'c', 'd']])
+print(d.pop('a', 1001), d.maps)
+print(d.pop('a', 1002), d.maps)
+print(d.popitem(), d.maps)
+try:
+    d.popitem()
+except KeyError as error:
+    print(error.__class__.__name__)
+d = DefaultChainMap(dict(a=1, b=2), dict(c=3))
+d.clear()
+print(d.maps, list(d.items()), d.get('c'), 'a' in d, 'c' in d)
+d['x'] = 5
+print(d.maps, d['x'])
+del d['x']
+print(d.maps, d['missing'])"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",

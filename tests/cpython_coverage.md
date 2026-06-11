@@ -103,9 +103,11 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
-  `cpython_collections_userdict_public_methods_diff_subset`, and
+  `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
-  `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`.
+  `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
+  and
+  `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -2368,6 +2370,8 @@ Recent runtime migration notes:
   pickle round trips across every exposed protocol, `copy.deepcopy()`, and
   `eval(repr(...))`.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`
+  and
   `cpython_collections_chainmap_missing_and_first_map_mutation_subset`, covering
   ChainMap subclass `__missing__`, missing-safe `get()` and membership,
   first-map `pop()`, `popitem()`, `clear()`, and subclass-backed item
