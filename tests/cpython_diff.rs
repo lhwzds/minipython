@@ -4906,6 +4906,19 @@ except TypeError:
 }
 
 #[test]
+fn cpython_collections_counter_repr_nonsortable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter repr nonsortable subset",
+        name: "collections-counter-repr-nonsortable",
+        source: r#"from collections import Counter
+c = Counter(a=2, b=None)
+r = repr(c)
+print("'a': 2" in r)
+print("'b': None" in r)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
