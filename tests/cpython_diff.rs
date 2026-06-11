@@ -10245,6 +10245,14 @@ for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:
     out = bytearray(4)
     print(type(obj).__name__, obj.readinto(out), out, obj.getvalue())
 bio = io.BytesIO(b'abcdef')
+print(hasattr(bio, 'read1'), hasattr(bio, 'readinto1'))
+print(bio.read1(2), bio.tell())
+print(bio.read1(), bio.tell())
+bio = io.BytesIO(b'abcdef')
+target = bytearray(3)
+print(bio.readinto1(target), target, bio.tell())
+print(bio.readinto1(target), target, bio.tell())
+bio = io.BytesIO(b'abcdef')
 print(bio.tell(), bio.read(2), bio.tell())
 print(bio.seek(1), bio.read(2), bio.tell())
 print(bio.seek(-1, 1), bio.read(1), bio.tell())
@@ -10275,7 +10283,7 @@ bio = io.BytesIO(b'abc')
 print(bio.closed, hasattr(bio, 'close'), hasattr(bio, 'closed'))
 print(bio.close(), bio.closed)
 print(bio.close(), bio.closed)
-for label, expr in [('closed-getvalue', bio.getvalue), ('closed-read', bio.read), ('closed-readline', bio.readline), ('closed-readlines', bio.readlines), ('closed-readinto', lambda: bio.readinto(bytearray(2))), ('closed-write', lambda: bio.write(b'x')), ('closed-writelines', lambda: bio.writelines([b'x'])), ('closed-tell', bio.tell), ('closed-seek', lambda: bio.seek(0)), ('closed-truncate', bio.truncate), ('closed-readable', bio.readable), ('closed-writable', bio.writable), ('closed-seekable', bio.seekable), ('closed-isatty', bio.isatty), ('closed-flush', bio.flush)]:
+for label, expr in [('closed-getvalue', bio.getvalue), ('closed-read', bio.read), ('closed-read1', bio.read1), ('closed-readline', bio.readline), ('closed-readlines', bio.readlines), ('closed-readinto', lambda: bio.readinto(bytearray(2))), ('closed-readinto1', lambda: bio.readinto1(bytearray(2))), ('closed-write', lambda: bio.write(b'x')), ('closed-writelines', lambda: bio.writelines([b'x'])), ('closed-tell', bio.tell), ('closed-seek', lambda: bio.seek(0)), ('closed-truncate', bio.truncate), ('closed-readable', bio.readable), ('closed-writable', bio.writable), ('closed-seekable', bio.seekable), ('closed-isatty', bio.isatty), ('closed-flush', bio.flush)]:
     try:
         expr()
     except Exception as error:
@@ -10312,7 +10320,7 @@ try:
     next(bio)
 except Exception as error:
     print('next-closed', error.__class__.__name__, isinstance(error, ValueError))
-for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('writelines-arity0', lambda: io.BytesIO().writelines()), ('writelines-arity2', lambda: io.BytesIO().writelines([], [])), ('writelines-noniter', lambda: io.BytesIO().writelines(1)), ('writelines-stritem', lambda: io.BytesIO().writelines(['x'])), ('writelines-intitem', lambda: io.BytesIO().writelines([1])), ('close-arg', lambda: io.BytesIO().close(1)), ('enter-arg', lambda: io.BytesIO().__enter__(1)), ('iter-arg', lambda: io.BytesIO().__iter__(1)), ('next-arg', lambda: io.BytesIO().__next__(1)), ('readable-arg', lambda: io.BytesIO().readable(1)), ('writable-arg', lambda: io.BytesIO().writable(1)), ('seekable-arg', lambda: io.BytesIO().seekable(1)), ('isatty-arg', lambda: io.BytesIO().isatty(1)), ('flush-arg', lambda: io.BytesIO().flush(1)), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
+for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('writelines-arity0', lambda: io.BytesIO().writelines()), ('writelines-arity2', lambda: io.BytesIO().writelines([], [])), ('writelines-noniter', lambda: io.BytesIO().writelines(1)), ('writelines-stritem', lambda: io.BytesIO().writelines(['x'])), ('writelines-intitem', lambda: io.BytesIO().writelines([1])), ('close-arg', lambda: io.BytesIO().close(1)), ('enter-arg', lambda: io.BytesIO().__enter__(1)), ('iter-arg', lambda: io.BytesIO().__iter__(1)), ('next-arg', lambda: io.BytesIO().__next__(1)), ('readable-arg', lambda: io.BytesIO().readable(1)), ('writable-arg', lambda: io.BytesIO().writable(1)), ('seekable-arg', lambda: io.BytesIO().seekable(1)), ('isatty-arg', lambda: io.BytesIO().isatty(1)), ('flush-arg', lambda: io.BytesIO().flush(1)), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('read1-too-many', lambda: io.BytesIO().read1(1, 2)), ('readline-too-many', lambda: io.BytesIO().readline(1, 2)), ('readlines-too-many', lambda: io.BytesIO().readlines(1, 2)), ('read1-bad-size', lambda: io.BytesIO().read1('x')), ('readline-bad-size', lambda: io.BytesIO().readline('x')), ('readlines-bad-hint', lambda: io.BytesIO().readlines('x')), ('readinto1-arity0', lambda: io.BytesIO().readinto1()), ('readinto1-arity2', lambda: io.BytesIO().readinto1(bytearray(1), bytearray(1))), ('readinto1-readonly', lambda: io.BytesIO(b'a').readinto1(b'x')), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
     try:
         expr()
     except Exception as error:

@@ -8636,6 +8636,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.read" => {
                 self.call_io_bytesio_read(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.read1" => {
+                self.call_io_bytesio_read1(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readline" => {
                 self.call_io_bytesio_readline(args, keywords)
             }
@@ -8683,6 +8686,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "io.BytesIO.readinto" => {
                 self.call_io_bytesio_readinto(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.readinto1" => {
+                self.call_io_bytesio_readinto1(args, keywords)
             }
             Value::Builtin(name) if name == "io.BytesIO.tell" => {
                 self.call_io_bytesio_tell(args, keywords)
@@ -17585,9 +17591,26 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         reject_method_keywords("io.BytesIO.readinto", &keywords)?;
+        self.call_io_bytesio_readinto_impl(args, "readinto")
+    }
+
+    fn call_io_bytesio_readinto1(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.readinto1", &keywords)?;
+        self.call_io_bytesio_readinto_impl(args, "readinto1")
+    }
+
+    fn call_io_bytesio_readinto_impl(
+        &mut self,
+        args: Vec<Value>,
+        method: &str,
+    ) -> Result<Value, String> {
         let [Value::BytesIO(bytes_io), target] = args.as_slice() else {
             return Err(format!(
-                "TypeError: readinto() expected 1 argument, got {}",
+                "TypeError: {method}() expected 1 argument, got {}",
                 method_arg_count(&args)
             ));
         };
@@ -17597,7 +17620,7 @@ impl Vm {
         write_bytes_into_readinto_buffer(target, &chunk)?;
         i64::try_from(chunk.len())
             .map(Value::Number)
-            .map_err(|_| "readinto() result is too large".to_string())
+            .map_err(|_| format!("{method}() result is too large"))
     }
 
     fn call_io_bytesio_read(
@@ -17606,16 +17629,33 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         reject_method_keywords("io.BytesIO.read", &keywords)?;
+        self.call_io_bytesio_read_impl(args, "read")
+    }
+
+    fn call_io_bytesio_read1(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.read1", &keywords)?;
+        self.call_io_bytesio_read_impl(args, "read1")
+    }
+
+    fn call_io_bytesio_read_impl(
+        &mut self,
+        args: Vec<Value>,
+        method: &str,
+    ) -> Result<Value, String> {
         let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
             return Err(format!(
-                "TypeError: read() expected at most 1 argument, got {}",
+                "TypeError: {method}() expected at most 1 argument, got {}",
                 method_arg_count(&args)
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
-                "TypeError: read expected at most 1 argument, got {}",
+                "TypeError: {method} expected at most 1 argument, got {}",
                 rest.len()
             ));
         }
@@ -17631,7 +17671,7 @@ impl Vm {
                     })?)
                 }
             }
-            _ => unreachable!("BytesIO.read arity is checked before reading size"),
+            _ => unreachable!("BytesIO read arity is checked before reading size"),
         };
         Ok(bytes_value(bytes_io_read_chunk(bytes_io, size)))
     }
@@ -49874,14 +49914,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
             "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "flush" | "getvalue"
-            | "isatty" | "read" | "readable" | "readinto" | "readline" | "readlines" | "seek"
-            | "seekable" | "tell" | "truncate" | "write" | "writable" | "writelines" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
-                    receiver: Box::new(Value::BytesIO(bytes_io)),
-                    identity: Rc::new(()),
-                })
-            }
+            | "isatty" | "read" | "read1" | "readable" | "readinto" | "readinto1" | "readline"
+            | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write" | "writable"
+            | "writelines" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
+                receiver: Box::new(Value::BytesIO(bytes_io)),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!(
                 "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
             )),

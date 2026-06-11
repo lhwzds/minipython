@@ -1238,10 +1238,11 @@ Recent runtime migration notes:
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
-  construction from bytes-like objects, `read()`, `readline()`,
-  `readlines()`, `write()`, `writelines()`, `getvalue()`, `readinto()` over
-  writable bytearray targets, `tell()`, `seek()`, `truncate()`, position
-  advancement, sequential bytes-like line writes, sparse write NUL filling,
+  construction from bytes-like objects, `read()`, `read1()`, `readline()`,
+  `readlines()`, `write()`, `writelines()`, `getvalue()`, `readinto()` /
+  `readinto1()` over writable bytearray targets, `tell()`, `seek()`,
+  `truncate()`, position advancement, sequential bytes-like line writes,
+  sparse write NUL filling,
   size/sizehint line reads, line iteration through `__iter__()` / `__next__()`
   with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
   `isatty()`, `flush()`, `close()`, `closed`, closed-stream `ValueError`,
