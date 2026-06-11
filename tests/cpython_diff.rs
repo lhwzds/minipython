@@ -8108,6 +8108,105 @@ for expr in [
 }
 
 #[test]
+fn cpython_memoryview_cast_one_byte_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py one-byte cast public format subset",
+        name: "memoryview-cast-one-byte-format",
+        source: r#"print('cast' in dir(memoryview(b'')))
+for fmt in ['B', 'b', 'c']:
+    m = memoryview(b'abc').cast(fmt)
+    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__)
+print(memoryview(b'abc').cast(format='B').tolist())
+print(memoryview(b'abc').cast('B', [3]).tolist())
+print(memoryview(b'abc').cast('B', shape=(3,)).tolist())
+base = bytearray(b'abc')
+m = memoryview(base).cast('c')
+m[0] = b'X'
+m[1:2] = memoryview(b'Y').cast('c')
+print(base, m.tolist(), list(m), list(reversed(m)))
+print(b'Y' in m, ord('Y') in m, bytearray(b'Y') in m, memoryview(b'Y') in m, b'YZ' in m)
+for expr in [lambda: m.__setitem__(0, 88), lambda: m.__setitem__(slice(0, 1), b'Z')]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+print(memoryview(m).format, m[:].format, m.toreadonly().format)
+try:
+    memoryview(b'abcd')[::2].cast('B')
+except TypeError as error:
+    print(error.__class__.__name__, 'contiguous' in str(error))"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_hex_separator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py memoryview hex separator public subset",
+        name: "memoryview-hex-separator",
+        source: r#"x = bytes(range(97, 102))
+m2 = memoryview(x)[::-1]
+print(m2.hex())
+print(m2.hex(':'))
+print(m2.hex(':', 2))
+print(m2.hex(':', -2))
+print(m2.hex(sep=':', bytes_per_sep=2))
+print(m2.hex(sep=':', bytes_per_sep=-2))
+for bytes_per_sep in [5, -5, 2147483647, -2147483647]:
+    print(m2.hex(':', bytes_per_sep))
+print(memoryview(b'0' * 12)[::-1].hex())"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_rejection_and_hash_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py copy, pickle, and hash public rejection/cache subset",
+        name: "memoryview-rejection-and-hash",
+        source: r#"import copy
+import pickle
+
+for source in [b'abc', bytearray(b'abc')]:
+    try:
+        copy.copy(memoryview(source))
+    except TypeError as error:
+        print('copy', error.__class__.__name__, 'memoryview' in str(error))
+
+checked = 0
+for source in [b'abc', bytearray(b'abc')]:
+    for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+        try:
+            pickle.dumps(memoryview(source), proto)
+        except TypeError as error:
+            if 'memoryview' in str(error):
+                checked += 1
+for obj in [[memoryview(b'abc')], {'view': memoryview(b'abc')}]:
+    try:
+        pickle.dumps(obj)
+    except TypeError as error:
+        print('pickle-container', error.__class__.__name__, 'memoryview' in str(error))
+print('pickle-checked', checked)
+
+m = memoryview(b'abcdef')
+expected = hash(b'abcdef')
+print(hash(m) == expected)
+m.release()
+print(hash(m) == expected)
+m.release()
+print(hash(m) == expected)
+m = memoryview(b'abcdef')
+m.release()
+try:
+    hash(m)
+except ValueError as error:
+    print(error.__class__.__name__, 'released' in str(error))
+try:
+    hash(memoryview(bytearray(b'abcdef')))
+except ValueError as error:
+    print(error.__class__.__name__, 'writable' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

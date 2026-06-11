@@ -924,7 +924,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   view surface: non-contiguous reversed views produce hex over logical bytes,
   positional and keyword separator arguments work, positive `bytes_per_sep`
   groups from the right, negative values group from the left, and overlarge
-  grouping counts omit separators.
+  grouping counts omit separators. Direct CPython diff evidence is in
+  `cpython_memoryview_hex_separator_diff_subset`.
 - Added `cpython_memoryview_hex_reentrant_release_subset`, migrating CPython
   `Lib/test/test_memoryview.py::AbstractMemoryTests::test_hex_use_after_free`
   for the supported bytearray-backed view surface: `memoryview.hex()` still
@@ -946,7 +947,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `test_hash_writable` for supported one-dimensional views: a read-only
   memoryview that has already been hashed keeps that cached hash across
   `release()`, while first hash after release and writable memoryview hashing
-  still raise `ValueError`.
+  still raise `ValueError`. `cpython_memoryview_rejection_and_hash_diff_subset`
+  directly compares the copy rejection, pickle rejection, and hash/release-cache
+  surfaces against CPython.
 - Added `cpython_memoryview_release_during_index_subset`, migrating the
   supported one-dimensional public behavior from CPython
   `Lib/test/test_memoryview.py::OtherTest::test_use_released_memory`: scalar

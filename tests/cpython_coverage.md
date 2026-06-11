@@ -2920,7 +2920,8 @@ Recent runtime migration notes:
   `format` / one-dimensional `shape` binding, format preservation through
   `memoryview(m)`, slicing, and `toreadonly()`, `c`-format scalar/list/reversed
   values, `c`-format item and slice assignment, bytes-like membership, and
-  non-contiguous cast rejection.
+  non-contiguous cast rejection. `cpython_memoryview_cast_one_byte_format_diff_subset`
+  directly compares this one-byte format surface against CPython.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_getitem_index_count_compare_subset`, covering CPython
   `test_memoryview.py` getitem/index/count/compare behavior for the supported
@@ -2935,7 +2936,8 @@ Recent runtime migration notes:
   `cpython_memoryview_hex_separator_subset`, covering CPython
   `test_memoryview.py` logical-byte `hex()` behavior on reversed
   non-contiguous views, separator positional/keyword binding, positive and
-  negative `bytes_per_sep` grouping, and overlarge grouping counts.
+  negative `bytes_per_sep` grouping, and overlarge grouping counts. Direct
+  CPython diff evidence is in `cpython_memoryview_hex_separator_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_hex_reentrant_release_subset`, covering CPython
   `test_memoryview.py::AbstractMemoryTests::test_hex_use_after_free` for
@@ -2946,6 +2948,9 @@ Recent runtime migration notes:
   `cpython_memoryview_copy_rejection_subset`, covering CPython
   `test_memoryview.py::OtherTest::test_copy` for public `copy.copy()`
   rejection of supported read-only and writable memoryview objects.
+  `cpython_memoryview_rejection_and_hash_diff_subset` directly compares the
+  copy rejection, pickle rejection, and hash/release-cache surfaces against
+  CPython.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_pickle_rejection_subset`, covering CPython
   `test_memoryview.py::OtherTest::test_pickle` for public `pickle.dumps()`
