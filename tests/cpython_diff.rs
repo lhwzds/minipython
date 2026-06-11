@@ -4579,6 +4579,100 @@ for expr in [lambda: sum(), lambda: sum(42), lambda: sum(['a', 'b', 'c']), lambd
 }
 
 #[test]
+fn cpython_iter_next_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_iter / ::test_next",
+        name: "iter-next-builtins-direct",
+        source: r#"for value in [('1', '2'), ['1', '2'], '12']:
+    iterator = iter(value)
+    print(next(iterator), next(iterator))
+    try:
+        next(iterator)
+    except StopIteration:
+        print('stopped')
+iterator = iter(range(2))
+print(next(iterator), next(iterator))
+for _ in [0, 1]:
+    try:
+        next(iterator)
+    except StopIteration:
+        print('stopped')
+print(next(iterator, 42))
+class Iter:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        raise StopIteration
+iterator = iter(Iter())
+print(next(iterator, 42))
+try:
+    next(iterator)
+except StopIteration:
+    print('stopped')
+def gen():
+    yield 1
+iterator = gen()
+print(next(iterator))
+try:
+    next(iterator)
+except StopIteration:
+    print('stopped')
+print(next(iterator, 42))
+for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_map_filter_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_map / ::test_filter",
+        name: "map-filter-builtins-direct",
+        source: r#"class Squares:
+    def __init__(self, stop):
+        self.stop = stop
+    def __getitem__(self, index):
+        if index < 0 or index >= self.stop:
+            raise IndexError
+        return index * index
+print(list(map(lambda x: x * x, range(1, 4))))
+print(list(map(lambda x, y: x + y, [1, 3, 2], [9, 1, 4])))
+def plus(*values):
+    total = 0
+    for value in values:
+        total += value
+    return total
+print(list(map(plus, [1, 3, 7])))
+print(list(map(plus, [1, 3, 7], [4, 9, 2])))
+print(list(map(int, Squares(5))))
+print(list(filter(lambda c: 'a' <= c <= 'z', 'Hello World')))
+print(list(filter(None, [1, 'hello', [], [3], '', None, 9, 0])))
+print(list(filter(lambda x: x > 0, [1, -3, 9, 0, 2])))
+print(list(filter(None, Squares(5))))
+print(list(filter(lambda x: x % 2, Squares(5))))
+class BadSeq:
+    def __getitem__(self, index):
+        if index < 4:
+            return 42
+        raise ValueError
+def badfunc():
+    pass
+for expr in [lambda: filter(), lambda: filter(None), lambda: filter(None, 42), lambda: list(filter(42, (1, 2))), lambda: list(filter(badfunc, range(5))), lambda: map(), lambda: map(lambda x: x), lambda: map(lambda x: x, 42), lambda: list(map(None, [1]))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+try:
+    list(filter(lambda x: x, BadSeq()))
+except ValueError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
