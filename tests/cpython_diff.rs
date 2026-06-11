@@ -6458,6 +6458,27 @@ print('callable-result', CallableClass[0], CallableClass[2]['prepared'], Callabl
 }
 
 #[test]
+fn cpython_types_class_creation_metaclass_override_function_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_override_function",
+        name: "types-class-creation-metaclass-override-function",
+        source: r#"import types
+class Meta(type):
+    pass
+class A(metaclass=Meta):
+    pass
+marker = object()
+def func(name, bases, ns, **kw):
+    print('func', name, len(bases), type(ns).__name__, sorted(kw.items()))
+    return marker
+X = types.new_class('X', (), {'metaclass': func})
+Y = types.new_class('Y', (object,), {'metaclass': func})
+Z = types.new_class('Z', (A,), {'metaclass': func})
+print(X is marker, Y is marker, Z is marker)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_metaclass_derivation_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_derivation",

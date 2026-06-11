@@ -161,6 +161,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_custom_mapping_diff_subset`,
   `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
   `cpython_types_class_creation_prepare_and_metaclass_callable_diff_subset`,
+  `cpython_types_class_creation_metaclass_override_function_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_types_simple_namespace_recursive_diff_subset`,
   `cpython_types_simple_namespace_state_order_diff_subset`,
@@ -3083,7 +3084,8 @@ Recent runtime migration notes:
   `types.new_class()` treats a function metaclass as a direct callable rather
   than a class, forwards the name, bases, empty namespace, and keywords, and
   skips winner-metaclass calculation even for `object` bases and bases whose
-  own metaclass is custom.
+  own metaclass is custom. Direct output parity is guarded by
+  `cpython_types_class_creation_metaclass_override_function_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_non_type_metaclass_derivation_subset`, covering
   CPython `ClassCreationTests::test_metaclass_override_callable`:
