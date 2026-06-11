@@ -2800,6 +2800,45 @@ print(isinstance(Blocked(), MutableMapping), issubclass(Blocked, MutableMapping)
 }
 
 #[test]
+fn cpython_collections_abc_mapping_view_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py MappingView/KeysView/ItemsView/ValuesView ABC public runtime subset",
+        name: "collections-abc-mapping-view",
+        source: r#"from collections.abc import MappingView, KeysView, ItemsView, ValuesView, Set, Collection, Sized, Iterable, Container
+keys = {1: 2}.keys()
+items = {1: 2}.items()
+values = {1: 2}.values()
+views = [keys, items, values]
+print([isinstance(view, MappingView) for view in views])
+print(isinstance(keys, KeysView), isinstance(items, ItemsView), isinstance(values, ValuesView))
+print(isinstance(keys, Set), isinstance(items, Set), isinstance(values, Set))
+print([isinstance(view, Collection) for view in views])
+print([issubclass(type(view), MappingView) for view in views])
+print(issubclass(KeysView, MappingView), issubclass(ItemsView, MappingView), issubclass(ValuesView, MappingView))
+print(issubclass(KeysView, Set), issubclass(ItemsView, Set), issubclass(ValuesView, Set))
+print(issubclass(ValuesView, Collection), issubclass(ValuesView, Sized), issubclass(ValuesView, Iterable), issubclass(ValuesView, Container))
+print(issubclass(MappingView, Sized), issubclass(MappingView, Iterable), issubclass(MappingView, Container), issubclass(MappingView, Collection))
+class K(KeysView):
+    pass
+class I(ItemsView):
+    pass
+class V(ValuesView):
+    pass
+print(issubclass(K, KeysView), issubclass(K, MappingView), issubclass(K, Set), issubclass(float, K))
+print(issubclass(I, ItemsView), issubclass(I, MappingView), issubclass(I, Set), issubclass(float, I))
+print(issubclass(V, ValuesView), issubclass(V, MappingView), issubclass(V, Collection), issubclass(float, V))
+class Structural:
+    def __len__(self):
+        return 0
+    def __iter__(self):
+        return iter([])
+    def __contains__(self, value):
+        return False
+print(isinstance(Structural(), MappingView), issubclass(Structural, MappingView), isinstance(Structural(), KeysView), issubclass(Structural, KeysView))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

@@ -2377,6 +2377,12 @@ Recent runtime migration notes:
   and CPython's non-structural mapping behavior. Direct CPython diff evidence
   is in `cpython_collections_abc_mapping_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_mapping_view_subset`, covering `MappingView`,
+  `KeysView`, `ItemsView`, and `ValuesView` for built-in dict views, set-like
+  keys/items behavior, values-view collection behavior, ABC inheritance, direct
+  ABC subclassing, and CPython's non-structural view behavior. Direct CPython
+  diff evidence is in `cpython_collections_abc_mapping_view_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
