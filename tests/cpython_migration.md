@@ -3534,7 +3534,8 @@ Completed in the bytearray regex pass:
   pattern `b'\\w+'` over bytes-like subjects, returning ordinary bytes matches.
 - Kept broader regex syntax, text patterns, compiled patterns, and non-zero
   flags outside this subset rather than introducing an incomplete general regex
-  engine.
+  engine. Direct CPython diff evidence is in
+  `cpython_bytearray_regexps_diff_subset`.
 
 Completed in the bytearray extended slice-assignment pass:
 

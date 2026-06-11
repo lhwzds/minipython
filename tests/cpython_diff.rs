@@ -9011,6 +9011,20 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_bytearray_regexps_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_regexps",
+        name: "bytearray-regexps-findall-named",
+        source: r#"import re
+def by(text):
+    return bytearray(map(ord, text))
+for source in [by('Hello, world'), b'Hi, Bob_2!', memoryview(b'xy 99')]:
+    matches = re.findall(br'\w+', source)
+    print(type(source).__name__, matches, [type(item).__name__ for item in matches])"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

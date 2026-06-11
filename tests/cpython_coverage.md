@@ -1401,7 +1401,8 @@ Recent runtime migration notes:
 - `STRING_RUNTIME` also includes `cpython_bytearray_regexps_subset`, covering
   CPython `ByteArrayTest::test_regexps` public behavior for the supported
   `re.findall()` bytes-pattern subset: ASCII `\w+` over bytes-like subjects
-  returns ordinary bytes matches.
+  returns ordinary bytes matches. Direct CPython diff evidence is in
+  `cpython_bytearray_regexps_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_basics_and_ord_subset`, covering CPython
   `BaseBytesTest::test_basics` and `test_ord` public behavior for exact
