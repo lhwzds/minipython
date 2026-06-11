@@ -140,6 +140,7 @@ Recent runtime migration notes:
   `cpython_types_singleton_type_aliases_diff_subset`,
   `cpython_types_module_type_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
+  `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,

@@ -4488,6 +4488,30 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_method_surface_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests method surface subset",
+        name: "types-mappingproxy-method-surface",
+        source: r#"from types import MappingProxyType
+view = MappingProxyType({'a': 1})
+attrs = set(dir(view)) - set(dir(object()))
+expected = {'__contains__', '__getitem__', '__class_getitem__', '__ior__', '__iter__', '__len__', '__or__', '__reversed__', '__ror__', 'copy', 'get', 'items', 'keys', 'values'}
+print(attrs == expected)
+print(view.__contains__('a'), view.__getitem__('a'), list(view.__iter__()), view.__len__(), list(view.__reversed__()))
+print(view.__or__({'b': 2}))
+print(view.__ror__({'b': 2}))
+alias = view.__class_getitem__(int)
+print(alias.__origin__.__name__, alias.__args__[0].__name__)
+alias = MappingProxyType[int]
+print(alias.__origin__.__name__, alias.__args__[0].__name__)
+try:
+    view.__ior__({'b': 2})
+except TypeError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
