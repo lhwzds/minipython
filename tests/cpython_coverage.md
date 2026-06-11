@@ -1582,7 +1582,9 @@ Recent runtime migration notes:
   `::test_bytearray_extend_error`: short translation tables raise
   `ValueError`, non-bytes-like delete arguments raise `TypeError` once the
   table is valid, and exceptions from `map(int, ...)` propagate out of
-  `bytearray.extend()` without mutating the target array.
+  `bytearray.extend()` without mutating the target array. Direct CPython diff
+  evidence is in
+  `cpython_builtin_bytearray_translate_extend_errors_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_copy_module_subset`, covering
   CPython `BaseBytesTest::test_copy` for bytes/bytearray through the supported
   `copy.copy()` / `copy.deepcopy()` module surface, including independent

@@ -3335,7 +3335,10 @@ Completed in the bytes maketrans/translate-method pass:
   `BuiltinTest::test_bytearray_translate` error ordering for short translation
   tables versus non-bytes-like delete arguments, and representative
   TypeError/ValueError paths. Direct CPython diff evidence is in
-  `cpython_bytes_maketrans_translate_diff_subset`.
+  `cpython_bytes_maketrans_translate_diff_subset`; direct evidence for the
+  related `BuiltinTest::test_bytearray_translate` short-table/delete ordering
+  and `test_bytearray_extend_error` no-mutation path is in
+  `cpython_builtin_bytearray_translate_extend_errors_diff_subset`.
 - Tightened `translate()` unbound and missing-table diagnostics plus
   `maketrans()` no-argument diagnostics to match CPython's public
   `TypeError.args[0]` text.
@@ -3383,7 +3386,8 @@ Completed in the bytearray extend pass:
   differs across CPython oracle versions.
 - Added direct `BuiltinTest::test_bytearray_extend_error` coverage proving
   `ValueError` raised by `map(int, ...)` propagates and leaves the target
-  bytearray unmodified.
+  bytearray unmodified. Direct CPython diff evidence is in
+  `cpython_builtin_bytearray_translate_extend_errors_diff_subset`.
 
 Completed in the bytearray resize pass:
 

@@ -8991,6 +8991,26 @@ print(b, c)"#,
 }
 
 #[test]
+fn cpython_builtin_bytearray_translate_extend_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_bytearray_translate and ::test_bytearray_extend_error",
+        name: "builtin-bytearray-translate-extend-errors-named",
+        source: r#"x = bytearray(b'abc')
+for expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+array = bytearray()
+bad_iter = map(int, 'X')
+try:
+    array.extend(bad_iter)
+except ValueError as error:
+    print(error.__class__.__name__, array)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",
