@@ -1507,6 +1507,84 @@ for expr in [
 }
 
 #[test]
+fn cpython_functools_update_wrapper_wraps_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestUpdateWrapper/TestWraps public stable subset",
+        name: "functools-update-wrapper-wraps",
+        source: r#"from functools import update_wrapper, wraps
+
+def f(a: 'new'):
+    'doc'
+    return a + 1
+f.attr = 'value'
+f.extra = {'a': 1}
+f.__wrapped__ = 'lie'
+
+def wrapper(b: 'old'):
+    return b
+result = update_wrapper(wrapper, f)
+print(result is wrapper, wrapper.__wrapped__ is f, wrapper.__module__ == f.__module__)
+print(wrapper.__name__, wrapper.__qualname__ == f.__qualname__, wrapper.__doc__, wrapper.attr)
+print(wrapper.__annotations__ == {'a': 'new'}, 'b' in wrapper.__annotations__)
+print(wrapper.__dict__['__wrapped__'] is f, wrapper.__dict__['attr'])
+
+def g():
+    'doc'
+    pass
+g.attr = 'x'
+def w():
+    pass
+update_wrapper(w, g, (), ())
+print(w.__name__, hasattr(w, 'attr'), w.__wrapped__ is g)
+
+def source():
+    pass
+source.attr = 'assigned'
+source.dict_attr = {'a': 1, 'b': 2}
+def dest():
+    pass
+dest.dict_attr = {}
+update_wrapper(dest, source, ('attr',), ('dict_attr',))
+print(dest.attr, sorted(dest.dict_attr.items()), dest.__wrapped__ is source)
+
+def missing():
+    pass
+def dest2():
+    pass
+dest2.dict_attr = {}
+update_wrapper(dest2, missing, ('attr',), ('dict_attr',))
+print('attr' in dest2.__dict__, dest2.dict_attr)
+del dest2.dict_attr
+for expr in [
+    lambda: update_wrapper(dest2, source, (), ('dict_attr',)),
+    lambda: update_wrapper(),
+    lambda: wraps(),
+]:
+    try:
+        expr()
+    except (TypeError, AttributeError) as error:
+        print(error.__class__.__name__)
+
+dest2.dict_attr = 1
+try:
+    update_wrapper(dest2, source, (), ('dict_attr',))
+except (TypeError, AttributeError) as error:
+    print(error.__class__.__name__)
+
+print(callable(wraps(f)), type(wraps(f)).__name__)
+@wraps(f)
+def decorated():
+    return f(4)
+print(decorated.__name__, decorated.__wrapped__ is f, decorated.attr, decorated.__annotations__ == {'a': 'new'}, decorated())
+
+@wraps(f, (), ())
+def plain():
+    pass
+print(plain.__name__, hasattr(plain, 'attr'), plain.__wrapped__ is f)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_total_ordering_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestTotalOrdering public subset",

@@ -61,6 +61,7 @@ Recent runtime migration notes:
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_cmp_to_key_diff_subset`,
+  `cpython_functools_update_wrapper_wraps_diff_subset`,
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
   `cpython_functools_cached_property_diff_subset`,
@@ -536,6 +537,7 @@ Recent runtime migration notes:
   `obj`, unhashability, argument validation, non-wrapper comparison errors, and
   comparator exception propagation.
 - The bundled `functools` module also includes
+  `cpython_functools_update_wrapper_wraps_diff_subset` and
   `cpython_functools_update_wrapper_wraps_subset`, covering CPython
   `test_functools.py::TestUpdateWrapper` and `::TestWraps` public metadata
   copying behavior, wrapper constants, `__wrapped__`, default and selective
