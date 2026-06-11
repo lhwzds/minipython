@@ -1306,7 +1306,9 @@ Recent runtime migration notes:
 - `STRING_RUNTIME` also includes `cpython_bytearray_extend_subset`, covering
   CPython `ByteArrayTest::test_extend` behavior for self-extension, map and
   generator inputs, all-or-nothing invalid item handling, `__index__` item
-  conversion, and bytearray-specific `TypeError` messages.
+  conversion, and bytearray-specific `TypeError` messages. Direct CPython diff
+  evidence for the stable behavior and error classes is in
+  `cpython_bytearray_extend_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_resize_subset`, covering
   current CPython `ByteArrayTest::test_resize` public behavior for bytearray
   truncation, zero-filled growth, `__index__` length conversion, catchable

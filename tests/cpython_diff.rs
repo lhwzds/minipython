@@ -8648,6 +8648,46 @@ for expr in [lambda: bytearray(b'a').append(), lambda: bytearray(b'a').append(1,
 }
 
 #[test]
+fn cpython_bytearray_extend_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_extend",
+        name: "bytearray-extend",
+        source: r#"orig = b'hello'
+a = bytearray(orig)
+print(a.extend(a), a == orig + orig, a[5:])
+a = bytearray(b'')
+a.extend(map(int, orig * 25))
+a.extend(int(x) for x in orig * 25)
+print(a == orig * 50, a[-5:])
+a = bytearray(b'')
+a.extend(iter(map(int, orig * 50)))
+print(a == orig * 50, a[-5:])
+a = bytearray(b'')
+a.extend(list(map(int, orig * 50)))
+print(a == orig * 50, a[-5:])
+a = bytearray(b'')
+for source in [[0, 1, 2, 256], [0, 1, 2, -1]]:
+    try:
+        a.extend(source)
+    except ValueError as error:
+        print(error.__class__.__name__, len(a))
+class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+a = bytearray(b'')
+print(a.extend([Indexable(ord('a'))]), a)
+a = bytearray(b'abc')
+for expr in [lambda: a.extend('def'), lambda: a.extend(1.0)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__, type(error).__name__ == 'TypeError')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

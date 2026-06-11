@@ -3357,7 +3357,10 @@ Completed in the bytearray extend pass:
 - Covered self-extension, `map()` iterators, generator expressions, explicit
   iterators, list inputs, all-or-nothing invalid item handling, `__index__`
   item conversion, and CPython-style `bytearray.extend()` TypeError messages
-  for string and non-iterable sources.
+  for string and non-iterable sources. Direct CPython diff evidence for stable
+  behavior and error classes is in `cpython_bytearray_extend_diff_subset`; the
+  exact string-source TypeError text remains local subset evidence because it
+  differs across CPython oracle versions.
 - Added direct `BuiltinTest::test_bytearray_extend_error` coverage proving
   `ValueError` raised by `map(int, ...)` propagates and leaves the target
   bytearray unmodified.
