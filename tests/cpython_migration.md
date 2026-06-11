@@ -740,6 +740,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_memoryview_getbuf_fail_subset`, adapted from
   `AbstractMemoryTests::test_getbuf_fail`, covering public `TypeError`
   rejection for non-buffer objects passed to `memoryview()`.
+- Added matching direct CPython oracle evidence in
+  `cpython_memoryview_getbuf_fail_diff_subset`.
 - Added `cpython_memoryview_bytesio_readinto_subset`, adapted from
   `AbstractMemoryTests::test_writable_readonly`, covering the in-memory
   `io.BytesIO.readinto()` slice for writable `bytearray` and bytearray-backed

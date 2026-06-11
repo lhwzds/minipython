@@ -3235,7 +3235,8 @@ Recent runtime migration notes:
   iteration.
 - `RUNTIME_BUILTINS` also includes `cpython_memoryview_getbuf_fail_subset`,
   covering CPython `test_memoryview.py::AbstractMemoryTests::test_getbuf_fail`
-  public constructor rejection for non-buffer objects.
+  public constructor rejection for non-buffer objects. Direct CPython diff
+  evidence is in `cpython_memoryview_getbuf_fail_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_writable_setitem_subset`, covering the supported
   bytearray-backed writable memoryview slice for shared `bytearray` object

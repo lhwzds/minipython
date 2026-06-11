@@ -13016,6 +13016,19 @@ show('pos-bad-kw', lambda: memoryview(b'x', argument=True))"#,
 }
 
 #[test]
+fn cpython_memoryview_getbuf_fail_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py::AbstractMemoryTests::test_getbuf_fail public subset",
+        name: "memoryview-getbuf-fail",
+        source: r#"for value in [{}, [], object(), 42, 'abc']:
+    try:
+        memoryview(value)
+    except Exception as error:
+        print(type(value).__name__, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_methods_release_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py public methods, attributes, context manager, release, and toreadonly subset",
