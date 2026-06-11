@@ -5542,6 +5542,49 @@ print(types.resolve_bases((list[int],)) == (list,))"#,
 }
 
 #[test]
+fn cpython_types_class_creation_metaclass_derivation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_derivation",
+        name: "types-class-creation-metaclass-derivation",
+        source: r#"import types
+new_calls = []
+class AMeta(type):
+    def __new__(mcls, name, bases, ns):
+        new_calls.append('AMeta')
+        return super().__new__(mcls, name, bases, ns)
+    @classmethod
+    def __prepare__(mcls, name, bases):
+        return {}
+class BMeta(AMeta):
+    def __new__(mcls, name, bases, ns):
+        new_calls.append('BMeta')
+        return super().__new__(mcls, name, bases, ns)
+    @classmethod
+    def __prepare__(mcls, name, bases):
+        ns = super().__prepare__(name, bases)
+        ns['BMeta_was_here'] = True
+        return ns
+A = types.new_class('A', (), {'metaclass': AMeta})
+print('A', type(A) is AMeta, new_calls)
+new_calls.clear()
+B = types.new_class('B', (), {'metaclass': BMeta})
+print('B', type(B) is BMeta, new_calls)
+new_calls.clear()
+C = types.new_class('C', (A, B))
+print('C', type(C) is BMeta, new_calls, 'BMeta_was_here' in C.__dict__)
+new_calls.clear()
+C2 = types.new_class('C2', (B, A))
+print('C2', type(C2) is BMeta, new_calls, 'BMeta_was_here' in C2.__dict__)
+new_calls.clear()
+D = types.new_class('D', (C,), {'metaclass': type})
+print('D', type(D) is BMeta, new_calls, 'BMeta_was_here' in D.__dict__)
+new_calls.clear()
+E = types.new_class('E', (C,), {'metaclass': AMeta})
+print('E', type(E) is BMeta, new_calls, 'BMeta_was_here' in E.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",

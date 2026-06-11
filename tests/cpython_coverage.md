@@ -3009,7 +3009,9 @@ Recent runtime migration notes:
   `__new__` call order through `super()`, invokes the winner metaclass
   `__prepare__`, keeps the result independent of compatible base order, and
   still chooses the derived metaclass when the caller explicitly passes a
-  compatible ancestor metaclass such as `type` or `AMeta`.
+  compatible ancestor metaclass such as `type` or `AMeta`. Direct output
+  parity is guarded by
+  `cpython_types_class_creation_metaclass_derivation_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_get_original_bases_subset`, covering CPython
   `ClassCreationTests::test_get_original_bases`: ordinary classes without
