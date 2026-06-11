@@ -2687,6 +2687,27 @@ print(from_userlist.data, constructed.data)"#,
 }
 
 #[test]
+fn cpython_collections_userdict_public_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestUserObjects UserDict public methods subset",
+        name: "collections-userdict-public-methods",
+        source: r#"from collections import UserDict
+from copy import copy
+print(set(dir(UserDict)) >= set(dir(dict)))
+obj = UserDict()
+obj[123] = 'abc'
+print(obj[123], list(obj), len(obj), 123 in obj, obj.get(999))
+internal = obj.copy()
+print(internal.data is obj.data, internal.data == obj.data, type(internal).__name__)
+obj.test = [1234]
+external = copy(obj)
+print(external.data is obj.data, external.data == obj.data, external.test is obj.test)
+del obj[123]
+print(list(obj), len(obj))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
