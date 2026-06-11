@@ -5843,6 +5843,49 @@ print(ns2)"#,
 }
 
 #[test]
+fn cpython_types_simple_namespace_new_and_invalid_replace_diff_subset() {
+    let probe = run_cpython(
+        "import copy, types\nprint(hasattr(copy, 'replace'), hasattr(types.SimpleNamespace, '__replace__'))",
+    )
+    .expect("failed to run CPython SimpleNamespace replace capability probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping SimpleNamespace.__replace__ diff: CPython oracle lacks copy.replace or SimpleNamespace.__replace__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests::test_replace_invalid_subtype and public __new__/__replace__ behavior",
+        name: "types-simple-namespace-new-invalid-replace",
+        source: r#"import copy, types
+created = False
+print(type(types.SimpleNamespace.__new__(types.SimpleNamespace)).__name__, repr(types.SimpleNamespace.__new__(types.SimpleNamespace)))
+print(type(types.SimpleNamespace.__new__(types.SimpleNamespace, 1, x=2)).__name__)
+try:
+    types.SimpleNamespace.__new__(int)
+except TypeError as error:
+    print(type(error).__name__, 'not a subtype of types.SimpleNamespace' in str(error))
+ns0 = types.SimpleNamespace(x=1)
+print(hasattr(types.SimpleNamespace, '__replace__'), hasattr(ns0, '__replace__'))
+print(types.SimpleNamespace.__replace__(ns0, y=3), ns0.__replace__(x=2))
+class MyNS(types.SimpleNamespace):
+    def __new__(cls, *args, **kwargs):
+        if created:
+            return 12345
+        return super().__new__(cls)
+ns = MyNS(ham=8, eggs=9)
+print(type(ns).__name__, sorted(vars(ns).items()))
+print(hasattr(ns, '__replace__'), type(ns.__replace__(eggs=10)).__name__, sorted(vars(ns.__replace__(eggs=10)).items()))
+created = True
+try:
+    copy.replace(ns, ham=5)
+except TypeError as error:
+    print(type(error).__name__, 'expect types.SimpleNamespace type' in str(error), 'MyNS()' in str(error), "'int' object" in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_state_order_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests state/order subset",

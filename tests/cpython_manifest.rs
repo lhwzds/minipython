@@ -2657,6 +2657,14 @@ fn runtime_newer_oracle_diff_evidence_stays_capability_gated() {
                 "skipping complex.from_number diff",
             ],
         ),
+        (
+            "fn cpython_types_simple_namespace_new_and_invalid_replace_diff_subset()",
+            &[
+                "hasattr(copy, 'replace')",
+                "hasattr(types.SimpleNamespace, '__replace__')",
+                "skipping SimpleNamespace.__replace__ diff",
+            ],
+        ),
     ] {
         let start = CPYTHON_DIFF
             .find(function)
@@ -3560,6 +3568,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_custom_mapping_diff_subset",
         "cpython_types_simple_namespace_basic_diff_subset",
         "cpython_types_simple_namespace_recursive_diff_subset",
+        "cpython_types_simple_namespace_new_and_invalid_replace_diff_subset",
         "cpython_types_simple_namespace_state_order_diff_subset",
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
         "cpython_types_method_descriptor_types_diff_subset",

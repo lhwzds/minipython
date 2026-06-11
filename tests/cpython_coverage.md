@@ -3078,7 +3078,10 @@ Recent runtime migration notes:
   `types.SimpleNamespace.__new__` / `.__replace__` behavior: direct allocation,
   subtype validation, exact and subclass replacement methods, and catchable
   `TypeError` when a namespace subclass constructor returns a non-namespace
-  object during replacement.
+  object during replacement. Direct CPython output parity is tracked by
+  `cpython_types_simple_namespace_new_and_invalid_replace_diff_subset`, gated
+  for CPython oracles that expose `copy.replace()` and
+  `types.SimpleNamespace.__replace__`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_simple_namespace_remaining_public_subset`, covering additional
   CPython `SimpleNamespaceTests` public behavior: constructor insertion order,
