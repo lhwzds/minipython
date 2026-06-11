@@ -37,7 +37,7 @@ use crate::value::{
     INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef, LruCacheState, MemoryViewRef,
     MockCallsRef, MockSideEffectRef, NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType,
     NamedTupleTypeRef, SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD,
-    TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
+    TeeState, TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
     code_metadata_namespace_entries_equal, complex_value, dict_value, dict_view_value,
     dict_view_values, float_value, format_float_display, frame_locals_proxy_value,
     frozen_set_value, generic_alias_subclass_alias, identity_string_value, list_value,
@@ -8614,6 +8614,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "itertools.takewhile" => {
                 self.call_itertools_takewhile(args, keywords)
+            }
+            Value::Builtin(name) if name == "itertools.tee" => {
+                self.call_itertools_tee(args, keywords)
             }
             Value::Builtin(name) if name == "itertools.zip_longest" => {
                 self.call_itertools_zip_longest(args, keywords)
@@ -23493,6 +23496,53 @@ impl Vm {
             .ok_or_else(|| "OverflowError: r argument is too large".to_string())
     }
 
+    fn call_itertools_tee(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: itertools.tee() takes no keyword arguments".to_string());
+        }
+        if args.is_empty() {
+            return Err("TypeError: tee expected at least 1 argument, got 0".to_string());
+        }
+        if args.len() > 2 {
+            return Err(format!(
+                "TypeError: tee expected at most 2 arguments, got {}",
+                args.len()
+            ));
+        }
+        let iterator = get_iter(args[0].clone())?;
+        let n = if let Some(value) = args.get(1) {
+            let n = self.index_big_int(value.clone())?;
+            if n.is_negative() {
+                return Err("ValueError: n must be >= 0".to_string());
+            }
+            n.to_usize()
+                .ok_or_else(|| "OverflowError: n argument is too large".to_string())?
+        } else {
+            2
+        };
+        if n == 0 {
+            return Ok(tuple_value(Vec::new()));
+        }
+        let state = Rc::new(RefCell::new(TeeState {
+            iterator,
+            buffer: Vec::new(),
+            exhausted: false,
+        }));
+        let iterators = (0..n)
+            .map(|_| {
+                shared_iterator(Value::ItertoolsTee {
+                    state: state.clone(),
+                    index: 0,
+                })
+            })
+            .collect();
+        Ok(tuple_value(iterators))
+    }
+
     fn call_ast_replace_method(
         &mut self,
         args: Vec<Value>,
@@ -29123,6 +29173,29 @@ impl Vm {
                     .map(|index| pool[*index].clone())
                     .collect();
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
+            }
+            Value::ItertoolsTee { state, index } => {
+                let mut borrowed = state.borrow_mut();
+                if *index < borrowed.buffer.len() {
+                    let value = borrowed.buffer[*index].clone();
+                    *index += 1;
+                    return Ok(IteratorAdvance::Yield(value));
+                }
+                if borrowed.exhausted {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                match self.advance_owned_iterator(&mut borrowed.iterator)? {
+                    IteratorAdvance::Yield(value) => {
+                        borrowed.buffer.push(value.clone());
+                        *index += 1;
+                        return Ok(IteratorAdvance::Yield(value));
+                    }
+                    IteratorAdvance::Complete(_) => {
+                        borrowed.exhausted = true;
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                    IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                }
             }
             Value::MapIterator {
                 function,
@@ -53731,6 +53804,7 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
+        Value::ItertoolsTee { .. } => "_tee",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -53856,6 +53930,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
+        Value::ItertoolsTee { .. } => "_tee",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69446,6 +69521,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsCombinations { .. }
         | Value::ItertoolsCombinationsWithReplacement { .. }
         | Value::ItertoolsPermutations { .. }
+        | Value::ItertoolsTee { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69667,6 +69743,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsCombinations { .. }
         | Value::ItertoolsCombinationsWithReplacement { .. }
         | Value::ItertoolsPermutations { .. }
+        | Value::ItertoolsTee { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -70122,6 +70199,9 @@ fn get_iter(value: Value) -> Result<Value, String> {
             first,
             done,
         })),
+        Value::ItertoolsTee { state, index } => {
+            Ok(shared_iterator(Value::ItertoolsTee { state, index }))
+        }
         Value::CallIterator {
             callable,
             sentinel,
@@ -75923,6 +76003,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsCombinations { .. } => Ok(true),
         Value::ItertoolsCombinationsWithReplacement { .. } => Ok(true),
         Value::ItertoolsPermutations { .. } => Ok(true),
+        Value::ItertoolsTee { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

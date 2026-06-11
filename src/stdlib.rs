@@ -730,6 +730,7 @@ pub(crate) fn create_module(
                     "takewhile",
                     Value::Builtin("itertools.takewhile".to_string()),
                 ),
+                ("tee", Value::Builtin("itertools.tee".to_string())),
                 (
                     "zip_longest",
                     Value::Builtin("itertools.zip_longest".to_string()),
@@ -2193,6 +2194,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
+        Value::ItertoolsTee { .. } => "_tee",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),
@@ -2303,6 +2305,7 @@ fn stdlib_iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
+        Value::ItertoolsTee { .. } => "_tee",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),

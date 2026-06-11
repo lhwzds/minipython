@@ -36122,6 +36122,56 @@ fn cpython_itertools_permutations_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_tee_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "it1, it2 = itertools.tee(iter([1, 2, 3]))\n",
+            "print(type(it1).__name__, iter(it1) is it1, iter(it2) is it2)\n",
+            "print(next(it1), next(it1), next(it2), list(it1), list(it2))\n",
+            "print(itertools.tee([1, 2], 0))\n",
+            "one = itertools.tee([1, 2], 1)\n",
+            "print(len(one), list(one[0]))\n",
+            "print([list(item) for item in itertools.tee([1, 2], 3)])\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return 2\n",
+            "print([list(item) for item in itertools.tee([1, 2], IndexLike())])\n",
+            "source = (value for value in [4, 5, 6])\n",
+            "left, right = itertools.tee(source)\n",
+            "print(next(left), list(right), list(left))\n",
+            "for expr in [\n",
+            "    lambda: itertools.tee(),\n",
+            "    lambda: itertools.tee([1], 2, 3),\n",
+            "    lambda: itertools.tee(iterable=[1], n=2),\n",
+            "    lambda: itertools.tee([1], 'x'),\n",
+            "    lambda: itertools.tee([1], -1),\n",
+            "    lambda: itertools.tee(1, 2),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)",
+        ),
+        &[
+            "_tee True True",
+            "1 2 1 [3] [2, 3]",
+            "()",
+            "1 [1, 2]",
+            "[[1, 2], [1, 2], [1, 2]]",
+            "[[1, 2], [1, 2]]",
+            "4 [4, 5, 6] [5, 6]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.

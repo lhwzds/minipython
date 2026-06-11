@@ -11576,6 +11576,41 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_tee_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public tee core subset",
+        name: "itertools-tee-core",
+        source: r#"import itertools
+it1, it2 = itertools.tee(iter([1, 2, 3]))
+print(type(it1).__name__, iter(it1) is it1, iter(it2) is it2)
+print(next(it1), next(it1), next(it2), list(it1), list(it2))
+print(itertools.tee([1, 2], 0))
+one = itertools.tee([1, 2], 1)
+print(len(one), list(one[0]))
+print([list(item) for item in itertools.tee([1, 2], 3)])
+class IndexLike:
+    def __index__(self):
+        return 2
+print([list(item) for item in itertools.tee([1, 2], IndexLike())])
+source = (value for value in [4, 5, 6])
+left, right = itertools.tee(source)
+print(next(left), list(right), list(left))
+for expr in [
+    lambda: itertools.tee(),
+    lambda: itertools.tee([1], 2, 3),
+    lambda: itertools.tee(iterable=[1], n=2),
+    lambda: itertools.tee([1], 'x'),
+    lambda: itertools.tee([1], -1),
+    lambda: itertools.tee(1, 2),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

@@ -20,6 +20,7 @@ pub type BytesRef = Rc<Vec<u8>>;
 pub type ByteArrayRef = Rc<RefCell<ByteArrayStorage>>;
 pub type MemoryViewRef = Rc<RefCell<MemoryViewState>>;
 pub type BytesIORef = Rc<RefCell<BytesIOState>>;
+pub type TeeRef = Rc<RefCell<TeeState>>;
 pub type NamedTupleTypeRef = Rc<NamedTupleType>;
 pub type DeferredTypeParamExprRef = Rc<DeferredTypeParamExpr>;
 pub type MockCallsRef = Rc<RefCell<Vec<Vec<Value>>>>;
@@ -97,6 +98,13 @@ pub struct BytesIOState {
     pub buffer: Vec<u8>,
     pub position: usize,
     pub closed: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct TeeState {
+    pub iterator: Value,
+    pub buffer: Vec<Value>,
+    pub exhausted: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -731,6 +739,10 @@ pub enum Value {
         first: bool,
         done: bool,
     },
+    ItertoolsTee {
+        state: TeeRef,
+        index: usize,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1159,6 +1171,7 @@ impl fmt::Display for Value {
             Value::ItertoolsPermutations { .. } => {
                 write!(f, "<itertools.permutations object>")
             }
+            Value::ItertoolsTee { .. } => write!(f, "<itertools._tee object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
