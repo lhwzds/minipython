@@ -2894,7 +2894,8 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_missing_subset` and
   `cpython_types_mappingproxy_chainmap_subset`, covering CPython
   `MappingProxyTests` behavior for dict subclasses with `__missing__` and
-  `collections.ChainMap` mapping sources.
+  `collections.ChainMap` mapping sources. Direct ChainMap output parity is
+  guarded by `cpython_types_mappingproxy_chainmap_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userdict_public_methods_diff_subset` and
   `cpython_collections_userdict_public_methods_subset`, covering CPython

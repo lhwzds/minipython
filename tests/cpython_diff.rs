@@ -7071,6 +7071,33 @@ print(view.items(), view.keys(), view.values())"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_chainmap_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests::test_chainmap",
+        name: "types-mappingproxy-chainmap",
+        source: r#"import collections
+from types import MappingProxyType
+d1 = {'x': 1}
+d2 = {'y': 2}
+mapping = collections.ChainMap(d1, d2)
+view = MappingProxyType(mapping)
+print('x' in view, 'y' in view, 'z' in view)
+print(view['x'], view['y'])
+try:
+    view.__getitem__('z')
+except KeyError as error:
+    print(error.__class__.__name__)
+print(tuple(sorted(view)), len(view))
+copy = view.copy()
+print(copy is not mapping, isinstance(copy, collections.ChainMap), copy == mapping)
+print(view.get('x'), view.get('y'), view.get('z'))
+print(tuple(sorted(view.items())))
+print(tuple(sorted(view.keys())))
+print(tuple(sorted(view.values())))"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",

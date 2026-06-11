@@ -3601,6 +3601,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_copy_diff_subset",
         "cpython_types_mappingproxy_richcompare_diff_subset",
         "cpython_types_mappingproxy_custom_mapping_diff_subset",
+        "cpython_types_mappingproxy_chainmap_diff_subset",
         "cpython_types_simple_namespace_basic_diff_subset",
         "cpython_types_simple_namespace_recursive_diff_subset",
         "cpython_types_simple_namespace_new_and_invalid_replace_diff_subset",
