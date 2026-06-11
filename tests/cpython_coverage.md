@@ -684,9 +684,10 @@ Recent runtime migration notes:
   default `r`, keyword binding, bool/int-subclass `r`, CPython's rejection of
   arbitrary `__index__` r values, zero-length tuple behavior, oversize-r
   exhaustion, generator inputs, and shared-buffer `tee()` clones with
-  interleaved consumption, `n=0` / `n=1` / multi-clone behavior, `n` via
-  `__index__`, generator-backed inputs, and fixed-size `batched()` tuple
-  batches with generator inputs, `n` via `__index__`, keyword binding,
+  interleaved consumption, `n=0` / `n=1` / multi-clone behavior, `n=0`
+  non-iterable short-circuiting, `_tee` input flattening with first-clone
+  identity reuse, `n` via `__index__`, generator-backed inputs, and fixed-size
+  `batched()` tuple batches with generator inputs, `n` via `__index__`, keyword binding,
   truth-tested `strict`, and incomplete-batch `ValueError`, and lazy
   `groupby()` runs with optional key functions, generator-backed input,
   shared `_grouper` invalidation when the parent advances, and keyword

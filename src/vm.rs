@@ -37,7 +37,7 @@ use crate::value::{
     INT_ENUM_MEMBER_NAME_FIELD, INT_ENUM_MEMBER_VALUE_FIELD, INT_SUBCLASS_STORAGE_FIELD, ListRef,
     LruCacheState, MemoryViewRef, MockCallsRef, MockSideEffectRef,
     NAMED_TUPLE_SUBCLASS_STORAGE_FIELD, NamedTupleType, NamedTupleTypeRef,
-    SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeState,
+    SET_SUBCLASS_STORAGE_FIELD, Scope, SetRef, TUPLE_SUBCLASS_STORAGE_FIELD, TeeRef, TeeState,
     TemplateInterpolation, Value, byte_array_value, bytes_io_value, bytes_value,
     code_metadata_namespace_entries_equal, complex_value, dict_value, dict_view_value,
     dict_view_values, float_value, format_float_display, frame_locals_proxy_value,
@@ -23740,7 +23740,6 @@ impl Vm {
                 args.len()
             ));
         }
-        let iterator = get_iter(args[0].clone())?;
         let n = if let Some(value) = args.get(1) {
             let n = self.index_big_int(value.clone())?;
             if n.is_negative() {
@@ -23754,6 +23753,20 @@ impl Vm {
         if n == 0 {
             return Ok(tuple_value(Vec::new()));
         }
+
+        if let Some((tee, state, index)) = itertools_tee_flatten_source(&args[0]) {
+            let mut iterators = Vec::with_capacity(n);
+            iterators.push(tee);
+            iterators.extend((1..n).map(|_| {
+                shared_iterator(Value::ItertoolsTee {
+                    state: state.clone(),
+                    index,
+                })
+            }));
+            return Ok(tuple_value(iterators));
+        }
+
+        let iterator = get_iter(args[0].clone())?;
         let state = Rc::new(RefCell::new(TeeState {
             iterator,
             buffer: Vec::new(),
@@ -68883,6 +68896,17 @@ fn map_strict_length_error(argument_index: usize, relation: &str) -> String {
 
 fn shared_iterator(iterator: Value) -> Value {
     Value::Iterator(Rc::new(RefCell::new(iterator)))
+}
+
+fn itertools_tee_flatten_source(value: &Value) -> Option<(Value, TeeRef, usize)> {
+    let Value::Iterator(iterator) = value else {
+        return None;
+    };
+    let borrowed = iterator.borrow();
+    let Value::ItertoolsTee { state, index } = &*borrowed else {
+        return None;
+    };
+    Some((Value::Iterator(iterator.clone()), state.clone(), *index))
 }
 
 fn list_iterator_from_values(items: Vec<Value>) -> Value {
