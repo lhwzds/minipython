@@ -4389,6 +4389,65 @@ for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x11
 }
 
 #[test]
+fn cpython_types_singleton_type_aliases_diff_subset() {
+    let probe = run_cpython(
+        "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",
+    )
+    .expect("failed to probe CPython types singleton aliases");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True True" {
+        eprintln!(
+            "skipping types singleton aliases diff: CPython oracle lacks public singleton aliases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py public singleton type aliases",
+        name: "types-singleton-type-aliases",
+        source: r#"import types
+items = ((None, types.NoneType), (NotImplemented, types.NotImplementedType), (Ellipsis, types.EllipsisType))
+for value, alias in items:
+    print(type(value) is alias, isinstance(value, alias), alias() is value)
+    print(alias.__name__, alias.__module__, alias.__qualname__)
+for alias in (types.NoneType, types.NotImplementedType, types.EllipsisType):
+    for expr in (lambda alias=alias: alias(1), lambda alias=alias: alias(value=1)):
+        try:
+            expr()
+        except TypeError as error:
+            print(alias.__name__, type(error).__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_types_module_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py public ModuleType behavior",
+        name: "types-module-type-public",
+        source: r#"import types
+m = types.ModuleType('spam')
+print(type(m).__name__, type(m) is types.ModuleType, isinstance(m, types.ModuleType), m.__class__ is types.ModuleType)
+print(m.__name__, m.__doc__, m.__package__, m.__loader__, m.__spec__, type(m.__dict__).__name__)
+m = types.ModuleType('spam', 'doc')
+print(m.__name__, m.__doc__)
+m = types.ModuleType(name='eggs', doc='ham')
+print(m.__name__, m.__doc__)
+m.x = 1
+print(m.x, m.__dict__['x'])
+del m.x
+try:
+    m.x
+except AttributeError as error:
+    print(error.__class__.__name__)
+print(types.ModuleType.__name__, types.ModuleType.__module__, types.ModuleType.__qualname__)
+for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: types.ModuleType('x', 'd', 'e'), lambda: types.ModuleType('x', name='y'), lambda: types.ModuleType(foo='x'), lambda: types.ModuleType('x', foo=1), lambda: types.ModuleType('x', 'd', doc='e'), lambda: types.ModuleType(name='x', doc='d', foo=1)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",

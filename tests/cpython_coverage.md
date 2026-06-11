@@ -137,6 +137,8 @@ Recent runtime migration notes:
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
+  `cpython_types_singleton_type_aliases_diff_subset`,
+  `cpython_types_module_type_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
