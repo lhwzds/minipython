@@ -1256,11 +1256,18 @@ Recent runtime migration notes:
   replacement, empty separators, and representative TypeError/ValueError
   paths. Direct CPython diff evidence for the portable public replace and
   partition surface is in `cpython_bytes_replace_partition_methods_diff_subset`.
+- `STRING_RUNTIME` also includes `cpython_bytes_split_rsplit_methods_subset`,
+  covering bytes/bytearray `split()` and `rsplit()` over default ASCII
+  whitespace, explicit bytes-like separators, `maxsplit`, keyword arguments,
+  receiver-driven result types, Unicode-whitespace boundary behavior, empty
+  separators, and representative TypeError paths. Direct CPython diff evidence
+  is in `cpython_bytes_split_rsplit_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_splitlines_methods_subset`,
   covering bytes/bytearray `splitlines()` over CR, LF, and CRLF boundaries,
   `keepends`, receiver-driven result types, bytes-specific non-splitting
   behavior for Unicode text line separators, and representative TypeError
-  paths.
+  paths. Direct CPython diff evidence is in
+  `cpython_bytes_splitlines_methods_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_ascii_case_predicate_methods_subset`, covering the CPython
   `string_tests.py` ASCII case and predicate methods as applied to

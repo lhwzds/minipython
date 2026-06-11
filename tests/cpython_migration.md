@@ -3171,6 +3171,8 @@ Completed in the bytes split/rsplit-method pass:
   splitting, explicit bytes-like separators, `maxsplit`, `sep` / `maxsplit`
   keywords, receiver-driven result types, empty-separator `ValueError`, and
   representative TypeError paths for unsupported separator/maxsplit values.
+  Direct CPython diff evidence is in
+  `cpython_bytes_split_rsplit_methods_diff_subset`.
 
 Completed in the bytes splitlines-method pass:
 
@@ -3182,7 +3184,8 @@ Completed in the bytes splitlines-method pass:
   supporting positional and keyword `keepends`.
 - Covered CR, LF, CRLF, terminal line-break behavior, empty inputs, and the
   bytes-specific boundary that VT, FF, FS, RS, and NEL are not line separators
-  for bytes even though several of them are text separators for `str`.
+  for bytes even though several of them are text separators for `str`. Direct
+  CPython diff evidence is in `cpython_bytes_splitlines_methods_diff_subset`.
 
 Completed in the bytes ASCII case/predicate-method pass:
 

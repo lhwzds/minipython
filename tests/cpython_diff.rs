@@ -7992,6 +7992,81 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_split_rsplit_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest split/rsplit public subset",
+        name: "bytes-split-rsplit-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    print(ctor(b'a b c').split())
+    print(ctor(b' a  b c ').split())
+    print(ctor(b'a b c').split(None, 1))
+    print(ctor(b'  a b  ').split(None, 0))
+    print(ctor(b'a|b|c').split(b'|'))
+    print(ctor(b'a|b|c').split(bytearray(b'|'), 1))
+    print(ctor(b'a|b|c').split(memoryview(b'|'), 1))
+    print(ctor(b'a||b||c').split(b'||', 1))
+    print(ctor(b'a b c').rsplit())
+    print(ctor(b'a b c').rsplit(None, 1))
+    print(ctor(b'a|b|c').rsplit(b'|', 1))
+    print(ctor(b'a||b||c').rsplit(b'||', 1))
+    print(ctor(b'a|b|c').split(sep=b'|'), ctor(b'a|b|c').split(b'|', maxsplit=1), ctor(b'a b c').split(maxsplit=1))
+    print(ctor(b'a|b|c').rsplit(sep=b'|'), ctor(b'a|b|c').rsplit(b'|', maxsplit=1), ctor(b'a b c').rsplit(maxsplit=1))
+
+for ctor in [bytes, bytearray]:
+    for b in [ctor(b'a\x1cb'), ctor(b'a\x1db'), ctor(b'a\x1eb'), ctor(b'a\x1fb')]:
+        print(b.split())
+    b = ctor(b'\x09\x0a\x0b\x0c\x0d\x1c\x1d\x1e\x1f')
+    print(b.split())
+    print(b.rsplit())
+
+b = b'a b'
+for expr in [
+    lambda: b.split(' '),
+    lambda: b.rsplit(' '),
+    lambda: b.split(32),
+    lambda: b.rsplit(32),
+    lambda: b.split(b''),
+    lambda: b.rsplit(b''),
+    lambda: b.split(maxsplit=None),
+    lambda: b.rsplit(maxsplit=None),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_splitlines_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py::test_splitlines bytes/bytearray public subset",
+        name: "bytes-splitlines-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    print(ctor(b'abc\ndef\n\rghi').splitlines())
+    print(ctor(b'abc\ndef\n\r\nghi').splitlines())
+    print(ctor(b'abc\ndef\r\nghi').splitlines())
+    print(ctor(b'abc\ndef\r\nghi\n').splitlines())
+    print(ctor(b'abc\ndef\r\nghi\n\r').splitlines())
+    print(ctor(b'\nabc\ndef\r\nghi\n\r').splitlines())
+    print(ctor(b'\nabc\ndef\r\nghi\n\r').splitlines(False))
+    print(ctor(b'\nabc\ndef\r\nghi\n\r').splitlines(keepends=True))
+    print(ctor(b'').splitlines(), ctor(b'one').splitlines(), ctor(b'one\n').splitlines(), ctor(b'\n').splitlines(), ctor(b'\r\n').splitlines())
+    print(ctor(b'a\vb\fc\x1cd\x1ee\x85f').splitlines())
+    print(ctor(b'a\nb\r\nc\rd').splitlines(True))
+    for expr in [
+        lambda: ctor(b'abc').splitlines(True, False),
+        lambda: ctor(b'abc').splitlines(keepends=True, extra=False),
+        lambda: ctor(b'abc').splitlines(extra=True),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
