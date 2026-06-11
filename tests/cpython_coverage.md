@@ -2784,7 +2784,9 @@ Recent runtime migration notes:
   `BuiltinTest::test_cmp` by proving `builtins.cmp` is absent and attribute
   access raises `AttributeError`.
 - `RUNTIME_BUILTINS` also includes
-  expanded `cpython_attribute_introspection_builtins_subset`, covering CPython
+  expanded `cpython_attribute_introspection_builtins_subset` with direct
+  CPython output parity in
+  `cpython_attribute_introspection_builtins_diff_subset`, covering CPython
   `BuiltinTest::test_callable`, `::test_getattr`, and `::test_hasattr` public
   behavior, including class-level and inherited `__call__` lookup,
   instance-level `__call__` non-participation in `callable()`, `sys.stdout`

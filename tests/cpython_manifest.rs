@@ -2681,6 +2681,16 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             "refcount/GC/debug APIs",
         ],
     );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "sys")
+        .expect("sandbox stdlib manifest must include sys");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_attribute_introspection_builtins_diff_subset"),
+        "sys sandbox manifest must cite CPython diff evidence for attribute introspection"
+    );
 }
 
 #[test]
@@ -2723,6 +2733,16 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "default pdb-backed breakpoint behavior",
             "process/environment side effects",
         ],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "builtins")
+        .expect("sandbox stdlib manifest must include builtins");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_attribute_introspection_builtins_diff_subset"),
+        "builtins sandbox manifest must cite CPython diff evidence for attribute introspection"
     );
 }
 
