@@ -1668,6 +1668,95 @@ print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)"#
 }
 
 #[test]
+fn cpython_functools_cached_property_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py cached_property public subset",
+        name: "functools-cached-property",
+        source: r#"from functools import cached_property
+
+class CachedCostItem:
+    _cost = 1
+    @cached_property
+    def cost(self):
+        'The cost of the item.'
+        self._cost += 1
+        return self._cost
+
+item = CachedCostItem()
+print(item.cost, item.cost, sorted(item.__dict__.items()))
+print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__ in ('__main__', 'functools'), CachedCostItem.cost.attrname)
+
+class OptionallyCachedCostItem:
+    _cost = 1
+    def get_cost(self):
+        self._cost += 1
+        return self._cost
+    cached_cost = cached_property(get_cost)
+
+item = OptionallyCachedCostItem()
+print(item.get_cost(), item.cached_cost, item.get_cost(), item.cached_cost, sorted(item.__dict__.items()))
+
+for label, maker in [
+    ('reuse-different', lambda: type('ReuseDifferent', (), {'a': cached_property(lambda self: 1), 'b': None})),
+    ('manual-set-name', lambda: type('Foo', (), {})()),
+    ('slots', lambda: None),
+]:
+    try:
+        if label == 'reuse-different':
+            cp = cached_property(lambda self: 1)
+            class ReusedCachedProperty:
+                a = cp
+                b = cp
+        elif label == 'manual-set-name':
+            cp = cached_property(lambda self: 5)
+            class Foo:
+                pass
+            Foo.cp = cp
+            Foo().cp
+        else:
+            class Slots:
+                __slots__ = ('_cost',)
+                def __init__(self):
+                    self._cost = 1
+                @cached_property
+                def cost(self):
+                    return 9
+            Slots().cost
+    except (TypeError, RuntimeError):
+        print(label, 'error')
+
+counter = 0
+@cached_property
+def _cp(_self):
+    global counter
+    counter += 1
+    return counter
+class A:
+    cp = _cp
+class B:
+    cp = _cp
+a = A()
+b = B()
+print(a.cp, b.cp, a.cp, _cp.attrname)
+
+calls = []
+class Descriptor:
+    def __set_name__(self, owner, name):
+        calls.append((owner.__name__, name))
+class WithDescriptor:
+    field = Descriptor()
+print(calls)
+
+calls = []
+class DynamicDescriptor:
+    def __set_name__(self, owner, name):
+        calls.append((owner.__name__, name))
+Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})
+print(calls)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",

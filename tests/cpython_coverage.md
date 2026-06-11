@@ -63,6 +63,7 @@ Recent runtime migration notes:
   `cpython_functools_cmp_to_key_diff_subset`,
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
+  `cpython_functools_cached_property_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -564,6 +565,7 @@ Recent runtime migration notes:
   CPython-compatible cache statistics including size-one/size-two LRU behavior
   and cached `builtins.len` reentrancy.
 - The bundled `functools` module also includes
+  `cpython_functools_cached_property_diff_subset` and
   `cpython_functools_cached_property_subset`, covering CPython
   `test_functools.py::TestCachedProperty` public descriptor behavior for
   instance `__dict__` caching, class-level descriptor access, doc/module and
