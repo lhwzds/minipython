@@ -14156,6 +14156,7 @@ fn cpython_array_one_byte_public_clear_diff_subset() {
     let oracle_stdout = String::from_utf8(oracle_probe.stdout)
         .expect("CPython array.clear probe emitted non-UTF-8");
     if oracle_stdout.trim() != "True" {
+        eprintln!("skipping array.clear diff: CPython oracle lacks array.array.clear");
         return;
     }
 

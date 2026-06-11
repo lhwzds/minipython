@@ -2585,6 +2585,22 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn operator_signature_diff_evidence_stays_capability_gated() {
+    let start = CPYTHON_DIFF
+        .find("fn cpython_operator_signature_helper_diff_subset()")
+        .expect("operator signature diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    assert!(
+        body.contains("inspect.signature(operator.attrgetter)")
+            && body.contains("skipping operator signature helper diff"),
+        "operator signature diff evidence must stay gated for older CPython oracles"
+    );
+}
+
+#[test]
 fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "array",
@@ -2637,6 +2653,22 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "array sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+}
+
+#[test]
+fn array_clear_diff_evidence_stays_capability_gated() {
+    let start = CPYTHON_DIFF
+        .find("fn cpython_array_one_byte_public_clear_diff_subset()")
+        .expect("array.clear diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    assert!(
+        body.contains("hasattr(array.array('B'), 'clear')")
+            && body.contains("skipping array.clear diff"),
+        "array.clear diff evidence must stay gated for older CPython oracles"
+    );
 }
 
 #[test]
@@ -3034,6 +3066,47 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_abc_composite_abstract_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for composite ABC abstract methods"
     );
+}
+
+#[test]
+fn collections_abc_newer_oracle_diff_evidence_stays_capability_gated() {
+    for (function, required) in [
+        (
+            "fn cpython_collections_abc_bytestring_buffer_diff_subset()",
+            &[
+                "hasattr(collections.abc, 'Buffer')",
+                "skipping collections.abc ByteString/Buffer diff",
+            ][..],
+        ),
+        (
+            "fn cpython_collections_abc_bytestring_deprecation_warnings_diff_subset()",
+            &[
+                "warnings.catch_warnings(record=True)",
+                "skipping collections.abc ByteString deprecation diff",
+            ],
+        ),
+        (
+            "fn cpython_collections_abc_composite_abstract_methods_diff_subset()",
+            &[
+                "hasattr(collections.abc, 'Buffer')",
+                "skipping collections.abc composite abstract-method diff",
+            ],
+        ),
+    ] {
+        let start = CPYTHON_DIFF.find(function).unwrap_or_else(|| {
+            panic!("collections.abc gated diff evidence `{function}` must exist")
+        });
+        let body = &CPYTHON_DIFF[start..];
+        let end = body.find("\n#[test]").unwrap_or(body.len());
+        let body = &body[..end];
+
+        for text in required {
+            assert!(
+                body.contains(text),
+                "collections.abc gated diff evidence `{function}` must contain `{text}`"
+            );
+        }
+    }
 }
 
 #[test]
