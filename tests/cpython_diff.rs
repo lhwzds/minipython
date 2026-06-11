@@ -4856,6 +4856,11 @@ except SyntaxError as error:
             source: "b = bytearray(b'abc')\nr = b.replace(b'abc', b'cde', 0)\nprint(r, r is b)\nr += b'!'\nprint(b, r)\nt = bytearray([i for i in range(256)])\nx = bytearray(b'')\ny = x.translate(t)\nprint(y, y is x)\ny += b'!'\nprint(x, y)\na, b, c = bytearray(b'x').partition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\na, b, c = bytearray(b'x').partition(b'y')\nprint(b, c)\nb, c, a = bytearray(b'x').rpartition(b'y')\nprint(a, b, c, b is c)\nb += b'!'\nprint(b, c)\nc, b, a = bytearray(b'x').rpartition(b'y')\nprint(b, c)",
         },
         DiffCase {
+            origin: "Lib/test/test_bytes.py::BytearrayPEP3137Test::test_returns_new_copy and AssortedBytesTest::test_return_self",
+            name: "bytearray-pep3137-returns-new-copy",
+            source: "val = bytearray(b'1234')\nfor methname in ['zfill', 'rjust', 'ljust', 'center']:\n    newval = getattr(val, methname)(3)\n    print(methname, val == newval, val is newval)\nchecks = [\n    ('split', lambda: val.split()[0]),\n    ('rsplit', lambda: val.rsplit()[0]),\n    ('partition', lambda: val.partition(b'.')[0]),\n    ('rpartition', lambda: val.rpartition(b'.')[2]),\n    ('splitlines', lambda: val.splitlines()[0]),\n    ('replace', lambda: val.replace(b'', b'')),\n]\nfor name, maker in checks:\n    newval = maker()\n    print(name, val == newval, val is newval)\nsep = bytearray(b'')\nnewval = sep.join([val])\nprint('join', val == newval, val is newval)",
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_bytearray_translate / ::test_bytearray_extend_error",
             name: "builtin-bytearray-translate-extend-errors",
             source: "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
