@@ -2545,6 +2545,60 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
+    let diff_name = "cpython_json_loads_dumps_diff_subset";
+    let subset_name = "cpython_json_loads_dumps_basic_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads/dumps direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads/dumps runtime subset evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains("UTF-16")
+                && document.contains("UTF-32")
+                && document.contains("IntEnum")
+                && document.contains("namedtuple")
+                && document.contains("non-finite"),
+            "json docs must describe the core encoded-input, subclass/container, and non-finite value surface"
+        );
+    }
+
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("json loads/dumps diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "json.loads(b'",
+        "json.loads(bytearray",
+        "u16le",
+        "u32le",
+        "IntEnum",
+        "namedtuple",
+        "json.dumps(float('nan'))",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "json loads/dumps diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn operator_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "operator",
