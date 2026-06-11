@@ -987,7 +987,8 @@ Recent runtime migration notes:
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,
-  including TypeError default fallback and non-TypeError propagation.
+  including TypeError default fallback and non-TypeError propagation. Direct
+  CPython diff evidence is in `cpython_operator_length_hint_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_comparison_predicate_subset`, covering CPython
   `test_operator.py` comparison and predicate helpers `lt/le/eq/ne/ge/gt`,

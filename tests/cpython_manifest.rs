@@ -2492,6 +2492,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_operator_pickle_helper_subset"),
         "operator pickle helper subset must stay outside the default sandbox manifest surface"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_length_hint_diff_subset"),
+        "operator sandbox manifest must cite CPython length_hint diff evidence"
+    );
 }
 
 #[test]

@@ -2930,6 +2930,55 @@ print(operator.methodcaller('replace', 'a', 'o')('banana'))"#,
 }
 
 #[test]
+fn cpython_operator_length_hint_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase::test_length_hint and Lib/test/test_enumerate.py::TestReversed::test_len public subset",
+        name: "operator-length-hint",
+        source: r#"import operator
+class X:
+    def __init__(self, value):
+        self.value = value
+    def __length_hint__(self):
+        if type(self.value) is type:
+            raise self.value
+        return self.value
+class Y:
+    pass
+print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))
+print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))
+for value in [X('abc'), X(-2), X(LookupError)]:
+    try:
+        operator.length_hint(value)
+    except (TypeError, ValueError, LookupError) as error:
+        print(type(error).__name__)
+try:
+    operator.length_hint(X(2), 'abc')
+except TypeError as error:
+    print(type(error).__name__)
+lengths = []
+for seq in ('hello', tuple('hello'), list('hello'), range(5)):
+    rev = reversed(seq)
+    lengths.append((operator.length_hint(rev), len(seq)))
+    list(rev)
+    lengths.append(operator.length_hint(rev))
+print(lengths)
+class SeqWithWeirdLen:
+    called = False
+    def __len__(self):
+        if not self.called:
+            self.called = True
+            return 10
+        raise ZeroDivisionError
+    def __getitem__(self, index):
+        return index
+try:
+    operator.length_hint(reversed(SeqWithWeirdLen()))
+except ZeroDivisionError as error:
+    print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
