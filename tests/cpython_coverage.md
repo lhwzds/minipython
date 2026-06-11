@@ -2518,7 +2518,8 @@ Recent runtime migration notes:
   `cpython_collections_abc_iterable_sample_matrix_subset`, covering CPython's
   `Iterable` public non-sample/sample matrix, including dict views, native
   generators, generator expressions, direct-subclass `super().__iter__()`
-  mixin behavior, and `__iter__ = None` blocking.
+  mixin behavior, and `__iter__ = None` blocking. Direct CPython diff evidence
+  is in `cpython_collections_abc_iterable_sample_matrix_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_iterable_iterator_subset`, covering the supported
   `Iterable` and `Iterator` public ABC surface for built-in containers,
@@ -2603,7 +2604,8 @@ Recent runtime migration notes:
   `Iterator` public sample matrix with non-iterator scalar/container values,
   bytes/string/tuple/list/dict/set/frozenset/dict-view iterators, native
   generators, generator expressions, and the Issue 10565 `__next__`-only
-  rejection.
+  rejection. Direct CPython diff evidence is in
+  `cpython_collections_abc_iterator_sample_matrix_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_generator_sample_matrix_subset` and
   `cpython_collections_abc_generator_mixin_subset`, covering CPython's

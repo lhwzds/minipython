@@ -2720,6 +2720,65 @@ print(issubclass(Iterator, Iterable), issubclass(Iterable, Iterator))"#,
 }
 
 #[test]
+fn cpython_collections_abc_iterable_sample_matrix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Iterable public subset",
+        name: "collections-abc-iterable-sample-matrix",
+        source: r#"from collections.abc import Iterable
+def _test_gen():
+    yield 1
+non_samples = [None, 42, 3.14, 1j]
+print([isinstance(x, Iterable) for x in non_samples])
+print([issubclass(type(x), Iterable) for x in non_samples])
+samples = [
+    bytes(), str(), tuple(), list(), set(), frozenset(), dict(),
+    dict().keys(), dict().items(), dict().values(),
+    _test_gen(), (x for x in []),
+]
+print([isinstance(x, Iterable) for x in samples])
+print([issubclass(type(x), Iterable) for x in samples])
+class I(Iterable):
+    def __iter__(self):
+        return super().__iter__()
+print(list(I()))
+print(issubclass(str, I))
+class It:
+    def __iter__(self):
+        return iter([])
+class ItBlocked(It):
+    __iter__ = None
+print(issubclass(It, Iterable), isinstance(It(), Iterable))
+print(issubclass(ItBlocked, Iterable), isinstance(ItBlocked(), Iterable))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_abc_iterator_sample_matrix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Iterator public subset",
+        name: "collections-abc-iterator-sample-matrix",
+        source: r#"from collections.abc import Iterator
+def _test_gen():
+    yield 1
+non_samples = [None, 42, 3.14, 1j, b'', '', (), [], {}, set()]
+print([isinstance(x, Iterator) for x in non_samples])
+print([issubclass(type(x), Iterator) for x in non_samples])
+samples = [
+    iter(bytes()), iter(str()), iter(tuple()), iter(list()), iter(dict()),
+    iter(set()), iter(frozenset()), iter(dict().keys()), iter(dict().items()),
+    iter(dict().values()), _test_gen(), (x for x in []),
+]
+print([isinstance(x, Iterator) for x in samples])
+print([issubclass(type(x), Iterator) for x in samples])
+class NextOnly:
+    def __next__(self):
+        yield 1
+        return
+print(isinstance(NextOnly(), Iterator), issubclass(NextOnly, Iterator))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_sequence_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Sequence ABC public runtime subset",
