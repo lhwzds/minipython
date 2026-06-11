@@ -4489,6 +4489,56 @@ probe(3)"#,
 }
 
 #[test]
+fn cpython_vars_dir_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_dir / ::test_vars",
+        name: "vars-dir-builtins-direct",
+        source: r#"def local_probe():
+    local_var = 1
+    print('local_var' in dir(), 'local_var' in vars())
+    return 'local_var' in vars()
+print(local_probe())
+import sys
+print(set(vars(sys)) == set(dir(sys)), 'path' in dir(sys), '__name__' in vars(sys))
+sys.__dict__['live_probe'] = 7
+print(sys.live_probe)
+vars(sys)['live_probe2'] = 8
+print(sys.live_probe2)
+del sys.__dict__['live_probe']
+print(hasattr(sys, 'live_probe'), 'live_probe2' in dir(sys))
+sys.__dict__['__name__'] = 'renamed_sys'
+print(sys.__name__, vars(sys)['__name__'])
+print('strip' in dir(str), '__mro__' in dir(str))
+class Box:
+    class_attr = 3
+    def __init__(self):
+        self.y = 8
+box = Box()
+print('y' in dir(box), 'class_attr' in dir(box), sorted(vars(box).keys()))
+print('class_attr' in vars(Box), '__module__' in vars(Box))
+class TupleDir:
+    def __dir__(self):
+        return ('b', 'c', 'a')
+print(dir(TupleDir()))
+class DictProperty:
+    def getDict(self):
+        return {'a': 2}
+    __dict__ = property(getDict)
+print(vars(DictProperty()))
+class BadDir:
+    def __dir__(self):
+        return 7
+for expr in [lambda: dir(1, 2), lambda: vars(1, 2), lambda: vars(42), lambda: dir(BadDir())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+print(sorted([].__dir__()) == dir([]))
+print(sorted(object.__dir__([])) == dir([]), '__dir__' in dir([]))"#,
+    });
+}
+
+#[test]
 fn cpython_eval_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_eval",

@@ -3448,6 +3448,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include builtins");
     for evidence in [
         "cpython_globals_locals_builtin_diff_subset",
+        "cpython_vars_dir_builtin_diff_subset",
         "cpython_eval_builtin_diff_subset",
         "cpython_exec_builtin_diff_subset",
         "cpython_compile_builtin_code_object_diff_subset",

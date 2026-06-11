@@ -3150,6 +3150,12 @@ Recent runtime migration notes:
   attribute lookup, `from sys import stdin, stderr, stdout`, missing high
   Unicode-name attribute errors, and the rule that `hasattr()` only suppresses
   `AttributeError` while propagating `SystemExit` and `ValueError`.
+- `RUNTIME_BUILTINS` also includes `cpython_vars_dir_builtin_subset` with
+  direct CPython output parity in `cpython_vars_dir_builtin_diff_subset`,
+  covering `BuiltinTest::test_dir` / `::test_vars` public behavior for local
+  namespace introspection, module `__dict__` liveness, class/instance
+  dictionaries, tuple-returning `__dir__`, property-backed `__dict__`, TypeError
+  boundaries, and list/object `__dir__` ordering.
 - `RUNTIME_BUILTINS` also includes `cpython_globals_locals_builtin_subset`,
   `cpython_isinstance_builtin_subset`, `cpython_enumerate_zip_sorted_builtin_subset`,
   `cpython_zip_strict_builtin_subset`, `cpython_map_filter_builtin_subset`, and
