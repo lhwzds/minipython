@@ -3464,6 +3464,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_map_filter_builtin_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
+        "cpython_builtin_sorted_exact_diff_subset",
         "cpython_zip_strict_builtin_diff_subset",
         "cpython_divmod_builtin_diff_subset",
         "cpython_pow_builtin_diff_subset",

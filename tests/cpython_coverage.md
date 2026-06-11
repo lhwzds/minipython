@@ -167,6 +167,7 @@ Recent runtime migration notes:
   `cpython_map_filter_builtin_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
   `cpython_enumerate_zip_sorted_builtin_diff_subset`,
+  `cpython_builtin_sorted_exact_diff_subset`,
   `cpython_zip_strict_builtin_diff_subset`,
   `cpython_divmod_builtin_diff_subset`,
   `cpython_pow_builtin_diff_subset`,
@@ -3161,7 +3162,8 @@ Recent runtime migration notes:
   `eval`, and `single` modes, plus feeding the resulting `code` objects through
   `eval()` and `exec()` with dict-backed globals/locals.
 - `RUNTIME_BUILTINS` also includes
-  `cpython_builtin_sorted_exact_subset`, covering all current CPython
+  `cpython_builtin_sorted_exact_subset` and
+  `cpython_builtin_sorted_exact_diff_subset`, covering all current CPython
   `Lib/test/test_builtin.py::TestSorted` methods through deterministic sorted
   input, source-list preservation, `key=`, `reverse=`, iterable input type
   coverage, and positional/keyword argument rejection.

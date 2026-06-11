@@ -4890,6 +4890,34 @@ for expr in [lambda: zip(None), lambda: zip(a, Bad()), lambda: sorted(), lambda:
 }
 
 #[test]
+fn cpython_builtin_sorted_exact_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestSorted public sorted() subset",
+        name: "sorted-builtin-exact",
+        source: r#"copy = [7, 0, 3, 1, 8, 2, 9, 4, 6, 5]
+print(sorted(copy))
+print(copy)
+print(sorted(copy, key=lambda x: -x))
+print(sorted(copy, reverse=True))
+print(sorted([], key=None))
+letters = sorted('abracadabra')
+print(len(letters), letters[0], letters[1], letters[-1])
+unique = 'abcdr'
+for T in [list, tuple, str, set, frozenset, dict.fromkeys]:
+    print(sorted(T(unique)) == ['a', 'b', 'c', 'd', 'r'])
+for expr in [
+    lambda: sorted(iterable=[]),
+    lambda: sorted([], None),
+    lambda: sorted('The quick Brown fox'.split(), None, lambda x, y: 0),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_zip_strict_builtin_diff_subset() {
     let probe = run_cpython("print(list(zip([1], [2], strict=True)))")
         .expect("failed to probe CPython zip(strict=...) support");
