@@ -55,6 +55,7 @@ Recent runtime migration notes:
   `cpython_math_lcm_diff_subset`,
   `cpython_math_prod_diff_subset`,
   `cpython_math_integer_diff_subset`,
+  `cpython_math_sqrt_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -459,10 +460,11 @@ Recent runtime migration notes:
   IEEE-754 adjacent-float behavior, `steps`, signed-zero/subnormal
   transitions, infinity/NaN cases, ULP magnitudes, real-number input
   conversion, and catchable error classes.
-- The bundled `math` module also includes `cpython_math_sqrt_subset`, covering
-  CPython `test_math.py::MathTests::testSqrt` zero, positive integer/float,
-  infinity, NaN, float-result, negative-domain `ValueError`, huge-integer
-  overflow, and TypeError cases supported by the current runtime.
+- The bundled `math` module also includes `cpython_math_sqrt_diff_subset` and
+  `cpython_math_sqrt_subset`, covering CPython
+  `test_math.py::MathTests::testSqrt` zero, positive integer/float, infinity,
+  NaN, float-result, negative-domain `ValueError`, huge-integer overflow, and
+  TypeError cases supported by the current runtime.
 - The bundled `math` module also includes `cpython_math_copysign_subset`,
   covering CPython `test_math.py::MathTests::testCopysign` sign transfer for
   zeroes, infinities, NaNs, huge-integer overflow, and TypeError cases supported

@@ -1275,6 +1275,36 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_sqrt_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testSqrt public stable subset",
+        name: "math-sqrt",
+        source: r#"import math
+print(math.sqrt(0), math.sqrt(0.0))
+print(math.sqrt(2.5))
+print(math.sqrt(0.25), math.sqrt(25.25))
+print(math.sqrt(1), math.sqrt(4))
+print(math.sqrt(math.inf) == math.inf)
+print(math.isnan(math.sqrt(math.nan)))
+print(type(math.sqrt(4)).__name__)
+for expr in [
+    lambda: math.sqrt(),
+    lambda: math.sqrt(1, 2),
+    lambda: math.sqrt('x'),
+    lambda: math.sqrt(1+2j),
+    lambda: math.sqrt(-1),
+    lambda: math.sqrt(float('-inf')),
+    lambda: math.sqrt(10**10000),
+    lambda: math.sqrt(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
