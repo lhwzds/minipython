@@ -5722,6 +5722,58 @@ for label, obj in [('TypeVar', TypeVar()), ('_SpecialForm', _SpecialForm())]:
 }
 
 #[test]
+fn cpython_types_union_genericalias_subclass_bad_eq_diff_subset() {
+    let probe = run_cpython(
+        "import types, typing\nclass SubClass(types.GenericAlias):\n    pass\nd = SubClass(list, float)\nprint(list[int] | list[str] | d == typing.Union[list[int], list[str], d])",
+    )
+    .expect("failed to probe CPython GenericAlias subclass union support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union GenericAlias subclass diff: CPython oracle lacks PEP 604 GenericAlias subclass union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests GenericAlias subclass public subset",
+        name: "types-union-genericalias-subclass-bad-eq",
+        source: r#"import collections.abc
+import types
+import typing
+class SubClass(types.GenericAlias):
+    pass
+d = SubClass(list, float)
+a = list[int]
+b = list[str]
+c = dict[float, str]
+print('subclass', type(d).__name__, isinstance(d, types.GenericAlias), type(d) is types.GenericAlias, repr(d), d.__origin__ is list, d.__args__[0] is float)
+print('d-eq-ga', d == list[float], list[float] == d, hash(d) == hash(list[float]))
+print('eq-union', a | b | c | d == typing.Union[a, b, c, d])
+print('dedupe', a | c | b | b | a | c | d | d == a | b | c | d)
+print('order', a | b | d == b | a | d)
+print('repr', repr(a | b | c | d))
+class BadType(type):
+    def __eq__(self, other):
+        return 1 / 0
+bt = BadType('bt', (), {})
+bt2 = BadType('bt2', (), {})
+union1 = int | bt
+union2 = int | bt2
+for label, expr in [('union-eq', lambda: union1 == union2), ('bad-or', lambda: bt | bt2)]:
+    try:
+        print(label, expr())
+    except Exception as exc:
+        print(label, type(exc).__name__)
+for label, union in [('subclass', d | int), ('list', list[str] | int), ('callable', collections.abc.Callable[..., str] | int)]:
+    for op, expr in [('isinstance', lambda union=union: isinstance(1, union)), ('issubclass', lambda union=union: issubclass(int, union))]:
+        try:
+            print('classinfo', label, op, expr())
+        except Exception as exc:
+            print('classinfo', label, op, type(exc).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_union_bad_classinfo_checks_diff_subset() {
     let probe = run_cpython(
         "class BadInstanceMeta(type):\n    def __instancecheck__(cls, inst):\n        1/0\nx = int | BadInstanceMeta('A', (), {})\nprint(isinstance(1, x))",

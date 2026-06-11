@@ -960,6 +960,8 @@ Recent runtime migration notes:
   equality/hash/repr, PEP 604 union equality/deduplication/order behavior,
   invalid classinfo checks for GenericAlias-subclass unions, and propagation of
   bad metaclass `__eq__` exceptions during union equality and construction.
+  Direct output parity is guarded by
+  `cpython_types_union_genericalias_subclass_bad_eq_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_typevar_parameter_subset`, covering CPython
   `UnionTests` TypeVar union behavior for both operand orders, classinfo order
