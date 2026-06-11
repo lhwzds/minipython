@@ -1720,6 +1720,62 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_log_family_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testLog/log1p/log2/log10 public stable subset",
+        name: "math-log-family",
+        source: r#"import math
+print(type(math.log(1)).__name__, type(math.log1p(0)).__name__, type(math.log2(1)).__name__, type(math.log10(1)).__name__)
+print(round(math.log(1 / math.e), 12), math.log(1), math.log(math.e))
+print(math.log(32, 2), round(math.log(10**40, 10), 12), round(math.log(10**2000, 10**1000), 12))
+print(round(math.log(10**1000), 12), math.log2(2**2000), math.log10(10**1000))
+print(round(math.log1p(2), 12), round(math.log1p(2**90), 12) == round(math.log1p(float(2**90)), 12), round(math.log1p(2**300), 12) == round(math.log1p(float(2**300)), 12))
+print(math.log(math.inf), math.log2(math.inf), math.log10(math.inf), math.log1p(math.inf))
+print(math.isnan(math.log(math.nan)), math.isnan(math.log2(math.nan)), math.isnan(math.log10(math.nan)), math.isnan(math.log1p(math.nan)))
+
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+
+print(math.log(IndexLike(32), IndexLike(2)), math.log2(IndexLike(4)), math.log10(IndexLike(10)))
+print(math.log(FloatLike(math.e)), math.log2(FloatLike(8.0)), math.log10(FloatLike(100.0)))
+for expr in [
+    lambda: math.log(),
+    lambda: math.log(1, 2, 3),
+    lambda: math.log(0),
+    lambda: math.log(-1),
+    lambda: math.log(10, -10),
+    lambda: math.log(-math.inf),
+    lambda: math.log(10, 1),
+    lambda: math.log('1'),
+    lambda: math.log(BadFloat()),
+    lambda: math.log1p(),
+    lambda: math.log1p(-1),
+    lambda: math.log1p(-math.inf),
+    lambda: math.log2(0),
+    lambda: math.log2(-1),
+    lambda: math.log10(0),
+    lambda: math.log10(-1),
+    lambda: math.log2(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

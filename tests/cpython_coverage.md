@@ -65,6 +65,7 @@ Recent runtime migration notes:
   `cpython_math_degrees_radians_diff_subset`,
   `cpython_math_cbrt_diff_subset`,
   `cpython_math_exp_exp2_diff_subset`,
+  `cpython_math_log_family_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -521,13 +522,16 @@ Recent runtime migration notes:
   finite-input overflow errors, `__float__` and `__index__` input conversion,
   huge-index overflow, propagated conversion exceptions, and TypeError cases
   supported by the current runtime.
-- The bundled `math` module also includes `cpython_math_log_family_subset`,
-  covering CPython `test_math.py::MathTests::testLog`, `::testLog1p`,
-  `::testLog2`, `::testLog2Exact`, and `::testLog10` public logarithm
-  behavior, optional-base division, non-finite propagation, large-integer
-  logarithms that avoid float-conversion overflow, `__float__` / `__index__`
-  input conversion, OverflowError-to-`__index__` fallback for log helpers, and
-  catchable error classes.
+- The bundled `math` module also includes `cpython_math_log_family_diff_subset`
+  and `cpython_math_log_family_subset`, covering CPython
+  `test_math.py::MathTests::testLog`, `::testLog1p`, `::testLog2`,
+  `::testLog2Exact`, and `::testLog10` public logarithm behavior,
+  optional-base division, non-finite propagation, large-integer logarithms that
+  avoid float-conversion overflow, `__float__` / `__index__` input conversion,
+  and catchable error classes. The local subset additionally covers
+  huge `__index__` inputs and OverflowError-to-`__index__` fallback for log
+  helpers because the default CPython 3.9 oracle does not provide stable
+  cross-version evidence for those boundaries.
 - The bundled `math` module also includes `cpython_math_trig_subset`, covering
   CPython `test_math.py::MathTests::testAcos`, `::testAsin`, `::testAtan`,
   `::testAtan2`, `::testCos`, `::testSin`, and `::testTan` public
