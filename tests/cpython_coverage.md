@@ -1382,7 +1382,8 @@ Recent runtime migration notes:
   `cpython_bytes_mutating_list_constructor_subset`, covering CPython
   `BaseBytesTest::test_from_mutating_list` public behavior where bytes and
   bytearray constructors consume live list iterators that observe source list
-  clears and appends during item `__index__` conversion.
+  clears and appends during item `__index__` conversion. Direct CPython diff
+  evidence is in `cpython_bytes_mutating_list_constructor_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_constructor_concat_repeat_contains_subset`, covering
   bytes/bytearray integer-length construction, mixed bytes/bytearray

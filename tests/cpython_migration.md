@@ -3050,7 +3050,8 @@ Completed in the bytes mutating-list constructor pass:
   observed and clears stop the iterator after the already-yielded item.
 - Covered both `bytes()` and `bytearray()` construction from lists whose
   elements mutate the source list during `__index__` conversion, including the
-  grow-to-1000 regression case.
+  grow-to-1000 regression case. Direct CPython diff evidence is in
+  `cpython_bytes_mutating_list_constructor_diff_subset`.
 
 Completed in the bytes constructor/concat/repeat/contains pass:
 

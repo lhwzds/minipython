@@ -8398,6 +8398,30 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_mutating_list_constructor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_mutating_list public subset",
+        name: "bytes-mutating-list-constructor",
+        source: r#"for ctor in [bytes, bytearray]:
+    class X:
+        def __index__(self):
+            a.clear()
+            return 42
+    a = [X(), X()]
+    print(ctor(a))
+
+    class Y:
+        def __index__(self):
+            if len(a) < 1000:
+                a.append(self)
+            return 42
+    a = [Y()]
+    result = ctor(a)
+    print(len(result), result[:5], result[-5:])"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
