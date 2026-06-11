@@ -4620,6 +4620,21 @@ except StopIteration as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_copy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests copy subset",
+        name: "types-mappingproxy-copy",
+        source: r#"from types import MappingProxyType
+original = {'key1': 27, 'key2': 51, 'key3': 93}
+view = MappingProxyType(original)
+copy = view.copy()
+print(type(copy).__name__, copy == original)
+original['key1'] = 70
+print(view['key1'], copy['key1'])"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
