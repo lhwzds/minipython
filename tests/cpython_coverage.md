@@ -1301,7 +1301,8 @@ Recent runtime migration notes:
   covering bytearray `append()`, `extend()`, `insert()`, `pop()`, `remove()`,
   `reverse()`, `clear()`, and `copy()` in-place mutation behavior, including
   bytes-like and integer-iterable extension, index normalization, copy
-  identity, and representative public error classes.
+  identity, and representative public error classes. Direct CPython diff
+  evidence is in `cpython_bytearray_mutation_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_extend_subset`, covering
   CPython `ByteArrayTest::test_extend` behavior for self-extension, map and
   generator inputs, all-or-nothing invalid item handling, `__index__` item

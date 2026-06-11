@@ -8618,6 +8618,36 @@ print('__setitem__' in dir(bytearray), '__delitem__' in dir(bytearray))"#,
 }
 
 #[test]
+fn cpython_bytearray_mutation_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest public mutation methods subset",
+        name: "bytearray-mutation-methods",
+        source: r#"b = bytearray(b'abc')
+alias = b
+print(b.append(ord('d')), b, alias)
+print(b.extend(b'ef'), b)
+print(b.extend(bytearray(b'gh')), b)
+print(b.extend(memoryview(b'ij')), b)
+print(b.extend([75, 76]), b)
+print(b.insert(0, 65), b)
+print(b.insert(2, 66), b)
+print(b.insert(-100, 67), b)
+print(b.insert(100, 90), b)
+print(b.pop(), b.pop(0), b.pop(-1), b)
+print(b.remove(66), b)
+print(b.reverse(), b)
+copy = b.copy()
+print(copy, copy == b, copy is b)
+print(b.clear(), b, copy)
+for expr in [lambda: bytearray(b'a').append(), lambda: bytearray(b'a').append(1, 2), lambda: bytearray(b'a').append('x'), lambda: bytearray(b'a').append(256), lambda: bytearray(b'a').extend(1), lambda: bytearray(b'a').insert(0), lambda: bytearray(b'a').insert(0, 'x'), lambda: bytearray(b'a').pop(9), lambda: bytearray().pop(), lambda: bytearray(b'a').remove(98), lambda: bytearray(b'a').remove('a'), lambda: bytearray(b'a').reverse(1), lambda: bytearray(b'a').clear(1), lambda: bytearray(b'a').copy(1)]:
+    try:
+        expr()
+    except (TypeError, ValueError, IndexError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

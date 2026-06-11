@@ -3347,7 +3347,8 @@ Completed in the bytearray mutation-method pass:
 - Covered integer-byte validation, bytes/bytearray/memoryview extension,
   integer-iterable extension, insert/pop index normalization, independent
   `copy()` identity, `dir(bytearray)` method visibility, and representative
-  `TypeError`, `ValueError`, and `IndexError` paths.
+  `TypeError`, `ValueError`, and `IndexError` paths. Direct CPython diff
+  evidence is in `cpython_bytearray_mutation_methods_diff_subset`.
 
 Completed in the bytearray extend pass:
 
