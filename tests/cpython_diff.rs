@@ -2214,6 +2214,54 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_sumprod_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'sumprod'))")
+        .expect("failed to probe CPython math.sumprod support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping math.sumprod diff: CPython oracle lacks math.sumprod");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testSumProd public stable subset",
+        name: "math-sumprod",
+        source: r#"import math
+sumprod = math.sumprod
+print(sumprod(iter([10, 20, 30]), (1, 2, 3)), type(sumprod(iter([10, 20, 30]), (1, 2, 3))).__name__)
+print(sumprod([1.5, 2.5], [3.5, 4.5]), type(sumprod([1.5, 2.5], [3.5, 4.5])).__name__)
+print(sumprod([], []), type(sumprod([], [])).__name__)
+print(sumprod([-1], [1.]), sumprod([1.], [-1]), type(sumprod([-1], [1.])).__name__, type(sumprod([1.], [-1])).__name__)
+print(sumprod([10**20], [1]), type(sumprod([10**20], [1])).__name__)
+print(sumprod([1], [10**20]), type(sumprod([1], [10**20])).__name__)
+print(sumprod([10**10], [10**10]), type(sumprod([10**10], [10**10])).__name__)
+print(sumprod([0.1] * 10, [1] * 10))
+print(sumprod([0.1] * 20, [True, False] * 10), sumprod([True, False] * 10, [0.1] * 20))
+print(sumprod([1.0, 10E100, 1.0, -10E100], [1.0] * 4))
+print(sumprod([10.1, math.inf], [20.2, 30.3]), sumprod([10.1, -math.inf], [20.2, 30.3]))
+print(math.isnan(sumprod([10.1, math.inf], [-math.inf, math.inf])))
+print(math.isnan(sumprod([10.1, math.nan], [20.2, 30.3])), math.isnan(sumprod([10.1, math.inf], [math.nan, 30.3])), math.isnan(sumprod([10.1, math.inf], [20.3, math.nan])))
+
+for expr in [
+    lambda: sumprod(),
+    lambda: sumprod([]),
+    lambda: sumprod([], [], []),
+    lambda: sumprod(None, []),
+    lambda: sumprod([], None),
+    lambda: sumprod(['x'], [1.0]),
+    lambda: sumprod([1], [1, 2]),
+    lambda: sumprod([1, 2], [1]),
+    lambda: sumprod([10**1000], [1.0]),
+    lambda: sumprod([1.0], [10**1000]),
+    lambda: sumprod(p=[], q=[]),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
