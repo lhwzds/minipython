@@ -2425,6 +2425,11 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         pairwise_source.contains("itertools.pairwise"),
         "itertools pairwise CPython diff evidence must cover pairwise()"
     );
+    assert!(
+        pairwise_source.contains("hasattr(itertools, 'pairwise')")
+            && pairwise_source.contains("skipping itertools.pairwise diff"),
+        "itertools pairwise CPython diff evidence must stay gated for older CPython oracles"
+    );
 }
 
 #[test]
