@@ -1310,7 +1310,17 @@ impl fmt::Display for Value {
                 keywords,
                 ..
             } => write!(f, "{}", format_partialmethod(function, args, keywords)),
-            Value::PartialMethodCall { .. } => write!(f, "<functools.partial object>"),
+            Value::PartialMethodCall {
+                function,
+                receiver,
+                args,
+                keywords,
+                ..
+            } => write!(
+                f,
+                "{}",
+                format_partialmethod_call(function, receiver.as_deref(), args, keywords)
+            ),
             Value::LruCacheWrapper { identity, .. } => {
                 write!(f, "{}", format_lru_cache_wrapper(identity))
             }
@@ -1445,6 +1455,27 @@ fn format_partialmethod(function: &Value, args: &[Value], keywords: &[(String, V
         "functools.partialmethod({}, {args}, {keywords})",
         format_value_repr(function)
     )
+}
+
+fn format_partialmethod_call(
+    function: &Value,
+    receiver: Option<&Value>,
+    args: &[Value],
+    keywords: &[(String, Value)],
+) -> String {
+    let function = match receiver {
+        Some(receiver) => format_bound_method(function, receiver),
+        None => format_value_repr(function),
+    };
+    let mut parts = Vec::with_capacity(1 + args.len() + keywords.len());
+    parts.push(function);
+    parts.extend(args.iter().map(format_value_repr));
+    parts.extend(
+        keywords
+            .iter()
+            .map(|(name, value)| format!("{name}={}", format_value_repr(value))),
+    );
+    format!("functools.partial({})", parts.join(", "))
 }
 
 fn format_lru_cache_wrapper(identity: &Rc<()>) -> String {
@@ -1812,7 +1843,13 @@ fn format_value_repr(value: &Value) -> String {
             keywords,
             ..
         } => format_partialmethod(function, args, keywords),
-        Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
+        Value::PartialMethodCall {
+            function,
+            receiver,
+            args,
+            keywords,
+            ..
+        } => format_partialmethod_call(function, receiver.as_deref(), args, keywords),
         Value::LruCacheWrapper { identity, .. } => format_lru_cache_wrapper(identity),
         Value::SingleDispatch {
             function,

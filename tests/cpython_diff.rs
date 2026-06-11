@@ -11044,6 +11044,8 @@ rendered = repr(A.__dict__['both'])
 print(rendered.startswith('functools.partialmethod(<function capture'), rendered.endswith(', 3, b=4)'))
 rendered = repr(A.__dict__['over_partial'])
 print('functools.partial(<function capture' in rendered, rendered.endswith(', 7, )'))
+rendered = repr(a.both)
+print(rendered.startswith('functools.partial(<bound method '), 'capture' in rendered, rendered.endswith(', 3, b=4)'))
 for expr in [
     lambda: partialmethod(None, 1),
     lambda: partialmethod(),

@@ -39151,6 +39151,8 @@ fn cpython_functools_partialmethod_subset() {
             "print(rendered.startswith('functools.partialmethod(<function capture'), rendered.endswith(', 3, b=4)'))\n",
             "rendered = repr(A.__dict__['over_partial'])\n",
             "print('functools.partial(<function capture' in rendered, rendered.endswith(', 7, )'))\n",
+            "rendered = repr(a.both)\n",
+            "print(rendered.startswith('functools.partial(<bound method '), 'capture' in rendered, rendered.endswith(', 3, b=4)'))\n",
         ),
         &[
             "(('self',), [])",
@@ -39169,6 +39171,7 @@ fn cpython_functools_partialmethod_subset() {
             "True True",
             "True True",
             "True True",
+            "True True True",
         ],
         64 * 1024 * 1024,
     );
