@@ -96,6 +96,7 @@ pub struct MemoryViewState {
 pub struct BytesIOState {
     pub buffer: Vec<u8>,
     pub position: usize,
+    pub closed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -134,6 +135,7 @@ impl BytesIOState {
         Self {
             buffer,
             position: 0,
+            closed: false,
         }
     }
 }

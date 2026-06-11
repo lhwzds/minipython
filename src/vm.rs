@@ -974,6 +974,14 @@ fn bytes_io_readinto_chunk(bytes_io: &BytesIORef, target_len: usize) -> Vec<u8> 
     chunk
 }
 
+fn bytes_io_ensure_open(bytes_io: &BytesIORef) -> Result<(), String> {
+    if bytes_io.borrow().closed {
+        Err("ValueError: I/O operation on closed file.".to_string())
+    } else {
+        Ok(())
+    }
+}
+
 fn bytes_io_read_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
     let remaining = state.buffer.len().saturating_sub(state.position);
@@ -8639,6 +8647,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "io.BytesIO.writelines" => {
                 self.call_io_bytesio_writelines(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.close" => {
+                self.call_io_bytesio_close(args, keywords)
             }
             Value::Builtin(name) if name == "io.BytesIO.readable" => {
                 self.call_io_bytesio_bool_noarg_method(args, keywords, "readable", true)
@@ -17568,6 +17579,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         let target_len = writable_readinto_buffer_len(target)?;
         let chunk = bytes_io_readinto_chunk(bytes_io, target_len);
         write_bytes_into_readinto_buffer(target, &chunk)?;
@@ -17588,6 +17600,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
                 "TypeError: read expected at most 1 argument, got {}",
@@ -17623,6 +17636,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
                 "TypeError: readline expected at most 1 argument, got {}",
@@ -17658,6 +17672,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
                 "TypeError: readlines expected at most 1 argument, got {}",
@@ -17706,6 +17721,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         let Some(bytes) = bytes_buffer_value_bytes(data)? else {
             return Err(format!(
                 "TypeError: a bytes-like object is required, not '{}'",
@@ -17729,6 +17745,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         let bytes_io = bytes_io.clone();
         for line in self.collect_iterable_values_propagating(lines.clone())? {
             let Some(bytes) = bytes_buffer_value_bytes(&line)? else {
@@ -17756,6 +17773,10 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        let Value::BytesIO(bytes_io) = &args[0] else {
+            unreachable!("BytesIO receiver is checked above")
+        };
+        bytes_io_ensure_open(bytes_io)?;
         Ok(Value::Bool(result))
     }
 
@@ -17771,6 +17792,26 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        let Value::BytesIO(bytes_io) = &args[0] else {
+            unreachable!("BytesIO receiver is checked above")
+        };
+        bytes_io_ensure_open(bytes_io)?;
+        Ok(Value::None)
+    }
+
+    fn call_io_bytesio_close(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.close", &keywords)?;
+        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.close() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
     }
 
@@ -17786,6 +17827,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         Ok(bytes_value(bytes_io.borrow().buffer.clone()))
     }
 
@@ -17801,6 +17843,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         i64::try_from(bytes_io.borrow().position)
             .map(Value::Number)
             .map_err(|_| "OverflowError: position does not fit in an integer".to_string())
@@ -17818,6 +17861,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         if rest.is_empty() || rest.len() > 2 {
             return Err(format!(
                 "TypeError: seek expected 1 or 2 arguments, got {}",
@@ -17848,6 +17892,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_open(bytes_io)?;
         if rest.len() > 1 {
             return Err(format!(
                 "TypeError: truncate expected at most 1 argument, got {}",
@@ -49743,9 +49788,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-            "flush" | "getvalue" | "isatty" | "read" | "readable" | "readinto" | "readline"
-            | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write" | "writable"
-            | "writelines" => Ok(Value::BoundMethod {
+            "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
+            "close" | "flush" | "getvalue" | "isatty" | "read" | "readable" | "readinto"
+            | "readline" | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write"
+            | "writable" | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
