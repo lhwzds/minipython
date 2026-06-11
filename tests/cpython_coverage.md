@@ -158,6 +158,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
+  `cpython_collections_namedtuple_repr_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
@@ -364,6 +365,10 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_defaults_rename_readonly_subset`, covering
   CPython public `namedtuple()` defaults, field renaming, module metadata,
   writable class docs, and readonly tuple-instance mutation boundaries.
+- The bundled `collections` module also includes
+  `cpython_collections_namedtuple_repr_diff_subset` and
+  `cpython_collections_namedtuple_repr_subset`, covering CPython public
+  `namedtuple` `repr()` spelling for base and subclass instances.
 - The bundled `collections` module also includes
   `cpython_collections_userdict_userlist_public_diff_subset` and
   `cpython_collections_userdict_userlist_public_subset`, covering CPython

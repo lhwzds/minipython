@@ -4960,6 +4960,20 @@ print('readonly', bad_readonly, p.x, p[0])"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple repr subset",
+        name: "collections-namedtuple-repr",
+        source: r#"from collections import namedtuple
+A = namedtuple('A', 'x')
+print(repr(A(1)))
+class B(A):
+    pass
+print(repr(B(1)))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",

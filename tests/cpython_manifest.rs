@@ -2643,6 +2643,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_namedtuple_public_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
+            "cpython_collections_namedtuple_repr_subset",
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
