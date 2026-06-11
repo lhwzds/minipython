@@ -3815,7 +3815,9 @@ Recent runtime migration notes:
   undefined-byte handling.
 - `cpython_tokenize_exact_type_subset` ports CPython's
   `TokenInfo.exact_type` operator table to MiniPython's exact lexer token
-  variants, and `cpython_tokenize_selector_and_method_subset` ports CPython's
+  variants. The corresponding `cpython_tokenize_exact_type_diff_subset` keeps
+  the executable operator-token surface tied to direct CPython output parity.
+  `cpython_tokenize_selector_and_method_subset` ports CPython's
   selector and decorator/method tokenizer span examples. The corresponding
   `cpython_tokenize_selector_and_method_diff_subset` keeps those
   selector/decorator source shapes tied to direct CPython execution parity.

@@ -586,6 +586,48 @@ fn cpython_tokenize_unary_operators_diff_subset() {
 }
 
 #[test]
+fn cpython_tokenize_exact_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::TestTokenize::test_exact_type public execution subset",
+        name: "tokenize-exact-type-operators",
+        source: r#"value = 5
+value += 3
+value -= 1
+value *= 2
+value //= 3
+value %= 5
+value **= 2
+value |= 2
+value &= 7
+value ^= 1
+value <<= 1
+value >>= 1
+print(value)
+print((1, 2), [3, 4], {5: 6}, sorted({7, 8}))
+print(1 < 2 <= 2 == 2 != 3 >= 3 > 1)
+print((n := 4), n)
+print(... is Ellipsis)
+
+class Matrix:
+    def __init__(self, value):
+        self.value = value
+    def __matmul__(self, other):
+        return Matrix(self.value * 10 + other.value)
+    def __imatmul__(self, other):
+        self.value = self.value * 10 + other.value
+        return self
+
+matrix = Matrix(2) @ Matrix(3)
+matrix @= Matrix(4)
+print(matrix.value)
+
+def annotated(x: int) -> int:
+    return x
+print(annotated(9))"#,
+    });
+}
+
+#[test]
 fn cpython_tokenize_selector_and_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py::TokenizeTest::test_selector / ::test_method public execution subset",

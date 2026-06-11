@@ -1275,7 +1275,9 @@ Completed in the differential parity harness pass:
   distinctions for punctuation, arithmetic, comparison, augmented assignment,
   walrus, ellipsis, arrows, matrix multiplication, and mixed expression/set
   token streams. MiniPython exposes these as exact lexer token variants instead
-  of CPython's `TokenInfo.exact_type` side channel.
+  of CPython's `TokenInfo.exact_type` side channel. Direct public execution
+  parity for this operator-token surface is covered by
+  `cpython_tokenize_exact_type_diff_subset`.
 - Migrated CPython `Lib/test/test_tokenize.py::TokenizeTest::test_selector`
   and `::test_method` into `cpython_tokenize_selector_and_method_subset`,
   covering dotted/subscript selector spans and decorator/function-header token

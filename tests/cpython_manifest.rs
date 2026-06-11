@@ -4298,6 +4298,10 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
             "cpython_tokenize_unary_operators_diff_subset",
         ),
         (
+            "cpython_tokenize_exact_type_subset",
+            "cpython_tokenize_exact_type_diff_subset",
+        ),
+        (
             "cpython_tokenize_selector_and_method_subset",
             "cpython_tokenize_selector_and_method_diff_subset",
         ),
