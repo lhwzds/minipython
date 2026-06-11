@@ -4556,6 +4556,22 @@ print(list(keys), list(values), list(items))"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_missing_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests missing subset",
+        name: "types-mappingproxy-missing",
+        source: r#"from types import MappingProxyType
+class dictmissing(dict):
+    def __missing__(self, key):
+        return 'missing=%s' % key
+view = MappingProxyType(dictmissing(x=1))
+print(view['x'], view['y'])
+print(view.get('x'), view.get('y'), view.get('y', 42))
+print('x' in view, 'y' in view)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",

@@ -143,6 +143,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
   `cpython_types_mappingproxy_views_diff_subset`,
+  `cpython_types_mappingproxy_missing_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
