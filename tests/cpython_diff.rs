@@ -1606,6 +1606,61 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_cbrt_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'cbrt'))")
+        .expect("failed to probe CPython math.cbrt support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping math.cbrt diff: CPython oracle lacks math.cbrt");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testCbrt public stable subset",
+        name: "math-cbrt",
+        source: r#"import math
+print(type(math.cbrt(0)).__name__)
+print(math.cbrt(0), math.cbrt(1), math.cbrt(8))
+print(math.copysign(1.0, math.cbrt(0.0)), math.copysign(1.0, math.cbrt(-0.0)))
+print(round(math.cbrt(1.2), 12), round(math.cbrt(-2.6), 12))
+print(math.cbrt(27), math.cbrt(-1), math.cbrt(-27))
+print(math.cbrt(math.inf), math.cbrt(-math.inf), math.isnan(math.cbrt(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.cbrt(FloatLike(8.0)), math.cbrt(IndexLike(27)))
+for expr in [
+    lambda: math.cbrt(),
+    lambda: math.cbrt(1, 2),
+    lambda: math.cbrt('1.0'),
+    lambda: math.cbrt(1+2j),
+    lambda: math.cbrt(IndexLike(10**10000)),
+    lambda: math.cbrt(BadFloat()),
+    lambda: math.cbrt(RaisesFloat()),
+    lambda: math.cbrt(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
