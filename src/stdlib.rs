@@ -471,6 +471,10 @@ pub(crate) fn create_module(
             "io",
             vec![
                 ("BytesIO", Value::Builtin("io.BytesIO".to_string())),
+                (
+                    "UnsupportedOperation",
+                    Value::Builtin("io.UnsupportedOperation".to_string()),
+                ),
                 ("SEEK_SET", Value::Number(0)),
                 ("SEEK_CUR", Value::Number(1)),
                 ("SEEK_END", Value::Number(2)),

@@ -8681,6 +8681,12 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.flush" => {
                 self.call_io_bytesio_flush(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.fileno" => {
+                self.call_io_bytesio_unsupported(args, keywords, "fileno")
+            }
+            Value::Builtin(name) if name == "io.BytesIO.detach" => {
+                self.call_io_bytesio_unsupported(args, keywords, "detach")
+            }
             Value::Builtin(name) if name == "io.BytesIO.getvalue" => {
                 self.call_io_bytesio_getvalue(args, keywords)
             }
@@ -17849,6 +17855,22 @@ impl Vm {
         };
         bytes_io_ensure_open(bytes_io)?;
         Ok(Value::None)
+    }
+
+    fn call_io_bytesio_unsupported(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        method: &str,
+    ) -> Result<Value, String> {
+        reject_method_keywords(&format!("io.BytesIO.{method}"), &keywords)?;
+        let [Value::BytesIO(_)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.{method}() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        Err(format!("io.UnsupportedOperation: {method}"))
     }
 
     fn call_io_bytesio_close(
@@ -43280,6 +43302,8 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__next__",
             "close",
             "closed",
+            "detach",
+            "fileno",
             "flush",
             "getvalue",
             "isatty",
@@ -49939,10 +49963,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-            "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "flush" | "getvalue"
-            | "isatty" | "read" | "read1" | "readable" | "readinto" | "readinto1" | "readline"
-            | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write" | "writable"
-            | "writelines" => Ok(Value::BoundMethod {
+            "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "detach" | "fileno"
+            | "flush" | "getvalue" | "isatty" | "read" | "read1" | "readable" | "readinto"
+            | "readinto1" | "readline" | "readlines" | "seek" | "seekable" | "tell"
+            | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
@@ -52822,6 +52846,7 @@ fn builtin_exception_bases(name: &str) -> Option<&'static [&'static str]> {
         | "SyntaxError" | "SystemError" | "TypeError" | "ValueError" | "Warning" => {
             Some(&["Exception"])
         }
+        "io.UnsupportedOperation" => Some(&["OSError", "ValueError"]),
         "UnboundLocalError" => Some(&["NameError"]),
         "BlockingIOError" | "FileExistsError" | "FileNotFoundError" | "InterruptedError"
         | "IsADirectoryError" | "NotADirectoryError" | "PermissionError" | "ProcessLookupError"
