@@ -11566,7 +11566,7 @@ for value, spec in [(10, ',b'), (10, ',o'), (65, ',c'), (65, '#c'), (1, '.2d')]:
         },
         DiffCase {
             origin: "Lib/test/test_types.py::TypesTests::test_int__format__",
-            name: "types-int-dunder-format-matrix",
+            name: "cpython_types_int_format_diff_subset",
             source: r#"def check(i, format_spec, expected):
     assert type(i) is int
     assert type(format_spec) is str
@@ -11640,7 +11640,7 @@ print('float-specs', float_specs)"#,
         },
         DiffCase {
             origin: "Lib/test/test_types.py::TypesTests::test_float__format__",
-            name: "types-float-dunder-format-matrix",
+            name: "cpython_types_float_format_diff_subset",
             source: r#"def check(f, format_spec, expected):
     assert f.__format__(format_spec) == expected
     assert format(f, format_spec) == expected

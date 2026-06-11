@@ -71,7 +71,6 @@ Recent runtime migration notes:
   `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`,
   `iter-next-builtins`, `map-filter-builtins`, `float-hash-and-sys-info`,
   `types-frame-locals-proxy-currentframe`, `types-method-descriptor-types`,
-  `types-int-dunder-format-matrix`, `types-float-dunder-format-matrix`,
   `pure-memory-stdlib-core`, `array-one-byte-public-file-methods`,
   `operator-precedence-and-associativity`, and `pow-builtin`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
@@ -150,6 +149,8 @@ Recent runtime migration notes:
   `cpython_types_runtime_type_aliases_diff_subset`,
   `cpython_types_method_descriptor_types_diff_subset`,
   `cpython_types_frame_locals_proxy_type_diff_subset`,
+  `cpython_types_int_format_diff_subset`,
+  `cpython_types_float_format_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,

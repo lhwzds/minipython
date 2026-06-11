@@ -2166,8 +2166,6 @@ fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
             | "float-hash-and-sys-info"
             | "types-frame-locals-proxy-currentframe"
             | "types-method-descriptor-types"
-            | "types-int-dunder-format-matrix"
-            | "types-float-dunder-format-matrix"
     )
 }
 
@@ -2184,8 +2182,6 @@ fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
             | "float-hash-and-sys-info"
             | "types-frame-locals-proxy-currentframe"
             | "types-method-descriptor-types"
-            | "types-int-dunder-format-matrix"
-            | "types-float-dunder-format-matrix"
             | "pure-memory-stdlib-core"
             | "operator-precedence-and-associativity"
     )
@@ -3610,8 +3606,8 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
         "cpython_types_method_descriptor_types_diff_subset",
         "cpython_types_frame_locals_proxy_type_diff_subset",
-        "types-int-dunder-format-matrix",
-        "types-float-dunder-format-matrix",
+        "cpython_types_int_format_diff_subset",
+        "cpython_types_float_format_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
