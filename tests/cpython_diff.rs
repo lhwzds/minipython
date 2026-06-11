@@ -3373,6 +3373,31 @@ print(AsyncIterator.__aiter__(ai) is ai)"#,
 }
 
 #[test]
+fn cpython_collections_abc_async_generator_core_mixin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/_collections_abc.py::AsyncGenerator / Lib/test/test_collections.py::TestOneTrickPonyABCs::test_AsyncGenerator",
+        name: "collections-abc-async-generator-core-mixin",
+        source: r#"from collections.abc import AsyncGenerator, AsyncIterator
+class MinimalAGen(AsyncGenerator):
+    async def asend(self, value):
+        return value
+    async def athrow(self, typ, val=None, tb=None):
+        pass
+async def run():
+    mgen = MinimalAGen()
+    print(isinstance(mgen, AsyncIterator), isinstance(mgen, AsyncGenerator), issubclass(MinimalAGen, AsyncGenerator))
+    print(mgen.__aiter__() is mgen)
+    print(await mgen.__anext__())
+    print(await mgen.asend(2))
+coro = run()
+try:
+    coro.send(None)
+except StopIteration:
+    pass"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

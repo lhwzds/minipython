@@ -2519,7 +2519,9 @@ Recent runtime migration notes:
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_async_generator_core_mixin_subset`, covering
   CPython's `AsyncGenerator` direct-subclass `__aiter__` and `__anext__`
-  mixins, including `__anext__` delegation through `asend(None)`.
+  mixins, including `__anext__` delegation through `asend(None)`. Direct
+  CPython diff evidence is in
+  `cpython_collections_abc_async_generator_core_mixin_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes expanded
   `cpython_collections_abc_generator_runtime_subset` evidence for CPython's
   `AsyncGenerator` negative protocol matrix, including the exact `NonAGen1`,
