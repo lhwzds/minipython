@@ -5032,6 +5032,21 @@ print(t.__getnewargs__() == values)"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_subclass_issue_24931_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple subclass issue 24931 subset",
+        name: "collections-namedtuple-subclass-issue-24931",
+        source: r#"from collections import namedtuple, OrderedDict
+class Point(namedtuple('_Point', ['x', 'y'])):
+    pass
+a = Point(3, 4)
+print(a._asdict() == OrderedDict([('x', 3), ('y', 4)]))
+a.w = 5
+print(a.__dict__ == {'w': 5})"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",
