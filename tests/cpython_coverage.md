@@ -1242,7 +1242,8 @@ Recent runtime migration notes:
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `readinto()` over
   writable bytearray targets, `tell()`, `seek()`, `truncate()`, position
   advancement, sequential bytes-like line writes, sparse write NUL filling,
-  size/sizehint line reads, and representative
+  size/sizehint line reads, `readable()`, `writable()`, `seekable()`,
+  `isatty()`, `flush()`, and representative
   constructor/method TypeError/ValueError classification without host file
   descriptors or buffering layers.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,

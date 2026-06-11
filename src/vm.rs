@@ -8640,6 +8640,21 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.writelines" => {
                 self.call_io_bytesio_writelines(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.readable" => {
+                self.call_io_bytesio_bool_noarg_method(args, keywords, "readable", true)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.writable" => {
+                self.call_io_bytesio_bool_noarg_method(args, keywords, "writable", true)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.seekable" => {
+                self.call_io_bytesio_bool_noarg_method(args, keywords, "seekable", true)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.isatty" => {
+                self.call_io_bytesio_bool_noarg_method(args, keywords, "isatty", false)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.flush" => {
+                self.call_io_bytesio_flush(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.getvalue" => {
                 self.call_io_bytesio_getvalue(args, keywords)
             }
@@ -17724,6 +17739,38 @@ impl Vm {
             };
             bytes_io_write_chunk(&bytes_io, &bytes);
         }
+        Ok(Value::None)
+    }
+
+    fn call_io_bytesio_bool_noarg_method(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+        method: &str,
+        result: bool,
+    ) -> Result<Value, String> {
+        reject_method_keywords(&format!("io.BytesIO.{method}"), &keywords)?;
+        let [Value::BytesIO(_)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.{method}() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        Ok(Value::Bool(result))
+    }
+
+    fn call_io_bytesio_flush(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.flush", &keywords)?;
+        let [Value::BytesIO(_)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.flush() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
         Ok(Value::None)
     }
 
@@ -49696,8 +49743,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-            "getvalue" | "read" | "readinto" | "readline" | "readlines" | "seek" | "tell"
-            | "truncate" | "write" | "writelines" => Ok(Value::BoundMethod {
+            "flush" | "getvalue" | "isatty" | "read" | "readable" | "readinto" | "readline"
+            | "readlines" | "seek" | "seekable" | "tell" | "truncate" | "write" | "writable"
+            | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
