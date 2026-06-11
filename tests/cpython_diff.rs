@@ -7729,6 +7729,22 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_literal_runtime_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py bytes literal tokenization, Lib/test/test_bytes.py bytes runtime subset, and Lib/test/test_ast/test_ast.py bytes constants",
+        name: "bytes-literal-runtime",
+        source: r#"print(b'abc', B"abc")
+print(br'\n', bR'\n', Rb'\n', RB'\n')
+print(b'a' b'b' b'c')
+print(b'\x41\n\377')
+print(len(b'abc'), b'abc'[0], b'abc'[1:])
+print(b'ab' + b'cd', b'ab' * 2)
+print(b'a' == b'a', b'a' != b'b', b'a' == 'a')
+print(bytes(), bytes(3), bytes(b'abc'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_search_compare_slice_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest search, compare, reversed, and slice public subset",

@@ -2984,6 +2984,11 @@ Completed in the bytes-literal pass:
   iteration, and the minimal `bytes()` constructor surface.
 - Added `cpython_bytes_literal_subset`, adapted from `Lib/test/test_tokenize.py`,
   `Lib/test/test_bytes.py`, and `Lib/test/test_ast/test_ast.py`.
+- Added direct CPython output parity evidence
+  `cpython_bytes_literal_runtime_diff_subset` for the successful public runtime
+  slice of the same bytes literal behavior; MiniPython-specific parse-error
+  text for mixed bytes/non-bytes literals remains covered by the local subset
+  test rather than claimed as direct CPython diagnostic parity.
 - Kept `STRING` as `partial` because the row still tracks the broader CPython
   tokenizer string surface, including exact tokenizer token-stream modeling and
   remaining invalid-literal diagnostics.
