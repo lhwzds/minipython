@@ -5241,6 +5241,42 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_bytes_buffer_constructor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
+        name: "bytes-buffer-constructor",
+        source: r#"import array
+
+class B(bytes):
+    def __index__(self):
+        raise TypeError
+
+for ctor in [bytes, bytearray]:
+    for source in [
+        b'\x01\x02\x03',
+        bytearray(b'\x01\x02\x03'),
+        memoryview(b'\x01\x02\x03'),
+        B(b'foobar'),
+    ]:
+        value = ctor(source)
+        print(ctor.__name__, type(source).__name__, type(value).__name__, value == source, value)
+    source = array.array('B', [1, 2, 3])
+    value = ctor(source)
+    print(ctor.__name__, type(source).__name__, type(value).__name__, value == b'\x01\x02\x03', value)
+
+arr = array.array('B', b'ab')
+print(bytes(arr), bytearray(arr))
+print(b'abc'.find(array.array('B', b'b')))
+print(b'a' + array.array('B', b'b'))
+ba = bytearray(b'x')
+ba += arr
+print(ba)
+ba[1:] = array.array('B', b'YZ')
+print(ba)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

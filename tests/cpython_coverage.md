@@ -1223,7 +1223,8 @@ Recent runtime migration notes:
   from `range`, range iterators, set inputs, generators without
   `__length_hint__`, list/tuple inputs, `__getitem__` sequences, and
   valid/erroring `__index__` item conversion.
-- `STRING_RUNTIME` also includes `cpython_bytes_buffer_constructor_subset` and
+- `STRING_RUNTIME` also includes `cpython_bytes_buffer_constructor_diff_subset`,
+  `cpython_bytes_buffer_constructor_subset`, and
   `cpython_bytes_array_array_buffer_subset`, covering the portable public part
   of CPython `BaseBytesTest::test_from_buffer` where bytes and bytearray
   constructors accept bytes, bytearray, memoryview, first-pass
