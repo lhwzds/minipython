@@ -3624,6 +3624,36 @@ for abc, names in cases:
 }
 
 #[test]
+fn cpython_collections_abc_direct_subclassing_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_direct_subclassing",
+        name: "collections-abc-direct-subclassing",
+        source: r#"from collections.abc import Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable
+for B in Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable:
+    class C(B):
+        pass
+    print(B.__name__, issubclass(C, B), issubclass(int, C))"#,
+    });
+}
+
+#[test]
+fn cpython_collections_abc_registration_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_registration",
+        name: "collections-abc-registration",
+        source: r#"from collections.abc import Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable
+for B in [Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable]:
+    class C:
+        __hash__ = None
+    class D(C):
+        pass
+    print(B.__name__, issubclass(C, B), isinstance(C(), B))
+    result = B.register(C)
+    print(result is C, issubclass(C, B), isinstance(C(), B), issubclass(D, B), isinstance(D(), B))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_composite_abstract_methods_diff_subset() {
     let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
         .expect("failed to probe CPython collections.abc.Buffer support");

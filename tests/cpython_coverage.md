@@ -2491,6 +2491,14 @@ Recent runtime migration notes:
   `cpython_collections_abc_direct_subclassing_subset`, covering CPython's
   `TestOneTrickPonyABCs::test_direct_subclassing` loop for `Hashable`,
   `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`, and `Callable`.
+  Direct CPython diff evidence is in
+  `cpython_collections_abc_direct_subclassing_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_registration_subset`, covering CPython's
+  `TestOneTrickPonyABCs::test_registration` public `ABC.register()` behavior
+  for `Hashable`, `Iterable`, `Iterator`, `Reversible`, `Sized`, `Container`,
+  and `Callable`. Direct CPython diff evidence is in
+  `cpython_collections_abc_registration_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_iterable_sample_matrix_subset`, covering CPython's
   `Iterable` public non-sample/sample matrix, including dict views, native
