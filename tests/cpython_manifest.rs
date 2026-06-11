@@ -3585,6 +3585,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
         "cpython_types_float_constructor_edges_diff_subset",
+        "cpython_types_float_to_string_diff_subset",
         "cpython_types_normal_integers_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",

@@ -1102,7 +1102,8 @@ Recent runtime migration notes:
   `TypesTests::test_float_to_string` exponent rendering matrix for `%e` and
   direct `float.__format__('e')`, three-digit exponent rows, `%g` / `%#g`,
   public numeric `__format__` exposure on `int`, `bool`, and `float`, and
-  descriptor/type-error boundaries.
+  descriptor/type-error boundaries. Direct output parity is guarded by
+  `cpython_types_float_to_string_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_normal_integers_subset`, covering the public CPython
   `TypesTests::test_normal_integers` integer addition, comparison,

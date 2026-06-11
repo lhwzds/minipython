@@ -6586,6 +6586,40 @@ fn cpython_types_float_constructor_edges_diff_subset() {
 }
 
 #[test]
+fn cpython_types_float_to_string_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_float_to_string",
+        name: "types-float-to-string",
+        source: r#"def expected_exp(i):
+    sign = '+' if i >= 0 else '-'
+    magnitude = abs(i)
+    if magnitude < 10:
+        return '1.500000e' + sign + '0' + str(magnitude)
+    return '1.500000e' + sign + str(magnitude)
+checked = 0
+for i in range(-99, 100):
+    f = float('1.5e' + str(i))
+    expected = expected_exp(i)
+    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:
+        assert actual == expected
+        checked += 1
+for f, expected in [(1.5e100, '1.500000e+100'), (1.5e101, '1.500000e+101'), (1.5e-100, '1.500000e-100'), (1.5e-101, '1.500000e-101')]:
+    for actual in [f.__format__('e'), float.__format__(f, 'e'), '%e' % f]:
+        assert actual == expected
+        checked += 1
+print(checked)
+print('%g' % 1.0, '%#g' % 1.0)
+print((1).__format__('d'), int.__format__(1, '04d'), True.__format__(''), True.__format__('d'), bool.__format__(False, 'd'), (1.0).__format__('e'))
+print('__format__' in dir(1), '__format__' in dir(1.0), '__format__' in dir(True), '__format__' in dir(int), '__format__' in dir(float))
+for expr in [lambda: (1).__format__(1), lambda: (1.0).__format__(1), lambda: float.__format__(1, 'e')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_normal_integers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests::test_normal_integers public arithmetic rows",
