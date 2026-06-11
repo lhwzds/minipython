@@ -149,6 +149,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_reversed_diff_subset`,
   `cpython_types_mappingproxy_copy_diff_subset`,
   `cpython_types_mappingproxy_richcompare_diff_subset`,
+  `cpython_types_mappingproxy_custom_mapping_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,

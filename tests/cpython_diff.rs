@@ -4653,6 +4653,53 @@ for expr in [lambda: mp1 > mp2, lambda: mp1 < mp1_2, lambda: mp2 >= mp2, lambda:
 }
 
 #[test]
+fn cpython_types_mappingproxy_custom_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests custom mapping subset",
+        name: "types-mappingproxy-custom-mapping",
+        source: r#"from types import MappingProxyType
+class CustomMapping:
+    def __init__(self):
+        self.store = {'key': 'value'}
+    def __contains__(self, key):
+        if key == 'magic':
+            return True
+        return key in self.store
+    def __iter__(self):
+        return iter(('iter',))
+    def __len__(self):
+        return 500
+    def copy(self):
+        return 'copy'
+    def keys(self):
+        return 'keys'
+    def items(self):
+        return 'items'
+    def values(self):
+        return 'values'
+    def __getitem__(self, key):
+        if key in self.store:
+            return 'getitem=' + self.store[key]
+        raise KeyError(key)
+    def get(self, key, default=None):
+        if key in self.store:
+            return 'get=' + self.store[key]
+        return 'get=default=' + str(default)
+view = MappingProxyType(CustomMapping())
+print('key' in view, 'magic' in view, 'xxx' in view)
+print(view['key'])
+try:
+    view.__getitem__('xxx')
+except KeyError as error:
+    print(error.__class__.__name__)
+print(tuple(view), len(view))
+print(view.copy())
+print(view.get('key'), view.get('xxx'))
+print(view.items(), view.keys(), view.values())"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
