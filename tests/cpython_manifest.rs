@@ -2297,6 +2297,29 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         ],
         &[],
     );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "functools")
+        .expect("sandbox stdlib manifest must include functools");
+    for evidence in [
+        "cpython_functools_public_helpers_diff_subset",
+        "cpython_functools_partial_diff_subset",
+        "cpython_functools_partialmethod_diff_subset",
+        "cpython_functools_cmp_to_key_diff_subset",
+        "cpython_functools_update_wrapper_wraps_diff_subset",
+        "cpython_functools_total_ordering_diff_subset",
+        "cpython_functools_cache_diff_subset",
+        "cpython_functools_cached_property_diff_subset",
+        "cpython_functools_reduce_diff_subset",
+        "cpython_functools_singledispatch_diff_subset",
+        "cpython_functools_singledispatchmethod_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "functools sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
