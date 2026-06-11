@@ -641,6 +641,7 @@ Recent runtime migration notes:
   `cpython_itertools_combinations_with_replacement_subset`, and
   `cpython_itertools_permutations_subset`, and
   `cpython_itertools_tee_subset`, and
+  `cpython_itertools_batched_subset`, and
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
@@ -648,12 +649,13 @@ Recent runtime migration notes:
   `cpython_itertools_combinations_diff_subset`, and
   `cpython_itertools_combinations_with_replacement_diff_subset`, and
   `cpython_itertools_permutations_diff_subset`, and
-  `cpython_itertools_tee_diff_subset`, covering the pure in-memory
+  `cpython_itertools_tee_diff_subset`, and
+  `cpython_itertools_batched_diff_subset`, covering the pure in-memory
   first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, `pairwise()`, and
   `product()`, `combinations()`, `combinations_with_replacement()`, and
-  `permutations()`, and `tee()` iterator protocol behavior, plus duplicate-keyword diagnostics for
+  `permutations()`, `tee()`, and `batched()` iterator protocol behavior, plus duplicate-keyword diagnostics for
   `accumulate()` and `zip_longest()`.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
@@ -679,7 +681,9 @@ Recent runtime migration notes:
   arbitrary `__index__` r values, zero-length tuple behavior, oversize-r
   exhaustion, generator inputs, and shared-buffer `tee()` clones with
   interleaved consumption, `n=0` / `n=1` / multi-clone behavior, `n` via
-  `__index__`, and generator-backed inputs. The broader
+  `__index__`, generator-backed inputs, and fixed-size `batched()` tuple
+  batches with generator inputs, `n` via `__index__`, keyword binding,
+  truth-tested `strict`, and incomplete-batch `ValueError`. The broader
   `itertools` module, floating/non-integer `count()` arithmetic,
   `tee()` cache compaction, pickling/repr edge cases, and remaining
   public/helper types remain open.

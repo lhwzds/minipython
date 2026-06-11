@@ -2211,6 +2211,9 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if evidence == "cpython_itertools_tee_diff_subset" {
         candidates.push("cpython_itertools_tee_subset".to_string());
     }
+    if evidence == "cpython_itertools_batched_diff_subset" {
+        candidates.push("cpython_itertools_batched_subset".to_string());
+    }
     if evidence == "cpython_json_loads_dumps_diff_subset" {
         candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
     }
@@ -2399,6 +2402,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_itertools_combinations_with_replacement_subset",
             "cpython_itertools_permutations_subset",
             "cpython_itertools_tee_subset",
+            "cpython_itertools_batched_subset",
         ],
         &[],
     );
@@ -2416,6 +2420,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_itertools_combinations_with_replacement_diff_subset",
         "cpython_itertools_permutations_diff_subset",
         "cpython_itertools_tee_diff_subset",
+        "cpython_itertools_batched_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
@@ -2450,10 +2455,13 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
     let tee_start = CPYTHON_SUBSET
         .find("fn cpython_itertools_tee_subset()")
         .expect("itertools tee runtime subset evidence must exist");
-    let tee_end = CPYTHON_SUBSET[tee_start..]
+    let batched_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_batched_subset()")
+        .expect("itertools batched runtime subset evidence must exist");
+    let batched_end = CPYTHON_SUBSET[batched_start..]
         .find("\n// Adapted from CPython Lib/test/test_list.py")
-        .map(|offset| tee_start + offset)
-        .expect("itertools tee subset must end before sequence constructor tests");
+        .map(|offset| batched_start + offset)
+        .expect("itertools batched subset must end before sequence constructor tests");
 
     let core_source = &CPYTHON_SUBSET[core_start..keyword_start];
     let keyword_source = &CPYTHON_SUBSET[keyword_start..pairwise_start];
@@ -2462,7 +2470,8 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
     let combinations_source = &CPYTHON_SUBSET[combinations_start..replacement_start];
     let replacement_source = &CPYTHON_SUBSET[replacement_start..permutations_start];
     let permutations_source = &CPYTHON_SUBSET[permutations_start..tee_start];
-    let tee_source = &CPYTHON_SUBSET[tee_start..tee_end];
+    let tee_source = &CPYTHON_SUBSET[tee_start..batched_start];
+    let batched_source = &CPYTHON_SUBSET[batched_start..batched_end];
 
     assert!(
         !core_source.contains("pairwise"),
@@ -2496,6 +2505,10 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         tee_source.contains("itertools.tee"),
         "itertools tee runtime evidence must cover tee()"
     );
+    assert!(
+        batched_source.contains("itertools.batched"),
+        "itertools batched runtime evidence must cover batched()"
+    );
 }
 
 #[test]
@@ -2524,10 +2537,13 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let tee_start = CPYTHON_DIFF
         .find("fn cpython_itertools_tee_diff_subset()")
         .expect("itertools tee diff evidence must exist");
-    let tee_end = CPYTHON_DIFF[tee_start..]
+    let batched_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_batched_diff_subset()")
+        .expect("itertools batched diff evidence must exist");
+    let batched_end = CPYTHON_DIFF[batched_start..]
         .find("\n// Differential smoke tests")
-        .map(|offset| tee_start + offset)
-        .expect("itertools tee diff subset must end before smoke tests");
+        .map(|offset| batched_start + offset)
+        .expect("itertools batched diff subset must end before smoke tests");
 
     let core_source = &CPYTHON_DIFF[core_start..keyword_start];
     let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
@@ -2536,7 +2552,8 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let combinations_source = &CPYTHON_DIFF[combinations_start..replacement_start];
     let replacement_source = &CPYTHON_DIFF[replacement_start..permutations_start];
     let permutations_source = &CPYTHON_DIFF[permutations_start..tee_start];
-    let tee_source = &CPYTHON_DIFF[tee_start..tee_end];
+    let tee_source = &CPYTHON_DIFF[tee_start..batched_start];
+    let batched_source = &CPYTHON_DIFF[batched_start..batched_end];
 
     assert!(
         !core_source.contains("pairwise"),
@@ -2574,6 +2591,10 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     assert!(
         tee_source.contains("itertools.tee"),
         "itertools tee CPython diff evidence must cover tee()"
+    );
+    assert!(
+        batched_source.contains("itertools.batched"),
+        "itertools batched CPython diff evidence must cover batched()"
     );
 }
 

@@ -697,6 +697,7 @@ pub(crate) fn create_module(
                     "accumulate",
                     Value::Builtin("itertools.accumulate".to_string()),
                 ),
+                ("batched", Value::Builtin("itertools.batched".to_string())),
                 ("chain", Value::Builtin("itertools.chain".to_string())),
                 (
                     "combinations",
@@ -2195,6 +2196,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
+        Value::ItertoolsBatched { .. } => "batched",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),
@@ -2306,6 +2308,7 @@ fn stdlib_iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
+        Value::ItertoolsBatched { .. } => "batched",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => stdlib_iterator_type_name(&state.borrow()),

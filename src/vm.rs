@@ -8576,6 +8576,9 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.accumulate" => {
                 self.call_itertools_accumulate(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.batched" => {
+                self.call_itertools_batched(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.chain" => {
                 self.call_itertools_chain(args, keywords)
             }
@@ -23109,6 +23112,98 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_batched(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 2 {
+            return Err(format!(
+                "TypeError: batched() takes exactly 2 positional arguments ({} given)",
+                args.len()
+            ));
+        }
+        let mut iterable = None;
+        let mut n_value = None;
+        let mut strict_value = None;
+        for (index, value) in args.into_iter().enumerate() {
+            match index {
+                0 => iterable = Some(value),
+                1 => n_value = Some(value),
+                _ => unreachable!("positional count checked above"),
+            }
+        }
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "iterable" => {
+                    if iterable.is_some() {
+                        return Err(
+                            "TypeError: argument for batched() given by name ('iterable') and position (1)"
+                                .to_string(),
+                        );
+                    }
+                    iterable = Some(value);
+                }
+                "n" => {
+                    if n_value.is_some() {
+                        return Err(
+                            "TypeError: argument for batched() given by name ('n') and position (2)"
+                                .to_string(),
+                        );
+                    }
+                    n_value = Some(value);
+                }
+                "strict" => {
+                    if strict_value.is_some() {
+                        return Err(
+                            "TypeError: batched() got multiple values for keyword argument 'strict'"
+                                .to_string(),
+                        );
+                    }
+                    strict_value = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: batched() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+        let iterable = iterable.ok_or_else(|| {
+            "TypeError: batched() missing required argument 'iterable'".to_string()
+        })?;
+        let n_value = n_value
+            .ok_or_else(|| "TypeError: batched() missing required argument 'n'".to_string())?;
+        let n = self.itertools_batched_n(n_value)?;
+        let strict = match strict_value {
+            Some(value) => self.truth_value(value)?,
+            None => false,
+        };
+        Ok(shared_iterator(Value::ItertoolsBatched {
+            iterator: Box::new(get_iter(iterable)?),
+            n,
+            strict,
+        }))
+    }
+
+    fn itertools_batched_n(&mut self, value: Value) -> Result<usize, String> {
+        if matches!(
+            value,
+            Value::String(_) | Value::IdentityString { .. } | Value::Bytes(_) | Value::ByteArray(_)
+        ) {
+            return Err(format!(
+                "TypeError: '{}' object cannot be interpreted as an integer",
+                type_name(&value)
+            ));
+        }
+        let n = self.index_big_int(value)?;
+        if n <= BigInt::from(0) {
+            return Err("ValueError: n must be at least one".to_string());
+        }
+        n.to_usize()
+            .ok_or_else(|| "OverflowError: n argument is too large".to_string())
+    }
+
     fn call_itertools_compress(
         &mut self,
         args: Vec<Value>,
@@ -29196,6 +29291,29 @@ impl Vm {
                     }
                     IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
                 }
+            }
+            Value::ItertoolsBatched {
+                iterator,
+                n,
+                strict,
+            } => {
+                let mut values = Vec::with_capacity(*n);
+                while values.len() < *n {
+                    match self.advance_owned_iterator(iterator.as_mut())? {
+                        IteratorAdvance::Yield(value) => values.push(value),
+                        IteratorAdvance::Complete(_) => {
+                            if values.is_empty() {
+                                return Ok(IteratorAdvance::Complete(Value::None));
+                            }
+                            if *strict {
+                                return Err("ValueError: batched(): incomplete batch".to_string());
+                            }
+                            return Ok(IteratorAdvance::Yield(tuple_value(values)));
+                        }
+                        IteratorAdvance::Raised => return Ok(IteratorAdvance::Raised),
+                    }
+                }
+                return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
             Value::MapIterator {
                 function,
@@ -53805,6 +53923,7 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
+        Value::ItertoolsBatched { .. } => "batched",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -53931,6 +54050,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
         Value::ItertoolsPermutations { .. } => "permutations",
         Value::ItertoolsTee { .. } => "_tee",
+        Value::ItertoolsBatched { .. } => "batched",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69522,6 +69642,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsCombinationsWithReplacement { .. }
         | Value::ItertoolsPermutations { .. }
         | Value::ItertoolsTee { .. }
+        | Value::ItertoolsBatched { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69744,6 +69865,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsCombinationsWithReplacement { .. }
         | Value::ItertoolsPermutations { .. }
         | Value::ItertoolsTee { .. }
+        | Value::ItertoolsBatched { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -70202,6 +70324,15 @@ fn get_iter(value: Value) -> Result<Value, String> {
         Value::ItertoolsTee { state, index } => {
             Ok(shared_iterator(Value::ItertoolsTee { state, index }))
         }
+        Value::ItertoolsBatched {
+            iterator,
+            n,
+            strict,
+        } => Ok(shared_iterator(Value::ItertoolsBatched {
+            iterator,
+            n,
+            strict,
+        })),
         Value::CallIterator {
             callable,
             sentinel,
@@ -76004,6 +76135,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsCombinationsWithReplacement { .. } => Ok(true),
         Value::ItertoolsPermutations { .. } => Ok(true),
         Value::ItertoolsTee { .. } => Ok(true),
+        Value::ItertoolsBatched { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

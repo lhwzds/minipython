@@ -11611,6 +11611,62 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_batched_diff_subset() {
+    let probe = run_cpython("import itertools; print(hasattr(itertools, 'batched'))")
+        .expect("failed to probe CPython itertools.batched support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping itertools.batched diff: CPython oracle lacks itertools.batched");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public batched core subset",
+        name: "itertools-batched-core",
+        source: r#"import itertools
+b = itertools.batched('ABCDEFG', 3)
+print(type(b).__name__, iter(b) is b, list(b), list(b))
+print(list(itertools.batched([1, 2, 3, 4], 2)))
+print(list(itertools.batched([1, 2, 3], 1)))
+it = itertools.batched((value for value in [1, 2, 3, 4, 5]), 2)
+print(next(it), list(it))
+class IndexLike:
+    def __index__(self):
+        return 2
+print(list(itertools.batched([1, 2, 3], IndexLike())))
+class Truthy:
+    def __bool__(self):
+        return True
+class Falsey:
+    def __bool__(self):
+        return False
+print(list(itertools.batched([1, 2, 3], 2, strict=False)))
+print(list(itertools.batched([1, 2, 3], 2, strict=Falsey())))
+try:
+    list(itertools.batched([1, 2, 3], 2, strict=True))
+except ValueError as error:
+    print(error.__class__.__name__)
+try:
+    list(itertools.batched([1, 2, 3], 2, strict=Truthy()))
+except ValueError as error:
+    print(error.__class__.__name__)
+print(list(itertools.batched(iterable=[1, 2], n=1)))
+for expr in [
+    lambda: itertools.batched([1]),
+    lambda: itertools.batched([1], 1, 2),
+    lambda: itertools.batched([1, 2], 1, bad=1),
+    lambda: itertools.batched([1], 'x'),
+    lambda: itertools.batched([1], 0),
+    lambda: itertools.batched([1], -1),
+    lambda: itertools.batched(1, 1),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

@@ -743,6 +743,11 @@ pub enum Value {
         state: TeeRef,
         index: usize,
     },
+    ItertoolsBatched {
+        iterator: Box<Value>,
+        n: usize,
+        strict: bool,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1172,6 +1177,7 @@ impl fmt::Display for Value {
                 write!(f, "<itertools.permutations object>")
             }
             Value::ItertoolsTee { .. } => write!(f, "<itertools._tee object>"),
+            Value::ItertoolsBatched { .. } => write!(f, "<itertools.batched object>"),
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),
