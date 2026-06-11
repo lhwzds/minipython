@@ -68,6 +68,7 @@ Recent runtime migration notes:
   `cpython_math_log_family_diff_subset`,
   `cpython_math_trig_diff_subset`,
   `cpython_math_hyperbolic_diff_subset`,
+  `cpython_math_fmod_remainder_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -443,7 +444,9 @@ Recent runtime migration notes:
   `::test_fmin`, and `::test_fmin_nans` public two-argument floating min/max
   behavior, NaN elision, infinity handling, real-number input conversion, and
   catchable error classes.
-- The bundled `math` module also includes `cpython_math_fmod_remainder_subset`,
+- The bundled `math` module also includes
+  `cpython_math_fmod_remainder_diff_subset` and
+  `cpython_math_fmod_remainder_subset`,
   covering CPython `test_math.py::MathTests::testFmod` and `::testRemainder`
   public floating remainder behavior, sign-preserving `fmod()`, IEEE-style
   nearest-even `remainder()`, NaN propagation, infinity/zero-domain errors,

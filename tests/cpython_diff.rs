@@ -1891,6 +1891,65 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_fmod_remainder_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testFmod/testRemainder public stable subset",
+        name: "math-fmod-remainder",
+        source: r#"import math
+print(math.fmod(10, 1), math.fmod(10, 0.5), math.fmod(10, 1.5))
+print(math.fmod(-10, 1), math.copysign(1.0, math.fmod(-10, 1)), math.fmod(-10, 1.5))
+print(math.fmod(10, -1.5), math.fmod(-10, -1.5))
+print(math.fmod(3.0, math.inf), math.fmod(-3.0, math.inf), math.fmod(3.0, -math.inf), math.fmod(0.0, -math.inf))
+print(math.isnan(math.fmod(math.nan, 1.0)), math.isnan(math.fmod(1.0, math.nan)), math.isnan(math.fmod(math.nan, math.nan)))
+print(math.remainder(10, 1), math.remainder(10, 0.5), math.remainder(10, 1.5))
+print(math.remainder(10, 3), math.remainder(-10, 3), math.remainder(7, 2))
+print(math.remainder(6, 4), math.copysign(1.0, math.remainder(6, 4)), math.remainder(6, -4), math.copysign(1.0, math.remainder(6, -4)))
+print(math.remainder(-4.0, 1.0), math.copysign(1.0, math.remainder(-4.0, 1.0)))
+print(math.remainder(2.3, math.inf), math.remainder(-2.3, -math.inf), math.remainder(0.0, math.inf))
+print(math.isnan(math.remainder(math.nan, 1.0)), math.isnan(math.remainder(1.0, math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.fmod(FloatLike(10.0), FloatLike(1.5)), math.remainder(IndexLike(10), IndexLike(3)))
+for expr in [
+    lambda: math.fmod(),
+    lambda: math.remainder(1),
+    lambda: math.fmod(1.0, 0.0),
+    lambda: math.fmod(math.inf, 1.0),
+    lambda: math.fmod(math.inf, math.inf),
+    lambda: math.remainder(1.0, 0.0),
+    lambda: math.remainder(math.inf, 1.0),
+    lambda: math.remainder(-math.inf, -0.0),
+    lambda: math.fmod('x', 1),
+    lambda: math.remainder(1+2j, 1),
+    lambda: math.fmod(IndexLike(10**10000), 1),
+    lambda: math.fmod(BadFloat(), 1),
+    lambda: math.remainder(RaisesFloat(), 1),
+    lambda: math.fmod(x=1, y=2),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
