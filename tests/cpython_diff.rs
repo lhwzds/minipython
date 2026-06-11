@@ -1378,6 +1378,112 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_ceil_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testCeil public stable subset",
+        name: "math-ceil",
+        source: r#"import math
+print(type(math.ceil(0.5)).__name__)
+print(math.ceil(0.5), math.ceil(1.0), math.ceil(1.5))
+print(math.ceil(-0.5), math.ceil(-1.0), math.ceil(-1.5))
+print(math.ceil(0.0), math.ceil(-0.0))
+print(math.ceil(False), math.ceil(True), math.ceil(10**30) == 10**30)
+print(math.ceil(1e20) == 100000000000000000000)
+
+class TestCeil:
+    def __ceil__(self):
+        return 42
+class FloatCeilResult:
+    def __ceil__(self):
+        return 42.5
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class TestNoCeil:
+    pass
+
+print(math.ceil(TestCeil()), type(math.ceil(FloatCeilResult())).__name__)
+print(math.ceil(FloatLike(42.5)), math.ceil(FloatLike(+1.0)), math.ceil(FloatLike(-1.0)))
+print(math.ceil(IndexLike(7)))
+for expr in [
+    lambda: math.ceil(),
+    lambda: math.ceil(1, 2),
+    lambda: math.ceil('1.0'),
+    lambda: math.ceil(1+2j),
+    lambda: math.ceil(float('nan')),
+    lambda: math.ceil(float('inf')),
+    lambda: math.ceil(IndexLike(10**10000)),
+    lambda: math.ceil(TestNoCeil()),
+    lambda: math.ceil(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_math_floor_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testFloor public stable subset",
+        name: "math-floor",
+        source: r#"import math
+print(type(math.floor(0.5)).__name__)
+print(math.floor(0.5), math.floor(1.0), math.floor(1.5))
+print(math.floor(-0.5), math.floor(-1.0), math.floor(-1.5))
+print(math.floor(0.0), math.floor(-0.0))
+print(math.floor(False), math.floor(True), math.floor(-10**30) == -10**30)
+print(math.floor(-1e20) == -100000000000000000000)
+
+class TestFloor:
+    def __floor__(self):
+        return 42
+class FloatFloorResult:
+    def __floor__(self):
+        return 41.5
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class TestNoFloor:
+    pass
+
+print(math.floor(TestFloor()), type(math.floor(FloatFloorResult())).__name__)
+print(math.floor(FloatLike(41.9)), math.floor(FloatLike(+1.0)), math.floor(FloatLike(-1.0)))
+print(math.floor(IndexLike(7)))
+for expr in [
+    lambda: math.floor(),
+    lambda: math.floor(1, 2),
+    lambda: math.floor('1.0'),
+    lambda: math.floor(1+2j),
+    lambda: math.floor(float('nan')),
+    lambda: math.floor(float('-inf')),
+    lambda: math.floor(IndexLike(10**10000)),
+    lambda: math.floor(TestNoFloor()),
+    lambda: math.floor(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
