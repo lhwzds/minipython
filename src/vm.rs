@@ -8657,6 +8657,12 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.__exit__" => {
                 self.call_io_bytesio_exit(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.__iter__" => {
+                self.call_io_bytesio_iter(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.__next__" => {
+                self.call_io_bytesio_next(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readable" => {
                 self.call_io_bytesio_bool_noarg_method(args, keywords, "readable", true)
             }
@@ -17851,6 +17857,42 @@ impl Vm {
         };
         bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
+    }
+
+    fn call_io_bytesio_iter(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.__iter__", &keywords)?;
+        let [receiver @ Value::BytesIO(_)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        Ok(receiver.clone())
+    }
+
+    fn call_io_bytesio_next(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.__next__", &keywords)?;
+        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io_ensure_open(bytes_io)?;
+        let line = bytes_io_readline_chunk(bytes_io, None);
+        if line.is_empty() {
+            self.raise_stop_iteration(Value::None)
+        } else {
+            Ok(bytes_value(line))
+        }
     }
 
     fn call_io_bytesio_getvalue(
@@ -49831,13 +49873,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-            "__enter__" | "__exit__" | "close" | "flush" | "getvalue" | "isatty" | "read"
-            | "readable" | "readinto" | "readline" | "readlines" | "seek" | "seekable" | "tell"
-            | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
-                receiver: Box::new(Value::BytesIO(bytes_io)),
-                identity: Rc::new(()),
-            }),
+            "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "flush" | "getvalue"
+            | "isatty" | "read" | "readable" | "readinto" | "readline" | "readlines" | "seek"
+            | "seekable" | "tell" | "truncate" | "write" | "writable" | "writelines" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
+                    receiver: Box::new(Value::BytesIO(bytes_io)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
             )),
@@ -67411,6 +67455,15 @@ fn advance_plain_iterator(iterator: &mut Value) -> Result<IteratorAdvance, Strin
             *index += 1;
             Ok(IteratorAdvance::Yield(value))
         }
+        Value::BytesIO(bytes_io) => {
+            bytes_io_ensure_open(bytes_io)?;
+            let line = bytes_io_readline_chunk(bytes_io, None);
+            if line.is_empty() {
+                Ok(IteratorAdvance::Complete(Value::None))
+            } else {
+                Ok(IteratorAdvance::Yield(bytes_value(line)))
+            }
+        }
         Value::SetIterator {
             items,
             index,
@@ -69209,6 +69262,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             index: 0,
             exhausted: false,
         })),
+        value @ Value::BytesIO(_) => Ok(value),
         value if array_array_values(&value).is_some() => Ok(list_iterator_from_values(
             array_array_values(&value).expect("array storage exists after guard"),
         )),

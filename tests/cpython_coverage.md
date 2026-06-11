@@ -1242,7 +1242,8 @@ Recent runtime migration notes:
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `readinto()` over
   writable bytearray targets, `tell()`, `seek()`, `truncate()`, position
   advancement, sequential bytes-like line writes, sparse write NUL filling,
-  size/sizehint line reads, `readable()`, `writable()`, `seekable()`,
+  size/sizehint line reads, line iteration through `__iter__()` / `__next__()`
+  with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
   `isatty()`, `flush()`, `close()`, `closed`, closed-stream `ValueError`,
   context-manager entry/exit lifecycle behavior, and representative
   constructor/method TypeError/ValueError classification without host file
