@@ -637,14 +637,16 @@ Recent runtime migration notes:
   `cpython_itertools_keyword_error_subset`,
   `cpython_itertools_pairwise_subset`, and
   `cpython_itertools_product_subset`, and
+  `cpython_itertools_combinations_subset`, and
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
-  `cpython_itertools_product_diff_subset`, covering the pure in-memory
+  `cpython_itertools_product_diff_subset`, and
+  `cpython_itertools_combinations_diff_subset`, covering the pure in-memory
   first-pass `accumulate()`, `count()`, `cycle()`, `repeat()`, `chain()`,
   `chain.from_iterable()`, `compress()`, `filterfalse()`, `takewhile()`,
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, `pairwise()`, and
-  `product()` iterator protocol behavior, plus duplicate-keyword diagnostics for
+  `product()`, and `combinations()` iterator protocol behavior, plus duplicate-keyword diagnostics for
   `accumulate()` and `zip_longest()`.
   This subset supports integer `count()` arguments, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
@@ -661,9 +663,11 @@ Recent runtime migration notes:
   adjacent-pair iteration over finite, infinite, and generator-backed
   sources, and eager cartesian-product pools with `repeat`, `__index__`
   repeat conversion, zero-repeat empty tuple behavior, empty-pool exhaustion,
+  generator inputs, and eager combination pools with `r`, keyword binding,
+  `__index__` r conversion, zero-length tuple behavior, oversize-r exhaustion,
   and generator inputs. The broader
   `itertools` module, floating/non-integer `count()` arithmetic, remaining
-  combinatoric iterators such as `permutations()` / `combinations()` /
+  combinatoric iterators such as `permutations()` and
   `combinations_with_replacement()`, and pickling/repr edge cases remain open.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
   and `cpython_math_isclose_subset`, covering CPython

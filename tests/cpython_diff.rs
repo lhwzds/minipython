@@ -11471,6 +11471,40 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_combinations_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public combinations core subset",
+        name: "itertools-combinations-core",
+        source: r#"import itertools
+c = itertools.combinations('ABCD', 2)
+print(type(c).__name__, iter(c) is c, list(c), list(c))
+print(list(itertools.combinations('ABCD', 0)))
+print(list(itertools.combinations('ABC', 3)))
+print(list(itertools.combinations('ABC', 4)))
+print(list(itertools.combinations('', 0)))
+print(list(itertools.combinations('', 1)))
+it = itertools.combinations((value for value in [1, 2, 3]), 2)
+print(next(it), list(it))
+class IndexLike:
+    def __index__(self):
+        return 2
+print(list(itertools.combinations([1, 2, 3], IndexLike())))
+print(list(itertools.combinations(iterable='ABC', r=2)))
+for expr in [
+    lambda: itertools.combinations('ABC'),
+    lambda: itertools.combinations('ABC', 2, 3),
+    lambda: itertools.combinations('ABC', 'x'),
+    lambda: itertools.combinations('ABC', -1),
+    lambda: itertools.combinations(1, 1),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

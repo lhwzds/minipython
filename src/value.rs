@@ -709,6 +709,13 @@ pub enum Value {
         first: bool,
         done: bool,
     },
+    ItertoolsCombinations {
+        pool: Vec<Value>,
+        indices: Vec<usize>,
+        r: usize,
+        first: bool,
+        done: bool,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1128,6 +1135,9 @@ impl fmt::Display for Value {
             Value::ItertoolsIslice { .. } => write!(f, "<itertools.islice object>"),
             Value::ItertoolsPairwise { .. } => write!(f, "<itertools.pairwise object>"),
             Value::ItertoolsProduct { .. } => write!(f, "<itertools.product object>"),
+            Value::ItertoolsCombinations { .. } => {
+                write!(f, "<itertools.combinations object>")
+            }
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
             Value::SequenceReverseIterator { .. } => write!(f, "<reversed object>"),

@@ -8582,6 +8582,9 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.chain.from_iterable" => {
                 self.call_itertools_chain_from_iterable(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.combinations" => {
+                self.call_itertools_combinations(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.compress" => {
                 self.call_itertools_compress(args, keywords)
             }
@@ -23370,6 +23373,37 @@ impl Vm {
         }))
     }
 
+    fn call_itertools_combinations(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = bind_keyword_call("combinations", &["iterable", "r"], 2, args, keywords)?;
+        let iterable = values[0].take().ok_or_else(|| {
+            "TypeError: combinations() missing required argument 'iterable'".to_string()
+        })?;
+        let r_value = values[1]
+            .take()
+            .ok_or_else(|| "TypeError: combinations() missing required argument 'r'".to_string())?;
+        let r = self.index_big_int(r_value)?;
+        if r.is_negative() {
+            return Err("ValueError: r must be non-negative".to_string());
+        }
+        let r = r
+            .to_usize()
+            .ok_or_else(|| "OverflowError: r argument is too large".to_string())?;
+        let pool = self.collect_iterable_values(iterable)?;
+        let done = r > pool.len();
+        let indices = (0..r).collect();
+        Ok(shared_iterator(Value::ItertoolsCombinations {
+            pool,
+            indices,
+            r,
+            first: true,
+            done,
+        }))
+    }
+
     fn call_ast_replace_method(
         &mut self,
         args: Vec<Value>,
@@ -28883,6 +28917,42 @@ impl Vm {
                     .zip(indices.iter())
                     .map(|(pool, index)| pool[*index].clone())
                     .collect();
+                return Ok(IteratorAdvance::Yield(tuple_value(values)));
+            }
+            Value::ItertoolsCombinations {
+                pool,
+                indices,
+                r,
+                first,
+                done,
+            } => {
+                if *done {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                if *first {
+                    *first = false;
+                } else if *r == 0 {
+                    *done = true;
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                } else {
+                    let n = pool.len();
+                    let mut position = *r;
+                    while position > 0 {
+                        position -= 1;
+                        if indices[position] != position + n - *r {
+                            break;
+                        }
+                    }
+                    if position == 0 && indices[position] == n - *r {
+                        *done = true;
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                    indices[position] += 1;
+                    for index in position + 1..*r {
+                        indices[index] = indices[index - 1] + 1;
+                    }
+                }
+                let values = indices.iter().map(|index| pool[*index].clone()).collect();
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
             Value::MapIterator {
@@ -53489,6 +53559,7 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::ItertoolsProduct { .. } => "product",
+        Value::ItertoolsCombinations { .. } => "combinations",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -53611,6 +53682,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsIslice { .. } => "islice",
         Value::ItertoolsPairwise { .. } => "pairwise",
         Value::ItertoolsProduct { .. } => "product",
+        Value::ItertoolsCombinations { .. } => "combinations",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69198,6 +69270,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::ItertoolsProduct { .. }
+        | Value::ItertoolsCombinations { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69416,6 +69489,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsIslice { .. }
         | Value::ItertoolsPairwise { .. }
         | Value::ItertoolsProduct { .. }
+        | Value::ItertoolsCombinations { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -69825,6 +69899,19 @@ fn get_iter(value: Value) -> Result<Value, String> {
         } => Ok(shared_iterator(Value::ItertoolsProduct {
             pools,
             indices,
+            first,
+            done,
+        })),
+        Value::ItertoolsCombinations {
+            pool,
+            indices,
+            r,
+            first,
+            done,
+        } => Ok(shared_iterator(Value::ItertoolsCombinations {
+            pool,
+            indices,
+            r,
             first,
             done,
         })),
@@ -75626,6 +75713,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsIslice { .. } => Ok(true),
         Value::ItertoolsPairwise { .. } => Ok(true),
         Value::ItertoolsProduct { .. } => Ok(true),
+        Value::ItertoolsCombinations { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

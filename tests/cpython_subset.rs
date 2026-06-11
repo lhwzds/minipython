@@ -35967,6 +35967,56 @@ fn cpython_itertools_product_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_combinations_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "c = itertools.combinations('ABCD', 2)\n",
+            "print(type(c).__name__, iter(c) is c, list(c), list(c))\n",
+            "print(list(itertools.combinations('ABCD', 0)))\n",
+            "print(list(itertools.combinations('ABC', 3)))\n",
+            "print(list(itertools.combinations('ABC', 4)))\n",
+            "print(list(itertools.combinations('', 0)))\n",
+            "print(list(itertools.combinations('', 1)))\n",
+            "it = itertools.combinations((value for value in [1, 2, 3]), 2)\n",
+            "print(next(it), list(it))\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return 2\n",
+            "print(list(itertools.combinations([1, 2, 3], IndexLike())))\n",
+            "print(list(itertools.combinations(iterable='ABC', r=2)))\n",
+            "for expr in [\n",
+            "    lambda: itertools.combinations('ABC'),\n",
+            "    lambda: itertools.combinations('ABC', 2, 3),\n",
+            "    lambda: itertools.combinations('ABC', 'x'),\n",
+            "    lambda: itertools.combinations('ABC', -1),\n",
+            "    lambda: itertools.combinations(1, 1),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)",
+        ),
+        &[
+            "combinations True [('A', 'B'), ('A', 'C'), ('A', 'D'), ('B', 'C'), ('B', 'D'), ('C', 'D')] []",
+            "[()]",
+            "[('A', 'B', 'C')]",
+            "[]",
+            "[()]",
+            "[]",
+            "(1, 2) [(1, 3), (2, 3)]",
+            "[(1, 2), (1, 3), (2, 3)]",
+            "[('A', 'B'), ('A', 'C'), ('B', 'C')]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.
