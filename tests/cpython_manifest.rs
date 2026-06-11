@@ -3412,6 +3412,24 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn types_singleton_alias_diff_evidence_stays_capability_gated() {
+    let start = CPYTHON_DIFF
+        .find("fn cpython_types_singleton_type_aliases_diff_subset()")
+        .expect("types singleton alias diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    assert!(
+        body.contains("hasattr(types, 'NoneType')")
+            && body.contains("hasattr(types, 'NotImplementedType')")
+            && body.contains("hasattr(types, 'EllipsisType')")
+            && body.contains("skipping types singleton aliases diff"),
+        "types singleton alias diff evidence must stay gated for older CPython oracles"
+    );
+}
+
+#[test]
 fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence() {
     for required in [
         "`cpython_diff` oracle evidence",
