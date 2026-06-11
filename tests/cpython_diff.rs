@@ -1196,6 +1196,85 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_integer_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math_integer.py public stable subset",
+        name: "math-integer",
+        source: r#"import math
+print(math.factorial(0), math.factorial(1), math.factorial(5), math.factorial(20))
+
+total = 1
+ok = True
+for i in range(1, 20):
+    total *= i
+    ok = ok and math.factorial(i) == total
+print(ok)
+
+class IntSubclass(int):
+    pass
+class MyIndexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+
+print(math.factorial(False), math.factorial(True), math.factorial(IntSubclass(5)), math.factorial(MyIndexable(6)), type(math.factorial(IntSubclass(5))).__name__)
+values = [0, 1, 2, 3, 4, 15, 16, 17, 10**20, 3**40]
+ok = True
+for value in values:
+    root = math.isqrt(value)
+    ok = ok and root * root <= value and value < (root + 1) * (root + 1) and type(root).__name__ == 'int'
+print(ok)
+print(math.isqrt(True), math.isqrt(False), math.isqrt(MyIndexable(1729)), type(math.isqrt(MyIndexable(1729))).__name__)
+
+ok = True
+for n in range(10):
+    for k in range(n + 1):
+        ok = ok and math.comb(n, k) == math.factorial(n) // (math.factorial(k) * math.factorial(n - k))
+        ok = ok and math.perm(n, k) == math.factorial(n) // math.factorial(n - k)
+print(ok)
+print(math.comb(5, 0), math.comb(5, 1), math.comb(5, 2), math.comb(5, 4), math.comb(5, 5), math.comb(1, 2))
+print(math.perm(5, 0), math.perm(5, 1), math.perm(5, 2), math.perm(5, 5), math.perm(5), math.perm(5, None), math.perm(1, 2))
+n = 2**40
+print(math.comb(n, 0), math.comb(n, 1), math.comb(n, 2))
+print(math.perm(n, 0), math.perm(n, 1), math.perm(n, 2))
+print(math.comb(True, False), math.comb(IntSubclass(5), IntSubclass(2)), math.comb(MyIndexable(5), MyIndexable(2)), type(math.comb(MyIndexable(5), MyIndexable(2))).__name__)
+print(math.perm(True, False), math.perm(IntSubclass(5), IntSubclass(2)), math.perm(MyIndexable(5), MyIndexable(2)), type(math.perm(MyIndexable(5), MyIndexable(2))).__name__)
+
+for expr in [
+    lambda: math.factorial(),
+    lambda: math.factorial(1, 2),
+    lambda: math.factorial(-1),
+    lambda: math.factorial(n=5),
+    lambda: math.isqrt(),
+    lambda: math.isqrt(1, 2),
+    lambda: math.isqrt(3.5),
+    lambda: math.isqrt(3+0j),
+    lambda: math.isqrt(-1),
+    lambda: math.comb(),
+    lambda: math.comb(1),
+    lambda: math.comb(1, 2, 3),
+    lambda: math.comb(10.0, 1),
+    lambda: math.comb(10, 1.0),
+    lambda: math.comb(-1, 1),
+    lambda: math.comb(1, -1),
+    lambda: math.comb(n=1, k=1),
+    lambda: math.perm(),
+    lambda: math.perm(1, 2, 3),
+    lambda: math.perm(10.0, 1),
+    lambda: math.perm(10, 1.0),
+    lambda: math.perm(-1, 1),
+    lambda: math.perm(1, -1),
+    lambda: math.perm(n=1, k=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

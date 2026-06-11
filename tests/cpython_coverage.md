@@ -54,6 +54,7 @@ Recent runtime migration notes:
   `cpython_math_gcd_diff_subset`,
   `cpython_math_lcm_diff_subset`,
   `cpython_math_prod_diff_subset`,
+  `cpython_math_integer_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -394,12 +395,15 @@ Recent runtime migration notes:
   `test_math.py::MathTests::test_lcm` integer, big-integer, variadic,
   empty-call, zero, negative-input, `__index__`, and non-integer rejection
   behavior.
-- The bundled `math` module also includes `cpython_math_integer_subset`,
-  covering CPython `test_math_integer.py::IntMathTests` and `::MathTests`
-  public integer math behavior for `factorial()`, `isqrt()`, `comb()`, and
-  `perm()` through both `math` and `math.integer`, including exact integer
-  results, bool/int-subclass/`__index__` conversion, negative-domain errors, and
-  catchable TypeError cases.
+- The bundled `math` module also includes `cpython_math_integer_diff_subset`
+  and `cpython_math_integer_subset`, covering CPython
+  `test_math_integer.py::IntMathTests` and `::MathTests` public integer math
+  behavior for `factorial()`, `isqrt()`, `comb()`, and `perm()` through both
+  `math` and `math.integer`, including exact integer results,
+  bool/int-subclass/`__index__` conversion, negative-domain errors, and
+  catchable TypeError cases. The default diff covers the stable `math` module
+  surface; the `math.integer` alias stays in the local subset because older
+  system CPython oracles do not expose that submodule.
 - The bundled `math` module also includes `cpython_math_pow_subset`, covering
   CPython `test_math.py::MathTests::testPow` float-result power behavior,
   NaN/inf special cases, zero and signed-zero semantics, negative-base domain
