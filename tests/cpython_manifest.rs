@@ -2754,6 +2754,11 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_ascii_builtin_diff_subset"),
         "builtins sandbox manifest must cite CPython diff evidence for ascii()"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_chr_ord_builtin_diff_subset"),
+        "builtins sandbox manifest must cite CPython diff evidence for chr()/ord()"
+    );
 }
 
 #[test]

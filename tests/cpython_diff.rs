@@ -2632,6 +2632,25 @@ for expr in [lambda: ascii(), lambda: ascii(1, 2)]:
 }
 
 #[test]
+fn cpython_chr_ord_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_chr / ::test_ord",
+        name: "chr-ord-builtins",
+        source: r#"print(chr(65), chr(97))
+print(ord(' '), ord('A'), ord('a'), ord('\xff'))
+print(ord(b'A'), ord(bytearray(b'\xff')))
+print(ord(chr(0)), ord(chr(32)), ord(chr(0xff)), ord(chr(0x10ffff)))
+values = [0x0000ffff, 0x00010000, 0x00010001, 0x000ffffe, 0x000fffff, 0x00100000, 0x00100001, 0x0010fffe, 0x0010ffff]
+print([ord(chr(value)) for value in values])
+for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x110000), lambda: ord(), lambda: ord(42), lambda: ord('ab'), lambda: ord(b'ab')]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
