@@ -68,7 +68,7 @@ Recent runtime migration notes:
 - Legacy sandbox stdlib evidence names from `tests/cpython_migration.md` are
   intentionally kept visible here so the coverage manifest can guard them:
   `builtin-breakpoint-custom-hook`, `builtin-breakpoint-passthru-error`,
-  `pure-memory-stdlib-core`, and `operator-precedence-and-associativity`.
+  and `pure-memory-stdlib-core`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_globals_locals_builtin_diff_subset`,
   `cpython_eval_builtin_diff_subset`,

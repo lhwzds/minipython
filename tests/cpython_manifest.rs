@@ -2166,7 +2166,6 @@ fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
         "builtin-breakpoint-custom-hook"
             | "builtin-breakpoint-passthru-error"
             | "pure-memory-stdlib-core"
-            | "operator-precedence-and-associativity"
     )
 }
 
