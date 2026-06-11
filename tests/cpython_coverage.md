@@ -158,6 +158,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_repr_nonsortable_diff_subset`,
+  `cpython_collections_counter_subtract_unary_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
@@ -371,6 +372,10 @@ Recent runtime migration notes:
   `cpython_collections_counter_repr_nonsortable_subset`, covering CPython
   public `Counter.__repr__()` behavior when count values cannot be directly
   sorted.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_subtract_unary_diff_subset` and
+  `cpython_collections_counter_subtract_unary_subset`, covering CPython public
+  `Counter.subtract()` and unary plus/minus count filtering.
 - The bundled `collections` module also includes
   `cpython_collections_chainmap_public_diff_subset`, covering CPython public
   `ChainMap` construction, truthiness, combined iteration/items/dict coercion,

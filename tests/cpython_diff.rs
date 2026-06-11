@@ -4919,6 +4919,27 @@ print("'b': None" in r)"#,
 }
 
 #[test]
+fn cpython_collections_counter_subtract_unary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter subtract/unary subset",
+        name: "collections-counter-subtract-unary",
+        source: r#"from collections import Counter
+c = Counter('abracadabra')
+c.subtract('aaaaaz')
+c.subtract({'b': 2, 'z': -3})
+print(sorted(c.items()))
+print(sorted((+Counter({'a': 3, 'b': 0, 'c': -2})).items()))
+print(sorted((-Counter({'a': 3, 'b': 0, 'c': -2})).items()))
+d = Counter()
+d.subtract(a=2, b=-4)
+print(sorted(d.items()))
+e = Counter(a=2)
+e.subtract(Counter(a=5, c=1))
+print(sorted(e.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
