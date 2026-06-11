@@ -1776,6 +1776,65 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_trig_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testAcos/Asin/Atan/Atan2/Cos/Sin/Tan public stable subset",
+        name: "math-trig",
+        source: r#"import math
+print(round(math.acos(-1), 12) == round(math.pi, 12), round(math.acos(0), 12) == round(math.pi / 2, 12), math.acos(1))
+print(round(math.asin(-1), 12) == round(-math.pi / 2, 12), math.asin(0), round(math.asin(1), 12) == round(math.pi / 2, 12))
+print(round(math.atan(-1), 12) == round(-math.pi / 4, 12), math.atan(0), round(math.atan(1), 12) == round(math.pi / 4, 12))
+print(round(math.atan(math.inf), 12) == round(math.pi / 2, 12), round(math.atan(-math.inf), 12) == round(-math.pi / 2, 12))
+print(round(math.atan2(-1, 0), 12) == round(-math.pi / 2, 12), round(math.atan2(1, -1), 12) == round(3 * math.pi / 4, 12))
+print(math.atan2(0.0, -0.0) == math.pi, math.copysign(1.0, math.atan2(-0.0, 0.0)))
+print(round(math.cos(0), 12), round(math.cos(math.pi), 12), round(math.sin(math.pi / 2), 12), round(math.sin(-math.pi / 2), 12))
+print(round(math.tan(math.pi / 4), 12), round(math.tan(-math.pi / 4), 12), math.tan(0))
+print(math.isnan(math.acos(math.nan)), math.isnan(math.asin(math.nan)), math.isnan(math.atan(math.nan)), math.isnan(math.atan2(math.nan, 1)))
+print(math.isnan(math.cos(math.nan)), math.isnan(math.sin(math.nan)), math.isnan(math.tan(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.acos(FloatLike(1.0)), round(math.sin(IndexLike(1)), 12), round(math.atan2(IndexLike(1), IndexLike(1)), 12) == round(math.pi / 4, 12))
+for expr in [
+    lambda: math.acos(),
+    lambda: math.asin(1, 2),
+    lambda: math.atan2(1),
+    lambda: math.atan2(1, 2, 3),
+    lambda: math.acos(1.1),
+    lambda: math.asin(-1.1),
+    lambda: math.cos(math.inf),
+    lambda: math.sin(-math.inf),
+    lambda: math.tan(math.inf),
+    lambda: math.acos('x'),
+    lambda: math.sin(1+2j),
+    lambda: math.tan(IndexLike(10**10000)),
+    lambda: math.cos(BadFloat()),
+    lambda: math.atan(RaisesFloat()),
+    lambda: math.atan2(x=1, y=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

@@ -66,6 +66,7 @@ Recent runtime migration notes:
   `cpython_math_cbrt_diff_subset`,
   `cpython_math_exp_exp2_diff_subset`,
   `cpython_math_log_family_diff_subset`,
+  `cpython_math_trig_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -532,8 +533,9 @@ Recent runtime migration notes:
   huge `__index__` inputs and OverflowError-to-`__index__` fallback for log
   helpers because the default CPython 3.9 oracle does not provide stable
   cross-version evidence for those boundaries.
-- The bundled `math` module also includes `cpython_math_trig_subset`, covering
-  CPython `test_math.py::MathTests::testAcos`, `::testAsin`, `::testAtan`,
+- The bundled `math` module also includes `cpython_math_trig_diff_subset` and
+  `cpython_math_trig_subset`, covering CPython
+  `test_math.py::MathTests::testAcos`, `::testAsin`, `::testAtan`,
   `::testAtan2`, `::testCos`, `::testSin`, and `::testTan` public
   trigonometric behavior, domain errors, signed-zero `atan2()` behavior,
   non-finite propagation/rejection, `__float__` and `__index__` input
