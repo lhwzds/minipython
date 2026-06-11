@@ -3110,7 +3110,8 @@ Recent runtime migration notes:
 - `RUNTIME_BUILTINS` also includes
   `cpython_builtin_negation_sys_maxsize_subset`, covering CPython
   `BuiltinTest::test_neg` for the `-sys.maxsize - 1` integer boundary,
-  `isinstance(..., int)`, and negation back to `sys.maxsize + 1`.
+  `isinstance(..., int)`, and negation back to `sys.maxsize + 1`. Direct CPython
+  output parity is tracked by `cpython_builtin_negation_sys_maxsize_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_len_builtin_subset`, covering CPython `BuiltinTest::test_len`
   behavior for supported builtin containers and custom `__len__` methods,

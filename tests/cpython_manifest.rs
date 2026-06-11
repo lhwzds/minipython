@@ -3389,6 +3389,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
+        "cpython_builtin_negation_sys_maxsize_diff_subset",
         "cpython_int_max_str_digits_runtime_diff_subset",
         "cpython_builtin_breakpoint_custom_hook_diff_subset",
         "cpython_builtin_breakpoint_passthru_error_diff_subset",

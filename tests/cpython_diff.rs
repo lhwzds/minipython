@@ -15444,6 +15444,20 @@ print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
 }
 
 #[test]
+fn cpython_builtin_negation_sys_maxsize_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_neg",
+        name: "builtin-negation-sys-maxsize",
+        source: r#"import sys
+x = -sys.maxsize - 1
+print(type(x).__name__)
+print(isinstance(x, int))
+print(-x == sys.maxsize + 1)
+print(-x)"#,
+    });
+}
+
+#[test]
 fn cpython_int_max_str_digits_runtime_diff_subset() {
     let oracle_probe = run_cpython(
         "import sys; print(hasattr(sys, 'get_int_max_str_digits'), hasattr(sys, 'set_int_max_str_digits'))",
