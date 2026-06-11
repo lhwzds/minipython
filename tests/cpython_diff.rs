@@ -4488,6 +4488,44 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_simple_namespace_basic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
+        name: "types-simple-namespace-basic",
+        source: r#"import types
+def show(ns):
+    print(sorted(vars(ns).items()))
+empty = types.SimpleNamespace()
+ns = types.SimpleNamespace(x=4, y=2, z=3)
+show(empty)
+show(ns)
+print(ns.x, ns.y, ns.z, ns.__dict__ is vars(ns))
+ns.theta = None
+del ns.y
+show(ns)
+ns.__dict__['x'] = 70
+print(ns.x)
+print(repr(types.SimpleNamespace(x='spam')))
+print(types.SimpleNamespace(a=1) == types.SimpleNamespace(a=1), types.SimpleNamespace(a=1) != types.SimpleNamespace())
+print(type(empty) is types.SimpleNamespace, isinstance(empty, types.SimpleNamespace))
+class Spam(types.SimpleNamespace):
+    pass
+spam = Spam(ham=8, eggs=9)
+print(type(spam).__name__, isinstance(spam, types.SimpleNamespace), sorted(vars(spam).items()))
+for expr in [lambda: empty.missing, lambda: len(ns), lambda: iter(ns), lambda: ('x' in ns), lambda: ns['x']]:
+    try:
+        expr()
+    except (AttributeError, TypeError) as error:
+        print(error.__class__.__name__)
+for expr in [lambda: types.SimpleNamespace([], []), lambda: types.SimpleNamespace(1)]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
