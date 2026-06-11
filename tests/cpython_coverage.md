@@ -50,6 +50,7 @@ Recent runtime migration notes:
   `operator-precedence-and-associativity`, and `pow-builtin`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_math_core_diff_subset`,
+  `cpython_math_isclose_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -369,11 +370,12 @@ Recent runtime migration notes:
   sources. The broader
   `itertools` module, floating/non-integer `count()` arithmetic, combinatoric
   iterators, and pickling/repr edge cases remain open.
-- The bundled `math` module also includes `cpython_math_isclose_subset`,
-  covering CPython `test_math.py::IsCloseTests` public relative and absolute
-  tolerance behavior, identical values, near-zero comparisons, infinity/NaN
-  handling, keyword-only tolerances, real-number input conversion, negative
-  tolerance rejection, and catchable error classes.
+- The bundled `math` module also includes `cpython_math_isclose_diff_subset`
+  and `cpython_math_isclose_subset`, covering CPython
+  `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,
+  identical values, near-zero comparisons, infinity/NaN handling, keyword-only
+  tolerances, real-number input conversion, negative tolerance rejection, and
+  catchable error classes.
 - The bundled `math` module also includes `cpython_math_hypot_dist_subset`,
   covering CPython `test_math.py::MathTests::testHypot` and `::testDist`
   public Euclidean norm/distance behavior, variadic `hypot()`, iterable

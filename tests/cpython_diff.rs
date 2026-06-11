@@ -1026,6 +1026,56 @@ for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd
 }
 
 #[test]
+fn cpython_math_isclose_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::IsCloseTests public stable subset",
+        name: "math-isclose",
+        source: r#"import math
+
+print(math.isclose(2.0, 2.0, rel_tol=0.0, abs_tol=0.0), math.isclose(12345, 12345.0, rel_tol=0.0, abs_tol=0.0), math.isclose(0.0, -0.0, rel_tol=0.0, abs_tol=0.0))
+print(math.isclose(1.0000000001, 1.0), math.isclose(1.00000001, 1.0), math.isclose(1e8, 1e8 + 1, rel_tol=1e-8), math.isclose(1e8, 1e8 + 1, rel_tol=1e-9))
+print(math.isclose(-1e-8, -1.000000009e-8, rel_tol=1e-8), math.isclose(1.12345678, 1.12345679, rel_tol=1e-8), math.isclose(1.12345678, 1.12345679, rel_tol=1e-9))
+print(math.isclose(1e-9, 0.0, rel_tol=0.9), math.isclose(-1e-9, 0.0, rel_tol=0.9), math.isclose(1e-9, 0.0, abs_tol=1e-8), math.isclose(-1e-150, 0.0, abs_tol=1e-8))
+print(math.isclose(math.inf, math.inf), math.isclose(-math.inf, -math.inf), math.isclose(math.nan, math.nan), math.isclose(math.inf, -math.inf), math.isclose(math.inf, 1.0), math.isclose(1e308, math.inf))
+print(math.isclose(9, 10, rel_tol=0.1), math.isclose(10, 9, rel_tol=0.1), math.isclose(100000001, 100000000, rel_tol=1e-8), math.isclose(100000001, 100000000, rel_tol=1e-9))
+print(math.isclose(a=1, b=1), math.isclose(1, b=1), math.isclose(1, 1, rel_tol=0.0, abs_tol=0.0), math.isclose(1, 2, rel_tol=1.0, abs_tol=0.0))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.isclose(FloatLike(1.0), FloatLike(1.0)), math.isclose(IndexLike(100000001), IndexLike(100000000), rel_tol=1e-8), math.isclose(True, 1), math.isclose(False, 0))
+for expr in [
+    lambda: math.isclose(),
+    lambda: math.isclose(1),
+    lambda: math.isclose(1, 1, 1e-9),
+    lambda: math.isclose(1, 1, spam=1),
+    lambda: math.isclose(b=1),
+    lambda: math.isclose(1, a=1),
+    lambda: math.isclose(1, 1, rel_tol=-1e-100),
+    lambda: math.isclose(1, 1, abs_tol=-1e10),
+    lambda: math.isclose('x', 1),
+    lambda: math.isclose(1+2j, 1),
+    lambda: math.isclose(RaisesFloat(), 1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
