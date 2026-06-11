@@ -1245,10 +1245,10 @@ Recent runtime migration notes:
   sparse write NUL filling,
   size/sizehint line reads, line iteration through `__iter__()` / `__next__()`
   with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
-  `isatty()`, `flush()`, `close()`, `closed`, closed-stream `ValueError`,
-  context-manager entry/exit lifecycle behavior, and representative
-  constructor/method TypeError/ValueError classification without host file
-  descriptors or buffering layers.
+  `isatty()`, `flush()`, `close()`, `closed`, supported method visibility
+  through `dir()`, closed-stream `ValueError`, context-manager entry/exit
+  lifecycle behavior, and representative constructor/method TypeError/ValueError
+  classification without host file descriptors or buffering layers.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,

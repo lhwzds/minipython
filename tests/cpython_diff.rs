@@ -10279,6 +10279,8 @@ print(bio.seek(1), bio.writelines([b'a', b'b']), bio.getvalue(), bio.tell())
 bio = io.BytesIO(b'abc')
 print(bio.readable(), bio.writable(), bio.seekable(), bio.isatty(), bio.flush(), bio.tell(), bio.getvalue())
 print(hasattr(bio, 'readable'), hasattr(bio, 'writable'), hasattr(bio, 'seekable'), hasattr(bio, 'isatty'), hasattr(bio, 'flush'))
+required = ['close', 'closed', 'flush', 'getvalue', 'isatty', 'read', 'read1', 'readable', 'readinto', 'readinto1', 'readline', 'readlines', 'seek', 'seekable', 'tell', 'truncate', 'writable', 'write', 'writelines', '__enter__', '__exit__', '__iter__', '__next__']
+print(all(name in dir(bio) for name in required), all(name in dir(io.BytesIO) for name in required))
 bio = io.BytesIO(b'abc')
 print(bio.closed, hasattr(bio, 'close'), hasattr(bio, 'closed'))
 print(bio.close(), bio.closed)
