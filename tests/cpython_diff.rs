@@ -5099,6 +5099,62 @@ for result in [p + q, p - q, p | q, p & q]:
 }
 
 #[test]
+fn cpython_collections_counter_multiset_operations_matrix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter multiset operations matrix subset",
+        name: "collections-counter-multiset-operations-matrix",
+        source: r#"from collections import Counter
+seed = 8675309
+def randrange(start, stop):
+    global seed
+    seed = (seed * 1103515245 + 12345) % 2147483648
+    return start + seed % (stop - start)
+def random_counter(elements, start, stop):
+    c = Counter()
+    for elem in elements:
+        c[elem] = randrange(start, stop)
+    return c
+def clipped(value):
+    if value > 0:
+        return value
+    return 0
+def expected_count(name, left, right):
+    if name == 'add':
+        return clipped(left + right)
+    if name == 'sub':
+        return clipped(left - right)
+    if name == 'or':
+        if left > right:
+            return clipped(left)
+        return clipped(right)
+    if left < right:
+        return clipped(left)
+    return clipped(right)
+def all_positive(counter):
+    for value in counter.values():
+        if not value > 0:
+            return False
+    return True
+failures = 0
+elements = 'abcd'
+ops = [('add', Counter.__add__), ('sub', Counter.__sub__), ('or', Counter.__or__), ('and', Counter.__and__)]
+for i in range(1000):
+    p = random_counter(elements, -2, 4)
+    p.update(e=1, f=-1, g=0)
+    q = random_counter(elements, -2, 4)
+    q.update(h=1, i=-1, j=0)
+    for name, counterop in ops:
+        result = counterop(p, q)
+        for x in elements:
+            if expected_count(name, p[x], q[x]) != result[x]:
+                failures = failures + 1
+        if not all_positive(result):
+            failures = failures + 1
+print(failures)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_inplace_operations_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter inplace operations subset",

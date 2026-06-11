@@ -165,6 +165,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_update_reentrant_add_clears_counter_diff_subset`,
   `cpython_collections_counter_helper_function_diff_subset`,
   `cpython_collections_counter_multiset_operations_diff_subset`,
+  `cpython_collections_counter_multiset_operations_matrix_diff_subset`,
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
@@ -415,6 +416,12 @@ Recent runtime migration notes:
   public Counter multiset `+`, `-`, `|`, and `&` result filtering and direct
   dunder dispatch. Symmetric difference remains subset-only for the current
   local CPython oracle.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_multiset_operations_matrix_diff_subset` and
+  `cpython_collections_counter_multiset_operations_matrix_subset`, covering the
+  deterministic CPython-style 1000-pair matrix for Counter multiset `+`, `-`,
+  `|`, and `&` count formulas and positive-result filtering. Symmetric
+  difference remains subset-only for the current local CPython oracle.
 - The bundled `collections` module also includes
   `cpython_collections_counter_inplace_operations_diff_subset` and
   `cpython_collections_counter_inplace_operations_subset`, covering CPython
