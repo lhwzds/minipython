@@ -5277,6 +5277,19 @@ print(ba)"#,
 }
 
 #[test]
+fn cpython_bytearray_join_custom_iterator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_bytearray_join_with_custom_iterator",
+        name: "bytearray-join-custom-iterator",
+        source: r#"array = bytearray(b',')
+def iterator():
+    yield b'A'
+    yield b'B'
+print(array.join(iterator()))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

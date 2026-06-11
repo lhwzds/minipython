@@ -1319,11 +1319,14 @@ Recent runtime migration notes:
   `zfill()`, `rjust()`, `ljust()`, `center()`, `split()`, `rsplit()`,
   `splitlines()`, `replace(b'', b'')`, and one-item `join()`.
 - `STRING_RUNTIME` also includes
+  `cpython_bytearray_join_custom_iterator_diff_subset` and
   `cpython_bytearray_join_reentrant_resize_subset`, covering CPython
   `BuiltinTest::test_bytearray_join_with_custom_iterator` and
   `::test_bytearray_join_with_misbehaving_iterator`: bytearray `join()` accepts
   custom iterators and keeps the separator resize-locked while consuming the
-  iterable so re-entrant separator resizing raises `BufferError`.
+  iterable so re-entrant separator resizing raises `BufferError`. The
+  re-entrant resize check remains local runtime evidence because it differs
+  across default system CPython versions.
 - `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and
