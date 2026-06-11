@@ -4867,6 +4867,45 @@ print(set(c) == set(s))"#,
 }
 
 #[test]
+fn cpython_collections_counter_init_update_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter init/update subset",
+        name: "collections-counter-init-update",
+        source: r#"from collections import Counter
+print(list(Counter(self=42).items()))
+print(list(Counter(iterable=42).items()))
+print(list(Counter(iterable=None).items()))
+for call in [lambda: Counter(42), lambda: Counter((), ())]:
+    try:
+        call()
+    except TypeError:
+        print('TypeError')
+try:
+    Counter.__init__()
+except TypeError:
+    print('TypeError')
+c = Counter()
+c.update(self=42)
+print(list(c.items()))
+c = Counter()
+c.update(iterable=42)
+print(list(c.items()))
+c = Counter()
+c.update(iterable=None)
+print(list(c.items()))
+for call in [lambda: Counter().update(42), lambda: Counter().update({}, {})]:
+    try:
+        call()
+    except TypeError:
+        print('TypeError')
+try:
+    Counter.update()
+except TypeError:
+    print('TypeError')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",

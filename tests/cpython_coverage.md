@@ -156,6 +156,7 @@ Recent runtime migration notes:
   `cpython_types_simple_namespace_fake_comparison_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
+  `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
@@ -358,6 +359,12 @@ Recent runtime migration notes:
   `cpython_collections_counter_conversions_subset`, covering CPython public
   `Counter` conversion behavior for `elements()`, key iteration, `dict()`,
   `dict(items())`, and `set()` construction.
+- The bundled `collections` module also includes
+  `cpython_collections_counter_init_update_diff_subset` and
+  `cpython_collections_counter_init_update_subset`, covering CPython public
+  `Counter` construction and `update()` behavior for positional-only
+  parameter names used as keys, `None` keyword values, and TypeError
+  boundaries.
 - The bundled `collections` module also includes
   `cpython_collections_chainmap_public_diff_subset`, covering CPython public
   `ChainMap` construction, truthiness, combined iteration/items/dict coercion,
