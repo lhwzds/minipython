@@ -1238,9 +1238,10 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `write()`, `getvalue()`,
-  `readinto()` over writable bytearray targets, position advancement, and
-  representative constructor/method TypeError classification without host file
-  descriptors or buffering layers.
+  `readinto()` over writable bytearray targets, `tell()`, `seek()`,
+  `truncate()`, position advancement, sparse write NUL filling, and
+  representative constructor/method TypeError/ValueError classification
+  without host file descriptors or buffering layers.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,

@@ -999,6 +999,28 @@ fn bytes_io_write_chunk(bytes_io: &BytesIORef, bytes: &[u8]) -> usize {
     bytes.len()
 }
 
+fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usize, String> {
+    let mut state = bytes_io.borrow_mut();
+    let base = match whence {
+        0 => 0_i128,
+        1 => state.position as i128,
+        2 => state.buffer.len() as i128,
+        _ => return Err("ValueError: invalid whence".to_string()),
+    };
+    let position = base + i128::from(offset);
+    if position < 0 {
+        return Err("ValueError: negative seek position".to_string());
+    }
+    let position = usize::try_from(position)
+        .map_err(|_| "OverflowError: new position does not fit in an index".to_string())?;
+    state.position = position;
+    Ok(position)
+}
+
+fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) {
+    bytes_io.borrow_mut().buffer.resize(size, 0);
+}
+
 fn readinto_buffer_type_error(value: &Value) -> String {
     format!(
         "TypeError: readinto() argument must be read-write bytes-like object, not {}",
@@ -8481,6 +8503,15 @@ impl Vm {
             }
             Value::Builtin(name) if name == "io.BytesIO.readinto" => {
                 self.call_io_bytesio_readinto(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.tell" => {
+                self.call_io_bytesio_tell(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.seek" => {
+                self.call_io_bytesio_seek(args, keywords)
+            }
+            Value::Builtin(name) if name == "io.BytesIO.truncate" => {
+                self.call_io_bytesio_truncate(args, keywords)
             }
             Value::Builtin(name) if name == "bool" => call_bool_builtin(self, args, keywords),
             Value::Builtin(name) if name == "int" => self.call_int(args, keywords),
@@ -17460,6 +17491,90 @@ impl Vm {
             ));
         };
         Ok(bytes_value(bytes_io.borrow().buffer.clone()))
+    }
+
+    fn call_io_bytesio_tell(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.tell", &keywords)?;
+        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.tell() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        i64::try_from(bytes_io.borrow().position)
+            .map(Value::Number)
+            .map_err(|_| "OverflowError: position does not fit in an integer".to_string())
+    }
+
+    fn call_io_bytesio_seek(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.seek", &keywords)?;
+        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: seek expected at least 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.is_empty() || rest.len() > 2 {
+            return Err(format!(
+                "TypeError: seek expected 1 or 2 arguments, got {}",
+                rest.len()
+            ));
+        }
+        let offset = self.index_i64(rest[0].clone(), "argument")?;
+        let whence = if rest.len() == 2 {
+            self.index_i64(rest[1].clone(), "argument")?
+        } else {
+            0
+        };
+        let position = bytes_io_seek(bytes_io, offset, whence)?;
+        i64::try_from(position)
+            .map(Value::Number)
+            .map_err(|_| "OverflowError: position does not fit in an integer".to_string())
+    }
+
+    fn call_io_bytesio_truncate(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.truncate", &keywords)?;
+        let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: truncate expected at most 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "TypeError: truncate expected at most 1 argument, got {}",
+                rest.len()
+            ));
+        }
+        let size = match rest {
+            [] | [Value::None] => bytes_io.borrow().position,
+            [value] => {
+                let size = self.index_i64(value.clone(), "argument")?;
+                if size < 0 {
+                    return Err("ValueError: negative size value".to_string());
+                }
+                usize::try_from(size).map_err(|_| {
+                    "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
+                })?
+            }
+            _ => unreachable!("BytesIO.truncate arity is checked before reading size"),
+        };
+        bytes_io_truncate(bytes_io, size);
+        i64::try_from(size)
+            .map(Value::Number)
+            .map_err(|_| "OverflowError: truncate result is too large".to_string())
     }
 
     fn call_memoryview_method(
@@ -49330,11 +49445,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::BytesIO(bytes_io) => match name {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-            "getvalue" | "read" | "readinto" | "write" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
-                receiver: Box::new(Value::BytesIO(bytes_io)),
-                identity: Rc::new(()),
-            }),
+            "getvalue" | "read" | "readinto" | "seek" | "tell" | "truncate" | "write" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
+                    receiver: Box::new(Value::BytesIO(bytes_io)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
             )),

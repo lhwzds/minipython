@@ -10191,11 +10191,20 @@ for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:
     obj = io.BytesIO() if source is None else io.BytesIO(source)
     out = bytearray(4)
     print(type(obj).__name__, obj.readinto(out), out, obj.getvalue())
-for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('getvalue-arg', lambda: io.BytesIO().getvalue(1))]:
+bio = io.BytesIO(b'abcdef')
+print(bio.tell(), bio.read(2), bio.tell())
+print(bio.seek(1), bio.read(2), bio.tell())
+print(bio.seek(-1, 1), bio.read(1), bio.tell())
+print(bio.seek(-2, 2), bio.read(), bio.tell())
+print(bio.seek(10), bio.tell(), bio.write(b'Z'), bio.getvalue())
+bio = io.BytesIO(b'abcdef')
+print(bio.truncate(3), bio.getvalue(), bio.tell())
+print(bio.seek(2), bio.truncate(), bio.getvalue(), bio.tell())
+for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda: io.BytesIO(b'a', b'b')), ('write-str', lambda: io.BytesIO().write('x')), ('read-too-many', lambda: io.BytesIO().read(1, 2)), ('getvalue-arg', lambda: io.BytesIO().getvalue(1)), ('tell-arg', lambda: io.BytesIO().tell(1)), ('seek-neg-start', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence', lambda: io.BytesIO(b'a').seek(0, 3)), ('seek-nonstr', lambda: io.BytesIO(b'a').seek('x')), ('truncate-neg', lambda: io.BytesIO(b'a').truncate(-1))]:
     try:
         expr()
-    except TypeError as error:
-        print(label, error.__class__.__name__)"#,
+    except Exception as error:
+        print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))"#,
     });
 }
 
