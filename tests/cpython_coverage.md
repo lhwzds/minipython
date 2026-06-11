@@ -185,6 +185,7 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_field_doc_diff_subset`,
   `cpython_collections_namedtuple_copy_keyword_generic_alias_diff_subset`,
   `cpython_collections_namedtuple_new_builtins_globals_diff_subset`,
+  `cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset`,
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
@@ -498,9 +499,10 @@ Recent runtime migration notes:
   `cpython_collections_namedtuple_new_builtins_globals_diff_subset` and
   `cpython_collections_namedtuple_new_builtins_globals_subset`, covering the
   CPython public generated namedtuple `__new__.__globals__['__builtins__']`
-  empty-mapping behavior that is stable across the local oracle version. The
-  broader `function.__builtins__` check remains in
-  `cpython_collections_namedtuple_new_builtins_issue_43102_subset`.
+  empty-mapping behavior that is stable across the local oracle version.
+  `cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset` and
+  `cpython_collections_namedtuple_new_builtins_issue_43102_subset` add gated
+  direct evidence for the newer `function.__builtins__` public attribute.
 - The bundled `collections` module also includes
   `cpython_collections_userdict_userlist_public_diff_subset` and
   `cpython_collections_userdict_userlist_public_subset`, covering CPython

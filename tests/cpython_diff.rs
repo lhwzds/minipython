@@ -5743,6 +5743,30 @@ print(new_func.__globals__['__builtins__'] == {})"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset() {
+    let probe = run_cpython(
+        "from collections import namedtuple\nobj = namedtuple('C', ())\nprint(hasattr(obj.__new__, '__builtins__'))",
+    )
+    .expect("failed to run CPython namedtuple new builtins feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping namedtuple new builtins issue diff: CPython oracle lacks function.__builtins__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple new builtins issue 43102 subset",
+        name: "collections-namedtuple-new-builtins-issue-43102",
+        source: r#"from collections import namedtuple
+obj = namedtuple('C', ())
+new_func = obj.__new__
+print(new_func.__globals__['__builtins__'] == {})
+print(new_func.__builtins__ == {})"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",
