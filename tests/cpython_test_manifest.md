@@ -1055,7 +1055,9 @@ of current CPython `ByteArrayTest::test_extend_empty_buffer_overflow`, covering
 `bytearray.extend()` over zero-length-hint iterators and catchable
 `float(bytearray())` `ValueError` parsing failures while classifying the original
 C allocation/NUL-termination regression as CPython-internal implementation
-coverage.
+coverage. Capability-gated direct CPython diff evidence is in
+`cpython_bytearray_extend_empty_buffer_overflow_diff_subset` when the selected
+oracle has the fixed public behavior.
 `cpython_bytearray_regexps_subset` ports the public behavior of
 `ByteArrayTest::test_regexps`, covering the supported `re.findall()` bytes
 pattern subset where ASCII `\w+` over bytes-like subjects returns ordinary

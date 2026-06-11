@@ -1587,9 +1587,11 @@ Recent runtime migration notes:
   CPython `ByteArrayTest::test_extend_empty_buffer_overflow` public behavior for
   `bytearray.extend()` over zero-length-hint iterators and catchable
   `float(bytearray())` `ValueError` parsing failures. This remains local subset
-  evidence because the local default oracle is system CPython 3.9.6, which
-  still exhibits the historical corrupted-bytearray behavior that current
-  CPython's regression test prevents.
+  evidence under the local default oracle because system CPython 3.9.6 still
+  exhibits the historical corrupted-bytearray behavior that CPython's regression test prevents
+  in fixed oracles. Capability-gated diff evidence is in
+  `cpython_bytearray_extend_empty_buffer_overflow_diff_subset` when the selected
+  CPython oracle has the fixed public behavior.
 - `STRING_RUNTIME` also includes `cpython_bytearray_regexps_subset`, covering
   CPython `ByteArrayTest::test_regexps` public behavior for the supported
   `re.findall()` bytes-pattern subset: ASCII `\w+` over bytes-like subjects

@@ -12919,6 +12919,51 @@ print(seen)"#,
 }
 
 #[test]
+fn cpython_bytearray_extend_empty_buffer_overflow_diff_subset() {
+    let oracle_probe = run_cpython(
+        r#"class EvilIter:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return next(source)
+    def __length_hint__(self):
+        return 0
+source = iter(b'42')
+ba = bytearray()
+ba.extend(EvilIter())
+print(ba)"#,
+    )
+    .expect("failed to probe CPython bytearray zero length-hint iterator behavior");
+    if String::from_utf8_lossy(&oracle_probe.stdout).trim() != "bytearray(b'42')" {
+        eprintln!(
+            "skipping bytearray zero length-hint extend diff: CPython oracle has legacy behavior"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_extend_empty_buffer_overflow public subset",
+        name: "bytearray-extend-empty-buffer-overflow",
+        source: r#"class EvilIter:
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return next(source)
+    def __length_hint__(self):
+        return 0
+
+source = iter(b'42')
+ba = bytearray()
+ba.extend(EvilIter())
+print(ba)
+try:
+    float(bytearray())
+except ValueError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_mutating_index_conversion_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index public __index__ conversion subset",

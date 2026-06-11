@@ -3560,6 +3560,11 @@ Completed in the bytearray extend empty-buffer overflow pass:
 - Covered the Python-visible behavior that `bytearray.extend()` still consumes an
   iterator whose `__length_hint__()` returns zero, and that `float(bytearray())`
   raises a catchable `ValueError` afterward.
+- Added the capability-gated
+  `cpython_bytearray_extend_empty_buffer_overflow_diff_subset`, which directly
+  compares the same behavior when the selected CPython oracle has the fixed
+  zero-length-hint iterator behavior; the local system CPython 3.9.6 oracle
+  still exhibits the historical corrupted-bytearray behavior.
 - Changed `float()` parsing failures for strings, bytes, and bytearray values to
   report `ValueError:`-typed runtime errors so MiniPython's Python-level
   `try`/`except ValueError` can catch them.
