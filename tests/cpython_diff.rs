@@ -4738,6 +4738,27 @@ for expr in [lambda: types.SimpleNamespace([], []), lambda: types.SimpleNamespac
 }
 
 #[test]
+fn cpython_types_simple_namespace_recursive_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::SimpleNamespaceTests recursive subset",
+        name: "types-simple-namespace-recursive",
+        source: r#"import types
+ns1 = types.SimpleNamespace(c='cookie')
+ns2 = types.SimpleNamespace()
+ns3 = types.SimpleNamespace(x=1)
+ns1.spam = ns1
+ns2.spam = ns3
+ns3.spam = ns2
+print(ns1.spam is ns1, ns1.spam.spam is ns1, ns1.spam.spam is ns1.spam)
+print(ns2.spam is ns3, ns3.spam is ns2, ns2.spam.spam is ns2)
+print(repr(ns1))
+print(repr(ns2))
+print(ns1)
+print(ns2)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
