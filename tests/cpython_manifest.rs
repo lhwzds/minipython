@@ -2645,6 +2645,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
+            "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_deque_public_surface_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",

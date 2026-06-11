@@ -160,6 +160,7 @@ Recent runtime migration notes:
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
+  `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
   `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`,
@@ -2698,6 +2699,12 @@ Recent runtime migration notes:
   coverage against `list`, construction from lists and other UserList objects,
   `.data`, list mutation/iteration/length/containment, `.copy()`, and
   `copy.copy()` with shallow instance-attribute copying.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_userlist_namedtuple_sequence_order_diff_subset` and
+  `cpython_collections_userlist_namedtuple_sequence_order_subset`, covering
+  CPython public sequence comparison behavior shared by `UserList` / `list`
+  and `namedtuple` / `tuple`, including `NotImplemented` and `TypeError`
+  boundaries for mixed sequence types.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`
   and

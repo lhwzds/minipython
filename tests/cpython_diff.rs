@@ -4988,6 +4988,45 @@ print(from_userlist.data, constructed.data)"#,
 }
 
 #[test]
+fn cpython_collections_userlist_namedtuple_sequence_order_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestUserObjects/TestNamedTuple sequence order subset",
+        name: "collections-userlist-namedtuple-sequence-order",
+        source: r#"from collections import UserList, namedtuple
+Point = namedtuple('Point', 'x y')
+One = namedtuple('One', 'x')
+def show(label, func):
+    try:
+        print(label, func())
+    except TypeError as error:
+        print(label, error.__class__.__name__)
+print(UserList([1]) == [1], [1] == UserList([1]))
+show('ul_lt_list', lambda: UserList([1]) < [2])
+show('list_gt_ul', lambda: [2] > UserList([1]))
+show('ul_gt_ul', lambda: UserList([1, 3]) > UserList([1, 2]))
+show('ul_le_list', lambda: UserList([1, 2]) <= [1, 2])
+show('list_ge_ul', lambda: [1, 2] >= UserList([1, 2]))
+show('ul_lt_tuple', lambda: UserList([1]) < (2,))
+show('list_lt_tuple', lambda: [1] < (2,))
+print(Point(1, 2) == (1, 2), (1, 2) == Point(1, 2))
+show('nt_lt_tuple', lambda: Point(1, 2) < (1, 3))
+show('tuple_gt_nt', lambda: (1, 3) > Point(1, 2))
+show('nt_gt_nt', lambda: Point(1, 3) > Point(1, 2))
+show('nt_lt_list', lambda: One(1) < [2])
+show('nt_lt_ul', lambda: One(1) < UserList([2]))
+show('tuple_lt_ul', lambda: (1,) < UserList([2]))
+print(One(1).__lt__([2]) is NotImplemented)
+show('ul_dunder_lt_tuple', lambda: UserList([1]).__lt__((2,)))
+print([1].__eq__([1]), [1].__eq__((1,)) is NotImplemented, [1].__eq__(UserList([1])) is NotImplemented)
+print([1].__ne__([2]), [1].__ne__((1,)) is NotImplemented)
+print((1,).__eq__((1,)), (1,).__eq__([1]) is NotImplemented, (1,).__eq__(One(1)))
+print(One(1).__eq__((1,)), One(1).__eq__([1]) is NotImplemented, One(1).__ne__([1]) is NotImplemented)
+print(UserList([1]).__eq__([1]), UserList([1]).__eq__(UserList([1])), UserList([1]).__eq__((1,)))
+print(UserList([1]).__ne__((1,)))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userstring_protocol_and_userdict_missing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestUserObjects UserString protocol and UserDict missing subset",
