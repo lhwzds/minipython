@@ -1483,7 +1483,9 @@ Recent runtime migration notes:
   `AssortedBytesTest::test_from_bytearray` and
   `test_compare_bytes_to_bytearray` public behavior for bytearray construction
   from a memoryview-backed bytes object plus both operand orders for
-  bytes/bytearray rich comparison. `cpython_bytes_warning_compare_subset` covers
+  bytes/bytearray rich comparison. Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_assorted_public_diff_subset`.
+  `cpython_bytes_warning_compare_subset` covers
   `AssortedBytesTest::test_compare` for `sys.flags.bytes_warning`,
   `BytesWarning` capture, and `-bb` warning-as-error behavior. This is followed by
   `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, covering the

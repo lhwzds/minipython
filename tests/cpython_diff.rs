@@ -8466,6 +8466,21 @@ print(B(b'a') < b'b', BA(b'a') < b'b')"#,
 }
 
 #[test]
+fn cpython_bytes_bytearray_assorted_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::AssortedBytesTest::test_from_bytearray and ::test_compare_bytes_to_bytearray",
+        name: "bytes-bytearray-assorted-public",
+        source: r#"sample = bytes(b'Hello world\n\x80\x81\xfe\xff')
+converted = bytearray(memoryview(sample))
+print('from-bytearray', converted == bytearray(sample), bytes(converted) == sample, len(converted))
+print('bytes-left', b'abc' == bytearray(b'abc'), b'ab' != bytearray(b'abc'), b'ab' <= bytearray(b'abc'), b'ab' < bytearray(b'abc'), b'abc' >= bytearray(b'ab'), b'abc' > bytearray(b'ab'))
+print('bytes-left-false', b'abc' != bytearray(b'abc'), b'ab' == bytearray(b'abc'), b'ab' > bytearray(b'abc'), b'ab' >= bytearray(b'abc'), b'abc' < bytearray(b'ab'), b'abc' <= bytearray(b'ab'))
+print('bytearray-left', bytearray(b'abc') == b'abc', bytearray(b'ab') != b'abc', bytearray(b'ab') <= b'abc', bytearray(b'ab') < b'abc', bytearray(b'abc') >= b'ab', bytearray(b'abc') > b'ab')
+print('bytearray-left-false', bytearray(b'abc') != b'abc', bytearray(b'ab') == b'abc', bytearray(b'ab') > b'abc', bytearray(b'ab') >= b'abc', bytearray(b'abc') < b'ab', bytearray(b'abc') <= b'ab')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

@@ -3551,6 +3551,8 @@ Completed in the bytes/bytearray assorted public pass:
   order in bytewise comparison instead of reusing the bytes-left branch.
 - Covered bytearray construction from a memoryview-backed bytes object and both
   operand orders for bytes/bytearray equality and ordering.
+- Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_assorted_public_diff_subset`.
 - Added `cpython_bytes_warning_compare_subset`, adapted from CPython
   `Lib/test/test_bytes.py::AssortedBytesTest::test_compare`.
 - Added `RuntimeOptions::bytes_warning`, CLI `-b` / `-bb`, and
