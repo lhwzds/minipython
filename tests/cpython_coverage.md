@@ -980,6 +980,8 @@ Recent runtime migration notes:
   `copy.copy()`, `copy.deepcopy()`, and all exposed pickle protocol round trips
   for TypeVar-containing PEP 604 union aliases while preserving equality,
   arguments, parameters, non-identity copies, and public union type names.
+  Direct output parity is guarded by
+  `cpython_types_union_copy_pickle_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_bad_classinfo_checks_subset`, covering CPython
   `UnionTests` propagation of custom metaclass `__instancecheck__` and

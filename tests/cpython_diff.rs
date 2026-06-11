@@ -5671,6 +5671,37 @@ except TypeError:
 }
 
 #[test]
+fn cpython_types_union_copy_pickle_diff_subset() {
+    let probe =
+        run_cpython("import typing\nT = typing.TypeVar('T')\norig = list[T] | int\nprint(True)")
+            .expect("failed to probe CPython union copy/pickle support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union copy/pickle diff: CPython oracle lacks PEP 604 GenericAlias union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests copy/pickle public subset",
+        name: "types-union-copy-pickle",
+        source: r#"import copy
+import pickle
+import typing
+T = typing.TypeVar('T')
+orig = list[T] | int
+for label, copied in [('copy', copy.copy(orig)), ('deepcopy', copy.deepcopy(orig))]:
+    print(label, copied == orig, copied.__args__ == orig.__args__, copied.__parameters__ == orig.__parameters__, copied is orig, type(copied) is type(orig))
+checked = 0
+for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+    loaded = pickle.loads(pickle.dumps(orig, proto))
+    if loaded == orig and loaded.__args__ == orig.__args__ and loaded.__parameters__ == orig.__parameters__ and type(loaded) is type(orig):
+        checked += 1
+print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
