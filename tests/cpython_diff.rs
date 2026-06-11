@@ -6794,6 +6794,34 @@ print(items)"#,
 }
 
 #[test]
+fn cpython_types_slot_and_method_wrapper_types_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_slot_wrapper_types and ::test_method_wrapper_types",
+        name: "types-slot-and-method-wrapper-types",
+        source: r#"import types
+for label, value in [
+    ('object.__init__', object.__init__),
+    ('object.__str__', object.__str__),
+    ('object.__lt__', object.__lt__),
+    ('int.__lt__', int.__lt__),
+]:
+    print(label, isinstance(value, types.WrapperDescriptorType), type(value) is types.WrapperDescriptorType, callable(value))
+for label, value in [
+    ('object().__init__', object().__init__),
+    ('object().__str__', object().__str__),
+    ('object().__lt__', object().__lt__),
+    ('(42).__lt__', (42).__lt__),
+]:
+    print(label, isinstance(value, types.MethodWrapperType), type(value) is types.MethodWrapperType, callable(value))
+print(object.__init__(object()))
+print(object().__init__())
+print(object.__lt__(object(), object()) is NotImplemented)
+print(object().__lt__(object()) is NotImplemented)
+print(int.__lt__(42, 43), (42).__lt__(43), (42).__lt__('x') is NotImplemented)"#,
+    });
+}
+
+#[test]
 fn cpython_types_frame_locals_proxy_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests::test_frame_locals_proxy_type",

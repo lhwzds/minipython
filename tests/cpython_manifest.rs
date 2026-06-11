@@ -3536,6 +3536,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_function_type_subset",
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
+            "cpython_types_slot_and_method_wrapper_types_subset",
             "cpython_types_frame_locals_proxy_type_subset",
         ],
         &[
@@ -3610,6 +3611,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_simple_namespace_state_order_diff_subset",
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
         "cpython_types_method_descriptor_types_diff_subset",
+        "cpython_types_slot_and_method_wrapper_types_diff_subset",
         "cpython_types_frame_locals_proxy_type_diff_subset",
         "cpython_types_int_format_diff_subset",
         "cpython_types_float_format_diff_subset",

@@ -141,6 +141,7 @@ Recent runtime migration notes:
   `cpython_types_frame_type_alias_diff_subset`,
   `cpython_types_runtime_type_aliases_diff_subset`,
   `cpython_types_method_descriptor_types_diff_subset`,
+  `cpython_types_slot_and_method_wrapper_types_diff_subset`,
   `cpython_types_frame_locals_proxy_type_diff_subset`,
   `cpython_types_int_format_diff_subset`,
   `cpython_types_float_format_diff_subset`,
@@ -1149,7 +1150,8 @@ Recent runtime migration notes:
   `TypesTests::test_slot_wrapper_types` and `::test_method_wrapper_types` for
   `object.__init__`, `object.__str__`, `object.__lt__`, `int.__lt__`, their
   bound method-wrapper forms, exact `types` alias identity, and direct callable
-  behavior for the covered object and integer slots.
+  behavior for the covered object and integer slots. Direct output parity is
+  guarded by `cpython_types_slot_and_method_wrapper_types_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_code_traceback_type_aliases_subset`, covering the public
   `types.CodeType` and `types.TracebackType` aliases for MiniPython code and
