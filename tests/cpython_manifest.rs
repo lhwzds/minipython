@@ -3462,6 +3462,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_exec_builtin_diff_subset",
         "cpython_eval_exec_builtins_mapping_diff_subset",
         "cpython_compile_builtin_code_object_diff_subset",
+        "cpython_isinstance_builtin_diff_subset",
+        "cpython_issubclass_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_ascii_builtin_diff_subset",
         "cpython_chr_ord_builtin_diff_subset",

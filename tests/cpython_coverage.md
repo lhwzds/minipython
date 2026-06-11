@@ -3161,11 +3161,15 @@ Recent runtime migration notes:
   dictionaries, tuple-returning `__dir__`, property-backed `__dict__`, TypeError
   boundaries, and list/object `__dir__` ordering.
 - `RUNTIME_BUILTINS` also includes `cpython_globals_locals_builtin_subset`,
-  `cpython_isinstance_builtin_subset`, `cpython_enumerate_zip_sorted_builtin_subset`,
-  `cpython_zip_strict_builtin_subset`, `cpython_map_filter_builtin_subset`, and
-  `cpython_abs_builtin_subset`, covering public namespace introspection,
-  class/type relationship checks, iterator-producing builtins, strict zip,
-  map/filter, and absolute-value behavior used by the sandbox builtin surface.
+  `cpython_isinstance_builtin_subset`, `cpython_issubclass_builtin_subset`,
+  `cpython_enumerate_zip_sorted_builtin_subset`, `cpython_zip_strict_builtin_subset`,
+  `cpython_map_filter_builtin_subset`, and `cpython_abs_builtin_subset`, covering
+  public namespace introspection, class/type relationship checks,
+  iterator-producing builtins, strict zip, map/filter, and absolute-value
+  behavior used by the sandbox builtin surface. Direct CPython output parity for
+  the class/type relationship checks is tracked by
+  `cpython_isinstance_builtin_diff_subset` and
+  `cpython_issubclass_builtin_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_builtin_code_object_subset`, covering first-pass
   `compile(source, filename, mode)` for string and bytes sources in `exec`,

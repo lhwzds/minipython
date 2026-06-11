@@ -4468,6 +4468,55 @@ for singleton in [NotImplemented, Ellipsis]:
 }
 
 #[test]
+fn cpython_issubclass_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",
+        name: "issubclass-builtin-direct",
+        source: r#"class C:
+    pass
+class D(C):
+    pass
+class E:
+    pass
+print(issubclass(D, C), issubclass(C, C), issubclass(C, D))
+print(issubclass(D, (E, C)), issubclass(E, (C, D)))
+print(issubclass(bool, int), issubclass(int, object), issubclass(C, object))
+print(issubclass(OverflowError, ArithmeticError), issubclass(KeyError, LookupError), issubclass(ValueError, ArithmeticError))
+for expr in [lambda: issubclass('foo', E), lambda: issubclass(E, 'foo'), lambda: issubclass()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_isinstance_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_isinstance",
+        name: "isinstance-builtin-direct",
+        source: r#"class C:
+    pass
+class D(C):
+    pass
+class E:
+    pass
+c = C()
+d = D()
+e = E()
+print(isinstance(c, C), isinstance(d, C), isinstance(e, C), isinstance(c, D))
+print(isinstance('foo', E), isinstance(d, (E, C)), isinstance(e, (C, D)))
+print(isinstance(True, int), isinstance(False, bool), isinstance(1, object))
+print(isinstance(OverflowError('x'), ArithmeticError), isinstance(KeyError('x'), LookupError), isinstance(ValueError('x'), ArithmeticError))
+for expr in [lambda: isinstance(E, 'foo'), lambda: isinstance(), lambda: isinstance(e, (C, 'bad'))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",
