@@ -3276,6 +3276,48 @@ for sample in samples:
 }
 
 #[test]
+fn cpython_collections_abc_issue26915_identity_first_object_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs::test_issue26915 public subset",
+        name: "collections-abc-issue26915-identity-first-object",
+        source: r#"from collections.abc import ItemsView, KeysView, Sequence, ValuesView
+class CustomSequence(Sequence):
+    def __init__(self, seq):
+        self._seq = seq
+    def __getitem__(self, index):
+        return self._seq[index]
+    def __len__(self):
+        return len(self._seq)
+nan = float('nan')
+other_nan = float('nan')
+seq = CustomSequence([nan, other_nan, nan])
+containers = [
+    seq,
+    ItemsView({1: nan, 2: other_nan}),
+    KeysView({nan: 1, other_nan: 2}),
+    ValuesView({1: nan, 2: other_nan}),
+]
+print(nan == nan, nan is nan, nan is other_nan)
+for container in containers:
+    row = []
+    for elem in container:
+        try:
+            row.append(elem in container)
+        except Exception as error:
+            row.append(error.__class__.__name__)
+    print(row)
+print(seq.index(nan))
+print(seq.count(nan))
+print((1, nan) in ItemsView({1: nan}))
+print((1, other_nan) in ItemsView({1: nan}))
+print(nan in KeysView({nan: 1}))
+print(other_nan in KeysView({nan: 1}))
+print(nan in ValuesView({1: nan}))
+print(other_nan in ValuesView({1: nan}))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_set_noncomparable_comparison_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestCollectionABCs::test_issue16373 public subset",

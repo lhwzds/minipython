@@ -2483,7 +2483,8 @@ Recent runtime migration notes:
   CPython `TestCollectionABCs::test_issue26915` identity-first membership for
   `support.NEVER_EQ`-style objects and distinct `float('nan')` objects across
   `Sequence`, `ItemsView`, `KeysView`, and `ValuesView`, plus
-  `Sequence.index()` / `count()`.
+  `Sequence.index()` / `count()`. Direct CPython diff evidence is in
+  `cpython_collections_abc_issue26915_identity_first_object_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_composite_abstract_methods_subset`, covering
   CPython `TestCollectionABCs` abstract-method rejection behavior for `Set`,
