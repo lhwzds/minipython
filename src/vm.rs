@@ -51947,6 +51947,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("collections.abc".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_itertools_type_name(&function_name) =>
+        {
+            Ok(Value::String("itertools".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_weakref_builtin_type_name(&function_name) =>
         {
             Ok(Value::String("weakref".to_string()))
@@ -53503,6 +53508,33 @@ fn is_ast_helper_type_name(name: &str) -> bool {
 
 fn is_templatelib_type_name(name: &str) -> bool {
     matches!(name, "Template" | "Interpolation" | "TemplateIter")
+}
+
+fn is_itertools_type_name(name: &str) -> bool {
+    matches!(
+        name,
+        "count"
+            | "repeat"
+            | "cycle"
+            | "accumulate"
+            | "chain"
+            | "compress"
+            | "dropwhile"
+            | "filterfalse"
+            | "takewhile"
+            | "starmap"
+            | "zip_longest"
+            | "islice"
+            | "pairwise"
+            | "product"
+            | "combinations"
+            | "combinations_with_replacement"
+            | "permutations"
+            | "_tee"
+            | "batched"
+            | "groupby"
+            | "_grouper"
+    )
 }
 
 fn is_collections_abc_type_name(name: &str) -> bool {

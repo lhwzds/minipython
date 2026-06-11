@@ -694,7 +694,8 @@ Recent runtime migration notes:
   `groupby()` runs with optional key functions, generator-backed input,
   shared `_grouper` invalidation when the parent advances, keyword binding,
   and public `repr()` shapes for `count()`, `repeat()`, `cycle()`, `_tee`, and
-  `groupby()` without binding object addresses. The broader `itertools` module,
+  `groupby()` without binding object addresses, plus public type `__module__`
+  metadata for supported iterator/helper objects. The broader `itertools` module,
   `tee()` cache compaction, pickling edge cases, and remaining public/helper
   types remain open.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`

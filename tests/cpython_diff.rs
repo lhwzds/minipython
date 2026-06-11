@@ -11908,7 +11908,21 @@ for value, prefix in [
     (itertools.groupby([1, 1]), '<itertools.groupby object at '),
 ]:
     rendered = repr(value)
-    print(type(value).__name__, rendered.startswith(prefix), rendered.endswith('>'))"#,
+    print(type(value).__name__, rendered.startswith(prefix), rendered.endswith('>'))
+values = [
+    itertools.count(), itertools.repeat(1, 2), itertools.cycle([1]), itertools.accumulate([1, 2]),
+    itertools.chain([1], [2]), itertools.chain.from_iterable([[1], [2]]),
+    itertools.compress([1], [True]), itertools.dropwhile(lambda value: False, [1]),
+    itertools.filterfalse(lambda value: False, [1]), itertools.takewhile(lambda value: True, [1]),
+    itertools.starmap(lambda value: value, [(1,)]), itertools.zip_longest([1], [2]),
+    itertools.islice([1, 2], 1), itertools.product([1], repeat=1),
+    itertools.combinations([1, 2], 1), itertools.combinations_with_replacement([1], 2),
+    itertools.permutations([1, 2], 1), itertools.tee([1], 1)[0], itertools.groupby([1]),
+]
+key, group = next(itertools.groupby([1]))
+values.append(group)
+for value in values:
+    print(type(value).__name__, type(value).__module__)"#,
     });
 }
 
