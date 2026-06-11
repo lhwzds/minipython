@@ -1008,7 +1008,8 @@ Recent runtime migration notes:
 - The bundled `types` module also includes `cpython_types_union_io_subset`,
   covering public `typing.IO` metadata, `typing.IO | str` equality with
   `typing.Union[typing.IO, str]`, `typing.IO[str]` generic alias union
-  behavior, and bare `typing.TextIO` / `typing.BinaryIO` union operands.
+  behavior, and bare `typing.TextIO` / `typing.BinaryIO` union operands. Direct
+  output parity is guarded by `cpython_types_union_io_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_typed_dict_subset`, covering class-based
   `typing.TypedDict` creation, call construction as a dict, and PEP 604 union

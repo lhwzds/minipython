@@ -5838,6 +5838,41 @@ print('union', union == typing.Union[UserId, str], repr(union), tuple(arg.__name
 }
 
 #[test]
+fn cpython_types_union_io_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nunion = typing.IO | str\nprint(union == typing.Union[typing.IO, str])",
+    )
+    .expect("failed to probe CPython union IO support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union IO diff: CPython oracle lacks PEP 604 typing.IO union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests typing.IO public subset",
+        name: "types-union-io",
+        source: r#"import typing
+print('meta', repr(typing.IO), str(typing.IO), typing.IO.__name__, typing.IO.__module__, type(typing.IO).__name__)
+union = typing.IO | str
+print('union', union == typing.Union[typing.IO, str], repr(union), tuple(arg.__name__ for arg in union.__args__))
+ga = typing.IO[str]
+print('generic', repr(ga), str(ga), ga.__name__, ga.__origin__ is typing.IO, tuple(arg.__name__ for arg in ga.__args__))
+generic_union = ga | int
+print('generic-union', generic_union == typing.Union[ga, int], repr(generic_union), tuple(getattr(arg, '__name__', repr(arg)) for arg in generic_union.__args__))
+for name in ('TextIO', 'BinaryIO'):
+    form = getattr(typing, name)
+    union = form | str
+    print('named', name, repr(form), form.__name__, form.__module__, union == typing.Union[form, str], repr(union), tuple(arg.__name__ for arg in union.__args__))
+    try:
+        form[str]
+    except TypeError:
+        print('named-subscript-error', name)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
