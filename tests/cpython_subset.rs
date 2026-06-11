@@ -44541,6 +44541,24 @@ fn cpython_collections_counter_basics_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
+// Counter.fromkeys() is intentionally unavailable on both the type and
+// instances, and both paths must raise NotImplementedError.
+#[test]
+fn cpython_collections_counter_fromkeys_subset() {
+    assert_output(
+        concat!(
+            "from collections import Counter\n",
+            "for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]:\n",
+            "    try:\n",
+            "        call()\n",
+            "    except NotImplementedError:\n",
+            "        print('NotImplementedError')\n",
+        ),
+        &["NotImplementedError", "NotImplementedError"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_init
 // and ::test_update. The keyword names `self` and `iterable` are real Counter
 // keys here because Counter's iterable parameter is positional-only.

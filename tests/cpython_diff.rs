@@ -4852,6 +4852,20 @@ print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"#,
 }
 
 #[test]
+fn cpython_collections_counter_fromkeys_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter fromkeys subset",
+        name: "collections-counter-fromkeys",
+        source: r#"from collections import Counter
+for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]:
+    try:
+        call()
+    except NotImplementedError:
+        print('NotImplementedError')"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_conversions_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter conversions subset",

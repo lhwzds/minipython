@@ -155,6 +155,7 @@ Recent runtime migration notes:
   `cpython_types_simple_namespace_state_order_diff_subset`,
   `cpython_types_simple_namespace_fake_comparison_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
+  `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_repr_nonsortable_diff_subset`,
@@ -4016,10 +4017,16 @@ Reversible registration for OrderedDict and Counter plus reverse key iteration.
 coverage for `Counter(...)` and `update()` keyword names that are real keys,
 `iterable=None` direct insertion into an empty Counter, bad sources, too many
 arguments, and unbound method TypeErrors.
+`cpython_collections_counter_fromkeys_diff_subset` and
+`cpython_collections_counter_fromkeys_subset` add direct CPython output parity
+and runtime coverage for `Counter.fromkeys()` and instance `fromkeys()` raising
+`NotImplementedError`.
 `cpython_collections_counter_comparison_subset` adds method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,
 equality with missing keys treated as zero, and `<=` / `<` / `>=` / `>` rich
-comparison over count values.
+comparison over count values. This remains runtime-subset evidence because the
+local CPython oracle used by `cpython_diff` predates `Counter.total()` and the
+new zero-count rich-comparison rules.
 `cpython_collections_counter_conversions_subset` adds method-level Counter
 coverage for `elements()`, Counter iteration, `dict(Counter(...))`,
 `dict(Counter(...).items())`, and `set(Counter(...))` conversion behavior.

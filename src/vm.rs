@@ -49337,7 +49337,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::Counter { entries } => match name {
-            "__init__" | "clear" | "copy" | "elements" | "get" | "items" | "keys"
+            "__init__" | "clear" | "copy" | "elements" | "fromkeys" | "get" | "items" | "keys"
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__iter__"
             | "__len__" | "__setitem__" | "__add__" | "__sub__" | "__or__" | "__and__"
