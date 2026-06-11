@@ -1153,6 +1153,7 @@ fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
         "_socket",
         "_ctypes",
         "_testcapi",
+        "locale",
         "pdb",
     ] {
         assert_eq!(

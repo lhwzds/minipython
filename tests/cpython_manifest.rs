@@ -2970,6 +2970,7 @@ fn cpython_migration_documents_out_of_scope_runtime_stop_line_guard() {
         "C ABI",
         "CPython-internal",
         "co_stacksize",
+        "locale-sensitive",
         "pdb",
         "breakpoint",
     ] {
@@ -3042,6 +3043,7 @@ fn stdlib_create_module_registry_keeps_stop_line_modules_unavailable() {
         "_socket",
         "_ssl",
         "_testcapi",
+        "locale",
         "multiprocessing",
         "pdb",
         "pty",
