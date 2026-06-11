@@ -3199,6 +3199,8 @@ Completed in the bytes ASCII case/predicate-method pass:
 - Covered ASCII-only byte semantics, non-ASCII byte preservation for case
   transforms, receiver-driven `bytes` / `bytearray` result types, empty-input
   predicate behavior, and representative extra-argument `TypeError` paths.
+  Direct CPython diff evidence is in
+  `cpython_bytes_ascii_case_predicate_methods_diff_subset`.
 
 Completed in the bytes expandtabs/zfill-method pass:
 
@@ -3211,7 +3213,8 @@ Completed in the bytes expandtabs/zfill-method pass:
   types and builtin type `dir()` visibility.
 - Covered byte-level tab expansion across CR/LF boundaries, `tabsize=`
   keyword behavior, negative/zero/bool tab sizes, sign-aware zero fill, and
-  representative `TypeError` paths.
+  representative `TypeError` paths. Direct CPython diff evidence is in
+  `cpython_bytes_expandtabs_zfill_methods_diff_subset`.
 
 Completed in the bytes strip-method pass:
 

@@ -1271,12 +1271,16 @@ Recent runtime migration notes:
 - `STRING_RUNTIME` also includes
   `cpython_bytes_ascii_case_predicate_methods_subset`, covering the CPython
   `string_tests.py` ASCII case and predicate methods as applied to
-  bytes/bytearray through `test_bytes.py`.
+  bytes/bytearray through `test_bytes.py`, including ASCII-only case
+  transforms, predicates, non-ASCII byte preservation, empty-input predicate
+  behavior, and representative TypeError paths. Direct CPython diff evidence
+  is in `cpython_bytes_ascii_case_predicate_methods_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_expandtabs_zfill_methods_subset`, covering CPython
   `string_tests.py` `expandtabs()` and `zfill()` behavior as applied to
   bytes/bytearray through `test_bytes.py`, plus builtin type `dir()`
-  visibility for those methods.
+  visibility for those methods. Direct CPython diff evidence is in
+  `cpython_bytes_expandtabs_zfill_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_search_bounds_index_subset`,
   covering Python-level `__index__` conversion and exception propagation for
   bytes/bytearray search and prefix/suffix `start` / `stop` bounds. Direct

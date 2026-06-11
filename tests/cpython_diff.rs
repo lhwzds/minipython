@@ -8067,6 +8067,88 @@ fn cpython_bytes_splitlines_methods_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_ascii_case_predicate_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py ASCII case and predicate methods as applied to bytes/bytearray",
+        name: "bytes-ascii-case-predicate-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'HeLLo cOmPuTeRs 123\t\xff')
+    print(b.lower())
+    print(b.upper())
+    print(b.capitalize())
+    print(ctor(b'fOrMaT thIs aS titLe String').title())
+    print(ctor(b'fOrMaT,thIs-aS*titLe;String').title())
+    print(ctor(b'HeLLo cOmpUteRs').swapcase())
+    print(ctor(b'hello').islower(), ctor(b'abc\n').islower(), ctor(b'aBc').islower(), ctor(b'').islower())
+    print(ctor(b'ABC').isupper(), ctor(b'ABC\n').isupper(), ctor(b'AbC').isupper(), ctor(b'').isupper())
+    print(ctor(b'A Titlecased Line').istitle(), ctor(b'A\nTitlecased Line').istitle(), ctor(b'Not a capitalized String').istitle(), ctor(b'NOT').istitle())
+    print(ctor(b'abc').isalpha(), ctor(b'aBc123').isalpha(), ctor(b'').isalpha())
+    print(ctor(b'123abc456').isalnum(), ctor(b'aBc000 ').isalnum(), ctor(b'').isalnum())
+    print(ctor(b'0123456789').isdigit(), ctor(b'0123456789a').isdigit(), ctor(b'').isdigit())
+    print(ctor(b' \t\n\r\v\f').isspace(), ctor(b' \t\n\r\v\fx').isspace(), ctor(b'').isspace())
+    print(ctor(b'\x00\x7f').isascii(), ctor(b'\x80').isascii(), ctor(b'').isascii())
+    for expr in [
+        lambda: b.lower(42),
+        lambda: b.upper(42),
+        lambda: b.capitalize(42),
+        lambda: b.title(42),
+        lambda: b.swapcase(42),
+        lambda: b.islower(42),
+        lambda: b.isupper(42),
+        lambda: b.istitle(42),
+        lambda: b.isalpha(42),
+        lambda: b.isalnum(42),
+        lambda: b.isdigit(42),
+        lambda: b.isspace(42),
+        lambda: b.isascii(42),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_expandtabs_zfill_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py::test_expandtabs and ::test_zfill bytes/bytearray public subset",
+        name: "bytes-expandtabs-zfill-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    sample = ctor(b'abc\rab\tdef\ng\thi')
+    print(sample.expandtabs())
+    print(sample.expandtabs(8))
+    print(sample.expandtabs(4))
+    print(ctor(b'abc\r\nab\tdef\ng\thi').expandtabs())
+    print(ctor(b'abc\r\nab\tdef\ng\thi').expandtabs(tabsize=4))
+    print(ctor(b'abc\r\nab\r\ndef\ng\r\nhi').expandtabs(4))
+    print(ctor(b' \ta\n\tb').expandtabs(1))
+    print(ctor(b'ab\tc').expandtabs(-1), ctor(b'ab\tc').expandtabs(0), ctor(b'ab\tc').expandtabs(1), ctor(b'ab\tc').expandtabs(2))
+    print(ctor(b'\t\ta').expandtabs(4), ctor(b'a\tb\tc').expandtabs(3))
+    print(ctor(b'ab\tc').expandtabs(True), ctor(b'ab\tc').expandtabs(False))
+    print(ctor(b'123').zfill(2), ctor(b'123').zfill(3), ctor(b'123').zfill(4))
+    print(ctor(b'+123').zfill(3), ctor(b'+123').zfill(4), ctor(b'+123').zfill(5))
+    print(ctor(b'-123').zfill(3), ctor(b'-123').zfill(4), ctor(b'-123').zfill(5))
+    print(ctor(b'').zfill(3), ctor(b'34').zfill(1), ctor(b'34').zfill(4))
+    for expr in [
+        lambda: sample.expandtabs(42, 42),
+        lambda: sample.expandtabs(None),
+        lambda: sample.expandtabs('4'),
+        lambda: sample.expandtabs(size=4),
+        lambda: sample.zfill(),
+        lambda: sample.zfill(4, 0),
+        lambda: sample.zfill('4'),
+        lambda: sample.zfill(width=4),
+    ]:
+        try:
+            expr()
+        except (TypeError, OverflowError) as error:
+            print(error.__class__.__name__)
+print('expandtabs' in dir(bytes), 'zfill' in dir(bytes), 'expandtabs' in dir(bytearray), 'zfill' in dir(bytearray))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
