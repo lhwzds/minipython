@@ -4852,6 +4852,21 @@ print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"#,
 }
 
 #[test]
+fn cpython_collections_counter_conversions_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter conversions subset",
+        name: "collections-counter-conversions",
+        source: r#"from collections import Counter
+s = 'she sells sea shells by the sea shore'
+c = Counter(s)
+print(sorted(c.elements()) == sorted(s))
+print(sorted(c) == sorted(set(s)))
+print(dict(c) == dict(c.items()))
+print(set(c) == set(s))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
