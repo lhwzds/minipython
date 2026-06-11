@@ -4778,6 +4778,49 @@ print(next(x), next(z))"#,
 }
 
 #[test]
+fn cpython_divmod_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_divmod",
+        name: "divmod-builtin",
+        source: r#"print(divmod(12, 7), divmod(-12, 7), divmod(12, -7), divmod(-12, -7))
+print(divmod(-(2 ** 63), -1))
+print(divmod(True, 2), divmod(False, 2))
+for pair in [(3.25, 1.0), (-3.25, 1.0), (3.25, -1.0), (-3.25, -1.0), (12, 7.0), (12.0, 7)]:
+    print(divmod(pair[0], pair[1]))
+for expr in [lambda: divmod(), lambda: divmod(1), lambda: divmod(1, 2, 3), lambda: divmod(1, 0), lambda: divmod(1.0, 0), lambda: divmod(1, 0.0), lambda: divmod('x', 2), lambda: divmod(1, y=2)]:
+    try:
+        expr()
+    except (TypeError, ZeroDivisionError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_pow_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_pow",
+        name: "pow-builtin-direct",
+        source: r#"print(pow(0, 0), pow(0, 1), pow(1, 0), pow(1, 1))
+print(pow(2, 10), pow(2, 20), pow(2, 30))
+print(pow(-2, 0), pow(-2, 1), pow(-2, 2), pow(-2, 3))
+print(pow(0.0, 0), pow(0.0, 1), pow(1.0, 0), pow(1.0, 1))
+print(pow(2.0, 10), pow(2.0, 20), pow(-2.0, 3))
+print(pow(2, -1), pow(-2, -3))
+sqrt_minus_one = pow(-1, 0.5)
+cube_root_minus_one = pow(-1, 1/3)
+print(type(sqrt_minus_one).__name__, abs(sqrt_minus_one - 1j) < 1e-12)
+print(type(cube_root_minus_one).__name__, abs(cube_root_minus_one - (0.5 + 0.8660254037844386j)) < 1e-12)
+print(pow(2, 10, 1000), pow(-1, -2, 3), pow(5, 2, 14), pow(2, 3, -5), pow(2, -1, 5))
+print(pow(0, exp=0), pow(base=2, exp=4), pow(base=5, exp=2, mod=14), pow(2, 3, None))
+for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2, 0), lambda: pow(2.0, 3, 5), lambda: pow(2, 3.0, 5), lambda: pow(2, 3, 5.0), lambda: pow(2, -1, 4)]:
+    try:
+        expr()
+    except (TypeError, ValueError, ZeroDivisionError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",

@@ -3509,6 +3509,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_map_filter_builtin_diff_subset",
         "cpython_enumerate_zip_sorted_builtin_diff_subset",
         "cpython_zip_strict_builtin_diff_subset",
+        "cpython_divmod_builtin_diff_subset",
+        "cpython_pow_builtin_diff_subset",
         "cpython_hash_id_builtins_diff_subset",
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
