@@ -606,7 +606,8 @@ Recent runtime migration notes:
   first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, ordinary `\uXXXX` escapes and valid
-  surrogate-pair Unicode escapes, `strict=False` raw control-character
+  surrogate-pair Unicode escapes, `loads()` / `dumps()` public function
+  `__name__` / `__module__` metadata, `strict=False` raw control-character
   string parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,

@@ -52262,6 +52262,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("math.integer".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::String("json".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && functools_total_ordering_parts(&function_name).is_some() =>
         {
             Ok(Value::String("functools".to_string()))
@@ -52386,6 +52391,10 @@ fn is_weakref_builtin_type_name(name: &str) -> bool {
         name,
         "weakref.ReferenceType" | "weakref.ProxyType" | "weakref.CallableProxyType"
     )
+}
+
+fn is_json_builtin(name: &str) -> bool {
+    matches!(name, "json.loads" | "json.dumps")
 }
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {
