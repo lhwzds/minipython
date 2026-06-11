@@ -1304,7 +1304,12 @@ impl fmt::Display for Value {
                 keywords,
                 ..
             } => write!(f, "{}", format_partial(function, args, keywords)),
-            Value::PartialMethod { .. } => write!(f, "<functools.partialmethod object>"),
+            Value::PartialMethod {
+                function,
+                args,
+                keywords,
+                ..
+            } => write!(f, "{}", format_partialmethod(function, args, keywords)),
             Value::PartialMethodCall { .. } => write!(f, "<functools.partial object>"),
             Value::LruCacheWrapper { .. } => {
                 write!(f, "<functools._lru_cache_wrapper object>")
@@ -1408,6 +1413,23 @@ fn format_partial(function: &Value, args: &[Value], keywords: &DictRef) -> Strin
         format!("{key}={}", format_value_repr(value))
     }));
     format!("functools.partial({})", parts.join(", "))
+}
+
+fn format_partialmethod(function: &Value, args: &[Value], keywords: &[(String, Value)]) -> String {
+    let args = args
+        .iter()
+        .map(format_value_repr)
+        .collect::<Vec<_>>()
+        .join(", ");
+    let keywords = keywords
+        .iter()
+        .map(|(name, value)| format!("{name}={}", format_value_repr(value)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!(
+        "functools.partialmethod({}, {args}, {keywords})",
+        format_value_repr(function)
+    )
 }
 
 fn format_operator_attrgetter(attrs: &[String]) -> String {
@@ -1696,7 +1718,12 @@ fn format_value_repr(value: &Value) -> String {
             keywords,
             ..
         } => format_partial(function, args, keywords),
-        Value::PartialMethod { .. } => "<functools.partialmethod object>".to_string(),
+        Value::PartialMethod {
+            function,
+            args,
+            keywords,
+            ..
+        } => format_partialmethod(function, args, keywords),
         Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
         Value::LruCacheWrapper { .. } => "<functools._lru_cache_wrapper object>".to_string(),
         Value::SingleDispatch { .. } => "<function singledispatch wrapper>".to_string(),

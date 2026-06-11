@@ -11034,6 +11034,12 @@ for call in [
 print(hasattr(a.both, '__self__'), a.both.__self__ is a)
 print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
 print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
+rendered = repr(A.__dict__['nothing'])
+print(rendered.startswith('functools.partialmethod(<function capture'), rendered.endswith(', , )'))
+rendered = repr(A.__dict__['both'])
+print(rendered.startswith('functools.partialmethod(<function capture'), rendered.endswith(', 3, b=4)'))
+rendered = repr(A.__dict__['over_partial'])
+print('functools.partial(<function capture' in rendered, rendered.endswith(', 7, )'))
 for expr in [
     lambda: partialmethod(None, 1),
     lambda: partialmethod(),

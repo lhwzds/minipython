@@ -913,8 +913,10 @@ Recent runtime migration notes:
   `test_functools.py::TestPartialMethod` public descriptor behavior, instance
   and class access call argument order, nested `partialmethod` flattening,
   partial-over-partial calls, `staticmethod` and `classmethod` descriptors,
-  keyword override behavior, bound and unbound `__self__` visibility, invalid
-  constructor forms, and raw descriptor non-callability/type reporting.
+  keyword override behavior, bound and unbound `__self__` visibility, public
+  `repr()` shape for empty, positional/keyword, and partial-over-partial
+  descriptors, invalid constructor forms, and raw descriptor
+  non-callability/type reporting.
 - The bundled `functools` module also includes
   `cpython_functools_cmp_to_key_diff_subset` and
   `cpython_functools_cmp_to_key_subset`, covering CPython
