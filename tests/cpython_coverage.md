@@ -144,6 +144,7 @@ Recent runtime migration notes:
   `cpython_types_method_descriptor_types_diff_subset`,
   `cpython_types_slot_and_method_wrapper_types_diff_subset`,
   `cpython_types_frame_locals_proxy_type_diff_subset`,
+  `cpython_types_coroutine_async_def_diff_subset`,
   `cpython_types_int_format_diff_subset`,
   `cpython_types_float_format_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
@@ -1068,7 +1069,9 @@ Recent runtime migration notes:
   `cpython_types_coroutine_public_diff_subset`.
   `cpython_types_coroutine_async_def_subset`
   covers stable function `__code__` identity and native coroutine `cr_code`
-  flags. `cpython_types_coroutine_generator_wrapper_subset`,
+  flags. Direct output parity is guarded by
+  `cpython_types_coroutine_async_def_diff_subset`.
+  `cpython_types_coroutine_generator_wrapper_subset`,
   `cpython_types_coroutine_generator_frame_subset`,
   `cpython_types_coroutine_generator_yieldfrom_subset`, and
   `cpython_types_coroutine_duck_generator_wrapper_subset`,

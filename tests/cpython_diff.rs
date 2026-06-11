@@ -6736,6 +6736,32 @@ except StopIteration:
 }
 
 #[test]
+fn cpython_types_coroutine_async_def_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests async def public subset",
+        name: "types-coroutine-async-def",
+        source: r#"import types
+async def foo():
+    pass
+foo_code = foo.__code__
+foo_flags = foo.__code__.co_flags
+decorated_foo = types.coroutine(foo)
+print('func-id', foo is decorated_foo)
+print('flags-stable', foo.__code__.co_flags == foo_flags)
+print('code-is', decorated_foo.__code__ is foo_code)
+foo_coro = foo()
+def bar():
+    return foo_coro
+for index in range(2):
+    bar = types.coroutine(bar)
+    coro = bar()
+    print('coro-is', index, foo_coro is coro)
+    print('cr-code-flags', coro.cr_code.co_flags == foo_flags)
+    print('close', coro.close())"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
