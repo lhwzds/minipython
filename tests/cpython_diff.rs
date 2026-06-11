@@ -8207,6 +8207,65 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_memoryview_hex_released_view_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py released-view hex public subset",
+        name: "memoryview-hex-released-view",
+        source: r#"m = memoryview(b'abc')
+m.release()
+try:
+    m.hex()
+except ValueError as error:
+    print(error.__class__.__name__, 'released' in str(error))"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_release_during_index_read_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py release during __index__ public one-dimensional read subset",
+        name: "memoryview-release-during-index-read",
+        source: r#"size = 8
+ba = None
+def release():
+    global m, ba
+    m.release()
+    ba = bytearray(size)
+class MyIndex:
+    def __index__(self):
+        release()
+        return 4
+
+ba = None
+m = memoryview(bytearray(b'\xff' * size))
+try:
+    m[MyIndex()]
+except ValueError as error:
+    print('getitem', error.__class__.__name__, 'released' in str(error))
+
+ba = None
+m = memoryview(bytearray(b'\xff' * size))
+print('slice-stop', list(m[:MyIndex()]), ba is not None)
+
+ba = None
+m = memoryview(bytearray(b'\xff' * size))
+print('slice-start', list(m[MyIndex():8]), ba is not None)
+
+ba = None
+m = memoryview(bytearray(b'\xff' * size))
+try:
+    m.__getitem__(MyIndex())
+except ValueError as error:
+    print('getitem-method', error.__class__.__name__, 'released' in str(error))
+
+ba = None
+m = memoryview(bytearray(b'\xff' * size))
+print('slice-method', list(m.__getitem__(slice(None, MyIndex()))), ba is not None)
+"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

@@ -932,7 +932,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   raises released-view `ValueError` after an ordinary release, but keeps the
   exporter resize-locked while Python-level separator conversion runs, so a
   re-entrant `sep.__len__` that releases the view and clears the bytearray
-  raises `BufferError` without mutating the exporter.
+  raises `BufferError` without mutating the exporter. Direct CPython diff
+  evidence in `cpython_memoryview_hex_released_view_diff_subset` covers the
+  released-view `hex()` path; the stricter re-entrant resize guard remains
+  MiniPython subset evidence because the local CPython oracle accepts the
+  bytearray clear path.
 - Added `cpython_memoryview_copy_rejection_subset`, migrating CPython
   `Lib/test/test_memoryview.py::OtherTest::test_copy` for the supported
   read-only and writable memoryview surfaces: `copy.copy(memoryview(...))`
@@ -958,6 +962,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   original exporter even when bound conversion releases the source view, RHS
   byte conversion through `__index__` cannot write after release, and bound
   `__getitem__` / `__setitem__` methods route through the same VM semantics.
+  `cpython_memoryview_release_during_index_read_diff_subset` directly compares
+  the read/getitem portion against CPython; the stricter write-after-release
+  rejection remains MiniPython subset evidence.
 - Added `cpython_memoryview_weakref_live_subset`, migrating the live-reference
   slice of CPython
   `Lib/test/test_memoryview.py::AbstractMemoryTests::test_weakref`: supported

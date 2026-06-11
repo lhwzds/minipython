@@ -2944,6 +2944,10 @@ Recent runtime migration notes:
   supported bytearray-backed views: ordinary released-view `hex()` still raises
   `ValueError`, while separator conversion keeps the exporter resize-locked so
   re-entrant view release plus bytearray clearing raises `BufferError`.
+  `cpython_memoryview_hex_released_view_diff_subset` directly compares the
+  released-view `hex()` behavior; the stricter re-entrant resize guard remains
+  MiniPython subset evidence because the local CPython oracle accepts the
+  bytearray clear path.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_copy_rejection_subset`, covering CPython
   `test_memoryview.py::OtherTest::test_copy` for public `copy.copy()`
@@ -2970,7 +2974,9 @@ Recent runtime migration notes:
   assignment fail with released-view `ValueError`, slice getitem preserves a
   live subview of the original bytes, RHS byte conversion through `__index__`
   cannot write after release, and the bound `__getitem__` / `__setitem__`
-  methods share the same VM behavior.
+  methods share the same VM behavior. `cpython_memoryview_release_during_index_read_diff_subset`
+  directly compares the read/getitem portion against CPython; the stricter
+  write-after-release rejection remains MiniPython subset evidence.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_bytesio_readinto_subset`, covering the in-memory
   CPython `test_memoryview.py::AbstractMemoryTests::test_writable_readonly`
