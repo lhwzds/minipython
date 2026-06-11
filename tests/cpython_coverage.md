@@ -133,6 +133,7 @@ Recent runtime migration notes:
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
+  `cpython_types_names_public_surface_diff_subset`,
   `cpython_types_singleton_type_aliases_diff_subset`,
   `cpython_types_module_type_diff_subset`,
   `cpython_types_function_type_diff_subset`,
@@ -1091,7 +1092,9 @@ Recent runtime migration notes:
   frame-locals-proxy aliases. Concrete wrapper descriptor behavior is covered
   separately, capsule behavior is classified with the CPython-internal
   capsule test, and frame-locals-proxy behavior is covered by
-  `cpython_types_frame_locals_proxy_type_subset`.
+  `cpython_types_frame_locals_proxy_type_subset`. Direct output parity is
+  guarded by `cpython_types_names_public_surface_diff_subset`, gated for
+  CPython oracles with the current public `types.__all__` surface.
 - The bundled `types` module also includes
   `cpython_types_float_constructor_edges_subset`, covering the CPython
   `TypesTests::test_float_constructor` empty-string and embedded-NUL

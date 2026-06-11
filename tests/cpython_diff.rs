@@ -6104,6 +6104,45 @@ for left, right in ((Ints.A, 0), (Ints.B, False), (Ints.C, 1), (Ints.D, True), (
 }
 
 #[test]
+fn cpython_types_names_public_surface_diff_subset() {
+    let probe = run_cpython(
+        "import types\nexpected = {'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases'}\nprint(set(types.__all__) == expected)",
+    )
+    .expect("failed to probe CPython types public name surface");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types names public surface diff: CPython oracle lacks the current public types.__all__ surface"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_names public surface",
+        name: "types-names-public-surface",
+        source: r#"import types
+expected = {
+    'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType',
+    'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType',
+    'CoroutineType', 'DynamicClassAttribute', 'EllipsisType',
+    'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType',
+    'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType',
+    'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType',
+    'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType',
+    'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType',
+    'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class',
+    'prepare_class', 'resolve_bases',
+}
+actual = set(types.__all__)
+print(len(types.__all__), actual == expected, sorted(expected - actual), sorted(actual - expected))
+print(all(hasattr(types, name) for name in expected))
+print(types.FunctionType is types.LambdaType, types.BuiltinFunctionType is types.BuiltinMethodType)
+print(type(types.WrapperDescriptorType).__name__, type(types.DynamicClassAttribute).__name__, type(types.CapsuleType).__name__)
+print(type(types.LazyImportType).__name__, type(types.FrameLocalsProxyType).__name__)
+print(types.NoneType is type(None), types.EllipsisType is type(Ellipsis), types.NotImplementedType is type(NotImplemented))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

@@ -3551,6 +3551,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         .find(|row| row.module == "types")
         .expect("sandbox stdlib manifest must include types");
     for evidence in [
+        "cpython_types_names_public_surface_diff_subset",
         "cpython_types_singleton_type_aliases_diff_subset",
         "cpython_types_module_type_diff_subset",
         "cpython_types_generic_alias_union_type_diff_subset",
