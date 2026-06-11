@@ -13006,6 +13006,7 @@ fn cpython_memoryview_count_index_diff_subset() {
     let oracle_stdout =
         String::from_utf8(oracle_probe.stdout).expect("CPython capability probe emitted non-UTF-8");
     if oracle_stdout.trim() != "True" {
+        eprintln!("skipping memoryview.count/index diff: CPython oracle lacks memoryview.count");
         return;
     }
 
@@ -14865,6 +14866,7 @@ fn cpython_float_from_number_diff_subset() {
     let oracle_stdout = String::from_utf8(oracle_probe.stdout)
         .expect("CPython float.from_number probe emitted non-UTF-8 output");
     if oracle_stdout.trim() != "True" {
+        eprintln!("skipping float.from_number diff: CPython oracle lacks float.from_number");
         return;
     }
 
@@ -14937,6 +14939,7 @@ fn cpython_complex_subclass_constructor_and_from_number_diff_subset() {
     let oracle_stdout = String::from_utf8(oracle_probe.stdout)
         .expect("CPython complex.from_number probe emitted non-UTF-8 output");
     if oracle_stdout.trim() != "True" {
+        eprintln!("skipping complex.from_number diff: CPython oracle lacks complex.from_number");
         return;
     }
 

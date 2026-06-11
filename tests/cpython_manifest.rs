@@ -2672,6 +2672,47 @@ fn array_clear_diff_evidence_stays_capability_gated() {
 }
 
 #[test]
+fn runtime_newer_oracle_diff_evidence_stays_capability_gated() {
+    for (function, required) in [
+        (
+            "fn cpython_memoryview_count_index_diff_subset()",
+            &[
+                "hasattr(memoryview(b'abc'), 'count')",
+                "skipping memoryview.count/index diff",
+            ][..],
+        ),
+        (
+            "fn cpython_float_from_number_diff_subset()",
+            &[
+                "hasattr(float, 'from_number')",
+                "skipping float.from_number diff",
+            ],
+        ),
+        (
+            "fn cpython_complex_subclass_constructor_and_from_number_diff_subset()",
+            &[
+                "hasattr(complex, 'from_number')",
+                "skipping complex.from_number diff",
+            ],
+        ),
+    ] {
+        let start = CPYTHON_DIFF
+            .find(function)
+            .unwrap_or_else(|| panic!("runtime gated diff evidence `{function}` must exist"));
+        let body = &CPYTHON_DIFF[start..];
+        let end = body.find("\n#[test]").unwrap_or(body.len());
+        let body = &body[..end];
+
+        for text in required {
+            assert!(
+                body.contains(text),
+                "runtime gated diff evidence `{function}` must contain `{text}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn collections_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "collections / collections.abc",
