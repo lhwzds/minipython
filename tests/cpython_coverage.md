@@ -1376,6 +1376,13 @@ Recent runtime migration notes:
   bytearray constructors consume live list iterators that observe source list
   clears and appends during item `__index__` conversion.
 - `STRING_RUNTIME` also includes
+  `cpython_bytes_constructor_concat_repeat_contains_subset`, covering
+  bytes/bytearray integer-length construction, mixed bytes/bytearray
+  concatenation result types, repetition with zero/negative counts, repeat
+  TypeErrors, and membership over integer and bytes-like needles. Direct
+  CPython diff evidence is in
+  `cpython_bytes_constructor_concat_repeat_contains_diff_subset`.
+- `STRING_RUNTIME` also includes
   `cpython_bytes_check_encoding_errors_devmode_subset`, covering CPython
   `BaseBytesTest::test_check_encoding_errors` public `-X dev` behavior where
   bytes/bytearray constructors and decode methods eagerly raise `LookupError`

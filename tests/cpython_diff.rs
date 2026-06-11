@@ -8254,6 +8254,46 @@ for expr in [
 }
 
 #[test]
+fn cpython_bytes_constructor_concat_repeat_contains_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_int, ::test_concat, ::test_repeat, and ::test_contains public subset",
+        name: "bytes-constructor-concat-repeat-contains",
+        source: r#"import sys
+for ctor in [bytes, bytearray]:
+    print(ctor(0), len(ctor(10)), len(ctor(10000)))
+    print(ctor(10) == ctor([0] * 10), ctor(10000) == ctor([0] * 10000))
+    b1 = ctor(b'abc')
+    b2 = ctor(b'def')
+    print(b1 + b2)
+    print(b1 + bytes(b'def'))
+    print(bytes(b'def') + b1)
+    for expr in [lambda: b1 + 'def', lambda: 'abc' + b2]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)
+    for sample in [b'abc', ctor(b'abc')]:
+        print(sample * 3, sample * 0, sample * -1)
+        for expr in [lambda: sample * 3.14, lambda: 3.14 * sample]:
+            try:
+                expr()
+            except TypeError as error:
+                print(error.__class__.__name__)
+    print(ctor(b'x') * 100 == ctor([ord('x')] * 100))
+    b = ctor(b'abc')
+    for needle in [ord('a'), int(ord('a')), 200]:
+        print(needle in b)
+    for needle in [300, -1, sys.maxsize + 1, None, float(ord('a')), 'a']:
+        try:
+            needle in b
+        except (TypeError, ValueError) as error:
+            print(error.__class__.__name__)
+    for needle in [bytes(b''), bytearray(b''), memoryview(b''), bytes(b'a'), bytearray(b'b'), memoryview(b'c'), bytes(b'ab'), bytearray(b'bc'), bytes(b'ac'), bytes(b'd')]:
+        print(needle in b)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
