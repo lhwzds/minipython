@@ -2458,6 +2458,13 @@ Recent runtime migration notes:
   evidence is in
   `cpython_collections_abc_userdict_view_snapshot_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_bytestring_buffer_subset`, covering CPython
+  `TestCollectionABCs::test_ByteString` and `::test_Buffer` public ABC
+  relationships for `ByteString`, `Buffer`, bytes-like builtins, memoryview,
+  direct subclassing, and structural `__buffer__` checks. Direct CPython diff
+  evidence is in `cpython_collections_abc_bytestring_buffer_diff_subset`,
+  gated for CPython oracles with collections.abc.Buffer.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_bytestring_deprecation_warnings_subset`, covering
   CPython `TestCollectionABCs::test_ByteString` and
   `::test_ByteString_attribute_access` deprecation warnings for public

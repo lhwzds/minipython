@@ -3654,6 +3654,56 @@ for B in [Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable]:
 }
 
 #[test]
+fn cpython_collections_abc_bytestring_buffer_diff_subset() {
+    let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
+        .expect("failed to probe CPython collections.abc.Buffer support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping collections.abc ByteString/Buffer diff: CPython oracle lacks collections.abc.Buffer"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs::test_ByteString and test_Buffer",
+        name: "collections-abc-bytestring-buffer",
+        source: r#"from collections.abc import ByteString, Buffer, Sequence, Awaitable
+from collections.abc import Collection, Sized, Iterable, Container
+byte_samples = [b'', bytearray()]
+buffer_samples = [b'', bytearray(), memoryview(b'x')]
+print([isinstance(value, ByteString) for value in byte_samples])
+print([issubclass(type(value), ByteString) for value in byte_samples])
+print([isinstance(value, Buffer) for value in buffer_samples])
+print([issubclass(type(value), Buffer) for value in buffer_samples])
+print(isinstance(memoryview(b''), ByteString), issubclass(memoryview, ByteString))
+print(issubclass(bytes, Buffer), issubclass(bytearray, Buffer), issubclass(memoryview, Buffer))
+non_samples = ['', [], (), range(0), {}, set(), None, 42]
+print([isinstance(value, ByteString) for value in non_samples])
+print([isinstance(value, Buffer) for value in non_samples])
+print(issubclass(str, ByteString), issubclass(list, ByteString), issubclass(tuple, ByteString))
+print(issubclass(str, Buffer), issubclass(list, Buffer), issubclass(tuple, Buffer))
+print(issubclass(ByteString, Sequence), issubclass(ByteString, Buffer), issubclass(Buffer, ByteString))
+print(issubclass(ByteString, Collection), issubclass(ByteString, Sized), issubclass(ByteString, Iterable), issubclass(ByteString, Container))
+class X(ByteString):
+    pass
+class Z(ByteString, Awaitable):
+    pass
+print(issubclass(X, ByteString), issubclass(X, Sequence), issubclass(float, X))
+print(issubclass(Z, ByteString), issubclass(Z, Awaitable), issubclass(float, Z))
+class CustomBuffer:
+    def __buffer__(self):
+        return b''
+class BufferBlocked(CustomBuffer):
+    __buffer__ = None
+print(isinstance(CustomBuffer(), Buffer), issubclass(CustomBuffer, Buffer))
+print(isinstance(BufferBlocked(), Buffer), issubclass(BufferBlocked, Buffer))
+class DirectBuffer(Buffer):
+    pass
+print(issubclass(DirectBuffer, Buffer), issubclass(float, DirectBuffer))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_composite_abstract_methods_diff_subset() {
     let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
         .expect("failed to probe CPython collections.abc.Buffer support");
