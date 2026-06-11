@@ -1301,6 +1301,82 @@ for expr in [lambda: functools.reduce(lambda a,b:a+b, []), lambda: functools.par
 }
 
 #[test]
+fn cpython_functools_partial_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestPartial public subset",
+        name: "functools-partial",
+        source: r#"from functools import partial
+def capture(*args, **kwargs):
+    return args, kwargs
+
+p = partial(capture, 1, 2, a=10, b=20)
+print(callable(p), type(p).__name__)
+print(p(3, 4, b=30, c=40))
+print(p.func is capture, p.args, p.keywords == {'a': 10, 'b': 20})
+for expr in [lambda: partial(), lambda: partial(2), lambda: partial(2)()]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+
+d = {'a': 3}
+def func(a=10, b=20):
+    return a
+p = partial(func, a=5)
+print(p(**d), d)
+p(b=7)
+print(d)
+
+d = {'a': 3}
+p = partial(capture, **d)
+print(p())
+d['a'] = 5
+print(p())
+
+p = partial(capture)
+print(p.keywords, p(), p(1, 2))
+p = partial(capture, 1, 2)
+print(p(), p(3, 4))
+p = partial(capture, a=1)
+print(p.keywords, p(), p(b=2), p(a=3, b=2))
+for args in [(), (0,), (0, 1), (0, 1, 2), (0, 1, 2, 3)]:
+    got, empty = partial(capture, *args)('x')
+    print(got == args + ('x',), empty == {})
+for a in ['a', 0, None, 3.5]:
+    empty, got = partial(capture, a=a)(x=None)
+    print(empty == (), got == {'a': a, 'x': None})
+
+p = partial(capture, 0, a=1)
+args1, kw1 = p(1, b=2)
+args2, kw2 = p()
+print(args1, kw1, args2, kw2)
+
+def div(x, y):
+    x / y
+for expr in [lambda: partial(div, 1, 0)(), lambda: partial(div, 1)(0), lambda: partial(div)(1, 0), lambda: partial(div, y=0)(1)]:
+    try:
+        expr()
+    except ZeroDivisionError as error:
+        print(error.__class__.__name__)
+
+p = partial(capture, 'first')
+p2 = partial(p, 'second')
+p2.new_attr = 'spam'
+print(p2(), p2.new_attr, p2.__dict__['new_attr'])
+del p2.new_attr
+try:
+    p2.new_attr
+except AttributeError as error:
+    print(error.__class__.__name__)
+for attr in ['func', 'args', 'keywords']:
+    try:
+        setattr(p2, attr, 42)
+    except AttributeError as error:
+        print(attr, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",

@@ -58,6 +58,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
+  `cpython_functools_partial_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -505,12 +506,13 @@ Recent runtime migration notes:
   `cpython_functools_public_helpers_subset`, covering direct CPython
   output parity for representative public `reduce`, `partial`, `wraps`, and
   `cmp_to_key` helper behavior plus basic TypeError classification.
-- The bundled `functools` module includes `cpython_functools_partial_subset`,
-  covering CPython `test_functools.py::TestPartial` public call semantics,
-  `func` / `args` / `keywords` attributes, caller keyword-dict isolation,
-  constructor keyword copying, positional/keyword combinations, exception
-  propagation, nested partial calls, custom attributes, and readonly core
-  attributes.
+- The bundled `functools` module includes
+  `cpython_functools_partial_diff_subset` and
+  `cpython_functools_partial_subset`, covering CPython
+  `test_functools.py::TestPartial` public call semantics, `func` / `args` /
+  `keywords` attributes, caller keyword-dict isolation, constructor keyword
+  copying, positional/keyword combinations, exception propagation, nested
+  partial calls, custom attributes, and readonly core attributes.
 - The bundled `functools` module also includes
   `cpython_functools_partialmethod_subset`, covering CPython
   `test_functools.py::TestPartialMethod` public descriptor behavior, instance
