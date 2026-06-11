@@ -2393,6 +2393,78 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
 }
 
 #[test]
+fn json_sandbox_manifest_lists_public_subset_evidence() {
+    assert_sandbox_manifest_subset_evidence(
+        "json",
+        &[
+            "cpython_json_loads_dumps_basic_subset",
+            "cpython_json_keyword_argument_binding_subset",
+            "cpython_json_loads_escape_and_duplicate_key_subset",
+            "cpython_json_loads_unicode_escape_roundtrip_subset",
+            "cpython_json_loads_strict_subset",
+            "cpython_json_dumps_string_escape_subset",
+            "cpython_json_dumps_key_coercion_subset",
+            "cpython_json_dumps_allow_nan_subset",
+            "cpython_json_dumps_check_circular_subset",
+            "cpython_json_dumps_ensure_ascii_subset",
+            "cpython_json_dumps_indent_subset",
+            "cpython_json_dumps_skipkeys_subset",
+            "cpython_json_dumps_sort_keys_subset",
+            "cpython_json_dumps_separators_subset",
+            "cpython_json_dumps_float_spelling_subset",
+            "cpython_json_loads_number_and_whitespace_subset",
+            "cpython_json_loads_top_level_scalar_and_empty_container_subset",
+            "cpython_json_loads_nonfinite_constants_subset",
+            "cpython_json_loads_dumps_error_boundary_subset",
+            "cpython_json_loads_string_error_boundary_subset",
+        ],
+        &[
+            "object_hook",
+            "object_pairs_hook",
+            "parse_float",
+            "parse_int",
+            "parse_constant",
+            "default",
+            "cls",
+            "File APIs",
+            "full `JSONDecodeError` compatibility",
+        ],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "json")
+        .expect("sandbox stdlib manifest must include json");
+    for evidence in [
+        "cpython_json_loads_dumps_diff_subset",
+        "cpython_json_keyword_argument_binding_diff_subset",
+        "cpython_json_loads_escape_and_duplicate_key_diff_subset",
+        "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
+        "cpython_json_loads_strict_diff_subset",
+        "cpython_json_dumps_string_escape_diff_subset",
+        "cpython_json_dumps_key_coercion_diff_subset",
+        "cpython_json_dumps_allow_nan_diff_subset",
+        "cpython_json_dumps_check_circular_diff_subset",
+        "cpython_json_dumps_ensure_ascii_diff_subset",
+        "cpython_json_dumps_indent_diff_subset",
+        "cpython_json_dumps_skipkeys_diff_subset",
+        "cpython_json_dumps_sort_keys_diff_subset",
+        "cpython_json_dumps_separators_diff_subset",
+        "cpython_json_dumps_float_spelling_diff_subset",
+        "cpython_json_loads_number_and_whitespace_diff_subset",
+        "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
+        "cpython_json_loads_nonfinite_constants_diff_subset",
+        "cpython_json_loads_dumps_error_boundary_diff_subset",
+        "cpython_json_loads_string_error_boundary_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "json sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
 fn operator_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "operator",
