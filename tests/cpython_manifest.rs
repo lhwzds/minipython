@@ -2978,6 +2978,47 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         ],
         &["Platform/libm", "locale-sensitive"],
     );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "math / math.integer")
+        .expect("sandbox stdlib manifest must include math / math.integer");
+    for evidence in [
+        "cpython_math_core_diff_subset",
+        "cpython_math_constants_and_classification_diff_subset",
+        "cpython_math_isclose_diff_subset",
+        "cpython_math_hypot_dist_diff_subset",
+        "cpython_math_gcd_diff_subset",
+        "cpython_math_lcm_diff_subset",
+        "cpython_math_prod_diff_subset",
+        "cpython_math_integer_diff_subset",
+        "cpython_math_sqrt_diff_subset",
+        "cpython_math_fabs_diff_subset",
+        "cpython_math_copysign_diff_subset",
+        "cpython_math_signbit_diff_subset",
+        "cpython_math_trunc_diff_subset",
+        "cpython_math_ceil_diff_subset",
+        "cpython_math_floor_diff_subset",
+        "cpython_math_degrees_radians_diff_subset",
+        "cpython_math_cbrt_diff_subset",
+        "cpython_math_fma_diff_subset",
+        "cpython_math_fmax_fmin_diff_subset",
+        "cpython_math_exp_exp2_diff_subset",
+        "cpython_math_log_family_diff_subset",
+        "cpython_math_trig_diff_subset",
+        "cpython_math_hyperbolic_diff_subset",
+        "cpython_math_fmod_remainder_diff_subset",
+        "cpython_math_frexp_ldexp_modf_diff_subset",
+        "cpython_math_fsum_diff_subset",
+        "cpython_math_sumprod_diff_subset",
+        "cpython_math_nextafter_ulp_diff_subset",
+        "cpython_math_pow_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "math sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
