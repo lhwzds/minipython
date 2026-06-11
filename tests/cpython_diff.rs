@@ -11251,6 +11251,38 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_length_constructor_boundary_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_int and ::test_from_ssize public subset",
+        name: "bytes-length-constructor-boundary",
+        source: r#"import sys
+
+class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+
+for ctor in [bytes, bytearray]:
+    print(ctor(0), ctor(1), len(ctor(5)))
+    print(ctor('0', 'ascii'), ctor(b'0'))
+    for label, expr in [
+        ('neg1', lambda ctor=ctor: ctor(-1)),
+        ('index-neg1', lambda ctor=ctor: ctor(Indexable(-1))),
+        ('min-neg', lambda ctor=ctor: ctor(-sys.maxsize - 1)),
+        ('underflow', lambda ctor=ctor: ctor(-sys.maxsize - 2)),
+        ('overflow', lambda ctor=ctor: ctor(sys.maxsize + 1)),
+        ('huge-pos', lambda ctor=ctor: ctor(10**100)),
+        ('huge-neg', lambda ctor=ctor: ctor(-10**100)),
+    ]:
+        try:
+            expr()
+        except Exception as error:
+            print(ctor.__name__, label, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_literal_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py bytes literal tokenization, Lib/test/test_bytes.py bytes runtime subset, and Lib/test/test_ast/test_ast.py bytes constants",

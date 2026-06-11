@@ -1374,7 +1374,12 @@ Recent runtime migration notes:
   zero-filled integer lengths, string/buffer sources, `__index__` length
   conversion, catchable negative/overflow boundary exceptions, and
   address-space-sized allocation guards that raise `OverflowError` or
-  `MemoryError` without crashing.
+  `MemoryError` without crashing. Direct CPython diff evidence for the stable
+  length and signed-size boundary portion is in
+  `cpython_bytes_length_constructor_boundary_diff_subset`; the
+  address-space-sized allocation guard remains local safety evidence because
+  exact `MemoryError` / `OverflowError` classification can vary by runtime
+  allocation policy.
 - `STRING_RUNTIME` also includes `cpython_bytes_iterable_constructor_subset`,
   covering CPython `BaseBytesTest::test_from_iterable`, `test_from_tuple`,
   `test_from_list`, and `test_from_index` public bytes/bytearray construction

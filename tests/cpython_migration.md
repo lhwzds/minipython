@@ -3069,6 +3069,8 @@ Completed in the bytes iterable-constructor pass:
   `BaseBytesTest::test_from_int` and `test_from_ssize`, covering zero-filled
   integer-length construction, string/buffer source construction, `__index__`
   length conversion, and catchable negative/overflow boundary exceptions.
+  Direct CPython diff evidence is in
+  `cpython_bytes_length_constructor_boundary_diff_subset`.
 - Added `cpython_bytes_constructor_overflow_guard_subset`, adapted from
   `BaseBytesTest::test_constructor_overflow`, covering the public safety
   contract that address-space-sized bytes/bytearray constructor lengths raise
