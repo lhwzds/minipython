@@ -4537,6 +4537,25 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_views_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests contains/views subset",
+        name: "types-mappingproxy-contains-views",
+        source: r#"from types import MappingProxyType
+view = MappingProxyType(dict.fromkeys('abc'))
+print('a' in view, 'b' in view, 'c' in view, 'xxx' in view)
+mapping = {}
+view = MappingProxyType(mapping)
+keys = view.keys()
+values = view.values()
+items = view.items()
+print(list(keys), list(values), list(items))
+mapping['key'] = 'value'
+print(list(keys), list(values), list(items))"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
