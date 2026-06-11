@@ -1142,6 +1142,49 @@ print(value['small'])"#,
 }
 
 #[test]
+fn cpython_json_loads_int_digit_limit_diff_subset() {
+    let oracle_probe = run_cpython(
+        "import sys; print(hasattr(sys, 'get_int_max_str_digits'), hasattr(sys, 'set_int_max_str_digits'))",
+    )
+    .expect("failed to run CPython json int max string digits capability probe");
+    let oracle_stdout = String::from_utf8(oracle_probe.stdout)
+        .expect("CPython json int max string digits probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True True" {
+        eprintln!("skipping json int digit-limit diff: CPython oracle lacks sys digit-limit APIs");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads integer digit limit subset",
+        name: "json-loads-int-digit-limit",
+        source: r#"import json, sys
+old_limit = sys.get_int_max_str_digits()
+sys.set_int_max_str_digits(640)
+try:
+    maxdigits = sys.get_int_max_str_digits()
+    print(type(json.loads('1' * maxdigits)).__name__)
+    print(type(json.loads('-' + '1' * maxdigits)).__name__)
+    for label, source in [
+        ('top', '1' * (maxdigits + 1)),
+        ('negative', '-' + '1' * (maxdigits + 1)),
+        ('array', '[' + '1' * (maxdigits + 1) + ']'),
+        ('object', '{"n": ' + '1' * (maxdigits + 1) + '}'),
+    ]:
+        try:
+            json.loads(source)
+        except ValueError as error:
+            message = str(error)
+            print(label, 'Exceeds the limit' in message, 'conversion' in message)
+        else:
+            print(label, 'OK')
+    sys.set_int_max_str_digits(0)
+    print(type(json.loads('1' * (maxdigits + 1))).__name__)
+finally:
+    sys.set_int_max_str_digits(old_limit)"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_top_level_scalar_and_empty_container_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads top-level scalar and empty container subset",

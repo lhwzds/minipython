@@ -573,6 +573,8 @@ Recent runtime migration notes:
   `cpython_json_loads_strict_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset` /
   `cpython_json_loads_number_and_whitespace_subset`,
+  `cpython_json_loads_int_digit_limit_diff_subset` /
+  `cpython_json_loads_int_digit_limit_subset`,
   `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset` /
   `cpython_json_loads_top_level_scalar_and_empty_container_subset`,
   `cpython_json_loads_nonfinite_constants_diff_subset` /
@@ -613,7 +615,8 @@ Recent runtime migration notes:
   `sort_keys` ordering for supported comparable keys, `separators`
   compact/custom rendering for two-string list/tuple values and subclasses,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
-  number grammar edges, top-level scalar values, empty containers, finite and
+  number grammar edges, `sys.set_int_max_str_digits()` enforcement for parsed
+  JSON integer values, top-level scalar values, empty containers, finite and
   default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple

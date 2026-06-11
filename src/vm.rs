@@ -54058,6 +54058,11 @@ impl JsonParser {
                 .map_err(|_| "ValueError: Invalid number in json.loads() subset".to_string())?;
             Ok(float_value(value))
         } else {
+            let digit_count = text.strip_prefix('-').unwrap_or(&text).len();
+            let max_digits = get_int_max_str_digits();
+            if max_digits != 0 && digit_count > max_digits {
+                return Err(int_string_conversion_limit_error(max_digits, digit_count));
+            }
             let integer = BigInt::parse_bytes(text.as_bytes(), 10)
                 .ok_or_else(|| "ValueError: Invalid number in json.loads() subset".to_string())?;
             Ok(normalize_big_int(integer))

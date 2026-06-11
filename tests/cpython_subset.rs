@@ -32737,6 +32737,22 @@ fn cpython_json_loads_number_and_whitespace_subset() {
 }
 
 #[test]
+fn cpython_json_loads_int_digit_limit_subset() {
+    assert_output(
+        "import json, sys\nold_limit = sys.get_int_max_str_digits()\nsys.set_int_max_str_digits(640)\ntry:\n    maxdigits = sys.get_int_max_str_digits()\n    print(type(json.loads('1' * maxdigits)).__name__)\n    print(type(json.loads('-' + '1' * maxdigits)).__name__)\n    for label, source in [('top', '1' * (maxdigits + 1)), ('negative', '-' + '1' * (maxdigits + 1)), ('array', '[' + '1' * (maxdigits + 1) + ']'), ('object', '{\"n\": ' + '1' * (maxdigits + 1) + '}')]:\n        try:\n            json.loads(source)\n        except ValueError as error:\n            message = str(error)\n            print(label, 'Exceeds the limit' in message, 'conversion' in message)\n        else:\n            print(label, 'OK')\n    sys.set_int_max_str_digits(0)\n    print(type(json.loads('1' * (maxdigits + 1))).__name__)\nfinally:\n    sys.set_int_max_str_digits(old_limit)",
+        &[
+            "int",
+            "int",
+            "top True True",
+            "negative True True",
+            "array True True",
+            "object True True",
+            "int",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_top_level_scalar_and_empty_container_subset() {
     assert_output(
         "import json\nfor source in ['null', 'true', 'false', '\"\"', '[]', '{}', '[[], {}]', '{\"empty_list\": [], \"empty_dict\": {}}']:\n    value = json.loads(source)\n    print(source, repr(value), type(value).__name__)",
