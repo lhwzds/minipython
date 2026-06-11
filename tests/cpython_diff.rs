@@ -3296,6 +3296,67 @@ print(issubclass(R, Reversible), issubclass(float, R))"#,
 }
 
 #[test]
+fn cpython_collections_abc_async_runtime_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Awaitable/Coroutine/AsyncIterable/AsyncIterator public subset",
+        name: "collections-abc-async-runtime",
+        source: r#"from collections.abc import Awaitable, Coroutine, AsyncIterable, AsyncIterator
+def plain_gen():
+    yield 1
+async def coro():
+    return 1
+c = coro()
+print(isinstance(c, Awaitable), isinstance(c, Coroutine))
+print(issubclass(type(c), Awaitable), issubclass(type(c), Coroutine))
+print(c.close())
+class AwaitOnly:
+    def __await__(self):
+        yield 1
+print(isinstance(AwaitOnly(), Awaitable), issubclass(AwaitOnly, Awaitable), isinstance(AwaitOnly(), Coroutine), issubclass(AwaitOnly, Coroutine))
+class CoroLike:
+    def __await__(self):
+        yield
+    def send(self, value):
+        return value
+    def throw(self, typ, val=None, tb=None):
+        pass
+    def close(self):
+        pass
+class MissingThrow:
+    def __await__(self):
+        yield
+    def send(self, value):
+        return value
+    def close(self):
+        pass
+print(isinstance(CoroLike(), Awaitable), isinstance(CoroLike(), Coroutine), issubclass(CoroLike, Coroutine))
+print(isinstance(MissingThrow(), Coroutine), issubclass(MissingThrow, Coroutine))
+class AI:
+    def __aiter__(self):
+        return self
+class AIter(AI):
+    async def __anext__(self):
+        raise StopAsyncIteration
+class AnextOnly:
+    async def __anext__(self):
+        raise StopAsyncIteration
+print(isinstance(AI(), AsyncIterable), issubclass(AI, AsyncIterable), isinstance(AI(), AsyncIterator), issubclass(AI, AsyncIterator))
+print(isinstance(AIter(), AsyncIterable), isinstance(AIter(), AsyncIterator), issubclass(AIter, AsyncIterator), issubclass(AsyncIterator, AsyncIterable))
+print(isinstance(AnextOnly(), AsyncIterator), issubclass(AnextOnly, AsyncIterator))
+async_iterator_non_samples = [None, object, []]
+print([isinstance(value, AsyncIterator) for value in async_iterator_non_samples])
+print([issubclass(type(value), AsyncIterator) for value in async_iterator_non_samples])
+class AIBlocked(AI):
+    __aiter__ = None
+class ANextBlocked(AIter):
+    __anext__ = None
+print(isinstance(AIBlocked(), AsyncIterable), issubclass(AIBlocked, AsyncIterable), isinstance(ANextBlocked(), AsyncIterator), issubclass(ANextBlocked, AsyncIterator))
+print([isinstance(value, Awaitable) for value in [None, 1, plain_gen(), object()]])
+print([isinstance(value, AsyncIterable) for value in [None, object(), []]])"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

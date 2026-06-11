@@ -2433,6 +2433,12 @@ Recent runtime migration notes:
   blocking. Direct CPython diff evidence is in
   `cpython_collections_abc_reversible_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_async_runtime_subset`, covering `Awaitable`,
+  `Coroutine`, `AsyncIterable`, and `AsyncIterator` for native coroutine
+  objects, structural user classes, non-samples, ABC inheritance, and `None`
+  blocking. Direct CPython diff evidence is in
+  `cpython_collections_abc_async_runtime_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
