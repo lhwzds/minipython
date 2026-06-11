@@ -160,6 +160,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_richcompare_diff_subset`,
   `cpython_types_mappingproxy_custom_mapping_diff_subset`,
   `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
+  `cpython_types_class_creation_prepare_and_metaclass_callable_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_types_simple_namespace_recursive_diff_subset`,
   `cpython_types_simple_namespace_state_order_diff_subset`,
@@ -3074,7 +3075,8 @@ Recent runtime migration notes:
   `__prepare__` namespace without class-statement validation, function
   metaclasses can return arbitrary class-statement objects, and callable-object
   metaclasses receive `__prepare__` / `__call__` name, bases, namespace, and
-  class keyword arguments.
+  class keyword arguments. Direct output parity is guarded by
+  `cpython_types_class_creation_prepare_and_metaclass_callable_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_metaclass_override_function_subset`, covering
   CPython `ClassCreationTests::test_metaclass_override_function`:

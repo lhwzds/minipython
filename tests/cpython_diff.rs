@@ -6409,6 +6409,55 @@ print(types.resolve_bases((list[int],)) == (list,))"#,
 }
 
 #[test]
+fn cpython_types_class_creation_prepare_and_metaclass_callable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests bad __prepare__ and non-class metaclass callable public subset",
+        name: "types-class-creation-prepare-metaclass-callable",
+        source: r#"import types
+class BadMeta(type):
+    @classmethod
+    def __prepare__(*args):
+        return None
+try:
+    class Foo(metaclass=BadMeta):
+        pass
+except TypeError as error:
+    print('bad-type', type(error).__name__, str(error).startswith('BadMeta.__prepare__()'), 'return a mapping' in str(error))
+class BadMetaInstance:
+    @classmethod
+    def __prepare__(*args):
+        return None
+try:
+    class Bar(metaclass=BadMetaInstance()):
+        pass
+except TypeError as error:
+    print('bad-instance', type(error).__name__, str(error).startswith('<metaclass>.__prepare__()'), 'return a mapping' in str(error))
+meta, ns, kwds = types.prepare_class('P', (), {'metaclass': BadMeta})
+print('prepare-bad-type', meta is BadMeta, ns, kwds)
+meta, ns, kwds = types.prepare_class('Q', (), {'metaclass': BadMetaInstance()})
+print('prepare-bad-instance', type(meta).__name__, ns, kwds)
+marker = object()
+def func(name, bases, ns, **kw):
+    print('func-args', name, len(bases), type(ns).__name__, ns['body'], kw['z'])
+    return marker
+class FuncClass(metaclass=func, z=2):
+    body = 1
+print('func-result', FuncClass is marker)
+class CallableMeta:
+    @classmethod
+    def __prepare__(cls, name, bases, **kw):
+        print('callable-prepare', cls.__name__, name, len(bases), kw['z'])
+        return {'prepared': kw['z']}
+    def __call__(self, name, bases, ns, **kw):
+        print('callable-call', name, ns['prepared'], ns['body'], kw['z'])
+        return (name, bases, ns, kw)
+class CallableClass(metaclass=CallableMeta(), z=4):
+    body = 2
+print('callable-result', CallableClass[0], CallableClass[2]['prepared'], CallableClass[2]['body'], CallableClass[3]['z'])"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_metaclass_derivation_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_derivation",
