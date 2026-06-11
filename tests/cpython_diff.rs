@@ -4448,6 +4448,46 @@ for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: ty
 }
 
 #[test]
+fn cpython_types_mappingproxy_exact_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests exact dict public subset",
+        name: "types-mappingproxy-exact-dict",
+        source: r#"from types import MappingProxyType
+from collections.abc import Mapping, MutableMapping, Collection, Reversible
+mapping = {'a': 'A', 'b': 'B'}
+view = MappingProxyType(mapping)
+print(type(view).__name__, isinstance(view, Mapping), isinstance(view, MutableMapping), isinstance(view, Collection), isinstance(view, Reversible))
+print(view == mapping, view['a'], view['b'])
+try:
+    view['missing']
+except KeyError as error:
+    print(error.__class__.__name__)
+print(view.get('a'), view.get('missing'), view.get('missing', 42))
+keys = view.keys()
+values = view.values()
+items = view.items()
+print(list(keys), list(values), list(items))
+mapping['c'] = 'C'
+print(list(keys), list(values), list(items))
+copy = view.copy()
+print(type(copy).__name__, copy == mapping, copy is mapping)
+mapping['a'] = 'AA'
+print(view['a'], copy['a'])
+print(list(view), list(reversed(view)))
+print(MappingProxyType({'a': 'AA', 'b': 'B', 'c': 'C'}) == view, MappingProxyType({'a': 'x'}) != view)
+for expr in [lambda: MappingProxyType(10), lambda: MappingProxyType(('a', 'tuple')), lambda: MappingProxyType(['a', 'list'])]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+try:
+    view['x'] = 1
+except TypeError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
