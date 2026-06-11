@@ -3297,7 +3297,8 @@ Completed in the bytes maketrans/translate-method pass:
   `memoryview` tables, class and instance `maketrans()` lookup,
   `BuiltinTest::test_bytearray_translate` error ordering for short translation
   tables versus non-bytes-like delete arguments, and representative
-  TypeError/ValueError paths.
+  TypeError/ValueError paths. Direct CPython diff evidence is in
+  `cpython_bytes_maketrans_translate_diff_subset`.
 - Tightened `translate()` unbound and missing-table diagnostics plus
   `maketrans()` no-argument diagnostics to match CPython's public
   `TypeError.args[0]` text.

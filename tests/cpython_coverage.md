@@ -1291,6 +1291,12 @@ Recent runtime migration notes:
   bytes-like affixes, empty receiver and empty affix behavior, receiver-driven
   result types, and representative TypeError paths. Direct CPython diff
   evidence is in `cpython_bytes_remove_affix_methods_diff_subset`.
+- `STRING_RUNTIME` also includes `cpython_bytes_maketrans_translate_subset`,
+  covering bytes/bytearray `maketrans()` and `translate()` 256-byte tables,
+  bytes-like table/delete arguments including `memoryview`, `None` identity
+  tables, deletion with positional and keyword arguments, receiver-driven
+  result types, and representative TypeError/ValueError paths. Direct CPython
+  diff evidence is in `cpython_bytes_maketrans_translate_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_mutation_methods_subset`,
   covering bytearray `append()`, `extend()`, `insert()`, `pop()`, `remove()`,
   `reverse()`, `clear()`, and `copy()` in-place mutation behavior, including

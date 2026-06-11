@@ -8149,6 +8149,45 @@ print('expandtabs' in dir(bytes), 'zfill' in dir(bytes), 'expandtabs' in dir(byt
 }
 
 #[test]
+fn cpython_bytes_maketrans_translate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_maketrans and ::test_translate public subset",
+        name: "bytes-maketrans-translate",
+        source: r#"for ctor in [bytes, bytearray]:
+    table = ctor.maketrans(b'abc', b'xyz')
+    print(type(table).__name__, len(table), table[ord('a')], table[ord('b')], table[ord('c')])
+    table = ctor.maketrans(memoryview(b'\xfd\xfe\xff'), bytearray(b'xyz'))
+    print(type(table).__name__, len(table), table[0xfd], table[0xfe], table[0xff])
+    table = ctor().maketrans(bytearray(b'a'), memoryview(b'b'))
+    print(type(table).__name__, table[ord('a')])
+    b = ctor(b'hello')
+    rosetta = bytearray(range(256))
+    rosetta[ord('o')] = ord('e')
+    print(b.translate(rosetta))
+    print(b.translate(rosetta, b''))
+    print(b.translate(rosetta, b'l'))
+    print(b.translate(None, b'e'))
+    print(b.translate(rosetta, delete=b''))
+    print(b.translate(rosetta, delete=b'l'))
+    print(b.translate(None, delete=b'e'))
+    print(b.translate(memoryview(bytes(range(256)))))
+    for expr in [
+        lambda: ctor.maketrans(b'abc', b'xyzq'),
+        lambda: ctor.maketrans('abc', 'def'),
+        lambda: b.translate(),
+        lambda: b.translate(None, None),
+        lambda: b.translate(bytes(range(255))),
+        lambda: b.translate(None, b'l', delete=b'e'),
+        lambda: b.translate(None, bad=b'e'),
+    ]:
+        try:
+            expr()
+        except (TypeError, ValueError) as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",
