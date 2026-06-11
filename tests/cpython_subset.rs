@@ -39226,8 +39226,8 @@ fn cpython_functools_partialmethod_subset() {
 }
 
 // Adapted from CPython Lib/test/test_functools.py::TestCmpToKey public
-// behavior. The slice covers the key wrapper comparison contract without
-// relying on address-bearing repr output or C accelerator internals.
+// behavior. The slice covers the key wrapper comparison contract and public
+// repr shape without relying on C accelerator internals.
 #[test]
 fn cpython_functools_cmp_to_key_subset() {
     assert_output(
@@ -39240,6 +39240,10 @@ fn cpython_functools_cmp_to_key_subset() {
             "b = K(2)\n",
             "same = K(1)\n",
             "print(callable(K), callable(a), a.obj, b.obj)\n",
+            "rendered = repr(K)\n",
+            "print(rendered.startswith('<functools.KeyWrapper object at 0x'), rendered.endswith('>'), str(K) == rendered)\n",
+            "rendered = repr(a)\n",
+            "print(rendered.startswith('<functools.KeyWrapper object at 0x'), rendered.endswith('>'), str(a) == rendered)\n",
             "again = a(2)\n",
             "print(again.obj, again > same)\n",
             "print(a < b, a <= b, a == b, a != b, a > b, a >= b)\n",
@@ -39278,6 +39282,8 @@ fn cpython_functools_cmp_to_key_subset() {
         ),
         &[
             "True True 1 2",
+            "True True True",
+            "True True True",
             "2 True",
             "True True False True False False",
             "True True True",

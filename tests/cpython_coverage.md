@@ -922,8 +922,9 @@ Recent runtime migration notes:
   `cpython_functools_cmp_to_key_subset`, covering CPython
   `test_functools.py::TestCmpToKey` public key-wrapper behavior, direct rich
   comparisons, `sorted(..., key=cmp_to_key(...))`, callable wrappers, mutable
-  `obj`, unhashability, argument validation, non-wrapper comparison errors, and
-  comparator exception propagation.
+  `obj`, public wrapper and object `repr()` / `str()` shape, unhashability,
+  argument validation, non-wrapper comparison errors, and comparator exception
+  propagation.
 - The bundled `functools` module also includes
   `cpython_functools_update_wrapper_wraps_diff_subset` and
   `cpython_functools_update_wrapper_wraps_subset`, covering CPython

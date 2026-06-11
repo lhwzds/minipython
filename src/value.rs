@@ -1340,8 +1340,8 @@ impl fmt::Display for Value {
             Value::CachedProperty { identity, .. } => {
                 write!(f, "{}", format_cached_property(identity))
             }
-            Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
-                write!(f, "<functools.KeyWrapper object>")
+            Value::CmpToKey { identity, .. } | Value::CmpToKeyObject { identity, .. } => {
+                write!(f, "{}", format_cmp_to_key(identity))
             }
             Value::OperatorAttrGetter { attrs, .. } => {
                 write!(f, "{}", format_operator_attrgetter(attrs))
@@ -1473,6 +1473,13 @@ fn format_singledispatchmethod(identity: &Rc<()>) -> String {
 fn format_cached_property(identity: &Rc<()>) -> String {
     format!(
         "<functools.cached_property object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
+    )
+}
+
+fn format_cmp_to_key(identity: &Rc<()>) -> String {
+    format!(
+        "<functools.KeyWrapper object at 0x{:x}>",
         Rc::as_ptr(identity) as usize
     )
 }
@@ -1821,8 +1828,8 @@ fn format_value_repr(value: &Value) -> String {
             ..
         } => format_singledispatchmethod_callable(descriptor, identity),
         Value::CachedProperty { identity, .. } => format_cached_property(identity),
-        Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
-            "<functools.KeyWrapper object>".to_string()
+        Value::CmpToKey { identity, .. } | Value::CmpToKeyObject { identity, .. } => {
+            format_cmp_to_key(identity)
         }
         Value::OperatorAttrGetter { attrs, .. } => format_operator_attrgetter(attrs),
         Value::OperatorItemGetter { items, .. } => format_operator_itemgetter(items),
