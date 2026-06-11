@@ -141,6 +141,7 @@ Recent runtime migration notes:
   `cpython_types_module_type_diff_subset`,
   `cpython_types_function_type_diff_subset`,
   `cpython_types_code_traceback_type_aliases_diff_subset`,
+  `cpython_types_frame_type_alias_diff_subset`,
   `cpython_types_runtime_type_aliases_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,

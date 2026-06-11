@@ -4620,6 +4620,32 @@ print(types.TracebackType.__name__, types.TracebackType.__module__, types.Traceb
 }
 
 #[test]
+fn cpython_types_frame_type_alias_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests FrameType alias public subset",
+        name: "types-frame-type-alias",
+        source: r#"import sys, types
+def capture():
+    frame = sys._getframe()
+    print(frame is sys._getframe())
+    return frame
+def outer():
+    return capture()
+frame = outer()
+print(type(frame).__name__, type(frame) is types.FrameType, isinstance(frame, types.FrameType), frame.__class__ is types.FrameType)
+print(types.FrameType.__name__, types.FrameType.__module__, types.FrameType.__qualname__)
+print(type(frame.f_code).__name__, isinstance(frame.f_code, types.CodeType), frame.f_code.__class__ is types.CodeType)
+print(type(frame.f_globals).__name__, isinstance(frame.f_back, types.FrameType))
+print(type(frame.f_back).__name__, frame.f_back.__class__ is types.FrameType)
+print(isinstance(hash(frame), int), bool(frame))
+try:
+    frame.__dict__
+except AttributeError as error:
+    print(error.__class__.__name__, 'has no attribute' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_runtime_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests runtime type aliases",
