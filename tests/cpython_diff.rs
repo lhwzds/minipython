@@ -701,6 +701,41 @@ print(sum(items))
 }
 
 #[test]
+fn cpython_tokenize_implicit_line_joining_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",
+        name: "tokenize-implicit-line-joining",
+        source: r#"print(
+    1,
+    # comment inside call
+    2,
+)
+items = [
+    3,
+    # comment inside list
+    4,
+]
+mapping = {
+    "a": 5,
+    # comment inside dict
+    "b": 6,
+}
+a = (3,4,
+5,6)
+y = [3, 4,
+5]
+z = {'a': 5,
+'b':15, 'c':True}
+x = len(y) + 5 - a[
+3] - a[2]
++ len(z) - z['b']
+print(items)
+print(mapping["b"])
+print(x)"#,
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",

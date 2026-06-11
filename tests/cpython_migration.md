@@ -4231,6 +4231,10 @@ Completed in the explicit line-joining tokenizer pass:
   stream now directly asserts that bracketed physical newlines and comments do
   not produce logical `Newline` tokens, while the newline after the closing
   bracket does.
+- Added `cpython_tokenize_implicit_line_joining_diff_subset` as direct CPython
+  output parity evidence for bracketed call/list/dict continuations with
+  comment-only physical lines and the migrated tuple/list/dict continuation
+  semantics.
 - Added `cpython_tokenize_comments_diff_subset` as direct CPython output parity
   evidence that leading, inline, trailing, block-local, type-comment, and
   type-ignore comments preserve ordinary execution semantics.
