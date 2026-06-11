@@ -2648,6 +2648,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_copying_subset",
             "cpython_collections_counter_order_preservation_subset",
             "cpython_collections_counter_update_reentrant_add_clears_counter_subset",
+            "cpython_collections_counter_helper_function_subset",
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_namedtuple_public_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
@@ -2748,6 +2749,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_update_reentrant_add_clears_counter_diff_subset"
         ),
         "collections sandbox manifest must cite CPython diff evidence for Counter reentrant update"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_helper_function_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter helper function"
     );
     assert!(
         row.diff_evidence

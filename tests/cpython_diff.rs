@@ -5041,6 +5041,40 @@ print(len(c))"#,
 }
 
 #[test]
+fn cpython_collections_counter_helper_function_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter helper function subset",
+        name: "collections-counter-helper-function",
+        source: r#"from collections import Counter, OrderedDict, _count_elements
+elems = list('abracadabra')
+d = dict()
+_count_elements(d, elems)
+print(d['a'], d['r'], d['b'], d['c'], d['d'])
+m = OrderedDict()
+_count_elements(m, elems)
+print(list(m.items()))
+class CounterSubclassWithSetItem(Counter):
+    def __init__(self, *args, **kwds):
+        self.called = False
+        Counter.__init__(self, *args, **kwds)
+    def __setitem__(self, key, value):
+        self.called = True
+        Counter.__setitem__(self, key, value)
+class CounterSubclassWithGet(Counter):
+    def __init__(self, *args, **kwds):
+        self.called = False
+        Counter.__init__(self, *args, **kwds)
+    def get(self, key, default):
+        self.called = True
+        return Counter.get(self, key, default)
+c = CounterSubclassWithSetItem('abracadabra')
+print(c.called, c['a'], c['b'], c['r'], c['c'], c['d'])
+c = CounterSubclassWithGet('abracadabra')
+print(c.called, c['a'], c['b'], c['r'], c['c'], c['d'])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
