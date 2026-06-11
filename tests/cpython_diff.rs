@@ -5099,6 +5099,33 @@ for result in [p + q, p - q, p | q, p & q]:
 }
 
 #[test]
+fn cpython_collections_counter_inplace_operations_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter inplace operations subset",
+        name: "collections-counter-inplace-operations",
+        source: r#"from collections import Counter
+p = Counter(a=3, b=-1, c=0, e=1, f=-1, g=0)
+q = Counter(a=1, b=2, d=4, h=1, i=-1, j=0)
+for op in ['+=', '-=', '|=', '&=']:
+    c = p.copy()
+    before = id(c)
+    if op == '+=':
+        expected = p + q
+        result = Counter.__iadd__(c, q)
+    elif op == '-=':
+        expected = p - q
+        result = Counter.__isub__(c, q)
+    elif op == '|=':
+        expected = p | q
+        result = Counter.__ior__(c, q)
+    else:
+        expected = p & q
+        result = Counter.__iand__(c, q)
+    print(op, result == expected, c == expected, id(result) == before, id(c) == before)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public ChainMap subset",
