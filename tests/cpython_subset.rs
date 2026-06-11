@@ -44344,6 +44344,23 @@ fn cpython_collections_namedtuple_new_builtins_issue_43102_subset() {
     );
 }
 
+// Direct-diff companion for the CPython 3.9-compatible public part of
+// TestNamedTuple::test_new_builtins_issue_43102. Newer CPython exposes
+// function.__builtins__, but the stable oracle check here is the generated
+// __new__.__globals__ mapping.
+#[test]
+fn cpython_collections_namedtuple_new_builtins_globals_subset() {
+    assert_output(
+        concat!(
+            "from collections import namedtuple\n",
+            "obj = namedtuple('C', ())\n",
+            "new_func = obj.__new__\n",
+            "print(new_func.__globals__['__builtins__'] == {})\n",
+        ),
+        &["True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestNamedTuple::
 // test_large_size. CPython uses a CPU-resource randomized field-name stress
 // test; this keeps the same public behavior with deterministic field names.

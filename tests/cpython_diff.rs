@@ -5529,6 +5529,18 @@ print(type(a) is Group, a == (1, [2]), a)"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_new_builtins_globals_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple new builtins globals subset",
+        name: "collections-namedtuple-new-builtins-globals",
+        source: r#"from collections import namedtuple
+obj = namedtuple('C', ())
+new_func = obj.__new__
+print(new_func.__globals__['__builtins__'] == {})"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",
