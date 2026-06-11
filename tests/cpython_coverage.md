@@ -2592,7 +2592,10 @@ Recent runtime migration notes:
   `ASTHelpers_Test::test_dump` plain `ast.dump()` rendering for default,
   `annotate_fields=False`, and `include_attributes=True` forms.
   `cpython_ast_dump_exact_subset` splits the same CPython method into direct
-  method-level `exact_subset` coverage.
+  method-level `exact_subset` coverage. `cpython_ast_dump_public_diff_subset`
+  provides gated direct CPython output parity for the current default-field
+  rendering behavior, plus `annotate_fields=False`, `include_attributes=True`,
+  indentation, and incomplete-node dump forms.
   `cpython_ast_dump_indent_first_pass_subset` adds CPython-style
   `ast.dump(indent=...)` rendering for integer and string indents, including
   `include_attributes=True`. `cpython_ast_dump_indent_exact_subset` splits

@@ -4437,6 +4437,58 @@ fn cpython_control_flow_smoke_diff_covers_grammar_runtime_subsets() {
 }
 
 #[test]
+fn cpython_ast_dump_public_diff_covers_exact_subsets() {
+    let diff_name = "cpython_ast_dump_public_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("ast.dump public diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_ast_dump_plain_first_pass_subset",
+        "cpython_ast_dump_indent_first_pass_subset",
+        "cpython_ast_dump_incomplete_first_pass_subset",
+        "cpython_ast_dump_exact_subset",
+        "cpython_ast_dump_indent_exact_subset",
+        "cpython_ast_dump_incomplete_exact_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "ast.dump runtime subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "ast-dump-public",
+        "ASTHelpers_Test::test_dump",
+        "::test_dump_indent",
+        "::test_dump_incomplete",
+        "ast.dump(node, annotate_fields=False)",
+        "ast.dump(node, include_attributes=True)",
+        "ast.dump(node, indent=3)",
+        "legacy default-field rendering",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "ast.dump public diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("ast.dump")
+                && document.contains("default-field"),
+            "ast.dump docs must link `{diff_name}` to current CPython default-field coverage"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_syntax_warning_method_audit_is_complete() {
     let methods =
         method_audit_methods("## `Lib/test/test_syntax.py::SyntaxWarningTest` Method Audit");

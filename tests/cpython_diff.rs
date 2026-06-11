@@ -4747,6 +4747,43 @@ for expr in [lambda: compile(), lambda: compile('print(42)', '<string>', 'badmod
 }
 
 #[test]
+fn cpython_ast_dump_public_diff_subset() {
+    let probe = run_cpython("import ast\nprint('ctx=Load' in ast.dump(ast.parse('x')))")
+        .expect("failed to probe CPython ast.dump default-field support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "False" {
+        eprintln!(
+            "skipping ast.dump public diff: CPython oracle has legacy default-field rendering"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_dump / ::test_dump_indent / ::test_dump_incomplete",
+        name: "ast-dump-public",
+        source: r#"import ast
+node = ast.parse('spam(eggs, "and cheese")')
+print(ast.dump(node))
+print(ast.dump(node, annotate_fields=False))
+print(ast.dump(node, include_attributes=True))
+print(ast.dump(node, indent=3))
+print(ast.dump(node, annotate_fields=False, indent='\t'))
+node = ast.Raise(lineno=3, col_offset=4)
+print(ast.dump(node))
+print(ast.dump(node, include_attributes=True))
+node = ast.Raise(exc=ast.Name(id='e', ctx=ast.Load()), lineno=3, col_offset=4)
+print(ast.dump(node))
+print(ast.dump(node, annotate_fields=False))
+print(ast.dump(node, include_attributes=True))
+print(ast.dump(node, annotate_fields=False, include_attributes=True))
+print(ast.dump(ast.arguments(args=[ast.arg('x')]), annotate_fields=False))
+print(ast.dump(ast.arguments(posonlyargs=[ast.arg('x')]), annotate_fields=False))
+print(ast.dump(ast.arguments(posonlyargs=[ast.arg('x')], kwonlyargs=[ast.arg('y')]), annotate_fields=False))
+print(ast.dump(ast.arguments(args=[ast.arg('x')], kwonlyargs=[ast.arg('y')]), annotate_fields=False))
+print(ast.dump(ast.arguments(), annotate_fields=False))"#,
+    });
+}
+
+#[test]
 fn cpython_all_any_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_all / ::test_any",

@@ -10209,6 +10209,13 @@ Completed in the CPython collections manifest expansion pass:
   behavior from `Lib/test/test_grammar.py::test_comparison`. Added a manifest
   guard that keeps the comparison, boolean, `while`, `for`, and control-flow
   grammar subset evidence linked to that executable CPython parity smoke.
+- Added `cpython_ast_dump_public_diff_subset`, a gated direct CPython diff for
+  current `ast.dump()` default-field rendering from
+  `Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_dump`,
+  `test_dump_indent`, and `test_dump_incomplete`. The diff skips older
+  `python3` oracles whose default `ast.dump()` still includes legacy
+  `ctx=Load()` / empty-field output, and the manifest now guards that the
+  exact `ast.dump` subsets remain linked to this default-field parity evidence.
 
 Next:
 
