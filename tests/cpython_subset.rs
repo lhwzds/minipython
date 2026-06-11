@@ -35306,6 +35306,25 @@ fn cpython_iter_next_builtin_subset() {
     );
 }
 
+// Covers the public StopIteration.value attribute used by generator return
+// values without expanding into CPython's implementation-internal tests.
+#[test]
+fn cpython_stop_iteration_value_subset() {
+    assert_output_with_stack(
+        "def g(value):\n    if False:\n        yield None\n    return value\n\nfor args in [(), (42,), (1, 2)]:\n    error = StopIteration(*args)\n    print('ctor', args, error.args, error.value)\nfor value in [None, 99, (1, 2)]:\n    gen = g(value)\n    try:\n        next(gen)\n    except StopIteration as error:\n        print('gen', value, error.args, error.value)\nclass MyStop(StopIteration):\n    pass\ncustom = MyStop('x', 'y')\nprint('sub', custom.args, custom.value)",
+        &[
+            "ctor () () None",
+            "ctor (42,) (42,) 42",
+            "ctor (1, 2) (1, 2) 1",
+            "gen None () None",
+            "gen 99 (99,) 99",
+            "gen (1, 2) ((1, 2),) (1, 2)",
+            "sub ('x', 'y') x",
+        ],
+        8 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_enumerate.py::EnumerateTestCase and
 // Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted.
 #[test]

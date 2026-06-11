@@ -4407,3 +4407,7 @@ surface: `sep`, `end`, `file=None`, `flush`, string-subclass separators/endings,
 partial-line output joining for `end=''`, and representative keyword/type
 errors. Non-`None` `file` targets remain outside the sandbox subset because
 they imply file-like write dispatch.
+`cpython_stop_iteration_value_diff_subset` and
+`cpython_stop_iteration_value_subset` cover public `StopIteration.value`
+behavior for direct exception construction, generator return values, and
+`StopIteration` subclasses.

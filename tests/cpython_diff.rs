@@ -5442,6 +5442,32 @@ for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(
 }
 
 #[test]
+fn cpython_stop_iteration_value_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_generator.py public StopIteration.value behavior",
+        name: "stop-iteration-value",
+        source: r#"def g(value):
+    if False:
+        yield None
+    return value
+
+for args in [(), (42,), (1, 2)]:
+    error = StopIteration(*args)
+    print('ctor', args, error.args, error.value)
+for value in [None, 99, (1, 2)]:
+    gen = g(value)
+    try:
+        next(gen)
+    except StopIteration as error:
+        print('gen', value, error.args, error.value)
+class MyStop(StopIteration):
+    pass
+custom = MyStop('x', 'y')
+print('sub', custom.args, custom.value)"#,
+    });
+}
+
+#[test]
 fn cpython_map_filter_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_map / ::test_filter",

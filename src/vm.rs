@@ -51094,6 +51094,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 .map(|class| *class)
                 .unwrap_or(Value::Builtin(type_name))),
             "args" => Ok(tuple_value(args)),
+            "value" if type_hierarchy.iter().any(|name| name == "StopIteration") => {
+                Ok(args.first().cloned().unwrap_or(Value::None))
+            }
             "message" => Ok(message.map(Value::String).unwrap_or(Value::None)),
             "exceptions" => Ok(exceptions.map(tuple_value).unwrap_or(Value::None)),
             "with_traceback" => Ok(Value::BoundMethod {
