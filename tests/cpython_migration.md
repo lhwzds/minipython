@@ -312,6 +312,8 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   that CPython slice to bytes subclass `repr()` / `str()`, bytearray subclass
   class-name repr, bytes-like equality against builtin `bytes`, `bytearray`,
   and `memoryview`, and bytewise ordering for supported bytes-like values.
+  Direct CPython diff evidence is in
+  `cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset`.
 - Added `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, migrating
   current CPython `ByteArrayTest::test_hex_use_after_free`. MiniPython now keeps
   the bytearray receiver resize-locked while a bytes-subclass separator runs

@@ -8444,6 +8444,28 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and AssortedBytesTest repr/compare public subset",
+        name: "bytes-bytearray-subclass-repr-and-compare",
+        source: r#"class B(bytes):
+    pass
+class B2(bytes):
+    pass
+class BA(bytearray):
+    class Nested(bytearray):
+        pass
+b = B(b'abc')
+print(str(b), repr(b), B(B2(b'abc')) == B(b'abc'))
+print(b == b'abc', b == bytearray(b'abc'), b == memoryview(b'abc'))
+ba = BA(b'abc')
+print(str(ba), repr(ba), BA.Nested(b'abc'))
+print(ba == BA(b'abc'), ba == bytearray(b'abc'), ba == b'abc', ba == memoryview(b'abc'))
+print(B(b'a') < b'b', BA(b'a') < b'b')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

@@ -1476,7 +1476,9 @@ Recent runtime migration notes:
   bytearray, including constructor-signature prefixes and `dir()` visibility.
   `cpython_bytes_bytearray_subclass_repr_and_compare_subset` covers repr/str
   rendering, bytes-like equality against builtin bytes, bytearray, and
-  memoryview values, bytewise ordering for supported bytes-like values.
+  memoryview values, bytewise ordering for supported bytes-like values. Direct
+  CPython diff evidence is in
+  `cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset`.
   `cpython_bytes_bytearray_assorted_public_subset` covers CPython
   `AssortedBytesTest::test_from_bytearray` and
   `test_compare_bytes_to_bytearray` public behavior for bytearray construction
