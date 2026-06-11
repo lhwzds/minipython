@@ -44559,6 +44559,31 @@ fn cpython_collections_counter_fromkeys_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestCounter::test_basics.
+// Keeps the stable public most_common() ordering and limit behavior isolated
+// from the broader Counter basics test.
+#[test]
+fn cpython_collections_counter_most_common_subset() {
+    assert_output(
+        concat!(
+            "from collections import Counter\n",
+            "c = Counter('abracadabra')\n",
+            "print(c.most_common())\n",
+            "print(c.most_common(0))\n",
+            "print(c.most_common(2))\n",
+            "print(c.most_common(None))\n",
+            "print([c.most_common(i) for i in range(5)])\n",
+        ),
+        &[
+            "[('a', 5), ('b', 2), ('r', 2), ('c', 1), ('d', 1)]",
+            "[]",
+            "[('a', 5), ('b', 2)]",
+            "[('a', 5), ('b', 2), ('r', 2), ('c', 1), ('d', 1)]",
+            "[[], [('a', 5)], [('a', 5), ('b', 2)], [('a', 5), ('b', 2), ('r', 2)], [('a', 5), ('b', 2), ('r', 2), ('c', 1)]]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestCounter::test_init
 // and ::test_update. The keyword names `self` and `iterable` are real Counter
 // keys here because Counter's iterable parameter is positional-only.

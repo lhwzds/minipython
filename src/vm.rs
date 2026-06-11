@@ -24150,7 +24150,7 @@ impl Vm {
                     ));
                 }
                 let mut entries = counter_entries_sorted(&counter_receiver_entries(receiver)?);
-                if let Some(limit) = rest.first() {
+                if let Some(limit) = rest.first().filter(|value| !matches!(value, Value::None)) {
                     let limit = self.index_i64(limit.clone(), "most_common")?;
                     if limit < 0 {
                         entries.clear();

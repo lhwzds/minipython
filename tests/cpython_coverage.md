@@ -156,6 +156,7 @@ Recent runtime migration notes:
   `cpython_types_simple_namespace_fake_comparison_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_fromkeys_diff_subset`,
+  `cpython_collections_counter_most_common_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_repr_nonsortable_diff_subset`,
@@ -4021,6 +4022,10 @@ arguments, and unbound method TypeErrors.
 `cpython_collections_counter_fromkeys_subset` add direct CPython output parity
 and runtime coverage for `Counter.fromkeys()` and instance `fromkeys()` raising
 `NotImplementedError`.
+`cpython_collections_counter_most_common_diff_subset` and
+`cpython_collections_counter_most_common_subset` add direct CPython output
+parity and runtime coverage for `most_common()` full output, zero limit,
+positive limit, `None` limit, and increasing limit slices.
 `cpython_collections_counter_comparison_subset` adds method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,
 equality with missing keys treated as zero, and `<=` / `<` / `>=` / `>` rich

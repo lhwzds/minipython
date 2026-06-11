@@ -4866,6 +4866,21 @@ for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]
 }
 
 #[test]
+fn cpython_collections_counter_most_common_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter most_common subset",
+        name: "collections-counter-most-common",
+        source: r#"from collections import Counter
+c = Counter('abracadabra')
+print(c.most_common())
+print(c.most_common(0))
+print(c.most_common(2))
+print(c.most_common(None))
+print([c.most_common(i) for i in range(5)])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_conversions_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter conversions subset",
