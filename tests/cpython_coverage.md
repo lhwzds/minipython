@@ -50,6 +50,7 @@ Recent runtime migration notes:
   `operator-precedence-and-associativity`, and `pow-builtin`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_math_core_diff_subset`,
+  `cpython_math_constants_and_classification_diff_subset`,
   `cpython_math_isclose_diff_subset`,
   `cpython_math_hypot_dist_diff_subset`,
   `cpython_math_gcd_diff_subset`,
@@ -267,10 +268,11 @@ Recent runtime migration notes:
   across exponent, mantissa, and sign ranges with CPython-style overflow
   skipping, and `float.fromhex()` subclass construction through
   user-defined `__new__` / `__init__`.
-- The runtime stdlib surface includes
-  `cpython_math_core_diff_subset`, `cpython_math_core_subset`, and
-  `cpython_math_constants_and_classification_subset`, covering CPython
-  public `pi` / `e` / `tau` / `inf` / `nan` constants plus
+- The runtime stdlib surface includes `cpython_math_core_diff_subset`,
+  `cpython_math_core_subset`,
+  `cpython_math_constants_and_classification_diff_subset` gated for newer
+  CPython oracles, and `cpython_math_constants_and_classification_subset`,
+  covering CPython public `pi` / `e` / `tau` / `inf` / `nan` constants plus
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.

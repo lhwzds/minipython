@@ -1026,6 +1026,62 @@ for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd
 }
 
 #[test]
+fn cpython_math_constants_and_classification_diff_subset() {
+    let probe =
+        run_cpython("import math; print(hasattr(math, 'isnormal'), hasattr(math, 'issubnormal'))")
+            .expect("failed to probe CPython math classification support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True True\n" {
+        eprintln!(
+            "skipping math constants/classification diff: CPython oracle lacks math.isnormal/issubnormal"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests constants/classification public stable subset",
+        name: "math-constants-classification",
+        source: r#"import math
+tiny = float('2.2250738585072014e-308') / 2
+print(math.pi)
+print(math.e)
+print(math.tau == 2 * math.pi)
+print(math.isfinite(0.0), math.isfinite(-0.0), math.isfinite(1.0), math.isfinite(-1.0))
+print(math.isfinite(float('nan')), math.isfinite(float('inf')), math.isfinite(float('-inf')))
+print(math.isnormal(1.25), math.isnormal(-1.0))
+print(math.isnormal(0.0), math.isnormal(-0.0), math.isnormal(float('inf')), math.isnormal(float('-inf')), math.isnormal(float('nan')))
+print(math.isnormal(tiny), math.isnormal(-tiny))
+print(math.issubnormal(1.25), math.issubnormal(-1.0), math.issubnormal(0.0), math.issubnormal(-0.0))
+print(math.issubnormal(float('inf')), math.issubnormal(float('-inf')), math.issubnormal(float('nan')))
+print(math.issubnormal(tiny), math.issubnormal(-tiny))
+print(math.isnan(float('nan')), math.isnan(float('-nan')), math.isnan(float('inf') * 0.0))
+print(math.isnan(float('inf')), math.isnan(0.0), math.isnan(1.0))
+print(math.isinf(float('inf')), math.isinf(float('-inf')), math.isinf(1e400), math.isinf(-1e400))
+print(math.isinf(float('nan')), math.isinf(0.0), math.isinf(1.0))
+print(math.isnan(math.nan), math.copysign(1.0, math.nan))
+print(math.isinf(math.inf), math.inf > 0.0, math.inf == float('inf'), -math.inf == float('-inf'))
+for expr in [
+    lambda: math.isfinite(),
+    lambda: math.isnan(),
+    lambda: math.isinf(),
+    lambda: math.isnormal(),
+    lambda: math.issubnormal(),
+    lambda: math.isfinite(1, 2),
+    lambda: math.isnan('x'),
+    lambda: math.isfinite(1+2j),
+    lambda: math.isnormal(1, 2),
+    lambda: math.issubnormal('x'),
+    lambda: math.isnormal(1+2j),
+    lambda: math.isinf(10**10000),
+    lambda: math.issubnormal(10**10000),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_math_isclose_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::IsCloseTests public stable subset",
