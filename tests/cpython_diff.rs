@@ -3801,6 +3801,33 @@ for abc, names in cases:
 }
 
 #[test]
+fn cpython_collections_abc_validate_isinstance_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::ABCTestCase::validate_isinstance used by TestOneTrickPonyABCs",
+        name: "collections-abc-validate-isinstance",
+        source: r#"from collections.abc import Hashable, AsyncIterable, Iterable, Sized, Container, Callable
+def stub(self, *args):
+    return 0
+cases = [
+    (Hashable, '__hash__'),
+    (AsyncIterable, '__aiter__'),
+    (Iterable, '__iter__'),
+    (Sized, '__len__'),
+    (Container, '__contains__'),
+    (Callable, '__call__'),
+]
+for abc, name in cases:
+    class C(object):
+        __hash__ = None
+    setattr(C, name, stub)
+    print(abc.__name__, isinstance(C(), abc), issubclass(C, abc))
+    class D(object):
+        __hash__ = None
+    print(abc.__name__, isinstance(D(), abc), issubclass(D, abc))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_direct_subclassing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_direct_subclassing",

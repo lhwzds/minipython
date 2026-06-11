@@ -2530,7 +2530,8 @@ Recent runtime migration notes:
   pony ABC tests for `Hashable`, `AsyncIterable`, `Iterable`, `Sized`,
   `Container`, and `Callable`, including dynamic `setattr()` of the target
   special method and `__hash__ = None` blocking through an explicit `object`
-  base.
+  base. Direct CPython diff evidence is in
+  `cpython_collections_abc_validate_isinstance_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_async_runtime_subset`, covering CPython's
   `AsyncIterator` non-sample matrix for `None`, `object`, and `list` through
