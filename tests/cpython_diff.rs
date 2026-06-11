@@ -7804,6 +7804,139 @@ print(b.insert(1, Indexable(ord('A'))), b)"#,
 }
 
 #[test]
+fn cpython_memoryview_minimal_runtime_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py constructor, equality, hash, and argument errors public subset",
+        name: "memoryview-minimal-runtime",
+        source: r#"for source in [b'x', bytearray(b'x'), memoryview(b'x')]:
+    m = memoryview(source)
+    print(type(source).__name__, bool(m), bool(memoryview(object=source)), m.tolist())
+print(list(memoryview(b'abc')))
+print(memoryview(b'abcdef') == b'abcdef', memoryview(bytearray(b'abcdef')) == bytearray(b'abcdef'))
+print(memoryview(b'abcde') == b'abcdef', memoryview(b'abcdef') != b'abcde')
+print(hash(memoryview(b'abcdef')) == hash(b'abcdef'))
+try:
+    hash(memoryview(bytearray(b'abcdef')))
+except Exception as error:
+    print(error.__class__.__name__)
+
+def show(label, callback):
+    try:
+        callback()
+    except Exception as error:
+        print(label, error.__class__.__name__)
+    else:
+        print(label, 'OK')
+
+show('missing', lambda: memoryview())
+show('two-pos', lambda: memoryview(b'x', b'y'))
+show('bad-kw', lambda: memoryview(argument=b'x'))
+show('two-kw', lambda: memoryview(object=b'x', argument=True))
+show('pos-object-kw', lambda: memoryview(b'x', object=b'y'))
+show('pos-bad-kw', lambda: memoryview(b'x', argument=True))"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_methods_release_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py public methods, attributes, context manager, release, and toreadonly subset",
+        name: "memoryview-methods-release",
+        source: r#"for source in [b'abcdef', bytearray(b'abcdef'), memoryview(b'abcdef')[1:5]]:
+    m = memoryview(source)
+    print(m.tobytes(), m.tolist(), m.hex(), m.hex(':', 2))
+    print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.suboffsets, m.readonly, m.nbytes)
+    print(m.toreadonly().readonly, m.toreadonly().tolist() == m.tolist())
+
+for expr in [
+    lambda: memoryview(b'abc').tobytes(1),
+    lambda: memoryview(b'abc').tolist(1),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+
+m = memoryview(b'abcdef')
+print(list(reversed(m)), list(m[::-1]))
+with m as cm:
+    print(cm is m)
+for expr in [
+    lambda: bytes(m),
+    lambda: m.tobytes(),
+    lambda: m.tolist(),
+    lambda: m[0],
+    lambda: len(m),
+    lambda: m.format,
+    lambda: m.itemsize,
+    lambda: m.ndim,
+    lambda: m.readonly,
+    lambda: m.shape,
+    lambda: m.strides,
+    lambda: hash(m),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(error.__class__.__name__, 'released' in str(error))
+print('released memory' in str(m), 'released memory' in repr(m))
+print(m == m, m != memoryview(b'abcdef'), m != b'abcdef')
+m.release()
+print('released memory' in str(m))
+m = memoryview(b'abcdef')
+with m:
+    m.release()
+try:
+    with m:
+        pass
+except ValueError as error:
+    print(error.__class__.__name__, 'released' in str(error))
+base = memoryview(b'abcdef')
+readonly = base.toreadonly()
+readonly.release()
+print(base.tolist())"#,
+    });
+}
+
+#[test]
+fn cpython_memoryview_count_index_diff_subset() {
+    let oracle_probe = run_cpython("print(hasattr(memoryview(b'abc'), 'count'))")
+        .expect("failed to run CPython memoryview.count capability probe");
+    let oracle_stdout =
+        String::from_utf8(oracle_probe.stdout).expect("CPython capability probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True" {
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py memoryview count/index public subset",
+        name: "memoryview-count-index",
+        source: r#"for source in [b'abcdef', bytearray(b'abcdef'), memoryview(b'abcdef')[1:5]]:
+    m = memoryview(source)
+    print(m.count(ord('a')), m.count(ord('c')), m.count(ord('x')))
+    try:
+        print(m.index(ord('c')), m.index(ord('c'), -10, 99))
+    except ValueError as error:
+        print(error.__class__.__name__)
+
+try:
+    memoryview(b'abcdef').index(ord('x'))
+except ValueError as error:
+    print(error.__class__.__name__)
+
+for expr in [
+    lambda: memoryview(b'abc').count(),
+    lambda: memoryview(b'abc').index(),
+    lambda: memoryview(b'abc').index(97, 0, 1, 2),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_array_b_buffer_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py array-backed public one-byte buffer behavior",

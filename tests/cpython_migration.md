@@ -690,7 +690,10 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `memoryview.release()` lifecycle, context-manager `__enter__` /
   `__exit__`, released-state `ValueError` behavior for supported operations,
   released `str()` / `repr()` shape, same-object identity through `with ... as`,
-  and reversed iteration through `reversed(m)` and `m[::-1]`.
+  and reversed iteration through `reversed(m)` and `m[::-1]`. Direct
+  CPython diff evidence now covers the constructor/equality/hash slice through
+  `cpython_memoryview_minimal_runtime_diff_subset` and the method/release slice
+  through `cpython_memoryview_methods_release_diff_subset`.
 - Added `cpython_memoryview_basic_methods_and_release_subset`, giving direct
   method-level evidence for `AbstractMemoryTests::test_tobytes`,
   `test_tolist`, `test_attributes_readonly`, `test_attributes_writable`,
@@ -906,7 +909,10 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `start`/`stop` behavior for hits and `ValueError` misses, `count()` matches
   the logical view contents, equality works against bytes, bytearray, and
   memoryview objects while non-buffer objects compare unequal, and unsupported
-  ordered comparisons raise Python-level `TypeError`.
+  ordered comparisons raise Python-level `TypeError`. The
+  `cpython_memoryview_count_index_diff_subset` differential is capability-gated
+  because older local CPython oracles do not expose `memoryview.count()` /
+  `memoryview.index()`.
 - Added `cpython_memoryview_hex_separator_subset`, migrating CPython
   `Lib/test/test_memoryview.py::ConcreteMemoryviewTest::test_memoryview_hex`
   and `test_memoryview_hex_separator` for the supported one-dimensional byte

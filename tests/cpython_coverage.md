@@ -2766,6 +2766,11 @@ Recent runtime migration notes:
   `strides`, `c_contiguous`, `f_contiguous`, `contiguous`, bytes-backed
   exporter values, released-attribute `ValueError`, and bytearray identity for
   `is` / `id()` semantics.
+- `RUNTIME_BUILTINS` also has direct CPython diff evidence for the supported
+  public memoryview constructor/equality/hash surface in
+  `cpython_memoryview_minimal_runtime_diff_subset` and the supported
+  method/attribute/release/context-manager surface in
+  `cpython_memoryview_methods_release_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_b_buffer_subset`, covering the CPython public
   one-byte `array.array('B')` exporter surface for `memoryview()`: writable
@@ -2919,7 +2924,9 @@ Recent runtime migration notes:
   index exception classes, `index()` `start`/`stop` hits and misses, `count()`
   over logical view contents, equality with bytes/bytearray/memoryview,
   inequality with non-buffer objects, and TypeError for unsupported ordered
-  comparisons.
+  comparisons. The matching `cpython_memoryview_count_index_diff_subset`
+  differential is capability-gated for CPython oracles that expose
+  `memoryview.count()` / `memoryview.index()`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_hex_separator_subset`, covering CPython
   `test_memoryview.py` logical-byte `hex()` behavior on reversed
