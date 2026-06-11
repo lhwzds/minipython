@@ -3556,6 +3556,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_generic_alias_union_type_diff_subset",
         "cpython_types_union_public_operator_and_classinfo_diff_subset",
         "cpython_types_union_forward_ref_diff_subset",
+        "cpython_types_union_forward_get_type_hints_diff_subset",
         "cpython_types_union_typevar_parameter_diff_subset",
         "cpython_types_union_parameter_substitution_diff_subset",
         "cpython_types_union_copy_pickle_diff_subset",

@@ -5581,6 +5581,43 @@ for label, expr in [('int-str', lambda: int | 'Forward'), ('str-int', lambda: 'F
 }
 
 #[test]
+fn cpython_types_union_forward_get_type_hints_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nT = typing.TypeVar('T')\nForwardAfter = T | 'Forward'\nprint(tuple(repr(arg) for arg in ForwardAfter.__args__))",
+    )
+    .expect("failed to probe CPython forward get_type_hints union support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('T', \"ForwardRef('Forward')\")" {
+        eprintln!(
+            "skipping types union forward get_type_hints diff: CPython oracle lacks PEP 604 TypeVar/string forward-ref union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests forward get_type_hints public subset",
+        name: "types-union-forward-get-type-hints",
+        source: r#"import typing
+class Forward:
+    pass
+T = typing.TypeVar('T')
+ForwardAfter = T | 'Forward'
+ForwardBefore = 'Forward' | T
+def forward_after(x: ForwardAfter[int]) -> None:
+    pass
+def forward_before(x: ForwardBefore[int]) -> None:
+    pass
+for label, func, expected in [('after', forward_after, (int, Forward)), ('before', forward_before, (Forward, int))]:
+    hints = typing.get_type_hints(func)
+    args = typing.get_args(hints['x'])
+    print(label, args == expected, hints['return'] is type(None), tuple(arg.__name__ for arg in args))
+def direct_string(x: 'Forward') -> None:
+    pass
+hints = typing.get_type_hints(direct_string)
+print('direct', hints['x'] is Forward, hints['return'] is type(None))"#,
+    });
+}
+
+#[test]
 fn cpython_types_union_typevar_parameter_diff_subset() {
     let probe = run_cpython("import typing\nT = typing.TypeVar('T')\nprint((int | T)[int] is int)")
         .expect("failed to probe CPython TypeVar union substitution support");

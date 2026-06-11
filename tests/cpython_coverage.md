@@ -939,7 +939,9 @@ Recent runtime migration notes:
   `cpython_types_union_forward_ref_diff_subset`.
   `cpython_types_union_forward_get_type_hints_subset`
   covers `typing.get_type_hints()` resolving those forward references through
-  function globals while preserving `typing.get_args()` order.
+  function globals while preserving `typing.get_args()` order. Direct output
+  parity is guarded by
+  `cpython_types_union_forward_get_type_hints_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_public_operator_and_classinfo_subset`, covering the
   supported CPython `UnionTests` public PEP 604 surface for order-insensitive
