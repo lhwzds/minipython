@@ -4585,6 +4585,23 @@ for expected in range(6):
 }
 
 #[test]
+fn cpython_types_mappingproxy_iterators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests iterators subset",
+        name: "types-mappingproxy-iterators",
+        source: r#"from types import MappingProxyType
+keys = ('x', 'y')
+values = (1, 2)
+items = tuple(zip(keys, values))
+view = MappingProxyType(dict(items))
+print(set(view) == set(keys))
+print(set(view.keys()) == set(keys))
+print(set(view.values()) == set(values))
+print(set(view.items()) == set(items))"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",

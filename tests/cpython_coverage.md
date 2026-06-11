@@ -145,6 +145,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_views_diff_subset`,
   `cpython_types_mappingproxy_missing_diff_subset`,
   `cpython_types_mappingproxy_len_diff_subset`,
+  `cpython_types_mappingproxy_iterators_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
