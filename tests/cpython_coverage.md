@@ -3891,10 +3891,10 @@ names like `from ._threading_handler import ...`.
 | `DOUBLESTAREQUAL` | supported | `lexes_augmented_assignment_operators`, `cpython_ast_augmented_assignment_subset` |
 | `DOUBLESLASH` | supported | `lexes_arithmetic_operators`, `cpython_grammar_multiplicative_ops_subset`, `cpython_tokenize_multiplicative_operators_diff_subset` |
 | `DOUBLESLASHEQUAL` | supported | `lexes_augmented_assignment_operators`, `cpython_ast_augmented_assignment_subset` |
-| `AT` | supported | `lexes_decorator_at_sign`, `cpython_tokenize_exact_type_subset` including CPython pathological trailing whitespace, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods` |
-| `ATEQUAL` | supported | `lexes_matrix_multiply_and_ellipsis_tokens`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `runs_matrix_multiply_special_methods` |
+| `AT` | supported | `lexes_decorator_at_sign`, `cpython_tokenize_exact_type_subset` including CPython pathological trailing whitespace, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset`, `runs_matrix_multiply_special_methods` |
+| `ATEQUAL` | supported | `lexes_matrix_multiply_and_ellipsis_tokens`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset`, `runs_matrix_multiply_special_methods` |
 | `RARROW` | supported | `lexes_function_return_arrow`, `cpython_grammar_annotations_subset` |
-| `ELLIPSIS` | supported | `lexes_matrix_multiply_and_ellipsis_tokens`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset` |
+| `ELLIPSIS` | supported | `lexes_matrix_multiply_and_ellipsis_tokens`, `cpython_tokenize_matrix_multiply_and_ellipsis_subset`, `cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset` |
 | `COLONEQUAL` | supported | `lexes_colon_equal`, `cpython_assignment_expression_subset`, and named-expression runtime tests cover the walrus token |
 | `EXCLAMATION` | supported | f-string and t-string conversion `!` is covered by `lexes_f_string_parts`, `lexes_f_string_debug_expressions`, `cpython_tokenize_f_string_split_token_subset`, `cpython_tokenize_t_string_split_token_subset`, `cpython_f_string_helper_rules_subset`, `cpython_f_string_basic_subset`, `cpython_f_string_debug_expression_subset`, `cpython_invalid_f_string_syntax_subset`, `runs_f_strings`, and `runs_f_string_expressions` |
 | `OP` | out_of_scope_runtime | Aggregate tokenize.py token category rather than parser input token |

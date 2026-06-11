@@ -7292,7 +7292,9 @@ Completed in the operator differential-parity pass:
 - Added CPython differential parity for `@`, `@=`, `__matmul__`,
   `__rmatmul__`, and `__imatmul__`, tying the existing matrix-multiply object
   protocol implementation to a CPython oracle in addition to MiniPython's
-  direct subset tests.
+  direct subset tests. The named
+  `cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset` keeps this
+  tokenizer subset tied to direct CPython output parity.
 
 Completed in the source-encoding detection pass:
 

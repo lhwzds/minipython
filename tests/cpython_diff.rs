@@ -628,6 +628,32 @@ print(annotated(9))"#,
 }
 
 #[test]
+fn cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/Tokens ATEQUAL/ELLIPSIS and Lib/test/test_grammar.py::test_matrix_mul public execution subset",
+        name: "tokenize-matrix-multiply-and-ellipsis",
+        source: r#"print(... is Ellipsis)
+
+class M:
+    def __init__(self, value):
+        self.value = value
+    def __matmul__(self, other):
+        return M(self.value * 10 + other.value)
+    def __rmatmul__(self, other):
+        return M(other * 10 + self.value)
+    def __imatmul__(self, other):
+        self.value = self.value * 10 + other.value
+        return self
+
+print((M(2) @ M(3)).value)
+print((4 @ M(5)).value)
+value = M(6)
+value @= M(7)
+print(value.value)"#,
+    });
+}
+
+#[test]
 fn cpython_tokenize_selector_and_method_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py::TokenizeTest::test_selector / ::test_method public execution subset",
