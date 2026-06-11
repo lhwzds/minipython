@@ -171,6 +171,7 @@ Recent runtime migration notes:
   `cpython_pow_builtin_diff_subset`,
   `cpython_abs_builtin_diff_subset`,
   `cpython_round_builtin_diff_subset`,
+  `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_most_common_diff_subset`,

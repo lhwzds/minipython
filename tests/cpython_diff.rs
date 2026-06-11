@@ -4882,6 +4882,68 @@ for expr in [lambda: round(), lambda: round(1, 2, 3), lambda: round(TestNoRound(
 }
 
 #[test]
+fn cpython_format_builtin_and_custom_dunder_format_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_format and Lib/test/test_fstring.py custom format behavior",
+        name: "format-builtin-custom-dunder-format",
+        source: r#"print(format(3, ''), format('x'), format(1.25, '.1f'))
+print(format(17**13, ''), format(17**13) == str(17**13))
+print(format(1.0, ''), format(3.1415e104, ''), format(-3.1415e104, ''))
+print(format(3.1415e-104, ''), format(-3.1415e-104, ''))
+print(format(None, ''), format(None) == str(None))
+class CustomFormat:
+    def __format__(self, format_spec):
+        return format_spec
+print(f'{CustomFormat():abc}')
+print(format(CustomFormat(), 'xyz'))
+class A(object):
+    def __init__(self, x):
+        self.x = x
+    def __format__(self, format_spec):
+        return str(self.x) + format_spec
+class DerivedFromA(A):
+    pass
+class Simple(object):
+    pass
+class DerivedFromSimple(Simple):
+    def __init__(self, x):
+        self.x = x
+    def __format__(self, format_spec):
+        return str(self.x) + format_spec
+class DerivedFromSimple2(DerivedFromSimple):
+    pass
+print(format(A(3), 'spec'))
+print(format(DerivedFromA(4), 'spec'))
+print(format(DerivedFromSimple(5), 'abc'))
+print(format(DerivedFromSimple2(10), 'abcdef'))
+class X:
+    def __init__(self):
+        self.i = 0
+    def __format__(self, spec):
+        self.i += 1
+        return str(self.i) + spec
+x = X()
+print(f'{x} {x:!}')
+class Y:
+    def __format__(self, spec):
+        return 'class:' + spec
+y = Y()
+y.__format__ = lambda spec: 'instance:' + spec
+print(y.__format__('direct'))
+print(format(y, 'real'))
+print(f'{y:field}')
+class BadFormatResult:
+    def __format__(self, spec):
+        return 1.0
+for expr in [lambda: format(BadFormatResult(), ''), lambda: format(object(), 4), lambda: format(object(), object())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
