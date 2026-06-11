@@ -2654,6 +2654,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_inplace_operations_subset",
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
+            "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_public_subset",
             "cpython_collections_namedtuple_defaults_rename_readonly_subset",
             "cpython_collections_namedtuple_repr_subset",
@@ -2728,6 +2729,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_public_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_copy_sharing_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap copy sharing"
     );
     assert!(
         row.diff_evidence

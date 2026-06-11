@@ -169,6 +169,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_diff_subset`,
+  `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
   `cpython_collections_namedtuple_defaults_rename_readonly_diff_subset`,
   `cpython_collections_namedtuple_repr_diff_subset`,
@@ -440,6 +441,11 @@ Recent runtime migration notes:
   `ChainMap` construction, truthiness, combined iteration/items/dict coercion,
   membership and lookup across child/parent mappings, `get()` defaults,
   first-map mutation, `parents`, and `new_child()` with a mapping input.
+- The bundled `collections` module also includes
+  `cpython_collections_chainmap_copy_sharing_diff_subset` and
+  `cpython_collections_chainmap_copy_sharing_subset`, covering CPython public
+  `ChainMap.copy()` and `copy.copy()` shallow-copy sharing behavior without
+  pulling pickle/eval identity matrices into the default sandbox surface.
 - The bundled `collections` module also includes
   `cpython_collections_namedtuple_public_diff_subset` and
   `cpython_collections_namedtuple_public_subset`, covering CPython public

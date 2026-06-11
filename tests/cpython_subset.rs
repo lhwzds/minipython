@@ -43704,6 +43704,38 @@ fn cpython_collections_chainmap_copy_pickle_eval_identity_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap::test_basics.
+// This keeps the sandbox manifest evidence focused on pure in-memory shallow
+// copy behavior; pickle and eval identity matrices remain subset-only.
+#[test]
+fn cpython_collections_chainmap_copy_sharing_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "import copy\n",
+            "c = ChainMap()\n",
+            "c['a'] = 1\n",
+            "c['b'] = 2\n",
+            "d = c.new_child()\n",
+            "d['b'] = 20\n",
+            "d['c'] = 30\n",
+            "del d['b']\n",
+            "expected_repr = [\n",
+            "    type(d).__name__ + \"({'c': 30}, {'a': 1, 'b': 2})\",\n",
+            "    type(d).__name__ + \"({'c': 30}, {'b': 2, 'a': 1})\",\n",
+            "]\n",
+            "print(repr(d) in expected_repr)\n",
+            "for label, e in [('copy_method', d.copy()), ('copy.copy', copy.copy(d))]:\n",
+            "    print(label, e == d, e.maps == d.maps, e is d, e.maps[0] is d.maps[0], e.maps[1] is d.maps[1])\n",
+        ),
+        &[
+            "True",
+            "copy_method True True False False True",
+            "copy.copy True True False False True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap::test_new_child.
 // This covers a custom dict subclass used as the new child mapping; ChainMap
 // lookups must respect the child's mapping protocol instead of scanning the

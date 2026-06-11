@@ -5253,6 +5253,30 @@ print(child.maps[0], child.get('d', 'missing'))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_copy_sharing_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",
+        name: "collections-chainmap-copy-sharing",
+        source: r#"from collections import ChainMap
+import copy
+c = ChainMap()
+c['a'] = 1
+c['b'] = 2
+d = c.new_child()
+d['b'] = 20
+d['c'] = 30
+del d['b']
+expected_repr = [
+    type(d).__name__ + "({'c': 30}, {'a': 1, 'b': 2})",
+    type(d).__name__ + "({'c': 30}, {'b': 2, 'a': 1})",
+]
+print(repr(d) in expected_repr)
+for label, e in [('copy_method', d.copy()), ('copy.copy', copy.copy(d))]:
+    print(label, e == d, e.maps == d.maps, e is d, e.maps[0] is d.maps[0], e.maps[1] is d.maps[1])"#,
+    });
+}
+
+#[test]
 fn cpython_collections_namedtuple_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public namedtuple subset",
