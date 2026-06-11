@@ -1035,7 +1035,8 @@ Recent runtime migration notes:
 - The bundled `types` module also includes
   `cpython_types_union_bad_module_guard_subset`, covering the CPython
   `UnionTests` bad-metaclass-module regression path by requiring catchable
-  exceptions instead of a runtime crash.
+  exceptions instead of a runtime crash. Direct output parity is guarded by
+  `cpython_types_union_bad_module_guard_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_singleton_type_aliases_subset`, covering CPython public
   `NoneType`, `NotImplementedType`, and `EllipsisType` aliases, `type()`

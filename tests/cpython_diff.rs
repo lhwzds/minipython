@@ -5702,6 +5702,26 @@ print('pickle', checked, pickle.HIGHEST_PROTOCOL + 1)"#,
 }
 
 #[test]
+fn cpython_types_union_bad_module_guard_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests bad-module public regression subset",
+        name: "types-union-bad-module-guard",
+        source: r#"class BadMeta(type):
+    __qualname__ = 'TypeVar'
+    @property
+    def __module__(self):
+        1 / 0
+TypeVar = BadMeta('TypeVar', (), {})
+_SpecialForm = BadMeta('_SpecialForm', (), {})
+for label, obj in [('TypeVar', TypeVar()), ('_SpecialForm', _SpecialForm())]:
+    try:
+        str | obj
+    except BaseException as error:
+        print('bad-module', label, type(error).__name__ in ('TypeError', 'ZeroDivisionError'))"#,
+    });
+}
+
+#[test]
 fn cpython_types_union_bad_classinfo_checks_diff_subset() {
     let probe = run_cpython(
         "class BadInstanceMeta(type):\n    def __instancecheck__(cls, inst):\n        1/0\nx = int | BadInstanceMeta('A', (), {})\nprint(isinstance(1, x))",
