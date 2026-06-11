@@ -6660,6 +6660,29 @@ for label, expr in [('left', lambda: 5 << -5), ('right', lambda: 5 >> -5)]:
 }
 
 #[test]
+fn cpython_types_format_spec_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_format_spec_errors",
+        name: "types-format-spec-errors-direct",
+        source: r#"large_errors = 0
+for label, spec in [('width', '1' * 10000 + 'd'), ('precision', '.' + '1' * 10000 + 'd'), ('both', '1' * 1000 + '.' + '1' * 10000 + 'd')]:
+    try:
+        format(0, spec)
+    except ValueError as error:
+        large_errors += 1
+        print(label, error.__class__.__name__)
+comma_errors = 0
+for code in 'xXobns':
+    try:
+        format(0, ',' + code)
+    except ValueError as error:
+        comma_errors += 1
+        print('comma', code, error.__class__.__name__, str(error))
+print('summary', large_errors, comma_errors)"#,
+    });
+}
+
+#[test]
 fn cpython_types_runtime_type_aliases_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests runtime type aliases",

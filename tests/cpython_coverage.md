@@ -1132,7 +1132,8 @@ Recent runtime migration notes:
   `cpython_types_format_spec_errors_subset`, covering CPython
   `TypesTests::test_format_spec_errors` huge width, huge precision, combined
   huge width/precision, and comma-disallowed type-code `ValueError` rows for
-  the shared format mini-language parser.
+  the shared format mini-language parser. Direct output parity is guarded by
+  `cpython_types_format_spec_errors_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_method_descriptor_types_subset`, covering CPython
   `TypesTests::test_method_descriptor_types` for `str.join` and `list.append`
