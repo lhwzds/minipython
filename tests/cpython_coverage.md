@@ -162,6 +162,7 @@ Recent runtime migration notes:
   `cpython_types_class_creation_mro_entries_multiple_diff_subset`,
   `cpython_types_class_creation_prepare_and_metaclass_callable_diff_subset`,
   `cpython_types_class_creation_metaclass_override_function_diff_subset`,
+  `cpython_types_class_creation_non_type_metaclass_derivation_diff_subset`,
   `cpython_types_simple_namespace_basic_diff_subset`,
   `cpython_types_simple_namespace_recursive_diff_subset`,
   `cpython_types_simple_namespace_state_order_diff_subset`,
@@ -3093,7 +3094,9 @@ Recent runtime migration notes:
   earlier non-`type` metaclass calls return ordinary objects, preserves
   `__prepare__` / `__new__` call order through `ANotMeta` / `BNotMeta`, accepts
   `object()` bases in that non-`type` metaclass path, and reports catchable
-  metaclass conflicts for incompatible `type` / `int()` mixes.
+  metaclass conflicts for incompatible `type` / `int()` mixes. Direct output
+  parity is guarded by
+  `cpython_types_class_creation_non_type_metaclass_derivation_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_one_argument_type_subset`, covering CPython
   `ClassCreationTests::test_one_argument_type`: builtin `type(obj)` remains the

@@ -6479,6 +6479,62 @@ print(X is marker, Y is marker, Z is marker)"#,
 }
 
 #[test]
+fn cpython_types_class_creation_non_type_metaclass_derivation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_override_callable",
+        name: "types-class-creation-non-type-metaclass-derivation",
+        source: r#"import types
+new_calls = []
+prepare_calls = []
+class ANotMeta:
+    def __new__(mcls, *args, **kwargs):
+        new_calls.append('ANotMeta')
+        return super().__new__(mcls)
+    @classmethod
+    def __prepare__(mcls, name, bases):
+        prepare_calls.append('ANotMeta')
+        return {}
+class BNotMeta(ANotMeta):
+    def __new__(mcls, *args, **kwargs):
+        new_calls.append('BNotMeta')
+        return super().__new__(mcls)
+    @classmethod
+    def __prepare__(mcls, name, bases):
+        prepare_calls.append('BNotMeta')
+        return super().__prepare__(name, bases)
+A = types.new_class('A', (), {'metaclass': ANotMeta})
+print('A', type(A) is ANotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+B = types.new_class('B', (), {'metaclass': BNotMeta})
+print('B', type(B) is BNotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+C = types.new_class('C', (A, B))
+print('C', type(C) is BNotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+C2 = types.new_class('C2', (B, A))
+print('C2', type(C2) is BNotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+try:
+    types.new_class('D', (C,), {'metaclass': type})
+except TypeError as error:
+    print('D-error', type(error).__name__)
+E = types.new_class('E', (C,), {'metaclass': ANotMeta})
+print('E', type(E) is BNotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+F = types.new_class('F', (object(), C))
+print('F', type(F) is BNotMeta, prepare_calls, new_calls)
+prepare_calls.clear(); new_calls.clear()
+F2 = types.new_class('F2', (C, object()))
+print('F2', type(F2) is BNotMeta, prepare_calls, new_calls)
+for bases in [(C, int()), (int(), C)]:
+    try:
+        types.new_class('X', bases)
+    except TypeError as error:
+        print('X-error', type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_metaclass_derivation_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_metaclass_derivation",
