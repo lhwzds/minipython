@@ -5076,6 +5076,28 @@ print(b._fields == tuple(names))"#,
 }
 
 #[test]
+fn cpython_collections_namedtuple_field_doc_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestNamedTuple field-doc subset",
+        name: "collections-namedtuple-field-doc",
+        source: r#"from collections import namedtuple
+Point = namedtuple('Point', 'x y')
+print(Point.x.__doc__)
+print(Point.y.__doc__)
+Point.x.__doc__ = 'docstring for Point.x'
+print(Point.x.__doc__)
+print(Point(11, 22).x)
+Vector = namedtuple('Vector', 'x y')
+print(Vector.x.__doc__)
+Vector.x.__doc__ = 'docstring for Vector.x'
+print(Vector.x.__doc__)
+print(Point.x.__doc__)
+print(Point.x.__get__(None, Point) is Point.x)
+print(Point.x.__get__(Point(11, 22), Point))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_userdict_userlist_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public UserDict/UserList subset",
