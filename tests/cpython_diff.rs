@@ -4635,6 +4635,24 @@ print(view['key1'], copy['key1'])"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_richcompare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests richcompare subset",
+        name: "types-mappingproxy-richcompare",
+        source: r#"from types import MappingProxyType
+mp1 = MappingProxyType({'a': 1})
+mp1_2 = MappingProxyType({'a': 1})
+mp2 = MappingProxyType({'a': 2})
+print(mp1 == mp1_2, mp1 != mp1_2, mp1 == mp2, mp1 != mp2)
+for expr in [lambda: mp1 > mp2, lambda: mp1 < mp1_2, lambda: mp2 >= mp2, lambda: mp1_2 <= mp1]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
