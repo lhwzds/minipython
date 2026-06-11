@@ -9114,6 +9114,33 @@ print(isinstance(ba, bytearray), issubclass(BA, bytearray), bytes(ba), len(ba), 
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_ops_and_join_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::SubclassTest::test_basic and ::test_join as applied to BytesSubclassTest and ByteArraySubclassTest",
+        name: "bytes-bytearray-subclass-ops-and-join",
+        source: r#"class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for T, base in [(B, bytes), (BA, bytearray)]:
+    a = b'abcd'
+    c = b'efgh'
+    ta = T(a)
+    tc = T(c)
+    print(T.__name__, issubclass(T, base), isinstance(T(), base))
+    print(ta == ta, not (ta == tc), ta < tc, ta <= tc, tc >= ta, tc > ta, ta is a)
+    print(a + c == ta + tc, a + c == a + tc, a + c == ta + c)
+    repeated = ta * 5
+    print(a * 5 == repeated, type(repeated).__name__)
+    s2 = base().join([ta])
+    print(type(s2).__name__, s2 == ta, s2 is ta)
+    s3 = ta.join([b'abcd'])
+    print(type(s3).__name__, s3 == b'abcd')
+print(hasattr(B(b''), 'join'), hasattr(BA(b''), 'join'), hasattr(bytes, 'join'), hasattr(bytearray, 'join'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

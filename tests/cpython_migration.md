@@ -253,6 +253,9 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
 - Added `cpython_bytes_bytearray_subclass_ops_and_join_subset`, adapted from
   CPython `Lib/test/test_bytes.py::SubclassTest::test_basic` and `::test_join`
   as applied by `BytesSubclassTest` and `ByteArraySubclassTest`.
+- Direct CPython diff evidence for the bytes/bytearray subclass operation and
+  base-type `join()` behavior is in
+  `cpython_bytes_bytearray_subclass_ops_and_join_diff_subset`.
 - Extended bytes/bytearray subclass runtime support so inherited builtin
   methods are visible, binary concatenation and repetition operate on the
   stored base value, bytes-like method arguments accept bytes/bytearray
