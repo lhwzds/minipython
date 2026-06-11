@@ -1016,7 +1016,11 @@ Recent runtime migration notes:
   `itemgetter`, and `methodcaller`, including dotted attribute traversal,
   multi-result tuple packing, subscript forwarding, stored method args/keywords,
   many positional/keyword method arguments, callable forwarding, and public
-  exception propagation.
+  exception propagation. Direct CPython diff evidence for the default-oracle
+  stable getter/methodcaller slice is in
+  `cpython_operator_callable_helper_diff_subset`; `operator.call` stays covered
+  by subset evidence because the default local CPython 3.9 oracle does not
+  expose that newer helper.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_inplace_helper_subset`,
   covering CPython `test_operator.py` in-place helper functions `iadd`, `isub`,
   `imul`, `imatmul`, `ifloordiv`, `itruediv`, `imod`, `ipow`, `ilshift`,

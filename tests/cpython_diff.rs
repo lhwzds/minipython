@@ -3100,6 +3100,90 @@ for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexO
 }
 
 #[test]
+fn cpython_operator_callable_helper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase callable helper public subset stable on CPython 3.9",
+        name: "operator-callable-helper",
+        source: r#"import operator
+class A:
+    pass
+a = A()
+a.name = 'arthur'
+print(operator.attrgetter('name')(a))
+a.child = A()
+a.child.name = 'thomas'
+print(operator.attrgetter('child.name')(a))
+print(operator.attrgetter('name', 'child.name')(a))
+for expr in [lambda: operator.attrgetter(), lambda: operator.attrgetter(2), lambda: operator.attrgetter('name')(), lambda: operator.attrgetter('name')(a, 'dent'), lambda: operator.attrgetter('name')(a, surname='dent')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)
+for expr in [lambda: operator.attrgetter('rank')(a), lambda: operator.attrgetter('child.')(a), lambda: operator.attrgetter('.child')(a)]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(type(error).__name__)
+class AttrBoom:
+    def __getattr__(self, name):
+        raise SyntaxError
+try:
+    operator.attrgetter('foo')(AttrBoom())
+except SyntaxError as error:
+    print(type(error).__name__)
+data = list(map(str, range(20)))
+print(operator.itemgetter(2)(data))
+print(operator.itemgetter(2, 10, 5)(data))
+d = dict(key='val')
+print(operator.itemgetter('key')(d))
+print(operator.itemgetter(-1)(tuple('abcde')))
+print(operator.itemgetter(slice(2, 4))(tuple('abcde')))
+for expr in [lambda: operator.itemgetter(), lambda: operator.itemgetter(2)(), lambda: operator.itemgetter(2)(data, 3), lambda: operator.itemgetter(2)(data, size=3), lambda: operator.itemgetter('name')('ABCDE')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)
+for expr in [lambda: operator.itemgetter(10)('ABCDE'), lambda: operator.itemgetter('nonkey')(d)]:
+    try:
+        expr()
+    except (IndexError, KeyError) as error:
+        print(type(error).__name__)
+class GetBoom:
+    def __getitem__(self, name):
+        raise SyntaxError
+try:
+    operator.itemgetter(42)(GetBoom())
+except SyntaxError as error:
+    print(type(error).__name__)
+class M:
+    def foo(self, *args, **kwds):
+        return args[0] + args[1]
+    def bar(self, f=42):
+        return f
+    def baz(*args, **kwds):
+        return kwds['name'], kwds['self']
+    def return_arguments(self, *args, **kwds):
+        return args, kwds
+m = M()
+print(operator.methodcaller('foo', 1, 2)(m))
+print(operator.methodcaller('bar')(m), operator.methodcaller('bar', f=5)(m))
+print(operator.methodcaller('baz', name='spam', self='eggs')(m))
+print(operator.methodcaller('return_arguments', 0, 1, a=2)(m))
+many_positional_arguments = tuple(range(10))
+many_kw_arguments = dict(zip('abcdefghij', range(10)))
+print(operator.methodcaller('return_arguments', *many_positional_arguments)(m))
+print(operator.methodcaller('return_arguments', **many_kw_arguments)(m))
+print(operator.methodcaller('return_arguments', *many_positional_arguments, **many_kw_arguments)(m))
+for expr in [lambda: operator.methodcaller(), lambda: operator.methodcaller(12), lambda: operator.methodcaller('foo')(), lambda: operator.methodcaller('foo', 1, 2)(m, 3), lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)
+print(callable(operator.attrgetter('name')), callable(operator.itemgetter(0)), callable(operator.methodcaller('bar')))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
