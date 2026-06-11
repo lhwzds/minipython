@@ -4217,7 +4217,8 @@ arguments.
 `BuiltinTest::test_singleton_attribute_access`, covering `__class__` identity
 for `NotImplemented` and `Ellipsis`, their type objects being instances of
 `type`, instance attribute read/write rejection, and class attribute assignment
-rejection for the singleton type objects.
+rejection for the singleton type objects. Direct CPython output parity for both
+methods is in `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
 `cpython_builtin_breakpoint_passthru_error_subset`, and the differential
 `builtin-breakpoint-custom-hook` / `builtin-breakpoint-passthru-error` cases

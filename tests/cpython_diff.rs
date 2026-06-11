@@ -4439,6 +4439,35 @@ fn cpython_builtin_bool_notimplemented_diff_subset() {
 }
 
 #[test]
+fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",
+        name: "builtin-singleton-construction-and-attributes",
+        source: r#"for const in [None, Ellipsis, NotImplemented]:
+    tp = type(const)
+    print(tp.__name__, tp() is const)
+    for expr in [lambda: tp(1, 2), lambda: tp(a=1, b=2)]:
+        try:
+            expr()
+        except TypeError as error:
+            print(tp.__name__, error.__class__.__name__)
+for singleton in [NotImplemented, Ellipsis]:
+    print(type(singleton) is singleton.__class__)
+    print(type(singleton).__class__ is type)
+    for expr in [lambda: setattr(singleton, 'prop', 1), lambda: singleton.prop]:
+        try:
+            expr()
+        except AttributeError as error:
+            print(singleton, error.__class__.__name__)
+    for expr in [lambda: setattr(type(singleton), 'prop', 1), lambda: type(singleton).prop]:
+        try:
+            expr()
+        except (AttributeError, TypeError) as error:
+            print(type(singleton).__name__, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",

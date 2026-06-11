@@ -5593,6 +5593,9 @@ Completed in the `test_builtin.py` singleton-constructor pass:
 - `NoneType()`, `ellipsis()`, and `NotImplementedType()` now return the
   existing singleton objects, while positional or keyword constructor arguments
   raise `TypeError`.
+- Direct CPython output parity for this public constructor surface is covered
+  together with singleton attribute behavior in
+  `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
 
 Completed in the `test_builtin.py` singleton-attribute pass:
 
@@ -5603,6 +5606,9 @@ Completed in the `test_builtin.py` singleton-attribute pass:
 - Tightened singleton type object attribute assignment so
   `type(NotImplemented).prop = 1` and `type(Ellipsis).prop = 1` raise
   `TypeError` rather than falling through to a generic attribute error.
+- Direct CPython output parity for this public attribute surface is covered
+  together with singleton construction behavior in
+  `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
 
 Completed in the `test_builtin.py` breakpoint custom-hook pass:
 
