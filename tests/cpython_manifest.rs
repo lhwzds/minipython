@@ -2599,11 +2599,30 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         .into_iter()
         .find(|row| row.module == "array")
         .expect("sandbox stdlib manifest must include array");
-    assert!(
-        row.diff_evidence
-            .contains("cpython_array_one_byte_public_clear_diff_subset"),
-        "array sandbox manifest must cite CPython diff evidence for array.clear()"
-    );
+    for evidence in [
+        "cpython_array_module_and_constructor_public_surface_diff_subset",
+        "cpython_array_subclass_public_construction_diff_subset",
+        "cpython_array_one_byte_public_sequence_diff_subset",
+        "cpython_array_short_public_sequence_and_mutation_diff_subset",
+        "cpython_array_int_public_sequence_and_mutation_diff_subset",
+        "cpython_array_long_long_public_sequence_and_mutation_diff_subset",
+        "cpython_array_native_long_public_sequence_and_mutation_diff_subset",
+        "cpython_array_float_public_sequence_and_mutation_diff_subset",
+        "cpython_array_unicode_public_sequence_and_mutation_diff_subset",
+        "cpython_array_one_byte_public_mutation_methods_diff_subset",
+        "cpython_array_one_byte_public_clear_diff_subset",
+        "cpython_array_one_byte_public_subscript_mutation_diff_subset",
+        "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
+        "cpython_array_one_byte_public_concat_repeat_diff_subset",
+        "cpython_array_one_byte_public_buffer_info_diff_subset",
+        "cpython_array_one_byte_public_unicode_method_rejection_diff_subset",
+        "cpython_array_one_byte_public_file_methods_diff_subset",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "array sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
