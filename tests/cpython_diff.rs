@@ -3573,6 +3573,57 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_collections_abc_abstract_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::ABCTestCase::validate_abstract_methods used by TestOneTrickPonyABCs",
+        name: "collections-abc-abstract-methods",
+        source: r#"from collections.abc import Awaitable, Coroutine, AsyncIterable, AsyncIterator
+from collections.abc import Hashable, Iterable, Iterator, Reversible, Collection
+from collections.abc import Generator, AsyncGenerator, Sized, Container, Callable
+def stub(self, *args):
+    return 0
+cases = [
+    (Awaitable, ('__await__',)),
+    (Coroutine, ('__await__', 'send', 'throw')),
+    (Hashable, ('__hash__',)),
+    (AsyncIterable, ('__aiter__',)),
+    (AsyncIterator, ('__anext__',)),
+    (Iterable, ('__iter__',)),
+    (Reversible, ('__reversed__', '__iter__')),
+    (Collection, ('__len__', '__iter__', '__contains__')),
+    (Iterator, ('__next__',)),
+    (Generator, ('send', 'throw')),
+    (AsyncGenerator, ('asend', 'athrow')),
+    (Sized, ('__len__',)),
+    (Container, ('__contains__',)),
+    (Callable, ('__call__',)),
+]
+for abc, names in cases:
+    namespace = {}
+    for name in names:
+        namespace[name] = stub
+    C = type('C', (abc,), namespace)
+    instance = C()
+    print(abc.__name__, 'complete', isinstance(instance, abc), issubclass(C, abc))
+    for missing in names:
+        namespace = {}
+        for name in names:
+            if name != missing:
+                namespace[name] = stub
+        C = type('C', (abc,), namespace)
+        try:
+            C()
+        except TypeError as error:
+            print(abc.__name__, missing, str(error))
+for abc, names in cases:
+    try:
+        abc()
+    except TypeError as error:
+        print(abc.__name__, 'direct', str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",
