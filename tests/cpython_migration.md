@@ -5575,11 +5575,14 @@ Completed in the `test_builtin.py` NotImplemented boolean-context pass:
   CPython message instead of treating the sentinel as truthy.
 - Covered all three public entry points from the CPython method:
   `bool(NotImplemented)`, `if NotImplemented: ...`, and `not NotImplemented`.
+- Added capability-gated direct CPython rejection evidence in
+  `cpython_builtin_bool_notimplemented_diff_subset` for oracles with the
+  current TypeError behavior. The test skips older default oracles that still
+  expose the legacy deprecation-warning truthiness behavior.
 - Split the differential `NotImplemented` / unsupported set-dunder case so
-  singleton identity/equality remains output parity. The boolean-context
-  rejection stays in the current-source Rust subset test because the default
-  system `python3` used by the differential harness still implements the older
-  deprecation-warning behavior.
+  singleton identity/equality remains version-stable output parity while the
+  boolean-context rejection is compared only when the selected CPython oracle
+  exposes the current TypeError behavior.
 
 Completed in the `test_builtin.py` singleton-constructor pass:
 

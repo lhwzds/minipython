@@ -4407,6 +4407,38 @@ except NameError as error:
 }
 
 #[test]
+fn cpython_builtin_bool_notimplemented_diff_subset() {
+    let oracle_probe = run_cpython("bool(NotImplemented)")
+        .expect("failed to run CPython NotImplemented truthiness capability probe");
+    if oracle_probe.status.success() {
+        eprintln!(
+            "skipping NotImplemented truthiness diff: CPython oracle has legacy truthy behavior"
+        );
+        return;
+    }
+
+    for case in [
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_bool_notimplemented",
+            name: "bool-notimplemented-rejects-bool",
+            source: "bool(NotImplemented)",
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_bool_notimplemented",
+            name: "bool-notimplemented-rejects-if",
+            source: "if NotImplemented:\n    pass",
+        },
+        DiffCase {
+            origin: "Lib/test/test_builtin.py::BuiltinTest::test_bool_notimplemented",
+            name: "bool-notimplemented-rejects-not",
+            source: "not NotImplemented",
+        },
+    ] {
+        assert_cpython_rejection_parity(&case);
+    }
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",

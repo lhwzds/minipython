@@ -4200,11 +4200,13 @@ branches.
 
 Builtin runtime note: `cpython_builtin_bool_notimplemented_subset` now ports
 `BuiltinTest::test_bool_notimplemented`, rejecting `NotImplemented` in
-`bool()`, `if`, and `not` boolean contexts. The differential harness keeps the
+`bool()`, `if`, and `not` boolean contexts. Capability-gated direct CPython
+rejection evidence is in `cpython_builtin_bool_notimplemented_diff_subset` for
+oracles with the current TypeError behavior. The differential harness keeps the
 version-stable singleton identity/equality and unsupported set-dunder
 `NotImplemented` surface separate from the current-source boolean-context
-rejection, because the default system `python3` used by the harness still has
-the older deprecation-warning behavior.
+rejection, because older default system `python3` oracles can still have the
+legacy deprecation-warning behavior.
 
 Builtin singleton note: `cpython_builtin_construct_singletons_subset` now ports
 `BuiltinTest::test_construct_singletons`, covering zero-argument construction of
