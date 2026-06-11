@@ -3184,6 +3184,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_module_type_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
+        "cpython_types_mappingproxy_union_diff_subset",
         "cpython_types_simple_namespace_basic_diff_subset",
         "types-method-descriptor-types",
         "types-frame-locals-proxy-currentframe",

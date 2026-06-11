@@ -4512,6 +4512,31 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_union_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests union subset",
+        name: "types-mappingproxy-union",
+        source: r#"from types import MappingProxyType
+mapping = {'a': 0, 'b': 1, 'c': 2}
+view = MappingProxyType(mapping)
+other = {'c': 3, 'p': 0}
+print(view | other)
+print(other | view)
+print(view | MappingProxyType({'d': 4, 'a': 9}))
+print(view == mapping, mapping == {'a': 0, 'b': 1, 'c': 2}, other == {'c': 3, 'p': 0})
+for expr in [lambda: view | [('r', 2), ('d', 2)], lambda: [('r', 2), ('d', 2)] | view]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+try:
+    view |= other
+except TypeError as error:
+    print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_simple_namespace_basic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::SimpleNamespaceTests keyword public subset",
