@@ -3460,6 +3460,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_vars_dir_builtin_diff_subset",
         "cpython_eval_builtin_diff_subset",
         "cpython_exec_builtin_diff_subset",
+        "cpython_eval_exec_builtins_mapping_diff_subset",
         "cpython_compile_builtin_code_object_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_ascii_builtin_diff_subset",

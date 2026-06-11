@@ -3620,7 +3620,8 @@ Recent runtime migration notes:
   exact-dict `mappingproxy` builtin mappings, default builtins injection into
   supplied eval/exec globals, dict-subclass builtin mappings, custom and default
   `__import__` lookup for import statements, and dict-subclass `__getitem__`
-  exception propagation for globals and builtin mappings. It also covers the
+  exception propagation for globals and builtin mappings. Direct CPython output
+  parity is tracked by `cpython_eval_exec_builtins_mapping_diff_subset`. It also covers the
   supported public part of `BuiltinTest::test_exec_globals_frozen`:
   `builtins.__build_class__` is exposed, empty explicit builtins make class
   creation raise catchable `NameError`, empty read-only dict-subclass builtins

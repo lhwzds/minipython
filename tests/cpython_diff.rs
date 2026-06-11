@@ -4602,6 +4602,59 @@ except ZeroDivisionError:
 }
 
 #[test]
+fn cpython_eval_exec_builtins_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec_globals / ::test_eval_builtins_mapping / ::test_exec_builtins_mapping_import",
+        name: "eval-exec-builtins-mapping-direct",
+        source: r#"from types import MappingProxyType
+code = compile('superglobal', 'test', 'eval')
+ns = {'__builtins__': MappingProxyType({'superglobal': 1})}
+print(eval(code, ns))
+class customdict(dict):
+    pass
+code = compile('result = superglobal', 'test', 'exec')
+ns = {'__builtins__': customdict({'superglobal': 1})}
+exec(code, ns)
+print(ns['result'])
+try:
+    exec(compile("print('hidden')", '', 'exec'), {'__builtins__': {}})
+except NameError as error:
+    print(error.__class__.__name__)
+try:
+    exec(compile("print('bad')", '', 'exec'), {'__builtins__': 123})
+except TypeError as error:
+    print(error.__class__.__name__)
+code = compile('import foo.bar', 'test', 'exec')
+ns = {'__builtins__': {'__import__': lambda *args: args}}
+exec(code, ns)
+print(ns['foo'][0], ns['foo'][1] is ns['foo'][2], ns['foo'][3], ns['foo'][4])
+class setonlyerror(Exception):
+    pass
+class setonlydict(dict):
+    def __getitem__(self, key):
+        raise setonlyerror
+try:
+    exec(compile('globalname', 'test', 'exec'), setonlydict({'globalname': 1}))
+except setonlyerror:
+    print('globals getitem error')
+try:
+    exec(compile('superglobal', 'test', 'exec'), {'__builtins__': setonlydict({'superglobal': 1})})
+except setonlyerror:
+    print('builtins getitem error')
+ns = {}
+exec('value = len([1, 2])', ns)
+print('__builtins__' in ns, 'len' in ns['__builtins__'], ns['value'])
+ns = {}
+print(eval('len([1, 2, 3])', ns))
+print('__builtins__' in ns, 'len' in ns['__builtins__'])
+g = {}
+l = {}
+exec('value = len([1])', g, l)
+print('__builtins__' in g, '__builtins__' in l, l['value'])"#,
+    });
+}
+
+#[test]
 fn cpython_compile_builtin_code_object_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_compile",
