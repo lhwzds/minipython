@@ -65,9 +65,6 @@ Recent runtime migration notes:
   `sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims`, and
   `stdlib_create_module_registry_is_classified_by_scope` keep the runtime
   policy, registry classification, and documentation aligned.
-- Legacy sandbox stdlib evidence names from `tests/cpython_migration.md` are
-  intentionally kept visible here so the coverage manifest can guard them:
-  `builtin-breakpoint-custom-hook` and `builtin-breakpoint-passthru-error`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
   `cpython_globals_locals_builtin_diff_subset`,
   `cpython_eval_builtin_diff_subset`,
@@ -176,6 +173,8 @@ Recent runtime migration notes:
   `cpython_abs_builtin_diff_subset`,
   `cpython_round_builtin_diff_subset`,
   `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
+  `cpython_builtin_breakpoint_custom_hook_diff_subset`,
+  `cpython_builtin_breakpoint_passthru_error_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_most_common_diff_subset`,
@@ -4254,8 +4253,9 @@ for `NotImplemented` and `Ellipsis`, their type objects being instances of
 rejection for the singleton type objects. Direct CPython output parity for both
 methods is in `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
-`cpython_builtin_breakpoint_passthru_error_subset`, and the differential
-`builtin-breakpoint-custom-hook` / `builtin-breakpoint-passthru-error` cases
+`cpython_builtin_breakpoint_passthru_error_subset`,
+`cpython_builtin_breakpoint_custom_hook_diff_subset`, and
+`cpython_builtin_breakpoint_passthru_error_diff_subset`
 cover the sandbox-safe public subset from
 `Lib/test/test_builtin.py::TestBreakpoint`: builtin and `builtins.breakpoint`
 visibility, `sys.breakpointhook` / `sys.__breakpointhook__` metadata, custom

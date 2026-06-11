@@ -2154,17 +2154,13 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
 }
 
 fn sandbox_stdlib_legacy_direct_evidence(evidence: &str) -> bool {
-    matches!(
-        evidence,
-        "builtin-breakpoint-custom-hook" | "builtin-breakpoint-passthru-error"
-    )
+    let _ = evidence;
+    false
 }
 
 fn sandbox_stdlib_legacy_runtime_evidence(evidence: &str) -> bool {
-    matches!(
-        evidence,
-        "builtin-breakpoint-custom-hook" | "builtin-breakpoint-passthru-error"
-    )
+    let _ = evidence;
+    false
 }
 
 #[test]
@@ -3404,8 +3400,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_globals_locals_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",
         "cpython_int_max_str_digits_runtime_diff_subset",
-        "builtin-breakpoint-custom-hook",
-        "builtin-breakpoint-passthru-error",
+        "cpython_builtin_breakpoint_custom_hook_diff_subset",
+        "cpython_builtin_breakpoint_passthru_error_diff_subset",
         "cpython_float_hash_and_sys_info_diff_subset",
         "cpython_types_frame_locals_proxy_type_diff_subset",
     ] {
@@ -3493,8 +3489,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_round_builtin_diff_subset",
         "cpython_format_builtin_and_custom_dunder_format_diff_subset",
         "cpython_hash_id_builtins_diff_subset",
-        "builtin-breakpoint-custom-hook",
-        "builtin-breakpoint-passthru-error",
+        "cpython_builtin_breakpoint_custom_hook_diff_subset",
+        "cpython_builtin_breakpoint_passthru_error_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),

@@ -5134,6 +5134,59 @@ for expr in [lambda: id(), lambda: id(1, 2)]:
 }
 
 #[test]
+fn cpython_builtin_breakpoint_custom_hook_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestBreakpoint custom breakpointhook rows",
+        name: "builtin-breakpoint-custom-hook-direct",
+        source: r#"import builtins, sys
+print(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))
+print(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)
+def hook(*args, **kwargs):
+    print('hook', args, kwargs)
+    return 'ret'
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+print('call0', breakpoint())
+print('callargs', breakpoint(1, 'x', key=3))
+print('module-call', builtins.breakpoint())
+del sys.breakpointhook
+try:
+    breakpoint()
+except RuntimeError as error:
+    print('lost', type(error).__name__, str(error))
+finally:
+    sys.breakpointhook = saved
+print('reset-same', sys.breakpointhook is sys.__breakpointhook__)"#,
+    });
+}
+
+#[test]
+fn cpython_builtin_breakpoint_passthru_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestBreakpoint passthru error rows",
+        name: "builtin-breakpoint-passthru-error-direct",
+        source: r#"import sys
+def hook(required):
+    return required
+saved = sys.breakpointhook
+sys.breakpointhook = hook
+try:
+    for label, callback in [
+        ('missing', lambda: breakpoint()),
+        ('extra', lambda: breakpoint(1, 2)),
+        ('keyword', lambda: breakpoint(required=1)),
+        ('unknown', lambda: breakpoint(unknown=1)),
+    ]:
+        try:
+            print(label, callback())
+        except Exception as error:
+            print(label, type(error).__name__, isinstance(error, TypeError))
+finally:
+    sys.breakpointhook = saved"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",
@@ -11115,51 +11168,6 @@ except NameError as error:
     print(error.__class__.__name__, 'a' in str(error))
 finally:
     sys.stdout = saved"#,
-        },
-        DiffCase {
-            origin: "Lib/test/test_builtin.py::TestBreakpoint custom breakpointhook rows",
-            name: "builtin-breakpoint-custom-hook",
-            source: r#"import builtins, sys
-print(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))
-print(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)
-def hook(*args, **kwargs):
-    print('hook', args, kwargs)
-    return 'ret'
-saved = sys.breakpointhook
-sys.breakpointhook = hook
-print('call0', breakpoint())
-print('callargs', breakpoint(1, 'x', key=3))
-print('module-call', builtins.breakpoint())
-del sys.breakpointhook
-try:
-    breakpoint()
-except RuntimeError as error:
-    print('lost', type(error).__name__, str(error))
-finally:
-    sys.breakpointhook = saved
-print('reset-same', sys.breakpointhook is sys.__breakpointhook__)"#,
-        },
-        DiffCase {
-            origin: "Lib/test/test_builtin.py::TestBreakpoint passthru error rows",
-            name: "builtin-breakpoint-passthru-error",
-            source: r#"import sys
-def hook(required):
-    return required
-saved = sys.breakpointhook
-sys.breakpointhook = hook
-try:
-    for label, callback in [
-        ('missing', lambda: breakpoint()),
-        ('extra', lambda: breakpoint(1, 2)),
-        ('keyword', lambda: breakpoint(required=1)),
-        ('unknown', lambda: breakpoint(unknown=1)),
-    ]:
-        try:
-            print(label, callback())
-        except Exception as error:
-            print(label, type(error).__name__, isinstance(error, TypeError))
-finally:
-    sys.breakpointhook = saved"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec_globals_dict_subclass / ::test_exec_builtins_mapping_import",
