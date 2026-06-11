@@ -7859,6 +7859,68 @@ for expr in [
 }
 
 #[test]
+fn cpython_bytes_strip_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_strip_bytearray, ::test_strip_string_error, and ::test_strip_int_error public subset",
+        name: "bytes-strip-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'   abc \t\n\r\f\v')
+    print(b.strip(), b.lstrip(), b.rstrip())
+    b = ctor(b'abc')
+    print(b.strip(memoryview(b'ac')), b.lstrip(memoryview(b'ac')), b.rstrip(memoryview(b'ac')))
+    print(ctor(b'xyzzyhelloxyzzy').strip(b'xyz'), ctor(b'xyzzyhelloxyzzy').lstrip(b'xyz'), ctor(b'xyzzyhelloxyzzy').rstrip(b'xyz'))
+    print(ctor(b'abc').strip(bytearray(b'ac')), ctor(b'abc').strip(b''), ctor(b'abc').strip(None))
+    for expr in [
+        lambda: ctor(b'abc').strip('ac'),
+        lambda: ctor(b'abc').lstrip('ac'),
+        lambda: ctor(b'abc').rstrip('ac'),
+        lambda: ctor(b' abc ').strip(32),
+        lambda: ctor(b' abc ').lstrip(32),
+        lambda: ctor(b' abc ').rstrip(32),
+        lambda: ctor(b'abc').strip(b'ac', b'bad'),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_remove_affix_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py::test_removeprefix and ::test_removesuffix bytes/bytearray public subset",
+        name: "bytes-remove-affix-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'spam')
+    print(b.removeprefix(b'sp'), b.removeprefix(bytearray(b'sp')), b.removeprefix(memoryview(b'sp')))
+    print(b.removeprefix(b'python'), b.removeprefix(b'spider'), b.removeprefix(b'spam and eggs'))
+    print(ctor(b'').removeprefix(b''), ctor(b'').removeprefix(b'abcde'), ctor(b'abcde').removeprefix(b''), ctor(b'abcde').removeprefix(b'abcde'))
+    print(b.removesuffix(b'am'), ctor(b'spamspamspam').removesuffix(b'spam'), b.removesuffix(b'python'), b.removesuffix(b'blam'), b.removesuffix(b'eggs and spam'))
+    print(ctor(b'').removesuffix(b''), ctor(b'').removesuffix(b'abcde'), ctor(b'abcde').removesuffix(b''), ctor(b'abcde').removesuffix(b'abcde'))
+    print(ctor(b'abc').removesuffix(bytearray(b'bc')), ctor(b'abc').removesuffix(memoryview(b'bc')))
+    for expr in [
+        lambda: b.removeprefix(),
+        lambda: b.removeprefix('sp'),
+        lambda: b.removeprefix(42),
+        lambda: b.removeprefix(42, b'sp'),
+        lambda: b.removeprefix(b'sp', 42),
+        lambda: b.removeprefix((b'sp',)),
+        lambda: b.removesuffix(),
+        lambda: b.removesuffix('am'),
+        lambda: b.removesuffix(42),
+        lambda: b.removesuffix(42, b'am'),
+        lambda: b.removesuffix(b'am', 42),
+        lambda: b.removesuffix((b'am',)),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

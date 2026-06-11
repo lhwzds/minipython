@@ -1233,6 +1233,12 @@ Recent runtime migration notes:
   `split()` / `rsplit()`, search, prefix/suffix, strip, alignment,
   partition, and replace unbound, arity, bound-index, width, maxsplit, and
   count-conversion edge calls.
+- `STRING_RUNTIME` also includes `cpython_bytes_strip_methods_subset`,
+  covering bytes/bytearray `strip()`, `lstrip()`, and `rstrip()` over default
+  ASCII whitespace, explicit bytes-like strip sets including `memoryview` and
+  `bytearray`, `None`, empty strip sets, receiver-driven result types, and
+  representative TypeError paths. Direct CPython diff evidence is in
+  `cpython_bytes_strip_methods_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_join_translate_maketrans_typeerror_messages_subset`, covering
   CPython `BaseBytesTest` public exact TypeError diagnostics for bytes and
@@ -1257,6 +1263,11 @@ Recent runtime migration notes:
   bytes/bytearray search and prefix/suffix `start` / `stop` bounds. Direct
   CPython diff evidence for the same bound-conversion and propagated-exception
   surface is in `cpython_bytes_search_bounds_index_diff_subset`.
+- `STRING_RUNTIME` also includes `cpython_bytes_remove_affix_methods_subset`,
+  covering bytes/bytearray `removeprefix()` and `removesuffix()` over
+  bytes-like affixes, empty receiver and empty affix behavior, receiver-driven
+  result types, and representative TypeError paths. Direct CPython diff
+  evidence is in `cpython_bytes_remove_affix_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_mutation_methods_subset`,
   covering bytearray `append()`, `extend()`, `insert()`, `pop()`, `remove()`,
   `reverse()`, `clear()`, and `copy()` in-place mutation behavior, including

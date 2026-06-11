@@ -3221,7 +3221,8 @@ Completed in the bytes strip-method pass:
   strip sets, preserving receiver-driven result types.
 - Covered `memoryview` and `bytearray` strip-set arguments, empty strip sets,
   `None`, and representative TypeError paths for `str`, integer, keyword, and
-  extra-argument forms.
+  extra-argument forms. Direct CPython diff evidence is in
+  `cpython_bytes_strip_methods_diff_subset`.
 
 Completed in the bytes alignment-method pass:
 
@@ -3271,7 +3272,8 @@ Completed in the bytes removeprefix/removesuffix-method pass:
   types.
 - Covered matching and non-matching affixes, empty receiver/affix behavior,
   full-affix removal, no-keyword behavior, and representative TypeError paths
-  for missing, extra, and non-bytes-like arguments.
+  for missing, extra, and non-bytes-like arguments. Direct CPython diff
+  evidence is in `cpython_bytes_remove_affix_methods_diff_subset`.
 
 Completed in the bytes maketrans/translate-method pass:
 
