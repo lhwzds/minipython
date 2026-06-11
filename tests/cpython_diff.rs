@@ -1757,6 +1757,100 @@ print(calls)"#,
 }
 
 #[test]
+fn cpython_functools_cache_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestCache/TestLRU public stable subset",
+        name: "functools-cache-lru-cache",
+        source: r#"from functools import cache, lru_cache
+
+@cache
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+print([fib(n) for n in range(12)])
+info = fib.cache_info()
+print(tuple(info), info.hits, info.misses, info.maxsize, info.currsize)
+print(sorted(fib.cache_parameters().items()))
+fib.cache_clear()
+print(tuple(fib.cache_info()))
+
+calls = []
+@cache
+def double(value):
+    calls.append(value)
+    return value * 2
+print(double(3), double(3), calls, tuple(double.cache_info()))
+print(double.__wrapped__(3), calls, tuple(double.cache_info()))
+try:
+    double([])
+except TypeError as error:
+    print(error.__class__.__name__)
+print(tuple(double.cache_info()))
+
+@lru_cache(maxsize=None)
+def by_kw(n):
+    if n < 2:
+        return n
+    return by_kw(n=n - 1) + by_kw(n=n - 2)
+print([by_kw(n=number) for number in range(12)])
+print(tuple(by_kw.cache_info()))
+print(sorted(by_kw.cache_parameters().items()))
+by_kw.cache_clear()
+print(tuple(by_kw.cache_info()))
+
+@lru_cache(maxsize=2)
+def identity(value):
+    return value
+print(identity(1), identity(2), identity(1), identity(3), tuple(identity.cache_info()))
+print(identity(2), tuple(identity.cache_info()))
+
+@lru_cache
+def square(x):
+    return x ** 2
+print([square(x) for x in [10, 20, 10]], tuple(square.cache_info()))
+
+zero_calls = []
+@lru_cache(0)
+def never():
+    zero_calls.append(1)
+    return 20
+print([never() for _ in range(3)], len(zero_calls), tuple(never.cache_info()))
+
+@lru_cache(maxsize=-10)
+def neg(value):
+    return value
+for _ in range(2):
+    for value in range(3):
+        neg(value)
+print(tuple(neg.cache_info()))
+
+@lru_cache(maxsize=None)
+def bad(index):
+    return 'abc'[index]
+print(bad(0), tuple(bad.cache_info()))
+for _ in range(2):
+    try:
+        bad(15)
+    except IndexError as error:
+        print(error.__class__.__name__)
+print(tuple(bad.cache_info()))
+
+@lru_cache(maxsize=None, typed=True)
+def identify(value):
+    return type(value).__name__, value
+print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(identify.cache_info()))
+cached_repr = lru_cache(typed=True)(repr)
+print(cached_repr(1), cached_repr(True), cached_repr(1.0), tuple(cached_repr.cache_info()))
+
+@lru_cache(maxsize=10)
+def kwargs_order(**kwargs):
+    return list(kwargs.items())
+print(kwargs_order(a=1, b=2), kwargs_order(b=2, a=1), tuple(kwargs_order.cache_info()))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_singledispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py singledispatch public stable subset",

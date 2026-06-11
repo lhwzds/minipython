@@ -64,6 +64,7 @@ Recent runtime migration notes:
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
   `cpython_functools_cached_property_diff_subset`,
+  `cpython_functools_cache_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
@@ -549,6 +550,7 @@ Recent runtime migration notes:
   `TypeError` fallback without relying on pickle identity or metaclass ordering
   internals.
 - The bundled `functools` module also includes
+  `cpython_functools_cache_diff_subset` and
   `cpython_functools_cache_subset`, covering CPython
   `test_functools.py::TestCache` and public `TestLRU` cache-wrapper behavior
   for `cache`, unbounded `lru_cache`, finite LRU eviction, `cache_info`,
