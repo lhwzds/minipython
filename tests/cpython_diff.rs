@@ -11505,6 +11505,39 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_combinations_with_replacement_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public combinations_with_replacement core subset",
+        name: "itertools-combinations-with-replacement-core",
+        source: r#"import itertools
+c = itertools.combinations_with_replacement('ABC', 2)
+print(type(c).__name__, iter(c) is c, list(c), list(c))
+print(list(itertools.combinations_with_replacement('ABC', 0)))
+print(list(itertools.combinations_with_replacement('AB', 3)))
+print(list(itertools.combinations_with_replacement('', 0)))
+print(list(itertools.combinations_with_replacement('', 1)))
+it = itertools.combinations_with_replacement((value for value in [1, 2, 3]), 2)
+print(next(it), list(it))
+class IndexLike:
+    def __index__(self):
+        return 2
+print(list(itertools.combinations_with_replacement([1, 2, 3], IndexLike())))
+print(list(itertools.combinations_with_replacement(iterable='ABC', r=2)))
+for expr in [
+    lambda: itertools.combinations_with_replacement('ABC'),
+    lambda: itertools.combinations_with_replacement('ABC', 2, 3),
+    lambda: itertools.combinations_with_replacement('ABC', 'x'),
+    lambda: itertools.combinations_with_replacement('ABC', -1),
+    lambda: itertools.combinations_with_replacement(1, 1),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

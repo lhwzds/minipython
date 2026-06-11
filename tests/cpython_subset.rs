@@ -36017,6 +36017,54 @@ fn cpython_itertools_combinations_subset() {
     );
 }
 
+#[test]
+fn cpython_itertools_combinations_with_replacement_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "c = itertools.combinations_with_replacement('ABC', 2)\n",
+            "print(type(c).__name__, iter(c) is c, list(c), list(c))\n",
+            "print(list(itertools.combinations_with_replacement('ABC', 0)))\n",
+            "print(list(itertools.combinations_with_replacement('AB', 3)))\n",
+            "print(list(itertools.combinations_with_replacement('', 0)))\n",
+            "print(list(itertools.combinations_with_replacement('', 1)))\n",
+            "it = itertools.combinations_with_replacement((value for value in [1, 2, 3]), 2)\n",
+            "print(next(it), list(it))\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return 2\n",
+            "print(list(itertools.combinations_with_replacement([1, 2, 3], IndexLike())))\n",
+            "print(list(itertools.combinations_with_replacement(iterable='ABC', r=2)))\n",
+            "for expr in [\n",
+            "    lambda: itertools.combinations_with_replacement('ABC'),\n",
+            "    lambda: itertools.combinations_with_replacement('ABC', 2, 3),\n",
+            "    lambda: itertools.combinations_with_replacement('ABC', 'x'),\n",
+            "    lambda: itertools.combinations_with_replacement('ABC', -1),\n",
+            "    lambda: itertools.combinations_with_replacement(1, 1),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, ValueError) as error:\n",
+            "        print(error.__class__.__name__)",
+        ),
+        &[
+            "combinations_with_replacement True [('A', 'A'), ('A', 'B'), ('A', 'C'), ('B', 'B'), ('B', 'C'), ('C', 'C')] []",
+            "[()]",
+            "[('A', 'A', 'A'), ('A', 'A', 'B'), ('A', 'B', 'B'), ('B', 'B', 'B')]",
+            "[()]",
+            "[]",
+            "(1, 1) [(1, 2), (1, 3), (2, 2), (2, 3), (3, 3)]",
+            "[(1, 1), (1, 2), (1, 3), (2, 2), (2, 3), (3, 3)]",
+            "[('A', 'A'), ('A', 'B'), ('A', 'C'), ('B', 'B'), ('B', 'C'), ('C', 'C')]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "ValueError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_list.py::ListTest::test_basic,
 // Lib/test/test_tuple.py::TupleTest::test_constructors, and
 // Lib/test/test_set.py::TestSet constructor/literal coverage.
