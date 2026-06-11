@@ -107,9 +107,10 @@ Recent runtime migration notes:
   `cpython_collections_userlist_public_methods_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
-  `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`, and
+  `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`,
   `cpython_collections_chainmap_new_child_custom_mapping_diff_subset`,
-  `cpython_collections_chainmap_order_preservation_diff_subset`.
+  `cpython_collections_chainmap_order_preservation_diff_subset`, and
+  `cpython_collections_chainmap_union_operators_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
@@ -2399,6 +2400,7 @@ Recent runtime migration notes:
   must preserve the combined order produced by the OrderedDict multi-map
   matrix.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_union_operators_diff_subset` and
   `cpython_collections_chainmap_union_operators_subset`, covering CPython
   `TestChainMap::test_union_operators` semantics for ChainMap/mapping union,
   in-place union, iterable-pair update, iterable-pair rejection for `|`, and

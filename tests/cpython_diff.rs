@@ -2851,6 +2851,54 @@ print(list(d.items()))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_union_operators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap union operators subset",
+        name: "collections-chainmap-union-operators",
+        source: r#"from collections import ChainMap
+cm1 = ChainMap(dict(a=1, b=2), dict(c=3, d=4))
+cm2 = ChainMap(dict(a=10, e=5), dict(b=20, d=4))
+cm3 = cm1.copy()
+d = dict(a=10, c=30)
+pairs = [('c', 3), ('p', 0)]
+tmp = cm1 | cm2
+print(tmp.maps)
+cm1 |= cm2
+print(cm1.maps, cm1 == tmp)
+tmp = cm2 | d
+print(tmp.maps)
+print((d | cm2).maps)
+cm2 |= d
+print(cm2.maps, cm2 == tmp)
+try:
+    cm3 | pairs
+except TypeError as error:
+    print(error.__class__.__name__)
+tmp = cm3.copy()
+cm3 |= pairs
+print(cm3.maps, tmp.maps)
+class Subclass(ChainMap):
+    pass
+class SubclassRor(ChainMap):
+    def __ror__(self, other):
+        return super().__ror__(other)
+left = Subclass(dict(a=1)) | ChainMap(dict(b=2))
+right = dict(z=0) | Subclass(dict(a=1), dict(b=2))
+mixed = ChainMap(dict(a=1)) | Subclass(dict(b=2))
+print(type(left).__name__, left.maps)
+print(type(right).__name__, right.maps)
+print(type(mixed).__name__, mixed.maps)
+for value in [
+    ChainMap() | ChainMap(),
+    ChainMap() | Subclass(),
+    Subclass() | ChainMap(),
+    ChainMap() | SubclassRor(),
+]:
+    print(type(value).__name__, type(value.maps[0]).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
