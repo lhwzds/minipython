@@ -1377,6 +1377,83 @@ for attr in ['func', 'args', 'keywords']:
 }
 
 #[test]
+fn cpython_functools_reduce_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py::TestReduce public stable subset",
+        name: "functools-reduce",
+        source: r#"from functools import reduce
+from operator import add
+
+class Squares:
+    def __init__(self, max):
+        self.max = max
+        self.sofar = []
+    def __len__(self):
+        return len(self.sofar)
+    def __getitem__(self, i):
+        if not 0 <= i < self.max:
+            raise IndexError
+        n = len(self.sofar)
+        while n <= i:
+            self.sofar.append(n * n)
+            n += 1
+        return self.sofar[i]
+
+print(reduce(add, ['a', 'b', 'c'], ''))
+print(reduce(add, [['a', 'c'], [], ['d', 'w']], []))
+print(reduce(lambda x, y: x * y, range(2, 8), 1))
+print(reduce(lambda x, y: x * y, range(2, 21), 1))
+print(reduce(add, Squares(10)), reduce(add, Squares(10), 0), reduce(add, Squares(0), 0))
+print(reduce(42, '1'), reduce(42, '', '1'))
+print(reduce(add, [], None), reduce(add, [], 42))
+
+class SequenceClass:
+    def __init__(self, n):
+        self.n = n
+    def __getitem__(self, i):
+        if 0 <= i < self.n:
+            return i
+        raise IndexError
+
+print(reduce(add, SequenceClass(5)), reduce(add, SequenceClass(5), 42))
+print(reduce(add, SequenceClass(0), 42), reduce(add, SequenceClass(1)), reduce(add, SequenceClass(1), 42))
+d = {'one': 1, 'two': 2, 'three': 3}
+print(reduce(add, d), ''.join(d.keys()))
+
+class TestFailingIter:
+    def __iter__(self):
+        raise RuntimeError
+class BadSeq:
+    def __getitem__(self, index):
+        raise ValueError
+
+checks = [
+    lambda: reduce(),
+    lambda: reduce(add),
+    lambda: reduce(42, 42),
+    lambda: reduce(42, 42, 42),
+    lambda: reduce(add, []),
+    lambda: reduce(add, ''),
+    lambda: reduce(add, ()),
+    lambda: reduce(42, (42, 42)),
+    lambda: reduce(add, object()),
+    lambda: reduce(add, SequenceClass(0)),
+    lambda: reduce(add, [1], 2, 3),
+]
+for check in checks:
+    try:
+        check()
+    except TypeError as error:
+        print(error.__class__.__name__)
+for check in [lambda: reduce(add, TestFailingIter()), lambda: reduce(42, BadSeq())]:
+    try:
+        check()
+    except (RuntimeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",

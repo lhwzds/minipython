@@ -59,6 +59,7 @@ Recent runtime migration notes:
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
+  `cpython_functools_reduce_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -567,11 +568,14 @@ Recent runtime migration notes:
   hook plus exception propagation for both class statements and `type()`
   dynamic class creation.
 - The bundled `functools` module also includes
+  `cpython_functools_reduce_diff_subset` and
   `cpython_functools_reduce_subset`, covering CPython
   `test_functools.py::TestReduce` public reduction behavior over built-in
-  iterables, sequence-protocol iterables, dictionaries, optional positional and
-  keyword `initial` values, empty-input errors, non-callable edge cases, and
-  propagated iterator/function exceptions.
+  iterables, sequence-protocol iterables, dictionaries, positional initializer
+  values, empty-input errors, non-callable edge cases, and propagated
+  iterator/function exceptions. The local subset also covers current CPython
+  keyword `initial` binding, which stays out of the default diff because older
+  system CPython oracles do not expose that keyword.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatch_subset`, covering CPython
   `test_functools.py::TestSingleDispatch` public wrapper behavior, explicit
