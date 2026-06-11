@@ -11276,6 +11276,8 @@ def h(obj):
     'Simple test'
     return 'base'
 print(h.__name__, h.__doc__, h.__wrapped__(None))
+rendered = repr(h)
+print(rendered.startswith('<function h at 0x'), rendered.endswith('>'), str(h) == rendered)
 print(callable(h), type(h.registry).__name__, h.registry[object] is h.dispatch(object))
 h.register(Sized, lambda obj: 'sized')
 print(h({}), h([]), h(()))
@@ -11319,6 +11321,8 @@ print(c.m(1), c.m(True), c.m([]), c.m('x'))
 print(C.m(c, 1), C.m(c, 'x'))
 descriptor = C.__dict__['m']
 print(callable(descriptor), type(descriptor).__name__, descriptor.func.__name__, descriptor.dispatcher.dispatch(int)(c, 2))
+descriptor_repr = repr(descriptor)
+print(descriptor_repr.startswith('<functools.singledispatchmethod object at 0x'), descriptor_repr.endswith('>'))
 
 def c_float(self, arg):
     return 'float:' + str(arg)
@@ -11332,6 +11336,8 @@ def _(self, arg):
     return 'bytes:' + str(len(arg))
 print(c.m((1, 2)), c.m(b'abc'))
 print(C.m.__name__, c.m.__name__)
+rendered = repr(c.m)
+print(rendered.startswith('<function C.m at 0x'), rendered.endswith('>'), str(c.m).startswith('<function C.m at 0x'))
 try:
     singledispatchmethod()
 except TypeError as error:

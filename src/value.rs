@@ -1314,15 +1314,28 @@ impl fmt::Display for Value {
             Value::LruCacheWrapper { identity, .. } => {
                 write!(f, "{}", format_lru_cache_wrapper(identity))
             }
-            Value::SingleDispatch { .. } => write!(f, "<function singledispatch wrapper>"),
+            Value::SingleDispatch {
+                function,
+                attrs,
+                identity,
+                ..
+            } => write!(f, "{}", format_singledispatch(function, attrs, identity)),
             Value::SingleDispatchRegister { .. } => {
                 write!(f, "<function singledispatch register>")
             }
-            Value::SingleDispatchMethod { .. } => {
-                write!(f, "<functools.singledispatchmethod object>")
+            Value::SingleDispatchMethod { identity, .. } => {
+                write!(f, "{}", format_singledispatchmethod(identity))
             }
-            Value::SingleDispatchMethodCallable { .. } => {
-                write!(f, "<function singledispatchmethod wrapper>")
+            Value::SingleDispatchMethodCallable {
+                descriptor,
+                identity,
+                ..
+            } => {
+                write!(
+                    f,
+                    "{}",
+                    format_singledispatchmethod_callable(descriptor, identity)
+                )
             }
             Value::CachedProperty { .. } => write!(f, "<functools.cached_property object>"),
             Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
@@ -1437,6 +1450,58 @@ fn format_lru_cache_wrapper(identity: &Rc<()>) -> String {
         "<functools._lru_cache_wrapper object at 0x{:x}>",
         Rc::as_ptr(identity) as usize
     )
+}
+
+fn format_singledispatch(function: &Value, attrs: &Scope, identity: &Rc<()>) -> String {
+    let fallback = match function {
+        Value::Function { name, .. } => name.as_str(),
+        _ => "singledispatch wrapper",
+    };
+    let name = function_like_name_from_attrs(attrs, fallback);
+    format_function_object_repr(&name, identity)
+}
+
+fn format_singledispatchmethod(identity: &Rc<()>) -> String {
+    format!(
+        "<functools.singledispatchmethod object at 0x{:x}>",
+        Rc::as_ptr(identity) as usize
+    )
+}
+
+fn format_singledispatchmethod_callable(descriptor: &Value, identity: &Rc<()>) -> String {
+    let name = match descriptor {
+        Value::SingleDispatchMethod { dispatcher, .. } => match dispatcher.as_ref() {
+            Value::SingleDispatch {
+                function, attrs, ..
+            } => {
+                let fallback = match function.as_ref() {
+                    Value::Function { name, .. } => name.as_str(),
+                    _ => "singledispatchmethod wrapper",
+                };
+                function_like_name_from_attrs(attrs, fallback)
+            }
+            _ => "singledispatchmethod wrapper".to_string(),
+        },
+        _ => "singledispatchmethod wrapper".to_string(),
+    };
+    format_function_object_repr(&name, identity)
+}
+
+fn function_like_name_from_attrs(attrs: &Scope, fallback: &str) -> String {
+    let attrs = attrs.borrow();
+    for name in ["__qualname__", "__name__"] {
+        match attrs.get(name) {
+            Some(Value::String(value)) | Some(Value::IdentityString { value, .. }) => {
+                return value.clone();
+            }
+            _ => {}
+        }
+    }
+    fallback.to_string()
+}
+
+fn format_function_object_repr(name: &str, identity: &Rc<()>) -> String {
+    format!("<function {name} at 0x{:x}>", Rc::as_ptr(identity) as usize)
 }
 
 fn format_operator_attrgetter(attrs: &[String]) -> String {
@@ -1733,12 +1798,19 @@ fn format_value_repr(value: &Value) -> String {
         } => format_partialmethod(function, args, keywords),
         Value::PartialMethodCall { .. } => "<functools.partial object>".to_string(),
         Value::LruCacheWrapper { identity, .. } => format_lru_cache_wrapper(identity),
-        Value::SingleDispatch { .. } => "<function singledispatch wrapper>".to_string(),
+        Value::SingleDispatch {
+            function,
+            attrs,
+            identity,
+            ..
+        } => format_singledispatch(function, attrs, identity),
         Value::SingleDispatchRegister { .. } => "<function singledispatch register>".to_string(),
-        Value::SingleDispatchMethod { .. } => "<functools.singledispatchmethod object>".to_string(),
-        Value::SingleDispatchMethodCallable { .. } => {
-            "<function singledispatchmethod wrapper>".to_string()
-        }
+        Value::SingleDispatchMethod { identity, .. } => format_singledispatchmethod(identity),
+        Value::SingleDispatchMethodCallable {
+            descriptor,
+            identity,
+            ..
+        } => format_singledispatchmethod_callable(descriptor, identity),
         Value::CachedProperty { .. } => "<functools.cached_property object>".to_string(),
         Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => {
             "<functools.KeyWrapper object>".to_string()

@@ -984,9 +984,10 @@ Recent runtime migration notes:
   `test_functools.py::TestSingleDispatch` public wrapper behavior, explicit
   type registration, decorator registration, `dispatch()` identity, registry
   mappingproxy exposure, wrapper metadata copied from the wrapped function,
-  C3-style user-class specificity, builtin `bool` / `int` dispatch, ABC
-  registration over `Sized`, `MutableMapping`, and `MutableSequence`, no-op
-  `_clear_cache()`, annotation-inferred registration, PEP 604 and
+  public wrapper `repr()` / `str()` shape, C3-style user-class specificity,
+  builtin `bool` / `int` dispatch, ABC registration over `Sized`,
+  `MutableMapping`, and `MutableSequence`, no-op `_clear_cache()`,
+  annotation-inferred registration, PEP 604 and
   `typing.Union` registration, lazy failure for non-callable implementations,
   and TypeError rejection for non-class registration/dispatch keys. The default
   diff covers the stable explicit-registration core; current strict invalid-key
@@ -997,9 +998,10 @@ Recent runtime migration notes:
   `cpython_functools_singledispatchmethod_subset`, covering CPython
   `test_functools.py::TestSingleDispatchMethod` public descriptor behavior,
   including instance and class access, descriptor `func` / `dispatcher` /
-  `register` attributes, explicit and decorator registration through raw,
-  class-bound, and instance-bound access, `staticmethod` and `classmethod`
-  implementations, annotation-inferred registration, PEP 604 and
+  `register` attributes, descriptor and bound callable `repr()` / `str()`
+  shapes, explicit and decorator registration through raw, class-bound, and
+  instance-bound access, `staticmethod` and `classmethod` implementations,
+  annotation-inferred registration, PEP 604 and
   `typing.Union` registration, and public TypeError paths. The default diff
   covers stable explicit-registration and descriptor-composition behavior;
   missing-argument error classification stays in the local subset because older
