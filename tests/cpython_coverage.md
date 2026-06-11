@@ -3041,7 +3041,10 @@ Recent runtime migration notes:
   `count()`, `index()`, `remove()`, `fromlist()`, `frombytes()`, and
   `clear()`, including one-byte overflow errors, empty-pop errors, cross-kind
   `extend()` rejection, type checks for `fromlist()` / `frombytes()`, and
-  CPython's empty-array `repr()` shape.
+  CPython's empty-array `repr()` shape. Direct CPython diff evidence is in
+  `cpython_array_one_byte_public_mutation_methods_diff_subset`, with
+  `array.clear()` additionally pinned by gated
+  `cpython_array_one_byte_public_clear_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_subscript_mutation_subset`, covering the
   supported public `array.array('B')` / `array.array('b')` mutable subscript

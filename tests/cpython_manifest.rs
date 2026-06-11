@@ -2129,6 +2129,9 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if evidence == "cpython_json_loads_dumps_diff_subset" {
         candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
     }
+    if evidence == "cpython_array_one_byte_public_clear_diff_subset" {
+        candidates.push("cpython_array_one_byte_public_mutation_methods_subset".to_string());
+    }
 
     candidates
 }
@@ -2557,6 +2560,16 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_one_byte_public_file_methods_subset",
         ],
         &["Real file descriptors"],
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "array")
+        .expect("sandbox stdlib manifest must include array");
+    assert!(
+        row.diff_evidence
+            .contains("cpython_array_one_byte_public_clear_diff_subset"),
+        "array sandbox manifest must cite CPython diff evidence for array.clear()"
     );
 }
 
