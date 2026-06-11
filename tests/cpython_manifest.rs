@@ -4542,6 +4542,57 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
 }
 
 #[test]
+fn cpython_compile_source_positions_diff_covers_public_invariants() {
+    let diff_name = "cpython_compile_source_positions_public_invariants_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("compile source-position diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for subset in [
+        "cpython_compile_source_positions_code_positions_first_pass_subset",
+        "cpython_compile_source_positions_lambda_return_position_subset",
+        "cpython_compile_source_positions_weird_attribute_position_regressions_subset",
+        "cpython_compile_source_positions_multistatement_code_lines_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "compile source-position subset `{subset}` must exist"
+        );
+    }
+
+    for required in [
+        "compile-source-positions-public-invariants",
+        "TestSourcePositions public co_positions invariants",
+        "code.co_positions",
+        "co.co_lines()",
+        "f = lambda: x",
+        "f = lambda: 1 + 2",
+        "z = 3",
+        "CPython oracle lacks code.co_positions",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "compile source-position diff must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains("co_positions()")
+                && document.contains("public")
+                && document.contains("opcode"),
+            "compile source-position docs must link `{diff_name}` to public non-opcode invariants"
+        );
+    }
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_covers_exact_subsets() {
     let diff_name = "cpython_ast_literal_eval_public_diff_subset";
     let diff_start = CPYTHON_DIFF

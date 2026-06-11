@@ -4747,6 +4747,66 @@ for expr in [lambda: compile(), lambda: compile('print(42)', '<string>', 'badmod
 }
 
 #[test]
+fn cpython_compile_source_positions_public_invariants_diff_subset() {
+    let probe = run_cpython("print(hasattr(compile('x = 1', '<test>', 'exec'), 'co_positions'))")
+        .expect("failed to probe CPython co_positions support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping compile source-position diff: CPython oracle lacks code.co_positions");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_compile.py::TestSourcePositions public co_positions invariants",
+        name: "compile-source-positions-public-invariants",
+        source: r#"def bounded(position):
+    line, end_line, col, end_col = position
+    if line is None or end_line is None or col is None or end_col is None:
+        return True
+    return (line, col) <= (end_line, end_col)
+
+co = compile("x = 1", "test_compile.py", "exec")
+positions = list(co.co_positions())
+print(any(line == 1 and end_line == 1 and col == 0 and end_col == len("x = 1") for line, end_line, col, end_col in positions))
+print(all(line == end_line for line, end_line, col, end_col in positions if line is not None and end_line is not None))
+print(all(bounded(pos) for pos in positions))
+
+for snippet in ["f = lambda: x", "f = lambda: 42", "f = lambda: 1 + 2", "f = lambda: a + b"]:
+    namespace = {}
+    exec(snippet, namespace)
+    positions = list(namespace["f"].__code__.co_positions())
+    code_start = snippet.find(":") + 2
+    code_end = len(snippet)
+    checks = []
+    for line, end_line, col, end_col in positions:
+        if col is None or end_col is None:
+            checks.append(True)
+        elif col == end_col == 0:
+            checks.append(True)
+        else:
+            checks.append(line == 1 and end_line == 1 and col >= code_start and end_col <= code_end and end_col >= col)
+    print(snippet, all(checks))
+
+source = "x = 1\ny = 2\n# comment\n\nz = 3"
+co = compile(source, "test_compile.py", "exec")
+print(all(line in {0, 1, 2, 5} for start, end, line in co.co_lines()))
+print({1, 2, 5}.issubset({line for line, end_line, col, end_col in co.co_positions()}))
+
+def f():
+    (bar.
+baz)
+    (bar.
+baz(
+))
+    files().setdefault(
+        0
+    ).setdefault(
+        0
+    )
+print(all(bounded(pos) for pos in f.__code__.co_positions()))"#,
+    });
+}
+
+#[test]
 fn cpython_ast_dump_public_diff_subset() {
     let probe = run_cpython("import ast\nprint('ctx=Load' in ast.dump(ast.parse('x')))")
         .expect("failed to probe CPython ast.dump default-field support");

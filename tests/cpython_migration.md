@@ -10222,6 +10222,13 @@ Completed in the CPython collections manifest expansion pass:
   errors, and `ast.PyCF_ONLY_AST`. It uses the same default-field oracle probe
   as `cpython_ast_dump_public_diff_subset` because the stable comparison prints
   public `ast.dump()` output.
+- Added `cpython_compile_source_positions_public_invariants_diff_subset`, a
+  gated direct CPython diff for public `code.co_positions()` /
+  `code.co_lines()` source-position invariants from
+  `Lib/test/test_compile.py::TestSourcePositions`. The diff checks assignment
+  span membership, lambda body bounds, multi-statement source-line coverage,
+  and ordered multiline attribute-chain bounds while deliberately avoiding
+  opcode-count, opcode identity, specialization, or `co_stacksize` parity.
 - Added `cpython_ast_literal_eval_public_diff_subset`, direct CPython output
   parity for the stable public `ast.literal_eval()` surface from
   `ASTHelpers_Test.test_literal_eval` and `test_literal_eval_complex`. The

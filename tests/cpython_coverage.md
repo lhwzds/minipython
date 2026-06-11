@@ -2242,6 +2242,10 @@ Recent runtime migration notes:
   first public `code.co_positions()` iterator surface for a simple assignment,
   exposing the real assignment line plus statement-aligned column bounds that
   satisfy CPython's AST-offset membership invariant.
+  `cpython_compile_source_positions_public_invariants_diff_subset` provides
+  gated direct CPython output parity for public `co_positions()` and
+  `co_lines()` invariants without asserting opcode-count or exact opcode-level
+  position identity.
   `cpython_compile_source_positions_lambda_return_position_subset` ports
   CPython's public lambda-return position invariant for the representative
   `lambda: x`, `lambda: 42`, `lambda: 1 + 2`, and `lambda: a + b` snippets,
