@@ -5899,6 +5899,32 @@ print('typed-dict', union == typing.Union[Point2D, str], tuple(arg.__name__ for 
 }
 
 #[test]
+fn cpython_types_union_protocol_diff_subset() {
+    let probe = run_cpython(
+        "import typing\nclass Proto(typing.Protocol):\n    def meth(self) -> int:\n        ...\nunion = Proto | str\nprint(union == typing.Union[Proto, str])",
+    )
+    .expect("failed to probe CPython union Protocol support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types union Protocol diff: CPython oracle lacks PEP 604 Protocol union support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::UnionTests Protocol public subset",
+        name: "types-union-protocol",
+        source: r#"import typing
+class Proto(typing.Protocol):
+    def meth(self) -> int:
+        ...
+union = Proto | str
+print('protocol-meta', typing.Protocol.__name__, typing.Protocol.__module__, tuple(base.__name__ for base in Proto.__bases__))
+print('protocol-union', union == typing.Union[Proto, str], tuple(arg.__name__ for arg in union.__args__))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

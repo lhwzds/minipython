@@ -1018,7 +1018,8 @@ Recent runtime migration notes:
 - The bundled `types` module also includes
   `cpython_types_union_protocol_subset`, covering class-based
   `typing.Protocol` subclass creation and PEP 604 union equality with
-  `typing.Union`.
+  `typing.Union`. Direct output parity is guarded by
+  `cpython_types_union_protocol_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_special_form_subset`, covering public PEP 604 union
   behavior for `typing.Any`, `typing.NoReturn`, `typing.Optional[int]`,
