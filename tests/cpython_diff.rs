@@ -3007,6 +3007,34 @@ print(sorted(snapshot_items), sorted(items))"#,
 }
 
 #[test]
+fn cpython_collections_abc_userdict_view_snapshot_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestCollectionABCs::test_MutableMapping_subclass UserDict view public subset",
+        name: "collections-abc-userdict-view-snapshot",
+        source: r#"from collections import UserDict
+from collections.abc import Collection, ItemsView, KeysView, Set, ValuesView
+mymap = UserDict()
+mymap['red'] = 5
+keys = mymap.keys()
+values = mymap.values()
+items = mymap.items()
+print(isinstance(keys, Set), isinstance(keys, KeysView))
+print(isinstance(values, Collection), isinstance(values, ValuesView))
+print(isinstance(items, Set), isinstance(items, ItemsView))
+z = mymap.keys() | {'orange'}
+print(isinstance(z, set), sorted(z))
+mymap['blue'] = 7
+print(sorted(z))
+mymap = UserDict()
+mymap['red'] = 5
+z = mymap.items() | {('orange', 3)}
+print(isinstance(z, set), sorted(z))
+mymap['blue'] = 7
+print(sorted(z))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

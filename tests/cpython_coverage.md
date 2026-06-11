@@ -2406,7 +2406,9 @@ Recent runtime migration notes:
   `cpython_collections_abc_userdict_view_snapshot_subset`, covering CPython
   `TestCollectionABCs::test_MutableMapping_subclass` for `UserDict`
   keys/items/values view ABC relationships and eager set-operation snapshots
-  that are not affected by later `UserDict` mutation.
+  that are not affected by later `UserDict` mutation. Direct CPython diff
+  evidence is in
+  `cpython_collections_abc_userdict_view_snapshot_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_bytestring_deprecation_warnings_subset`, covering
   CPython `TestCollectionABCs::test_ByteString` and
