@@ -4899,6 +4899,44 @@ print(c, list(c.items()))"#,
 }
 
 #[test]
+fn cpython_collections_counter_comparison_diff_subset() {
+    let probe = run_cpython(
+        "from collections import Counter\nprint(hasattr(Counter(), 'total'), Counter(a=1, b=0) == Counter(a=1))",
+    )
+    .expect("failed to run CPython Counter comparison feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping Counter comparison diff: CPython oracle lacks Counter.total() and zero-count rich comparison"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter comparison subset",
+        name: "collections-counter-comparison",
+        source: r#"from collections import Counter
+c = Counter(a=10, b=5, c=0)
+print(c.total())
+c = Counter(a=10, b=-2, c=0)
+print([elem in c for elem in c])
+print(Counter(a=3, b=2, c=0) == Counter('ababa'))
+print(Counter(a=3, b=2) != Counter('babab'))
+print(Counter(a=3, b=2, c=0) <= Counter('ababa'))
+print(Counter() <= Counter(c=1))
+print(Counter() <= Counter(c=-1))
+print(Counter(a=3, b=2) <= Counter('babab'))
+print(Counter(a=3, b=1, c=0) < Counter('ababa'))
+print(Counter(a=3, b=2, c=0) < Counter('ababa'))
+print(Counter(a=2, b=1, c=0) >= Counter('aab'))
+print(Counter() >= Counter(c=-1))
+print(Counter() >= Counter(c=1))
+print(Counter(a=3, b=2, c=0) >= Counter('aabd'))
+print(Counter(a=3, b=2, c=0) > Counter('aab'))
+print(Counter(a=2, b=1, c=0) > Counter('aab'))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_conversions_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter conversions subset",

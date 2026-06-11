@@ -2772,6 +2772,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_counter_comparison_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter comparison behavior"
+    );
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_counter_copy_subclass_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subclass copying"
     );

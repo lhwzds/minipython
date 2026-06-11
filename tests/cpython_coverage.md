@@ -158,6 +158,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_most_common_diff_subset`,
   `cpython_collections_counter_mapping_mutation_diff_subset`,
+  `cpython_collections_counter_comparison_diff_subset`,
   `cpython_collections_counter_conversions_diff_subset`,
   `cpython_collections_counter_init_update_diff_subset`,
   `cpython_collections_counter_repr_nonsortable_diff_subset`,
@@ -4031,12 +4032,13 @@ positive limit, `None` limit, and increasing limit slices.
 `cpython_collections_counter_mapping_mutation_subset` add direct CPython output
 parity and runtime coverage for `pop()`, missing-key `pop(default)`,
 `setdefault()`, `popitem()`, `clear()`, and zero lookup after deletion.
-`cpython_collections_counter_comparison_subset` adds method-level Counter
+`cpython_collections_counter_comparison_diff_subset` and
+`cpython_collections_counter_comparison_subset` add method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,
 equality with missing keys treated as zero, and `<=` / `<` / `>=` / `>` rich
-comparison over count values. This remains runtime-subset evidence because the
-local CPython oracle used by `cpython_diff` predates `Counter.total()` and the
-new zero-count rich-comparison rules.
+comparison over count values. The direct diff is gated because older system
+CPython oracles predate `Counter.total()` and the new zero-count
+rich-comparison rules.
 `cpython_collections_counter_conversions_subset` adds method-level Counter
 coverage for `elements()`, Counter iteration, `dict(Counter(...))`,
 `dict(Counter(...).items())`, and `set(Counter(...))` conversion behavior.
