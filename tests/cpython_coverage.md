@@ -148,6 +148,7 @@ Recent runtime migration notes:
   `cpython_types_coroutine_generator_wrapper_diff_subset`,
   `cpython_types_coroutine_generator_frame_diff_subset`,
   `cpython_types_coroutine_generator_yieldfrom_diff_subset`,
+  `cpython_types_coroutine_duck_generator_wrapper_diff_subset`,
   `cpython_types_int_format_diff_subset`,
   `cpython_types_float_format_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
@@ -1093,7 +1094,9 @@ Recent runtime migration notes:
   `cpython_types_coroutine_generator_wrapper_diff_subset`; frame alias parity
   is guarded by `cpython_types_coroutine_generator_frame_diff_subset`; and
   yield-from alias parity is guarded by
-  `cpython_types_coroutine_generator_yieldfrom_diff_subset`.
+  `cpython_types_coroutine_generator_yieldfrom_diff_subset`. Duck-generator
+  wrapper parity is guarded by
+  `cpython_types_coroutine_duck_generator_wrapper_diff_subset`.
 - The bundled `types` module also includes `cpython_types_function_type_subset`,
   covering CPython `Lib/test/test_types.py::FunctionTests` public
   `types.FunctionType` construction over MiniPython code objects, globals

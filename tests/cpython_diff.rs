@@ -6896,6 +6896,50 @@ except StopIteration:
 }
 
 #[test]
+fn cpython_types_coroutine_duck_generator_wrapper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests duck-generator _GeneratorWrapper public subset",
+        name: "types-coroutine-duck-generator-wrapper",
+        source: r#"import types
+class Generator:
+    def __init__(self, fut):
+        self._i = 0
+        self._fut = fut
+    def __iter__(self):
+        return self
+    def __next__(self):
+        return self.send(None)
+    def send(self, v):
+        try:
+            if self._i == 0:
+                assert v is None
+                return self._fut
+            if self._i == 1:
+                raise StopIteration(v * 2)
+            if self._i > 1:
+                raise StopIteration
+        finally:
+            self._i += 1
+    def throw(self, tp, *exc):
+        self._i = 100
+        if tp is not GeneratorExit:
+            raise tp
+    def close(self):
+        self.throw(GeneratorExit)
+@types.coroutine
+def duck():
+    return Generator('spam')
+duck_wrapper = duck()
+print('duck-wrapper', isinstance(duck_wrapper, types._GeneratorWrapper), duck_wrapper.__await__() is duck_wrapper, iter(duck_wrapper) is duck_wrapper)
+print('duck-send-1', duck_wrapper.send(None))
+try:
+    duck_wrapper.send(20)
+except StopIteration as ex:
+    print('duck-stop', ex.args[0])"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
