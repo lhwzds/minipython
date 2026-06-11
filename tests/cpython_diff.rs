@@ -6852,6 +6852,50 @@ print('frame-closed', gen.gi_frame is None, wrapper.gi_frame is None, wrapper.cr
 }
 
 #[test]
+fn cpython_types_coroutine_generator_yieldfrom_diff_subset() {
+    let probe = run_cpython(
+        "import types\n@types.coroutine\ndef f():\n    yield 1\nwrapper = f()\nprint(hasattr(wrapper, 'cr_await'), hasattr(wrapper, 'gi_yieldfrom'))",
+    )
+    .expect("failed to probe CPython _GeneratorWrapper yield-from alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types coroutine generator yieldfrom diff: CPython oracle lacks _GeneratorWrapper yield-from aliases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::CoroutineTests _GeneratorWrapper yield-from public subset",
+        name: "types-coroutine-generator-yieldfrom",
+        source: r#"import types
+def inner():
+    yield 'inner-one'
+    yield 'inner-two'
+    return 'inner-done'
+def outer():
+    yield 'outer-before'
+    result = yield from inner()
+    yield result
+    yield 'outer-after'
+gen = outer()
+@types.coroutine
+def foo():
+    return gen
+wrapper = foo()
+print('created', wrapper.gi_yieldfrom is None, wrapper.cr_await is None)
+print('run0', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)
+print('run1', next(wrapper), type(wrapper.gi_yieldfrom).__name__, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.cr_await is gen.gi_yieldfrom, wrapper.gi_yieldfrom.gi_frame is not None)
+print('run2', next(wrapper), type(wrapper.gi_yieldfrom).__name__, wrapper.gi_yieldfrom is gen.gi_yieldfrom, wrapper.cr_await is gen.gi_yieldfrom)
+print('run3', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)
+print('run4', next(wrapper), wrapper.gi_yieldfrom is None, wrapper.cr_await is None)
+try:
+    next(wrapper)
+except StopIteration:
+    print('closed', wrapper.gi_yieldfrom is None, wrapper.cr_await is None)"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
