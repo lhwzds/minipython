@@ -3044,11 +3044,19 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         .into_iter()
         .find(|row| row.module == "sys")
         .expect("sandbox stdlib manifest must include sys");
-    assert!(
-        row.diff_evidence
-            .contains("cpython_attribute_introspection_builtins_diff_subset"),
-        "sys sandbox manifest must cite CPython diff evidence for attribute introspection"
-    );
+    for evidence in [
+        "globals-locals-builtins",
+        "cpython_attribute_introspection_builtins_diff_subset",
+        "builtin-breakpoint-custom-hook",
+        "builtin-breakpoint-passthru-error",
+        "float-hash-and-sys-info",
+        "types-frame-locals-proxy-currentframe",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "sys sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
@@ -3097,21 +3105,23 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .into_iter()
         .find(|row| row.module == "builtins")
         .expect("sandbox stdlib manifest must include builtins");
-    assert!(
-        row.diff_evidence
-            .contains("cpython_attribute_introspection_builtins_diff_subset"),
-        "builtins sandbox manifest must cite CPython diff evidence for attribute introspection"
-    );
-    assert!(
-        row.diff_evidence
-            .contains("cpython_ascii_builtin_diff_subset"),
-        "builtins sandbox manifest must cite CPython diff evidence for ascii()"
-    );
-    assert!(
-        row.diff_evidence
-            .contains("cpython_chr_ord_builtin_diff_subset"),
-        "builtins sandbox manifest must cite CPython diff evidence for chr()/ord()"
-    );
+    for evidence in [
+        "globals-locals-builtins",
+        "exec-builtin",
+        "compile-code-object-builtin",
+        "cpython_attribute_introspection_builtins_diff_subset",
+        "cpython_ascii_builtin_diff_subset",
+        "cpython_chr_ord_builtin_diff_subset",
+        "builtin-breakpoint-custom-hook",
+        "builtin-breakpoint-passthru-error",
+        "iter-next-builtins",
+        "map-filter-builtins",
+    ] {
+        assert!(
+            row.diff_evidence.contains(evidence),
+            "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
 }
 
 #[test]
