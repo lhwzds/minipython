@@ -2991,7 +2991,9 @@ Recent runtime migration notes:
   specific base metaclass, custom `__prepare__` namespace identity, empty
   remaining keywords, `resolve_bases(())`, tuple identity preservation for
   class-only base tuples, instance `__mro_entries__` replacement/removal, and
-  `typing.List[int]` / `list[int]` generic-alias base replacement.
+  `typing.List[int]` / `list[int]` generic-alias base replacement. Direct
+  output parity is guarded by
+  `cpython_types_class_creation_prepare_resolve_bases_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_mro_entries_multiple_subset`, covering CPython
   `ClassCreationTests::test_new_class_with_mro_entry_multiple` and

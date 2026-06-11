@@ -5496,6 +5496,52 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_class_creation_prepare_resolve_bases_diff_subset() {
+    let probe = run_cpython("import types\nprint(types.resolve_bases((list[int],)) == (list,))")
+        .expect("failed to probe CPython types.resolve_bases generic alias support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping types prepare/resolve_bases diff: CPython oracle lacks generic alias resolve_bases support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::ClassCreationTests prepare_class/resolve_bases public subset",
+        name: "types-class-creation-prepare-resolve-bases",
+        source: r#"import types, typing
+expected_ns = {}
+class MetaA(type):
+    def __new__(*args, **kwargs):
+        return type.__new__(*args, **kwargs)
+    def __prepare__(*args):
+        return expected_ns
+B0 = types.new_class('B0', (object,))
+C0 = types.new_class('C0', (object,), {'metaclass': MetaA})
+meta, ns, kwds = types.prepare_class('D0', (B0, C0), {'metaclass': type})
+print(meta is MetaA, ns is expected_ns, kwds == {})
+class A: pass
+class B: pass
+class C:
+    def __mro_entries__(self, bases):
+        if A in bases:
+            return ()
+        return (A,)
+c = C()
+print(types.resolve_bases(()) == ())
+print(types.resolve_bases((c,)) == (A,))
+print(types.resolve_bases((C,)) == (C,))
+print(types.resolve_bases((A, C)) == (A, C))
+print(types.resolve_bases((c, A)) == (A,))
+print(types.resolve_bases((A, c)) == (A,))
+for bases in [(A,), (C,), (A, C), (A, C, B)]:
+    print(types.resolve_bases(bases) is bases)
+print(types.resolve_bases((typing.List[int],)) == (list, typing.Generic))
+print(types.resolve_bases((list[int],)) == (list,))"#,
+    });
+}
+
+#[test]
 fn cpython_types_function_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::FunctionTests public FunctionType subset",
