@@ -2830,6 +2830,27 @@ print(d['B'], d['C'])"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_order_preservation_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestChainMap order preservation subset",
+        name: "collections-chainmap-order-preservation",
+        source: r#"from collections import ChainMap, OrderedDict
+d = ChainMap(
+    OrderedDict(j=0, h=88888),
+    OrderedDict(),
+    OrderedDict(i=9999, d=4444, c=3333),
+    OrderedDict(f=666, b=222, g=777, c=333, h=888),
+    OrderedDict(),
+    OrderedDict(e=55, b=22),
+    OrderedDict(a=1, b=2, c=3, d=4, e=5),
+    OrderedDict(),
+)
+print(''.join(d))
+print(list(d.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_operator_public_helpers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py public helper subset",
