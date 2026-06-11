@@ -9065,6 +9065,39 @@ for T in [B, BA]:
 }
 
 #[test]
+fn cpython_bytes_bytearray_subclass_pickle_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::SubclassTest::test_pickle public round-trip subset",
+        name: "bytes-bytearray-subclass-pickle-roundtrip-named",
+        source: r#"import pickle
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for T in [B, BA]:
+    checked = 0
+    nested = 0
+    independent = 0
+    for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+        a = T(b'abcd')
+        a.x = 10
+        a.z = T(b'efgh')
+        b = pickle.loads(pickle.dumps(a, proto))
+        if type(b) is T and b == a and b is not a and b.x == 10 and not hasattr(b, 'y'):
+            checked += 1
+        if type(b.z) is T and b.z == T(b'efgh'):
+            nested += 1
+        if isinstance(b, bytearray):
+            b.append(ord('!'))
+            if bytes(a) == b'abcd' and bytes(b) == b'abcd!':
+                independent += 1
+        elif bytes(b) == b'abcd':
+            independent += 1
+    print(T.__name__, checked, nested, independent, pickle.HIGHEST_PROTOCOL + 1)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_bytes_blocking and BaseBytesTest::test_custom dispatch subset",

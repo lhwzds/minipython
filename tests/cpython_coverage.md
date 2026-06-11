@@ -1491,6 +1491,9 @@ Recent runtime migration notes:
   binding is in `cpython_bytearray_subclass_init_override_diff_subset`.
   Direct CPython diff evidence for bytes/bytearray subclass shallow/deep copy
   behavior is in `cpython_bytes_bytearray_subclass_copy_diff_subset`.
+  Direct CPython diff evidence for bytes/bytearray subclass pickle public
+  round-trip behavior is in `cpython_bytes_bytearray_subclass_pickle_diff_subset`;
+  this does not claim CPython binary pickle byte-stream compatibility.
   `cpython_bytes_dunder_bytes_method_subset` covers direct
   `BytesTest::test__bytes__` method calls on exact bytes and bytes subclasses,
   exact bytes result type, exact bytes self identity, bytes-subclass copy-out

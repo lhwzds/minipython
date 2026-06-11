@@ -283,7 +283,9 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   protocols using MiniPython's internal payload, preserving concrete subclass
   types, value equality, user attributes, nested subclass attribute values, and
   distinct restored objects without claiming CPython binary pickle
-  byte-stream compatibility.
+  byte-stream compatibility. Direct CPython diff evidence for the public
+  round-trip surface is in
+  `cpython_bytes_bytearray_subclass_pickle_diff_subset`.
 - Added `cpython_bytes_dunder_bytes_and_blocking_subset`, adapted from CPython
   `Lib/test/test_bytes.py::BytesTest::test_bytes_blocking` and
   `BaseBytesTest::test_custom`.
