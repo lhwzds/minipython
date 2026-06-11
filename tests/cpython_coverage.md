@@ -928,7 +928,8 @@ Recent runtime migration notes:
   `cpython_types_generic_alias_union_type_subset`, covering CPython public
   `GenericAlias` and `UnionType` type objects, `type()` identity,
   `isinstance()` checks, public type metadata, GenericAlias construction, and
-  catchable constructor TypeError paths.
+  catchable constructor TypeError paths. Direct output parity is guarded by
+  `cpython_types_generic_alias_union_type_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_union_forward_ref_subset`, covering public
   `typing.ForwardRef` construction, metadata attributes, equality/hash

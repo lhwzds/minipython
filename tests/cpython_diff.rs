@@ -5426,6 +5426,43 @@ for expr in [lambda: types.ModuleType(), lambda: types.ModuleType(1), lambda: ty
 }
 
 #[test]
+fn cpython_types_generic_alias_union_type_diff_subset() {
+    let probe = run_cpython(
+        "import types\nprint(hasattr(types, 'GenericAlias'), hasattr(types, 'UnionType'))",
+    )
+    .expect("failed to probe CPython GenericAlias/UnionType support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True True" {
+        eprintln!(
+            "skipping types GenericAlias/UnionType diff: CPython oracle lacks public aliases"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py public GenericAlias/UnionType subset",
+        name: "types-generic-alias-union-type",
+        source: r#"import types
+from typing import Union
+values = (list[int], tuple[int, ...], int | str, Union[int, str])
+for value in values:
+    typ = type(value)
+    print(typ.__name__, typ is types.GenericAlias, typ is types.UnionType, isinstance(value, types.GenericAlias), isinstance(value, types.UnionType))
+print(types.GenericAlias.__name__, types.GenericAlias.__module__, types.GenericAlias.__qualname__)
+print(types.UnionType.__name__, types.UnionType.__module__, types.UnionType.__qualname__)
+constructed = types.GenericAlias(list, (int,))
+print(constructed.__origin__ is list, constructed.__args__[0] is int, type(constructed) is types.GenericAlias)
+constructed = types.GenericAlias(list, int)
+print(constructed.__origin__ is list, constructed.__args__[0] is int)
+print(types.UnionType[int] is int, types.UnionType[int, int] is int, types.UnionType[int, str] == int | str, isinstance(types.UnionType[int, str], types.UnionType))
+for expr in (lambda: types.GenericAlias(list), lambda: types.GenericAlias(list, (int,), 3), lambda: types.GenericAlias(origin=list, args=(int,)), lambda: types.UnionType()):
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",
