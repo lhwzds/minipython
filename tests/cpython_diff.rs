@@ -7791,6 +7791,74 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_search_bounds_index_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py BaseBytesTest search/prefix/suffix bound __index__ public subset",
+        name: "bytes-search-bounds-index",
+        source: r#"class One:
+    def __index__(self):
+        return 1
+class Three:
+    def __index__(self):
+        return 3
+class NegTwo:
+    def __index__(self):
+        return -2
+class Bad:
+    def __index__(self):
+        raise RuntimeError('boom')
+
+for ctor in [bytes, bytearray]:
+    b = ctor(b'mississippi')
+    print(b.count(b'i', One()), b.count(b'i', One(), Three()))
+    print(b.find(b'i', One()), b.find(b'i', One(), Three()))
+    print(b.rfind(b'i', One(), Three()), b.index(b'i', One()), b.rindex(b'i', One()))
+    print(b.startswith(b'ss', Three()), b.endswith(b'pi', NegTwo()))
+    for expr in [
+        lambda: b.find(b'i', Bad()),
+        lambda: b.count(b'i', One(), Bad()),
+        lambda: b.startswith(b'm', Bad()),
+        lambda: b.endswith(b'i', One(), Bad()),
+    ]:
+        try:
+            expr()
+        except RuntimeError as error:
+            print(error.__class__.__name__, error.args[0])"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_prefix_suffix_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_startswith, ::test_endswith, and public None-bound subset",
+        name: "bytes-prefix-suffix-methods",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'hello')
+    print(ctor().startswith(b'anything'), b.startswith(b'hello'), b.startswith(b'hel'), b.startswith(b'h'), b.startswith(b'hellow'), b.startswith(b'ha'))
+    print(ctor().endswith(b'anything'), b.endswith(b'hello'), b.endswith(b'llo'), b.endswith(b'o'), b.endswith(b'whello'), b.endswith(b'no'))
+    print(b.startswith(bytearray(b'he')), b.startswith(memoryview(b'he')), b.startswith((b'x', b'he')), b.startswith((bytearray(b'x'), memoryview(b'he'))))
+    print(b.endswith(bytearray(b'lo')), b.endswith(memoryview(b'lo')), b.endswith((b'x', b'lo')), b.endswith((bytearray(b'x'), memoryview(b'lo'))))
+    print(b.startswith(b'l', 2), b.startswith(b'l', -2, None), b.startswith(b'h', None, -2), b.startswith(b'x', None, None))
+    print(b.endswith(b'o', None), b.endswith(b'o', -2, None), b.endswith(b'l', None, -2), b.endswith(b'x', None, None))
+    print(b.startswith((b'h', 'bad')), b.endswith((b'o', 'bad')), b.startswith(()), b.endswith(()))
+
+b = b'hello'
+for expr in [
+    lambda: b.startswith([b'h']),
+    lambda: b.endswith([b'o']),
+    lambda: b.startswith((b'x', 'h')),
+    lambda: b.endswith((b'x', 'o')),
+    lambda: b.startswith(b'h', None, None, None),
+    lambda: b.endswith(b'o', None, None, None),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

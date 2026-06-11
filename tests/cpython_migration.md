@@ -3110,7 +3110,8 @@ Completed in the bytes prefix/suffix-method pass:
   `endswith()` over bytes-like prefixes/suffixes and tuple alternatives,
   including CPython-style tuple short-circuiting, `None` start/stop bounds,
   empty tuple false results, and TypeError paths for unsupported first
-  arguments.
+  arguments. Direct CPython diff evidence is in
+  `cpython_bytes_prefix_suffix_methods_diff_subset`.
 - Added `cpython_bytes_prefix_suffix_typeerror_messages_subset`, covering
   CPython's distinct public diagnostics for invalid top-level prefixes/suffixes
   versus invalid tuple candidates.
@@ -3133,7 +3134,9 @@ Completed in the bytes search-bound `__index__` pass:
   `rindex()`, `startswith()`, and `endswith()` so `start` / `stop` bounds use
   Python-level `__index__` conversion.
 - Covered positive and negative custom index objects plus propagation of
-  exceptions raised by `__index__` while evaluating search windows.
+  exceptions raised by `__index__` while evaluating search windows. Direct
+  CPython diff evidence is in
+  `cpython_bytes_search_bounds_index_diff_subset`.
 
 Completed in the bytes join-method pass:
 
