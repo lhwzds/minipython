@@ -5314,6 +5314,47 @@ for expr in [lambda: types.MethodType(), lambda: types.MethodType(f), lambda: ty
 }
 
 #[test]
+fn cpython_types_method_descriptor_types_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_method_descriptor_types",
+        name: "types-method-descriptor-types-direct",
+        source: r#"import types
+print(isinstance(str.join, types.MethodDescriptorType))
+print(isinstance(list.append, types.MethodDescriptorType))
+print(isinstance(''.join, types.BuiltinMethodType))
+print(isinstance([].append, types.BuiltinMethodType))
+print(isinstance(int.__dict__['from_bytes'], types.ClassMethodDescriptorType))
+print(isinstance(int.from_bytes, types.BuiltinMethodType))
+print(isinstance(int.__new__, types.BuiltinMethodType))
+print(type(str.join).__name__, type(list.append).__name__, type(int.__dict__['from_bytes']).__name__)
+print(int.from_bytes(b'\x01\x00', 'little'), int.from_bytes(b'\xff', 'big', signed=True), bool.from_bytes(b'\x02', 'big'))
+print(int.__dict__['from_bytes'](int, b'\x01', 'big'))
+print(int.__new__(int, '10'))
+items = []
+list.append(items, 3)
+print(items)"#,
+    });
+}
+
+#[test]
+fn cpython_types_frame_locals_proxy_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_frame_locals_proxy_type",
+        name: "types-frame-locals-proxy-currentframe-direct",
+        source: r#"import inspect, types
+def probe():
+    marker = 42
+    frame = inspect.currentframe()
+    proxy_type = getattr(types, 'FrameLocalsProxyType', dict)
+    print(frame is not None, isinstance(frame.f_locals, proxy_type))
+    print(type(frame.f_locals).__name__ in ('dict', 'FrameLocalsProxy'))
+    print('marker' in frame.f_locals, frame.f_locals['marker'])
+    print(sorted(k for k in frame.f_locals if k in ('frame', 'marker')))
+probe()"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_exact_dict_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::MappingProxyTests exact dict public subset",

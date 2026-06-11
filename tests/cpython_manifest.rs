@@ -3431,7 +3431,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "builtin-breakpoint-custom-hook",
         "builtin-breakpoint-passthru-error",
         "cpython_float_hash_and_sys_info_diff_subset",
-        "types-frame-locals-proxy-currentframe",
+        "cpython_types_frame_locals_proxy_type_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
@@ -3608,8 +3608,8 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_simple_namespace_recursive_diff_subset",
         "cpython_types_simple_namespace_state_order_diff_subset",
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
-        "types-method-descriptor-types",
-        "types-frame-locals-proxy-currentframe",
+        "cpython_types_method_descriptor_types_diff_subset",
+        "cpython_types_frame_locals_proxy_type_diff_subset",
         "types-int-dunder-format-matrix",
         "types-float-dunder-format-matrix",
     ] {
