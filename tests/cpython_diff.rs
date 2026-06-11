@@ -3184,6 +3184,51 @@ print(callable(operator.attrgetter('name')), callable(operator.itemgetter(0)), c
 }
 
 #[test]
+fn cpython_operator_inplace_helper_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py::OperatorTestCase::test_inplace and ::test_iconcat_without_getitem public subset",
+        name: "operator-inplace-helper",
+        source: r#"import operator
+class C:
+    def __iadd__(self, other): return 'iadd'
+    def __iand__(self, other): return 'iand'
+    def __ifloordiv__(self, other): return 'ifloordiv'
+    def __ilshift__(self, other): return 'ilshift'
+    def __imod__(self, other): return 'imod'
+    def __imul__(self, other): return 'imul'
+    def __imatmul__(self, other): return 'imatmul'
+    def __ior__(self, other): return 'ior'
+    def __ipow__(self, other): return 'ipow'
+    def __irshift__(self, other): return 'irshift'
+    def __isub__(self, other): return 'isub'
+    def __itruediv__(self, other): return 'itruediv'
+    def __ixor__(self, other): return 'ixor'
+    def __getitem__(self, other): return 5
+c = C()
+print(operator.iadd(c, 5), operator.iand(c, 5), operator.ifloordiv(c, 5), operator.ilshift(c, 5))
+print(operator.imod(c, 5), operator.imul(c, 5), operator.imatmul(c, 5), operator.ior(c, 5))
+print(operator.ipow(c, 5), operator.irshift(c, 5), operator.isub(c, 5), operator.itruediv(c, 5), operator.ixor(c, 5))
+print(operator.iconcat(c, c))
+print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))
+print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))
+items = [1, 2]
+alias = items
+result = operator.iadd(items, [3])
+print(result, items, result is alias)
+items = [4, 5]
+alias = items
+result = operator.iconcat(items, [6])
+print(result, items, result is alias)
+print(operator.iconcat('py', 'thon'))
+for expr in [lambda: operator.iadd(), lambda: operator.ifloordiv(1), lambda: operator.iconcat(1), lambda: operator.iadd(1, 2, extra=3), lambda: operator.iconcat(1, 0.5)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

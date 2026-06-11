@@ -2517,6 +2517,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_operator_callable_helper_diff_subset"),
         "operator sandbox manifest must cite CPython callable helper diff evidence"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_inplace_helper_diff_subset"),
+        "operator sandbox manifest must cite CPython inplace helper diff evidence"
+    );
 }
 
 #[test]

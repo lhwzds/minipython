@@ -1026,7 +1026,8 @@ Recent runtime migration notes:
   `imul`, `imatmul`, `ifloordiv`, `itruediv`, `imod`, `ipow`, `ilshift`,
   `irshift`, `iand`, `ior`, `ixor`, and `iconcat`, including custom `__i*__`
   dispatch, numeric fallback behavior, list in-place mutation, and `iconcat`
-  concat-type rejection.
+  concat-type rejection. Direct CPython diff evidence is in
+  `cpython_operator_inplace_helper_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_module_metadata_subset`, covering CPython
   `test_operator.py::test___all__` and `::test_dunder_is_original` public
