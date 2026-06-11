@@ -11538,6 +11538,44 @@ for expr in [
     });
 }
 
+#[test]
+fn cpython_itertools_permutations_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public permutations core subset",
+        name: "itertools-permutations-core",
+        source: r#"import itertools
+p = itertools.permutations('ABC')
+print(type(p).__name__, iter(p) is p, list(p), list(p))
+print(list(itertools.permutations('ABC', 2)))
+print(list(itertools.permutations('ABC', 0)))
+print(list(itertools.permutations('ABC', 4)))
+print(list(itertools.permutations('', 0)))
+print(list(itertools.permutations('', 1)))
+it = itertools.permutations((value for value in [1, 2, 3]), 2)
+print(next(it), list(it))
+class IntSubclass(int):
+    pass
+print(list(itertools.permutations([1, 2, 3], True)))
+print(list(itertools.permutations([1, 2, 3], IntSubclass(2))))
+print(list(itertools.permutations(iterable='ABC', r=2)))
+class IndexLike:
+    def __index__(self):
+        return 2
+for expr in [
+    lambda: itertools.permutations('ABC', 2, 3),
+    lambda: itertools.permutations('ABC', 'x'),
+    lambda: itertools.permutations('ABC', IndexLike()),
+    lambda: itertools.permutations('ABC', -1),
+    lambda: itertools.permutations(1, 1),
+    lambda: itertools.permutations('ABC', bad=1),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
 // Differential smoke tests for CPython-compatible program behavior. These are
 // intentionally written with syntax accepted by Python 3.9+ so the default
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a

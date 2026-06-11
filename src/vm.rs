@@ -8603,6 +8603,9 @@ impl Vm {
             Value::Builtin(name) if name == "itertools.pairwise" => {
                 self.call_itertools_pairwise(args, keywords)
             }
+            Value::Builtin(name) if name == "itertools.permutations" => {
+                self.call_itertools_permutations(args, keywords)
+            }
             Value::Builtin(name) if name == "itertools.product" => {
                 self.call_itertools_product(args, keywords)
             }
@@ -23447,6 +23450,49 @@ impl Vm {
         ))
     }
 
+    fn call_itertools_permutations(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let mut values = bind_keyword_call("permutations", &["iterable", "r"], 1, args, keywords)?;
+        let iterable = values[0].take().ok_or_else(|| {
+            "TypeError: permutations() missing required argument 'iterable'".to_string()
+        })?;
+        let pool = self.collect_iterable_values(iterable)?;
+        let n = pool.len();
+        let r = match values[1].take() {
+            Some(value) => self.itertools_permutations_r(value)?,
+            None => n,
+        };
+        let done = r > n;
+        let indices = (0..n).collect();
+        let cycles = (0..r).map(|index| n - index).collect();
+        Ok(shared_iterator(Value::ItertoolsPermutations {
+            pool,
+            indices,
+            cycles,
+            r,
+            first: true,
+            done,
+        }))
+    }
+
+    fn itertools_permutations_r(&self, value: Value) -> Result<usize, String> {
+        let value = int_subclass_integer(&value).unwrap_or_else(|| numeric_bool_value(value));
+        let integer = match value {
+            Value::Number(value) => BigInt::from(value),
+            Value::BigInt(value) => value,
+            _ => return Err("TypeError: Expected int as r".to_string()),
+        };
+        if integer.is_negative() {
+            return Err("ValueError: r must be non-negative".to_string());
+        }
+        integer
+            .to_usize()
+            .ok_or_else(|| "OverflowError: r argument is too large".to_string())
+    }
+
     fn call_ast_replace_method(
         &mut self,
         args: Vec<Value>,
@@ -29032,6 +29078,50 @@ impl Vm {
                     }
                 }
                 let values = indices.iter().map(|index| pool[*index].clone()).collect();
+                return Ok(IteratorAdvance::Yield(tuple_value(values)));
+            }
+            Value::ItertoolsPermutations {
+                pool,
+                indices,
+                cycles,
+                r,
+                first,
+                done,
+            } => {
+                if *done {
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                }
+                if *first {
+                    *first = false;
+                } else if *r == 0 {
+                    *done = true;
+                    return Ok(IteratorAdvance::Complete(Value::None));
+                } else {
+                    let mut advanced = false;
+                    for position in (0..*r).rev() {
+                        cycles[position] -= 1;
+                        if cycles[position] == 0 {
+                            let rotated = indices.remove(position);
+                            indices.push(rotated);
+                            cycles[position] = pool.len() - position;
+                        } else {
+                            let swap_from_end = cycles[position];
+                            let swap_index = indices.len() - swap_from_end;
+                            indices.swap(position, swap_index);
+                            advanced = true;
+                            break;
+                        }
+                    }
+                    if !advanced {
+                        *done = true;
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                }
+                let values = indices
+                    .iter()
+                    .take(*r)
+                    .map(|index| pool[*index].clone())
+                    .collect();
                 return Ok(IteratorAdvance::Yield(tuple_value(values)));
             }
             Value::MapIterator {
@@ -53640,6 +53730,7 @@ fn type_name(value: &Value) -> &str {
         Value::ItertoolsProduct { .. } => "product",
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
+        Value::ItertoolsPermutations { .. } => "permutations",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -53764,6 +53855,7 @@ fn iterator_type_name(iterator: &Value) -> &'static str {
         Value::ItertoolsProduct { .. } => "product",
         Value::ItertoolsCombinations { .. } => "combinations",
         Value::ItertoolsCombinationsWithReplacement { .. } => "combinations_with_replacement",
+        Value::ItertoolsPermutations { .. } => "permutations",
         Value::CallIterator { .. } => "callable_iterator",
         Value::SequenceIterator { .. } => "iterator",
         Value::Iterator(state) => iterator_type_name(&state.borrow()),
@@ -69353,6 +69445,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         | Value::ItertoolsProduct { .. }
         | Value::ItertoolsCombinations { .. }
         | Value::ItertoolsCombinationsWithReplacement { .. }
+        | Value::ItertoolsPermutations { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => {
@@ -69573,6 +69666,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::ItertoolsProduct { .. }
         | Value::ItertoolsCombinations { .. }
         | Value::ItertoolsCombinationsWithReplacement { .. }
+        | Value::ItertoolsPermutations { .. }
         | Value::CallIterator { .. }
         | Value::SequenceIterator { .. }
         | Value::Iterator(_) => false,
@@ -70013,6 +70107,21 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 done,
             },
         )),
+        Value::ItertoolsPermutations {
+            pool,
+            indices,
+            cycles,
+            r,
+            first,
+            done,
+        } => Ok(shared_iterator(Value::ItertoolsPermutations {
+            pool,
+            indices,
+            cycles,
+            r,
+            first,
+            done,
+        })),
         Value::CallIterator {
             callable,
             sentinel,
@@ -75813,6 +75922,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::ItertoolsProduct { .. } => Ok(true),
         Value::ItertoolsCombinations { .. } => Ok(true),
         Value::ItertoolsCombinationsWithReplacement { .. } => Ok(true),
+        Value::ItertoolsPermutations { .. } => Ok(true),
         Value::CallIterator { .. } => Ok(true),
         Value::SequenceIterator { .. } => Ok(true),
         Value::Iterator(_) => Ok(true),

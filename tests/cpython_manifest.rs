@@ -2205,6 +2205,9 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     if evidence == "cpython_itertools_combinations_with_replacement_diff_subset" {
         candidates.push("cpython_itertools_combinations_with_replacement_subset".to_string());
     }
+    if evidence == "cpython_itertools_permutations_diff_subset" {
+        candidates.push("cpython_itertools_permutations_subset".to_string());
+    }
     if evidence == "cpython_json_loads_dumps_diff_subset" {
         candidates.push("cpython_json_loads_dumps_basic_subset".to_string());
     }
@@ -2391,6 +2394,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_itertools_product_subset",
             "cpython_itertools_combinations_subset",
             "cpython_itertools_combinations_with_replacement_subset",
+            "cpython_itertools_permutations_subset",
         ],
         &[],
     );
@@ -2406,6 +2410,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_itertools_product_diff_subset",
         "cpython_itertools_combinations_diff_subset",
         "cpython_itertools_combinations_with_replacement_diff_subset",
+        "cpython_itertools_permutations_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
@@ -2434,19 +2439,21 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
     let replacement_start = CPYTHON_SUBSET
         .find("fn cpython_itertools_combinations_with_replacement_subset()")
         .expect("itertools combinations_with_replacement runtime subset evidence must exist");
-    let replacement_end = CPYTHON_SUBSET[replacement_start..]
+    let permutations_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_permutations_subset()")
+        .expect("itertools permutations runtime subset evidence must exist");
+    let permutations_end = CPYTHON_SUBSET[permutations_start..]
         .find("\n// Adapted from CPython Lib/test/test_list.py")
-        .map(|offset| replacement_start + offset)
-        .expect(
-            "itertools combinations_with_replacement subset must end before sequence constructor tests",
-        );
+        .map(|offset| permutations_start + offset)
+        .expect("itertools permutations subset must end before sequence constructor tests");
 
     let core_source = &CPYTHON_SUBSET[core_start..keyword_start];
     let keyword_source = &CPYTHON_SUBSET[keyword_start..pairwise_start];
     let pairwise_source = &CPYTHON_SUBSET[pairwise_start..product_start];
     let product_source = &CPYTHON_SUBSET[product_start..combinations_start];
     let combinations_source = &CPYTHON_SUBSET[combinations_start..replacement_start];
-    let replacement_source = &CPYTHON_SUBSET[replacement_start..replacement_end];
+    let replacement_source = &CPYTHON_SUBSET[replacement_start..permutations_start];
+    let permutations_source = &CPYTHON_SUBSET[permutations_start..permutations_end];
 
     assert!(
         !core_source.contains("pairwise"),
@@ -2472,6 +2479,10 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         replacement_source.contains("itertools.combinations_with_replacement"),
         "itertools combinations_with_replacement runtime evidence must cover combinations_with_replacement()"
     );
+    assert!(
+        permutations_source.contains("itertools.permutations"),
+        "itertools permutations runtime evidence must cover permutations()"
+    );
 }
 
 #[test]
@@ -2494,17 +2505,21 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let replacement_start = CPYTHON_DIFF
         .find("fn cpython_itertools_combinations_with_replacement_diff_subset()")
         .expect("itertools combinations_with_replacement diff evidence must exist");
-    let replacement_end = CPYTHON_DIFF[replacement_start..]
+    let permutations_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_permutations_diff_subset()")
+        .expect("itertools permutations diff evidence must exist");
+    let permutations_end = CPYTHON_DIFF[permutations_start..]
         .find("\n// Differential smoke tests")
-        .map(|offset| replacement_start + offset)
-        .expect("itertools combinations_with_replacement diff subset must end before smoke tests");
+        .map(|offset| permutations_start + offset)
+        .expect("itertools permutations diff subset must end before smoke tests");
 
     let core_source = &CPYTHON_DIFF[core_start..keyword_start];
     let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
     let pairwise_source = &CPYTHON_DIFF[pairwise_start..product_start];
     let product_source = &CPYTHON_DIFF[product_start..combinations_start];
     let combinations_source = &CPYTHON_DIFF[combinations_start..replacement_start];
-    let replacement_source = &CPYTHON_DIFF[replacement_start..replacement_end];
+    let replacement_source = &CPYTHON_DIFF[replacement_start..permutations_start];
+    let permutations_source = &CPYTHON_DIFF[permutations_start..permutations_end];
 
     assert!(
         !core_source.contains("pairwise"),
@@ -2534,6 +2549,10 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     assert!(
         replacement_source.contains("itertools.combinations_with_replacement"),
         "itertools combinations_with_replacement CPython diff evidence must cover combinations_with_replacement()"
+    );
+    assert!(
+        permutations_source.contains("itertools.permutations"),
+        "itertools permutations CPython diff evidence must cover permutations()"
     );
 }
 

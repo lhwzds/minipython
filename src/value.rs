@@ -723,6 +723,14 @@ pub enum Value {
         first: bool,
         done: bool,
     },
+    ItertoolsPermutations {
+        pool: Vec<Value>,
+        indices: Vec<usize>,
+        cycles: Vec<usize>,
+        r: usize,
+        first: bool,
+        done: bool,
+    },
     CallIterator {
         callable: Box<Value>,
         sentinel: Box<Value>,
@@ -1147,6 +1155,9 @@ impl fmt::Display for Value {
             }
             Value::ItertoolsCombinationsWithReplacement { .. } => {
                 write!(f, "<itertools.combinations_with_replacement object>")
+            }
+            Value::ItertoolsPermutations { .. } => {
+                write!(f, "<itertools.permutations object>")
             }
             Value::CallIterator { .. } => write!(f, "<callable_iterator object>"),
             Value::SequenceIterator { .. } => write!(f, "<iterator>"),
