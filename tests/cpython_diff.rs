@@ -1661,6 +1661,65 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_exp_exp2_diff_subset() {
+    let probe = run_cpython("import math; print(hasattr(math, 'exp2'))")
+        .expect("failed to probe CPython math.exp2 support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping math.exp/exp2 diff: CPython oracle lacks math.exp2");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testExp and testExp2 public stable subset",
+        name: "math-exp-exp2",
+        source: r#"import math
+print(type(math.exp(0)).__name__, type(math.exp2(0)).__name__)
+print(round(math.exp(-1), 12), math.exp(0), math.exp(1) == math.e)
+print(math.exp(math.inf), math.exp(-math.inf), math.isnan(math.exp(math.nan)))
+print(math.exp2(-1), math.exp2(0), math.exp2(1), round(math.exp2(2.3), 12))
+print(math.exp2(math.inf), math.exp2(-math.inf), math.isnan(math.exp2(math.nan)))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.exp(FloatLike(1.0)) == math.e, math.exp2(FloatLike(2.0)))
+print(math.exp(IndexLike(1)) == math.e, math.exp2(IndexLike(2)))
+for expr in [
+    lambda: math.exp(),
+    lambda: math.exp2(),
+    lambda: math.exp(1, 2),
+    lambda: math.exp2(1, 2),
+    lambda: math.exp('1.0'),
+    lambda: math.exp2(1+2j),
+    lambda: math.exp(1000000),
+    lambda: math.exp2(1000000),
+    lambda: math.exp(IndexLike(10**10000)),
+    lambda: math.exp2(BadFloat()),
+    lambda: math.exp(RaisesFloat()),
+    lambda: math.exp2(x=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",
