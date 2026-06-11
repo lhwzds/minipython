@@ -75,6 +75,10 @@ Recent runtime migration notes:
   `pure-memory-stdlib-core`, `array-one-byte-public-file-methods`,
   `operator-precedence-and-associativity`, and `pow-builtin`.
 - Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:
+  `cpython_globals_locals_builtin_diff_subset`,
+  `cpython_eval_builtin_diff_subset`,
+  `cpython_exec_builtin_diff_subset`,
+  `cpython_compile_builtin_code_object_diff_subset`,
   `cpython_math_core_diff_subset`,
   `cpython_math_constants_and_classification_diff_subset`,
   `cpython_math_isclose_diff_subset`,

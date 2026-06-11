@@ -4468,6 +4468,115 @@ for singleton in [NotImplemented, Ellipsis]:
 }
 
 #[test]
+fn cpython_globals_locals_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",
+        name: "globals-locals-builtins-direct",
+        source: r#"x = 1
+g = globals()
+l = locals()
+print(g is l, g['x'], l['x'])
+g['from_globals'] = 2
+l['from_locals'] = 3
+print(from_globals, from_locals, globals() is g, locals() is l)
+def probe(arg):
+    local_value = 4
+    snapshot = locals()
+    print('arg' in snapshot, snapshot['arg'], 'local_value' in snapshot, snapshot['local_value'])
+    print(globals() is locals(), globals()['x'])
+probe(3)"#,
+    });
+}
+
+#[test]
+fn cpython_eval_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_eval",
+        name: "eval-builtin-direct",
+        source: r#"print(eval('1+1'))
+print(eval(' 1+1\n'))
+x = 10
+def probe(y):
+    z = 5
+    print(eval('x + y + z'))
+    print(eval('globals()["x"]'), eval('locals()["z"]'))
+probe(3)
+data = {'a': 1, 'b': 2}
+local = {'b': 200, 'c': 300}
+print(eval('a', data), eval('a', data, local))
+print(eval('b', data, local), eval('c', data, local))
+print(eval('globals()["a"]', data, local), eval('locals()["c"]', data, local))
+print(eval("print('inside')"))
+for expr in [lambda: eval(), lambda: eval((), data), lambda: eval('1+'), lambda: eval('a', ()), lambda: eval('a', data, ())]:
+    try:
+        expr()
+    except (TypeError, SyntaxError) as error:
+        print(error.__class__.__name__)
+g = {}
+try:
+    eval('x =', g)
+except SyntaxError:
+    print('__builtins__' in g)"#,
+    });
+}
+
+#[test]
+fn cpython_exec_builtin_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_exec",
+        name: "exec-builtin-direct",
+        source: r#"print(exec('z = 1'))
+print(z)
+exec('z = z + 1')
+print(z)
+g = {}
+print(exec('z = 1', g))
+print(g['z'])
+exec('z = 1 + 1', g)
+print(g['z'])
+g = {}
+l = {}
+exec('global a\na = 1\nb = 2', g, l)
+print(g['a'], 'b' in g, l['b'])
+for expr in [lambda: exec(), lambda: exec((), g), lambda: exec('x ='), lambda: exec('x = 1', ())]:
+    try:
+        expr()
+    except (TypeError, SyntaxError) as error:
+        print(error.__class__.__name__)
+g = {}
+try:
+    exec('x = 1\n1/0', g)
+except ZeroDivisionError:
+    print(g['x'], '__builtins__' in g)"#,
+    });
+}
+
+#[test]
+fn cpython_compile_builtin_code_object_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_compile",
+        name: "compile-code-object-builtin-direct",
+        source: r#"code = compile('1 + 2', '<mini>', 'eval')
+print(type(code).__name__)
+print(eval(code))
+code = compile('value = 4\nprint(value)', '<mini>', 'exec')
+print(exec(code))
+print(exec(compile(b'\xef\xbb\xbfprint(6)\n', '<mini>', 'exec')))
+print(exec(compile('2 + 3', '<mini>', 'single')))
+print(eval(compile('z = 9', '<mini>', 'exec')))
+print(z)
+print(eval(compile(source='a + b', filename='tmp', mode='eval'), {'a': 2}, {'b': 5}))
+compile('pass', '?', dont_inherit=True, mode='exec')
+compile(dont_inherit=False, filename='tmp', source='0', mode='eval')
+for expr in [lambda: compile(), lambda: compile('print(42)', '<string>', 'badmode'), lambda: compile('x =', '<string>', 'exec'), lambda: compile('pass', '?', 'exec', mode='eval', source='0', filename='tmp')]:
+    try:
+        expr()
+    except (TypeError, ValueError, SyntaxError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_all_any_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_all / ::test_any",
