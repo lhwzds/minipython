@@ -3734,6 +3734,20 @@ for B in Hashable, Iterable, Iterator, Reversible, Sized, Container, Callable:
 }
 
 #[test]
+fn cpython_collections_abc_hashable_direct_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_Hashable",
+        name: "collections-abc-hashable-direct-subclass",
+        source: r#"from collections.abc import Hashable
+class H(Hashable):
+    def __hash__(self):
+        return super().__hash__()
+print(hash(H()))
+print(issubclass(int, H))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_registration_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestOneTrickPonyABCs::test_registration",

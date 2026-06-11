@@ -2578,7 +2578,8 @@ Recent runtime migration notes:
   `cpython_collections_abc_hashable_direct_subclass_subset`, covering
   CPython's `Hashable` direct-subclass mixin behavior where
   `super().__hash__()` returns the ABC fallback value `0` and unrelated builtin
-  types are not subclasses of the generated subclass.
+  types are not subclasses of the generated subclass. Direct CPython diff
+  evidence is in `cpython_collections_abc_hashable_direct_subclass_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_reversible_direct_subclass_subset`, covering
   CPython's `Reversible` direct-subclass runtime behavior where a subclass
