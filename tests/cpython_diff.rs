@@ -2350,6 +2350,69 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_pow_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py::MathTests::testPow public stable subset",
+        name: "math-pow",
+        source: r#"import math
+print(math.pow(0, 1), math.pow(1, 0), math.pow(2, 1), math.pow(2, -1))
+print(math.pow(math.inf, 1), math.pow(-math.inf, 1), math.pow(1, math.inf), math.pow(1, -math.inf))
+print(math.isnan(math.pow(math.nan, 1)), math.isnan(math.pow(2, math.nan)), math.isnan(math.pow(0, math.nan)), math.pow(1, math.nan))
+print(math.pow(0.0, math.inf), math.pow(0.0, 3.0), math.pow(0.0, 2.3), math.pow(0.0, 0.0))
+print(math.pow(math.inf, math.inf), math.pow(math.inf, -2.0), math.pow(math.inf, -math.inf), math.isnan(math.pow(math.inf, math.nan)))
+print(math.pow(-0.0, math.inf), math.pow(-0.0, 2.3), math.pow(-0.0, 2.0), math.isnan(math.pow(-0.0, math.nan)))
+print(math.pow(-0.0, 3.0), math.copysign(1.0, math.pow(-0.0, 3.0)))
+print(math.pow(-math.inf, math.inf), math.pow(-math.inf, 3.0), math.pow(-math.inf, 2.3), math.pow(-math.inf, 2.0))
+print(math.pow(-math.inf, -3.0), math.copysign(1.0, math.pow(-math.inf, -3.0)), math.pow(-math.inf, -math.inf), math.isnan(math.pow(-math.inf, math.nan)))
+print(math.pow(-1.0, math.inf), math.pow(-1.0, 3.0), math.pow(-1.0, 2.0), math.pow(-1.0, -3.0), math.pow(-1.0, -math.inf), math.isnan(math.pow(-1.0, math.nan)))
+print(math.pow(1.9, -math.inf), math.pow(0.9, -math.inf), math.pow(-0.9, -math.inf), math.pow(-1.9, -math.inf))
+print(math.pow(1.9, math.inf), math.pow(0.9, math.inf), math.pow(-0.9, math.inf), math.pow(-1.9, math.inf))
+print(math.pow(-2.0, 3.0), math.pow(-2.0, 2.0), math.pow(-2.0, -1.0), math.pow(-2.0, -2.0), math.pow(-2.0, -3.0))
+
+class FloatLike:
+    def __init__(self, value):
+        self.value = value
+    def __float__(self):
+        return self.value
+class IndexLike:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BadFloat:
+    def __float__(self):
+        return 1
+class RaisesFloat:
+    def __float__(self):
+        raise ValueError('bad float')
+
+print(math.pow(FloatLike(2.0), FloatLike(3.0)), math.pow(IndexLike(2), IndexLike(-1)))
+for expr in [
+    lambda: math.pow(),
+    lambda: math.pow(1),
+    lambda: math.pow(1, 2, 3),
+    lambda: math.pow(x=1, y=2),
+    lambda: math.pow('x', 2),
+    lambda: math.pow(1+2j, 2),
+    lambda: math.pow(10**10000, 2),
+    lambda: math.pow(BadFloat(), 2),
+    lambda: math.pow(RaisesFloat(), 2),
+    lambda: math.pow(1e100, 1e100),
+    lambda: math.pow(0.0, -2.0),
+    lambda: math.pow(-0.0, -3.0),
+    lambda: math.pow(-1.0, 2.3),
+    lambda: math.pow(-15.0, -3.1),
+    lambda: math.pow(-2.0, 0.5),
+    lambda: math.pow(-2.0, -0.5),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_pure_memory_stdlib_core_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Pure-memory stdlib public smoke subset",

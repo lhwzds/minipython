@@ -75,6 +75,7 @@ Recent runtime migration notes:
   `cpython_math_fsum_diff_subset`,
   `cpython_math_sumprod_diff_subset`,
   `cpython_math_nextafter_ulp_diff_subset`,
+  `cpython_math_pow_diff_subset`,
   `cpython_array_module_and_constructor_public_surface_diff_subset`,
   `cpython_array_one_byte_public_sequence_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -424,10 +425,11 @@ Recent runtime migration notes:
   catchable TypeError cases. The default diff covers the stable `math` module
   surface; the `math.integer` alias stays in the local subset because older
   system CPython oracles do not expose that submodule.
-- The bundled `math` module also includes `cpython_math_pow_subset`, covering
-  CPython `test_math.py::MathTests::testPow` float-result power behavior,
-  NaN/inf special cases, zero and signed-zero semantics, negative-base domain
-  errors for non-integral exponents, finite overflow handling, `__float__` and
+- The bundled `math` module also includes `cpython_math_pow_diff_subset` and
+  `cpython_math_pow_subset`, covering CPython
+  `test_math.py::MathTests::testPow` float-result power behavior, NaN/inf
+  special cases, zero and signed-zero semantics, negative-base domain errors
+  for non-integral exponents, finite overflow handling, `__float__` and
   `__index__` input conversion, and catchable error classes.
 - The bundled `math` module also includes `cpython_math_prod_diff_subset` and
   `cpython_math_prod_subset`, covering CPython
