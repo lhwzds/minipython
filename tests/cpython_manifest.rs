@@ -3113,11 +3113,18 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
 fn collections_abc_newer_oracle_diff_evidence_stays_capability_gated() {
     for (function, required) in [
         (
+            "fn cpython_collections_abc_mutable_sequence_diff_subset()",
+            &[
+                "issubclass(array.array, MutableSequence)",
+                "skipping MutableSequence diff",
+            ][..],
+        ),
+        (
             "fn cpython_collections_abc_bytestring_buffer_diff_subset()",
             &[
                 "hasattr(collections.abc, 'Buffer')",
                 "skipping collections.abc ByteString/Buffer diff",
-            ][..],
+            ],
         ),
         (
             "fn cpython_collections_abc_bytestring_deprecation_warnings_diff_subset()",
@@ -3145,6 +3152,54 @@ fn collections_abc_newer_oracle_diff_evidence_stays_capability_gated() {
             assert!(
                 body.contains(text),
                 "collections.abc gated diff evidence `{function}` must contain `{text}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn collections_public_diff_evidence_stays_capability_gated() {
+    for (function, required) in [
+        (
+            "fn cpython_collections_counter_comparison_diff_subset()",
+            &[
+                "hasattr(Counter(), 'total')",
+                "skipping Counter comparison diff",
+            ][..],
+        ),
+        (
+            "fn cpython_collections_namedtuple_match_args_diff_subset()",
+            &[
+                "getattr(Point, '__match_args__', None)",
+                "skipping namedtuple __match_args__ diff",
+            ],
+        ),
+        (
+            "fn cpython_collections_namedtuple_factory_instance_diff_subset()",
+            &[
+                "getattr(Point, '__match_args__', None)",
+                "skipping namedtuple factory/instance diff",
+            ],
+        ),
+        (
+            "fn cpython_collections_namedtuple_new_builtins_issue_43102_diff_subset()",
+            &[
+                "hasattr(obj.__new__, '__builtins__')",
+                "skipping namedtuple new builtins issue diff",
+            ],
+        ),
+    ] {
+        let start = CPYTHON_DIFF
+            .find(function)
+            .unwrap_or_else(|| panic!("collections gated diff evidence `{function}` must exist"));
+        let body = &CPYTHON_DIFF[start..];
+        let end = body.find("\n#[test]").unwrap_or(body.len());
+        let body = &body[..end];
+
+        for text in required {
+            assert!(
+                body.contains(text),
+                "collections gated diff evidence `{function}` must contain `{text}`"
             );
         }
     }
