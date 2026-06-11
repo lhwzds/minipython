@@ -2969,6 +2969,44 @@ print(len(mm), list(mm.items()))"#,
 }
 
 #[test]
+fn cpython_collections_abc_mapping_mixin_views_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Mapping/MutableMapping mixin view public subset",
+        name: "collections-abc-mapping-mixin-views",
+        source: r#"from collections.abc import MutableMapping, MappingView, KeysView, ItemsView, ValuesView, Set, Collection
+class MutableMappingSubclass(MutableMapping):
+    def __init__(self, pairs=()):
+        self.store = dict(pairs)
+    def __getitem__(self, key):
+        return self.store[key]
+    def __setitem__(self, key, value):
+        self.store[key] = value
+    def __delitem__(self, key):
+        del self.store[key]
+    def __iter__(self):
+        return iter(self.store)
+    def __len__(self):
+        return len(self.store)
+mymap = MutableMappingSubclass([('red', 5)])
+keys = mymap.keys()
+items = mymap.items()
+values = mymap.values()
+print(isinstance(keys, MappingView), isinstance(keys, KeysView), isinstance(keys, Set))
+print(isinstance(items, MappingView), isinstance(items, ItemsView), isinstance(items, Set))
+print(isinstance(values, MappingView), isinstance(values, ValuesView), isinstance(values, Collection), isinstance(values, Set))
+print(list(keys), list(values), list(items))
+print('red' in keys, 5 in values, ('red', 5) in items, ('red', 9) in items)
+print(sorted(keys - {'orange'}), sorted(keys ^ {'red', 'blue'}), sorted(items & {('red', 5), ('blue', 7)}), keys <= {'red', 'orange'}, keys < {'red'})
+snapshot_keys = keys | {'orange'}
+snapshot_items = items | {('orange', 3)}
+mymap['blue'] = 7
+print(isinstance(snapshot_keys, set), sorted(snapshot_keys), sorted(keys), sorted(values), sorted(items))
+mymap['green'] = 9
+print(sorted(snapshot_items), sorted(items))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

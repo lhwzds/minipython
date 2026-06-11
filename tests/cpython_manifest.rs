@@ -2598,6 +2598,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_mapping_view_subset",
             "cpython_collections_abc_mutable_sequence_subset",
             "cpython_collections_abc_mapping_mixins_subset",
+            "cpython_collections_abc_mapping_mixin_views_subset",
         ],
         &["pickle/eval identity matrices"],
     );
@@ -2650,6 +2651,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_abc_mapping_mixins_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Mapping mixins"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_abc_mapping_mixin_views_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Mapping mixin views"
     );
 }
 

@@ -2400,7 +2400,8 @@ Recent runtime migration notes:
   `cpython_collections_abc_mapping_mixin_views_subset`, covering live
   `KeysView` / `ItemsView` / `ValuesView` objects returned by explicit
   `Mapping` mixins, including membership, iteration after mutation, and
-  set-like key/item view operators.
+  set-like key/item view operators. Direct CPython diff evidence is in
+  `cpython_collections_abc_mapping_mixin_views_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_userdict_view_snapshot_subset`, covering CPython
   `TestCollectionABCs::test_MutableMapping_subclass` for `UserDict`
