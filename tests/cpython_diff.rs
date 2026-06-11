@@ -3035,6 +3035,94 @@ print(sorted(z))"#,
 }
 
 #[test]
+fn cpython_collections_abc_set_mutable_set_mixins_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Set/MutableSet mixin public subset",
+        name: "collections-abc-set-mutable-set-mixins",
+        source: r#"from collections.abc import Set, MutableSet, Collection, Sized, Iterable, Container
+print(isinstance(set(), Set), issubclass(set, Set), isinstance(set(), MutableSet), issubclass(set, MutableSet))
+print(isinstance(frozenset(), Set), issubclass(frozenset, Set), isinstance(frozenset(), MutableSet), issubclass(frozenset, MutableSet))
+keys = {1: 2}.keys()
+items = {1: 2}.items()
+values = {1: 2}.values()
+print(isinstance(keys, Set), isinstance(items, Set), isinstance(values, Set))
+print(issubclass(Set, Collection), issubclass(Set, Sized), issubclass(Set, Iterable), issubclass(Set, Container))
+print(issubclass(MutableSet, Set), issubclass(MutableSet, Collection), issubclass(MutableSet, Sized), issubclass(MutableSet, Iterable), issubclass(MutableSet, Container))
+class ProtocolSet:
+    def __contains__(self, item):
+        return False
+    def __iter__(self):
+        return iter(())
+    def __len__(self):
+        return 0
+    def add(self, item):
+        pass
+    def discard(self, item):
+        pass
+print(isinstance(ProtocolSet(), Set), issubclass(ProtocolSet, Set), isinstance(ProtocolSet(), MutableSet), issubclass(ProtocolSet, MutableSet))
+class MySet(Set):
+    def __init__(self, values=()):
+        self.contents = []
+        for value in values:
+            if value not in self.contents:
+                self.contents.append(value)
+    def __contains__(self, value):
+        return value in self.contents
+    def __iter__(self):
+        return iter(self.contents)
+    def __len__(self):
+        return len(self.contents)
+class HashSet(MySet):
+    def __hash__(self):
+        return self._hash()
+s1 = MySet((1, 2, 3))
+s2 = MySet((3, 4, 5))
+s3 = MySet((1, 2, 3))
+print(issubclass(MySet, Set), isinstance(s1, Set), issubclass(float, MySet))
+print(s1.__le__(s3), s1.__lt__(s3), s1.__ge__(s3), s1.__gt__(s2), s1.__eq__(s3), s1.__eq__([1, 2, 3]))
+print(s1.isdisjoint(MySet((4, 5))), s1.isdisjoint(s2))
+print(isinstance(s1.__and__(s2), MySet), sorted(list(s1.__and__(s2))))
+print(isinstance(s1.__or__(s2), MySet), sorted(list(s1.__or__(s2))))
+print(isinstance(s1.__sub__(s2), MySet), sorted(list(s1.__sub__(s2))))
+print(isinstance(s1.__xor__(s2), MySet), sorted(list(s1.__xor__(s2))))
+print(hash(HashSet((1, 2, 3))) == hash(HashSet((3, 2, 1))))
+class WithSet(MutableSet):
+    def __init__(self, values=()):
+        self.data = set(values)
+    def __contains__(self, value):
+        return value in self.data
+    def __iter__(self):
+        return iter(self.data)
+    def __len__(self):
+        return len(self.data)
+    def add(self, value):
+        self.data.add(value)
+    def discard(self, value):
+        self.data.discard(value)
+m = WithSet('abcd')
+m.__iand__(WithSet('cdef'))
+print(sorted(list(m)))
+m = WithSet(range(4))
+popped = m.pop()
+print(len(m), popped in [0, 1, 2, 3], popped in m)
+m = WithSet(range(4))
+alias = m
+m.__isub__(m)
+print(len(m), m is alias)
+m = WithSet(range(4))
+m.__ixor__(m)
+print(len(m))
+m = WithSet((1, 2))
+m.__ior__((2, 3))
+print(sorted(list(m)))
+m.remove(2)
+print(sorted(list(m)))
+m.clear()
+print(len(m))"#,
+    });
+}
+
+#[test]
 fn cpython_attribute_introspection_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable / ::test_getattr / ::test_hasattr / ::test_setattr / ::test_delattr",

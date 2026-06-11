@@ -2391,6 +2391,14 @@ Recent runtime migration notes:
   `cpython_collections_abc_mutable_sequence_diff_subset` for CPython oracles
   that expose the current `array.array` registration.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_set_mutable_set_mixins_subset`, covering `Set` and
+  `MutableSet` registrations for set/frozenset and supported set-like dict
+  views, inheritance through `Collection` / `Sized` / `Iterable` / `Container`,
+  explicit subclass mixins for comparison, binary set operations, `_hash`,
+  `_from_iterable`, mutable update methods, and self-clearing regressions.
+  Direct CPython diff evidence is in
+  `cpython_collections_abc_set_mutable_set_mixins_diff_subset`.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_mixins_subset`, covering explicit
   `Mapping` / `MutableMapping` subclass mixins for `get`, containment, key/item
   listing, equality, `pop`, `popitem`, `clear`, `update`, and `setdefault`.
