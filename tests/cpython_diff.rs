@@ -736,6 +736,39 @@ print(x)"#,
 }
 
 #[test]
+fn cpython_tokenize_explicit_line_joining_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py::test_backslash_continuation public execution subset",
+        name: "tokenize-explicit-line-joining",
+        source: r#"x = 1 + \
+2
+print(x)
+y = 1 + \
+    2
+print(y)
+items = [1, \
+2]
+print(items)
+print(1) # \
+print(2)
+# Comment \
+z = 0
+print(z)
+pass
+    \
+
+print("after")
+if True:
+    value = 1
+    \
+            \
+        \
+    \
+    print(value)"#,
+    });
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps keyword binding subset",

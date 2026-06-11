@@ -4225,6 +4225,10 @@ Completed in the explicit line-joining tokenizer pass:
 - Added `LexError` and `source_lex_error_diagnostic()` so this subset can assert
   the CPython-style start/end line and column for invalid line continuations
   without changing the older public `lex error: ...` string path.
+- Added `cpython_tokenize_explicit_line_joining_diff_subset` as direct CPython
+  output parity evidence for arithmetic/list explicit continuations, comment
+  backslashes that do not continue, continuation-only blank lines, and
+  indentation-preserving continuation-only physical lines.
 - Extended `cpython_tokenize_implicit_line_joining_subset`, adapted from CPython
   `Lib/test/test_tokenize.py::test_newline_after_parenthesized_block_with_comment`.
   MiniPython still does not expose COMMENT/NL tokens separately, but the token
