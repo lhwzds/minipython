@@ -1377,7 +1377,7 @@ Recent runtime migration notes:
   `cpython_operator_module_metadata_subset`, covering CPython
   `test_operator.py::test___all__` and `::test_dunder_is_original` public
   module metadata: the exported `operator.__all__` names, `operator.*`
-  callable `__module__` / `__name__` introspection, and dunder aliases such as
+  callable `__module__` / `__name__` / `__doc__` introspection, and dunder aliases such as
   `__add__`, `__not__`, `__iconcat__`, and `__call__` preserving object
   identity with their public helpers. Direct CPython diff evidence for the
   default-oracle stable metadata slice is in

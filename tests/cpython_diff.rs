@@ -10349,6 +10349,7 @@ fn cpython_operator_module_metadata_diff_subset() {
 for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:
     value = getattr(operator, name)
     print(name, getattr(value, '__name__', None), getattr(value, '__module__', None) in ('operator', '_operator'))
+    print(type(value.__doc__).__name__, bool(value.__doc__))
 print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat)
 print(hasattr(operator, '__countOf__'), hasattr(operator, '__length_hint__'))
 stable_exports = ['abs', 'add', 'and_', 'attrgetter', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_not', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']

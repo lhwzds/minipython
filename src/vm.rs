@@ -52257,6 +52257,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("operator".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && function_name.starts_with("operator.") =>
+        {
+            Ok(Value::String(
+                operator_builtin_doc(&function_name).to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && function_name.starts_with("math.integer.") =>
         {
             Ok(Value::String("math.integer".to_string()))
@@ -52438,6 +52445,16 @@ fn builtin_public_name(name: &str) -> String {
         return "Union".to_string();
     }
     name.rsplit('.').next().unwrap_or(name).to_string()
+}
+
+fn operator_builtin_doc(name: &str) -> &'static str {
+    match name {
+        "operator.attrgetter" => "Return a callable object that fetches attributes.",
+        "operator.itemgetter" => "Return a callable object that fetches items.",
+        "operator.methodcaller" => "Return a callable object that calls a method.",
+        "operator.length_hint" => "Return an estimate of the number of items in an object.",
+        _ => "Operator helper function.",
+    }
 }
 
 fn is_weakref_builtin_type_name(name: &str) -> bool {
