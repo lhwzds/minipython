@@ -52281,6 +52281,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
+        Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
+            Ok(Value::String(json_builtin_doc(&function_name).to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__qualname__"
                 && itertools_builtin_function_qualname(&function_name).is_some() =>
@@ -52443,6 +52446,14 @@ fn is_weakref_builtin_type_name(name: &str) -> bool {
 
 fn is_json_builtin(name: &str) -> bool {
     matches!(name, "json.loads" | "json.dumps")
+}
+
+fn json_builtin_doc(name: &str) -> &'static str {
+    match name {
+        "json.loads" => "Deserialize JSON text to a Python object.",
+        "json.dumps" => "Serialize a Python object to a JSON formatted string.",
+        _ => "",
+    }
 }
 
 fn json_builtin_kwdefaults(name: &str) -> Value {
