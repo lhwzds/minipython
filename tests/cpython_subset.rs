@@ -32885,16 +32885,22 @@ fn cpython_json_loads_dumps_basic_subset() {
 #[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
-        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))",
+        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('loads-object-hook', lambda: json.loads('{}', object_hook=dict))\nshow('loads-parse-int', lambda: json.loads('1', parse_int=int))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
         &[
             "1",
             "[1, 2]",
+            "{'none': True}",
             "{\"b\": [2]}",
             "\"é\"",
+            "{\"b\": [2]}",
             "loads-duplicate-s TypeError True",
             "dumps-duplicate-obj TypeError True",
             "loads-missing-s TypeError True",
             "dumps-missing-obj TypeError True",
+            "loads-object-hook TypeError True",
+            "loads-parse-int TypeError True",
+            "dumps-cls TypeError True",
+            "dumps-default TypeError True",
         ],
     );
 }

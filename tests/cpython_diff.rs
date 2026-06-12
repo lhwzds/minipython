@@ -846,8 +846,10 @@ def show(label, callback):
 
 print(json.loads(s='{"a": 1}')['a'])
 print(json.loads(s=b'[1, 2]', strict=True))
+print(json.loads(s='{"none": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))
 print(json.dumps(obj={'b': [2]}, sort_keys=True))
 print(json.dumps(obj='é', ensure_ascii=False))
+print(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))
 show('loads-duplicate-s', lambda: json.loads('{}', s='[]'))
 show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
 show('loads-missing-s', lambda: json.loads(strict=False))

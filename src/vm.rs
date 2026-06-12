@@ -22882,11 +22882,32 @@ impl Vm {
                 args.len()
             ));
         }
-        let mut values = bind_keyword_call("loads", &["s", "strict"], 1, args, keywords)?;
+        let mut values = bind_keyword_call(
+            "loads",
+            &[
+                "s",
+                "cls",
+                "object_hook",
+                "parse_float",
+                "parse_int",
+                "parse_constant",
+                "object_pairs_hook",
+                "strict",
+            ],
+            1,
+            args,
+            keywords,
+        )?;
         let source = values[0]
             .take()
             .expect("required json.loads source is present after keyword binding");
-        let strict = values[1]
+        json_unsupported_keyword_none("loads", "cls", values[1].as_ref())?;
+        json_unsupported_keyword_none("loads", "object_hook", values[2].as_ref())?;
+        json_unsupported_keyword_none("loads", "parse_float", values[3].as_ref())?;
+        json_unsupported_keyword_none("loads", "parse_int", values[4].as_ref())?;
+        json_unsupported_keyword_none("loads", "parse_constant", values[5].as_ref())?;
+        json_unsupported_keyword_none("loads", "object_pairs_hook", values[6].as_ref())?;
+        let strict = values[7]
             .as_ref()
             .map(is_truthy)
             .transpose()?
@@ -22930,13 +22951,15 @@ impl Vm {
             "dumps",
             &[
                 "obj",
-                "allow_nan",
-                "check_circular",
-                "ensure_ascii",
-                "indent",
                 "skipkeys",
-                "sort_keys",
+                "ensure_ascii",
+                "check_circular",
+                "allow_nan",
+                "cls",
+                "indent",
                 "separators",
+                "default",
+                "sort_keys",
             ],
             1,
             args,
@@ -22948,26 +22971,28 @@ impl Vm {
         let mut options = JsonDumpsOptions::default();
         let mut separators_explicit = false;
         if let Some(value) = values[1].as_ref() {
-            options.allow_nan = is_truthy(value)?;
-        }
-        if let Some(value) = values[2].as_ref() {
-            options.check_circular = is_truthy(value)?;
-        }
-        if let Some(value) = values[3].as_ref() {
-            options.ensure_ascii = is_truthy(value)?;
-        }
-        if let Some(value) = values[4].as_ref() {
-            options.indent = json_dumps_indent_string(value)?;
-        }
-        if let Some(value) = values[5].as_ref() {
             options.skip_keys = is_truthy(value)?;
         }
+        if let Some(value) = values[2].as_ref() {
+            options.ensure_ascii = is_truthy(value)?;
+        }
+        if let Some(value) = values[3].as_ref() {
+            options.check_circular = is_truthy(value)?;
+        }
+        if let Some(value) = values[4].as_ref() {
+            options.allow_nan = is_truthy(value)?;
+        }
+        json_unsupported_keyword_none("dumps", "cls", values[5].as_ref())?;
         if let Some(value) = values[6].as_ref() {
-            options.sort_keys = is_truthy(value)?;
+            options.indent = json_dumps_indent_string(value)?;
         }
         if let Some(value) = values[7].as_ref() {
             separators_explicit = true;
             json_dumps_apply_separators(&mut options, value)?;
+        }
+        json_unsupported_keyword_none("dumps", "default", values[8].as_ref())?;
+        if let Some(value) = values[9].as_ref() {
+            options.sort_keys = is_truthy(value)?;
         }
         if options.indent.is_some() && !separators_explicit {
             options.item_separator = ",".to_string();
@@ -55917,6 +55942,19 @@ fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, 
         output.push(ch);
     }
     Ok(output)
+}
+
+fn json_unsupported_keyword_none(
+    function_name: &str,
+    keyword: &str,
+    value: Option<&Value>,
+) -> Result<(), String> {
+    match value {
+        None | Some(Value::None) => Ok(()),
+        Some(_) => Err(format!(
+            "TypeError: json.{function_name}() {keyword} hook is not supported in this sandbox subset"
+        )),
+    }
 }
 
 struct JsonDumpsOptions {
