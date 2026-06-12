@@ -10348,7 +10348,7 @@ fn cpython_operator_module_metadata_diff_subset() {
         source: r#"import operator
 for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']:
     value = getattr(operator, name)
-    print(name, getattr(value, '__name__', None), getattr(value, '__module__', None) in ('operator', '_operator'))
+    print(name, getattr(value, '__name__', None), getattr(value, '__qualname__', None), getattr(value, '__module__', None) in ('operator', '_operator'))
     print(type(value.__doc__).__name__, bool(value.__doc__))
 print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat)
 print(hasattr(operator, '__countOf__'), hasattr(operator, '__length_hint__'))
