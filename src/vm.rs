@@ -52267,9 +52267,29 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("json".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__"
+                && itertools_builtin_function_qualname(&function_name).is_some() =>
+        {
+            if function_name == "itertools.chain.from_iterable" {
+                Ok(Value::None)
+            } else {
+                Ok(Value::String("itertools".to_string()))
+            }
+        }
+        Value::Builtin(function_name)
             if name == "__qualname__" && is_json_builtin(&function_name) =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__"
+                && itertools_builtin_function_qualname(&function_name).is_some() =>
+        {
+            Ok(Value::String(
+                itertools_builtin_function_qualname(&function_name)
+                    .expect("guard checked itertools builtin")
+                    .to_string(),
+            ))
         }
         Value::Builtin(function_name)
             if name == "__defaults__" && is_json_builtin(&function_name) =>
@@ -53559,6 +53579,36 @@ fn is_itertools_type_name(name: &str) -> bool {
             | "groupby"
             | "_grouper"
     )
+}
+
+fn itertools_builtin_function_qualname(name: &str) -> Option<&'static str> {
+    if name == "itertools.chain.from_iterable" {
+        return Some("chain.from_iterable");
+    }
+    let short_name = name.strip_prefix("itertools.")?;
+    match short_name {
+        "count" => Some("count"),
+        "repeat" => Some("repeat"),
+        "cycle" => Some("cycle"),
+        "accumulate" => Some("accumulate"),
+        "chain" => Some("chain"),
+        "compress" => Some("compress"),
+        "dropwhile" => Some("dropwhile"),
+        "filterfalse" => Some("filterfalse"),
+        "takewhile" => Some("takewhile"),
+        "starmap" => Some("starmap"),
+        "zip_longest" => Some("zip_longest"),
+        "islice" => Some("islice"),
+        "pairwise" => Some("pairwise"),
+        "product" => Some("product"),
+        "combinations" => Some("combinations"),
+        "combinations_with_replacement" => Some("combinations_with_replacement"),
+        "permutations" => Some("permutations"),
+        "tee" => Some("tee"),
+        "batched" => Some("batched"),
+        "groupby" => Some("groupby"),
+        _ => None,
+    }
 }
 
 fn is_collections_abc_type_name(name: &str) -> bool {

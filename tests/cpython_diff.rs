@@ -11926,7 +11926,16 @@ values = [
 key, group = next(itertools.groupby([1]))
 values.append(group)
 for value in values:
-    print(type(value).__name__, type(value).__module__)"#,
+    print(type(value).__name__, type(value).__module__)
+for fn in [
+    itertools.count, itertools.repeat, itertools.cycle, itertools.accumulate,
+    itertools.chain, itertools.compress, itertools.dropwhile, itertools.filterfalse,
+    itertools.takewhile, itertools.starmap, itertools.zip_longest, itertools.islice,
+    itertools.product, itertools.combinations, itertools.combinations_with_replacement,
+    itertools.permutations, itertools.tee, itertools.groupby,
+]:
+    print(fn.__name__, fn.__qualname__, fn.__module__)
+print(itertools.chain.from_iterable.__name__, itertools.chain.from_iterable.__qualname__, itertools.chain.from_iterable.__module__)"#,
     });
 }
 
