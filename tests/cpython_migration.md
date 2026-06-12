@@ -5765,9 +5765,10 @@ Completed in the pow builtin pass:
   `cpython_functools_cache_subset`, adapted from CPython
   `Lib/test/test_functools.py::TestCache` plus public `TestLRU` behavior. The
   migrated slice covers recursive cache hits, `CacheInfo` tuple/field access,
-  `cache_clear`, `cache_parameters`, `__wrapped__`, wrapper instance
-  attributes, direct `@lru_cache` decoration, zero and negative maxsize
-  behavior, user-function exceptions not being cached, `typed=True` top-level
+  `cache_clear`, `cache_parameters`, `cache_info` / `cache_clear` bound-method
+  metadata, `__wrapped__`, wrapper instance attributes, direct `@lru_cache`
+  decoration, zero and negative maxsize behavior, user-function exceptions not
+  being cached, `typed=True` top-level
   key separation, non-recursive typed tuple behavior, keyword-order-sensitive
   cache keys, full keyword-recursive `maxsize=None` statistics and clearing,
   recursive calls that mutate the cache during a miss, empty `**{}`

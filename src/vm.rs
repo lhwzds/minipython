@@ -52416,6 +52416,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(functools_total_ordering_doc(root, target)))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && is_lru_cache_builtin_method(&function_name) =>
+        {
+            Ok(Value::String(format!(
+                "_lru_cache_wrapper.{}",
+                builtin_public_name(&function_name)
+            )))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && is_lru_cache_builtin_method(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_lru_cache_builtin_method(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_math_builtin(&function_name) =>
         {
             Ok(Value::String("math".to_string()))
@@ -52608,6 +52626,13 @@ fn functools_partial_doc() -> &'static str {
 
 fn functools_partialmethod_doc() -> &'static str {
     "Method descriptor with partial application of the given arguments\n    and keywords.\n\n    Supports wrapping existing descriptors and handles non-descriptor\n    callables as instance methods.\n    "
+}
+
+fn is_lru_cache_builtin_method(name: &str) -> bool {
+    matches!(
+        name,
+        "functools.lru_cache.cache_info" | "functools.lru_cache.cache_clear"
+    )
 }
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {

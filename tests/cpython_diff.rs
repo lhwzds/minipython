@@ -11303,7 +11303,15 @@ print(rendered.startswith('<functools._lru_cache_wrapper object at 0x'), rendere
 @lru_cache(maxsize=10)
 def kwargs_order(**kwargs):
     return list(kwargs.items())
-print(kwargs_order(a=1, b=2), kwargs_order(b=2, a=1), tuple(kwargs_order.cache_info()))"#,
+print(kwargs_order(a=1, b=2), kwargs_order(b=2, a=1), tuple(kwargs_order.cache_info()))
+
+def decorated_source(zomg: 'zomg_annotation'):
+    """f doc string"""
+    return 42
+decorated_wrapper = lru_cache()(decorated_source)
+print(decorated_wrapper.__name__, decorated_wrapper.__doc__, decorated_wrapper.__module__, decorated_wrapper.__qualname__, decorated_wrapper.__wrapped__ is decorated_source)
+for method in [decorated_wrapper.cache_info, decorated_wrapper.cache_clear]:
+    print(method.__name__, method.__qualname__, method.__module__, method.__doc__, method.__self__ is decorated_wrapper)"#,
     });
 }
 
