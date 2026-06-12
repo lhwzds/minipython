@@ -1117,7 +1117,7 @@ value = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}
 for indent in [None, 0, 2, '', '--']:
     print('CASE', repr(indent))
     print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))
-for args in [dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:
+for args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:
     print('SEP', args['indent'], repr(args['separators']))
     print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))
 for indent in [True, False, 1.5, [], object()]:

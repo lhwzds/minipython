@@ -33146,7 +33146,7 @@ fn cpython_json_dumps_check_circular_subset() {
 #[test]
 fn cpython_json_dumps_indent_subset() {
     assert_output(
-        "import json\nvalue = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}\nfor indent in [None, 0, 2, '', '--']:\n    print('CASE', repr(indent))\n    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))\nfor args in [dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:\n    print('SEP', args['indent'], repr(args['separators']))\n    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))\nfor indent in [True, False, 1.5, [], object()]:\n    try:\n        print('BAD', repr(json.dumps([1, 2], indent=indent)))\n    except Exception as error:\n        print('BAD', type(error).__name__, isinstance(error, TypeError))",
+        "import json\nvalue = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}\nfor indent in [None, 0, 2, '', '--']:\n    print('CASE', repr(indent))\n    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))\nfor args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:\n    print('SEP', args['indent'], repr(args['separators']))\n    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))\nfor indent in [True, False, 1.5, [], object()]:\n    try:\n        print('BAD', repr(json.dumps([1, 2], indent=indent)))\n    except Exception as error:\n        print('BAD', type(error).__name__, isinstance(error, TypeError))",
         &[
             "CASE None",
             r#"'{"a": {"é": "𝄠"}, "b": [1, {"x": 2}], "empty": []}'"#,
@@ -33158,6 +33158,8 @@ fn cpython_json_dumps_indent_subset() {
             r#"'{\n"a": {\n"é": "𝄠"\n},\n"b": [\n1,\n{\n"x": 2\n}\n],\n"empty": []\n}'"#,
             "CASE '--'",
             r#"'{\n--"a": {\n----"é": "𝄠"\n--},\n--"b": [\n----1,\n----{\n------"x": 2\n----}\n--],\n--"empty": []\n}'"#,
+            "SEP 2 None",
+            r#"'{\n  "b": [\n    1,\n    2\n  ],\n  "a": 3\n}'"#,
             "SEP 2 (',', ':')",
             r#"'{\n  "b":[\n    1,\n    2\n  ],\n  "a":3\n}'"#,
             "SEP 2 (', ', ': ')",

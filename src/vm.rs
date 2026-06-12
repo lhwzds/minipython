@@ -23021,7 +23021,7 @@ impl Vm {
             options.indent = json_dumps_indent_string(value)?;
         }
         if let Some(value) = values[7].as_ref() {
-            separators_explicit = true;
+            separators_explicit = !matches!(value, Value::None);
             json_dumps_apply_separators(&mut options, value)?;
         }
         json_unsupported_keyword_none("dumps", "default", values[8].as_ref())?;
