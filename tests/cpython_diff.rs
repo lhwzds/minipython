@@ -11110,8 +11110,36 @@ class CachedCostItem:
 item = CachedCostItem()
 print(item.cost, item.cost, sorted(item.__dict__.items()))
 print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)
+state = CachedCostItem.__dict__['cost'].__dict__
+print(all(key in state for key in ['func', 'attrname', '__doc__']), state['func'] is CachedCostItem.__dict__['cost'].func, state['attrname'], state['__doc__'])
 rendered = repr(CachedCostItem.__dict__['cost'])
 print(rendered.startswith('<functools.cached_property object at 0x'), rendered.endswith('>'), str(CachedCostItem.__dict__['cost']) == rendered)
+
+class ManualCachedProperty:
+    @cached_property
+    def value(self):
+        return 1
+manual = ManualCachedProperty.__dict__['value']
+manual.attrname = 'other'
+manual.func = lambda self: 9
+manual_item = ManualCachedProperty()
+print(manual_item.value, sorted(manual_item.__dict__.items()), manual.__dict__['attrname'])
+del manual.func
+try:
+    ManualCachedProperty().value
+except AttributeError as error:
+    print(type(error).__name__, 'func' in str(error))
+manual.func = lambda self: 10
+del manual.attrname
+try:
+    ManualCachedProperty().value
+except AttributeError as error:
+    print(type(error).__name__, 'attrname' in str(error))
+manual.attrname = None
+try:
+    ManualCachedProperty().value
+except TypeError as error:
+    print(type(error).__name__, 'set_name' in str(error))
 
 class OptionallyCachedCostItem:
     _cost = 1

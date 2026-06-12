@@ -5784,12 +5784,13 @@ Completed in the pow builtin pass:
   during class creation, and `cpython_functools_cached_property_subset`,
   adapted from CPython `Lib/test/test_functools.py::TestCachedProperty`. The
   migrated slice covers instance `__dict__` caching, class-level descriptor
-  access, doc/module and `attrname` metadata, wrapped-function/name mismatch,
-  rejecting reuse under different names, allowing reuse under the same name
-  across classes, explicit post-class assignment before `__set_name__`,
-  slot-only instances without `__dict__`, and user-descriptor `__set_name__`
-  calls plus exception propagation from both class statements and `type()`
-  dynamic class creation.
+  access, doc/module metadata, live public `__dict__` state for `func`,
+  `attrname`, and `__doc__`, runtime updates to `func` and string/`None`
+  `attrname`, wrapped-function/name mismatch, rejecting reuse under different
+  names, allowing reuse under the same name across classes, explicit post-class
+  assignment before `__set_name__`, slot-only instances without `__dict__`, and
+  user-descriptor `__set_name__` calls plus exception propagation from both
+  class statements and `type()` dynamic class creation.
   Metaclass mappingproxy assignment failures, cached_property subclass
   data-descriptor behavior, and exact object `__dict__` internals remain
   classified for later runtime work.

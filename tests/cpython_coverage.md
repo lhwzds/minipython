@@ -971,8 +971,9 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_subset`, covering CPython
   `test_functools.py::TestCachedProperty` public descriptor behavior for
   instance `__dict__` caching, class-level descriptor access, copied doc,
-  fixed `functools` module, and `attrname` metadata, public descriptor
-  `repr()` / `str()` shape, attributes
+  fixed `functools` module, live public `__dict__` state for `func`,
+  `attrname`, and `__doc__` metadata, public descriptor `repr()` / `str()`
+  shape, runtime updates to `func` and string/`None` `attrname`, attributes
   whose names differ from the wrapped function, reuse rejection under different
   names, reuse under the same name across classes, explicit post-class
   assignment before `__set_name__`, slot-only instances without `__dict__`, and

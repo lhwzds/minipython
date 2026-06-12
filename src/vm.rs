@@ -6700,6 +6700,12 @@ impl Vm {
             Err(exception) if exception.type_name == "AttributeError" => Value::None,
             Err(exception) => return Err(format_exception_error(&exception)),
         };
+        attrs
+            .borrow_mut()
+            .insert("func".to_string(), function.clone());
+        attrs
+            .borrow_mut()
+            .insert("attrname".to_string(), Value::None);
         attrs.borrow_mut().insert("__doc__".to_string(), doc);
 
         Ok(Value::CachedProperty {
@@ -15139,22 +15145,14 @@ impl Vm {
     }
 
     fn cached_property_get(&mut self, descriptor: Value, object: Value) -> Result<Value, String> {
-        let Value::CachedProperty {
-            function, attrname, ..
-        } = descriptor.clone()
-        else {
+        let Value::CachedProperty { attrs, .. } = descriptor.clone() else {
             unreachable!("cached_property_get is only called with cached_property values");
         };
         if matches!(object, Value::None) {
             return Ok(descriptor);
         }
 
-        let Some(name) = attrname.borrow().clone() else {
-            return Err(
-                "TypeError: Cannot use cached_property instance without calling __set_name__ on it."
-                    .to_string(),
-            );
-        };
+        let name = Self::cached_property_bound_name(&attrs)?;
 
         let Value::Instance {
             class_name,
@@ -15180,9 +15178,39 @@ impl Vm {
             return Ok(value);
         }
 
-        let value = self.call_value(*function, vec![object])?;
+        let function = Self::cached_property_function(&attrs)?;
+        let value = self.call_value(function, vec![object])?;
         fields.borrow_mut().insert(name, value.clone());
         Ok(value)
+    }
+
+    fn cached_property_missing_attr(name: &str) -> String {
+        format!("AttributeError: 'cached_property' object has no attribute '{name}'")
+    }
+
+    fn cached_property_not_set_name() -> String {
+        "TypeError: Cannot use cached_property instance without calling __set_name__ on it."
+            .to_string()
+    }
+
+    fn cached_property_bound_name(attrs: &Scope) -> Result<String, String> {
+        match attrs.borrow().get("attrname").cloned() {
+            Some(Value::String(name)) | Some(Value::IdentityString { value: name, .. }) => Ok(name),
+            Some(Value::None) => Err(Self::cached_property_not_set_name()),
+            Some(value) => Err(format!(
+                "TypeError: cached_property attrname must be str or None, not {}",
+                type_name(&value)
+            )),
+            None => Err(Self::cached_property_missing_attr("attrname")),
+        }
+    }
+
+    fn cached_property_function(attrs: &Scope) -> Result<Value, String> {
+        attrs
+            .borrow()
+            .get("func")
+            .cloned()
+            .ok_or_else(|| Self::cached_property_missing_attr("func"))
     }
 
     fn cached_property_set_name(
@@ -15191,7 +15219,10 @@ impl Vm {
         owner: Value,
         name: Value,
     ) -> Result<Value, String> {
-        let Value::CachedProperty { attrname, .. } = descriptor else {
+        let Value::CachedProperty {
+            attrname, attrs, ..
+        } = descriptor
+        else {
             return Err("__set_name__() expected a cached_property receiver".to_string());
         };
         let Value::String(name) = name else {
@@ -15215,7 +15246,10 @@ impl Vm {
                 "TypeError: Cannot assign the same cached_property to two different names ('{existing}' and '{name}')."
             ));
         }
-        *attrname = Some(name);
+        *attrname = Some(name.clone());
+        attrs
+            .borrow_mut()
+            .insert("attrname".to_string(), Value::String(name));
         Ok(Value::None)
     }
 
@@ -50343,12 +50377,6 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             match name {
-                "func" => Ok(*function),
-                "attrname" => Ok(attrname
-                    .borrow()
-                    .as_ref()
-                    .map(|value| Value::String(value.clone()))
-                    .unwrap_or(Value::None)),
                 "__get__" | "__set_name__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("cached_property.{name}"))),
                     receiver: Box::new(Value::CachedProperty {
@@ -52967,11 +52995,19 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             "AttributeError: function object has no attribute '{name}'"
         )),
         Value::CachedProperty {
-            attrname, attrs: _, ..
+            attrname, attrs, ..
         } if name == "attrname" => {
             match value {
-                Value::None => *attrname.borrow_mut() = None,
-                Value::String(value) => *attrname.borrow_mut() = Some(value),
+                Value::None => {
+                    *attrname.borrow_mut() = None;
+                    attrs.borrow_mut().insert(name.to_string(), Value::None);
+                }
+                Value::String(value) => {
+                    *attrname.borrow_mut() = Some(value.clone());
+                    attrs
+                        .borrow_mut()
+                        .insert(name.to_string(), Value::String(value));
+                }
                 value => {
                     return Err(format!(
                         "TypeError: attrname must be set to a string object or None, not '{}'",
