@@ -607,8 +607,9 @@ Recent runtime migration notes:
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
   and UTF-16/UTF-32 encoded byte input, ordinary `\uXXXX` escapes and valid
   surrogate-pair Unicode escapes, `loads()` / `dumps()` public function
-  `__name__` / `__qualname__` / `__module__` metadata, `strict=False` raw
-  control-character string parsing, CPython default non-finite constants, strings and `str` /
+  `__name__` / `__qualname__` / `__module__` / `__defaults__` /
+  `__annotations__` metadata, `strict=False` raw control-character string
+  parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,
   list/tuple/dict subclass containers and namedtuples, standard string escapes,

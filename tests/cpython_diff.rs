@@ -467,6 +467,8 @@ from collections import namedtuple
 from enum import IntEnum
 print(json.loads.__name__, json.loads.__qualname__, json.loads.__module__)
 print(json.dumps.__name__, json.dumps.__qualname__, json.dumps.__module__)
+print(json.loads.__defaults__, json.loads.__annotations__ == {})
+print(json.dumps.__defaults__, json.dumps.__annotations__ == {})
 source = '{"a": 1, "b": [true, false, null], "c": "x\\ny"}'
 value = json.loads(source)
 print(value)

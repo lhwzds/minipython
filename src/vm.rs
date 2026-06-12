@@ -52272,6 +52272,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__defaults__" && is_json_builtin(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
+            if name == "__annotations__" && is_json_builtin(&function_name) =>
+        {
+            Ok(dict_value(Vec::new()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && functools_total_ordering_parts(&function_name).is_some() =>
         {
             Ok(Value::String("functools".to_string()))
