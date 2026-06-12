@@ -50110,6 +50110,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "args" => Ok(tuple_value(args)),
                 "keywords" => Ok(Value::Dict(keywords)),
                 "__dict__" => Ok(Value::ScopeDict(attrs)),
+                "__doc__" => Ok(attrs
+                    .borrow()
+                    .get("__doc__")
+                    .cloned()
+                    .unwrap_or_else(|| Value::String(functools_partial_doc().to_string()))),
                 _ => attrs.borrow().get(name).cloned().ok_or_else(|| {
                     format!("AttributeError: partial object has no attribute '{name}'")
                 }),
@@ -50130,6 +50135,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);
+            }
+            if name == "__doc__" {
+                return Ok(Value::String(functools_partialmethod_doc().to_string()));
             }
             match name {
                 "func" => Ok(*function),
@@ -52564,6 +52572,14 @@ fn json_builtin_kwdefaults(name: &str) -> Value {
             .map(|(name, value)| (Value::String(name.to_string()), value))
             .collect(),
     )
+}
+
+fn functools_partial_doc() -> &'static str {
+    "partial(func, *args, **keywords) - new function with partial application\n    of the given arguments and keywords.\n"
+}
+
+fn functools_partialmethod_doc() -> &'static str {
+    "Method descriptor with partial application of the given arguments\n    and keywords.\n\n    Supports wrapping existing descriptors and handles non-descriptor\n    callables as instance methods.\n    "
 }
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {

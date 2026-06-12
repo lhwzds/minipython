@@ -910,8 +910,8 @@ Recent runtime migration notes:
   subclass keys and non-string-key call rejection, caller keyword-dict
   isolation, constructor keyword copying, positional/keyword combinations,
   public `repr()` shape for function/type callables and stored arguments,
-  exception propagation, nested partial calls, custom attributes, and readonly
-  core attributes.
+  exception propagation, nested partial calls, custom attributes, default and
+  instance-overridden `__doc__` metadata, and readonly core attributes.
 - The bundled `functools` module also includes
   `cpython_functools_partialmethod_diff_subset` and
   `cpython_functools_partialmethod_subset`, covering CPython
@@ -919,7 +919,8 @@ Recent runtime migration notes:
   and class access call argument order, nested `partialmethod` flattening,
   partial-over-partial calls, `staticmethod` and `classmethod` descriptors,
   keyword override behavior, bound and unbound `__self__` visibility,
-  descriptor `__module__`, class-access `_method` function metadata, public
+  descriptor `__module__` / `__doc__` metadata including instance overrides,
+  class-access `_method` function metadata, public
   `repr()` shape for empty, positional/keyword, and partial-over-partial
   descriptors plus instance-bound partialmethod calls, invalid constructor
   forms, and raw descriptor non-callability/type reporting.

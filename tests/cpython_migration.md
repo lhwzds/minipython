@@ -5716,18 +5716,20 @@ Completed in the pow builtin pass:
   adapted from CPython `Lib/test/test_functools.py::TestPartial`. The migrated
   slice covers basic call forwarding, keyword override/copy/no-side-effect
   behavior, positional/keyword combination matrices, exception propagation,
-  nested partial calls with custom attributes, deletion of custom attributes,
-  and readonly core attributes while leaving placeholder, weakref, pickle, and
-  CPython-internal behavior for later slices.
+  nested partial calls with custom attributes, default and instance-overridden
+  `__doc__` metadata, deletion of custom attributes, and readonly core
+  attributes while leaving placeholder, weakref, pickle, and CPython-internal
+  behavior for later slices.
 - Added `functools.partialmethod` and
   `cpython_functools_partialmethod_subset`, adapted from CPython
   `Lib/test/test_functools.py::TestPartialMethod`. The migrated slice covers
   public descriptor binding, instance and class access call argument order,
   nested `partialmethod` flattening, partial-over-partial calls,
   `staticmethod` and `classmethod` descriptor composition, keyword override
-  behavior, bound and unbound `__self__` visibility, invalid constructor
-  forms, and raw descriptor non-callability/type reporting while leaving exact
-  repr formatting, abstract-method metadata, subclass optimizer paths, weakref,
+  behavior, bound and unbound `__self__` visibility, descriptor `__module__` /
+  `__doc__` metadata including instance overrides, invalid constructor forms,
+  and raw descriptor non-callability/type reporting while leaving exact repr
+  formatting, abstract-method metadata, subclass optimizer paths, weakref,
   pickle, and C accelerator internals for later slices.
 - Added `functools.reduce` and `cpython_functools_reduce_subset`, adapted from
   CPython `Lib/test/test_functools.py::TestReduce`. The migrated slice covers

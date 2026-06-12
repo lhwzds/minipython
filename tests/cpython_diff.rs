@@ -10612,6 +10612,11 @@ def capture(*args, **kwargs):
 
 p = partial(capture, 1, 2, a=10, b=20)
 print(callable(p), type(p).__name__)
+print(type(p.__doc__).__name__, bool(p.__doc__))
+p.__doc__ = 'custom partial doc'
+print(p.__doc__, p.__dict__['__doc__'])
+del p.__doc__
+print(type(p.__doc__).__name__, bool(p.__doc__))
 print(p(3, 4, b=30, c=40))
 print(p.func is capture, p.args, p.keywords == {'a': 10, 'b': 20})
 rendered = repr(p)
@@ -11057,6 +11062,11 @@ print(hasattr(a.both, '__self__'), a.both.__self__ is a)
 print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
 print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
 print(A.__dict__['both'].__module__)
+print(type(A.__dict__['both'].__doc__).__name__, bool(A.__dict__['both'].__doc__))
+A.__dict__['both'].__doc__ = 'custom partialmethod doc'
+print(A.__dict__['both'].__doc__, A.__dict__['both'].__dict__['__doc__'])
+del A.__dict__['both'].__doc__
+print(type(A.__dict__['both'].__doc__).__name__, bool(A.__dict__['both'].__doc__))
 print(type(A.both).__name__, callable(A.both), hasattr(A.both, '__self__'))
 print(A.both.__name__, A.both.__qualname__, A.both.__module__)
 rendered = repr(A.both)
