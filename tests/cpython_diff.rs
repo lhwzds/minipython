@@ -1323,6 +1323,7 @@ fn cpython_math_core_diff_subset() {
         origin: "Lib/test/test_math.py public pure-memory core subset",
         name: "math-core-values",
         source: r#"import math
+print(math.sqrt.__qualname__, math.gcd.__qualname__, math.isfinite.__qualname__)
 print(round(math.pi, 3), round(math.e, 3), round(math.tau, 3))
 print(math.isfinite(1.0), math.isfinite(math.inf), math.isinf(-math.inf), math.isnan(math.nan))
 print(math.sqrt(9), math.gcd(12, 18), math.lcm(4, 6), math.factorial(5), math.isqrt(17))

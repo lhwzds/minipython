@@ -52274,6 +52274,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("math.integer".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && function_name.starts_with("math.integer.") =>
+        {
+            Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_json_builtin(&function_name) =>
         {
             Ok(Value::String("json".to_string()))
@@ -52345,11 +52350,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(functools_total_ordering_doc(root, target)))
         }
         Value::Builtin(function_name)
-            if name == "__module__"
-                && function_name.starts_with("math.")
-                && !function_name.starts_with("math.integer.") =>
+            if name == "__module__" && is_math_builtin(&function_name) =>
         {
             Ok(Value::String("math".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_math_builtin(&function_name) =>
+        {
+            Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -52460,6 +52468,10 @@ fn operator_builtin_doc(name: &str) -> &'static str {
         "operator.length_hint" => "Return an estimate of the number of items in an object.",
         _ => "Operator helper function.",
     }
+}
+
+fn is_math_builtin(name: &str) -> bool {
+    name == "sqrt" || (name.starts_with("math.") && !name.starts_with("math.integer."))
 }
 
 fn is_weakref_builtin_type_name(name: &str) -> bool {
