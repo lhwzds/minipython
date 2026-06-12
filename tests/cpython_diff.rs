@@ -11935,7 +11935,9 @@ for fn in [
     itertools.permutations, itertools.tee, itertools.groupby,
 ]:
     print(fn.__name__, fn.__qualname__, fn.__module__)
-print(itertools.chain.from_iterable.__name__, itertools.chain.from_iterable.__qualname__, itertools.chain.from_iterable.__module__)"#,
+    print(type(fn.__doc__).__name__, bool(fn.__doc__))
+print(itertools.chain.from_iterable.__name__, itertools.chain.from_iterable.__qualname__, itertools.chain.from_iterable.__module__)
+print(type(itertools.chain.from_iterable.__doc__).__name__, bool(itertools.chain.from_iterable.__doc__))"#,
     });
 }
 
