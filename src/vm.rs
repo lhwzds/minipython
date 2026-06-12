@@ -52284,6 +52284,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
             Ok(Value::String(json_builtin_doc(&function_name).to_string()))
         }
+        Value::Builtin(function_name) if name == "__dict__" && is_json_builtin(&function_name) => {
+            Ok(dict_value(Vec::new()))
+        }
         Value::Builtin(function_name)
             if name == "__qualname__"
                 && itertools_builtin_function_qualname(&function_name).is_some() =>

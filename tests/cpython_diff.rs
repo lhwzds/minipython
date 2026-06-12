@@ -469,6 +469,7 @@ print(json.loads.__name__, json.loads.__qualname__, json.loads.__module__)
 print(json.dumps.__name__, json.dumps.__qualname__, json.dumps.__module__)
 print(type(json.loads.__doc__).__name__, bool(json.loads.__doc__))
 print(type(json.dumps.__doc__).__name__, bool(json.dumps.__doc__))
+print(json.loads.__dict__ == {}, json.dumps.__dict__ == {})
 print(json.loads.__defaults__, json.loads.__annotations__ == {})
 print(json.dumps.__defaults__, json.dumps.__annotations__ == {})
 loads_kw = json.loads.__kwdefaults__
