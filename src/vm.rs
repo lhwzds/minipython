@@ -52305,6 +52305,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__kwdefaults__" && is_json_builtin(&function_name) =>
+        {
+            Ok(json_builtin_kwdefaults(&function_name))
+        }
+        Value::Builtin(function_name)
             if name == "__annotations__" && is_json_builtin(&function_name) =>
         {
             Ok(dict_value(Vec::new()))
@@ -52438,6 +52443,37 @@ fn is_weakref_builtin_type_name(name: &str) -> bool {
 
 fn is_json_builtin(name: &str) -> bool {
     matches!(name, "json.loads" | "json.dumps")
+}
+
+fn json_builtin_kwdefaults(name: &str) -> Value {
+    let entries = match name {
+        "json.loads" => vec![
+            ("cls", Value::None),
+            ("object_hook", Value::None),
+            ("parse_float", Value::None),
+            ("parse_int", Value::None),
+            ("parse_constant", Value::None),
+            ("object_pairs_hook", Value::None),
+        ],
+        "json.dumps" => vec![
+            ("skipkeys", Value::Bool(false)),
+            ("ensure_ascii", Value::Bool(true)),
+            ("check_circular", Value::Bool(true)),
+            ("allow_nan", Value::Bool(true)),
+            ("cls", Value::None),
+            ("indent", Value::None),
+            ("separators", Value::None),
+            ("default", Value::None),
+            ("sort_keys", Value::Bool(false)),
+        ],
+        _ => Vec::new(),
+    };
+    dict_value(
+        entries
+            .into_iter()
+            .map(|(name, value)| (Value::String(name.to_string()), value))
+            .collect(),
+    )
 }
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {

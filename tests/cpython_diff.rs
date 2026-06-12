@@ -469,6 +469,10 @@ print(json.loads.__name__, json.loads.__qualname__, json.loads.__module__)
 print(json.dumps.__name__, json.dumps.__qualname__, json.dumps.__module__)
 print(json.loads.__defaults__, json.loads.__annotations__ == {})
 print(json.dumps.__defaults__, json.dumps.__annotations__ == {})
+loads_kw = json.loads.__kwdefaults__
+print([loads_kw[key] for key in ['cls', 'object_hook', 'parse_float', 'parse_int', 'parse_constant', 'object_pairs_hook']])
+dumps_kw = json.dumps.__kwdefaults__
+print([dumps_kw[key] for key in ['skipkeys', 'ensure_ascii', 'check_circular', 'allow_nan', 'cls', 'indent', 'separators', 'default', 'sort_keys']])
 source = '{"a": 1, "b": [true, false, null], "c": "x\\ny"}'
 value = json.loads(source)
 print(value)
