@@ -7440,6 +7440,9 @@ fn cpython_math_core_subset() {
         concat!(
             "import math\n",
             "print(math.sqrt.__qualname__, math.gcd.__qualname__, math.isfinite.__qualname__)\n",
+            "print(type(math.sqrt.__doc__).__name__, bool(math.sqrt.__doc__))\n",
+            "print(type(math.gcd.__doc__).__name__, bool(math.gcd.__doc__))\n",
+            "print(type(math.isfinite.__doc__).__name__, bool(math.isfinite.__doc__))\n",
             "print(round(math.pi, 3), round(math.e, 3), round(math.tau, 3))\n",
             "print(math.isfinite(1.0), math.isfinite(math.inf), math.isinf(-math.inf), math.isnan(math.nan))\n",
             "print(math.sqrt(9), math.gcd(12, 18), math.lcm(4, 6), math.factorial(5), math.isqrt(17))\n",
@@ -7453,6 +7456,9 @@ fn cpython_math_core_subset() {
         ),
         &[
             "sqrt gcd isfinite",
+            "str True",
+            "str True",
+            "str True",
             "3.142 2.718 6.283",
             "True False True True",
             "3.0 6 12 120 4",

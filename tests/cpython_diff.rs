@@ -1324,6 +1324,9 @@ fn cpython_math_core_diff_subset() {
         name: "math-core-values",
         source: r#"import math
 print(math.sqrt.__qualname__, math.gcd.__qualname__, math.isfinite.__qualname__)
+print(type(math.sqrt.__doc__).__name__, bool(math.sqrt.__doc__))
+print(type(math.gcd.__doc__).__name__, bool(math.gcd.__doc__))
+print(type(math.isfinite.__doc__).__name__, bool(math.isfinite.__doc__))
 print(round(math.pi, 3), round(math.e, 3), round(math.tau, 3))
 print(math.isfinite(1.0), math.isfinite(math.inf), math.isinf(-math.inf), math.isnan(math.nan))
 print(math.sqrt(9), math.gcd(12, 18), math.lcm(4, 6), math.factorial(5), math.isqrt(17))

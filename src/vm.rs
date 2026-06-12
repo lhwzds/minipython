@@ -52279,6 +52279,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && function_name.starts_with("math.integer.") =>
+        {
+            Ok(Value::String(math_builtin_doc(&function_name).to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_json_builtin(&function_name) =>
         {
             Ok(Value::String("json".to_string()))
@@ -52358,6 +52363,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__qualname__" && is_math_builtin(&function_name) =>
         {
             Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && is_math_builtin(&function_name) => {
+            Ok(Value::String(math_builtin_doc(&function_name).to_string()))
         }
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
@@ -52472,6 +52480,15 @@ fn operator_builtin_doc(name: &str) -> &'static str {
 
 fn is_math_builtin(name: &str) -> bool {
     name == "sqrt" || (name.starts_with("math.") && !name.starts_with("math.integer."))
+}
+
+fn math_builtin_doc(name: &str) -> &'static str {
+    match builtin_public_name(name).as_str() {
+        "sqrt" => "Return the square root of x.",
+        "gcd" => "Greatest common divisor.",
+        "isfinite" => "Return True if x is neither an infinity nor a NaN.",
+        _ => "Math helper function.",
+    }
 }
 
 fn is_weakref_builtin_type_name(name: &str) -> bool {
