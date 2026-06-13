@@ -3739,6 +3739,8 @@ Completed in the bytes/bytearray assorted public pass:
   `cpython_bytes_bytearray_assorted_public_diff_subset`.
 - Added `cpython_bytes_warning_compare_subset`, adapted from CPython
   `Lib/test/test_bytes.py::AssortedBytesTest::test_compare`.
+- Added direct CPython diff evidence in
+  `cpython_bytes_warning_compare_diff_subset`.
 - Added `RuntimeOptions::bytes_warning`, CLI `-b` / `-bb`, and
   `sys.flags.bytes_warning` support for the bytes-warning runtime flag.
 - Covered `BytesWarning` capture for bytes/string, bytearray/string, and

@@ -1980,6 +1980,7 @@ Recent runtime migration notes:
   from a memoryview-backed bytes object plus both operand orders for
   bytes/bytearray rich comparison. Direct CPython diff evidence is in
   `cpython_bytes_bytearray_assorted_public_diff_subset`.
+  `cpython_bytes_warning_compare_diff_subset` /
   `cpython_bytes_warning_compare_subset` covers
   `AssortedBytesTest::test_compare` for `sys.flags.bytes_warning`,
   `BytesWarning` capture, and `-bb` warning-as-error behavior. This is followed by

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
-use minipython::{run_source, run_source_bytes};
+use minipython::{RuntimeOptions, run_source, run_source_bytes, run_source_with_runtime_options};
 
 struct DiffCase {
     origin: &'static str,
@@ -69,6 +69,42 @@ fn assert_cpython_output_parity_source(origin: &str, name: &str, source: &str) {
 
     assert_eq!(
         run_minipython_source(source),
+        Ok(cpython_lines),
+        "MiniPython output differs from CPython for {}::{}\nsource:\n{}",
+        origin,
+        name,
+        source
+    );
+}
+
+fn assert_cpython_output_parity_source_with_options(
+    origin: &str,
+    name: &str,
+    source: &str,
+    cpython_args: &[&str],
+    runtime_options: RuntimeOptions,
+) {
+    let cpython_output = run_cpython_with_args(source, cpython_args).unwrap_or_else(|message| {
+        panic!(
+            "failed to run CPython for {}::{}\nsource:\n{}\n\n{}",
+            origin, name, source, message
+        )
+    });
+    assert!(
+        cpython_output.status.success(),
+        "expected CPython to accept {}::{}\nsource:\n{}\n\nstderr:\n{}",
+        origin,
+        name,
+        source,
+        String::from_utf8_lossy(&cpython_output.stderr)
+    );
+
+    let cpython_stdout = String::from_utf8(cpython_output.stdout)
+        .unwrap_or_else(|error| panic!("CPython emitted non-UTF-8 output: {error}"));
+    let cpython_lines: Vec<String> = cpython_stdout.lines().map(str::to_string).collect();
+
+    assert_eq!(
+        run_minipython_source_with_runtime_options(source, runtime_options),
         Ok(cpython_lines),
         "MiniPython output differs from CPython for {}::{}\nsource:\n{}",
         origin,
@@ -276,6 +312,22 @@ fn run_minipython_source(source: &str) -> Result<Vec<String>, String> {
     }
 }
 
+fn run_minipython_source_with_runtime_options(
+    source: &str,
+    options: RuntimeOptions,
+) -> Result<Vec<String>, String> {
+    let source = source.to_string();
+    let handle = std::thread::Builder::new()
+        .name("minipython-cpython-diff-runtime-options".to_string())
+        .stack_size(MINIPYTHON_DIFF_STACK_SIZE)
+        .spawn(move || run_source_with_runtime_options(&source, options))
+        .expect("failed to spawn MiniPython differential test thread");
+    match handle.join() {
+        Ok(result) => result.map(minipython_print_records_to_stdout_lines),
+        Err(payload) => std::panic::resume_unwind(payload),
+    }
+}
+
 fn run_minipython_source_bytes(source: &[u8]) -> Result<Vec<String>, String> {
     let source = source.to_vec();
     let handle = std::thread::Builder::new()
@@ -394,9 +446,14 @@ fn assert_cpython_bytes_rejection_parity(case: &BytesDiffCase) {
 }
 
 fn run_cpython(source: &str) -> Result<Output, String> {
+    run_cpython_with_args(source, &[])
+}
+
+fn run_cpython_with_args(source: &str, args: &[&str]) -> Result<Output, String> {
     let executable = env::var("MINIPYTHON_CPYTHON").unwrap_or_else(|_| "python3".to_string());
     Command::new(&executable)
         .arg("-I")
+        .args(args)
         .arg("-c")
         .arg(source)
         .output()
@@ -587,6 +644,51 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
     value = json.loads(text)
     print(text, math.isnan(value), math.isinf(value), value < 0)"#,
     });
+}
+
+#[test]
+fn cpython_bytes_warning_compare_diff_subset() {
+    let origin = "Lib/test/test_bytes.py::AssortedBytesTest::test_compare bytes-warning subset";
+    let source = "import sys, warnings\nprint('flag', sys.flags.bytes_warning)\ndef check(label, expr):\n    with warnings.catch_warnings(record=True) as caught:\n        warnings.simplefilter('always')\n        result = expr()\n    if caught:\n        warning = caught[0]\n        print(label, result, len(caught), warning.category is BytesWarning, str(warning.message))\n    else:\n        print(label, result, 0)\nfor label, expr in [\n    ('bytes-str', lambda: b'' == ''),\n    ('str-bytes', lambda: '' == b''),\n    ('bytes-ne-str', lambda: b'' != ''),\n    ('str-ne-bytes', lambda: '' != b''),\n    ('bytearray-str', lambda: bytearray(b'') == ''),\n    ('str-bytearray', lambda: '' == bytearray(b'')),\n    ('bytearray-ne-str', lambda: bytearray(b'') != ''),\n    ('str-ne-bytearray', lambda: '' != bytearray(b'')),\n    ('bytes-int', lambda: b'\\0' == 0),\n    ('int-bytes', lambda: 0 == b'\\0'),\n    ('bytes-ne-int', lambda: b'\\0' != 0),\n    ('int-ne-bytes', lambda: 0 != b'\\0'),\n    ('bytearray-int', lambda: bytearray(b'\\0') == 0),\n]:\n    check(label, expr)\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter('always')\n    print('bb-caught', b'' == '', len(caught), caught[0].category is BytesWarning)";
+    assert_cpython_output_parity_source_with_options(
+        origin,
+        "bytes-warning-b",
+        source,
+        &["-b"],
+        RuntimeOptions::default().with_bytes_warning(1),
+    );
+
+    let warning_as_error_source = "b'' == ''";
+    let cpython_output = run_cpython_with_args(warning_as_error_source, &["-bb"])
+        .expect("failed to run CPython -bb bytes-warning comparison");
+    assert!(
+        !cpython_output.status.success(),
+        "expected CPython -bb to reject bytes/string comparison\nstdout:\n{}",
+        String::from_utf8_lossy(&cpython_output.stdout)
+    );
+    assert!(
+        String::from_utf8_lossy(&cpython_output.stderr)
+            .contains("BytesWarning: Comparison between bytes and string"),
+        "unexpected CPython -bb stderr:\n{}",
+        String::from_utf8_lossy(&cpython_output.stderr)
+    );
+    let minipython_error = run_minipython_source_with_runtime_options(
+        warning_as_error_source,
+        RuntimeOptions::default().with_bytes_warning(2),
+    )
+    .expect_err("expected MiniPython -bb bytes/string comparison rejection");
+    assert!(
+        minipython_error.contains("BytesWarning: Comparison between bytes and string"),
+        "unexpected MiniPython -bb error: {minipython_error}"
+    );
+
+    assert_cpython_output_parity_source_with_options(
+        origin,
+        "bytes-warning-bb-catch-warnings",
+        "import warnings\nwith warnings.catch_warnings(record=True) as caught:\n    warnings.simplefilter('always')\n    print(b'' == '', len(caught), caught[0].category is BytesWarning)",
+        &["-bb"],
+        RuntimeOptions::default().with_bytes_warning(2),
+    );
 }
 
 #[test]

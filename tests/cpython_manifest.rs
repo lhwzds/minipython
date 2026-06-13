@@ -1362,6 +1362,42 @@ fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
 }
 
 #[test]
+fn cpython_bytes_warning_compare_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_warning_compare_diff_subset";
+    let subset_name = "cpython_bytes_warning_compare_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes warning-compare direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes warning-compare runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes warning-compare docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    for required in [
+        "sys.flags.bytes_warning",
+        "BytesWarning",
+        "bytearray(b'') == ''",
+        "b'' == ''",
+        "&[\"-b\"]",
+        "&[\"-bb\"]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "bytes warning-compare diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);
