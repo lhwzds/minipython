@@ -67086,6 +67086,19 @@ fn call_dict_method(
                 Err("__getitem__() expected a dict receiver".to_string())
             }
         }
+        "dict.__iter__" => {
+            reject_method_keywords(name, &keywords)?;
+            let [dict] = args.as_slice() else {
+                return Err(format!(
+                    "__iter__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_receiver_entries(dict).is_none() {
+                return Err("__iter__() expected a dict receiver".to_string());
+            }
+            get_iter(dict.clone())
+        }
         "dict.__len__" => {
             reject_method_keywords(name, &keywords)?;
             let [dict] = args.as_slice() else {
@@ -73091,7 +73104,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
             source: None,
             expected_len: items.len(),
         })),
-        Value::Dict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (entries_ref.len(), entries_ref.version)

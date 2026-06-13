@@ -35591,13 +35591,16 @@ fn cpython_type_namespace_order_subset() {
 #[test]
 fn cpython_ordered_dict_mapping_mutation_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(od.setdefault('a', 9), od.setdefault('c', 3), list(od.items()))\nprint(od.update({'d': 4}), list(od.items()))\nprint(od.pop('a'), od.pop('missing', 'fallback'), list(od.items()))\nprint(od.get('b'), 'b' in od, OrderedDict.__contains__(od, 'b'))\ndel od['b']\nprint(type(od).__name__, list(od.items()), 'b' in od)\nprint(od.clear(), list(od.items()), repr(od))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(od.setdefault('a', 9), od.setdefault('c', 3), list(od.items()))\nprint(od.update({'d': 4}), list(od.items()))\nprint(od.pop('a'), od.pop('missing', 'fallback'), list(od.items()))\nprint(od.get('b'), 'b' in od, OrderedDict.__contains__(od, 'b'))\nprint(len(od), bool(od), list(od), list(OrderedDict.__iter__(od)))\nprint(OrderedDict.__len__(od), OrderedDict.__getitem__(od, 'b'))\nod['e'] = 5\nOrderedDict.__setitem__(od, 'f', 6)\nprint(list(od.items()))\ndel od['b']\nprint(type(od).__name__, list(od.items()), 'b' in od)\nprint(od.clear(), list(od.items()), repr(od))",
         &[
             "1 3 [('a', 1), ('b', 2), ('c', 3)]",
             "None [('a', 1), ('b', 2), ('c', 3), ('d', 4)]",
             "1 fallback [('b', 2), ('c', 3), ('d', 4)]",
             "2 True True",
-            "OrderedDict [('c', 3), ('d', 4)] False",
+            "3 True ['b', 'c', 'd'] ['b', 'c', 'd']",
+            "3 2",
+            "[('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]",
+            "OrderedDict [('c', 3), ('d', 4), ('e', 5), ('f', 6)] False",
             "None [] OrderedDict()",
         ],
     );

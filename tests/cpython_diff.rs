@@ -16349,6 +16349,11 @@ print(mutating.setdefault('a', 9), mutating.setdefault('c', 3), list(mutating.it
 print(mutating.update({'d': 4}), list(mutating.items()))
 print(mutating.pop('a'), mutating.pop('missing', 'fallback'), list(mutating.items()))
 print(mutating.get('b'), 'b' in mutating, OrderedDict.__contains__(mutating, 'b'))
+print(len(mutating), bool(mutating), list(mutating), list(OrderedDict.__iter__(mutating)))
+print(OrderedDict.__len__(mutating), OrderedDict.__getitem__(mutating, 'b'))
+mutating['e'] = 5
+OrderedDict.__setitem__(mutating, 'f', 6)
+print(list(mutating.items()))
 del mutating['b']
 print(list(mutating.items()), 'b' in mutating)
 print(mutating.clear(), list(mutating.items()), repr(mutating))
