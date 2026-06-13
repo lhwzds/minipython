@@ -71332,10 +71332,14 @@ fn operator_length_hint_default_value(default: &Value) -> Result<Value, String> 
 fn operator_length_hint_result(value: Value, default: Value) -> Result<Value, String> {
     match value {
         Value::NotImplemented => Ok(default),
-        Value::Bool(value) => Ok(Value::Bool(value)),
+        Value::Bool(value) => Ok(Value::Number(bool_as_i64(value))),
         Value::Number(value) if value >= 0 => Ok(Value::Number(value)),
         Value::Number(_) => Err("ValueError: __length_hint__() should return >= 0".to_string()),
-        Value::BigInt(value) if !value.is_negative() => Ok(normalize_big_int(value)),
+        Value::BigInt(value) if !value.is_negative() => {
+            value.to_i64().map(Value::Number).ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })
+        }
         Value::BigInt(_) => Err("ValueError: __length_hint__() should return >= 0".to_string()),
         value if int_subclass_integer(&value).is_some() => operator_length_hint_result(
             int_subclass_integer(&value).expect("int subclass value exists after guard"),

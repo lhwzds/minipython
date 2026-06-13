@@ -11799,6 +11799,13 @@ for default in [2**63, -(2**100)]:
         operator.length_hint(Y(), default)
     except OverflowError as error:
         print('default-overflow', type(error).__name__)
+for hint in [True, False, I(6)]:
+    result = operator.length_hint(X(hint))
+    print('hint', type(hint).__name__, type(result).__name__, repr(result))
+try:
+    operator.length_hint(X(2**100))
+except OverflowError as error:
+    print('hint-overflow', type(error).__name__)
 for value in [X('abc'), X(-2), X(LookupError)]:
     try:
         operator.length_hint(value)

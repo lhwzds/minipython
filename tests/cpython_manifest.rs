@@ -4717,6 +4717,8 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "class I(int):",
         "for default in [True, False, I(5), -1]:",
         "default-overflow",
+        "for hint in [True, False, I(6)]:",
+        "hint-overflow",
         "X('abc')",
         "X(-2)",
         "X(LookupError)",
@@ -4753,6 +4755,8 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "class I(int):",
         "for default in [True, False, I(5), -1]:",
         "default-overflow",
+        "for hint in [True, False, I(6)]:",
+        "hint-overflow",
         "X('abc')",
         "X(-2)",
         "X(LookupError)",
@@ -4778,6 +4782,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
             && CPYTHON_COVERAGE.contains("cpython_operator_length_hint_diff_subset")
             && CPYTHON_COVERAGE.contains("fallback semantics")
             && CPYTHON_COVERAGE.contains("default-value normalization")
+            && CPYTHON_COVERAGE.contains("hint-result normalization")
             && CPYTHON_COVERAGE.contains("reversed iterator length hints")
             && CPYTHON_COVERAGE.contains("itertools.repeat()")
             && CPYTHON_COVERAGE.contains("remaining-length hints")
@@ -4792,6 +4797,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("falls back to custom `__length_hint__`")
             && CPYTHON_MIGRATION.contains("returns the caller default")
             && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass defaults")
+            && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass hint results")
             && CPYTHON_MIGRATION.contains("rejects non-integer and")
             && CPYTHON_MIGRATION.contains("re-reads sequence lengths"),
         "migration notes must describe operator.length_hint public behavior and diff evidence"
