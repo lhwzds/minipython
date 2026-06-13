@@ -5051,6 +5051,46 @@ for expr in [lambda: 'hello'.count(), lambda: 'hello'.count(42), lambda: 'hello'
 }
 
 #[test]
+fn cpython_string_capitalize_title_swapcase_casefold_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py capitalize/title/swapcase/casefold subset",
+        name: "string-capitalize-title-swapcase-casefold",
+        source: r#"print(' hello '.capitalize())
+print('Hello '.capitalize())
+print('hello '.capitalize())
+print('aaaa'.capitalize())
+print('AaAa'.capitalize())
+print(' hello '.title())
+print('hello '.title())
+print('Hello '.title())
+print('fOrMaT thIs aS titLe String'.title())
+print('fOrMaT,thIs-aS*titLe;String'.title())
+print('getInt'.title())
+print('HeLLo cOmpUteRs'.swapcase())
+print('hello'.casefold(), 'hELlo'.casefold())
+print('ß'.casefold(), 'ﬁ'.casefold(), 'Σ'.casefold(), 'AͅΣ'.casefold(), 'µ'.casefold())
+print('\U0001044f'.capitalize() == '\U00010427')
+print('h\u0130'.capitalize() == 'Hi\u0307')
+print('ﬁnnish'.capitalize() == 'Finnish')
+print('\U0001044f\U0001044f'.title() == '\U00010427\U0001044f')
+print('ﬁ'.swapcase() == 'FI')
+print('\u0130'.swapcase() == 'i\u0307')
+print('ß'.swapcase() == 'SS')
+print('A\u03a3'.lower() == 'a\u03c2')
+print('A\u03a3A'.lower() == 'a\u03c3a')
+print('A\u0345\u03a3'.capitalize() == 'A\u0345\u03c2')
+print('A\u03a3 A\u03a3'.title() == 'A\u03c2 A\u03c2')
+print('A\u03a3A'.title() == 'A\u03c3a')
+print('A\u03a3 \u1fa1xy'.title() == 'A\u03c2 \u1fa9xy')
+for expr in [lambda: 'hello'.capitalize(42), lambda: 'hello'.title(42), lambda: 'hello'.swapcase(42), lambda: 'hello'.casefold(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

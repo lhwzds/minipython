@@ -5299,7 +5299,8 @@ Completed in the string capitalize/title/swapcase/casefold method pass:
   expansions such as `ß`, `ﬁ`, and `µ`, combining iota case folding, contextual
   Greek final sigma lowercasing in `lower()`, `capitalize()`, and `title()`, and
   representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_capitalize_title_swapcase_casefold_diff_subset` as the
+  direct CPython/MiniPython differential parity case for the same supported
   capitalization, title, swapcase, and casefold behavior.
 
 Completed in the string predicate method pass:
