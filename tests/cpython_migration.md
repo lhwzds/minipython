@@ -1359,7 +1359,7 @@ Completed in the differential parity harness pass:
   matches the supported CPython operator chain. The mutable-container method
   pass covers `dict.update`, `dict.copy`, `dict.get`, `dict.pop`,
   `dict.popitem`, `dict.setdefault`, class-level `dict.fromkeys`,
-  instance-level `{}.fromkeys`, PEP 584 `dict |` and
+  instance-level `{}.fromkeys`, `dict.__repr__`, `dict.__str__`, PEP 584 `dict |` and
   `dict |=`, `set.add`, `set.update`, `set.copy`, `set.discard`,
   `set.remove`, `set.pop`, `set.clear`, set algebra methods/operators
   (`union`, `intersection`, `difference`, `symmetric_difference`, their update
@@ -6346,7 +6346,8 @@ Completed in the namespace builtin pass:
   repr guards for scope-backed views, PEP 584 union and in-place union for
   scope-backed mappings, rich equality against dict-compatible mappings,
   classmethod-style `fromkeys()` and `__class_getitem__()` lookup on
-  scope-backed module namespaces, `dict` class identity and
+  scope-backed module namespaces, `__repr__()` / `__str__()` display methods,
+  `dict` class identity and
   `isinstance(..., dict)` parity for module namespaces, and missing-key
   `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported

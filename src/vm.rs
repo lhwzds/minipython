@@ -14960,6 +14960,16 @@ impl Vm {
                 store_subscript(dict.clone(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
+            "scope_dict.__repr__" | "scope_dict.__str__" => {
+                let [dict @ Value::ScopeDict(_)] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 0 arguments, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(Value::String(repr_value_checked(dict)?))
+            }
             "scope_dict.clear" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
                     return Err(format!(
@@ -45361,7 +45371,9 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__getitem__",
             "__iter__",
             "__len__",
+            "__repr__",
             "__setitem__",
+            "__str__",
             "clear",
             "copy",
             "fromkeys",
@@ -48349,7 +48361,9 @@ fn is_builtin_dict_type_method(name: &str) -> bool {
             | "__getitem__"
             | "__len__"
             | "__iter__"
+            | "__repr__"
             | "__setitem__"
+            | "__str__"
     )
 }
 
@@ -52225,6 +52239,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Dict(entries) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
+            "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("dict.{name}"))),
+                receiver: Box::new(Value::Dict(entries)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
             | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -52388,6 +52407,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::ScopeDict(scope) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
+            "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                receiver: Box::new(Value::ScopeDict(scope)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
             | "__ior__" | "__iter__" | "__len__" | "__ne__" | "__or__" | "__reversed__"
@@ -66398,6 +66422,23 @@ fn call_dict_method(
             ensure_hashable_key(key)?;
             insert_live_dict_entry(&mut entries.borrow_mut(), key.clone(), value.clone())?;
             Ok(Value::None)
+        }
+        "dict.__repr__" | "dict.__str__" => {
+            reject_method_keywords(name, &keywords)?;
+            let [dict] = args.as_slice() else {
+                return Err(format!(
+                    "{}() expected 0 arguments, got {}",
+                    method_display_name(name),
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_receiver_entries(dict).is_none() {
+                return Err(format!(
+                    "{}() expected a dict receiver",
+                    method_display_name(name)
+                ));
+            }
+            Ok(Value::String(repr_value_checked(dict)?))
         }
         "dict.get" => {
             reject_method_keywords(name, &keywords)?;

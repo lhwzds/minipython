@@ -35671,6 +35671,7 @@ fn cpython_globals_locals_builtin_subset() {
             "print(g.__or__({'scope_union_q': 16})['scope_union_q'], g.__ror__({'scope_union_r': 17})['scope_rev_a'])\n",
             "print(g.fromkeys(('scope_fk_a', 'scope_fk_b'), 20))\n",
             "print(g.__class_getitem__((str, int)) == dict[str, int])\n",
+            "print(g.__str__() == g.__repr__(), 'scope_rev_a' in g.__repr__())\n",
             "g |= {'scope_ior_c': 18}\n",
             "print(scope_ior_c, g['scope_ior_c'])\n",
             "g |= [('scope_ior_d', 19)]\n",
@@ -35732,6 +35733,7 @@ fn cpython_globals_locals_builtin_subset() {
             "16 10",
             "{'scope_fk_a': 20, 'scope_fk_b': 20}",
             "True",
+            "True True",
             "18 18",
             "19 19",
             "TypeError True",
@@ -38725,7 +38727,7 @@ fn cpython_set_only_sets_in_binary_ops_subset() {
 #[test]
 fn cpython_dict_constructor_update_fromkeys_subset() {
     assert_output(
-        "print(dict())\nprint(dict({'a': 1, 'b': 2}))\nprint(dict([('a', 1), ['b', 2]]))\nprint(dict(a=1, b=2))\nprint(dict([('a', 1)], a=2))\nclass SimpleUserDict:\n    def __init__(self):\n        self.d = {1: 1, 2: 2, 3: 3}\n    def keys(self):\n        return self.d.keys()\n    def __getitem__(self, key):\n        return self.d[key]\nprint(dict(SimpleUserDict()))\nd = {}\nd.update({1: 100})\nd.update({2: 20})\nd.update({1: 1, 2: 2, 3: 3})\nprint(d)\nd.update()\nprint(d)\nd.clear()\nd.update(SimpleUserDict())\nprint(d)\nd.clear()\nd.update([(1, 1), (2, 2)])\nd.update(c=3)\nprint(d)\nprint(dict.fromkeys('abc'))\nprint(dict.fromkeys((4, 5), 0))\nprint({}.fromkeys(('x', 'y'), 6))\nprint(dict.fromkeys([]))\ndef g():\n    yield 1\nprint(dict.fromkeys(g()))",
+        "print(dict())\nprint(dict({'a': 1, 'b': 2}))\nprint(dict([('a', 1), ['b', 2]]))\nprint(dict(a=1, b=2))\nprint(dict([('a', 1)], a=2))\nclass SimpleUserDict:\n    def __init__(self):\n        self.d = {1: 1, 2: 2, 3: 3}\n    def keys(self):\n        return self.d.keys()\n    def __getitem__(self, key):\n        return self.d[key]\nprint(dict(SimpleUserDict()))\nd = {}\nd.update({1: 100})\nd.update({2: 20})\nd.update({1: 1, 2: 2, 3: 3})\nprint(d)\nd.update()\nprint(d)\nd.clear()\nd.update(SimpleUserDict())\nprint(d)\nd.clear()\nd.update([(1, 1), (2, 2)])\nd.update(c=3)\nprint(d)\nprint(dict.fromkeys('abc'))\nprint(dict.fromkeys((4, 5), 0))\nprint({}.fromkeys(('x', 'y'), 6))\nprint({}.__repr__(), {}.__str__(), dict.__repr__({}), dict.__str__({}))\nprint(dict.fromkeys([]))\ndef g():\n    yield 1\nprint(dict.fromkeys(g()))",
         &[
             "{}",
             "{'a': 1, 'b': 2}",
@@ -38740,6 +38742,7 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
             "{'a': None, 'b': None, 'c': None}",
             "{4: 0, 5: 0}",
             "{'x': 6, 'y': 6}",
+            "{} {} {} {}",
             "{}",
             "{1: None}",
         ],
