@@ -1366,6 +1366,48 @@ fn cpython_test_manifest_bytes_base_methods_are_tracked() {
 }
 
 #[test]
+fn cpython_bytes_search_compare_slice_diff_covers_compare_slice_reversed_runtime_subset() {
+    let diff_name = "cpython_bytes_search_compare_slice_diff_subset";
+    let subset_name = "cpython_bytes_compare_slice_reversed_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes search/compare/slice direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes compare/slice/reversed runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes search/compare/slice diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "b1 == b2",
+        "ctor(b'\\0a\\0b\\0c') == 'abc'",
+        "list(reversed(b))",
+        "b[:5]",
+        "L[start:stop:step]",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes search/compare/slice diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
     let diff_name = "cpython_bytes_basics_and_empty_index_diff_subset";
     let runtime_subsets = [
