@@ -9365,6 +9365,95 @@ print(failures)"#,
 }
 
 #[test]
+fn cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset() {
+    let probe = run_cpython("from collections import Counter\nprint(hasattr(Counter, '__xor__'))")
+        .expect("failed to run CPython Counter xor feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping Counter set-equivalence diff: CPython oracle lacks Counter.__xor__");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter multiset set-equivalence subset",
+        name: "collections-counter-multiset-set-equivalence",
+        source: r#"from collections import Counter
+pairs = [('a', 0), ('a', 1), ('b', 0), ('b', 1), ('c', 0), ('c', 1)]
+counters = []
+for mask in range(64):
+    data = {}
+    for i in range(6):
+        if mask & (1 << i):
+            key, count = pairs[i]
+            data[key] = count
+    counters.append(Counter(data))
+checked = 0
+for cp in counters:
+    for cq in counters:
+        sp = set(cp.elements())
+        sq = set(cq.elements())
+        assert set(cp + cq) == (sp | sq)
+        assert set(cp - cq) == (sp - sq)
+        assert set(cp | cq) == (sp | sq)
+        assert set(cp & cq) == (sp & sq)
+        assert set(cp ^ cq) == (sp ^ sq)
+        assert (cp == cq) == (sp == sq)
+        assert (cp != cq) == (sp != sq)
+        assert (cp <= cq) == (sp <= sq)
+        assert (cp >= cq) == (sp >= sq)
+        assert (cp < cq) == (sp < sq)
+        assert (cp > cq) == (sp > sq)
+        checked += 1
+print(checked)"#,
+    });
+}
+
+#[test]
+fn cpython_collections_counter_symmetric_difference_diff_subset() {
+    let probe = run_cpython("from collections import Counter\nprint(hasattr(Counter, '__xor__'))")
+        .expect("failed to run CPython Counter xor feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping Counter symmetric-difference diff: CPython oracle lacks Counter.__xor__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter symmetric difference subset",
+        name: "collections-counter-symmetric-difference",
+        source: r#"from collections import Counter
+population = (-4, -3, -2, -1, 0, 1, 2, 3, 4)
+checked = 0
+for a in population:
+    for b1 in population:
+        for b2 in population:
+            for c in population:
+                p = Counter(a=a, b=b1)
+                q = Counter(b=b2, c=c)
+                r = p ^ q
+                for k in ('a', 'b', 'c'):
+                    assert r[k] == max(p[k], q[k]) - min(p[k], q[k])
+                    assert r[k] == abs(p[k] - q[k])
+                assert r == ((p - q) | (q - p))
+                if a >= 0 and b1 >= 0 and b2 >= 0 and c >= 0:
+                    assert r == ((p | q) - (p & q))
+                for value in r.values():
+                    assert value > 0
+                keys = list(p) + list(q)
+                indices = []
+                for k in r:
+                    indices.append(keys.index(k))
+                assert indices == sorted(indices)
+                pp = Counter(p)
+                qq = Counter(q)
+                pp ^= qq
+                assert pp == r
+                checked += 1
+print(checked)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_inplace_operations_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter inplace operations subset",

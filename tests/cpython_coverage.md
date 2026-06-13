@@ -220,6 +220,8 @@ Recent runtime migration notes:
   `cpython_collections_counter_helper_function_diff_subset`,
   `cpython_collections_counter_multiset_operations_diff_subset`,
   `cpython_collections_counter_multiset_operations_matrix_diff_subset`,
+  `cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset`,
+  `cpython_collections_counter_symmetric_difference_diff_subset`,
   `cpython_collections_counter_inplace_operations_diff_subset`,
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_methods_diff_subset`,
@@ -4404,11 +4406,16 @@ preservation through `id()`.
 regular-operation parity, receiver mutation, and identity preservation for all
 five in-place Counter operations.
 `cpython_collections_counter_multiset_operations_equivalent_to_set_operations_subset`
-ports CPython's full 64-by-64 zero/one-count matrix equating Counter multiset
+and gated
+`cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset`
+port CPython's full 64-by-64 zero/one-count matrix equating Counter multiset
 operations and rich comparisons with regular set operations.
 `cpython_collections_counter_symmetric_difference_subset` ports CPython's full
-9^4 `Counter ^ Counter` matrix, including elementwise absolute-difference
-invariants, positive filtering, input-order preservation, and `^=` parity.
+9^4 `Counter ^ Counter` matrix, while gated
+`cpython_collections_counter_symmetric_difference_diff_subset` keeps direct
+CPython parity evidence when the configured oracle exposes `Counter.__xor__`.
+The matrix includes elementwise absolute-difference invariants, positive
+filtering, input-order preservation, and `^=` parity.
 
 ## Function Parameters
 

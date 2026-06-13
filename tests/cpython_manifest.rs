@@ -2995,6 +2995,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_helper_function_subset",
             "cpython_collections_counter_multiset_operations_subset",
             "cpython_collections_counter_multiset_operations_matrix_subset",
+            "cpython_collections_counter_multiset_operations_equivalent_to_set_operations_subset",
+            "cpython_collections_counter_symmetric_difference_subset",
             "cpython_collections_counter_inplace_operations_subset",
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
@@ -3173,6 +3175,17 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_counter_multiset_operations_matrix_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter multiset matrix"
+    );
+    assert!(
+        row.diff_evidence.contains(
+            "cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset"
+        ),
+        "collections sandbox manifest must cite CPython diff evidence for Counter set-equivalence matrix"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_symmetric_difference_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter symmetric difference"
     );
     assert!(
         row.diff_evidence
@@ -3433,6 +3446,20 @@ fn collections_public_diff_evidence_stays_capability_gated() {
                 "hasattr(Counter(), 'total')",
                 "skipping Counter comparison diff",
             ][..],
+        ),
+        (
+            "fn cpython_collections_counter_multiset_operations_equivalent_to_set_operations_diff_subset()",
+            &[
+                "hasattr(Counter, '__xor__')",
+                "skipping Counter set-equivalence diff",
+            ],
+        ),
+        (
+            "fn cpython_collections_counter_symmetric_difference_diff_subset()",
+            &[
+                "hasattr(Counter, '__xor__')",
+                "skipping Counter symmetric-difference diff",
+            ],
         ),
         (
             "fn cpython_collections_namedtuple_match_args_diff_subset()",
