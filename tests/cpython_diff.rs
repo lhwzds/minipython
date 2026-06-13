@@ -5434,6 +5434,70 @@ for expr in [lambda: str.maketrans(), lambda: str.maketrans('abc', 'defg'), lamb
 }
 
 #[test]
+fn cpython_string_bytes_codec_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_str.py codecs and Lib/test/test_bytes.py encoding/decode subset",
+        name: "string-bytes-codec",
+        source: r#"print('hello'.encode('ascii'))
+print('hello'.encode('utf-8'), '\u2603'.encode())
+print('caf\xe9'.encode('latin-1'))
+print('hi'.encode('utf-16-le') == b'h\000i\000', 'hi'.encode('utf-16-be') == b'\000h\000i')
+print('Andr\x82 x'.encode('ascii', 'ignore'))
+print('Andr\x82 x'.encode('ascii', 'replace'))
+print('Andr\x82 x'.encode(encoding='ascii', errors='replace'))
+print(b'hello'.decode('ascii'), b'\xe2\x98\x83'.decode())
+print(b'caf\xe9'.decode('latin-1'))
+print(bytearray(b'caf\xe9').decode('latin-1'), bytearray(b'Hello \xff world').decode('utf-8', 'ignore'))
+print(b'Hello \xff world'.decode('utf-8', 'ignore'))
+print(b'Hello \xff world'.decode('utf-8', 'replace'))
+print(str(b'caf\xe9', 'latin-1'))
+print(bytes('caf\xe9', 'latin-1'), bytearray('caf\xe9', 'latin-1'))
+print(bytes('caf\xe9', encoding='latin-1'))
+print(bytes(source='Andr\x82 x', encoding='ascii', errors='ignore'))
+print(bytearray(source='caf\xe9', encoding='latin-1'))
+print(str(object=b'caf\xe9', encoding='latin-1'))
+print(str(b'caf\xe9', errors='ignore'))
+print(str(object='plain'))
+print('\u20ac'.encode('cp1252'))
+print(b'\x80'.decode('cp1252'))
+print('snowman \u2603'.encode('cp1252', 'ignore'))
+print('snowman \u2603'.encode('cp1252', 'replace'))
+print(b'\x81'.decode('cp1252', 'ignore'))
+print(b'\x81'.decode('cp1252', 'replace'))
+print('\u041f'.encode('cp1251'))
+print(b'\xcf'.decode('cp1251'))
+print('snowman \u2603'.encode('cp1251', 'ignore'))
+print('snowman \u2603'.encode('cp1251', 'replace'))
+print(b'\x98'.decode('cp1251', 'ignore'))
+print(b'\x98'.decode('cp1251', 'replace'))
+for expr in [lambda: '\xe9'.encode('ascii'), lambda: '\u2603'.encode('latin-1'), lambda: b'\xff'.decode('utf-8'), lambda: bytearray(b'\xff').decode('utf-8'), lambda: b'\x81'.decode('cp1252'), lambda: 'x'.encode('unknown'), lambda: 'x'.encode(1), lambda: b'x'.decode(errors=1), lambda: bytes('x'), lambda: bytes(3, encoding='utf-8'), lambda: bytes(errors='ignore'), lambda: str('x', encoding='utf-8'), lambda: str(3, encoding='utf-8'), lambda: str(errors=1)]:
+    try:
+        expr()
+    except (UnicodeEncodeError, UnicodeDecodeError, LookupError, TypeError) as error:
+        print(error.__class__.__name__)
+sample = 'Hello world\n\u1234\u5678\u9abc'
+for ctor in [bytes, bytearray]:
+    for enc in ['utf-8', 'utf-16']:
+        b = ctor(sample, enc)
+        print(ctor.__name__, enc, b == ctor(sample.encode(enc)), b.decode(enc) == sample, len(b))
+    try:
+        ctor(sample, 'latin-1')
+    except UnicodeEncodeError as error:
+        print(ctor.__name__, 'latin-1-encode', error.__class__.__name__)
+    print(ctor.__name__, 'latin-1-ignore', ctor(sample, 'latin-1', 'ignore'))
+    sample2 = 'Hello world\n\x80\x81\xfe\xff'
+    b = ctor(sample2, 'latin-1')
+    try:
+        b.decode('utf-8')
+    except UnicodeDecodeError as error:
+        print(ctor.__name__, 'utf8-decode', error.__class__.__name__)
+    print(ctor.__name__, 'utf8-ignore', b.decode('utf-8', 'ignore'))
+    print(ctor.__name__, 'utf8-ignore-kw', b.decode(errors='ignore', encoding='utf-8'))
+    print(ctor.__name__, 'default-decode', ctor(b'\xe2\x98\x83').decode())"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

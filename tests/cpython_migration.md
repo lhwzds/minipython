@@ -5484,8 +5484,8 @@ Completed in the string/bytes codec method pass:
   an actual codec error path needs them; MiniPython currently validates eagerly,
   so this test deliberately pins the dev-mode exception class behavior instead
   of claiming normal-mode parity.
-- Added a CPython/MiniPython differential parity case for the same supported
-  codec behavior.
+- Added `cpython_string_bytes_codec_diff_subset` as the direct CPython/MiniPython
+  differential parity case for the same supported codec behavior.
 
 Completed in the bytes hex/fromhex method pass:
 
