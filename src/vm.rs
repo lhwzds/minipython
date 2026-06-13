@@ -23567,7 +23567,7 @@ impl Vm {
         json_unsupported_keyword_none("loads", "object_pairs_hook", values[6].as_ref())?;
         let strict = values[7]
             .as_ref()
-            .map(is_truthy)
+            .map(|value| self.truth_value(value.clone()))
             .transpose()?
             .unwrap_or(true);
         let source = match source {
@@ -23629,16 +23629,16 @@ impl Vm {
         let mut options = JsonDumpsOptions::default();
         let mut separators_explicit = false;
         if let Some(value) = values[1].as_ref() {
-            options.skip_keys = is_truthy(value)?;
+            options.skip_keys = self.truth_value(value.clone())?;
         }
         if let Some(value) = values[2].as_ref() {
-            options.ensure_ascii = is_truthy(value)?;
+            options.ensure_ascii = self.truth_value(value.clone())?;
         }
         if let Some(value) = values[3].as_ref() {
-            options.check_circular = is_truthy(value)?;
+            options.check_circular = self.truth_value(value.clone())?;
         }
         if let Some(value) = values[4].as_ref() {
-            options.allow_nan = is_truthy(value)?;
+            options.allow_nan = self.truth_value(value.clone())?;
         }
         json_unsupported_keyword_none("dumps", "cls", values[5].as_ref())?;
         if let Some(value) = values[6].as_ref() {
@@ -23650,7 +23650,7 @@ impl Vm {
         }
         json_unsupported_keyword_none("dumps", "default", values[8].as_ref())?;
         if let Some(value) = values[9].as_ref() {
-            options.sort_keys = is_truthy(value)?;
+            options.sort_keys = self.truth_value(value.clone())?;
         }
         if options.indent.is_some() && !separators_explicit {
             options.item_separator = ",".to_string();

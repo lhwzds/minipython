@@ -383,6 +383,7 @@ Recent runtime migration notes:
   `cpython_json_loads_escape_and_duplicate_key_diff_subset`,
   `cpython_json_loads_unicode_escape_roundtrip_diff_subset`,
   `cpython_json_loads_strict_diff_subset`,
+  `cpython_json_option_truthiness_diff_subset`,
   `cpython_json_dumps_string_escape_diff_subset`,
   `cpython_json_dumps_key_coercion_diff_subset`,
   `cpython_json_dumps_sequence_subclass_iter_diff_subset`,
@@ -749,6 +750,8 @@ Recent runtime migration notes:
   `cpython_json_loads_string_error_boundary_subset`,
   `cpython_json_loads_strict_diff_subset` /
   `cpython_json_loads_strict_subset`,
+  `cpython_json_option_truthiness_diff_subset` /
+  `cpython_json_option_truthiness_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset` /
   `cpython_json_loads_number_and_whitespace_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset` /
@@ -784,7 +787,8 @@ Recent runtime migration notes:
   and UTF-16/UTF-32 encoded byte input, ordinary `\uXXXX` escapes and valid
   surrogate-pair Unicode escapes, `loads()` / `dumps()` public function
   `__name__` / `__qualname__` / `__module__` / `__doc__` / `__dict__` / `__defaults__` /
-  `__kwdefaults__` / `__annotations__` metadata, `strict=False` raw control-character string
+  `__kwdefaults__` / `__annotations__` metadata, option truthiness through
+  public `__bool__` dispatch with exception propagation, `strict=False` raw control-character string
   parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,

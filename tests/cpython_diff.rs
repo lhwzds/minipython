@@ -1107,6 +1107,53 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_json_option_truthiness_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads/dumps option truthiness subset",
+        name: "json-option-truthiness",
+        source: r#"import json
+class Truth:
+    def __bool__(self):
+        return True
+class Falsey:
+    def __bool__(self):
+        return False
+class Boom:
+    def __bool__(self):
+        raise ValueError('boom')
+def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, ValueError))
+show('ensure-true', lambda: json.dumps('é', ensure_ascii=Truth()))
+show('ensure-false', lambda: json.dumps('é', ensure_ascii=Falsey()))
+show('ensure-boom', lambda: json.dumps('é', ensure_ascii=Boom()))
+show('allow-true', lambda: json.dumps(float('nan'), allow_nan=Truth()))
+show('allow-false', lambda: json.dumps(float('nan'), allow_nan=Falsey()))
+show('allow-boom', lambda: json.dumps(float('nan'), allow_nan=Boom()))
+show('skip-true', lambda: json.dumps({(1, 2): 3, 'a': 1}, skipkeys=Truth(), separators=(',', ':')))
+show('skip-false', lambda: json.dumps({(1, 2): 3, 'a': 1}, skipkeys=Falsey()))
+show('skip-boom', lambda: json.dumps({'a': 1}, skipkeys=Boom()))
+show('sort-true', lambda: json.dumps({'b': 1, 'a': 2}, sort_keys=Truth()))
+show('sort-false', lambda: json.dumps({'b': 1, 'a': 2}, sort_keys=Falsey()))
+show('sort-boom', lambda: json.dumps({'a': 1}, sort_keys=Boom()))
+cycle = []
+cycle.append(cycle)
+show('circular-true', lambda: json.dumps(cycle, check_circular=Truth()))
+show('circular-false', lambda: json.dumps(cycle, check_circular=Falsey()))
+show('circular-boom', lambda: json.dumps([1], check_circular=Boom()))
+source = '"a' + chr(10) + 'b"'
+try:
+    json.loads(source, strict=Truth())
+except Exception as error:
+    print('strict-true', isinstance(error, ValueError))
+show('strict-false', lambda: repr(json.loads(source, strict=Falsey())))
+show('strict-boom', lambda: json.loads(source, strict=Boom()))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_string_escape_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps string escape subset",

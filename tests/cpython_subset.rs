@@ -33644,6 +33644,34 @@ fn cpython_json_loads_strict_subset() {
 }
 
 #[test]
+fn cpython_json_option_truthiness_subset() {
+    assert_output_with_stack(
+        "import json\nclass Truth:\n    def __bool__(self):\n        return True\nclass Falsey:\n    def __bool__(self):\n        return False\nclass Boom:\n    def __bool__(self):\n        raise ValueError('boom')\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, ValueError))\nshow('ensure-true', lambda: json.dumps('é', ensure_ascii=Truth()))\nshow('ensure-false', lambda: json.dumps('é', ensure_ascii=Falsey()))\nshow('ensure-boom', lambda: json.dumps('é', ensure_ascii=Boom()))\nshow('allow-true', lambda: json.dumps(float('nan'), allow_nan=Truth()))\nshow('allow-false', lambda: json.dumps(float('nan'), allow_nan=Falsey()))\nshow('allow-boom', lambda: json.dumps(float('nan'), allow_nan=Boom()))\nshow('skip-true', lambda: json.dumps({(1, 2): 3, 'a': 1}, skipkeys=Truth(), separators=(',', ':')))\nshow('skip-false', lambda: json.dumps({(1, 2): 3, 'a': 1}, skipkeys=Falsey()))\nshow('skip-boom', lambda: json.dumps({'a': 1}, skipkeys=Boom()))\nshow('sort-true', lambda: json.dumps({'b': 1, 'a': 2}, sort_keys=Truth()))\nshow('sort-false', lambda: json.dumps({'b': 1, 'a': 2}, sort_keys=Falsey()))\nshow('sort-boom', lambda: json.dumps({'a': 1}, sort_keys=Boom()))\ncycle = []\ncycle.append(cycle)\nshow('circular-true', lambda: json.dumps(cycle, check_circular=Truth()))\nshow('circular-false', lambda: json.dumps(cycle, check_circular=Falsey()))\nshow('circular-boom', lambda: json.dumps([1], check_circular=Boom()))\nsource = '\"a' + chr(10) + 'b\"'\ntry:\n    json.loads(source, strict=Truth())\nexcept Exception as error:\n    print('strict-true', isinstance(error, ValueError))\nshow('strict-false', lambda: repr(json.loads(source, strict=Falsey())))\nshow('strict-boom', lambda: json.loads(source, strict=Boom()))",
+        &[
+            "ensure-true \"\\u00e9\"",
+            "ensure-false \"é\"",
+            "ensure-boom ValueError True",
+            "allow-true NaN",
+            "allow-false ValueError True",
+            "allow-boom ValueError True",
+            "skip-true {\"a\":1}",
+            "skip-false TypeError False",
+            "skip-boom ValueError True",
+            "sort-true {\"a\": 2, \"b\": 1}",
+            "sort-false {\"b\": 1, \"a\": 2}",
+            "sort-boom ValueError True",
+            "circular-true ValueError True",
+            "circular-false RecursionError False",
+            "circular-boom ValueError True",
+            "strict-true True",
+            "strict-false 'a\\nb'",
+            "strict-boom ValueError True",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_string_escape_subset() {
     assert_output(
         "import json\nfor value in ['\\x00\\x1f', '\\b\\f\\n\\r\\t', '\"\\\\', 'é', '𝄠']:\n    print(json.dumps(value))",
