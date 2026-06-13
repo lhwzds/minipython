@@ -1040,6 +1040,12 @@ def show(label, callback):
     except Exception as error:
         print(label, type(error).__name__, isinstance(error, TypeError))
 
+def show_error(label, callback):
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+
 print(json.loads(s='{"a": 1}')['a'])
 print(json.loads(s=b'[1, 2]', strict=True))
 print(json.loads(s='{"none": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))
@@ -1053,7 +1059,9 @@ print(json.dumps(object(), default=lambda obj: 'fallback'))
 show('loads-duplicate-s', lambda: json.loads('{}', s='[]'))
 show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
 show('loads-missing-s', lambda: json.loads(strict=False))
-show('dumps-missing-obj', lambda: json.dumps(sort_keys=True))"#,
+show('dumps-missing-obj', lambda: json.dumps(sort_keys=True))
+show_error('loads-missing-text', lambda: json.loads(strict=False))
+show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))"#,
     });
 }
 

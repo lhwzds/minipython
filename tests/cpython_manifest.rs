@@ -4444,6 +4444,8 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         "parse_constant=None",
         "object_pairs_hook=None",
         "default=None",
+        "show_error('loads-missing-text', lambda: json.loads(strict=False))",
+        "show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))",
     ] {
         assert!(
             diff_source.contains(required),
@@ -4466,6 +4468,10 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         "default=lambda",
         "dumps-cls",
         "TypeError True",
+        "show_error('loads-missing-text', lambda: json.loads(strict=False))",
+        "show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))",
+        "loads() missing 1 required positional argument: 's'",
+        "dumps() missing 1 required positional argument: 'obj'",
     ] {
         assert!(
             subset_source.contains(required),

@@ -23664,7 +23664,14 @@ impl Vm {
             1,
             args,
             keywords,
-        )?;
+        )
+        .map_err(|message| {
+            if message == "TypeError: loads() missing required argument 's'" {
+                "TypeError: loads() missing 1 required positional argument: 's'".to_string()
+            } else {
+                message
+            }
+        })?;
         let source = values[0]
             .take()
             .expect("required json.loads source is present after keyword binding");
@@ -23741,7 +23748,14 @@ impl Vm {
             1,
             args,
             keywords,
-        )?;
+        )
+        .map_err(|message| {
+            if message == "TypeError: dumps() missing required argument 'obj'" {
+                "TypeError: dumps() missing 1 required positional argument: 'obj'".to_string()
+            } else {
+                message
+            }
+        })?;
         let value = values[0]
             .take()
             .expect("required json.dumps object is present after keyword binding");
