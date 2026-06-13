@@ -8923,6 +8923,60 @@ print(Counter(a=2, b=1) == Counter({'a': 2, 'b': 1}))"#,
 }
 
 #[test]
+fn cpython_collections_counter_basics_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py TestCounter basics subset",
+        name: "collections-counter-basics",
+        source: r#"from collections import Counter, OrderedDict
+from collections.abc import Mapping, Reversible
+c = Counter('abcaba')
+print(c == Counter({'a': 3, 'b': 2, 'c': 1}))
+print(c == Counter(a=3, b=2, c=1))
+print(isinstance(c, dict), isinstance(c, Mapping), issubclass(Counter, dict), issubclass(Counter, Mapping))
+print(len(c), sum(c.values()), list(c.values()), list(c.keys()), list(c), list(c.items()))
+print(c['b'], c['z'], c.__contains__('c'), c.__contains__('z'), c.get('b', 10), c.get('z', 10))
+print(c == dict(a=3, b=2, c=1))
+print(repr(c))
+print(c.most_common())
+print([c.most_common(i) for i in range(5)])
+print(''.join(c.elements()))
+c['a'] += 1
+c['b'] -= 2
+del c['c']
+del c['c']
+c['d'] -= 2
+c['e'] = -5
+c['f'] += 4
+print(c == dict(a=4, b=0, d=-2, e=-5, f=4))
+print(''.join(c.elements()))
+print(c.pop('f'), 'f' in c)
+for i in range(3):
+    elem, cnt = c.popitem()
+    print(elem in c)
+c.clear()
+print(c == {}, repr(c))
+try:
+    Counter.fromkeys('abc')
+except NotImplementedError:
+    print('fromkeys')
+try:
+    hash(c)
+except TypeError:
+    print('unhashable')
+c.update(dict(a=5, b=3))
+c.update(c=1)
+c.update(Counter('a' * 50 + 'b' * 30))
+c.update()
+c.__init__('a' * 500 + 'b' * 300)
+c.__init__('cdc')
+c.__init__()
+print(c == dict(a=555, b=333, c=3, d=1))
+print(c.setdefault('d', 5), c['d'], c.setdefault('e', 5), c['e'])
+print(isinstance(OrderedDict(), Reversible), isinstance(Counter(), Reversible), list(reversed(Counter('abca'))))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_counter_fromkeys_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter fromkeys subset",

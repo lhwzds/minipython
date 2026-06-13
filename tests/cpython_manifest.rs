@@ -2978,6 +2978,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "collections / collections.abc",
         &[
+            "cpython_collections_counter_basics_subset",
             "cpython_collections_counter_public_subset",
             "cpython_collections_counter_conversions_subset",
             "cpython_collections_counter_init_update_subset",
@@ -3111,6 +3112,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_counter_subtract_unary_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subtract/unary behavior"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_counter_basics_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter basics behavior"
     );
     assert!(
         row.diff_evidence

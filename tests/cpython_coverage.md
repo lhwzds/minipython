@@ -203,6 +203,7 @@ Recent runtime migration notes:
   `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
   `cpython_builtin_breakpoint_custom_hook_diff_subset`,
   `cpython_builtin_breakpoint_passthru_error_diff_subset`,
+  `cpython_collections_counter_basics_diff_subset`,
   `cpython_collections_counter_public_diff_subset`,
   `cpython_collections_counter_fromkeys_diff_subset`,
   `cpython_collections_counter_most_common_diff_subset`,
@@ -425,11 +426,14 @@ Recent runtime migration notes:
   and `math.isinf()` classification for finite normal/subnormal values, signed
   zero, infinities, NaNs, argument errors, and huge integer overflow.
 - The bundled `collections` module includes
-  `cpython_collections_counter_public_diff_subset` and
+  `cpython_collections_counter_basics_diff_subset` /
+  `cpython_collections_counter_basics_subset` and
+  `cpython_collections_counter_public_diff_subset` /
   `cpython_collections_counter_public_subset`, covering CPython public
-  `Counter` construction, missing-key zero lookup, values-based count totals,
-  update and subtract behavior, unary positive/negative filtering,
-  `elements()`, multiset arithmetic, and equality with matching counts.
+  `Counter` construction, mapping identity, missing-key zero lookup,
+  values-based count totals, basic mutation helpers, `most_common()`,
+  `elements()`, update and subtract behavior, unary positive/negative
+  filtering, multiset arithmetic, and equality with matching counts.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public
