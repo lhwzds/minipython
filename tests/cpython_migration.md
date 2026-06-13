@@ -5703,9 +5703,9 @@ Completed in the type builtin pass:
   construction, public type/instance `__doc__` plus type `__module__` /
   `__qualname__` metadata, direct display and empty-format methods, generic
   alias repr/module metadata, `copy()` preserving the `OrderedDict` result
-  type, type/instance `fromkeys()`, `popitem(last=...)`, direct
-  `__reversed__()`, `move_to_end()`, and preservation of ordered namespace
-  entries in a dynamic class `__dict__`.
+  type, direct equality methods, type/instance `fromkeys()`,
+  `popitem(last=...)`, direct `__reversed__()`, `move_to_end()`, and
+  preservation of ordered namespace entries in a dynamic class `__dict__`.
 - Added CPython/MiniPython differential parity cases for the supported
   `type()` subset, including keyword rejection and dynamic-class namespace
   order.
@@ -9437,10 +9437,10 @@ Completed in the CPython collections manifest expansion pass:
   MiniPython's insertion-ordered dict storage, with minimal public metadata for
   the exposed type plus direct display/empty-format methods and generic alias
   repr/module metadata plus `copy()` preserving `OrderedDict`, type/instance
-  `fromkeys()`, and `popitem(last=...)`. Direct `__reversed__()` now returns
-  reverse key iteration for the supported storage. This is enough for the
-  ChainMap order-preservation test, but it is not yet a full OrderedDict
-  runtime surface.
+  `fromkeys()`, `popitem(last=...)`, and direct equality methods. Direct
+  `__reversed__()` now returns reverse key iteration for the supported storage.
+  This is enough for the ChainMap order-preservation test, but it is not yet a
+  full OrderedDict runtime surface.
 - Added `cpython_collections_chainmap_copy_pickle_eval_identity_subset`,
   adapted from CPython `TestChainMap::test_basics`, covering exact repr
   alternatives, shallow-copy first-map copying plus parent-map sharing, pickle

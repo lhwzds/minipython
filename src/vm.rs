@@ -45606,10 +45606,12 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "OrderedDict" => &[
             "__contains__",
             "__delitem__",
+            "__eq__",
             "__format__",
             "__getitem__",
             "__iter__",
             "__len__",
+            "__ne__",
             "__repr__",
             "__reversed__",
             "__setitem__",
@@ -52586,6 +52588,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::OrderedDict(entries)),
                 identity: Rc::new(()),
             }),
+            "__eq__" | "__ne__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("OrderedDict.{name}"))),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
             | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
             | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -53406,6 +53413,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "OrderedDict" && name == "__reversed__" =>
         {
             Ok(Value::Builtin("OrderedDict.__reversed__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "OrderedDict" && matches!(name, "__eq__" | "__ne__") =>
+        {
+            Ok(Value::Builtin(format!("OrderedDict.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "mappingproxy" && is_builtin_mappingproxy_type_method(name) =>
@@ -66827,6 +66839,34 @@ fn call_dict_method(
             ));
         };
         return build_ordered_dict(entries.borrow().clone());
+    }
+
+    if matches!(name, "OrderedDict.__eq__" | "OrderedDict.__ne__") {
+        reject_method_keywords(name, &keywords)?;
+        let [left @ Value::OrderedDict(_), right] = args.as_slice() else {
+            return Err(format!(
+                "{}() expected 1 argument, got {}",
+                method_display_name(name),
+                method_arg_count(&args)
+            ));
+        };
+        let equal = match (left, right) {
+            (Value::OrderedDict(left_entries), Value::OrderedDict(right_entries)) => {
+                left_entries.borrow().entries == right_entries.borrow().entries
+            }
+            (Value::OrderedDict(left_entries), other) => match mapping_entries(other) {
+                Ok(right_entries) => {
+                    dict_entries_equal(&left_entries.borrow().entries, &right_entries)
+                }
+                Err(_) => return Ok(Value::NotImplemented),
+            },
+            _ => unreachable!("left receiver shape checked above"),
+        };
+        return Ok(Value::Bool(if name == "OrderedDict.__ne__" {
+            !equal
+        } else {
+            equal
+        }));
     }
 
     let canonical_name;

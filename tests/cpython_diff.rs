@@ -16345,6 +16345,10 @@ copy = od.copy()
 tcopy = OrderedDict.copy(od)
 print(type(copy).__name__, repr(copy), copy == od, copy is od)
 print(type(tcopy).__name__, repr(tcopy), tcopy == od, tcopy is od)
+other = OrderedDict([('b', 2), ('a', 1)])
+plain = {'b': 2, 'a': 1}
+print(od.__eq__(other), od.__ne__(other), OrderedDict.__eq__(od, other), OrderedDict.__ne__(od, other))
+print(od.__eq__(plain), od.__ne__(plain), OrderedDict.__eq__(od, []), OrderedDict.__ne__(od, []))
 for args in [(), (False,)]:
     sample = OrderedDict([('a', 1), ('b', 2)])
     print(sample.popitem(*args), list(sample.items()))
@@ -16357,7 +16361,7 @@ C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",

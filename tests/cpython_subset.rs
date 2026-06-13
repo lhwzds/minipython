@@ -35554,7 +35554,7 @@ fn cpython_type_typeparams_subset() {
 #[test]
 fn cpython_type_namespace_order_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nfk = OrderedDict.fromkeys(['b', 'a'], 3)\nifk = od.fromkeys(['x', 'y'])\nprint(type(fk).__name__, repr(fk), list(fk.items()))\nprint(type(ifk).__name__, repr(ifk), list(ifk.items()))\ncopy = od.copy()\ntcopy = OrderedDict.copy(od)\nprint(type(copy).__name__, repr(copy), copy == od, copy is od)\nprint(type(tcopy).__name__, repr(tcopy), tcopy == od, tcopy is od)\nfor args in [(), (False,)]:\n    sample = OrderedDict([('a', 1), ('b', 2)])\n    print(sample.popitem(*args), list(sample.items()))\nsample = OrderedDict([('a', 1), ('b', 2)])\nprint(sample.popitem(last=False), list(sample.items()))\nprint(list(od.__reversed__()), list(OrderedDict.__reversed__(od)))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nfk = OrderedDict.fromkeys(['b', 'a'], 3)\nifk = od.fromkeys(['x', 'y'])\nprint(type(fk).__name__, repr(fk), list(fk.items()))\nprint(type(ifk).__name__, repr(ifk), list(ifk.items()))\ncopy = od.copy()\ntcopy = OrderedDict.copy(od)\nprint(type(copy).__name__, repr(copy), copy == od, copy is od)\nprint(type(tcopy).__name__, repr(tcopy), tcopy == od, tcopy is od)\nother = OrderedDict([('b', 2), ('a', 1)])\nplain = {'b': 2, 'a': 1}\nprint(od.__eq__(other), od.__ne__(other), OrderedDict.__eq__(od, other), OrderedDict.__ne__(od, other))\nprint(od.__eq__(plain), od.__ne__(plain), OrderedDict.__eq__(od, []), OrderedDict.__ne__(od, []))\nfor args in [(), (False,)]:\n    sample = OrderedDict([('a', 1), ('b', 2)])\n    print(sample.popitem(*args), list(sample.items()))\nsample = OrderedDict([('a', 1), ('b', 2)])\nprint(sample.popitem(last=False), list(sample.items()))\nprint(list(od.__reversed__()), list(OrderedDict.__reversed__(od)))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))",
         &[
             "collections OrderedDict str True",
             "str True",
@@ -35566,6 +35566,8 @@ fn cpython_type_namespace_order_subset() {
             "OrderedDict OrderedDict([('x', None), ('y', None)]) [('x', None), ('y', None)]",
             "OrderedDict OrderedDict([('a', 1), ('b', 2)]) True False",
             "OrderedDict OrderedDict([('a', 1), ('b', 2)]) True False",
+            "False True False True",
+            "True False NotImplemented NotImplemented",
             "('b', 2) [('a', 1)]",
             "('a', 1) [('b', 2)]",
             "('a', 1) [('b', 2)]",
@@ -35573,7 +35575,7 @@ fn cpython_type_namespace_order_subset() {
             "[('b', 2), ('a', 1)]",
             "[('b', 2), ('a', 1)]",
             "True",
-            "OrderedDict True True True True True False",
+            "OrderedDict True True True True True True True False",
         ],
     );
 }
