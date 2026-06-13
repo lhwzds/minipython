@@ -5340,7 +5340,8 @@ Completed in the string expandtabs method pass:
   and keyword `tabsize`, CR/LF/CRLF column resets, zero/negative tab sizes,
   bool-as-int tab sizes, and representative `TypeError` / `OverflowError`
   paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_expandtabs_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported
   tab-expansion behavior.
 
 Completed in the string splitlines method pass:

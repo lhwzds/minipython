@@ -5162,6 +5162,29 @@ for expr in [lambda: 'abc'.splitlines(True, False), lambda: 'abc'.splitlines(kee
 }
 
 #[test]
+fn cpython_string_expandtabs_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py expandtabs subset",
+        name: "string-expandtabs",
+        source: r#"print(repr('abc\rab\tdef\ng\thi'.expandtabs()))
+print(repr('abc\rab\tdef\ng\thi'.expandtabs(8)))
+print(repr('abc\rab\tdef\ng\thi'.expandtabs(4)))
+print(repr('abc\r\nab\tdef\ng\thi'.expandtabs()))
+print(repr('abc\r\nab\tdef\ng\thi'.expandtabs(tabsize=4)))
+print(repr('abc\r\nab\r\ndef\ng\r\nhi'.expandtabs(4)))
+print(repr(' \ta\n\tb'.expandtabs(1)))
+print(repr('ab\tc'.expandtabs(-1)), repr('ab\tc'.expandtabs(0)), repr('ab\tc'.expandtabs(1)), repr('ab\tc'.expandtabs(2)))
+print(repr('\t\ta'.expandtabs(4)), repr('a\tb\tc'.expandtabs(3)))
+print(repr('ab\tc'.expandtabs(True)), repr('ab\tc'.expandtabs(False)))
+for expr in [lambda: 'hello'.expandtabs(42, 42), lambda: 'hello'.expandtabs(None), lambda: 'hello'.expandtabs('4'), lambda: 'hello'.expandtabs(size=4), lambda: 'hello'.expandtabs(2147483648), lambda: 'hello'.expandtabs(-2147483649)]:
+    try:
+        expr()
+    except (TypeError, OverflowError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
