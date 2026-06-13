@@ -35651,7 +35651,13 @@ fn cpython_globals_locals_builtin_subset() {
             "try:\n",
             "    g.pop('missing')\n",
             "except KeyError as error:\n",
-            "    print(error.__class__.__name__)",
+            "    print(error.__class__.__name__)\n",
+            "def clear_global_mapping(p, mapping):\n",
+            "    mapping['scope_clear_temp'] = 8\n",
+            "    p('clear-before', 'scope_clear_temp' in mapping)\n",
+            "    result = mapping.clear()\n",
+            "    p('clear-after', result, len(mapping), 'scope_clear_temp' in mapping)\n",
+            "clear_global_mapping(print, g)",
         ),
         &[
             "dict 1 False",
@@ -35663,6 +35669,8 @@ fn cpython_globals_locals_builtin_subset() {
             "('scope_popitem_temp', 7)",
             "fallback",
             "KeyError",
+            "clear-before True",
+            "clear-after None 0 False",
         ],
     );
     assert_output(

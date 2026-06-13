@@ -7662,6 +7662,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .unwrap_or(CPYTHON_SUBSET.len());
     let globals_locals_source = &CPYTHON_SUBSET[globals_locals_start..globals_locals_end];
     for required in [
+        "mapping.clear()",
         "g.copy()",
         "g.get('scope_temp')",
         "g.pop('scope_temp')",

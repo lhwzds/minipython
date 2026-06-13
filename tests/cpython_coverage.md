@@ -3614,7 +3614,7 @@ Recent runtime migration notes:
   `cpython_enumerate_zip_sorted_builtin_subset`, `cpython_zip_strict_builtin_subset`,
   `cpython_map_filter_builtin_subset`, and `cpython_abs_builtin_subset`, covering
   public namespace introspection including live module-scope `globals()` /
-  `locals()` mapping `copy()` / `get()` / `pop()` / `popitem()` /
+  `locals()` mapping `clear()` / `copy()` / `get()` / `pop()` / `popitem()` /
   `setdefault()` behavior and function-local snapshot `copy()` / `get()` /
   `pop()` / `setdefault()` behavior, class/type relationship checks,
   iterator-producing builtins, strict zip, map/filter, and absolute-value

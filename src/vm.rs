@@ -14795,6 +14795,16 @@ impl Vm {
                 store_subscript(dict.clone(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
+            "scope_dict.clear" => {
+                let [Value::ScopeDict(scope)] = args.as_slice() else {
+                    return Err(format!(
+                        "clear() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                scope.borrow_mut().clear();
+                Ok(Value::None)
+            }
             "scope_dict.copy" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
                     return Err(format!(
@@ -52090,8 +52100,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::ScopeDict(scope) => match name {
-            "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault" | "update"
-            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
+            "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
             | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(scope)),
@@ -52101,8 +52111,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::FrameLocalsProxy { locals } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
-            "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault" | "update"
-            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
+            "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
             | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(locals)),

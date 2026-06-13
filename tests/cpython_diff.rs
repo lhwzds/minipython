@@ -6308,7 +6308,13 @@ def probe(arg):
     print(snapshot.setdefault('new_local', 5), snapshot['new_local'])
     print(snapshot.pop('local_value'), 'local_value' in snapshot)
     print(globals() is locals(), globals()['x'])
-probe(3)"#,
+probe(3)
+def clear_global_mapping(p, mapping):
+    mapping['scope_clear_temp'] = 8
+    p('clear-before', 'scope_clear_temp' in mapping)
+    result = mapping.clear()
+    p('clear-after', result, len(mapping), 'scope_clear_temp' in mapping)
+clear_global_mapping(print, g)"#,
     });
 }
 
