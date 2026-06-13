@@ -1095,7 +1095,8 @@ values.
 bytearray subclasses across supported protocols, preserving concrete subclass
 types, value equality, user attributes, nested subclass attribute types, and
 distinct restored objects through MiniPython's internal pickle payload.
-`cpython_bytes_dunder_bytes_and_blocking_subset` ports
+`cpython_bytes_dunder_bytes_and_blocking_subset` with direct
+`cpython_bytes_dunder_bytes_dispatch_diff_subset` evidence ports
 `BytesTest::test_bytes_blocking` plus related `BaseBytesTest::test_custom`
 behavior, covering `bytes()` dispatch to `__bytes__`, bytes-subclass return
 preservation, non-bytes return rejection, `__bytes__` precedence over
