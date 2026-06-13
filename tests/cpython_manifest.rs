@@ -5863,6 +5863,100 @@ fn len_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn min_max_sum_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_min_max_sum_builtin_subset(",
+        "max('123123')",
+        "min('123123')",
+        "max((1, 2, 3, 1, 2, 3))",
+        "min((1, 2, 3, 1, 2, 3))",
+        "def neg(x):",
+        "key=neg",
+        "default=None",
+        "class BadSeq",
+        "raise ValueError('badseq')",
+        "lambda: max()",
+        "lambda: max(42)",
+        "lambda: max(())",
+        "lambda: min()",
+        "lambda: min(42)",
+        "lambda: min(())",
+        "sum([])",
+        "sum(list(range(2, 8)))",
+        "sum([[1], [2], [3]], [])",
+        "sum(range(10), start=1000)",
+        "sum([], False) is False",
+        "repr(sum([-0.0]))",
+        "math.isinf(sum([float('inf'), float('inf')]))",
+        "lambda: sum(['a', 'b', 'c'])",
+        "lambda: sum([b'a', b'c'], b'')",
+        "lambda: sum(values, bytearray(b''))",
+        "lambda: sum([1.0, 10**1000])",
+        "complex(1, -0.0)",
+        "\"(2-0j)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused min/max/sum builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_min_max_sum_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_max / ::test_min / ::test_sum",
+        "max('123123')",
+        "min('123123')",
+        "max((1, 2, 3, 1, 2, 3))",
+        "min((1, 2, 3, 1, 2, 3))",
+        "def neg(x):",
+        "key=neg",
+        "default=None",
+        "class BadSeq",
+        "raise ValueError('badseq')",
+        "lambda: max()",
+        "lambda: max(42)",
+        "lambda: max(())",
+        "lambda: min()",
+        "lambda: min(42)",
+        "lambda: min(())",
+        "sum([])",
+        "sum(list(range(2, 8)))",
+        "sum([[1], [2], [3]], [])",
+        "sum(range(10), start=1000)",
+        "sum([], False) is False",
+        "lambda: sum(['a', 'b', 'c'])",
+        "lambda: sum([b'a', b'c'], b'')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused min/max/sum CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_min_max_sum_builtin_subset")
+                && document.contains("cpython_min_max_sum_builtin_diff_subset"),
+            "focused min/max/sum evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_COVERAGE.contains("BuiltinTest::test_max")
+            && CPYTHON_COVERAGE.contains("test_min")
+            && CPYTHON_COVERAGE.contains("test_sum")
+            && CPYTHON_COVERAGE.contains("test_sum_accuracy"),
+        "focused min/max/sum coverage notes must name the CPython source cases and excluded accuracy test"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("aggregate methods")
+            && CPYTHON_MIGRATION.contains("BuiltinTest::test_sum")
+            && CPYTHON_MIGRATION.contains("test_sum_accuracy")
+            && CPYTHON_MIGRATION.contains("implementation-internal"),
+        "focused min/max/sum migration notes must classify the aggregate audit and excluded CPython implementation detail"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
