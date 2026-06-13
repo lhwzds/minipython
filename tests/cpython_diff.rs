@@ -10438,6 +10438,38 @@ print(callable(operator.attrgetter('name')), callable(operator.itemgetter(0)), c
 }
 
 #[test]
+fn cpython_operator_call_helper_diff_subset() {
+    let probe = run_cpython("import operator; print(hasattr(operator, 'call'))")
+        .expect("failed to probe CPython operator.call support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping operator.call diff: CPython oracle lacks operator.call");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py newer operator.call public helper subset",
+        name: "operator-call-helper",
+        source: r#"import operator
+def func(*args, **kwargs):
+    return args, kwargs
+print(operator.call(func))
+print(operator.call(func, 0, 1))
+print(operator.call(func, a=2, obj=3))
+print(operator.call(func, 0, 1, a=2, obj=3))
+for name in ['call']:
+    value = getattr(operator, name)
+    print(name, value.__name__, value.__qualname__, value.__module__ in ('operator', '_operator'))
+    print(type(value.__doc__).__name__, bool(value.__doc__), name in operator.__all__)
+print(operator.__call__ is operator.call)
+for expr in [lambda: operator.call(), lambda: operator.call(42), lambda: operator.call(func, unknown=1, **{'unknown': 2})]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_inplace_helper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase::test_inplace and ::test_iconcat_without_getitem public subset",

@@ -130,6 +130,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_operator_is_none_predicates_diff_subset`,
+  `cpython_operator_call_helper_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
@@ -1372,17 +1373,18 @@ Recent runtime migration notes:
   including equality-based counting/search, iterator partial-consumption, and
   representative TypeError/ZeroDivisionError propagation. Direct CPython diff
   evidence is in `cpython_operator_sequence_member_diff_subset`.
-- `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset`,
-  covering CPython `test_operator.py` callable helpers `call`, `attrgetter`,
-  `itemgetter`, and `methodcaller`, including dotted attribute traversal,
-  `str` subclass attrgetter/methodcaller names, multi-result tuple packing,
-  subscript forwarding, stored method args/keywords, many positional/keyword
-  method arguments, callable forwarding, and public exception propagation.
+- `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset` and
+  `cpython_operator_call_helper_subset`, covering CPython `test_operator.py`
+  callable helpers `call`, `attrgetter`, `itemgetter`, and `methodcaller`,
+  including dotted attribute traversal, `str` subclass attrgetter/methodcaller
+  names, multi-result tuple packing, subscript forwarding, stored method
+  args/keywords, many positional/keyword method arguments, callable forwarding,
+  public `operator.call` metadata, and public exception propagation.
   Direct CPython diff evidence for the default-oracle
   stable getter/methodcaller slice is in
-  `cpython_operator_callable_helper_diff_subset`; `operator.call` stays covered
-  by subset evidence because the default local CPython 3.9 oracle does not
-  expose that newer helper.
+  `cpython_operator_callable_helper_diff_subset`; the newer `operator.call`
+  helper has gated direct CPython evidence in
+  `cpython_operator_call_helper_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_inplace_helper_subset`,
   covering CPython `test_operator.py` in-place helper functions `iadd`, `isub`,
   `imul`, `imatmul`, `ifloordiv`, `itruediv`, `imod`, `ipow`, `ilshift`,
@@ -1400,8 +1402,9 @@ Recent runtime migration notes:
   default-oracle stable metadata slice is in
   `cpython_operator_module_metadata_diff_subset`; the newer `is_none` and
   `is_not_none` `operator.__all__` entries have gated direct CPython evidence in
-  `cpython_operator_is_none_predicates_diff_subset`, while `operator.call`
-  remains subset-covered on older CPython oracles.
+  `cpython_operator_is_none_predicates_diff_subset`, and the newer
+  `operator.call` entry has gated direct CPython evidence in
+  `cpython_operator_call_helper_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_signature_helper_subset`, covering CPython
   `test_operator.py` signature assertions for `operator.attrgetter`,

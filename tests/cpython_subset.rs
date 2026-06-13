@@ -38547,6 +38547,44 @@ fn cpython_operator_callable_helper_subset() {
     );
 }
 
+// Adapted from newer CPython Lib/test/test_operator.py operator.call coverage.
+#[test]
+fn cpython_operator_call_helper_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "def func(*args, **kwargs):\n",
+            "    return args, kwargs\n",
+            "print(operator.call(func))\n",
+            "print(operator.call(func, 0, 1))\n",
+            "print(operator.call(func, a=2, obj=3))\n",
+            "print(operator.call(func, 0, 1, a=2, obj=3))\n",
+            "for name in ['call']:\n",
+            "    value = getattr(operator, name)\n",
+            "    print(name, value.__name__, value.__qualname__, value.__module__ in ('operator', '_operator'))\n",
+            "    print(type(value.__doc__).__name__, bool(value.__doc__,), name in operator.__all__)\n",
+            "print(operator.__call__ is operator.call)\n",
+            "for expr in [lambda: operator.call(), lambda: operator.call(42), lambda: operator.call(func, unknown=1, **{'unknown': 2})]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "((), {})",
+            "((0, 1), {})",
+            "((), {'a': 2, 'obj': 3})",
+            "((0, 1), {'a': 2, 'obj': 3})",
+            "call call call True",
+            "str True True",
+            "True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test_inplace
 // and ::test_iconcat_without_getitem. This covers the public operator.i* helper
 // dispatch surface while leaving CPython's dunder-alias and signature metadata
