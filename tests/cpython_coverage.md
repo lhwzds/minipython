@@ -1901,9 +1901,9 @@ Recent runtime migration notes:
   `cpython_bytes_dunder_bytes_method_subset` covers direct
   `BytesTest::test__bytes__` method calls on exact bytes and bytes subclasses,
   exact bytes result type, exact bytes self identity, bytes-subclass copy-out
-  identity, inherited descriptor calls, and `dir()` visibility; this remains
-  local subset evidence because the default system CPython oracle used for
-  `cpython_diff` does not expose direct `bytes.__bytes__` method calls.
+  identity, inherited descriptor calls, and `dir()` visibility. Direct CPython
+  diff evidence is in `cpython_bytes_dunder_bytes_method_diff_subset`, gated for
+  CPython oracles that expose direct `bytes.__bytes__` method calls.
   `cpython_bytes_repeat_id_preserving_subset` covers CPython
   `BytesTest::test_repeat_id_preserving` for exact bytes repeat-by-one object
   identity in both operand orders, empty bytes singleton identity, and distinct

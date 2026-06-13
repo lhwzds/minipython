@@ -17499,6 +17499,29 @@ print(type(custom).__name__, str(custom), hasattr(custom, 'value'))"#,
 }
 
 #[test]
+fn cpython_bytes_dunder_bytes_method_diff_subset() {
+    let probe = run_cpython("print(hasattr(bytes, '__bytes__'))")
+        .expect("failed to probe CPython bytes.__bytes__ support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping bytes.__bytes__ method diff: CPython oracle lacks bytes.__bytes__");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BytesTest::test__bytes__ public direct-method subset",
+        name: "bytes-dunder-bytes-method",
+        source: r#"class B(bytes):
+    pass
+for value in [b'foo\0bar', B(b'bar\0foo')]:
+    result = value.__bytes__()
+    print(type(value).__name__, result == value, type(result).__name__, isinstance(result, bytes), type(result) is bytes, result is value)
+print(bytes.__bytes__(b'direct'))
+print(B.__bytes__(B(b'inherited')))
+print('__bytes__' in dir(bytes), '__bytes__' in dir(B), hasattr(bytearray(b''), '__bytes__'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_buffer_constructor_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_from_buffer portable public subset",

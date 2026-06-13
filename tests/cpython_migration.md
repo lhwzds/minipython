@@ -317,9 +317,9 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   `Lib/test/test_bytes.py::BytesTest::test__bytes__`. MiniPython now exposes
   direct `bytes.__bytes__` method calls for exact bytes and bytes subclasses,
   returns an exact `bytes` value, supports inherited class descriptor calls, and
-  keeps `bytearray.__bytes__` absent like CPython. This remains local subset
-  evidence because the default system CPython oracle used for `cpython_diff`
-  does not expose direct `bytes.__bytes__` method calls.
+  keeps `bytearray.__bytes__` absent like CPython. Direct CPython diff evidence
+  is in `cpython_bytes_dunder_bytes_method_diff_subset`, gated for oracles that
+  expose direct `bytes.__bytes__` method calls.
 - Added exact bytes object identity storage and
   `cpython_bytes_repeat_id_preserving_subset`, adapted from CPython
   `Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving`. Exact bytes
