@@ -17132,6 +17132,37 @@ for expr in [lambda: a.extend('def'), lambda: a.extend(1.0)]:
 }
 
 #[test]
+fn cpython_bytearray_extend_typeerror_message_diff_subset() {
+    let probe = run_cpython(
+        r#"a = bytearray(b'abc')
+try:
+    a.extend('def')
+except TypeError as error:
+    print(str(error))"#,
+    )
+    .expect("failed to probe CPython bytearray.extend string TypeError support");
+    if !probe.status.success()
+        || probe.stdout.as_slice() != b"expected iterable of integers; got: 'str'\n"
+    {
+        eprintln!(
+            "skipping bytearray.extend TypeError text diff: CPython oracle has older wording"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_extend TypeError text",
+        name: "bytearray-extend-typeerror-message",
+        source: r#"a = bytearray(b'abc')
+for expr in [lambda: a.extend('def'), lambda: a.extend(1.0)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_resize_diff_subset() {
     let probe = run_cpython("print(hasattr(bytearray(b''), 'resize'))")
         .expect("failed to probe CPython bytearray.resize support");

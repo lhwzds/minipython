@@ -1721,7 +1721,9 @@ Recent runtime migration notes:
   generator inputs, all-or-nothing invalid item handling, `__index__` item
   conversion, and bytearray-specific `TypeError` messages. Direct CPython diff
   evidence for the stable behavior and error classes is in
-  `cpython_bytearray_extend_diff_subset`.
+  `cpython_bytearray_extend_diff_subset`; direct text evidence is in
+  `cpython_bytearray_extend_typeerror_message_diff_subset` when the selected
+  CPython oracle exposes the current string-source wording.
 - `STRING_RUNTIME` also includes `cpython_bytearray_resize_subset`, covering
   current CPython `ByteArrayTest::test_resize` public behavior for bytearray
   truncation, zero-filled growth, `__index__` length conversion, catchable
