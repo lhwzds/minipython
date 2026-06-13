@@ -39,7 +39,11 @@ Recent runtime migration notes:
   comparison between deque instances, integer indexing/assignment/deletion,
   concat/repeat, in-place concat/repeat, `.copy()` / `__copy__()` /
   `copy.copy()`, reverse iteration, concrete type identity, and
-  `MutableSequence` registration.
+  `MutableSequence` registration. Full deque construction/mutation APIs,
+  performance/lifetime internals, thread-safety stress, pickle/eval identity
+  matrices, and unported ABC edge matrices remain outside the default sandbox
+  `collections` / `collections.abc` surface until separately promoted with
+  direct public-behavior evidence.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`

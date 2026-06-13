@@ -5942,13 +5942,33 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_abc_bytestring_deprecation_warnings_subset",
             "cpython_collections_abc_composite_abstract_methods_subset",
         ],
-        &["pickle/eval identity matrices"],
+        &[
+            "Full deque construction/mutation APIs",
+            "performance/lifetime internals",
+            "thread-safety stress",
+            "pickle/eval identity matrices",
+            "unported ABC edge matrices",
+        ],
     );
 
     let row = sandbox_stdlib_rows()
         .into_iter()
         .find(|row| row.module == "collections / collections.abc")
         .expect("sandbox stdlib manifest must include collections / collections.abc");
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for excluded in [
+            "Full deque construction/mutation APIs",
+            "performance/lifetime internals",
+            "thread-safety stress",
+            "pickle/eval identity matrices",
+            "unported ABC edge matrices",
+        ] {
+            assert!(
+                document.contains(excluded),
+                "collections docs must keep excluded surface `{excluded}` documented"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_deque_public_surface_diff_subset"),
