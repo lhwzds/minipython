@@ -13370,6 +13370,10 @@ print(h.__name__, h.__doc__, h.__wrapped__(None))
 rendered = repr(h)
 print(rendered.startswith('<function h at 0x'), rendered.endswith('>'), str(h) == rendered)
 print(callable(h), type(h.registry).__name__, h.registry[object] is h.dispatch(object))
+print(sorted(name for name in h.__dict__ if name in ['_clear_cache', 'dispatch', 'register', 'registry']))
+for name in ['register', 'dispatch', 'registry', '_clear_cache']:
+    print(name, h.__dict__[name] is getattr(h, name), callable(h.__dict__[name]))
+print(type(h.__dict__['registry']).__name__, h.__dict__['registry'][object] is h.dispatch(object))
 h.register(Sized, lambda obj: 'sized')
 print(h({}), h([]), h(()))
 h.register(MutableMapping, lambda obj: 'mapping')
@@ -13377,12 +13381,23 @@ h.register(MutableSequence, lambda obj: 'sequence')
 h.register(tuple, lambda obj: 'tuple')
 print(h({}), h([]), h(()))
 print(h.dispatch(dict)({}), h.dispatch(list)([]), h.dispatch(tuple)(()))
+print(h.__dict__['registry'][tuple] is h.dispatch(tuple))
 print(h._clear_cache())
 print(singledispatch(42).dispatch(object))
 print(h.register(float, 42))
 try:
     h(1.5)
 except TypeError as error:
+    print(error.__class__.__name__)
+@singledispatch
+def shadow(obj):
+    return 'base'
+shadow.register = 'shadowed'
+print(shadow.register, shadow.__dict__['register'])
+del shadow.register
+try:
+    shadow.register
+except AttributeError as error:
     print(error.__class__.__name__)
 print('done')"#,
     });

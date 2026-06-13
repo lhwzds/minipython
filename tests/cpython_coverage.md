@@ -1192,8 +1192,10 @@ Recent runtime migration notes:
   `cpython_functools_singledispatch_subset`, covering CPython
   `test_functools.py::TestSingleDispatch` public wrapper behavior, explicit
   type registration, decorator registration, `dispatch()` identity, registry
-  mappingproxy exposure, wrapper metadata copied from the wrapped function,
-  public wrapper `repr()` / `str()` shape, C3-style user-class specificity,
+  mappingproxy exposure, public wrapper `__dict__` entries for `register`,
+  `dispatch`, `registry`, and `_clear_cache` including override/deletion
+  behavior, wrapper metadata copied from the wrapped function, public wrapper
+  `repr()` / `str()` shape, C3-style user-class specificity,
   builtin `bool` / `int` dispatch, ABC registration over `Sized`,
   `MutableMapping`, and `MutableSequence`, no-op `_clear_cache()`,
   annotation-inferred registration, PEP 604 and

@@ -5943,8 +5943,10 @@ Completed in the pow builtin pass:
   `Lib/test/test_functools.py::TestSingleDispatch`. The migrated slice covers
   public wrapper call dispatch, explicit type registration, decorator
   registration, `dispatch()` identity, registry mappingproxy exposure,
-  wrapper metadata copied through `update_wrapper`, user-class MRO
-  specificity, builtin `bool` / `int` dispatch, ABC registration over `Sized`,
+  public wrapper `__dict__` entries for `register`, `dispatch`, `registry`,
+  and `_clear_cache` including override/deletion behavior, wrapper metadata
+  copied through `update_wrapper`, user-class MRO specificity, builtin `bool` /
+  `int` dispatch, ABC registration over `Sized`,
   `MutableMapping`, and `MutableSequence`, no-op `_clear_cache()`,
   annotation-inferred registration, PEP 604 and `typing.Union` registration,
   lazy failure for non-callable implementations, and TypeError rejection for

@@ -3586,6 +3586,26 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         );
     }
 
+    let singledispatch_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_singledispatch_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_singledispatchmethod_diff_subset()")
+                .next()
+        })
+        .expect("functools singledispatch diff evidence must be extractable");
+    for required in [
+        "h.__dict__['registry']",
+        "h.__dict__[name] is getattr(h, name)",
+        "shadow.register = 'shadowed'",
+        "del shadow.register",
+    ] {
+        assert!(
+            singledispatch_diff.contains(required),
+            "singledispatch diff evidence must cover wrapper __dict__ detail `{required}`"
+        );
+    }
+
     let singledispatchmethod_diff = CPYTHON_DIFF
         .split("fn cpython_functools_singledispatchmethod_diff_subset()")
         .nth(1)

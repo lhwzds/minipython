@@ -7222,7 +7222,9 @@ impl Vm {
             attrs: new_scope(),
             identity: Rc::new(()),
         };
-        self.call_functools_update_wrapper(vec![wrapper, function], Vec::new())
+        let wrapper = self.call_functools_update_wrapper(vec![wrapper, function], Vec::new())?;
+        install_singledispatch_public_attrs(&wrapper);
+        Ok(wrapper)
     }
 
     fn call_functools_singledispatchmethod(
@@ -7556,6 +7558,8 @@ impl Vm {
                 registry.push((class, function.clone()));
             }
         }
+        drop(registry);
+        refresh_singledispatch_registry_attr(dispatcher);
         Ok(())
     }
 
@@ -51462,6 +51466,51 @@ fn format_annotation_value_string(value: &Value) -> String {
     }
 }
 
+fn singledispatch_bound_method(dispatcher: &Value, name: &str) -> Value {
+    Value::BoundMethod {
+        function: Box::new(Value::Builtin(format!("functools.singledispatch.{name}"))),
+        receiver: Box::new(dispatcher.clone()),
+        identity: Rc::new(()),
+    }
+}
+
+fn install_singledispatch_public_attrs(dispatcher: &Value) {
+    let Value::SingleDispatch {
+        registry, attrs, ..
+    } = dispatcher
+    else {
+        return;
+    };
+
+    let registry_value = mapping_proxy_from_entries(registry.borrow().clone());
+    let dispatch = singledispatch_bound_method(dispatcher, "dispatch");
+    let register = singledispatch_bound_method(dispatcher, "register");
+    let clear_cache = singledispatch_bound_method(dispatcher, "_clear_cache");
+
+    let mut attrs = attrs.borrow_mut();
+    attrs.insert("registry".to_string(), registry_value);
+    attrs.insert("dispatch".to_string(), dispatch);
+    attrs.insert("register".to_string(), register);
+    attrs.insert("_clear_cache".to_string(), clear_cache);
+}
+
+fn refresh_singledispatch_registry_attr(dispatcher: &Value) {
+    let Value::SingleDispatch {
+        registry, attrs, ..
+    } = dispatcher
+    else {
+        return;
+    };
+
+    let mut attrs = attrs.borrow_mut();
+    if attrs.contains_key("registry") {
+        attrs.insert(
+            "registry".to_string(),
+            mapping_proxy_from_entries(registry.borrow().clone()),
+        );
+    }
+}
+
 fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
     if name == "__class__" {
         if let Value::WeakProxy { target, .. } = &object {
@@ -51958,30 +52007,20 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )),
             }
         }
-        Value::SingleDispatch {
-            function,
-            registry,
-            attrs,
-            identity,
-        } => {
+        Value::SingleDispatch { attrs, .. } => {
             if name == "__dict__" {
                 return Ok(Value::ScopeDict(attrs));
             }
+            if let Some(value) = attrs.borrow().get(name).cloned() {
+                return Ok(value);
+            }
             match name {
-                "registry" => Ok(mapping_proxy_from_entries(registry.borrow().clone())),
-                "dispatch" | "register" | "_clear_cache" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("functools.singledispatch.{name}"))),
-                    receiver: Box::new(Value::SingleDispatch {
-                        function,
-                        registry,
-                        attrs,
-                        identity,
-                    }),
-                    identity: Rc::new(()),
-                }),
-                _ => attrs.borrow().get(name).cloned().ok_or_else(|| {
-                    format!("AttributeError: function object has no attribute '{name}'")
-                }),
+                "registry" | "dispatch" | "register" | "_clear_cache" => Err(format!(
+                    "AttributeError: function object has no attribute '{name}'"
+                )),
+                _ => Err(format!(
+                    "AttributeError: function object has no attribute '{name}'"
+                )),
             }
         }
         Value::SingleDispatchRegister { .. } => match name {
