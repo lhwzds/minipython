@@ -6205,6 +6205,76 @@ fn aiter_anext_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn stop_iteration_value_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_stop_iteration_value_subset(",
+        "public StopIteration.value attribute",
+        "without expanding into CPython's implementation-internal tests",
+        "def g(value):",
+        "if False:",
+        "yield None",
+        "return value",
+        "for args in [(), (42,), (1, 2)]",
+        "error = StopIteration(*args)",
+        "error.args, error.value",
+        "for value in [None, 99, (1, 2)]",
+        "gen = g(value)",
+        "except StopIteration as error",
+        "class MyStop(StopIteration)",
+        "custom = MyStop('x', 'y')",
+        "\"ctor () () None\"",
+        "\"ctor (42,) (42,) 42\"",
+        "\"ctor (1, 2) (1, 2) 1\"",
+        "\"gen None () None\"",
+        "\"gen 99 (99,) 99\"",
+        "\"gen (1, 2) ((1, 2),) (1, 2)\"",
+        "\"sub ('x', 'y') x\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused StopIteration.value subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_stop_iteration_value_diff_subset");
+    for required in [
+        "Lib/test/test_generator.py public StopIteration.value behavior",
+        "def g(value):",
+        "if False:",
+        "yield None",
+        "return value",
+        "for args in [(), (42,), (1, 2)]",
+        "error = StopIteration(*args)",
+        "error.args, error.value",
+        "for value in [None, 99, (1, 2)]",
+        "gen = g(value)",
+        "except StopIteration as error",
+        "class MyStop(StopIteration)",
+        "custom = MyStop('x', 'y')",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused StopIteration.value CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_stop_iteration_value_diff_subset")
+            && CPYTHON_COVERAGE.contains("cpython_stop_iteration_value_subset")
+            && CPYTHON_COVERAGE.contains("public `StopIteration.value`")
+            && CPYTHON_COVERAGE.contains("direct exception construction")
+            && CPYTHON_COVERAGE.contains("generator return values")
+            && CPYTHON_COVERAGE.contains("`StopIteration` subclasses"),
+        "focused StopIteration.value coverage notes must document the public supported behavior"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_stop_iteration_value_subset")
+            && CPYTHON_MIGRATION.contains("cpython_stop_iteration_value_diff_subset"),
+        "focused StopIteration.value evidence must be listed in the migration manifest"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
