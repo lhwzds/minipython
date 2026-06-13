@@ -3240,8 +3240,8 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_method_surface_subset` and
   `cpython_types_mappingproxy_custom_mapping_subset`, covering CPython's
   mappingproxy public method surface plus forwarding of lookup, containment,
-  length, iteration, copy, get, keys, items, and values calls to user-defined
-  mapping objects.
+  length, iteration, display, empty-format, copy, get, keys, items, and values
+  calls to user-defined mapping objects.
 - `CONTAINER_RUNTIME` also includes `cpython_types_mappingproxy_hash_subset`,
   covering unhashable exact-dict proxies and hash forwarding for proxies over
   hashable user-defined mapping objects.

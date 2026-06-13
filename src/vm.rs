@@ -1330,6 +1330,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. }
         | Value::SimpleNamespace { .. } => repr_value_checked(value),
+        Value::MappingProxy { entries } => repr_value_checked(&Value::Dict(entries.clone())),
         value => Ok(value.to_string()),
     }
 }
@@ -25191,6 +25192,39 @@ impl Vm {
                     }
                 }
             }
+            "__repr__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__repr__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                match receiver {
+                    receiver @ Value::MappingProxy { .. }
+                    | receiver @ Value::MappingProxyObject { .. } => {
+                        Ok(Value::String(repr_value_checked(receiver)?))
+                    }
+                    _ => Err("mappingproxy.__repr__ expected a mappingproxy receiver".to_string()),
+                }
+            }
+            "__str__" => {
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__str__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                match receiver {
+                    Value::MappingProxy { entries } => Ok(Value::String(repr_value_checked(
+                        &Value::Dict(entries.clone()),
+                    )?)),
+                    Value::MappingProxyObject { mapping } => {
+                        Ok(Value::String(self.str_value(mapping)?))
+                    }
+                    _ => Err("mappingproxy.__str__ expected a mappingproxy receiver".to_string()),
+                }
+            }
+            "__format__" => Ok(Value::String(self.call_object_format(args)?)),
             "__ior__" => {
                 let [receiver, other] = args.as_slice() else {
                     return Err(format!(
@@ -45417,13 +45451,16 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "mappingproxy" => &[
             "__class_getitem__",
             "__contains__",
+            "__format__",
             "__getitem__",
             "__ior__",
             "__iter__",
             "__len__",
             "__or__",
+            "__repr__",
             "__reversed__",
             "__ror__",
+            "__str__",
             "copy",
             "get",
             "items",
@@ -48371,6 +48408,29 @@ fn is_builtin_dict_type_method(name: &str) -> bool {
             | "__iter__"
             | "__repr__"
             | "__setitem__"
+            | "__str__"
+    )
+}
+
+fn is_builtin_mappingproxy_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "copy"
+            | "get"
+            | "items"
+            | "keys"
+            | "values"
+            | "__class_getitem__"
+            | "__contains__"
+            | "__format__"
+            | "__getitem__"
+            | "__ior__"
+            | "__iter__"
+            | "__len__"
+            | "__or__"
+            | "__repr__"
+            | "__reversed__"
+            | "__ror__"
             | "__str__"
     )
 }
@@ -52475,8 +52535,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::MappingProxy { entries } => match name {
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
-            | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__" | "__reversed__"
-            | "__ror__" => Ok(Value::BoundMethod {
+            | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
+            | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("mappingproxy.{name}"))),
                 receiver: Box::new(Value::MappingProxy { entries }),
                 identity: Rc::new(()),
@@ -52487,8 +52547,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::MappingProxyObject { mapping } => match name {
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
-            | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__" | "__reversed__"
-            | "__ror__" => Ok(Value::BoundMethod {
+            | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
+            | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("mappingproxy.{name}"))),
                 receiver: Box::new(Value::MappingProxyObject { mapping }),
                 identity: Rc::new(()),
@@ -53074,6 +53134,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "mappingproxy" && is_builtin_mappingproxy_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("mappingproxy.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "list" && is_builtin_list_type_method(name) =>

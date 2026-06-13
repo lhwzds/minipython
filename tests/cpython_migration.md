@@ -6832,8 +6832,8 @@ Completed in the dict view mappingproxy pass:
   while `mappingproxy |= ...` raises a catchable `TypeError`.
 - Added `cpython_types_mappingproxy_method_surface_subset`, adapted from
   CPython `MappingProxyTests::test_methods`, covering the public mappingproxy
-  method names plus callable `__or__`, `__ror__`, `__ior__`, and
-  `__class_getitem__` behavior.
+  method names plus callable `__repr__`, `__str__`, `__format__`, `__or__`,
+  `__ror__`, `__ior__`, and `__class_getitem__` behavior.
 - Added `cpython_types_mappingproxy_custom_mapping_subset`, adapted from
   CPython `MappingProxyTests::test_customdict`; MiniPython uses a
   user-defined mapping object to cover the same forwarding behavior before
