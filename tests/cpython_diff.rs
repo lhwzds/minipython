@@ -6094,6 +6094,22 @@ fn cpython_syntax_error_attributes_diff_subset() {
 }
 
 #[test]
+fn cpython_unicode_error_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes UnicodeError subset",
+        name: "unicode-error-attributes-direct",
+        source: r#"errors = [UnicodeError(), UnicodeEncodeError('ascii', 'a', 0, 1, 'ordinal not in range'), UnicodeDecodeError('ascii', bytearray(b'\xff'), 0, 1, 'ordinal not in range'), UnicodeDecodeError('ascii', b'\xff', 0, 1, 'ordinal not in range'), UnicodeTranslateError('\u3042', 0, 1, 'ouch')]
+print(errors[0].args)
+for error in errors[1:4]:
+    print(error.args)
+    print(error.encoding, error.object, error.start, error.end, error.reason)
+error = errors[4]
+print(error.args)
+print(error.object, error.start, error.end, error.reason)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",

@@ -5527,6 +5527,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_with_traceback_subset",
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
+            "cpython_unicode_error_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
@@ -5570,6 +5571,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_with_traceback_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
+        "cpython_unicode_error_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
@@ -5598,6 +5600,48 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn unicode_error_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_unicode_error_attributes_subset(",
+        "UnicodeError()",
+        "UnicodeEncodeError('ascii', 'a', 0, 1, 'ordinal not in range')",
+        "UnicodeDecodeError('ascii', bytearray(b'\\\\xff'), 0, 1, 'ordinal not in range')",
+        "UnicodeTranslateError('\\\\u3042', 0, 1, 'ouch')",
+        "error.encoding",
+        "error.reason",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused UnicodeError attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_unicode_error_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_exceptions.py::testAttributes UnicodeError subset",
+        "UnicodeError()",
+        "UnicodeEncodeError('ascii', 'a', 0, 1, 'ordinal not in range')",
+        "UnicodeDecodeError('ascii', bytearray(b'\\xff'), 0, 1, 'ordinal not in range')",
+        "UnicodeTranslateError('\\u3042', 0, 1, 'ouch')",
+        "error.encoding",
+        "error.reason",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused UnicodeError attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_unicode_error_attributes_subset")
+                && document.contains("cpython_unicode_error_attributes_diff_subset"),
+            "focused UnicodeError attributes evidence must be documented in coverage and migration notes"
         );
     }
 }
