@@ -129,6 +129,7 @@ Recent runtime migration notes:
   `cpython_copy_public_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
+  `cpython_operator_is_none_predicates_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
@@ -1348,14 +1349,16 @@ Recent runtime migration notes:
   `__length_hint__()` TypeError behavior. Direct CPython diff evidence is in
   `cpython_operator_length_hint_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
-  `cpython_operator_comparison_predicate_subset`, covering CPython
+  `cpython_operator_comparison_predicate_subset` and
+  `cpython_operator_is_none_predicates_subset`, covering CPython
   `test_operator.py` comparison and predicate helpers `lt/le/eq/ne/ge/gt`,
-  `truth`, `not_`, identity helpers, and None predicates, including custom rich
+  `truth`, `not_`, identity helpers, and None predicates, including
+  `operator.is_none` / `operator.is_not_none` plus custom rich
   comparison/truth exception propagation. Direct CPython diff evidence for the
   default-oracle stable slice is in
-  `cpython_operator_comparison_predicate_diff_subset`; `is_none` /
-  `is_not_none` stay covered by subset evidence because the default local
-  CPython 3.9 oracle does not expose those newer helpers.
+  `cpython_operator_comparison_predicate_diff_subset`; the newer `is_none` /
+  `is_not_none` helpers have gated direct CPython evidence in
+  `cpython_operator_is_none_predicates_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_arithmetic_bitwise_subset`, covering CPython
   `test_operator.py` arithmetic and bitwise helpers `abs`, `add`, `sub`, `mul`,
@@ -1395,9 +1398,10 @@ Recent runtime migration notes:
   `__add__`, `__not__`, `__iconcat__`, and `__call__` preserving object
   identity with their public helpers. Direct CPython diff evidence for the
   default-oracle stable metadata slice is in
-  `cpython_operator_module_metadata_diff_subset`; newer `operator.__all__`
-  entries such as `call`, `is_none`, and `is_not_none` stay covered by subset
-  evidence under the current default CPython 3.9 oracle.
+  `cpython_operator_module_metadata_diff_subset`; the newer `is_none` and
+  `is_not_none` `operator.__all__` entries have gated direct CPython evidence in
+  `cpython_operator_is_none_predicates_diff_subset`, while `operator.call`
+  remains subset-covered on older CPython oracles.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_signature_helper_subset`, covering CPython
   `test_operator.py` signature assertions for `operator.attrgetter`,

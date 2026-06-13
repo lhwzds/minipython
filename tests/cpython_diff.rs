@@ -10234,6 +10234,40 @@ for expr in [lambda: operator.lt(), lambda: operator.truth(), lambda: operator.i
 }
 
 #[test]
+fn cpython_operator_is_none_predicates_diff_subset() {
+    let probe = run_cpython("import operator; print(hasattr(operator, 'is_none'))")
+        .expect("failed to probe CPython operator.is_none support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping operator.is_none diff: CPython oracle lacks operator.is_none");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py newer is_none/is_not_none public predicate subset",
+        name: "operator-is-none-predicates",
+        source: r#"import operator
+class AlwaysEqual:
+    def __eq__(self, other):
+        return True
+class Truthy:
+    def __bool__(self):
+        return True
+values = [None, 0, False, [], AlwaysEqual(), Truthy()]
+for value in values:
+    print(type(value).__name__, operator.is_none(value), operator.is_not_none(value))
+for name in ['is_none', 'is_not_none']:
+    value = getattr(operator, name)
+    print(name, value.__name__, value.__qualname__, value.__module__ in ('operator', '_operator'))
+    print(type(value.__doc__).__name__, bool(value.__doc__), name in operator.__all__)
+for expr in [lambda: operator.is_none(), lambda: operator.is_none(None, None), lambda: operator.is_not_none(), lambda: operator.is_not_none(None, None)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_operator_arithmetic_bitwise_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",

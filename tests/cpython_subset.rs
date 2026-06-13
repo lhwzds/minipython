@@ -38224,6 +38224,50 @@ fn cpython_operator_comparison_predicate_subset() {
     );
 }
 
+// Adapted from newer CPython Lib/test/test_operator.py predicate helpers.
+#[test]
+fn cpython_operator_is_none_predicates_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class AlwaysEqual:\n",
+            "    def __eq__(self, other):\n",
+            "        return True\n",
+            "class Truthy:\n",
+            "    def __bool__(self):\n",
+            "        return True\n",
+            "values = [None, 0, False, [], AlwaysEqual(), Truthy()]\n",
+            "for value in values:\n",
+            "    print(type(value).__name__, operator.is_none(value), operator.is_not_none(value))\n",
+            "for name in ['is_none', 'is_not_none']:\n",
+            "    value = getattr(operator, name)\n",
+            "    print(name, value.__name__, value.__qualname__, value.__module__ in ('operator', '_operator'))\n",
+            "    print(type(value.__doc__).__name__, bool(value.__doc__), name in operator.__all__)\n",
+            "for expr in [lambda: operator.is_none(), lambda: operator.is_none(None, None), lambda: operator.is_not_none(), lambda: operator.is_not_none(None, None)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)\n",
+        ),
+        &[
+            "NoneType True False",
+            "int False True",
+            "bool False True",
+            "list False True",
+            "AlwaysEqual False True",
+            "Truthy False True",
+            "is_none is_none is_none True",
+            "str True True",
+            "is_not_none is_not_none is_not_none True",
+            "str True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_operator.py::OperatorTestCase arithmetic
 // and bitwise helper tests. This covers the public operator module functions
 // over MiniPython's existing arithmetic and rich special-method surfaces.
