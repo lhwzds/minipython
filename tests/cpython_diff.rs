@@ -1043,6 +1043,7 @@ def show(label, callback):
 print(json.loads(s='{"a": 1}')['a'])
 print(json.loads(s=b'[1, 2]', strict=True))
 print(json.loads(s='{"none": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))
+print(json.loads('1', parse_int=lambda s: 'hook'))
 print(json.dumps(obj={'b': [2]}, sort_keys=True))
 print(json.dumps(obj='é', ensure_ascii=False))
 print(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))
@@ -1516,6 +1517,59 @@ for source in ['NaN', 'Infinity', '-Infinity', '[NaN, Infinity, -Infinity]', '{"
         print(math.isnan(reparsed['x']), math.isinf(reparsed['y']))
     else:
         print(math.isnan(reparsed) if source == 'NaN' else math.isinf(reparsed), reparsed < 0)"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_parse_hooks_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads parse_int/parse_float/parse_constant hook subset",
+        name: "json-loads-parse-hooks",
+        source: r#"import json
+
+def pint(s):
+    print('parse_int', s)
+    return 'I:' + s
+
+def pfloat(s):
+    print('parse_float', s)
+    return 'F:' + s
+
+def pconst(s):
+    print('parse_constant', s)
+    return 'C:' + s
+
+value = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)
+print(value)
+print(json.loads('{"a": 123, "b": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))
+print(json.loads('"x"', parse_int=1))
+def boom_int(s):
+    raise ValueError('boom-int')
+
+def boom_float(s):
+    raise ValueError('boom-float')
+
+def boom_constant(s):
+    raise ValueError('boom-constant')
+
+for label, source, kwargs in [
+    ('int-noncallable', '1', dict(parse_int=1)),
+    ('float-noncallable', '1.5', dict(parse_float=1)),
+    ('constant-noncallable', 'NaN', dict(parse_constant=1)),
+]:
+    try:
+        json.loads(source, **kwargs)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, TypeError))
+for label, kwargs in [
+    ('int-boom', dict(parse_int=boom_int)),
+    ('float-boom', dict(parse_float=boom_float)),
+    ('constant-boom', dict(parse_constant=boom_constant)),
+]:
+    try:
+        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 

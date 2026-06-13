@@ -23561,9 +23561,9 @@ impl Vm {
             .expect("required json.loads source is present after keyword binding");
         json_unsupported_keyword_none("loads", "cls", values[1].as_ref())?;
         json_unsupported_keyword_none("loads", "object_hook", values[2].as_ref())?;
-        json_unsupported_keyword_none("loads", "parse_float", values[3].as_ref())?;
-        json_unsupported_keyword_none("loads", "parse_int", values[4].as_ref())?;
-        json_unsupported_keyword_none("loads", "parse_constant", values[5].as_ref())?;
+        let parse_float = json_optional_hook(values[3].take());
+        let parse_int = json_optional_hook(values[4].take());
+        let parse_constant = json_optional_hook(values[5].take());
         json_unsupported_keyword_none("loads", "object_pairs_hook", values[6].as_ref())?;
         let strict = values[7]
             .as_ref()
@@ -23591,7 +23591,15 @@ impl Vm {
                 ));
             }
         };
-        JsonParser::new(&source, strict).parse()
+        JsonParser::new(
+            self,
+            &source,
+            strict,
+            parse_float,
+            parse_int,
+            parse_constant,
+        )
+        .parse()
     }
 
     fn call_json_dumps(
@@ -57862,18 +57870,33 @@ fn unbox_slice_part(value: Option<Box<Value>>) -> Option<Value> {
     value.map(|value| *value)
 }
 
-struct JsonParser {
+struct JsonParser<'a> {
+    vm: &'a mut Vm,
     chars: Vec<char>,
     pos: usize,
     strict: bool,
+    parse_float: Option<Value>,
+    parse_int: Option<Value>,
+    parse_constant: Option<Value>,
 }
 
-impl JsonParser {
-    fn new(source: &str, strict: bool) -> Self {
+impl<'a> JsonParser<'a> {
+    fn new(
+        vm: &'a mut Vm,
+        source: &str,
+        strict: bool,
+        parse_float: Option<Value>,
+        parse_int: Option<Value>,
+        parse_constant: Option<Value>,
+    ) -> Self {
         Self {
+            vm,
             chars: source.chars().collect(),
             pos: 0,
             strict,
+            parse_float,
+            parse_int,
+            parse_constant,
         }
     }
 
@@ -57894,11 +57917,11 @@ impl JsonParser {
             Some('[') => self.parse_array(),
             Some('N') => {
                 self.expect_literal("NaN")?;
-                Ok(float_value(f64::NAN))
+                self.parse_constant_value("NaN", f64::NAN)
             }
             Some('I') => {
                 self.expect_literal("Infinity")?;
-                Ok(float_value(f64::INFINITY))
+                self.parse_constant_value("Infinity", f64::INFINITY)
             }
             Some('t') => {
                 self.expect_literal("true")?;
@@ -57914,7 +57937,7 @@ impl JsonParser {
             }
             Some('-') if self.starts_with("-Infinity") => {
                 self.expect_literal("-Infinity")?;
-                Ok(float_value(f64::NEG_INFINITY))
+                self.parse_constant_value("-Infinity", f64::NEG_INFINITY)
             }
             Some('-' | '0'..='9') => self.parse_number(),
             Some(_) | None => self.error("Expecting value"),
@@ -58090,11 +58113,17 @@ impl JsonParser {
         }
         let text: String = self.chars[start..self.pos].iter().collect();
         if is_float {
+            if let Some(hook) = self.parse_float.clone() {
+                return self.vm.call_value(hook, vec![Value::String(text)]);
+            }
             let value = text
                 .parse::<f64>()
                 .map_err(|_| "ValueError: Invalid number in json.loads() subset".to_string())?;
             Ok(float_value(value))
         } else {
+            if let Some(hook) = self.parse_int.clone() {
+                return self.vm.call_value(hook, vec![Value::String(text)]);
+            }
             let digit_count = text.strip_prefix('-').unwrap_or(&text).len();
             let max_digits = get_int_max_str_digits();
             if max_digits != 0 && digit_count > max_digits {
@@ -58104,6 +58133,15 @@ impl JsonParser {
                 .ok_or_else(|| "ValueError: Invalid number in json.loads() subset".to_string())?;
             Ok(normalize_big_int(integer))
         }
+    }
+
+    fn parse_constant_value(&mut self, text: &str, default: f64) -> Result<Value, String> {
+        if let Some(hook) = self.parse_constant.clone() {
+            return self
+                .vm
+                .call_value(hook, vec![Value::String(text.to_string())]);
+        }
+        Ok(float_value(default))
     }
 
     fn expect_literal(&mut self, literal: &str) -> Result<(), String> {
@@ -58222,6 +58260,13 @@ fn json_unsupported_keyword_none(
         Some(_) => Err(format!(
             "TypeError: json.{function_name}() {keyword} hook is not supported in this sandbox subset"
         )),
+    }
+}
+
+fn json_optional_hook(value: Option<Value>) -> Option<Value> {
+    match value {
+        None | Some(Value::None) => None,
+        Some(value) => Some(value),
     }
 }
 

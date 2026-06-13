@@ -3334,9 +3334,6 @@ fn expected_sandbox_stdlib_excluded_terms() -> BTreeMap<&'static str, Vec<&'stat
                 "non-`None` encoder/decoder hooks",
                 "non-`None` `object_hook`",
                 "object_pairs_hook",
-                "parse_float",
-                "parse_int",
-                "parse_constant",
                 "non-`None` `default`",
                 "cls",
                 "bytes/bytearray serialization",
@@ -4004,15 +4001,13 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
             "cpython_json_loads_nonfinite_constants_subset",
+            "cpython_json_loads_parse_hooks_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ],
         &[
             "object_hook",
             "object_pairs_hook",
-            "parse_float",
-            "parse_int",
-            "parse_constant",
             "default",
             "cls",
             "File APIs",
@@ -4048,6 +4043,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
         "cpython_json_loads_nonfinite_constants_diff_subset",
+        "cpython_json_loads_parse_hooks_diff_subset",
         "cpython_json_loads_dumps_error_boundary_diff_subset",
         "cpython_json_loads_string_error_boundary_diff_subset",
     ] {
@@ -4167,7 +4163,7 @@ fn json_hook_boundaries_stay_sandbox_classified() {
     let subset_source = &CPYTHON_SUBSET[subset_start..subset_end];
     for required in [
         "loads-object-hook",
-        "loads-parse-int",
+        "parse_int=lambda",
         "dumps-cls",
         "dumps-default",
         "TypeError True",
@@ -4185,9 +4181,6 @@ fn json_hook_boundaries_stay_sandbox_classified() {
     for excluded in [
         "object_hook",
         "object_pairs_hook",
-        "parse_float",
-        "parse_int",
-        "parse_constant",
         "default",
         "cls",
         "File APIs",
@@ -4543,6 +4536,21 @@ fn json_loads_parsing_diff_covers_subset_surface() {
                 "math.isinf",
             ][..],
         ),
+        (
+            "cpython_json_loads_parse_hooks_diff_subset",
+            "cpython_json_loads_parse_hooks_subset",
+            &[
+                "parse_int",
+                "parse_float",
+                "parse_constant",
+                "int-noncallable",
+                "float-noncallable",
+                "constant-noncallable",
+                "boom-int",
+                "boom-float",
+                "boom-constant",
+            ][..],
+        ),
     ];
 
     for (diff_name, subset_name, required_snippets) in parsing_pairs {
@@ -4590,6 +4598,9 @@ fn json_loads_parsing_diff_covers_subset_surface() {
         "duplicate-object-key last-value behavior",
         "JSON whitespace",
         "integer/float number grammar edges",
+        "parse_int",
+        "parse_float",
+        "parse_constant",
         "sys.set_int_max_str_digits",
         "top-level scalars and empty containers",
         "CPython default non-finite constants",
@@ -4603,9 +4614,6 @@ fn json_loads_parsing_diff_covers_subset_surface() {
         "loads()` hooks/options other than `strict`",
         "object_hook",
         "object_pairs_hook",
-        "parse_float",
-        "parse_int",
-        "parse_constant",
         "unpaired surrogate storage",
         "full `JSONDecodeError` compatibility",
     ] {
@@ -10505,15 +10513,7 @@ fn sandbox_policy_guard_names_reference_real_runtime_tests() {
 
 #[test]
 fn json_sandbox_hook_stop_line_is_documented_and_guarded() {
-    for term in [
-        "object_hook",
-        "object_pairs_hook",
-        "parse_float",
-        "parse_int",
-        "parse_constant",
-        "default",
-        "cls",
-    ] {
+    for term in ["object_hook", "object_pairs_hook", "default", "cls"] {
         assert!(
             CPYTHON_MIGRATION.contains(term),
             "migration document must mention json hook stop-line term `{term}`"

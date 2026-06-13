@@ -33561,11 +33561,12 @@ except Exception as error:
 #[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
-        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('loads-object-hook', lambda: json.loads('{}', object_hook=dict))\nshow('loads-parse-int', lambda: json.loads('1', parse_int=int))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
+        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('loads-object-hook', lambda: json.loads('{}', object_hook=dict))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
         &[
             "1",
             "[1, 2]",
             "{'none': True}",
+            "hook",
             "{\"b\": [2]}",
             "\"é\"",
             "{\"b\": [2]}",
@@ -33574,7 +33575,6 @@ fn cpython_json_keyword_argument_binding_subset() {
             "loads-missing-s TypeError True",
             "dumps-missing-obj TypeError True",
             "loads-object-hook TypeError True",
-            "loads-parse-int TypeError True",
             "dumps-cls TypeError True",
             "dumps-default TypeError True",
         ],
@@ -33977,6 +33977,32 @@ fn cpython_json_loads_nonfinite_constants_subset() {
             "{\"x\": NaN, \"y\": Infinity} dict {'x': nan, 'y': inf}",
             "{\"x\": NaN, \"y\": Infinity}",
             "True True",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_loads_parse_hooks_subset() {
+    assert_output(
+        "import json\n\ndef pint(s):\n    print('parse_int', s)\n    return 'I:' + s\n\ndef pfloat(s):\n    print('parse_float', s)\n    return 'F:' + s\n\ndef pconst(s):\n    print('parse_constant', s)\n    return 'C:' + s\nvalue = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)\nprint(value)\nprint(json.loads('{\"a\": 123, \"b\": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))\nprint(json.loads('\"x\"', parse_int=1))\ndef boom_int(s):\n    raise ValueError('boom-int')\n\ndef boom_float(s):\n    raise ValueError('boom-float')\n\ndef boom_constant(s):\n    raise ValueError('boom-constant')\n\nfor label, source, kwargs in [\n    ('int-noncallable', '1', dict(parse_int=1)),\n    ('float-noncallable', '1.5', dict(parse_float=1)),\n    ('constant-noncallable', 'NaN', dict(parse_constant=1)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\nfor label, kwargs in [\n    ('int-boom', dict(parse_int=boom_int)),\n    ('float-boom', dict(parse_float=boom_float)),\n    ('constant-boom', dict(parse_constant=boom_constant)),\n]:\n    try:\n        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "parse_int 1",
+            "parse_int -2",
+            "parse_float 3.5",
+            "parse_float -0.0",
+            "parse_float 6.02e+23",
+            "parse_constant NaN",
+            "parse_constant Infinity",
+            "parse_constant -Infinity",
+            "['I:1', 'I:-2', 'F:3.5', 'F:-0.0', 'F:6.02e+23', 'C:NaN', 'C:Infinity', 'C:-Infinity']",
+            "{'a': ('int', '123'), 'b': ('float', '4.5')}",
+            "x",
+            "int-noncallable TypeError True",
+            "float-noncallable TypeError True",
+            "constant-noncallable TypeError True",
+            "int-boom ValueError boom-int",
+            "float-boom ValueError boom-float",
+            "constant-boom ValueError boom-constant",
         ],
     );
 }
