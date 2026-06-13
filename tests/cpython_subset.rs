@@ -35554,7 +35554,7 @@ fn cpython_type_typeparams_subset() {
 #[test]
 fn cpython_type_namespace_order_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\ndisplay = OrderedDict([('a', 1)])\nprint(display.__repr__(), display.__str__(), display.__format__(''))\nprint(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))\ntry:\n    display.__format__('x')\nexcept TypeError as error:\n    print(error.__class__.__name__)\nalias = OrderedDict[str, int]\nprint(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)\nfk = OrderedDict.fromkeys(['b', 'a'], 3)\nifk = od.fromkeys(['x', 'y'])\nprint(type(fk).__name__, repr(fk), list(fk.items()))\nprint(type(ifk).__name__, repr(ifk), list(ifk.items()))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))",
         &[
             "collections OrderedDict str True",
             "str True",
@@ -35562,10 +35562,12 @@ fn cpython_type_namespace_order_subset() {
             "OrderedDict([('a', 1)]) OrderedDict([('a', 1)]) OrderedDict([('a', 1)])",
             "TypeError",
             "collections.OrderedDict[str, int] True collections",
+            "OrderedDict OrderedDict([('b', 3), ('a', 3)]) [('b', 3), ('a', 3)]",
+            "OrderedDict OrderedDict([('x', None), ('y', None)]) [('x', None), ('y', None)]",
             "[('b', 2), ('a', 1)]",
             "[('b', 2), ('a', 1)]",
             "True",
-            "OrderedDict True True True False",
+            "OrderedDict True True True True False",
         ],
     );
 }

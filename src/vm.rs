@@ -9238,6 +9238,13 @@ impl Vm {
 
                 self.call_dict_fromkeys(args)
             }
+            Value::Builtin(name) if name == "OrderedDict.fromkeys" => {
+                if !keywords.is_empty() {
+                    return Err("fromkeys() does not accept keyword arguments".to_string());
+                }
+
+                self.call_ordered_dict_fromkeys(args)
+            }
             Value::Builtin(name) if name == "dict.__class_getitem__" => {
                 if !keywords.is_empty() {
                     return Err("__class_getitem__() does not accept keyword arguments".to_string());
@@ -24616,6 +24623,27 @@ impl Vm {
         }
 
         build_dict(entries)
+    }
+
+    fn call_ordered_dict_fromkeys(&mut self, args: Vec<Value>) -> Result<Value, String> {
+        let (iterable, default) = match args.as_slice() {
+            [] => return Err("TypeError: fromkeys expected at least 1 argument, got 0".to_string()),
+            [iterable] => (iterable.clone(), Value::None),
+            [iterable, default] => (iterable.clone(), default.clone()),
+            values => {
+                return Err(format!(
+                    "TypeError: fromkeys expected at most 2 arguments, got {}",
+                    values.len()
+                ));
+            }
+        };
+
+        let mut entries = Vec::new();
+        for key in self.collect_iterable_values_propagating(iterable)? {
+            insert_dict_entry(&mut entries, key, default.clone())?;
+        }
+
+        build_ordered_dict(entries)
     }
 
     fn dict_entries_from_update_source(
@@ -52541,6 +52569,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("OrderedDict type doc is defined")
                     .to_string(),
             )),
+            "fromkeys" => Ok(Value::Builtin("OrderedDict.fromkeys".to_string())),
             "__format__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("object.__format__".to_string())),
                 receiver: Box::new(Value::OrderedDict(entries)),
@@ -53327,6 +53356,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::Builtin(function_name) if function_name == "dict" && name == "fromkeys" => {
             Ok(Value::Builtin("dict.fromkeys".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "OrderedDict" && name == "fromkeys" => {
+            Ok(Value::Builtin("OrderedDict.fromkeys".to_string()))
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))

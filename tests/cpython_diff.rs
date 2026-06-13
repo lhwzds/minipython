@@ -16337,13 +16337,17 @@ except TypeError as error:
     print(error.__class__.__name__)
 alias = OrderedDict[str, int]
 print(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)
+fk = OrderedDict.fromkeys(['b', 'a'], 3)
+ifk = od.fromkeys(['x', 'y'])
+print(type(fk).__name__, repr(fk), list(fk.items()))
+print(type(ifk).__name__, repr(ifk), list(ifk.items()))
 od.move_to_end('a')
 expected = list(od.items())
 C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",
