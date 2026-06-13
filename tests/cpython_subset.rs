@@ -39548,6 +39548,8 @@ fn cpython_operator_module_metadata_subset() {
             "print(len(aliases), failures)\n",
             "print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat, operator.__call__ is operator.call)\n",
             "print(hasattr(operator, '__countOf__'), hasattr(operator, '__is_none__'), hasattr(operator, '__length_hint__'))\n",
+            "for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:\n",
+            "    print(type(helper).__name__, helper.__module__, type(helper.__doc__).__name__, bool(helper.__doc__), hasattr(helper, '__dict__'))\n",
         ),
         &[
             "True",
@@ -39572,6 +39574,24 @@ fn cpython_operator_module_metadata_subset() {
             "46 []",
             "True True True True",
             "False False False",
+            "attrgetter operator str True False",
+            "itemgetter operator str True False",
+            "methodcaller operator str True False",
+        ],
+    );
+}
+
+// Adapted from newer CPython operator helper instance metadata. This keeps
+// helper type names, `__doc__`, and gated `__module__` support covered without
+// promoting pickle or vectorcall internals.
+#[test]
+fn cpython_operator_helper_instance_module_metadata_subset() {
+    assert_output(
+        "import operator\nfor helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:\n    print(type(helper).__name__, helper.__module__, type(helper.__doc__).__name__, bool(helper.__doc__), hasattr(helper, '__dict__'))",
+        &[
+            "attrgetter operator str True False",
+            "itemgetter operator str True False",
+            "methodcaller operator str True False",
         ],
     );
 }

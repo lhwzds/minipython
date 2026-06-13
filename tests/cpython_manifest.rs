@@ -4504,6 +4504,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
+            "cpython_operator_helper_instance_module_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
@@ -4576,6 +4577,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_module_metadata_diff_subset"),
         "operator sandbox manifest must cite CPython module metadata diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_helper_instance_module_metadata_diff_subset"),
+        "operator sandbox manifest must cite gated CPython helper instance module metadata diff evidence"
     );
     assert!(
         row.diff_evidence

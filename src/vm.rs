@@ -54208,6 +54208,24 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 operator_builtin_doc(&function_name).to_string(),
             ))
         }
+        Value::OperatorAttrGetter { .. } if name == "__module__" => {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::OperatorItemGetter { .. } if name == "__module__" => {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::OperatorMethodCaller { .. } if name == "__module__" => {
+            Ok(Value::String("operator".to_string()))
+        }
+        Value::OperatorAttrGetter { .. } if name == "__doc__" => Ok(Value::String(
+            operator_builtin_doc("operator.attrgetter").to_string(),
+        )),
+        Value::OperatorItemGetter { .. } if name == "__doc__" => Ok(Value::String(
+            operator_builtin_doc("operator.itemgetter").to_string(),
+        )),
+        Value::OperatorMethodCaller { .. } if name == "__doc__" => Ok(Value::String(
+            operator_builtin_doc("operator.methodcaller").to_string(),
+        )),
         Value::Builtin(function_name)
             if name == "__module__" && function_name.starts_with("math.integer.") =>
         {
@@ -56577,9 +56595,9 @@ fn type_name(value: &Value) -> &str {
         Value::SingleDispatchMethod { .. } => "singledispatchmethod",
         Value::CachedProperty { .. } => "cached_property",
         Value::CmpToKey { .. } | Value::CmpToKeyObject { .. } => "functools.KeyWrapper",
-        Value::OperatorAttrGetter { .. } => "operator.attrgetter",
-        Value::OperatorItemGetter { .. } => "operator.itemgetter",
-        Value::OperatorMethodCaller { .. } => "operator.methodcaller",
+        Value::OperatorAttrGetter { .. } => "attrgetter",
+        Value::OperatorItemGetter { .. } => "itemgetter",
+        Value::OperatorMethodCaller { .. } => "methodcaller",
         Value::InspectSignature { .. } => "Signature",
         Value::Module { .. } => "module",
         Value::Traceback { .. } => "traceback",

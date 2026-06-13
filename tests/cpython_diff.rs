@@ -12167,7 +12167,30 @@ for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'metho
 print(operator.__add__ is operator.add, operator.__not__ is operator.not_, operator.__iconcat__ is operator.iconcat)
 print(hasattr(operator, '__countOf__'), hasattr(operator, '__length_hint__'))
 stable_exports = ['abs', 'add', 'and_', 'attrgetter', 'concat', 'contains', 'countOf', 'delitem', 'eq', 'floordiv', 'ge', 'getitem', 'gt', 'iadd', 'iand', 'iconcat', 'ifloordiv', 'ilshift', 'imatmul', 'imod', 'imul', 'index', 'indexOf', 'inv', 'invert', 'ior', 'ipow', 'irshift', 'is_', 'is_not', 'isub', 'itemgetter', 'itruediv', 'ixor', 'le', 'length_hint', 'lshift', 'lt', 'matmul', 'methodcaller', 'mod', 'mul', 'ne', 'neg', 'not_', 'or_', 'pos', 'pow', 'rshift', 'setitem', 'sub', 'truediv', 'truth', 'xor']
-print(all(name in operator.__all__ for name in stable_exports), len(stable_exports))"#,
+print(all(name in operator.__all__ for name in stable_exports), len(stable_exports))
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    print(type(helper).__name__, type(helper.__doc__).__name__, bool(helper.__doc__), hasattr(helper, '__dict__'))"#,
+    });
+}
+
+#[test]
+fn cpython_operator_helper_instance_module_metadata_diff_subset() {
+    let probe =
+        run_cpython("import operator\nprint(hasattr(operator.attrgetter('x'), '__module__'))")
+            .expect("failed to probe CPython operator helper instance __module__ support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping operator helper instance module metadata diff: CPython oracle lacks helper __module__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py helper instance module metadata subset",
+        name: "operator-helper-instance-module-metadata",
+        source: r#"import operator
+for helper in [operator.attrgetter('name'), operator.itemgetter(0), operator.methodcaller('strip')]:
+    print(type(helper).__name__, helper.__module__)"#,
     });
 }
 
