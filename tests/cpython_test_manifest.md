@@ -75,6 +75,9 @@ Direct diff mapping note: `cpython_bytes_core_method_typeerror_messages_diff_sub
 and `cpython_bytes_search_missing_typeerror_messages_diff_subset` directly
 compare the stable and capability-gated public bytes/bytearray TypeError text
 covered by `cpython_bytes_core_method_typeerror_messages_subset`.
+Direct diff mapping note: `cpython_bytes_more_method_typeerror_messages_diff_subset`
+directly compares additional public bytes/bytearray TypeError text covered by
+`cpython_bytes_more_method_typeerror_messages_subset`.
 
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |
