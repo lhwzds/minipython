@@ -58520,6 +58520,12 @@ fn json_dumps_default_value(
     options: &JsonDumpsOptions,
     depth: usize,
 ) -> Result<String, String> {
+    if !is_callable_value(&hook) {
+        return Err(format!(
+            "TypeError: '{}' object is not callable",
+            type_name(&hook)
+        ));
+    }
     let identity = json_dumps_default_identity(value);
     if let Some(identity) = identity {
         if !active.insert(identity) {

@@ -1468,7 +1468,8 @@ for label, obj, kwargs in [
         print(label, json.dumps(obj, **kwargs))
     except Exception as error:
         if label == 'noncallable-used':
-            print(label, type(error).__name__, isinstance(error, TypeError))
+            # expected non-callable hook error: 'int' object is not callable
+            print(label, type(error).__name__, str(error))
         else:
             print(label, type(error).__name__, str(error), isinstance(error, TypeError))
 
