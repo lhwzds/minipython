@@ -44752,9 +44752,9 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
-// append/pop operations, and MutableSequence registration. Broader deque
-// APIs, pickling, performance, and thread-safety semantics remain outside the
-// default sandbox surface.
+// append/extend/pop operations, and MutableSequence registration. Broader
+// deque APIs, pickling, performance, and thread-safety semantics remain outside
+// the default sandbox surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
@@ -44773,6 +44773,8 @@ fn cpython_collections_deque_public_surface_subset() {
             "print(list(d), repr(d))\n",
             "d.appendleft(0)\n",
             "print(list(d), repr(d))\n",
+            "print(d.extend([4, 5, 6]), list(d), repr(d))\n",
+            "print(d.extendleft([1, 0, -1]), list(d), repr(d))\n",
             "print(d.pop(), d.popleft(), list(d))\n",
             "copy = d.copy()\n",
             "d.append(99)\n",
@@ -44782,7 +44784,14 @@ fn cpython_collections_deque_public_surface_subset() {
             "zero = deque([1, 2], maxlen=0)\n",
             "zero.append(3)\n",
             "zero.appendleft(4)\n",
-            "print(list(zero), repr(zero), zero.maxlen)\n",
+            "seen = []\n",
+            "def gen():\n",
+            "    for value in [1, 2, 3]:\n",
+            "        seen.append(value)\n",
+            "        yield value\n",
+            "zero.extend(gen())\n",
+            "zero.extendleft([4, 5])\n",
+            "print(list(zero), repr(zero), zero.maxlen, seen)\n",
             "for label, callback in [\n",
             "    ('pop-empty', lambda: deque().pop()),\n",
             "    ('popleft-empty', lambda: deque().popleft()),\n",
@@ -44806,10 +44815,12 @@ fn cpython_collections_deque_public_surface_subset() {
             "None None [1, 2, 3] deque([1, 2, 3], maxlen=3)",
             "[2, 3, 4] deque([2, 3, 4], maxlen=3)",
             "[0, 2, 3] deque([0, 2, 3], maxlen=3)",
-            "3 0 [2]",
-            "[2] 3 [2, 99]",
+            "None [4, 5, 6] deque([4, 5, 6], maxlen=3)",
+            "None [-1, 0, 1] deque([-1, 0, 1], maxlen=3)",
+            "1 -1 [0]",
+            "[0] 3 [0, 99]",
             "[] 0 False",
-            "[] deque([], maxlen=0) 0",
+            "[] deque([], maxlen=0) 0 [1, 2, 3]",
             "pop-empty IndexError True",
             "popleft-empty IndexError True",
             "bad-maxlen ValueError True",

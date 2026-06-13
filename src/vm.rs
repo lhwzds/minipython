@@ -28672,6 +28672,37 @@ impl Vm {
             return Err(format!("{method}() expected a deque receiver"));
         };
         match method {
+            "extend" | "extendleft" => {
+                let [iterable] = rest else {
+                    return Err(format!(
+                        "{method}() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let values = self.collect_iterable_values(iterable.clone())?;
+                let mut items = data.borrow_mut();
+                if maxlen == &Some(0) {
+                    return Ok(Value::None);
+                }
+                if method == "extend" {
+                    for value in values {
+                        items.push(value);
+                        if maxlen.is_some_and(|maxlen| items.len() > maxlen) {
+                            items.remove(0);
+                        }
+                    }
+                } else {
+                    for value in values {
+                        items.insert(0, value);
+                        if let Some(maxlen) = maxlen {
+                            if items.len() > *maxlen {
+                                items.pop();
+                            }
+                        }
+                    }
+                }
+                Ok(Value::None)
+            }
             "append" | "appendleft" => {
                 let [value] = rest else {
                     return Err(format!(
@@ -51085,8 +51116,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .unwrap_or(Value::None));
             }
             match name {
-                "append" | "appendleft" | "clear" | "copy" | "pop" | "popleft" | "__iter__"
-                | "__len__" => Ok(Value::BoundMethod {
+                "append" | "appendleft" | "clear" | "copy" | "extend" | "extendleft" | "pop"
+                | "popleft" | "__iter__" | "__len__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("deque.{name}"))),
                     receiver: Box::new(Value::Deque { data, maxlen }),
                     identity: Rc::new(()),

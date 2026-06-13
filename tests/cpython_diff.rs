@@ -3065,6 +3065,8 @@ d.append(4)
 print(list(d), repr(d))
 d.appendleft(0)
 print(list(d), repr(d))
+print(d.extend([4, 5, 6]), list(d), repr(d))
+print(d.extendleft([1, 0, -1]), list(d), repr(d))
 print(d.pop(), d.popleft(), list(d))
 copy = d.copy()
 d.append(99)
@@ -3074,7 +3076,14 @@ print(list(d), len(d), bool(d))
 zero = deque([1, 2], maxlen=0)
 zero.append(3)
 zero.appendleft(4)
-print(list(zero), repr(zero), zero.maxlen)
+seen = []
+def gen():
+    for value in [1, 2, 3]:
+        seen.append(value)
+        yield value
+zero.extend(gen())
+zero.extendleft([4, 5])
+print(list(zero), repr(zero), zero.maxlen, seen)
 for label, callback in [
     ('pop-empty', lambda: deque().pop()),
     ('popleft-empty', lambda: deque().popleft()),
