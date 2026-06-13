@@ -1383,8 +1383,9 @@ Recent runtime migration notes:
   stubs, `close()`, `closed`, supported method visibility through `dir()`,
   `None` initial-value empty-buffer construction, closed-stream `ValueError`,
   context-manager entry/exit lifecycle behavior, and representative
-  constructor/method TypeError/ValueError/OSError classification without host
-  file descriptors or buffering layers.
+  constructor/method TypeError/ValueError/OSError classification. Real files,
+  buffering layers, text I/O, file descriptors, and OS-backed stream semantics
+  remain outside the sandbox `io.BytesIO` subset.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,

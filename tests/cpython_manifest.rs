@@ -6737,7 +6737,13 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_io_bytesio_public_subset",
             "cpython_memoryview_bytesio_readinto_subset",
         ],
-        &["Real files", "file descriptors"],
+        &[
+            "Real files",
+            "buffering layers",
+            "text I/O",
+            "file descriptors",
+            "OS-backed stream semantics",
+        ],
     );
 
     let row = sandbox_stdlib_rows()
@@ -6884,6 +6890,12 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             row.excluded_surface.contains(excluded),
             "io.BytesIO sandbox manifest must keep unsupported host I/O boundary `{excluded}` documented"
         );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(excluded),
+                "io.BytesIO docs must keep unsupported host I/O boundary `{excluded}` documented"
+            );
+        }
     }
 }
 
@@ -6989,11 +7001,23 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
         .into_iter()
         .find(|row| row.module == "io.BytesIO")
         .expect("sandbox stdlib manifest must include io.BytesIO");
-    for excluded in ["Real files", "file descriptors"] {
+    for excluded in [
+        "Real files",
+        "buffering layers",
+        "text I/O",
+        "file descriptors",
+        "OS-backed stream semantics",
+    ] {
         assert!(
             row.excluded_surface.contains(excluded),
             "io.BytesIO sandbox manifest must keep `{excluded}` outside the supported surface"
         );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(excluded),
+                "io.BytesIO docs must keep `{excluded}` outside the supported surface"
+            );
+        }
     }
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
