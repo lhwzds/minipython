@@ -4974,6 +4974,30 @@ for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x11
 }
 
 #[test]
+fn cpython_string_startswith_endswith_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py startswith/endswith subset",
+        name: "string-startswith-endswith",
+        source: r#"print('hello'.startswith('he'), 'hello'.startswith('hello'), 'hello'.startswith('hello world'), 'hello'.startswith(''), 'hello'.startswith('ello'))
+print('hello'.startswith('ello', 1), 'hello'.startswith('o', 4), 'hello'.startswith('o', 5), 'hello'.startswith('', 5), 'hello'.startswith('lo', 6))
+print('helloworld'.startswith('lowo', 3), 'helloworld'.startswith('lowo', 3, 7), 'helloworld'.startswith('lowo', 3, 6))
+print('hello'.startswith('he', 0, -1), 'hello'.startswith('he', -53, -1), 'hello'.startswith('ello', -4), 'hello'.startswith('o', -1), 'hello'.startswith('', -3, -3))
+print(''.startswith('', 0, 1), ''.startswith('', 1, 0))
+print('hello'.startswith(('he', 'ha')), 'hello'.startswith(('lo', 'llo')), 'hello'.startswith(('hellox', 'hello')), 'hello'.startswith(()), 'hello'.startswith(('he', 'hel'), 0, 2))
+print('hello'.endswith('lo'), 'hello'.endswith('he'), 'hello'.endswith(''), 'hello'.endswith('hello world'))
+print('helloworld'.endswith('worl', 3, 9), 'helloworld'.endswith('world', 3, 12), 'helloworld'.endswith('lowo', 1, 7), 'helloworld'.endswith('lowo', 4, 7))
+print('ab'.endswith('ab', 0, 1), 'ab'.endswith('ab', 0, 0), ''.endswith('', 0, 1), ''.endswith('', 1, 0))
+print('hello'.endswith('lo', -2), 'hello'.endswith('he', -2), 'hello'.endswith('', -3, -3), 'helloworld'.endswith('world', -7, 12), 'helloworld'.endswith('lowo', -8, -3))
+print('hello'.endswith(('he', 'ha')), 'hello'.endswith(('lo', 'llo')), 'hello'.endswith(('hellox', 'hello')), 'hello'.endswith(()), 'hello'.endswith(('he', 'hell'), 0, 4))
+for expr in [lambda: 'hello'.startswith(), lambda: 'hello'.startswith(42), lambda: 'hello'.startswith((42,)), lambda: 'hello'.endswith(), lambda: 'hello'.endswith(42), lambda: 'hello'.endswith((42,))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

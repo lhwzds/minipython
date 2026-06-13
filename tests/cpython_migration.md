@@ -5261,9 +5261,9 @@ Completed in the string prefix/suffix method pass:
 - Added runtime support for `str.startswith()` and `str.endswith()` including
   optional `start` / `end`, negative bounds, `None` bounds, tuple prefix/suffix
   arguments, empty tuple behavior, and representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  string prefix/suffix behavior, including the `start > end` empty-string edge
-  case.
+- Added `cpython_string_startswith_endswith_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported string
+  prefix/suffix behavior, including the `start > end` empty-string edge case.
 
 Completed in the string search method pass:
 
