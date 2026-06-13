@@ -4991,6 +4991,65 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn copy_public_diff_covers_pure_memory_subset() {
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_public_subset("),
+        "copy runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_public_diff_subset("),
+        "copy CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
+            && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset"),
+        "coverage document must link copy runtime and diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_copy_public_subset")
+            && CPYTHON_MIGRATION.contains("cpython_copy_public_diff_subset"),
+        "migration document must link copy runtime and diff evidence"
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "copy")
+        .expect("sandbox stdlib manifest must include copy");
+    assert!(
+        row.excluded_surface.contains("pickle protocol"),
+        "copy sandbox manifest must keep pickle protocol outside the supported surface"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_public_diff_subset"),
+        "copy sandbox manifest must cite copy public CPython diff evidence"
+    );
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
+    for required in [
+        "copy.Error is copy.error",
+        "copy.dispatch_table",
+        "copy.copy(nested)",
+        "copy.deepcopy(nested)",
+        "list-alias",
+        "dict-alias",
+        "tuple-alias",
+        "list-cycle",
+        "instance-alias",
+        "instance-cycle",
+        "userlist-alias",
+        "userlist-cycle",
+        "userdict-alias",
+        "deque-alias",
+    ] {
+        assert!(
+            body.contains(required),
+            "copy CPython diff evidence must cover pure-memory behavior `{required}`"
+        );
+    }
+}
+
+#[test]
 fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "io.BytesIO",
@@ -8341,6 +8400,16 @@ fn sandbox_stdlib_rows() -> Vec<SandboxStdlibRow<'static>> {
     }
 
     rows
+}
+
+fn extract_rust_test_body<'a>(source: &'a str, name: &str) -> &'a str {
+    let needle = format!("fn {name}(");
+    let start = source
+        .find(&needle)
+        .unwrap_or_else(|| panic!("missing Rust test `{name}`"));
+    let tail = &source[start..];
+    let end = tail.find("\n#[test]").unwrap_or(tail.len());
+    &tail[..end]
 }
 
 fn stdlib_create_module_names() -> BTreeSet<&'static str> {
