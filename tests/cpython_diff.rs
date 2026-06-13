@@ -12117,6 +12117,15 @@ try:
     operator.length_hint(X(2), 'abc')
 except TypeError as error:
     print(type(error).__name__)
+for label, callback in [
+    ('kw', lambda: operator.length_hint(obj=[])),
+    ('defaultkw', lambda: operator.length_hint([], default=2)),
+    ('many', lambda: operator.length_hint([], 1, 2)),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 lengths = []
 for seq in ('hello', tuple('hello'), list('hello'), range(5)):
     rev = reversed(seq)

@@ -28642,7 +28642,9 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: length_hint() does not accept keyword arguments".to_string());
+            return Err(
+                "TypeError: _operator.length_hint() takes no keyword arguments".to_string(),
+            );
         }
 
         let (object, default) = match args.as_slice() {
@@ -28653,7 +28655,7 @@ impl Vm {
             }
             values => {
                 return Err(format!(
-                    "TypeError: length_hint() expected 1 or 2 arguments, got {}",
+                    "TypeError: length_hint expected at most 2 arguments, got {}",
                     values.len()
                 ));
             }
