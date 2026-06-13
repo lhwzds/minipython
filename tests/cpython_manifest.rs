@@ -4344,6 +4344,122 @@ fn operator_arithmetic_bitwise_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_sequence_member_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_sequence_member_subset(",
+        "OperatorTestCase sequence",
+        "concat, countOf, indexOf, contains, getitem, setitem, and",
+        "public partial-consumption",
+        "class Seq:",
+        "def __getitem__(self, i):",
+        "def __add__(self, other):",
+        "class BadIterable:",
+        "def __iter__(self):",
+        "operator.concat('py', 'thon')",
+        "operator.concat([1, 2], [3, 4])",
+        "operator.concat(Seq([5, 6]), Seq([7]))",
+        "operator.countOf([1, 2, 1, 3, 1, 4], 3)",
+        "operator.countOf([1, 2, 1, 3, 1, 4], 5)",
+        "nan = float('nan')",
+        "operator.countOf([nan, nan, 21], nan)",
+        "operator.countOf([{}, 1, {}, 2], {})",
+        "operator.indexOf([4, 3, 2, 1], 3)",
+        "operator.indexOf([4, 3, 2, 1], 0)",
+        "operator.indexOf([nan, nan, 21], nan)",
+        "operator.indexOf([{}, 1, {}, 2], {})",
+        "it = iter('leave the iterator at exactly the position after the match')",
+        "operator.indexOf(it, 'a'), next(it)",
+        "operator.contains(range(4), 2)",
+        "operator.contains(range(4), 5)",
+        "operator.getitem(a, 2)",
+        "operator.setitem(a, 0, 9)",
+        "operator.delitem(a, 1)",
+        "lambda: operator.concat()",
+        "lambda: operator.concat(None, None)",
+        "lambda: operator.countOf()",
+        "lambda: operator.getitem()",
+        "lambda: operator.getitem(a, None)",
+        "lambda: operator.setitem(a)",
+        "lambda: operator.delitem(a)",
+        "operator.countOf(BadIterable(), 1)",
+        "operator.indexOf(BadIterable(), 1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator sequence/member subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_sequence_member_diff_subset");
+    for required in [
+        "OperatorTestCase sequence and member helper public subset",
+        "operator-sequence-member",
+        "class Seq:",
+        "def __getitem__(self, i):",
+        "def __add__(self, other):",
+        "class BadIterable:",
+        "def __iter__(self):",
+        "operator.concat('py', 'thon')",
+        "operator.concat([1, 2], [3, 4])",
+        "operator.concat(Seq([5, 6]), Seq([7]))",
+        "operator.countOf([1, 2, 1, 3, 1, 4], 3)",
+        "operator.countOf([1, 2, 1, 3, 1, 4], 5)",
+        "nan = float('nan')",
+        "operator.countOf([nan, nan, 21], nan)",
+        "operator.countOf([{}, 1, {}, 2], {})",
+        "operator.indexOf([4, 3, 2, 1], 3)",
+        "operator.indexOf([4, 3, 2, 1], 0)",
+        "operator.indexOf([nan, nan, 21], nan)",
+        "operator.indexOf([{}, 1, {}, 2], {})",
+        "it = iter('leave the iterator at exactly the position after the match')",
+        "operator.indexOf(it, 'a'), next(it)",
+        "operator.contains(range(4), 2)",
+        "operator.contains(range(4), 5)",
+        "operator.getitem(a, 2)",
+        "operator.setitem(a, 0, 9)",
+        "operator.delitem(a, 1)",
+        "lambda: operator.concat()",
+        "lambda: operator.concat(None, None)",
+        "lambda: operator.countOf()",
+        "lambda: operator.getitem()",
+        "lambda: operator.getitem(a, None)",
+        "lambda: operator.setitem(a)",
+        "lambda: operator.delitem(a)",
+        "operator.countOf(BadIterable(), 1)",
+        "operator.indexOf(BadIterable(), 1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator sequence/member CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_sequence_member_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_sequence_member_diff_subset")
+            && CPYTHON_COVERAGE.contains("sequence and member helpers")
+            && CPYTHON_COVERAGE.contains("equality-based counting/search")
+            && CPYTHON_COVERAGE.contains("iterator partial-consumption")
+            && CPYTHON_COVERAGE.contains("TypeError/ZeroDivisionError propagation"),
+        "coverage notes must describe operator sequence/member helpers and error propagation"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_sequence_member_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_sequence_member_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.concat")
+            && CPYTHON_MIGRATION.contains("countOf")
+            && CPYTHON_MIGRATION.contains("indexOf")
+            && CPYTHON_MIGRATION.contains("contains")
+            && CPYTHON_MIGRATION.contains("getitem")
+            && CPYTHON_MIGRATION.contains("setitem")
+            && CPYTHON_MIGRATION.contains("delitem")
+            && CPYTHON_MIGRATION.contains("rich equality paths")
+            && CPYTHON_MIGRATION.contains("immediately after the matched value"),
+        "migration notes must describe operator sequence/member public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
