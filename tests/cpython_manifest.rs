@@ -5521,6 +5521,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_format_builtin_and_custom_dunder_format_subset",
             "cpython_ascii_builtin_subset",
             "cpython_builtin_cmp_absent_subset",
+            "cpython_object_repr_str_direct_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -5557,6 +5558,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_chr_ord_builtin_diff_subset",
         "cpython_builtin_cmp_absent_diff_subset",
         "cpython_builtin_none_ne_direct_diff_subset",
+        "cpython_object_repr_str_direct_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -5671,6 +5673,48 @@ fn builtin_none_ne_direct_subset_has_focused_diff_evidence() {
             document.contains("cpython_builtin_none_ne_direct_subset")
                 && document.contains("cpython_builtin_none_ne_direct_diff_subset"),
             "focused None.__ne__ evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
+fn object_repr_str_direct_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_object_repr_str_direct_subset(",
+        "object.__repr__(custom)",
+        "object.__str__(custom)",
+        "object.__str__(BadRepr())",
+        "object.__str__(L([1]))",
+        "object.__repr__(object=plain)",
+        "object.__str__(object=plain)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused object repr/str subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_object_repr_str_direct_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_repr public object descriptor subset",
+        "object.__repr__(custom)",
+        "object.__str__(custom)",
+        "object.__str__(BadRepr())",
+        "object.__str__(L([1]))",
+        "object.__repr__(object=plain)",
+        "object.__str__(object=plain)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused object repr/str CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_object_repr_str_direct_subset")
+                && document.contains("cpython_object_repr_str_direct_diff_subset"),
+            "focused object repr/str evidence must be documented in coverage and CPython test manifest"
         );
     }
 }

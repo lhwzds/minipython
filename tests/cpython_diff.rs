@@ -6022,6 +6022,50 @@ for expr in [lambda: None.__ne__(), lambda: None.__ne__(0, 1), lambda: object.__
 }
 
 #[test]
+fn cpython_object_repr_str_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr public object descriptor subset",
+        name: "object-repr-str-direct",
+        source: r#"class Plain:
+    pass
+class Custom:
+    def __str__(self):
+        return 'custom-str'
+    def __repr__(self):
+        return 'custom-repr'
+class BadRepr:
+    def __repr__(self):
+        return 1
+class L(list):
+    pass
+class T(tuple):
+    pass
+class D(dict):
+    pass
+class S(set):
+    pass
+class F(frozenset):
+    pass
+plain = Plain()
+custom = Custom()
+print(hasattr(object, '__repr__'), hasattr(object, '__str__'), callable(object.__repr__), callable(object.__str__))
+print(hasattr(plain, '__repr__'), hasattr(plain, '__str__'), callable(plain.__repr__), callable(plain.__str__))
+obj_repr = object.__repr__(custom)
+print(obj_repr.startswith('<'), 'Custom object' in obj_repr, obj_repr.endswith('>'), obj_repr != repr(custom))
+print(object.__str__(custom), object.__str__(custom) == repr(custom))
+bad = object.__str__(BadRepr())
+print(type(bad).__name__, bad)
+print(object.__str__(L([1])), object.__str__(T([1])), object.__str__(D({'a': 1})))
+print(object.__str__(S([1])), object.__str__(F([1])))
+for expr in [lambda: object.__repr__(), lambda: object.__repr__(plain, plain), lambda: object.__str__(), lambda: object.__str__(plain, plain), lambda: object.__repr__(object=plain), lambda: object.__str__(object=plain)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",

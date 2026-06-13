@@ -3477,11 +3477,13 @@ Recent runtime migration notes:
   `object.__eq__` / `object.__ne__` direct-call identity comparison,
   `NoneType` `NotImplemented` fallback for unrelated objects, and CPython's
   direct `object.__ne__` bool result for builtin containers.
-- `RUNTIME_BUILTINS` also includes `cpython_object_repr_str_direct_subset`,
-  covering direct `object.__repr__` and `object.__str__` descriptor lookup and
-  calls, inherited instance bindings, `object.__repr__` generic object display,
-  `object.__str__` delegation to `__repr__` rather than custom `__str__`,
-  raw direct-call return behavior for non-string `__repr__` results, container
+- `RUNTIME_BUILTINS` also includes `cpython_object_repr_str_direct_subset` with
+  direct CPython output parity in
+  `cpython_object_repr_str_direct_diff_subset`, covering direct
+  `object.__repr__` and `object.__str__` descriptor lookup and calls, inherited
+  instance bindings, `object.__repr__` generic object display,
+  `object.__str__` delegation to `__repr__` rather than custom `__str__`, raw
+  direct-call return behavior for non-string `__repr__` results, container
   subclass display, and arity/keyword TypeError paths.
 - `RUNTIME_BUILTINS` also includes `cpython_str_builtin_custom_dunder_subset`,
   covering ordinary `str()` / `print()` / f-string `!s` / default f-string /
