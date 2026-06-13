@@ -21682,7 +21682,7 @@ fn cpython_copy_public_subset() {
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(error.__class__.__name__)"
+            "        print(error.__class__.__name__, str(error))"
         ),
         &[
             "True",
@@ -21724,9 +21724,9 @@ fn cpython_copy_public_subset() {
             "bytesio-independent b'aZc' b'aYc' b'aXc'",
             "bytesio-closed copy ValueError",
             "bytesio-closed deepcopy ValueError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
+            "TypeError copy() missing 1 required positional argument: 'x'",
+            "TypeError copy() takes 1 positional argument but 2 were given",
+            "TypeError deepcopy() missing 1 required positional argument: 'x'",
         ],
     );
 }

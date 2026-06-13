@@ -23541,9 +23541,9 @@ impl Vm {
             values[index] = Some(value);
         }
 
-        let value = values[0]
-            .take()
-            .ok_or_else(|| "TypeError: deepcopy() missing required argument 'x'".to_string())?;
+        let value = values[0].take().ok_or_else(|| {
+            "TypeError: deepcopy() missing 1 required positional argument: 'x'".to_string()
+        })?;
         let memo_value = values[1].take();
         let nil_value = values[2].take();
         let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref(), nil_value.as_ref())?;

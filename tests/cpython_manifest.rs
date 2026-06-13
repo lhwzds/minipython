@@ -7456,6 +7456,7 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "lambda: copy.copy()",
         "lambda: copy.copy(1, 2)",
         "lambda: copy.deepcopy()",
+        "print(error.__class__.__name__, str(error))",
     ] {
         assert!(
             diff_body.contains(required),
@@ -7464,6 +7465,16 @@ fn copy_public_diff_covers_pure_memory_subset() {
         assert!(
             subset_body.contains(required),
             "copy runtime subset evidence must cover pure-memory behavior `{required}`"
+        );
+    }
+    for required in [
+        "copy() missing 1 required positional argument: 'x'",
+        "copy() takes 1 positional argument but 2 were given",
+        "deepcopy() missing 1 required positional argument: 'x'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "copy runtime subset evidence must assert exact error text `{required}`"
         );
     }
 

@@ -12729,7 +12729,7 @@ for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 
