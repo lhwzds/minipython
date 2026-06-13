@@ -6275,6 +6275,113 @@ fn stop_iteration_value_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn enumerate_zip_sorted_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_enumerate_zip_sorted_builtin_subset(",
+        "Lib/test/test_enumerate.py::EnumerateTestCase",
+        "Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted",
+        "class G",
+        "class I",
+        "class Ig",
+        "e = enumerate(seq)",
+        "iter(e) is e",
+        "list(enumerate(seq))",
+        "list(enumerate(G(seq)))",
+        "list(enumerate(I(seq)))",
+        "list(enumerate(Ig(seq)))",
+        "next(enumerate(empty))",
+        "list(enumerate(iterable=Ig(seq)))",
+        "list(enumerate(iterable=Ig(seq), start=0))",
+        "list(enumerate(start=0, iterable=Ig(seq)))",
+        "lambda: enumerate()",
+        "lambda: enumerate(1)",
+        "lambda: enumerate('abc', 'a')",
+        "lambda: enumerate(iterable=[], x=3)",
+        "lambda: enumerate(X('abc'))",
+        "lambda: enumerate(N('abc'))",
+        "list(enumerate(E('abc')))",
+        "ZeroDivisionError",
+        "list(zip(a, b))",
+        "list(zip(a, [4, 5, 6]))",
+        "list(zip(a, (4, 5, 6, 7)))",
+        "list(zip(a, I()))",
+        "list(zip())",
+        "list(zip(*[]))",
+        "list(zip(range(5), range(10)))",
+        "sorted([3, 1, 2])",
+        "sorted([1, 2, 3], key=lambda x: -x)",
+        "sorted([3, 1, 2], reverse=True)",
+        "lambda: zip(None)",
+        "lambda: zip(a, G())",
+        "lambda: sorted()",
+        "lambda: sorted([], bad=True)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused enumerate/zip/sorted subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_enumerate_zip_sorted_builtin_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_enumerate.py::EnumerateTestCase and Lib/test/test_builtin.py::BuiltinTest::test_zip / ::test_sorted",
+        "class G",
+        "class I",
+        "class Ig",
+        "e = enumerate(seq)",
+        "iter(e) is e",
+        "list(enumerate(seq))",
+        "list(enumerate(G(seq)))",
+        "list(enumerate(I(seq)))",
+        "list(enumerate(Ig(seq)))",
+        "next(enumerate(empty))",
+        "list(enumerate(iterable=Ig(seq)))",
+        "list(enumerate(iterable=Ig(seq), start=0))",
+        "list(enumerate(start=0, iterable=Ig(seq)))",
+        "lambda: enumerate()",
+        "lambda: enumerate(1)",
+        "lambda: enumerate('abc', 'a')",
+        "lambda: enumerate(iterable=[], x=3)",
+        "list(zip(a, b))",
+        "list(zip(a, [4, 5, 6]))",
+        "list(zip(a, (4, 5, 6, 7)))",
+        "list(zip(a, Z()))",
+        "list(zip())",
+        "list(zip(*[]))",
+        "list(zip(range(5), range(10)))",
+        "sorted([3, 1, 2])",
+        "sorted([1, 2, 3], key=lambda x: -x)",
+        "sorted([3, 1, 2], reverse=True)",
+        "lambda: zip(None)",
+        "lambda: zip(a, Bad())",
+        "lambda: sorted()",
+        "lambda: sorted([], bad=True)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused enumerate/zip/sorted CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_enumerate_zip_sorted_builtin_subset")
+                && document.contains("cpython_enumerate_zip_sorted_builtin_diff_subset"),
+            "focused enumerate/zip/sorted evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_MIGRATION.contains("Lib/test/test_enumerate.py::EnumerateTestCase")
+            && CPYTHON_MIGRATION.contains("BuiltinTest::test_zip")
+            && CPYTHON_MIGRATION.contains("::test_sorted"),
+        "focused enumerate/zip/sorted migration notes must name the CPython source tests"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
