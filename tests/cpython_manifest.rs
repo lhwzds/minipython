@@ -1836,6 +1836,47 @@ fn cpython_bytes_method_typeerror_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_bytearray_index_error_hash_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_bytearray_index_error_and_hash_diff_subset";
+    let subset_name = "cpython_bytes_bytearray_index_error_and_hash_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes/bytearray index error and hash direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes/bytearray index error and hash runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes/bytearray index error and hash docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes/bytearray index error and hash diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "bytes-getitem",
+        "bytearray-getitem",
+        "bytearray-hash",
+        "bytearray-setitem",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes/bytearray index error and hash diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_dunder_bytes_dispatch_diff_subset";
     let subset_name = "cpython_bytes_dunder_bytes_and_blocking_subset";

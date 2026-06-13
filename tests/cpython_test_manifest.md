@@ -89,6 +89,9 @@ Direct diff mapping note: `cpython_bytes_method_typeerror_messages_diff_subset`
 and `cpython_bytes_fill_length_typeerror_messages_diff_subset` directly compare
 stable and capability-gated bytes/bytearray method TypeError text covered by
 `cpython_bytes_method_typeerror_messages_subset`.
+Direct diff mapping note: `cpython_bytes_bytearray_index_error_and_hash_diff_subset`
+directly compares invalid bytes/bytearray index diagnostics and bytearray hash
+rejection covered by `cpython_bytes_bytearray_index_error_and_hash_subset`.
 
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |
