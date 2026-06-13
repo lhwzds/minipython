@@ -5338,6 +5338,48 @@ for expr in [lambda: S.partition(''), lambda: S.rpartition(''), lambda: S.partit
 }
 
 #[test]
+fn cpython_string_join_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py join subset",
+        name: "string-join",
+        source: r#"print(' '.join(['a', 'b', 'c', 'd']))
+print(''.join(('a', 'b', 'c', 'd')))
+print(''.join(('', 'b', '', 'd')))
+print(''.join(('a', '', 'c', '')))
+print('a'.join(('abc',)))
+print('.'.join(['a', 'b', 'c']))
+class Sequence:
+    def __init__(self, seq='wxyz'):
+        self.seq = seq
+    def __getitem__(self, i):
+        return self.seq[i]
+class LiesAboutLengthSeq(Sequence):
+    def __init__(self):
+        self.seq = ['a', 'b', 'c']
+    def __len__(self):
+        return 8
+print(' '.join(Sequence()))
+print(' '.join(LiesAboutLengthSeq()))
+print(''.join(x for x in ['a', 'b', 'c']))
+for i in [5, 25, 125]:
+    value = '-'.join(['a' * i] * i)
+    expected = ((('a' * i) + '-') * i)[:-1]
+    print(value == expected, len(value))
+for expr in [lambda: ' '.join(), lambda: ' '.join(None), lambda: ' '.join(7), lambda: '.'.join(['a', 'b', 3]), lambda: ' '.join([1, 2, bytes()])]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+def f():
+    yield 4 + ''
+try:
+    ' '.join(f())
+except TypeError as error:
+    print('+' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

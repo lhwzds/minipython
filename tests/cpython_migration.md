@@ -5434,8 +5434,8 @@ Completed in the string join method pass:
   of treating a raised exception as a completed sequence.
 - Changed unsupported `+` operands to raise CPython-style `TypeError` messages so
   `join()` preserves generator error messages containing the `+` operator.
-- Added a CPython/MiniPython differential parity case for the same supported join
-  behavior.
+- Added `cpython_string_join_diff_subset` as the direct CPython/MiniPython
+  differential parity case for the same supported join behavior.
 
 Completed in the string maketrans/translate method pass:
 
