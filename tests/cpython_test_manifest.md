@@ -1164,10 +1164,12 @@ partition/rpartition empty results.
 bytearray results for no-op `zfill()`, `rjust()`, `ljust()`, `center()`,
 `split()`, `rsplit()`, absent-separator `partition()` / `rpartition()`,
 `splitlines()`, `replace(b'', b'')`, and one-item `join()`.
-`cpython_bytes_pickle_roundtrip_subset` ports the public value/type
-round-trip assertions from `BaseBytesTest::test_pickling` for supported bytes
-and bytearray payloads. The remaining pickle gap in the source-group row refers
-to subclass pickle behavior and CPython's real binary pickle stream.
+`cpython_bytes_pickle_roundtrip_subset` with direct
+`cpython_bytes_pickle_roundtrip_diff_subset` evidence ports the public
+value/type round-trip assertions from `BaseBytesTest::test_pickling` for
+supported bytes and bytearray payloads. The remaining pickle gap in the
+source-group row refers to subclass pickle behavior and CPython's real binary
+pickle stream.
 `cpython_bytes_iterator_pickle_roundtrip_subset` ports
 `BaseBytesTest::test_iterator_pickling` for supported bytes and bytearray
 iterators, covering initial and already-advanced iterator state across every

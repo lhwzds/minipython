@@ -2046,7 +2046,8 @@ Recent runtime migration notes:
   `copy.copy()` / `copy.deepcopy()` module surface, including independent
   bytearray buffers for shallow and deep copies. Direct CPython diff evidence
   is in `cpython_bytes_copy_module_diff_subset`.
-- `STRING_RUNTIME` also includes `cpython_bytes_pickle_roundtrip_subset`,
+- `STRING_RUNTIME` also includes `cpython_bytes_pickle_roundtrip_diff_subset` /
+  `cpython_bytes_pickle_roundtrip_subset`,
   covering CPython `BaseBytesTest::test_pickling` public value/type
   round-trips for supported bytes and bytearray values through MiniPython's
   current internal pickle payload surface.

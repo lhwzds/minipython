@@ -3771,6 +3771,8 @@ Completed in the bytes pickle round-trip pass:
 - Covered public pickle round-trip value/type preservation for supported
   bytes and bytearray payloads across every exposed `pickle.HIGHEST_PROTOCOL`
   value.
+- Added direct CPython diff evidence in
+  `cpython_bytes_pickle_roundtrip_diff_subset`.
 - Kept the scope explicit: MiniPython still uses an internal pickle payload
   rather than CPython's binary pickle byte stream, and bytearray round-trips
   now have regression evidence for independent mutable buffers.

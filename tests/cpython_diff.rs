@@ -19689,6 +19689,30 @@ print(counts)"#,
 }
 
 #[test]
+fn cpython_bytes_pickle_roundtrip_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_pickling public value/type subset",
+        name: "bytes-bytearray-pickle-roundtrip",
+        source: r#"import pickle
+samples = [b'', b'a', b'abc', b'\xffab\x80', b'\0\0\377\0\0']
+for ctor in [bytes, bytearray]:
+    checked = 0
+    for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+        for raw in samples:
+            original = ctor(raw)
+            restored = pickle.loads(pickle.dumps(original, proto))
+            if restored == original and type(restored) is type(original):
+                checked += 1
+    print(ctor.__name__, checked)
+mutable = bytearray(b'abcd')
+payload = pickle.dumps(mutable)
+restored = pickle.loads(payload)
+restored.append(ord('x'))
+print(mutable, restored, restored is mutable)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_exhausted_iterator_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",
