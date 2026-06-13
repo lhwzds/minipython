@@ -1762,6 +1762,44 @@ fn cpython_bytes_join_memoryview_contiguity_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_method_memoryview_contiguity_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_memoryview_contiguity_methods_diff_subset";
+    let subset_name = "cpython_bytes_memoryview_contiguity_methods_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes method memoryview contiguity direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes method memoryview contiguity runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes method memoryview contiguity docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    for required in [
+        "strip.step",
+        "replace.old.step",
+        "replace.new.step",
+        "split.step",
+        "rsplit.step",
+        "translate.delete.step",
+        "maketrans.step",
+        "C-contiguous",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytes method memoryview contiguity evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_prefix_suffix_typeerror_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_prefix_suffix_typeerror_messages_diff_subset";
     let subset_name = "cpython_bytes_prefix_suffix_typeerror_messages_subset";

@@ -19602,6 +19602,11 @@ impl Vm {
         let separator = match separator {
             None | Some(Value::None) => None,
             Some(value) => {
+                if let Value::MemoryView(view) = &value {
+                    if !memoryview_is_contiguous(view)? {
+                        return Err(bytes_noncontiguous_memoryview_buffer_error());
+                    }
+                }
                 let Some(separator) =
                     self.bytes_like_method_argument(&value, method, "separator")?
                 else {
@@ -70574,7 +70579,7 @@ fn call_bytes_strip_method(
             bytes_strip_by(&receiver, strip_left, strip_right, is_bytes_whitespace)
         }
         Some(value) => {
-            let strip_bytes = bytes_like_method_argument(value, method, "first")?;
+            let strip_bytes = bytes_c_contiguous_method_argument(value, method, "first")?;
             bytes_strip_by(&receiver, strip_left, strip_right, |byte| {
                 strip_bytes.contains(&byte)
             })
@@ -70694,8 +70699,8 @@ fn call_bytes_maketrans(args: Vec<Value>) -> Result<Value, String> {
             args.len()
         ));
     };
-    let from = bytes_like_method_argument(from, "maketrans", "first")?;
-    let to = bytes_like_method_argument(to, "maketrans", "second")?;
+    let from = bytes_c_contiguous_method_argument(from, "maketrans", "first")?;
+    let to = bytes_c_contiguous_method_argument(to, "maketrans", "second")?;
     if from.len() != to.len() {
         return Err("ValueError: maketrans arguments must have same length".to_string());
     }
@@ -70754,7 +70759,7 @@ fn call_bytes_translate_method(
     let table = match &rest[0] {
         Value::None => None,
         value => {
-            let table = bytes_like_method_argument(value, method, "translation table")?;
+            let table = bytes_c_contiguous_method_argument(value, method, "translation table")?;
             if table.len() != 256 {
                 return Err("ValueError: translation table must be 256 characters long".to_string());
             }
@@ -70762,7 +70767,7 @@ fn call_bytes_translate_method(
         }
     };
     let delete = match delete {
-        Some(value) => bytes_like_method_argument(&value, method, "delete")?,
+        Some(value) => bytes_c_contiguous_method_argument(&value, method, "delete")?,
         None => Vec::new(),
     };
 
@@ -70820,8 +70825,8 @@ fn call_bytes_replace_method(
     }
 
     let (receiver, kind) = bytes_method_receiver(receiver, method)?;
-    let old = bytes_like_method_argument(&rest[0], method, "first")?;
-    let new = bytes_like_method_argument(&rest[1], method, "second")?;
+    let old = bytes_c_contiguous_method_argument(&rest[0], method, "first")?;
+    let new = bytes_c_contiguous_method_argument(&rest[1], method, "second")?;
     let count = match count_arg.as_ref() {
         Some(value) => bytes_replace_count_argument(value, method)?,
         None => -1,
@@ -70950,6 +70955,23 @@ fn bytes_like_method_argument(
             type_name(value)
         )),
     }
+}
+
+fn bytes_noncontiguous_memoryview_buffer_error() -> String {
+    "BufferError: memoryview: underlying buffer is not C-contiguous".to_string()
+}
+
+fn bytes_c_contiguous_method_argument(
+    value: &Value,
+    method: &str,
+    position: &str,
+) -> Result<Vec<u8>, String> {
+    if let Value::MemoryView(view) = value {
+        if !memoryview_is_contiguous(view)? {
+            return Err(bytes_noncontiguous_memoryview_buffer_error());
+        }
+    }
+    bytes_like_method_argument(value, method, position)
 }
 
 fn call_bytes_prefix_suffix_method(

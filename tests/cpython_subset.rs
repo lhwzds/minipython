@@ -32379,6 +32379,31 @@ fn cpython_bytes_join_subset() {
     );
 }
 
+#[test]
+fn cpython_bytes_memoryview_contiguity_methods_subset() {
+    assert_output(
+        "def show(label, func):\n    try:\n        result = func()\n        print(label, 'ok', type(result).__name__, result)\n    except Exception as error:\n        print(label, error.__class__.__name__, str(error), 'C-contiguous' in str(error))\nfor ctor in [bytes, bytearray]:\n    base = ctor(b'abcdef')\n    mid = memoryview(bytearray(b'abcdef'))[2:5]\n    step = memoryview(bytearray(b'abcdef'))[::2]\n    show(ctor.__name__ + '.strip.mid', lambda base=base, mid=mid: base.strip(mid))\n    show(ctor.__name__ + '.strip.step', lambda base=base, step=step: base.strip(step))\n    show(ctor.__name__ + '.replace.old.step', lambda base=base, step=step: base.replace(step, b'X'))\n    show(ctor.__name__ + '.replace.new.step', lambda base=base, step=step: base.replace(b'cd', step))\n    show(ctor.__name__ + '.split.step', lambda base=base, step=step: base.split(step))\n    show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))\n    show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))\n    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))",
+        &[
+            "bytes.strip.mid ok bytes b'abcdef'",
+            "bytes.strip.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.replace.old.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.replace.new.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.split.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.rsplit.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.translate.delete.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.maketrans.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.strip.mid ok bytearray bytearray(b'abcdef')",
+            "bytearray.strip.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.replace.old.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.replace.new.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.split.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.rsplit.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.translate.delete.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.maketrans.step BufferError memoryview: underlying buffer is not C-contiguous True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public
 // join/translate/maketrans TypeError rows. This pins descriptor arity,
 // bound-method arity, and non-iterable join diagnostics for bytes and

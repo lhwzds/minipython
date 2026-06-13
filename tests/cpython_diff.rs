@@ -19356,6 +19356,33 @@ fn cpython_bytes_join_diff_subset() {
 }
 
 #[test]
+fn cpython_bytes_memoryview_contiguity_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py bytes-like memoryview contiguity public subset",
+        name: "bytes-memoryview-contiguity-methods",
+        source: r#"def show(label, func):
+    try:
+        result = func()
+        print(label, 'ok', type(result).__name__, result)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error), 'C-contiguous' in str(error))
+
+for ctor in [bytes, bytearray]:
+    base = ctor(b'abcdef')
+    mid = memoryview(bytearray(b'abcdef'))[2:5]
+    step = memoryview(bytearray(b'abcdef'))[::2]
+    show(ctor.__name__ + '.strip.mid', lambda base=base, mid=mid: base.strip(mid))
+    show(ctor.__name__ + '.strip.step', lambda base=base, step=step: base.strip(step))
+    show(ctor.__name__ + '.replace.old.step', lambda base=base, step=step: base.replace(step, b'X'))
+    show(ctor.__name__ + '.replace.new.step', lambda base=base, step=step: base.replace(b'cd', step))
+    show(ctor.__name__ + '.split.step', lambda base=base, step=step: base.split(step))
+    show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))
+    show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))
+    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_copy_module_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_copy public subset",

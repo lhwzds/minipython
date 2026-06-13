@@ -2280,6 +2280,12 @@ Recent runtime migration notes:
   `memoryview` items, which raise `TypeError` with `memoryview found`. Direct
   CPython diff evidence is in `cpython_bytes_join_diff_subset`.
 - `STRING_RUNTIME` also includes
+  `cpython_bytes_memoryview_contiguity_methods_subset`, covering CPython's
+  `BufferError` for non-contiguous `memoryview` arguments to bytes/bytearray
+  `strip()`, `replace()`, `split()` / `rsplit()`, `translate(delete=...)`, and
+  `maketrans()`, while accepting contiguous sliced views. Direct CPython diff
+  evidence is in `cpython_bytes_memoryview_contiguity_methods_diff_subset`.
+- `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and
   `::test_bytearray_extend_error`: short translation tables raise

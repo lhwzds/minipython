@@ -86,6 +86,12 @@ Direct diff mapping note: `cpython_bytes_join_diff_subset` directly compares
 the public bytes/bytearray join behavior covered by `cpython_bytes_join_subset`,
 including contiguous sliced `memoryview` items and non-contiguous `memoryview`
 item rejection.
+Direct diff mapping note:
+`cpython_bytes_memoryview_contiguity_methods_diff_subset` directly compares
+the public bytes/bytearray method behavior covered by
+`cpython_bytes_memoryview_contiguity_methods_subset`, including
+non-contiguous `memoryview` `BufferError` handling for strip, replace, split,
+rsplit, translate delete, and maketrans arguments.
 Direct diff mapping note: `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`
 directly compares public startswith/endswith prefix/suffix TypeError text
 covered by `cpython_bytes_prefix_suffix_typeerror_messages_subset`.
