@@ -4517,6 +4517,11 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_memoryview_bytesio_readinto_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for readinto(memoryview)"
     );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_array_one_byte_public_file_methods_diff_subset"),
+        "io.BytesIO sandbox manifest must cite CPython diff evidence for array tofile/fromfile BytesIO behavior"
+    );
 }
 
 #[test]
