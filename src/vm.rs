@@ -35094,6 +35094,9 @@ fn ast_compile_expr(node: &Value) -> Result<syntax::Expr, String> {
         Some("JoinedStr") => Ok(syntax::Expr::JoinedString(ast_compile_fstring_parts_field(
             node, "values",
         )?)),
+        Some("FormattedValue") => Ok(syntax::Expr::JoinedString(vec![ast_compile_fstring_part(
+            node,
+        )?])),
         Some("TemplateStr") => Ok(syntax::Expr::TemplateString(
             ast_compile_template_string_parts_field(node, "values")?,
         )),

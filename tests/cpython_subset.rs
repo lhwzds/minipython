@@ -15062,6 +15062,35 @@ print(type(template_part).__name__, type(template_part).__module__, isinstance(t
 }
 
 #[test]
+fn cpython_ast_compile_public_ast_formatted_value_root_subset() {
+    assert_output(
+        r#"import ast
+cases = [
+    ast.FormattedValue(ast.Constant(3), -1),
+    ast.FormattedValue(ast.Constant("x"), 114),
+    ast.FormattedValue(ast.Constant("é"), 97),
+    ast.FormattedValue(
+        ast.Constant(3.14159),
+        -1,
+        ast.JoinedStr([ast.Constant(".2f")]),
+    ),
+]
+for node in cases:
+    tree = ast.Expression(node)
+    ast.fix_missing_locations(tree)
+    print(eval(compile(tree, "<ast>", "eval")))
+try:
+    tree = ast.Expression(ast.FormattedValue(ast.Name("x", ast.Store()), -1))
+    ast.fix_missing_locations(tree)
+    compile(tree, "<ast>", "eval")
+except ValueError as error:
+    print(error.__class__.__name__, "must have Load context" in str(error))
+"#,
+        &["3", "'x'", "'\\xe9'", "3.14", "ValueError True"],
+    );
+}
+
+#[test]
 fn cpython_ast_dump_plain_first_pass_subset() {
     assert_output(
         r#"import ast

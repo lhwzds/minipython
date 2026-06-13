@@ -2699,6 +2699,7 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         "cpython_collections_chainmap_copy_pickle_eval_identity",
         "cpython_collections_namedtuple_pickle",
         "cpython_itertools_core_iterator",
+        "cpython_json_dumps_sequence_subclass_iter",
         "cpython_json_loads_dumps_basic",
         "cpython_operator_pickle_helper",
     ]
@@ -2713,6 +2714,10 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
     for (subset, diff) in [
         (
             "cpython_json_loads_dumps_basic_subset",
+            "cpython_json_loads_dumps_diff_subset",
+        ),
+        (
+            "cpython_json_dumps_sequence_subclass_iter_subset",
             "cpython_json_loads_dumps_diff_subset",
         ),
         (

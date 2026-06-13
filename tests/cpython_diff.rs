@@ -6096,6 +6096,35 @@ for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.pa
 }
 
 #[test]
+fn cpython_ast_compile_formatted_value_root_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py public AST compile behavior for FormattedValue expressions",
+        name: "ast-compile-formatted-value-root",
+        source: r#"import ast
+cases = [
+    ast.FormattedValue(ast.Constant(3), -1),
+    ast.FormattedValue(ast.Constant("x"), 114),
+    ast.FormattedValue(ast.Constant("é"), 97),
+    ast.FormattedValue(
+        ast.Constant(3.14159),
+        -1,
+        ast.JoinedStr([ast.Constant(".2f")]),
+    ),
+]
+for node in cases:
+    tree = ast.Expression(node)
+    ast.fix_missing_locations(tree)
+    print(eval(compile(tree, "<ast>", "eval")))
+try:
+    tree = ast.Expression(ast.FormattedValue(ast.Name("x", ast.Store()), -1))
+    ast.fix_missing_locations(tree)
+    compile(tree, "<ast>", "eval")
+except ValueError as error:
+    print(error.__class__.__name__, "must have Load context" in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",
