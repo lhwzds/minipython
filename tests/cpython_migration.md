@@ -2518,6 +2518,8 @@ Completed in the match sequence/mapping supported-promotion pass:
   pure-rest, item-only, item-plus-rest, trailing-comma, literal-key, dotted-key,
   nested-value, invalid rest-target, invalid rest-order, and duplicate-key
   mapping pattern forms.
+- Added `cpython_match_mapping_helper_rules_diff_subset` as direct CPython
+  output parity for the supported executable mapping-pattern forms.
 
 Completed in the try-statement supported-promotion pass:
 

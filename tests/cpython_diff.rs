@@ -17012,6 +17012,52 @@ match 1, 2:
 }
 
 #[test]
+fn cpython_match_mapping_helper_rules_diff_subset() {
+    let probe = run_cpython("match {'x': 1}:\n    case {'x': value}:\n        print(value)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"1\n" {
+        eprintln!(
+            "skipping match mapping helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram mapping_pattern, items_pattern, key_value_pattern, and double_star_pattern public execution subset",
+        name: "match-mapping-helper-rules",
+        source: r#"match {}:
+    case {}:
+        print("empty")
+match {'x': 1, 'y': 2}:
+    case {**rest}:
+        print(rest)
+match {'x': 1, 'y': 2, 'z': 3}:
+    case {'x': first, 'y': second, **rest,}:
+        print(first, second, rest)
+class Keys:
+    label = "name"
+match {'name': ["mini", "python"]}:
+    case {Keys.label: [first, second],}:
+        print(first, second)
+class DynamicKeys:
+    KEY = "a"
+w = y = z = None
+try:
+    match {'a': 0, 'b': 1}:
+        case {DynamicKeys.KEY: y, 'a': z}:
+            w = 0
+except ValueError as error:
+    print(error)
+print(w, y, z)
+match {'a': 0}:
+    case {DynamicKeys.KEY: y, 'a': z}:
+        print("bad")
+    case _:
+        print("fallback")"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_basics_and_empty_index_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_basics, ::test_ord, and ::test_empty_sequence public subset",
