@@ -11317,6 +11317,16 @@ cycle = []
 cycle.append(cycle)
 cc = copy.deepcopy(cycle)
 print('list-cycle', cc is cycle, cc[0] is cc, len(cc))
+class Box:
+    pass
+box = Box()
+box.a = shared
+box.b = shared
+cbox = copy.deepcopy(box)
+print('instance-alias', cbox is box, cbox.a is shared, cbox.a is cbox.b)
+box.self = box
+cbox = copy.deepcopy(box)
+print('instance-cycle', cbox is box, cbox.self is cbox)
 for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:
     try:
         expr()

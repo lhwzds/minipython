@@ -32748,16 +32748,26 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 .collect::<Result<Vec<_>, _>>()?,
         }),
         Value::SimpleNamespace { fields } => {
+            let key = Rc::as_ptr(fields) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_fields = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied = Value::SimpleNamespace {
+                fields: copied_fields.clone(),
+            };
+            memo.insert(key, copied.clone());
             let entries = fields.borrow().entries.clone();
-            let copied_entries = entries
+            let copied_values = entries
                 .into_iter()
                 .map(|(key, value)| {
                     Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
-            Ok(Value::SimpleNamespace {
-                fields: dict_ref_from_entries(copied_entries)?,
-            })
+            for (key, value) in copied_values {
+                insert_live_dict_entry(&mut copied_fields.borrow_mut(), key, value)?;
+            }
+            Ok(copied)
         }
         Value::Iterator(state) => {
             let iterator = state.borrow().clone();
@@ -32769,18 +32779,24 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             class_attrs,
             class_bases,
         } => {
+            let key = Rc::as_ptr(fields) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
             let copied_fields = new_scope();
+            let copied = Value::Instance {
+                class_name: class_name.clone(),
+                fields: copied_fields.clone(),
+                class_attrs: class_attrs.clone(),
+                class_bases: class_bases.clone(),
+            };
+            memo.insert(key, copied.clone());
             for (name, field_value) in fields.borrow().iter() {
                 copied_fields
                     .borrow_mut()
                     .insert(name.clone(), deep_copy_value(field_value, memo)?);
             }
-            Ok(Value::Instance {
-                class_name: class_name.clone(),
-                fields: copied_fields,
-                class_attrs: class_attrs.clone(),
-                class_bases: class_bases.clone(),
-            })
+            Ok(copied)
         }
         Value::OperatorAttrGetter { attrs, .. } => Ok(Value::OperatorAttrGetter {
             attrs: attrs.clone(),
