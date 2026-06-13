@@ -64,6 +64,41 @@ struct SandboxStdlibRow<'a> {
 }
 
 #[test]
+fn cpython_diff_test_names_use_diff_subset_suffix() {
+    let mut pending_test_attr = false;
+    let mut offenders = Vec::new();
+
+    for line in CPYTHON_DIFF.lines() {
+        let trimmed = line.trim();
+        if trimmed == "#[test]" {
+            pending_test_attr = true;
+            continue;
+        }
+
+        if !pending_test_attr {
+            continue;
+        }
+
+        pending_test_attr = false;
+        let Some(rest) = trimmed.strip_prefix("fn cpython_") else {
+            continue;
+        };
+        let Some((suffix, _)) = rest.split_once('(') else {
+            continue;
+        };
+        let name = format!("cpython_{suffix}");
+        if !name.ends_with("_diff_subset") {
+            offenders.push(name);
+        }
+    }
+
+    assert!(
+        offenders.is_empty(),
+        "cpython_diff.rs CPython test functions must use `_diff_subset` suffix: {offenders:?}"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_summary_matches_source_groups() {
     let groups = manifest_groups();
     let summary = summary_rows();
