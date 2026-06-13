@@ -3914,6 +3914,158 @@ fn json_error_boundary_diff_covers_subset_surface() {
 }
 
 #[test]
+fn json_dumps_options_diff_covers_subset_surface() {
+    let option_pairs = [
+        (
+            "cpython_json_dumps_ensure_ascii_diff_subset",
+            "cpython_json_dumps_ensure_ascii_subset",
+            &[
+                "ensure_ascii in [False, 0, True, 1]",
+                "json.dumps('é𝄠', ensure_ascii=ensure_ascii)",
+                "json.dumps({'é': ['𝄠']}, ensure_ascii=ensure_ascii)",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_sort_keys_diff_subset",
+            "cpython_json_dumps_sort_keys_subset",
+            &[
+                "sort_keys in [False, 0, True, 1]",
+                "json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys)",
+                "json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys)",
+                "json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys)",
+                "json.dumps({'2': 's', 1: 'i'}, sort_keys=value)",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_separators_diff_subset",
+            "cpython_json_dumps_separators_subset",
+            &[
+                "class Sep(str):",
+                "class SepList(list):",
+                "class SepTuple(tuple):",
+                "separators in [None, (',', ':'), [',', ': ']",
+                "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
+                "separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_skipkeys_diff_subset",
+            "cpython_json_dumps_skipkeys_subset",
+            &[
+                "class K:",
+                "class S(str):",
+                "class I(int):",
+                "skipkeys=skipkeys, sort_keys=sort_keys",
+                "skipkeys=True, ensure_ascii=False, separators=(',', ':')",
+                "skipkeys in [[], {}, K()]",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_allow_nan_diff_subset",
+            "cpython_json_dumps_allow_nan_subset",
+            &[
+                "class F(float):",
+                "float('nan')",
+                "float('inf')",
+                "float('-inf')",
+                "allow_nan in [True, 1, False, 0]",
+                "json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan)",
+                "json.dumps([float('nan')], allow_nan=[])",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_check_circular_diff_subset",
+            "cpython_json_dumps_check_circular_subset",
+            &[
+                "from collections import namedtuple",
+                "cycle_list.append(cycle_list)",
+                "cycle_dict['self'] = cycle_dict",
+                "cycle_tuple = (inner,)",
+                "cycle_namedtuple = Point(items)",
+                "check_circular in [True, 1, False, 0, []]",
+                "json.dumps([1], check_circular=object())",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_indent_diff_subset",
+            "cpython_json_dumps_indent_subset",
+            &[
+                "indent in [None, 0, 2, '', '--']",
+                "indent=indent, sort_keys=True, ensure_ascii=False",
+                "dict(indent=2, separators=None)",
+                "dict(indent=2, separators=(',', ':'))",
+                "dict(indent=0, separators=(',', ':'))",
+                "indent in [True, False, 1.5, [], object()]",
+            ][..],
+        ),
+        (
+            "cpython_json_dumps_float_spelling_diff_subset",
+            "cpython_json_dumps_float_spelling_subset",
+            &["-0.0", "1.2345", "1e-06", "1e+20"][..],
+        ),
+    ];
+
+    for (diff_name, subset_name, required_snippets) in option_pairs {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json dumps option CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json dumps option runtime subset evidence `{subset_name}` must exist"
+        );
+        let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+        let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+        for required in required_snippets {
+            assert!(
+                diff_body.contains(required),
+                "json dumps option diff `{diff_name}` must cover `{required}`"
+            );
+            assert!(
+                subset_body.contains(required),
+                "json dumps option subset `{subset_name}` must cover `{required}`"
+            );
+        }
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    for required in [
+        "allow_nan",
+        "rejection of non-finite floats",
+        "check_circular",
+        "ensure_ascii",
+        "indent",
+        "skipkeys",
+        "sort_keys",
+        "separators",
+        "finite and default non-finite float spelling",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "json migration notes must describe dumps option behavior `{required}`"
+        );
+    }
+    for excluded in [
+        "dumps()` hooks/options",
+        "other than `allow_nan`",
+        "non-`None` `default`",
+        "cls",
+        "bytes/bytearray serialization",
+        "full `JSONDecodeError` compatibility",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(excluded),
+            "json migration notes must keep unsupported dumps boundary `{excluded}` documented"
+        );
+    }
+}
+
+#[test]
 fn operator_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "operator",
