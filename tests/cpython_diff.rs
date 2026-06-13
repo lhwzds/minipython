@@ -11387,6 +11387,34 @@ fn cpython_io_bytesio_public_diff_subset() {
 bio = io.BytesIO(b'abc')
 print(type(bio).__name__, bio.read(1), bio.read(), bio.read())
 print(bio.getvalue())
+bio = io.BytesIO(b'abc')
+view = bio.getbuffer()
+print(type(view).__name__, view.tolist(), view.readonly, view.format)
+view[0] = 122
+print(bio.getvalue())
+for label, expr in [('write-buffered', lambda: bio.write(b'Q')), ('truncate-buffered', lambda: bio.truncate(1)), ('close-buffered', bio.close)]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+view.release()
+print('close-after-release', bio.close(), bio.closed)
+bio = io.BytesIO(b'abc')
+view = bio.getbuffer()
+copy_view = memoryview(view)
+slice_view = view[:1]
+view.release()
+try:
+    bio.close()
+except Exception as error:
+    print('derived-copy-live', error.__class__.__name__, str(error))
+copy_view.release()
+try:
+    bio.close()
+except Exception as error:
+    print('derived-slice-live', error.__class__.__name__, str(error))
+slice_view.release()
+print('derived-close-after-release', bio.close(), bio.closed)
 bio = io.BytesIO()
 print(bio.write(b'ab'), bio.write(bytearray(b'cd')), bio.getvalue())
 print(bio.read())

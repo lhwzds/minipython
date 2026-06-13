@@ -43,8 +43,8 @@ use crate::value::{
     dict_view_values, float_value, format_float_display, format_iterator_repr,
     frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
     identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
-    memory_view_from_byte_array, memory_view_from_parts_with_format, memory_view_value, set_value,
-    tuple_value,
+    memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
+    memory_view_from_parts_with_format, memory_view_value, set_value, tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
@@ -968,11 +968,13 @@ fn bytesio_initial_bytes(value: Value) -> Result<Vec<u8>, String> {
 
 fn bytes_io_readinto_chunk(bytes_io: &BytesIORef, target_len: usize) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let start = state.position.min(state.buffer.len());
-    let remaining = state.buffer.len().saturating_sub(start);
+    let buffer = state.buffer.borrow();
+    let start = state.position.min(buffer.len());
+    let remaining = buffer.len().saturating_sub(start);
     let count = remaining.min(target_len);
     let end = start + count;
-    let chunk = state.buffer[start..end].to_vec();
+    let chunk = buffer[start..end].to_vec();
+    drop(buffer);
     if count > 0 {
         state.position = end;
     }
@@ -989,11 +991,13 @@ fn bytes_io_ensure_open(bytes_io: &BytesIORef) -> Result<(), String> {
 
 fn bytes_io_read_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let start = state.position.min(state.buffer.len());
-    let remaining = state.buffer.len().saturating_sub(start);
+    let buffer = state.buffer.borrow();
+    let start = state.position.min(buffer.len());
+    let remaining = buffer.len().saturating_sub(start);
     let count = size.unwrap_or(remaining).min(remaining);
     let end = start + count;
-    let chunk = state.buffer[start..end].to_vec();
+    let chunk = buffer[start..end].to_vec();
+    drop(buffer);
     if count > 0 {
         state.position = end;
     }
@@ -1002,35 +1006,56 @@ fn bytes_io_read_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
 
 fn bytes_io_readline_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let start = state.position.min(state.buffer.len());
-    let remaining = state.buffer.len().saturating_sub(start);
+    let buffer = state.buffer.borrow();
+    let start = state.position.min(buffer.len());
+    let remaining = buffer.len().saturating_sub(start);
     let max_count = size.unwrap_or(remaining).min(remaining);
     let limit = start + max_count;
-    let newline_end = state.buffer[start..limit]
+    let newline_end = buffer[start..limit]
         .iter()
         .position(|byte| *byte == b'\n')
         .map(|offset| start + offset + 1)
         .unwrap_or(limit);
-    let chunk = state.buffer[start..newline_end].to_vec();
+    let chunk = buffer[start..newline_end].to_vec();
+    drop(buffer);
     if newline_end > start {
         state.position = newline_end;
     }
     chunk
 }
 
-fn bytes_io_write_chunk(bytes_io: &BytesIORef, bytes: &[u8]) -> usize {
+fn bytes_io_export_resize_error() -> String {
+    "BufferError: Existing exports of data: object cannot be re-sized".to_string()
+}
+
+fn bytes_io_ensure_resizable(bytes_io: &BytesIORef) -> Result<(), String> {
+    if bytes_io.borrow().buffer.borrow().has_active_exports() {
+        Err(bytes_io_export_resize_error())
+    } else {
+        Ok(())
+    }
+}
+
+fn bytes_io_write_chunk(bytes_io: &BytesIORef, bytes: &[u8]) -> Result<usize, String> {
     let mut state = bytes_io.borrow_mut();
     let start = state.position;
-    if start > state.buffer.len() {
-        state.buffer.resize(start, 0);
-    }
+    let buffer_ref = state.buffer.clone();
     let end = start.saturating_add(bytes.len());
-    if end > state.buffer.len() {
-        state.buffer.resize(end, 0);
+    {
+        let mut buffer = buffer_ref.borrow_mut();
+        if buffer.has_active_exports() {
+            return Err(bytes_io_export_resize_error());
+        }
+        if start > buffer.len() {
+            buffer.resize(start, 0);
+        }
+        if end > buffer.len() {
+            buffer.resize(end, 0);
+        }
+        buffer[start..end].copy_from_slice(bytes);
     }
-    state.buffer[start..end].copy_from_slice(bytes);
     state.position = end;
-    bytes.len()
+    Ok(bytes.len())
 }
 
 fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usize, String> {
@@ -1038,7 +1063,7 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
     let base = match whence {
         0 => 0_i128,
         1 => state.position as i128,
-        2 => state.buffer.len() as i128,
+        2 => state.buffer.borrow().len() as i128,
         _ => return Err("ValueError: invalid whence".to_string()),
     };
     let position = base + i128::from(offset);
@@ -1051,11 +1076,32 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
     Ok(position)
 }
 
-fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) {
-    let mut state = bytes_io.borrow_mut();
-    if size < state.buffer.len() {
-        state.buffer.truncate(size);
+fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) -> Result<(), String> {
+    let state = bytes_io.borrow();
+    let mut buffer = state.buffer.borrow_mut();
+    if size < buffer.len() {
+        if buffer.has_active_exports() {
+            return Err(bytes_io_export_resize_error());
+        }
+        buffer.truncate(size);
     }
+    Ok(())
+}
+
+fn bytes_io_getbuffer(bytes_io: &BytesIORef) -> Result<Value, String> {
+    bytes_io_ensure_open(bytes_io)?;
+    let buffer = bytes_io.borrow().buffer.clone();
+    let len = buffer.borrow().len();
+    Ok(memory_view_from_parts_with_exported_bytearray(
+        buffer.clone(),
+        Value::None,
+        Some(buffer),
+        0,
+        len,
+        1,
+        false,
+        "B".to_string(),
+    ))
 }
 
 fn print_separator_or_end(name: &str, value: Value) -> Result<String, String> {
@@ -8767,6 +8813,9 @@ impl Vm {
             Value::Builtin(name) if name == "io.BytesIO.getvalue" => {
                 self.call_io_bytesio_getvalue(args, keywords)
             }
+            Value::Builtin(name) if name == "io.BytesIO.getbuffer" => {
+                self.call_io_bytesio_getbuffer(args, keywords)
+            }
             Value::Builtin(name) if name == "io.BytesIO.readinto" => {
                 self.call_io_bytesio_readinto(args, keywords)
             }
@@ -16161,7 +16210,16 @@ impl Vm {
         stop: Option<Box<Value>>,
         step: Option<Box<Value>>,
     ) -> Result<Value, String> {
-        let (bytes, obj, source_offset, source_len, source_stride, readonly, format) = {
+        let (
+            bytes,
+            obj,
+            exported_bytearray,
+            source_offset,
+            source_len,
+            source_stride,
+            readonly,
+            format,
+        ) = {
             let state = view.borrow();
             if state.released {
                 return Err(released_memoryview_error());
@@ -16169,6 +16227,7 @@ impl Vm {
             (
                 state.bytes.clone(),
                 state.obj.clone(),
+                state.exported_bytearray.clone(),
                 state.offset,
                 state.len,
                 state.stride,
@@ -16207,9 +16266,10 @@ impl Vm {
                 .ok_or_else(|| "memoryview stride is too large".to_string())?
         };
 
-        Ok(memory_view_from_parts_with_format(
+        Ok(memory_view_from_parts_with_exported_bytearray(
             bytes,
             obj,
+            exported_bytearray,
             offset,
             indices.len(),
             stride,
@@ -17730,9 +17790,10 @@ impl Vm {
                 if view.released {
                     return Err(released_memoryview_error());
                 }
-                Ok(memory_view_from_parts_with_format(
+                Ok(memory_view_from_parts_with_exported_bytearray(
                     view.bytes.clone(),
                     view.obj.clone(),
+                    view.exported_bytearray.clone(),
                     view.offset,
                     view.len,
                     view.stride,
@@ -17971,7 +18032,7 @@ impl Vm {
                 type_name(data)
             ));
         };
-        i64::try_from(bytes_io_write_chunk(bytes_io, &bytes))
+        i64::try_from(bytes_io_write_chunk(bytes_io, &bytes)?)
             .map(Value::Number)
             .map_err(|_| "write() result is too large".to_string())
     }
@@ -17997,7 +18058,7 @@ impl Vm {
                     type_name(&line)
                 ));
             };
-            bytes_io_write_chunk(&bytes_io, &bytes);
+            bytes_io_write_chunk(&bytes_io, &bytes)?;
         }
         Ok(Value::None)
     }
@@ -18070,6 +18131,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_resizable(bytes_io)?;
         bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
     }
@@ -18102,6 +18164,7 @@ impl Vm {
                 method_arg_count(&args)
             ));
         };
+        bytes_io_ensure_resizable(bytes_io)?;
         bytes_io.borrow_mut().closed = true;
         Ok(Value::None)
     }
@@ -18155,7 +18218,22 @@ impl Vm {
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
-        Ok(bytes_value(bytes_io.borrow().buffer.clone()))
+        Ok(bytes_value(bytes_io.borrow().buffer.borrow().to_vec()))
+    }
+
+    fn call_io_bytesio_getbuffer(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords("io.BytesIO.getbuffer", &keywords)?;
+        let [Value::BytesIO(bytes_io)] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: BytesIO.getbuffer() takes no arguments ({} given)",
+                method_arg_count(&args)
+            ));
+        };
+        bytes_io_getbuffer(bytes_io)
     }
 
     fn call_io_bytesio_tell(
@@ -18239,7 +18317,7 @@ impl Vm {
             }
             _ => unreachable!("BytesIO.truncate arity is checked before reading size"),
         };
-        bytes_io_truncate(bytes_io, size);
+        bytes_io_truncate(bytes_io, size)?;
         i64::try_from(size)
             .map(Value::Number)
             .map_err(|_| "OverflowError: truncate result is too large".to_string())
@@ -18289,9 +18367,10 @@ impl Vm {
                 if view.released {
                     return Err(released_memoryview_error());
                 }
-                Ok(memory_view_from_parts_with_format(
+                Ok(memory_view_from_parts_with_exported_bytearray(
                     view.bytes.clone(),
                     view.obj.clone(),
+                    view.exported_bytearray.clone(),
                     view.offset,
                     view.len,
                     view.stride,
@@ -18534,9 +18613,10 @@ impl Vm {
             .checked_mul(memoryview_itemsize_for_format(&view_state.format)?)
             .ok_or_else(|| "memoryview byte length is too large".to_string())?;
         let cast_len = self.memoryview_cast_shape_len(shape, byte_len)?;
-        Ok(memory_view_from_parts_with_format(
+        Ok(memory_view_from_parts_with_exported_bytearray(
             view_state.bytes.clone(),
             view_state.obj.clone(),
+            view_state.exported_bytearray.clone(),
             view_state.offset,
             cast_len,
             1,
@@ -44886,6 +44966,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "detach",
             "fileno",
             "flush",
+            "getbuffer",
             "getvalue",
             "isatty",
             "read",
@@ -51563,9 +51644,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
             "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
             "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "detach" | "fileno"
-            | "flush" | "getvalue" | "isatty" | "read" | "read1" | "readable" | "readinto"
-            | "readinto1" | "readline" | "readlines" | "seek" | "seekable" | "tell"
-            | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
+            | "flush" | "getbuffer" | "getvalue" | "isatty" | "read" | "read1" | "readable"
+            | "readinto" | "readinto1" | "readline" | "readlines" | "seek" | "seekable"
+            | "tell" | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
                 receiver: Box::new(Value::BytesIO(bytes_io)),
                 identity: Rc::new(()),
@@ -73700,9 +73781,10 @@ fn load_slice(
                     )
                     .ok_or_else(|| "memoryview stride is too large".to_string())?
             };
-            Ok(memory_view_from_parts_with_format(
+            Ok(memory_view_from_parts_with_exported_bytearray(
                 state.bytes.clone(),
                 state.obj.clone(),
+                state.exported_bytearray.clone(),
                 offset,
                 indices.len(),
                 stride,

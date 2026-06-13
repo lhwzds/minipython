@@ -96,7 +96,7 @@ pub struct MemoryViewState {
 
 #[derive(Debug, Clone)]
 pub struct BytesIOState {
-    pub buffer: Vec<u8>,
+    pub buffer: ByteArrayRef,
     pub position: usize,
     pub closed: bool,
 }
@@ -153,7 +153,7 @@ impl ByteArrayStorage {
 impl BytesIOState {
     pub fn new(buffer: Vec<u8>) -> Self {
         Self {
-            buffer,
+            buffer: Rc::new(RefCell::new(ByteArrayStorage::new(buffer))),
             position: 0,
             closed: false,
         }
@@ -308,12 +308,34 @@ pub fn memory_view_from_parts_with_format(
     format: String,
 ) -> Value {
     let exported_bytearray = match &obj {
-        Value::ByteArray(bytearray) => {
-            bytearray.borrow_mut().retain_export();
-            Some(bytearray.clone())
-        }
+        Value::ByteArray(bytearray) => Some(bytearray.clone()),
         _ => None,
     };
+    memory_view_from_parts_with_exported_bytearray(
+        bytes,
+        obj,
+        exported_bytearray,
+        offset,
+        len,
+        stride,
+        readonly,
+        format,
+    )
+}
+
+pub fn memory_view_from_parts_with_exported_bytearray(
+    bytes: ByteArrayRef,
+    obj: Value,
+    exported_bytearray: Option<ByteArrayRef>,
+    offset: usize,
+    len: usize,
+    stride: isize,
+    readonly: bool,
+    format: String,
+) -> Value {
+    if let Some(bytearray) = &exported_bytearray {
+        bytearray.borrow_mut().retain_export();
+    }
     Value::MemoryView(Rc::new(RefCell::new(MemoryViewState {
         bytes,
         obj,
