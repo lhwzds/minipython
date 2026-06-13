@@ -4809,6 +4809,46 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn breakpoint_default_stub_stays_sandbox_only() {
+    let subset_name = "cpython_builtin_breakpoint_default_stub_subset";
+    let diff_name = "cpython_builtin_breakpoint_default_stub_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "sandbox breakpoint default-stub subset evidence must exist"
+    );
+    assert!(
+        !CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "sandbox breakpoint default-stub behavior must not be represented as direct CPython parity"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        assert!(
+            document.contains(subset_name)
+                && document.contains("sandbox no-op")
+                && document.contains("pdb-backed")
+                && document.contains("PYTHONBREAKPOINT"),
+            "breakpoint sandbox docs must keep the default-stub subset and CPython pdb/PYTHONBREAKPOINT stop line together"
+        );
+    }
+
+    for module in ["builtins", "sys"] {
+        let row = sandbox_stdlib_rows()
+            .into_iter()
+            .find(|row| row.module == module)
+            .unwrap_or_else(|| panic!("sandbox stdlib manifest must include {module}"));
+        assert!(
+            row.supported_surface.contains(subset_name),
+            "{module} sandbox manifest must list the breakpoint default-stub subset"
+        );
+        assert!(
+            !row.diff_evidence.contains(diff_name),
+            "{module} sandbox manifest must not cite direct CPython diff evidence for the sandbox-only default stub"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
