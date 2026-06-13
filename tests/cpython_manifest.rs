@@ -1735,6 +1735,46 @@ fn cpython_test_manifest_builtin_test_type_method_audit_matches_current_source()
 }
 
 #[test]
+fn cpython_test_type_name_doc_diff_evidence_is_documented() {
+    for (diff_name, subset_name, required_source) in [
+        (
+            "cpython_type_name_qualname_diff_subset",
+            "cpython_type_name_qualname_subset",
+            "setattr(A, '__name__', 'A\\0B')",
+        ),
+        (
+            "cpython_type_doc_and_firstlineno_diff_subset",
+            "cpython_type_doc_and_firstlineno_subset",
+            "A.__firstlineno__ = 43",
+        ),
+    ] {
+        let diff_start = CPYTHON_DIFF
+            .find(&format!("fn {diff_name}("))
+            .unwrap_or_else(|| panic!("TestType CPython diff evidence `{diff_name}` must exist"));
+        let diff_end = CPYTHON_DIFF[diff_start..]
+            .find("\n#[test]")
+            .map(|offset| diff_start + offset)
+            .unwrap_or(CPYTHON_DIFF.len());
+        let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+        assert!(
+            diff_source.contains(required_source),
+            "TestType diff evidence `{diff_name}` must cover `{required_source}`"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "TestType runtime subset evidence `{subset_name}` must exist"
+        );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "TestType docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn cpython_test_manifest_ast_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let class_counts = python_test_class_method_counts(&source);

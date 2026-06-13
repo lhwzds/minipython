@@ -7065,6 +7065,54 @@ finally:
 }
 
 #[test]
+fn cpython_type_name_qualname_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname public subset",
+        name: "type-name-qualname-direct",
+        source: r#"C = type('C', (), {})
+for name in ['A', 'Ä', '🐍', 'B.A', '42', '']:
+    C.__name__ = name
+    print(C.__name__, C.__qualname__, C.__module__)
+A = type('A', (), {'__qualname__': 'B.C'})
+print(A.__name__, A.__qualname__, A.__module__, '__qualname__' in A.__dict__)
+A.__qualname__ = 'D.E'
+print(A.__name__, A.__qualname__)
+A = type('A', (), {'__name__': 'B'})
+print(A.__name__, A.__dict__['__name__'])
+A.__name__ = 'C'
+print(A.__name__, A.__dict__['__name__'])
+A = type('C', (), {})
+for expr in [lambda: setattr(A, '__name__', b'A'), lambda: setattr(A, '__name__', 'A\0B'), lambda: type('A', (), {'__qualname__': b'B'}), lambda: setattr(A, '__qualname__', b'B')]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__, A.__name__, A.__qualname__)"#,
+    });
+}
+
+#[test]
+fn cpython_type_doc_and_firstlineno_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType::test_type_doc / ::test_type_firstlineno public subset",
+        name: "type-doc-firstlineno-direct",
+        source: r#"for doc in ['x', 'Ä', '🐍', 'x\0y', b'x', 42, None]:
+    A = type('A', (), {'__doc__': doc})
+    print(A.__doc__)
+A = type('A', (), {})
+print(A.__doc__)
+for doc in ['x', 'Ä', '🐍', 'x\0y', b'x', 42, None]:
+    A.__doc__ = doc
+    print(A.__doc__)
+A = type('A', (), {'__firstlineno__': 42})
+print(A.__name__, A.__module__, A.__dict__['__firstlineno__'], A.__firstlineno__)
+A.__module__ = 'testmodule'
+print(A.__module__)
+A.__firstlineno__ = 43
+print(A.__dict__['__firstlineno__'], A.__firstlineno__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_singleton_type_aliases_diff_subset() {
     let probe = run_cpython(
         "import types; print(hasattr(types, 'NoneType'), hasattr(types, 'NotImplementedType'), hasattr(types, 'EllipsisType'))",
