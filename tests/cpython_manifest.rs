@@ -6479,6 +6479,48 @@ fn stdlib_create_module_registry_is_classified_by_scope() {
 }
 
 #[test]
+fn pickle_stays_compatibility_only_not_required_sandbox_stdlib() {
+    let actual = stdlib_create_module_names();
+    let sandbox_modules = sandbox_stdlib_module_names();
+    let compatibility_modules = compatibility_module_registry_names();
+
+    assert!(
+        actual.contains("pickle"),
+        "pickle registry entry should remain visible for migrated pure-memory tests"
+    );
+    assert!(
+        compatibility_modules.contains("pickle"),
+        "pickle must be classified as compatibility/test support"
+    );
+    assert!(
+        !sandbox_modules.contains("pickle"),
+        "pickle must not become required sandbox stdlib without an explicit scope change"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("`pickle` | pure-memory test serialization support"),
+        "migration registry must document pickle as pure-memory test serialization support"
+    );
+
+    let copy = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "copy")
+        .expect("sandbox stdlib manifest must include copy");
+    assert!(
+        copy.excluded_surface.contains("pickle protocol"),
+        "copy sandbox manifest must keep pickle protocol outside the default surface"
+    );
+
+    let operator = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "operator")
+        .expect("sandbox stdlib manifest must include operator");
+    assert!(
+        operator.excluded_surface.contains("Full pickle metadata"),
+        "operator sandbox manifest must keep full pickle metadata outside the default surface"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_token_tests_method_audit_is_complete() {
     let methods = token_tests_methods();
 
