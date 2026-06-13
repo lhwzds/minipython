@@ -1770,6 +1770,72 @@ fn cpython_bytes_prefix_suffix_typeerror_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_method_typeerror_diff_covers_runtime_subset() {
+    let subset_name = "cpython_bytes_method_typeerror_messages_subset";
+    let diff_names = [
+        "cpython_bytes_method_typeerror_messages_diff_subset",
+        "cpython_bytes_fill_length_typeerror_messages_diff_subset",
+    ];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes method TypeError runtime subset evidence must exist"
+    );
+
+    for diff_name in diff_names {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "bytes method TypeError direct CPython diff evidence `{diff_name}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "bytes method TypeError docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    let start = CPYTHON_DIFF
+        .find("fn cpython_bytes_method_typeerror_messages_diff_subset(")
+        .expect("bytes method TypeError diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "split",
+        "partition",
+        "strip",
+        "center",
+        "a bytes-like object is required",
+        "not memoryview",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes method TypeError diff evidence must contain `{required}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find("fn cpython_bytes_fill_length_typeerror_messages_diff_subset(")
+        .expect("bytes fill-length TypeError diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "empty-bytes-fill",
+        "long-bytearray-fill",
+        "skipping bytes fill length TypeError text diff",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes fill-length TypeError diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_dunder_bytes_dispatch_diff_subset";
     let subset_name = "cpython_bytes_dunder_bytes_and_blocking_subset";
