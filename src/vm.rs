@@ -29013,6 +29013,34 @@ impl Vm {
                 }
                 Ok(Value::Bool(false))
             }
+            "__copy__" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "__copy__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                Ok(Value::Deque {
+                    data: Rc::new(RefCell::new(data.borrow().clone())),
+                    maxlen: *maxlen,
+                })
+            }
+            "__delitem__" => {
+                let [index] = rest else {
+                    return Err(format!(
+                        "__delitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                delete_subscript(
+                    Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    },
+                    self.sequence_subscript_index(index.clone())?,
+                )?;
+                Ok(Value::None)
+            }
             "__getitem__" => {
                 let [index] = rest else {
                     return Err(format!(
@@ -29027,6 +29055,23 @@ impl Vm {
                     },
                     index.clone(),
                 )
+            }
+            "__setitem__" => {
+                let [index, value] = rest else {
+                    return Err(format!(
+                        "__setitem__() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                store_subscript(
+                    Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    },
+                    self.sequence_subscript_index(index.clone())?,
+                    value.clone(),
+                )?;
+                Ok(Value::None)
             }
             "__reversed__" => {
                 if !rest.is_empty() {
@@ -32492,6 +32537,10 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
         Value::UserList { data, attrs } => Ok(Value::UserList {
             data: Rc::new(RefCell::new(data.borrow().clone())),
             attrs: dict_ref_from_entries(attrs.borrow().entries.clone())?,
+        }),
+        Value::Deque { data, maxlen } => Ok(Value::Deque {
+            data: Rc::new(RefCell::new(data.borrow().clone())),
+            maxlen: *maxlen,
         }),
         Value::Set(items) => Ok(set_value(items.borrow().clone())),
         Value::Dict(entries) => Ok(dict_value(entries.borrow().entries.clone())),
@@ -51413,9 +51462,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
-                | "__add__" | "__contains__" | "__eq__" | "__ge__" | "__getitem__" | "__gt__"
-                | "__iadd__" | "__imul__" | "__iter__" | "__le__" | "__len__" | "__lt__"
-                | "__mul__" | "__ne__" | "__reversed__" | "__rmul__" => Ok(Value::BoundMethod {
+                | "__add__" | "__contains__" | "__copy__" | "__delitem__" | "__eq__" | "__ge__"
+                | "__getitem__" | "__gt__" | "__iadd__" | "__imul__" | "__iter__" | "__le__"
+                | "__len__" | "__lt__" | "__mul__" | "__ne__" | "__reversed__" | "__rmul__"
+                | "__setitem__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("deque.{name}"))),
                     receiver: Box::new(Value::Deque { data, maxlen }),
                     identity: Rc::new(()),
@@ -72451,11 +72501,11 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         }
         Value::Deque { data, .. } => {
             let items = data.borrow();
-            let index = normalized_index(index, items.len(), "deque")?;
+            let index = normalized_index(index, items.len(), "deque").map_err(deque_index_error)?;
             items
                 .get(index)
                 .cloned()
-                .ok_or_else(|| "deque index out of range".to_string())
+                .ok_or_else(|| "IndexError: deque index out of range".to_string())
         }
         Value::Tuple(items) => match index {
             Value::Slice { start, stop, step } => load_slice(
@@ -72805,6 +72855,18 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             store_subscript(Value::List(data.clone()), index, value)?;
             Ok(Value::UserList { data, attrs })
         }
+        Value::Deque { data, maxlen } => {
+            let mut borrowed = data.borrow_mut();
+            let index =
+                normalized_index(index, borrowed.len(), "deque").map_err(deque_index_error)?;
+            if let Some(slot) = borrowed.get_mut(index) {
+                *slot = value;
+                drop(borrowed);
+                Ok(Value::Deque { data, maxlen })
+            } else {
+                Err("IndexError: deque index out of range".to_string())
+            }
+        }
         Value::ByteArray(bytes) => match index {
             Value::Slice { start, stop, step } => store_slice(
                 Value::ByteArray(bytes),
@@ -72950,6 +73012,14 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::UserList { data, attrs } => {
             delete_subscript(Value::List(data.clone()), index)?;
             Ok(Value::UserList { data, attrs })
+        }
+        Value::Deque { data, maxlen } => {
+            let mut borrowed = data.borrow_mut();
+            let index =
+                normalized_index(index, borrowed.len(), "deque").map_err(deque_index_error)?;
+            borrowed.remove(index);
+            drop(borrowed);
+            Ok(Value::Deque { data, maxlen })
         }
         Value::ByteArray(bytes) => match index {
             Value::Slice { start, stop, step } => delete_slice(
@@ -73552,6 +73622,14 @@ fn normalized_index(index: Value, len: usize, type_name: &str) -> Result<usize, 
     }
 
     usize::try_from(normalized).map_err(|_| format!("{type_name} index out of range"))
+}
+
+fn deque_index_error(error: String) -> String {
+    if error == "deque index out of range" {
+        "IndexError: deque index out of range".to_string()
+    } else {
+        error
+    }
 }
 
 fn sequence_index_type_error(sequence_type: &str, value: &Value) -> String {

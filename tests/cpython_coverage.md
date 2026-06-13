@@ -36,8 +36,9 @@ Recent runtime migration notes:
   iteration, len/bool/repr, basic `append` / `appendleft` / `extend` /
   `extendleft` / `insert` / `remove` / `pop` / `popleft` / `count` /
   `index` / `rotate` / `reverse` / `clear` / `copy`, membership, rich
-  comparison between deque instances, integer indexing, concat/repeat,
-  in-place concat/repeat, reverse iteration, concrete type identity, and
+  comparison between deque instances, integer indexing/assignment/deletion,
+  concat/repeat, in-place concat/repeat, `.copy()` / `__copy__()` /
+  `copy.copy()`, reverse iteration, concrete type identity, and
   `MutableSequence` registration.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for

@@ -44753,16 +44753,17 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
 // append/extend/insert/remove/pop operations, simple queries/reordering,
-// membership, rich comparison, integer indexing, concat/repeat, reverse
-// iteration, and MutableSequence registration. Broader deque APIs, pickling,
-// performance, and thread-safety semantics remain outside the default sandbox
-// surface.
+// membership, rich comparison, integer indexing/assignment/deletion,
+// concat/repeat, copy paths, reverse iteration, and MutableSequence
+// registration. Broader deque APIs, pickling, performance, and thread-safety
+// semantics remain outside the default sandbox surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
         concat!(
             "from collections import deque\n",
             "from collections.abc import MutableSequence\n",
+            "import copy as copy_module\n",
             "d = deque()\n",
             "print(type(d).__name__)\n",
             "print(isinstance(d, deque), isinstance(d, MutableSequence))\n",
@@ -44809,6 +44810,18 @@ fn cpython_collections_deque_public_surface_subset() {
             "result = mut.__imul__(2)\n",
             "print(result is mut, list(mut), mut.maxlen)\n",
             "print(list(deque([1, 2], maxlen=5) * 0), list(deque([1, 2], maxlen=5) * -1))\n",
+            "edit = deque([1, 2, 3], maxlen=5)\n",
+            "edit[0] = 9\n",
+            "edit[-1] = 7\n",
+            "print(list(edit), edit.maxlen)\n",
+            "print(edit.__setitem__(1, 8), list(edit))\n",
+            "del edit[1]\n",
+            "print(list(edit))\n",
+            "print(edit.__delitem__(-1), list(edit))\n",
+            "copied = edit.__copy__()\n",
+            "module_copy = copy_module.copy(edit)\n",
+            "edit.append(99)\n",
+            "print(list(copied), copied.maxlen, copied is edit, list(module_copy), module_copy.maxlen)\n",
             "q = deque([0, -1, 1])\n",
             "print(q.insert(1, 'x'), list(q), repr(q))\n",
             "print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))\n",
@@ -44844,6 +44857,10 @@ fn cpython_collections_deque_public_surface_subset() {
             "    ('add-list', lambda: deque([1]) + [2]),\n",
             "    ('mul-bad', lambda: deque([1]) * 'x'),\n",
             "    ('iadd-noniter', lambda: deque([1]).__iadd__(3)),\n",
+            "    ('set-slice', lambda: deque([1, 2]).__setitem__(slice(0, 1), [9])),\n",
+            "    ('del-slice', lambda: deque([1, 2]).__delitem__(slice(0, 1))),\n",
+            "    ('set-oob', lambda: deque([1]).__setitem__(5, 9)),\n",
+            "    ('del-oob', lambda: deque([1]).__delitem__(5)),\n",
             "    ('bad-maxlen', lambda: deque([], -1)),\n",
             "    ('bad-keyword', lambda: deque([], bad=1)),\n",
             "    ('duplicate-iterable', lambda: deque([], iterable=[])),\n",
@@ -44884,6 +44901,11 @@ fn cpython_collections_deque_public_surface_subset() {
             "True True [2, 3, 4] 3",
             "True [1, 2, 1, 2] 5",
             "[] []",
+            "[9, 2, 7] 5",
+            "None [9, 8, 7]",
+            "[9, 7]",
+            "None [9]",
+            "[9] 5 False [9] 5",
             "None [0, 'x', -1, 1] deque([0, 'x', -1, 1])",
             "None None ['y', 0, 'x', -1, 1, 'z'] deque(['y', 0, 'x', -1, 1, 'z'])",
             "None ['y', 0, 'x', -1, 'z'] deque(['y', 0, 'x', -1, 'z'])",
@@ -44900,6 +44922,10 @@ fn cpython_collections_deque_public_surface_subset() {
             "add-list TypeError True",
             "mul-bad TypeError True",
             "iadd-noniter TypeError True",
+            "set-slice TypeError True",
+            "del-slice TypeError True",
+            "set-oob IndexError True",
+            "del-oob IndexError True",
             "bad-maxlen ValueError True",
             "bad-keyword TypeError True",
             "duplicate-iterable TypeError True",

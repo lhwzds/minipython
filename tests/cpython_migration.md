@@ -10371,6 +10371,10 @@ Completed in the CPython collections manifest expansion pass:
   repetition, and in-place concat/repeat while preserving left-hand `maxlen`
   truncation. Pickle, eval, thread-safety, and performance contracts remain out
   of scope.
+- Extended the same `collections.deque` public surface with integer item
+  assignment/deletion, direct `__setitem__()` / `__delitem__()`, and shallow
+  copy parity through `.copy()`, `__copy__()`, and `copy.copy()`, while keeping
+  slicing, pickle, eval, thread-safety, and performance contracts out of scope.
 
 Next:
 

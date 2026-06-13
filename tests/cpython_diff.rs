@@ -3053,6 +3053,7 @@ fn cpython_collections_deque_public_surface_diff_subset() {
         name: "collections-deque-public-surface",
         source: r#"from collections import deque
 from collections.abc import MutableSequence
+import copy as copy_module
 d = deque()
 print(type(d).__name__)
 print(isinstance(d, deque), isinstance(d, MutableSequence))
@@ -3099,6 +3100,18 @@ mut = deque([1, 2], maxlen=5)
 result = mut.__imul__(2)
 print(result is mut, list(mut), mut.maxlen)
 print(list(deque([1, 2], maxlen=5) * 0), list(deque([1, 2], maxlen=5) * -1))
+edit = deque([1, 2, 3], maxlen=5)
+edit[0] = 9
+edit[-1] = 7
+print(list(edit), edit.maxlen)
+print(edit.__setitem__(1, 8), list(edit))
+del edit[1]
+print(list(edit))
+print(edit.__delitem__(-1), list(edit))
+copied = edit.__copy__()
+module_copy = copy_module.copy(edit)
+edit.append(99)
+print(list(copied), copied.maxlen, copied is edit, list(module_copy), module_copy.maxlen)
 q = deque([0, -1, 1])
 print(q.insert(1, 'x'), list(q), repr(q))
 print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))
@@ -3134,6 +3147,10 @@ for label, callback in [
     ('add-list', lambda: deque([1]) + [2]),
     ('mul-bad', lambda: deque([1]) * 'x'),
     ('iadd-noniter', lambda: deque([1]).__iadd__(3)),
+    ('set-slice', lambda: deque([1, 2]).__setitem__(slice(0, 1), [9])),
+    ('del-slice', lambda: deque([1, 2]).__delitem__(slice(0, 1))),
+    ('set-oob', lambda: deque([1]).__setitem__(5, 9)),
+    ('del-oob', lambda: deque([1]).__delitem__(5)),
     ('bad-maxlen', lambda: deque([], -1)),
     ('bad-keyword', lambda: deque([], bad=1)),
     ('duplicate-iterable', lambda: deque([], iterable=[])),
