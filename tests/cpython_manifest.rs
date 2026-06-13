@@ -4020,6 +4020,131 @@ fn operator_signature_diff_evidence_stays_capability_gated() {
 }
 
 #[test]
+fn operator_newer_helpers_and_pickle_stop_line_stay_classified() {
+    for (subset, diff) in [
+        (
+            "cpython_operator_is_none_predicates_subset",
+            "cpython_operator_is_none_predicates_diff_subset",
+        ),
+        (
+            "cpython_operator_call_helper_subset",
+            "cpython_operator_call_helper_diff_subset",
+        ),
+        (
+            "cpython_operator_helper_repr_subset",
+            "cpython_operator_helper_repr_diff_subset",
+        ),
+        (
+            "cpython_operator_signature_helper_subset",
+            "cpython_operator_signature_helper_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "operator helper subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "operator helper CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_COVERAGE.contains(diff),
+            "coverage document must link operator evidence `{subset}` / `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must describe operator subset `{subset}`"
+        );
+    }
+
+    let is_none_diff = CPYTHON_DIFF
+        .split("fn cpython_operator_is_none_predicates_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_operator_arithmetic_bitwise_diff_subset()")
+                .next()
+        })
+        .expect("operator is_none diff evidence must be extractable");
+    for required in [
+        "hasattr(operator, 'is_none')",
+        "skipping operator.is_none diff",
+        "operator.is_none(value)",
+        "operator.is_not_none(value)",
+        "name in operator.__all__",
+    ] {
+        assert!(
+            is_none_diff.contains(required),
+            "operator is_none diff evidence must cover `{required}`"
+        );
+    }
+
+    let call_diff = CPYTHON_DIFF
+        .split("fn cpython_operator_call_helper_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_operator_inplace_helper_diff_subset()")
+                .next()
+        })
+        .expect("operator.call diff evidence must be extractable");
+    for required in [
+        "hasattr(operator, 'call')",
+        "skipping operator.call diff",
+        "operator.call(func, 0, 1, a=2, obj=3)",
+        "operator.__call__ is operator.call",
+        "operator.call(func, unknown=1, **{'unknown': 2})",
+    ] {
+        assert!(
+            call_diff.contains(required),
+            "operator.call diff evidence must cover `{required}`"
+        );
+    }
+
+    let repr_diff = CPYTHON_DIFF
+        .split("fn cpython_operator_helper_repr_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_partialmethod_diff_subset()")
+                .next()
+        })
+        .expect("operator helper repr diff evidence must be extractable");
+    for required in [
+        "operator.attrgetter('x', 'y', 't.u.v')",
+        "operator.itemgetter(slice(2, 4))",
+        "operator.methodcaller('baz', self='eggs', name='spam')",
+        "str(helper) == repr(helper)",
+    ] {
+        assert!(
+            repr_diff.contains(required),
+            "operator helper repr diff evidence must cover `{required}`"
+        );
+    }
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "operator")
+        .expect("sandbox stdlib manifest must include operator");
+    assert!(
+        row.excluded_surface.contains("Full pickle metadata"),
+        "operator sandbox manifest must keep full pickle metadata outside the supported surface"
+    );
+    assert!(
+        !row.supported_surface
+            .contains("cpython_operator_pickle_helper_subset"),
+        "operator pickle helper subset must remain outside the default sandbox manifest surface"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_operator_pickle_helper_subset(")
+            && CPYTHON_COVERAGE.contains("cpython_operator_pickle_helper_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_pickle_helper_subset"),
+        "operator pickle helper subset-only evidence must remain documented"
+    );
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_operator_pickle_helper_diff_subset("),
+        "operator pickle helper must not claim direct CPython diff parity while using MiniPython pickle payloads"
+    );
+}
+
+#[test]
 fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "array",
