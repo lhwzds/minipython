@@ -11291,7 +11291,7 @@ print(shallow is nested, deep is nested)
 print(shallow[1] is nested[1], deep[1] is nested[1], shallow[1], deep[1])
 print(shallow[2] is nested[2], deep[2] is nested[2], shallow[2], deep[2])
 for value in [None, True, 42, 'abc', b'abc', (1, 2)]:
-    print(type(value).__name__, copy.copy(value) == value, copy.deepcopy(value) == value)
+    print(type(value).__name__, copy.copy(value) == value, copy.copy(value) is value, copy.deepcopy(value) == value, copy.deepcopy(value) is value)
 ba = bytearray(b'ab')
 ba_shallow = copy.copy(ba)
 ba_deep = copy.deepcopy(ba)

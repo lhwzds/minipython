@@ -32521,6 +32521,10 @@ fn scope_from_ast_node_attrs(node: Value) -> Result<Scope, String> {
 
 fn shallow_copy_value(value: &Value) -> Result<Value, String> {
     match value {
+        Value::String(value) => Ok(Value::IdentityString {
+            value: value.clone(),
+            identity: Rc::new(()),
+        }),
         Value::AstNode {
             kind,
             fields,
@@ -32602,6 +32606,10 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
 
 fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Value, String> {
     match value {
+        Value::String(value) => Ok(Value::IdentityString {
+            value: value.clone(),
+            identity: Rc::new(()),
+        }),
         Value::AstNode {
             kind,
             fields,
@@ -32639,12 +32647,21 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 .map(|item| deep_copy_value(item, memo))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
-        Value::Tuple(items) => Ok(tuple_value(
-            items
+        Value::Tuple(items) => {
+            let copied_items = items
                 .iter()
                 .map(|item| deep_copy_value(item, memo))
-                .collect::<Result<Vec<_>, _>>()?,
-        )),
+                .collect::<Result<Vec<_>, _>>()?;
+            if items
+                .iter()
+                .zip(copied_items.iter())
+                .all(|(item, copied)| is_identical(item, copied))
+            {
+                Ok(value.clone())
+            } else {
+                Ok(tuple_value(copied_items))
+            }
+        }
         Value::NamedTuple { typ, values } => Ok(Value::NamedTuple {
             typ: typ.clone(),
             values: Rc::new(
@@ -77157,6 +77174,7 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         | (Value::Ellipsis, Value::Ellipsis)
         | (Value::Bool(true), Value::Bool(true))
         | (Value::Bool(false), Value::Bool(false)) => true,
+        (Value::Number(left), Value::Number(right)) => left == right && (-5..=256).contains(left),
         (Value::Bytes(left), Value::Bytes(right)) => {
             (left.is_empty() && right.is_empty()) || Rc::ptr_eq(left, right)
         }
