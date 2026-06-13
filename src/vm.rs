@@ -53878,6 +53878,21 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("itertools".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__qualname__" && is_itertools_type_name(&function_name) =>
+        {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_itertools_type_name(&function_name) =>
+        {
+            if function_name == "_grouper" {
+                return Ok(Value::None);
+            }
+            Ok(Value::String(
+                itertools_type_doc(&function_name).to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_weakref_builtin_type_name(&function_name) =>
         {
             Ok(Value::String("weakref".to_string()))
@@ -55795,6 +55810,34 @@ fn itertools_builtin_function_doc(name: &str) -> &'static str {
         "itertools.tee" => "Returns a tuple of independent iterators.",
         "itertools.batched" => "Batch data into tuples of length n.",
         "itertools.groupby" => "Return consecutive keys and groups from the iterable.",
+        _ => "",
+    }
+}
+
+fn itertools_type_doc(name: &str) -> &'static str {
+    match name {
+        "count" => "Return a count object.",
+        "repeat" => "Return an object over and over again.",
+        "cycle" => "Return elements from the iterable until it is exhausted.",
+        "accumulate" => "Return series of accumulated sums.",
+        "chain" => "Return a chain object.",
+        "compress" => "Return data elements selected by selectors.",
+        "dropwhile" => "Drop items while predicate(item) is true.",
+        "filterfalse" => "Return items for which function(item) is false.",
+        "takewhile" => "Return entries while predicate(item) is true.",
+        "starmap" => "Return an iterator over function(*args).",
+        "zip_longest" => "Return a zip_longest object.",
+        "islice" => "Return selected values from an iterable.",
+        "pairwise" => "Return overlapping pairs from an iterable.",
+        "product" => "Cartesian product of input iterables.",
+        "combinations" => "Return r-length combinations of elements.",
+        "combinations_with_replacement" => {
+            "Return r-length combinations allowing repeated elements."
+        }
+        "permutations" => "Return r-length permutations of elements.",
+        "_tee" => "Iterator wrapped to make it copyable.",
+        "batched" => "Batch data into tuples of length n.",
+        "groupby" => "Return consecutive keys and groups from the iterable.",
         _ => "",
     }
 }

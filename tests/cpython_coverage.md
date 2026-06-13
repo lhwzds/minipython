@@ -875,10 +875,11 @@ Recent runtime migration notes:
   `groupby()` runs with optional key functions, generator-backed input,
   shared `_grouper` invalidation when the parent advances, keyword binding,
   and public `repr()` shapes for `count()`, `repeat()`, `cycle()`, `_tee`, and
-  `groupby()` without binding object addresses, plus public type `__module__`
-  metadata for supported iterator/helper objects and public constructor
-  `__qualname__` / `__module__` / `__doc__` metadata, including the gated
-  `pairwise()` and `batched()` constructor surfaces. Full itertools module,
+  `groupby()` without binding object addresses, plus public iterator/helper
+  type `__module__` / `__qualname__` / `__doc__` metadata including
+  `_grouper.__doc__ is None`, and public constructor `__qualname__` /
+  `__module__` / `__doc__` metadata, including the gated `pairwise()` and
+  `batched()` constructor surfaces. Full itertools module,
   pickling exactness, exact address repr, `tee()` cache compaction, and
   remaining public/helper types remain outside the sandbox subset.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`

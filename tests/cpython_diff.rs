@@ -13928,6 +13928,9 @@ key, group = next(itertools.groupby([1]))
 values.append(group)
 for value in values:
     print(type(value).__name__, type(value).__module__)
+for value in values:
+    typ = type(value)
+    print(typ.__name__, typ.__qualname__, typ.__module__, type(typ.__doc__).__name__, bool(typ.__doc__))
 for fn in [
     itertools.count, itertools.repeat, itertools.cycle, itertools.accumulate,
     itertools.chain, itertools.compress, itertools.dropwhile, itertools.filterfalse,
