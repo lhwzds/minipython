@@ -7665,6 +7665,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "g.copy()",
         "g.get('scope_temp')",
         "g.pop('scope_temp')",
+        "g.popitem()",
         "g.setdefault('new_scope', 3)",
         "snapshot.copy()",
         "snapshot.get('arg')",

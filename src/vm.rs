@@ -14866,6 +14866,19 @@ impl Vm {
                 }
                 Err(format!("KeyError: {}", format_key_error(key)))
             }
+            "scope_dict.popitem" => {
+                let [Value::ScopeDict(scope)] = args.as_slice() else {
+                    return Err(format!(
+                        "popitem() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let Some((key, value)) = scope_dict_popitem_entry(scope) else {
+                    return Err("KeyError: popitem(): dictionary is empty".to_string());
+                };
+                delete_scope_dict_entry(scope, &key)?;
+                Ok(tuple_value(vec![key, value]))
+            }
             "scope_dict.setdefault" => {
                 let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
                     return Err("setdefault() expected a dict receiver".to_string());
@@ -44543,6 +44556,29 @@ fn scope_dict_entries(scope: &Scope) -> Vec<(Value, Value)> {
     entries
 }
 
+fn scope_dict_popitem_entry(scope: &Scope) -> Option<(Value, Value)> {
+    let values = scope.borrow();
+    if let Some(Value::Tuple(order)) = values.get(CLASS_ATTR_ORDER_ATTR) {
+        for item in order.iter().rev() {
+            let Value::String(name) = item else {
+                continue;
+            };
+            if name.starts_with('\0') {
+                continue;
+            }
+            if let Some(value) = values.get(name) {
+                return Some((Value::String(name.clone()), value.clone()));
+            }
+        }
+    }
+
+    values
+        .iter()
+        .filter(|(name, _)| !name.starts_with('\0'))
+        .map(|(name, value)| (Value::String(name.clone()), value.clone()))
+        .next()
+}
+
 fn store_ordered_scope_item(scope: &Scope, name: String, value: Value) {
     let mut values = scope.borrow_mut();
     let should_append_order = !name.starts_with('\0') && !values.contains_key(&name);
@@ -44619,7 +44655,7 @@ fn insert_scope_dict_entry(scope: &Scope, key: Value, value: Value) -> Result<()
     let Some(key) = value_as_string(&key) else {
         return Err("TypeError: module __dict__ keys must be strings".to_string());
     };
-    scope.borrow_mut().insert(key.to_string(), value);
+    store_ordered_scope_item(scope, key.to_string(), value);
     Ok(())
 }
 
@@ -52054,9 +52090,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::ScopeDict(scope) => match name {
-            "copy" | "get" | "items" | "keys" | "pop" | "setdefault" | "update" | "values"
-            | "__contains__" | "__delitem__" | "__getitem__" | "__len__" | "__iter__"
-            | "__setitem__" => Ok(Value::BoundMethod {
+            "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault" | "update"
+            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
+            | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(scope)),
                 identity: Rc::new(()),
@@ -52065,9 +52101,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::FrameLocalsProxy { locals } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
-            "copy" | "get" | "items" | "keys" | "pop" | "setdefault" | "update" | "values"
-            | "__contains__" | "__delitem__" | "__getitem__" | "__len__" | "__iter__"
-            | "__setitem__" => Ok(Value::BoundMethod {
+            "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault" | "update"
+            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
+            | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(locals)),
                 identity: Rc::new(()),

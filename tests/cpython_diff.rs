@@ -6290,6 +6290,8 @@ print(g.setdefault('scope_temp', 2), scope_temp)
 print(g.setdefault('new_scope', 3), new_scope)
 print(g.pop('scope_temp'), 'scope_temp' in g)
 print(g.pop('new_scope'), 'new_scope' in g)
+g['scope_popitem_temp'] = 7
+print(g.popitem())
 print(g.pop('missing', 'fallback'))
 try:
     g.pop('missing')

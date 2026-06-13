@@ -6335,9 +6335,10 @@ Completed in the namespace builtin pass:
   returns a live module mapping for `globals()` and a snapshot of current locals
   for `locals()`.
 - Extended the scope-backed namespace mappings with CPython-compatible
-  `copy()`, `get()`, `pop()`, and `setdefault()` behavior for supported
-  string-key globals and locals snapshots, including default values, snapshot
-  copies, write-through insertion, and missing-key `KeyError` type parity.
+  `copy()`, `get()`, `pop()`, `popitem()`, and `setdefault()` behavior for
+  supported string-key globals and locals snapshots, including default values,
+  snapshot copies, write-through insertion, ordered last-item removal for
+  scope-inserted keys, and missing-key `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 
