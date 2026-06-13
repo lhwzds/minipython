@@ -8412,6 +8412,59 @@ fn pickle_stays_compatibility_only_not_required_sandbox_stdlib() {
 }
 
 #[test]
+fn builtin_iterator_pickle_stays_subset_only_compatibility_evidence() {
+    for required in [
+        "fn cpython_builtin_iterator_pickle_subset(",
+        "BuiltinTest::test_filter_pickle",
+        "::test_map_pickle",
+        "::test_map_pickle_strict",
+        "::test_map_pickle_strict_fail",
+        "::test_zip_pickle",
+        "::test_zip_pickle_strict",
+        "::test_zip_pickle_strict_fail",
+        "internal payload",
+        "binary pickle byte stream",
+        "check_iter_pickle",
+        "filter(filter_char, 'abcdeabcde')",
+        "map(map_char, 'Is')",
+        "zip((1, 2, 3), (4, 5, 6))",
+        "map(pack, (1, 2, 3), (4, 5, 6), strict=True)",
+        "zip((1, 2, 3), (4, 5, 6), strict=True)",
+        "roundtrip",
+        "strict-fail",
+        "pickle.HIGHEST_PROTOCOL + 1",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "builtin iterator pickle subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_builtin_iterator_pickle_diff_subset("),
+        "builtin iterator pickle must not claim direct CPython diff parity while using MiniPython internal pickle payloads"
+    );
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_builtin_iterator_pickle_subset")
+            && CPYTHON_COVERAGE.contains("internal pickle payload surface")
+            && CPYTHON_COVERAGE.contains("strict map/zip round trips")
+            && CPYTHON_COVERAGE.contains("strict-length failure preservation"),
+        "coverage notes must classify builtin iterator pickle as internal-payload subset evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_builtin_iterator_pickle_subset")
+            && CPYTHON_MIGRATION.contains("subset-only compatibility")
+            && CPYTHON_MIGRATION.contains("evidence over MiniPython's internal pickle payload")
+            && CPYTHON_MIGRATION.contains("internal pickle payload")
+            && CPYTHON_MIGRATION.contains("required sandbox stdlib surface")
+            && CPYTHON_MIGRATION.contains("CPython binary pickle")
+            && CPYTHON_MIGRATION.contains("byte-stream compatibility"),
+        "migration notes must keep builtin iterator pickle outside the required sandbox stdlib surface"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_token_tests_method_audit_is_complete() {
     let methods = token_tests_methods();
 

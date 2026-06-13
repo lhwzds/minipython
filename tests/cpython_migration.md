@@ -151,6 +151,13 @@ registry and classified before they are accepted.
 | `warnings` | syntax warning public-test support |
 | `weakref` | weakref public-test support |
 
+Iterator pickle coverage such as `cpython_builtin_iterator_pickle_subset` and
+`cpython_enumerate_reversed_pickle_subset` is subset-only compatibility
+evidence over MiniPython's internal pickle payload. It keeps public round-trip
+semantics for migrated CPython tests visible without promoting `pickle` into the
+required sandbox stdlib surface or claiming CPython binary pickle byte-stream
+compatibility.
+
 `tests/cpython_test_manifest.md` tracks CPython test modules by source test
 method count. Use it to decide which CPython module or class group is actually
 ported, partial, blocked by runtime/AST-module work, or not started.
