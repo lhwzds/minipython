@@ -6038,6 +6038,87 @@ fn all_any_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn iter_next_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_iter_next_builtin_subset(",
+        "Lib/test/test_builtin.py::BuiltinTest::test_iter",
+        "::test_next",
+        "selected Lib/test/test_iter.py iterator exhaustion cases",
+        "for value in [('1', '2'), ['1', '2'], '12']",
+        "iterator = iter(value)",
+        "next(iterator)",
+        "except StopIteration",
+        "lambda: iter()",
+        "lambda: iter(42, 42)",
+        "iterator = iter(range(2))",
+        "next(iterator, 42)",
+        "class Iter",
+        "def __next__(self):",
+        "def gen():",
+        "HAS_MORE = 1",
+        "NO_MORE = 2",
+        "def exhaust(iterator):",
+        "state[1] = iter(spam, NO_MORE)",
+        "stop_by_exception",
+        "list(iter(stop_by_exception, 99))",
+        "show('list', iter(items)",
+        "show('tuple', iter((0, 1, 2, 3, 4)))",
+        "show('string', iter('abcde'))",
+        "class Sequence",
+        "show('sequence', iter(sequence)",
+        "show('callable', iter(spam, 5))",
+        "show('range', iter(range(5)))",
+        "show('yield', gen())",
+        "show('enumerate', enumerate(range(5)))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused iter/next builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_iter_next_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_iter / ::test_next",
+        "for value in [('1', '2'), ['1', '2'], '12']",
+        "iterator = iter(value)",
+        "next(iterator)",
+        "except StopIteration",
+        "iterator = iter(range(2))",
+        "next(iterator, 42)",
+        "class Iter",
+        "def __next__(self):",
+        "def gen():",
+        "lambda: iter()",
+        "lambda: iter(42, 42)",
+        "lambda: next()",
+        "lambda: next(42)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused iter/next CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_iter_next_builtin_subset")
+                && document.contains("cpython_iter_next_builtin_diff_subset")
+                && document.contains("callable-sentinel")
+                && document.contains("sink-state"),
+            "focused iter/next evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_MIGRATION.contains("BuiltinTest::test_iter")
+            && CPYTHON_MIGRATION.contains("::test_next")
+            && CPYTHON_MIGRATION.contains("test_iter_function_stop")
+            && CPYTHON_MIGRATION.contains("test_iter_function_concealing_reentrant_exhaustion"),
+        "focused iter/next migration notes must name the CPython builtin and iterator exhaustion sources"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
