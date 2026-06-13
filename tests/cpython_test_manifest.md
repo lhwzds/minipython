@@ -64,6 +64,10 @@ Rust coverage.
 Direct diff mapping note: `cpython_memoryview_methods_release_diff_subset`
 directly compares the public memoryview method/release/context-manager slice
 covered by `cpython_memoryview_basic_methods_and_release_subset`.
+Direct diff mapping note: `cpython_memoryview_slice_and_attributes_diff_subset`
+directly compares the memoryview slice-reference and public buffer-attribute
+surfaces covered by `cpython_memoryview_slice_reference_subset` and
+`cpython_memoryview_public_buffer_attributes_subset`.
 
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |

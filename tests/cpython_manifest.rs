@@ -1294,6 +1294,54 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
 }
 
 #[test]
+fn cpython_memoryview_slice_attributes_diff_covers_runtime_subsets() {
+    let diff_name = "cpython_memoryview_slice_and_attributes_diff_subset";
+    let runtime_subsets = [
+        "cpython_memoryview_slice_reference_subset",
+        "cpython_memoryview_public_buffer_attributes_subset",
+    ];
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview slice/attributes direct CPython diff evidence must exist"
+    );
+
+    for subset in runtime_subsets {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "memoryview runtime subset evidence `{subset}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset),
+                "memoryview slice/attributes docs must link `{diff_name}` to `{subset}`"
+            );
+        }
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview slice/attributes diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "memoryview(base)[1:7]",
+        "m[0] = ord('1')",
+        "view.obj is base",
+        "m.strides",
+        "m.c_contiguous",
+        "released.obj",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview slice/attributes diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
     let diff_name = "cpython_memoryview_rejection_and_hash_diff_subset";
     let runtime_subsets = [
