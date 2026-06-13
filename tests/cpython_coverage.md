@@ -1292,6 +1292,10 @@ Recent runtime migration notes:
   bound method-wrapper forms, exact `types` alias identity, and direct callable
   behavior for the covered object and integer slots. Direct output parity is
   guarded by `cpython_types_slot_and_method_wrapper_types_diff_subset`.
+  CPython object-layout internals, exact C descriptor types beyond public
+  aliases, pickle identity matrices, and interpreter lifecycle behavior remain
+  outside the sandbox `types` surface unless separately promoted with direct
+  public-behavior evidence.
 - The bundled `types` module also includes
   `cpython_types_code_traceback_type_aliases_subset`, covering the public
   `types.CodeType` and `types.TracebackType` aliases for MiniPython code and

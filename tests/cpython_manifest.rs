@@ -9538,6 +9538,26 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "types sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    for required in [
+        "CPython object-layout internals",
+        "exact C descriptor types",
+        "pickle identity matrices",
+        "interpreter lifecycle behavior",
+    ] {
+        assert!(
+            row.excluded_surface.contains(required),
+            "types sandbox manifest must keep unsupported boundary `{required}` documented"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "types migration notes must document sandbox boundary `{required}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "types coverage notes must document sandbox boundary `{required}`"
+        );
+    }
 }
 
 #[test]
