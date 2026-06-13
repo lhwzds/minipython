@@ -4214,6 +4214,76 @@ fn operator_pickle_helper_subset_has_focused_compatibility_evidence() {
 }
 
 #[test]
+fn collections_chainmap_pickle_eval_identity_stays_subset_only() {
+    for required in [
+        "fn cpython_collections_chainmap_copy_pickle_eval_identity_subset(",
+        "TestChainMap::test_basics",
+        "copy, pickle, eval(repr(...)), repr, and object-identity",
+        "from collections import ChainMap",
+        "import copy, pickle",
+        "d = c.new_child()",
+        "del d['b']",
+        "expected_repr = [",
+        "({'c': 30}, {'a': 1, 'b': 2})",
+        "({'c': 30}, {'b': 2, 'a': 1})",
+        "('copy_method', d.copy())",
+        "('copy.copy', copy.copy(d))",
+        "e == d, e.maps == d.maps, e is d, e.maps[0] is d.maps[0], e.maps[1] is d.maps[1]",
+        "pickle_checked = 0",
+        "for proto in range(pickle.HIGHEST_PROTOCOL + 1):",
+        "pickle.loads(pickle.dumps(d, proto))",
+        "e.maps[0] is not d.maps[0] and e.maps[1] is not d.maps[1]",
+        "deep_eval_checked = 0",
+        "copy.deepcopy(d), eval(repr(d))",
+        "copy_method True True False False True",
+        "copy.copy True True False False True",
+        "pickle 6 6",
+        "deep_eval 2",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "ChainMap pickle/eval identity subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF
+            .contains("fn cpython_collections_chainmap_copy_pickle_eval_identity_diff_subset("),
+        "ChainMap pickle/eval identity must remain subset-only while using MiniPython internal pickle/eval identity behavior"
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "collections / collections.abc")
+        .expect("sandbox stdlib manifest must include collections / collections.abc");
+    assert!(
+        !row.supported_surface
+            .contains("cpython_collections_chainmap_copy_pickle_eval_identity_subset")
+            && row
+                .excluded_surface
+                .contains("pickle/eval identity matrices"),
+        "collections manifest must keep ChainMap pickle/eval identity outside the default sandbox surface"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_collections_chainmap_copy_pickle_eval_identity_subset")
+            && CPYTHON_COVERAGE.contains("pickle round trips")
+            && CPYTHON_COVERAGE.contains("copy.deepcopy()")
+            && CPYTHON_COVERAGE.contains("eval(repr(...))"),
+        "coverage notes must describe ChainMap pickle/eval identity subset evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_collections_chainmap_copy_pickle_eval_identity_subset")
+            && CPYTHON_MIGRATION.contains("TestChainMap::test_basics")
+            && CPYTHON_MIGRATION.contains("shallow-copy first-map copying")
+            && CPYTHON_MIGRATION.contains("parent-map sharing")
+            && CPYTHON_MIGRATION.contains("pickle")
+            && CPYTHON_MIGRATION.contains("eval(repr(...))")
+            && CPYTHON_MIGRATION.contains("object identity expectations"),
+        "migration notes must describe ChainMap copy/pickle/eval identity subset behavior"
+    );
+}
+
+#[test]
 fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "array",
