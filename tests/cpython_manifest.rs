@@ -5002,6 +5002,48 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn types_new_class_metaclass_keywords_diff_covers_runtime_subset() {
+    let subset_name = "cpython_types_class_creation_new_class_metaclass_keywords_subset";
+    let diff_name = "cpython_types_class_creation_new_class_meta_helper_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "types.new_class metaclass-keyword runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "types.new_class meta-helper CPython diff evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name) && document.contains(diff_name),
+            "types docs must link `{subset_name}` to `{diff_name}`"
+        );
+    }
+
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("types.new_class meta-helper diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "def meta_func(name, bases, ns, **kw):",
+        "types.new_class('X', (int, object), dict(metaclass=meta_func, x=0))",
+        "res[3] == {'x': 0}",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "types.new_class metaclass keyword diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn types_singleton_alias_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_types_singleton_type_aliases_diff_subset()")
