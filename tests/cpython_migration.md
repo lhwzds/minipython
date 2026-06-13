@@ -2202,6 +2202,9 @@ Completed in the comparison-helper promotion pass:
   `is_bitwise_or`, plus executable CPython-derived coverage for comparison
   operators consuming right-hand `bitwise_or` expressions and mixed chained
   comparison short-circuiting.
+- Added `cpython_comparison_helper_rules_diff_subset` as direct CPython output
+  parity for the `cpython_comparison_helper_rules_subset` helper-rule
+  comparison forms.
 
 Completed in the invalid call-argument promotion pass:
 

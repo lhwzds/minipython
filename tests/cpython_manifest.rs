@@ -4805,6 +4805,50 @@ fn cpython_control_flow_smoke_diff_covers_grammar_runtime_subsets() {
 }
 
 #[test]
+fn cpython_comparison_helper_diff_covers_runtime_subset() {
+    let diff_name = "cpython_comparison_helper_rules_diff_subset";
+    let subset_name = "cpython_comparison_helper_rules_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("comparison helper CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "comparison helper runtime subset evidence must exist"
+    );
+    for required in [
+        "1 == 1 | 0",
+        "1 != 2 | 0",
+        "1 <= 2 | 1",
+        "1 < 2 | 1",
+        "3 >= 2 | 1",
+        "4 > 1 | 2",
+        "1 in [0 | 1]",
+        "2 not in [1 | 0]",
+        "None is None",
+        "None is not 1 | 0",
+        "1 < 1 > 1 == 1 >= 1 <= 1 != 1 in 1 not in x is x is not x",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "comparison helper diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "comparison helper docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_match_stmt_diff_covers_match_runtime_subset() {
     let diff_name = "cpython_grammar_match_stmt_diff_subset";
     let subset_name = "cpython_grammar_match_stmt_subset";

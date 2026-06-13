@@ -13207,6 +13207,22 @@ print(type(itertools.chain.from_iterable.__doc__).__name__, bool(itertools.chain
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a
 // local CPython build when migrating newer syntax.
 #[test]
+fn cpython_comparison_helper_rules_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram compare_op_bitwise_or_pair and comparison operator helper public execution subset",
+        name: "comparison-helper-rules",
+        source: r#"print(1 == 1 | 0, 1 != 2 | 0)
+print(1 <= 2 | 1, 1 < 2 | 1, 3 >= 2 | 1, 4 > 1 | 2)
+print(1 in [0 | 1], 2 not in [1 | 0])
+print(None is None, None is not 1 | 0)
+x = 1
+if 1 < 1 > 1 == 1 >= 1 <= 1 != 1 in 1 not in x is x is not x:
+    print("unreachable")
+print("done")"#,
+    });
+}
+
+#[test]
 fn cpython_program_output_parity_smoke_diff_subset() {
     for case in [
         DiffCase {
