@@ -6339,6 +6339,49 @@ fn required_sandbox_stdlib_runtime_guard_matches_manifest_modules() {
 }
 
 #[test]
+fn required_sandbox_stdlib_scope_matches_defined_surface() {
+    let expected = [
+        "array",
+        "builtins",
+        "collections",
+        "collections.abc",
+        "copy",
+        "functools",
+        "io",
+        "itertools",
+        "json",
+        "math",
+        "math.integer",
+        "operator",
+        "sys",
+        "types",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect::<BTreeSet<_>>();
+
+    assert_eq!(
+        sandbox_stdlib_module_names(),
+        expected,
+        "sandbox stdlib manifest drifted from the explicitly scoped required module surface"
+    );
+    assert_eq!(
+        required_stdlib_runtime_guard_modules(),
+        expected,
+        "runtime required stdlib allow-list drifted from the explicitly scoped module surface"
+    );
+
+    for excluded in [
+        "pickle", "typing", "weakref", "time", "os", "os.path", "re", "string", "unittest",
+    ] {
+        assert!(
+            !expected.contains(excluded),
+            "compatibility/test-support module `{excluded}` must stay out of required sandbox stdlib"
+        );
+    }
+}
+
+#[test]
 fn cpython_migration_documents_out_of_scope_runtime_stop_line_guard() {
     for required in [
         "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
