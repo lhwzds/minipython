@@ -5974,6 +5974,15 @@ fn array_clear_diff_evidence_stays_capability_gated() {
             && body.contains("skipping array.clear diff"),
         "array.clear diff evidence must stay gated for older CPython oracles"
     );
+    for required in [
+        "cpython_array_one_byte_public_clear_subset",
+        "cpython_array_one_byte_public_clear_diff_subset",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "array.clear coverage notes must mention `{required}`"
+        );
+    }
 }
 
 #[test]

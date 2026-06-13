@@ -124,6 +124,7 @@ Recent runtime migration notes:
   `cpython_array_float_public_sequence_and_mutation_diff_subset`,
   `cpython_array_unicode_public_sequence_and_mutation_diff_subset`,
   `cpython_array_one_byte_public_mutation_methods_diff_subset`,
+  `cpython_array_one_byte_public_clear_diff_subset`,
   `cpython_array_one_byte_public_subscript_mutation_diff_subset`,
   `cpython_array_one_byte_public_copy_byteswap_compare_diff_subset`,
   `cpython_array_one_byte_public_concat_repeat_diff_subset`,
