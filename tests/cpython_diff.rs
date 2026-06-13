@@ -11788,8 +11788,17 @@ class X:
         return self.value
 class Y:
     pass
+class I(int):
+    pass
 print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))
 print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))
+for default in [True, False, I(5), -1]:
+    print('default', type(default).__name__, repr(operator.length_hint(Y(), default)), repr(operator.length_hint(X(NotImplemented), default)))
+for default in [2**63, -(2**100)]:
+    try:
+        operator.length_hint(Y(), default)
+    except OverflowError as error:
+        print('default-overflow', type(error).__name__)
 for value in [X('abc'), X(-2), X(LookupError)]:
     try:
         operator.length_hint(value)

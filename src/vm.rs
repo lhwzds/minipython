@@ -28494,8 +28494,8 @@ impl Vm {
         let (object, default) = match args.as_slice() {
             [object] => (object.clone(), Value::Number(0)),
             [object, default] => {
-                operator_length_hint_check_default(default)?;
-                (object.clone(), default.clone())
+                let default = operator_length_hint_default_value(default)?;
+                (object.clone(), default)
             }
             values => {
                 return Err(format!(
@@ -71312,19 +71312,21 @@ fn len_result_from_value(value: Value) -> Result<usize, String> {
     }
 }
 
-fn operator_length_hint_check_default(default: &Value) -> Result<(), String> {
-    if matches!(
-        default,
-        Value::Bool(_) | Value::Number(_) | Value::BigInt(_)
-    ) || int_subclass_integer(default).is_some()
-    {
-        return Ok(());
+fn operator_length_hint_default_value(default: &Value) -> Result<Value, String> {
+    match default {
+        Value::Bool(value) => Ok(Value::Number(bool_as_i64(*value))),
+        Value::Number(value) => Ok(Value::Number(*value)),
+        Value::BigInt(value) => value.to_i64().map(Value::Number).ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
+        value if int_subclass_integer(value).is_some() => operator_length_hint_default_value(
+            &int_subclass_integer(value).expect("int subclass value exists after guard"),
+        ),
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(value)
+        )),
     }
-
-    Err(format!(
-        "TypeError: '{}' object cannot be interpreted as an integer",
-        type_name(default)
-    ))
 }
 
 fn operator_length_hint_result(value: Value, default: Value) -> Result<Value, String> {
