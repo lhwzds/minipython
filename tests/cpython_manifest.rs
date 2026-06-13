@@ -1282,6 +1282,9 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
 
     for required in [
         "m.tobytes()",
+        "m.tobytes('C')",
+        "m.tobytes(order='A')",
+        "memoryview(b'abc').tobytes('bad')",
         "m.tolist()",
         "m.toreadonly()",
         "with m as cm",
@@ -1293,6 +1296,10 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
             "memoryview method/release diff evidence must contain `{required}`"
         );
     }
+    assert!(
+        CPYTHON_SUBSET.contains("order must be 'C', 'F' or 'A'"),
+        "memoryview method/release subset evidence must contain tobytes order ValueError text"
+    );
 }
 
 #[test]

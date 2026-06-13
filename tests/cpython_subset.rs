@@ -20191,6 +20191,20 @@ fn cpython_memoryview_basic_methods_and_release_subset() {
             "released-second None",
         ],
     );
+
+    assert_output(
+        "m = memoryview(b'abc')\nprint(m.tobytes('C'), m.tobytes('F'), m.tobytes('A'), m.tobytes(order='C'), m.tobytes(None))\nfor expr in [lambda: m.tobytes('bad'), lambda: m.tobytes(''), lambda: m.tobytes(b'C'), lambda: m.tobytes(order=b'C'), lambda: m.tobytes(bad='C'), lambda: m.tobytes('C', 'F'), lambda: m.tobytes(order='C', bad='F')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, str(error))",
+        &[
+            "b'abc' b'abc' b'abc' b'abc' b'abc'",
+            "ValueError order must be 'C', 'F' or 'A'",
+            "ValueError order must be 'C', 'F' or 'A'",
+            "TypeError argument 1 must be str or None, not bytes",
+            "TypeError argument 1 must be str or None, not bytes",
+            "TypeError 'bad' is an invalid keyword argument for this function",
+            "TypeError tobytes() takes at most 1 argument (2 given)",
+            "TypeError tobytes() takes at most 1 keyword argument (2 given)",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_memoryview.py::AbstractMemoryTests::

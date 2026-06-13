@@ -3886,7 +3886,8 @@ Recent runtime migration notes:
   attributes, deleted-binding, display-container, augmented-assignment,
   comprehension-frame/target, and expression-temporary exported-view release,
   and direct method-level evidence for
-  `test_tobytes`, `test_tolist`, `test_attributes_readonly`,
+  `test_tobytes` including public `order='C'/'F'/'A'` handling,
+  `test_tolist`, `test_attributes_readonly`,
   `test_attributes_writable`, `test_contextmanager`, `test_release`, and
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the
   public `release()` lifecycle, context-manager entry/exit behavior,

@@ -662,6 +662,26 @@ fn memoryview_physical_index_from_parts(
     usize::try_from(physical_index).map_err(|_| "memoryview index out of range".to_string())
 }
 
+fn validate_memoryview_tobytes_order(order: Option<&Value>) -> Result<(), String> {
+    let Some(order) = order else {
+        return Ok(());
+    };
+    match order {
+        Value::None => Ok(()),
+        Value::String(value) | Value::IdentityString { value, .. } => {
+            if matches!(value.as_str(), "C" | "F" | "A") {
+                Ok(())
+            } else {
+                Err("ValueError: order must be 'C', 'F' or 'A'".to_string())
+            }
+        }
+        value => Err(format!(
+            "TypeError: argument 1 must be str or None, not {}",
+            type_name(value)
+        )),
+    }
+}
+
 fn memoryview_state_bytes(state: &crate::value::MemoryViewState) -> Result<Vec<u8>, String> {
     if state.released {
         return Err(released_memoryview_error());
@@ -18788,22 +18808,16 @@ impl Vm {
         if name == "memoryview.cast" {
             return self.call_memoryview_cast(args, keywords);
         }
+        if name == "memoryview.tobytes" {
+            return self.call_memoryview_tobytes(args, keywords);
+        }
         reject_method_keywords(name, &keywords)?;
 
         match name {
-            "memoryview.tobytes" => {
-                let [Value::MemoryView(view)] = args.as_slice() else {
-                    return Err(format!(
-                        "TypeError: tobytes() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
-                };
-                Ok(bytes_value(memoryview_bytes(view)?))
-            }
             "memoryview.tolist" => {
                 let [Value::MemoryView(view)] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: tolist() expected 0 arguments, got {}",
+                        "TypeError: memoryview.tolist() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -18986,6 +19000,46 @@ impl Vm {
             }
             _ => Err(format!("unknown builtin: {name}")),
         }
+    }
+
+    fn call_memoryview_tobytes(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let [Value::MemoryView(view), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "TypeError: tobytes() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "TypeError: tobytes() takes at most 1 argument ({} given)",
+                rest.len()
+            ));
+        }
+        if keywords.len() > 1 {
+            return Err(format!(
+                "TypeError: tobytes() takes at most 1 keyword argument ({} given)",
+                keywords.len()
+            ));
+        }
+
+        let mut order = rest.first().cloned();
+        for (keyword, value) in keywords {
+            if keyword != "order" {
+                return Err(format!(
+                    "TypeError: '{keyword}' is an invalid keyword argument for this function"
+                ));
+            }
+            if order.is_some() {
+                return Err("TypeError: tobytes() takes at most 1 argument (2 given)".to_string());
+            }
+            order = Some(value);
+        }
+        validate_memoryview_tobytes_order(order.as_ref())?;
+        Ok(bytes_value(memoryview_bytes(view)?))
     }
 
     fn call_memoryview_cast(

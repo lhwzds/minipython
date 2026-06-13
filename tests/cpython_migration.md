@@ -756,8 +756,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   diagnostics for missing, duplicate, and excess positional/keyword arguments,
   byte iteration, equality with bytes-like objects, read-only memoryview
   hashing, writable memoryview `ValueError` on hash, one-dimensional byte-view
-  attributes, `tobytes()`, `tolist()`, `hex()`, `count()`, `index()`, and
-  `toreadonly()`. The slice now also covers CPython's public
+  attributes, `tobytes()` including public `order='C'/'F'/'A'` handling,
+  `tolist()`, `hex()`, `count()`, `index()`, and `toreadonly()`. The slice now
+  also covers CPython's public
   `memoryview.release()` lifecycle, context-manager `__enter__` /
   `__exit__`, released-state `ValueError` behavior for supported operations,
   released `str()` / `repr()` shape, same-object identity through `with ... as`,

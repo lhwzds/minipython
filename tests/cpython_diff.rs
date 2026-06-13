@@ -21390,17 +21390,21 @@ fn cpython_memoryview_methods_release_diff_subset() {
         source: r#"for source in [b'abcdef', bytearray(b'abcdef'), memoryview(b'abcdef')[1:5]]:
     m = memoryview(source)
     print(m.tobytes(), m.tolist(), m.hex(), m.hex(':', 2))
+    print(m.tobytes('C'), m.tobytes(order='A'), m.tobytes(None))
     print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.suboffsets, m.readonly, m.nbytes)
     print(m.toreadonly().readonly, m.toreadonly().tolist() == m.tolist())
 
 for expr in [
     lambda: memoryview(b'abc').tobytes(1),
+    lambda: memoryview(b'abc').tobytes('bad'),
+    lambda: memoryview(b'abc').tobytes(order=b'C'),
+    lambda: memoryview(b'abc').tobytes(bad='C'),
     lambda: memoryview(b'abc').tolist(1),
 ]:
     try:
         expr()
-    except TypeError as error:
-        print(error.__class__.__name__)
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__, str(error))
 
 m = memoryview(b'abcdef')
 print(list(reversed(m)), list(m[::-1]))
