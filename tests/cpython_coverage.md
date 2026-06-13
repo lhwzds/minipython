@@ -1346,9 +1346,10 @@ Recent runtime migration notes:
   with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
   `isatty()`, `flush()`, `fileno()` / `detach()` `io.UnsupportedOperation`
   stubs, `close()`, `closed`, supported method visibility through `dir()`,
-  closed-stream `ValueError`, context-manager entry/exit lifecycle behavior,
-  and representative constructor/method TypeError/ValueError/OSError
-  classification without host file descriptors or buffering layers.
+  `None` initial-value empty-buffer construction, closed-stream `ValueError`,
+  context-manager entry/exit lifecycle behavior, and representative
+  constructor/method TypeError/ValueError/OSError classification without host
+  file descriptors or buffering layers.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,

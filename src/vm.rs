@@ -952,6 +952,7 @@ fn memoryview_item_value(view: &MemoryViewRef, index: Value) -> Result<Value, St
 
 fn bytesio_initial_bytes(value: Value) -> Result<Vec<u8>, String> {
     match value {
+        Value::None => Ok(Vec::new()),
         Value::Bytes(value) => Ok(value.as_ref().clone()),
         Value::ByteArray(value) => Ok(bytearray_bytes(&value)),
         Value::MemoryView(view) => memoryview_bytes(&view),

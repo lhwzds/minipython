@@ -19361,6 +19361,8 @@ for source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:
 for label, callback in [
     ('int', lambda: io.BytesIO(123)),
     ('two', lambda: io.BytesIO(b'a', b'b')),
+    ('none-pos', lambda: io.BytesIO(None)),
+    ('none-kw', lambda: io.BytesIO(initial_bytes=None)),
     ('kw', lambda: io.BytesIO(initial_bytes=b'ab')),
     ('dup', lambda: io.BytesIO(b'a', initial_bytes=b'b')),
 ]:

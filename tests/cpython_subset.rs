@@ -21975,7 +21975,7 @@ fn cpython_memoryview_release_during_index_subset() {
 #[test]
 fn cpython_memoryview_bytesio_readinto_subset() {
     assert_output(
-        "import io\nfor target in [bytearray(b'abc'), memoryview(bytearray(b'abc'))]:\n    bio = io.BytesIO(b'XYZW')\n    n = bio.readinto(target)\n    print(type(target).__name__, n, bytes(target))\nfor target in [b'abc', memoryview(b'abc')]:\n    bio = io.BytesIO(b'XYZW')\n    try:\n        bio.readinto(target)\n    except TypeError as error:\n        print(type(target).__name__, error.__class__.__name__, str(error))\nbio = io.BytesIO(b'XYZW')\nba = bytearray(b'abc')\nprint(bio.readinto(ba), ba, bio.readinto(ba), ba, bio.readinto(ba), ba)\nfor source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:\n    bio = io.BytesIO() if source is None else io.BytesIO(source)\n    target = bytearray(4)\n    print(type(bio).__name__, bio.readinto(target), target)\nfor label, callback in [('int', lambda: io.BytesIO(123)), ('two', lambda: io.BytesIO(b'a', b'b')), ('kw', lambda: io.BytesIO(initial_bytes=b'ab')), ('dup', lambda: io.BytesIO(b'a', initial_bytes=b'b'))]:\n    try:\n        obj = callback()\n        target = bytearray(3)\n        print(label, 'ok', obj.readinto(target), target)\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        "import io\nfor target in [bytearray(b'abc'), memoryview(bytearray(b'abc'))]:\n    bio = io.BytesIO(b'XYZW')\n    n = bio.readinto(target)\n    print(type(target).__name__, n, bytes(target))\nfor target in [b'abc', memoryview(b'abc')]:\n    bio = io.BytesIO(b'XYZW')\n    try:\n        bio.readinto(target)\n    except TypeError as error:\n        print(type(target).__name__, error.__class__.__name__, str(error))\nbio = io.BytesIO(b'XYZW')\nba = bytearray(b'abc')\nprint(bio.readinto(ba), ba, bio.readinto(ba), ba, bio.readinto(ba), ba)\nfor source in [None, b'ab', bytearray(b'ab'), memoryview(b'ab')]:\n    bio = io.BytesIO() if source is None else io.BytesIO(source)\n    target = bytearray(4)\n    print(type(bio).__name__, bio.readinto(target), target)\nfor label, callback in [('int', lambda: io.BytesIO(123)), ('two', lambda: io.BytesIO(b'a', b'b')), ('none-pos', lambda: io.BytesIO(None)), ('none-kw', lambda: io.BytesIO(initial_bytes=None)), ('kw', lambda: io.BytesIO(initial_bytes=b'ab')), ('dup', lambda: io.BytesIO(b'a', initial_bytes=b'b'))]:\n    try:\n        obj = callback()\n        target = bytearray(3)\n        print(label, 'ok', obj.readinto(target), target)\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
         &[
             "bytearray 3 b'XYZ'",
             "memoryview 3 b'XYZ'",
@@ -21988,6 +21988,8 @@ fn cpython_memoryview_bytesio_readinto_subset() {
             "BytesIO 2 bytearray(b'ab\\x00\\x00')",
             "int TypeError a bytes-like object is required, not 'int'",
             "two TypeError BytesIO() takes at most 1 argument (2 given)",
+            "none-pos ok 0 bytearray(b'\\x00\\x00\\x00')",
+            "none-kw ok 0 bytearray(b'\\x00\\x00\\x00')",
             "kw ok 2 bytearray(b'ab\\x00')",
             "dup TypeError BytesIO() takes at most 1 argument (2 given)",
         ],
