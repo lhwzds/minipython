@@ -26891,6 +26891,9 @@ impl Vm {
             (Value::Tuple(left), Value::Tuple(right)) => {
                 return self.rich_sequence_equal(left.as_ref(), right.as_ref());
             }
+            (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) => {
+                return self.rich_sequence_equal(&left.borrow(), &right.borrow());
+            }
             (Value::List(left), Value::List(right)) => {
                 return self.rich_sequence_equal(&left.borrow(), &right.borrow());
             }
@@ -27126,6 +27129,12 @@ impl Vm {
             } else {
                 Ok(None)
             };
+        }
+
+        if let (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) = (left, right) {
+            let left = left.borrow().clone();
+            let right = right.borrow().clone();
+            return Ok(Some(self.rich_sequence_order(&left, &right, op)?));
         }
 
         let Some((left, right)) = sequence_order_operands(left, right) else {
@@ -28681,6 +28690,33 @@ impl Vm {
             return Err(format!("{method}() expected a deque receiver"));
         };
         match method {
+            "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                let [other] = rest else {
+                    return Err(format!(
+                        "{method}() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let Value::Deque { data: right, .. } = other else {
+                    return Ok(Value::NotImplemented);
+                };
+                let left = data.borrow().clone();
+                let right = right.borrow().clone();
+                let result = match method {
+                    "__eq__" => self.rich_sequence_equal(&left, &right)?,
+                    "__ne__" => !self.rich_sequence_equal(&left, &right)?,
+                    "__lt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Less)?,
+                    "__le__" => {
+                        self.rich_sequence_order(&left, &right, SequenceOrder::LessEqual)?
+                    }
+                    "__gt__" => self.rich_sequence_order(&left, &right, SequenceOrder::Greater)?,
+                    "__ge__" => {
+                        self.rich_sequence_order(&left, &right, SequenceOrder::GreaterEqual)?
+                    }
+                    _ => unreachable!("method is filtered above"),
+                };
+                Ok(Value::Bool(result))
+            }
             "extend" | "extendleft" => {
                 let [iterable] = rest else {
                     return Err(format!(
@@ -51295,7 +51331,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
-                | "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__reversed__" => {
+                | "__contains__" | "__eq__" | "__ge__" | "__getitem__" | "__gt__" | "__iter__"
+                | "__le__" | "__len__" | "__lt__" | "__ne__" | "__reversed__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("deque.{name}"))),
                         receiver: Box::new(Value::Deque { data, maxlen }),

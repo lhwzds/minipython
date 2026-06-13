@@ -44753,7 +44753,7 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
 // append/extend/insert/remove/pop operations, simple queries/reordering,
-// membership, integer indexing, reverse iteration, and MutableSequence
+// membership, rich comparison, integer indexing, reverse iteration, and MutableSequence
 // registration. Broader deque APIs, pickling, performance, and thread-safety
 // semantics remain outside the default sandbox surface.
 #[test]
@@ -44787,6 +44787,12 @@ fn cpython_collections_deque_public_surface_subset() {
             "        return -1\n",
             "print(d[0], d[-1], d[DequeIndexLike()])\n",
             "print(list(reversed(d)), list(d.__reversed__()))\n",
+            "same = deque([0, -1, 1], maxlen=99)\n",
+            "higher = deque([0, -1, 2])\n",
+            "print(d == same, d != higher, d == [0, -1, 1], d != [0, -1, 1])\n",
+            "print(d < higher, d <= same, higher > d, same >= d)\n",
+            "print(d.__eq__(same), d.__ne__(higher), d.__eq__([0, -1, 1]) is NotImplemented)\n",
+            "print(d.__lt__(higher), d.__le__(same), higher.__gt__(d), same.__ge__(d), d.__lt__([0]) is NotImplemented)\n",
             "q = deque([0, -1, 1])\n",
             "print(q.insert(1, 'x'), list(q), repr(q))\n",
             "print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))\n",
@@ -44849,6 +44855,10 @@ fn cpython_collections_deque_public_surface_subset() {
             "True False False",
             "0 1 1",
             "[1, -1, 0] [1, -1, 0]",
+            "True True False True",
+            "True True True True",
+            "True True True",
+            "True True True True True",
             "None [0, 'x', -1, 1] deque([0, 'x', -1, 1])",
             "None None ['y', 0, 'x', -1, 1, 'z'] deque(['y', 0, 'x', -1, 1, 'z'])",
             "None ['y', 0, 'x', -1, 'z'] deque(['y', 0, 'x', -1, 'z'])",

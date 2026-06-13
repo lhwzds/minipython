@@ -3078,6 +3078,12 @@ class DequeIndexLike:
         return -1
 print(d[0], d[-1], d[DequeIndexLike()])
 print(list(reversed(d)), list(d.__reversed__()))
+same = deque([0, -1, 1], maxlen=99)
+higher = deque([0, -1, 2])
+print(d == same, d != higher, d == [0, -1, 1], d != [0, -1, 1])
+print(d < higher, d <= same, higher > d, same >= d)
+print(d.__eq__(same), d.__ne__(higher), d.__eq__([0, -1, 1]) is NotImplemented)
+print(d.__lt__(higher), d.__le__(same), higher.__gt__(d), same.__ge__(d), d.__lt__([0]) is NotImplemented)
 q = deque([0, -1, 1])
 print(q.insert(1, 'x'), list(q), repr(q))
 print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))
