@@ -2630,6 +2630,83 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
 }
 
 #[test]
+fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
+    let sandbox_prefixes = [
+        "cpython_array_",
+        "cpython_collections_",
+        "cpython_copy_",
+        "cpython_functools_",
+        "cpython_io_",
+        "cpython_itertools_",
+        "cpython_json_",
+        "cpython_operator_",
+    ];
+
+    let subset_names = rust_test_names(CPYTHON_SUBSET)
+        .into_iter()
+        .filter(|name| {
+            sandbox_prefixes
+                .iter()
+                .any(|prefix| name.starts_with(prefix))
+        })
+        .filter_map(|name| name.strip_suffix("_subset").map(str::to_string))
+        .collect::<BTreeSet<_>>();
+    let diff_names = rust_test_names(CPYTHON_DIFF)
+        .into_iter()
+        .filter_map(|name| name.strip_suffix("_diff_subset").map(str::to_string))
+        .collect::<BTreeSet<_>>();
+
+    let missing_same_named_diff = subset_names
+        .difference(&diff_names)
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    let expected = [
+        "cpython_collections_chainmap_copy_pickle_eval_identity",
+        "cpython_collections_namedtuple_pickle",
+        "cpython_itertools_core_iterator",
+        "cpython_json_loads_dumps_basic",
+        "cpython_operator_pickle_helper",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect::<BTreeSet<_>>();
+    assert_eq!(
+        missing_same_named_diff, expected,
+        "sandbox stdlib subset evidence without same-named CPython diff must be explicitly classified"
+    );
+
+    for (subset, diff) in [
+        (
+            "cpython_json_loads_dumps_basic_subset",
+            "cpython_json_loads_dumps_diff_subset",
+        ),
+        (
+            "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_core_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(subset)
+                && CPYTHON_COVERAGE.contains(diff)
+                && CPYTHON_MIGRATION.contains(subset)
+                && CPYTHON_MIGRATION.contains(diff),
+            "broader CPython diff `{diff}` must be documented as covering runtime subset `{subset}`"
+        );
+    }
+
+    for subset in [
+        "cpython_operator_pickle_helper_subset",
+        "cpython_collections_chainmap_copy_pickle_eval_identity_subset",
+        "cpython_collections_namedtuple_pickle_subset",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_MIGRATION.contains(subset),
+            "pickle/eval identity subset `{subset}` must stay documented as subset-only support"
+        );
+    }
+}
+
+#[test]
 fn json_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "json",
@@ -6223,6 +6300,17 @@ fn python_string_literal_has_rust_evidence(literal_inner: &str, evidence: &str) 
     candidates
         .iter()
         .any(|candidate| evidence.contains(candidate))
+}
+
+fn rust_test_names(source: &str) -> BTreeSet<String> {
+    source
+        .lines()
+        .filter_map(|line| {
+            let rest = line.strip_prefix("fn ")?;
+            let name = rest.split_once('(')?.0;
+            name.starts_with("cpython_").then(|| name.to_string())
+        })
+        .collect()
 }
 
 fn module_level_test_function_count(source: &str) -> usize {
