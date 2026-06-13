@@ -24259,11 +24259,11 @@ fn cpython_builtin_getattr_public_subset() {
             "    getattr(sys, name)\n",
             "except AttributeError as error:\n",
             "    print(error.__class__.__name__)\n",
-            "for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 'x', 2, 3)]:\n",
+            "for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3)]:\n",
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(error.__class__.__name__)"
+            "        print(error.__class__.__name__, str(error))"
         ),
         &[
             "1 fallback",
@@ -24272,10 +24272,11 @@ fn cpython_builtin_getattr_public_subset() {
             "True True",
             "False",
             "AttributeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
+            "TypeError getattr expected at least 2 arguments, got 0",
+            "TypeError getattr expected at least 2 arguments, got 1",
+            "TypeError getattr(): attribute name must be string",
+            "TypeError getattr(): attribute name must be string",
+            "TypeError getattr expected at most 3 arguments, got 4",
         ],
     );
 }
@@ -24364,7 +24365,7 @@ fn cpython_builtin_hasattr_public_subset() {
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(error.__class__.__name__)"
+            "        print(error.__class__.__name__, str(error))"
         ),
         &[
             "True False",
@@ -24374,9 +24375,9 @@ fn cpython_builtin_hasattr_public_subset() {
             "False",
             "SystemExit exit",
             "ValueError bad",
-            "TypeError",
-            "TypeError",
-            "TypeError",
+            "TypeError hasattr expected 2 arguments, got 0",
+            "TypeError hasattr expected 2 arguments, got 1",
+            "TypeError hasattr(): attribute name must be string",
         ],
     );
 }

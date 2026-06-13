@@ -5463,11 +5463,11 @@ try:
     getattr(sys, name)
 except AttributeError as error:
     print(error.__class__.__name__)
-for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 'x', 2, 3)]:
+for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3)]:
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 
@@ -5538,7 +5538,7 @@ for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 

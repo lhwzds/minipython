@@ -9731,12 +9731,18 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         "getattr(sys, 'stdout') is sys.stdout",
         "chr(0x10ffff)",
         "lambda: getattr(1, 2)",
+        "lambda: getattr(1, 2, 'fallback')",
+        "str(error)",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
             "focused getattr subset evidence must cover `{required}`"
         );
     }
+    assert!(
+        CPYTHON_SUBSET.contains("getattr(): attribute name must be string"),
+        "focused getattr subset evidence must cover non-string attribute-name text"
+    );
 
     let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_getattr_public_diff_subset");
     for required in [
@@ -9749,6 +9755,8 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         "getattr(sys, 'stdout') is sys.stdout",
         "chr(0x10ffff)",
         "lambda: getattr(1, 2)",
+        "lambda: getattr(1, 2, 'fallback')",
+        "str(error)",
     ] {
         assert!(
             body.contains(required),
@@ -9963,12 +9971,17 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         "raise SystemExit('exit')",
         "raise ValueError('bad')",
         "lambda: hasattr(1, 2)",
+        "str(error)",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
             "focused hasattr subset evidence must cover `{required}`"
         );
     }
+    assert!(
+        CPYTHON_SUBSET.contains("hasattr(): attribute name must be string"),
+        "focused hasattr subset evidence must cover non-string attribute-name text"
+    );
 
     let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_hasattr_public_diff_subset");
     for required in [
@@ -9983,6 +9996,7 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         "raise SystemExit('exit')",
         "raise ValueError('bad')",
         "lambda: hasattr(1, 2)",
+        "str(error)",
     ] {
         assert!(
             body.contains(required),
