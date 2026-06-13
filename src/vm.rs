@@ -44,7 +44,8 @@ use crate::value::{
     frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
     identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
-    memory_view_from_parts_with_format, memory_view_value, set_value, tuple_value,
+    memory_view_from_parts_with_format, memory_view_value, ordered_dict_view_value, set_value,
+    tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
@@ -27246,7 +27247,7 @@ impl Vm {
                     .clone())
             }
             value if is_set_abc_value(&value) => self.collect_iterable_values(value),
-            Value::DictView { kind, entries } if dict_view_is_set_like(kind) => {
+            Value::DictView { kind, entries, .. } if dict_view_is_set_like(kind) => {
                 Ok(dict_view_values(kind, &entries))
             }
             Value::MappingView { kind, mapping } if dict_view_is_set_like(kind) => {
@@ -27466,6 +27467,7 @@ impl Vm {
             Value::DictView {
                 kind: DictViewKind::Items,
                 entries,
+                ..
             } => Ok(Some(entries.borrow().clone())),
             Value::MappingView {
                 kind: DictViewKind::Items,
@@ -52865,18 +52867,30 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: FrameLocalsProxy has no attribute '{name}'"
             )),
         },
-        Value::DictView { kind, entries } => {
-            let type_name = dict_view_type_name(kind);
+        Value::DictView {
+            kind,
+            entries,
+            ordered,
+        } => {
+            let type_name = dict_view_display_type_name(kind, ordered);
             match name {
                 "mapping" => Ok(mapping_proxy_value(entries)),
                 "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::DictView { kind, entries }),
+                    receiver: Box::new(Value::DictView {
+                        kind,
+                        entries,
+                        ordered,
+                    }),
                     identity: Rc::new(()),
                 }),
                 "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::DictView { kind, entries }),
+                    receiver: Box::new(Value::DictView {
+                        kind,
+                        entries,
+                        ordered,
+                    }),
                     identity: Rc::new(()),
                 }),
                 _ => Err(format!(
@@ -56422,7 +56436,7 @@ fn type_name(value: &Value) -> &str {
         Value::Dict(_) | Value::ScopeDict(_) => "dict",
         Value::OrderedDict(_) => "OrderedDict",
         Value::Counter { .. } => "Counter",
-        Value::DictView { kind, .. } => dict_view_type_name(*kind),
+        Value::DictView { kind, ordered, .. } => dict_view_display_type_name(*kind, *ordered),
         Value::MappingView { kind, .. } => dict_view_type_name(*kind),
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
@@ -56649,7 +56663,7 @@ fn type_name_for_await_error(value: &Value) -> &str {
         Value::FrozenSet(_) => "frozenset",
         Value::Dict(_) => "dict",
         Value::OrderedDict(_) => "OrderedDict",
-        Value::DictView { kind, .. } => dict_view_type_name(*kind),
+        Value::DictView { kind, ordered, .. } => dict_view_display_type_name(*kind, *ordered),
         Value::MappingView { kind, .. } => dict_view_type_name(*kind),
         Value::Template { .. } => "Template",
         Value::TemplateInterpolation(_) => "Interpolation",
@@ -62593,7 +62607,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 expected_version,
             }))
         }
-        Value::DictView { kind, entries } => {
+        Value::DictView { kind, entries, .. } => {
             let (keys, expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (
@@ -67196,7 +67210,14 @@ fn call_dict_method(
             let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("items() expected a dict receiver".to_string());
             };
-            Ok(dict_view_value(DictViewKind::Items, entries.clone()))
+            if matches!(receiver, Value::OrderedDict(_)) {
+                Ok(ordered_dict_view_value(
+                    DictViewKind::Items,
+                    entries.clone(),
+                ))
+            } else {
+                Ok(dict_view_value(DictViewKind::Items, entries.clone()))
+            }
         }
         "dict.keys" => {
             reject_method_keywords(name, &keywords)?;
@@ -67209,7 +67230,11 @@ fn call_dict_method(
             let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("keys() expected a dict receiver".to_string());
             };
-            Ok(dict_view_value(DictViewKind::Keys, entries.clone()))
+            if matches!(receiver, Value::OrderedDict(_)) {
+                Ok(ordered_dict_view_value(DictViewKind::Keys, entries.clone()))
+            } else {
+                Ok(dict_view_value(DictViewKind::Keys, entries.clone()))
+            }
         }
         "dict.pop" => {
             reject_method_keywords(name, &keywords)?;
@@ -67326,7 +67351,14 @@ fn call_dict_method(
             let Some(entries) = dict_receiver_entries(receiver) else {
                 return Err("values() expected a dict receiver".to_string());
             };
-            Ok(dict_view_value(DictViewKind::Values, entries.clone()))
+            if matches!(receiver, Value::OrderedDict(_)) {
+                Ok(ordered_dict_view_value(
+                    DictViewKind::Values,
+                    entries.clone(),
+                ))
+            } else {
+                Ok(dict_view_value(DictViewKind::Values, entries.clone()))
+            }
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
@@ -68476,7 +68508,7 @@ fn set_operator_operand(value: Value, op: &str) -> Result<Vec<Value>, String> {
                 .as_ref()
                 .clone())
         }
-        Value::DictView { kind, entries } if dict_view_is_set_like(kind) => {
+        Value::DictView { kind, entries, .. } if dict_view_is_set_like(kind) => {
             Ok(dict_view_values(kind, &entries))
         }
         value => Err(format!(
@@ -68543,6 +68575,22 @@ fn dict_view_type_name(kind: DictViewKind) -> &'static str {
         DictViewKind::Keys => "dict_keys",
         DictViewKind::Values => "dict_values",
         DictViewKind::Items => "dict_items",
+    }
+}
+
+fn ordered_dict_view_type_name(kind: DictViewKind) -> &'static str {
+    match kind {
+        DictViewKind::Keys => "odict_keys",
+        DictViewKind::Values => "odict_values",
+        DictViewKind::Items => "odict_items",
+    }
+}
+
+fn dict_view_display_type_name(kind: DictViewKind, ordered: bool) -> &'static str {
+    if ordered {
+        ordered_dict_view_type_name(kind)
+    } else {
+        dict_view_type_name(kind)
     }
 }
 
@@ -73154,7 +73202,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
         )),
         Value::ScopeDict(scope) => get_iter(scope_dict_snapshot(&scope)),
         Value::FrameLocalsProxy { locals } => get_iter(scope_dict_snapshot(&locals)),
-        Value::DictView { kind, entries } => {
+        Value::DictView { kind, entries, .. } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (entries_ref.len(), entries_ref.version)
@@ -74160,7 +74208,7 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
                 .collect())
         }
         Value::ScopeDict(scope) => Ok(scope_dict_keys(&scope)),
-        Value::DictView { kind, entries } => Ok(dict_view_values(kind, &entries)),
+        Value::DictView { kind, entries, .. } => Ok(dict_view_values(kind, &entries)),
         Value::String(value) | Value::IdentityString { value, .. } => Ok(value
             .chars()
             .map(|ch| Value::String(ch.to_string()))
@@ -78844,7 +78892,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             ensure_hashable_key(&needle)?;
             Ok(scope_dict_lookup(&scope, &needle).is_some())
         }
-        Value::DictView { kind, entries } => match kind {
+        Value::DictView { kind, entries, .. } => match kind {
             DictViewKind::Keys => {
                 ensure_hashable_key(&needle)?;
                 Ok(entries
@@ -78937,10 +78985,12 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             Value::DictView {
                 kind: left_kind,
                 entries: left_entries,
+                ..
             },
             Value::DictView {
                 kind: right_kind,
                 entries: right_entries,
+                ..
             },
         ) => left_kind == right_kind && Rc::ptr_eq(left_entries, right_entries),
         (

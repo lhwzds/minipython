@@ -16445,6 +16445,26 @@ for label, expr in [
         print(label, error.__class__.__name__)"#,
         },
         DiffCase {
+            origin: "Lib/test/test_ordered_dict.py public view display subset",
+            name: "ordered-dict-view-display-subset",
+            source: r#"from collections import OrderedDict
+od = OrderedDict([('a', 1), ('b', 2)])
+keys = od.keys()
+items = od.items()
+values = od.values()
+print(type(keys).__name__, list(keys), list(items), list(values))
+od['c'] = 3
+od.move_to_end('a')
+print(list(keys), list(items), list(values))
+print('b' in keys, ('b', 2) in items, 2 in values)
+print(list(OrderedDict.keys(od)), list(OrderedDict.items(od)), list(OrderedDict.values(od)))
+print(repr(keys), repr(items), repr(values))
+empty = OrderedDict()
+print(type(empty.keys()).__name__, repr(empty.keys()), repr(empty.items()), repr(empty.values()))
+d = {'x': 1}
+print(type(d.keys()).__name__, repr(d.keys()), repr(d.items()), repr(d.values()))"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",
             name: "type-name-qualname",
             source: r#"C = type('C', (), {})

@@ -3362,6 +3362,13 @@ Recent runtime migration notes:
   errors, empty-pop errors, unexpected-keyword errors, and duplicate-argument
   errors without promoting the full OrderedDict runtime surface.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_ordered_dict_view_display_subset`, backed by
+  `cpython_program_output_parity_smoke_diff_subset` through the
+  `ordered-dict-view-display-subset` case, covering live `keys()` / `items()` /
+  `values()` views, `odict_keys` / `odict_items` / `odict_values` public type
+  names and reprs, type-level view calls, membership, empty-view display, and a
+  normal-dict regression guard.
+- `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_new_class_resolve_bases_subset`, covering the
   first CPython `ClassCreationTests` public slice for `types.new_class()`,
   `types.prepare_class()`, and `types.resolve_bases()`: exported names,

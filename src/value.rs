@@ -385,7 +385,19 @@ fn memory_view_state_bytes(state: &MemoryViewState) -> Option<Vec<u8>> {
 }
 
 pub fn dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
-    Value::DictView { kind, entries }
+    Value::DictView {
+        kind,
+        entries,
+        ordered: false,
+    }
+}
+
+pub fn ordered_dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
+    Value::DictView {
+        kind,
+        entries,
+        ordered: true,
+    }
 }
 
 pub fn mapping_view_value(kind: DictViewKind, mapping: Value) -> Value {
@@ -522,6 +534,7 @@ pub enum Value {
     DictView {
         kind: DictViewKind,
         entries: DictRef,
+        ordered: bool,
     },
     MappingView {
         kind: DictViewKind,
@@ -1122,14 +1135,18 @@ impl fmt::Display for Value {
             Value::Dict(entries) => write!(f, "{{{}}}", format_dict(&entries.borrow())),
             Value::OrderedDict(entries) => write!(f, "{}", format_ordered_dict(&entries.borrow())),
             Value::ScopeDict(scope) => write!(f, "{{{}}}", format_scope_dict(scope)),
-            Value::DictView { kind, entries } => write!(
+            Value::DictView {
+                kind,
+                entries,
+                ordered,
+            } => write!(
                 f,
                 "{}({})",
-                dict_view_type_name(*kind),
+                dict_view_type_name(*kind, *ordered),
                 format_dict_view_payload(*kind, entries)
             ),
             Value::MappingView { kind, mapping } => {
-                write!(f, "{}({mapping})", dict_view_type_name(*kind))
+                write!(f, "{}({mapping})", dict_view_type_name(*kind, false))
             }
             Value::MappingProxy { entries } => {
                 write!(f, "mappingproxy({{{}}})", format_dict(&entries.borrow()))
@@ -1762,15 +1779,19 @@ fn format_value_repr(value: &Value) -> String {
         Value::Dict(entries) => format!("{{{}}}", format_dict(&entries.borrow())),
         Value::OrderedDict(entries) => format_ordered_dict(&entries.borrow()),
         Value::ScopeDict(scope) => format!("{{{}}}", format_scope_dict(scope)),
-        Value::DictView { kind, entries } => {
+        Value::DictView {
+            kind,
+            entries,
+            ordered,
+        } => {
             format!(
                 "{}({})",
-                dict_view_type_name(*kind),
+                dict_view_type_name(*kind, *ordered),
                 format_dict_view_payload(*kind, entries)
             )
         }
         Value::MappingView { kind, mapping } => {
-            format!("{}({mapping})", dict_view_type_name(*kind))
+            format!("{}({mapping})", dict_view_type_name(*kind, false))
         }
         Value::MappingProxy { entries } => {
             format!("mappingproxy({{{}}})", format_dict(&entries.borrow()))
@@ -2832,10 +2853,12 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    ..
                 },
                 Value::DictView {
                     kind: right_kind,
                     entries: right_entries,
+                    ..
                 },
             ) if dict_view_is_set_like(*left_kind) && dict_view_is_set_like(*right_kind) => {
                 sets_equal(
@@ -2847,6 +2870,7 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    ..
                 },
                 Value::Set(right),
             )
@@ -2855,6 +2879,7 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    ..
                 },
             ) if dict_view_is_set_like(*left_kind) => {
                 sets_equal(&dict_view_values(*left_kind, left_entries), &right.borrow())
@@ -2863,6 +2888,7 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    ..
                 },
                 Value::FrozenSet(right),
             )
@@ -2871,6 +2897,7 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    ..
                 },
             ) if dict_view_is_set_like(*left_kind) => {
                 sets_equal(&dict_view_values(*left_kind, left_entries), right.as_ref())
@@ -4082,11 +4109,14 @@ fn format_dict_view_payload(kind: DictViewKind, entries: &DictRef) -> String {
     format!("[{}]", format_list_items(&values))
 }
 
-fn dict_view_type_name(kind: DictViewKind) -> &'static str {
-    match kind {
-        DictViewKind::Keys => "dict_keys",
-        DictViewKind::Values => "dict_values",
-        DictViewKind::Items => "dict_items",
+fn dict_view_type_name(kind: DictViewKind, ordered: bool) -> &'static str {
+    match (kind, ordered) {
+        (DictViewKind::Keys, true) => "odict_keys",
+        (DictViewKind::Values, true) => "odict_values",
+        (DictViewKind::Items, true) => "odict_items",
+        (DictViewKind::Keys, false) => "dict_keys",
+        (DictViewKind::Values, false) => "dict_values",
+        (DictViewKind::Items, false) => "dict_items",
     }
 }
 

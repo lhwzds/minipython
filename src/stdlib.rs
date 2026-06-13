@@ -2140,8 +2140,8 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::Dict(_) | Value::ScopeDict(_) => "dict",
         Value::OrderedDict(_) => "OrderedDict",
         Value::Counter { .. } => "Counter",
-        Value::DictView { kind, .. } => stdlib_dict_view_type_name(*kind),
-        Value::MappingView { kind, .. } => stdlib_dict_view_type_name(*kind),
+        Value::DictView { kind, ordered, .. } => stdlib_dict_view_type_name(*kind, *ordered),
+        Value::MappingView { kind, .. } => stdlib_dict_view_type_name(*kind, false),
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
         Value::UserList { .. } => "UserList",
@@ -2322,11 +2322,14 @@ fn stdlib_iterator_type_name(iterator: &Value) -> &'static str {
     }
 }
 
-fn stdlib_dict_view_type_name(kind: DictViewKind) -> &'static str {
-    match kind {
-        DictViewKind::Keys => "dict_keys",
-        DictViewKind::Values => "dict_values",
-        DictViewKind::Items => "dict_items",
+fn stdlib_dict_view_type_name(kind: DictViewKind, ordered: bool) -> &'static str {
+    match (kind, ordered) {
+        (DictViewKind::Keys, true) => "odict_keys",
+        (DictViewKind::Values, true) => "odict_values",
+        (DictViewKind::Items, true) => "odict_items",
+        (DictViewKind::Keys, false) => "dict_keys",
+        (DictViewKind::Values, false) => "dict_values",
+        (DictViewKind::Items, false) => "dict_items",
     }
 }
 
