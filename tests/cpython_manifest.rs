@@ -3719,6 +3719,34 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let partial_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_partial_diff_subset");
+    let partial_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_partial_subset");
+    for required in [
+        "lambda: partial()",
+        "lambda: partial(2)",
+        "lambda: partial(2)()",
+        "print(error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            partial_diff.contains(required),
+            "functools partial CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            partial_subset.contains(required),
+            "functools partial runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "type 'partial' takes at least one argument",
+        "the first argument must be callable",
+    ] {
+        assert!(
+            partial_subset.contains(required),
+            "functools partial runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
     let reduce_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_reduce_diff_subset");
     for required in [
         "reduce(add, [0, 1], initial='')",

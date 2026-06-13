@@ -6977,9 +6977,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if args.is_empty() {
-            return Err(
-                "TypeError: type 'functools.partial' takes at least one argument".to_string(),
-            );
+            return Err("TypeError: type 'partial' takes at least one argument".to_string());
         }
 
         let function = args.remove(0);

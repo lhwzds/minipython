@@ -12994,7 +12994,7 @@ for expr in [lambda: partial(), lambda: partial(2), lambda: partial(2)()]:
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)
+        print(error.__class__.__name__, str(error))
 
 d = {'a': 3}
 def func(a=10, b=20):
