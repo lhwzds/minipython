@@ -11427,6 +11427,11 @@ except Exception as error:
     print('derived-slice-live', error.__class__.__name__, str(error))
 slice_view.release()
 print('derived-close-after-release', bio.close(), bio.closed)
+bio = io.BytesIO(b'abc')
+def make_buffer_view():
+    view = bio.getbuffer()
+make_buffer_view()
+print('scope-release-truncate', bio.truncate(0), bio.getvalue())
 bio = io.BytesIO()
 print(bio.write(b'ab'), bio.write(bytearray(b'cd')), bio.getvalue())
 print(bio.read())

@@ -94,6 +94,16 @@ pub struct MemoryViewState {
     pub released: bool,
 }
 
+impl Drop for MemoryViewState {
+    fn drop(&mut self) {
+        if !self.released {
+            if let Some(bytearray) = &self.exported_bytearray {
+                bytearray.borrow_mut().release_export();
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BytesIOState {
     pub buffer: ByteArrayRef,
