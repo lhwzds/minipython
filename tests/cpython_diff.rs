@@ -12253,6 +12253,7 @@ fn cpython_copy_public_diff_subset() {
         origin: "Lib/copy.py public pure-memory subset",
         name: "copy-public",
         source: r#"import copy
+import io
 from collections import UserDict, UserList, deque
 print(copy.Error is copy.error)
 print(copy.Error.__name__, copy.Error.__qualname__, copy.Error.__module__)
@@ -12319,6 +12320,26 @@ print('userdict-alias', cud is ud, cud.data is ud.data, cud['a'] is shared, cud[
 dq = deque([shared, shared])
 cdq = copy.deepcopy(dq)
 print('deque-alias', cdq is dq, cdq[0] is shared, cdq[0] is cdq[1], list(cdq))
+marker = [1]
+bio = io.BytesIO(b'abc')
+bio.seek(1)
+bio.tag = marker
+bio.self = bio
+bio_shallow = copy.copy(bio)
+bio_deep = copy.deepcopy(bio)
+print('bytesio-copy', bio_shallow is bio, bio_shallow.getvalue(), bio_shallow.tell(), bio_shallow.tag is marker, bio_shallow.self is bio)
+print('bytesio-deepcopy', bio_deep is bio, bio_deep.getvalue(), bio_deep.tell(), bio_deep.tag is marker, bio_deep.self is bio_deep)
+bio.write(b'Z')
+bio_shallow.write(b'Y')
+bio_deep.write(b'X')
+print('bytesio-independent', bio.getvalue(), bio_shallow.getvalue(), bio_deep.getvalue())
+for fn in [copy.copy, copy.deepcopy]:
+    closed = io.BytesIO(b'abc')
+    closed.close()
+    try:
+        fn(closed)
+    except ValueError as error:
+        print('bytesio-closed', fn.__name__, type(error).__name__)
 for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:
     try:
         expr()

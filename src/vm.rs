@@ -33329,6 +33329,20 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
             identity: Rc::new(()),
         }),
         Value::ByteArray(value) => Ok(byte_array_value(bytearray_bytes(value))),
+        Value::BytesIO(bytes_io) => {
+            bytes_io_ensure_open(bytes_io)?;
+            let state = bytes_io.borrow();
+            let copied = bytes_io_value(state.buffer.borrow().to_vec());
+            if let Value::BytesIO(copied_io) = &copied {
+                let mut copied_state = copied_io.borrow_mut();
+                copied_state.position = state.position;
+                copied_state
+                    .attrs
+                    .borrow_mut()
+                    .extend(state.attrs.borrow().clone());
+            }
+            Ok(copied)
+        }
         value if array_array_storage(value).is_some() => {
             let typecode = array_array_typecode(value).unwrap_or_else(|| "B".to_string());
             let storage = array_array_storage(value).expect("array storage exists after guard");
@@ -33545,6 +33559,30 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             }
             let copied = byte_array_value(bytearray_bytes(bytes));
             memo.insert(key, copied.clone());
+            Ok(copied)
+        }
+        Value::BytesIO(bytes_io) => {
+            bytes_io_ensure_open(bytes_io)?;
+            let key = Rc::as_ptr(bytes_io) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let state = bytes_io.borrow();
+            let copied = bytes_io_value(state.buffer.borrow().to_vec());
+            if let Value::BytesIO(copied_io) = &copied {
+                copied_io.borrow_mut().position = state.position;
+            }
+            memo.insert(key, copied.clone());
+            let attrs = state.attrs.borrow().clone();
+            drop(state);
+            if let Value::BytesIO(copied_io) = &copied {
+                let copied_attrs = copied_io.borrow().attrs.clone();
+                for (name, attr_value) in attrs {
+                    copied_attrs
+                        .borrow_mut()
+                        .insert(name, deep_copy_value(&attr_value, memo)?);
+                }
+            }
             Ok(copied)
         }
         Value::Dict(entries) => {

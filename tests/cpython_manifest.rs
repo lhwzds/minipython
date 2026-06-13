@@ -6986,6 +6986,12 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "userlist-cycle",
         "userdict-alias",
         "deque-alias",
+        "bio_shallow = copy.copy(bio)",
+        "bio_deep = copy.deepcopy(bio)",
+        "bytesio-copy",
+        "bytesio-deepcopy",
+        "bytesio-independent",
+        "bytesio-closed",
         "lambda: copy.copy()",
         "lambda: copy.copy(1, 2)",
         "lambda: copy.deepcopy()",
@@ -7014,6 +7020,7 @@ fn copy_public_diff_covers_pure_memory_subset() {
             "UserList",
             "UserDict",
             "deque",
+            "BytesIO",
         ] {
             assert!(
                 document.contains(required),
