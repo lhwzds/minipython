@@ -3542,11 +3542,11 @@ Completed in the bytearray mutating-index safety pass:
 - Covered index `__index__` mutation that clears and restores the bytearray
   before item and slice assignment, ensuring the assignment updates the intended
   bytearray object and not an unrelated allocation.
-- Added the version-stable slice in-bounds subcase to `tests/cpython_diff.rs`
-  as `bytearray-mutating-index-slice-inbounds-safety`. The `Boom` branch and
-  item-assignment in-bounds branch are intentionally not in the default oracle
-  because the system CPython 3.9.6 oracle differs from current CPython source
-  for those cases.
+- Added capability-gated direct diff evidence in
+  `cpython_bytearray_mutating_index_safety_diff_subset` for the current public
+  `Boom`, item-assignment in-bounds, and slice-assignment in-bounds safety
+  behavior when the selected CPython oracle has the fixed crash-regression
+  behavior.
 - Classified `_testlimitedcapi.sequence_setitem` branches as CPython C API
   coverage, not MiniPython runtime behavior.
 
@@ -3588,9 +3588,9 @@ Completed in the bytearray extend empty-buffer overflow pass:
 - The original CPython regression guards a C fast-path NUL-termination bug; the
   MiniPython subset intentionally pins the public behavior rather than copying
   CPython's internal allocation scenario.
-- This case is not added to `tests/cpython_diff.rs`: the local default oracle is
-  system CPython 3.9.6, which still exhibits the historical corrupted-bytearray
-  behavior that current CPython's regression test prevents.
+- The direct diff remains capability-gated because older system CPython oracles
+  can still exhibit the historical corrupted-bytearray behavior that current
+  CPython's regression test prevents.
 
 Completed in the bytearray regex pass:
 

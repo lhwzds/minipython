@@ -17811,6 +17811,75 @@ print(b.insert(1, Indexable(ord('A'))), b)"#,
 }
 
 #[test]
+fn cpython_bytearray_mutating_index_safety_diff_subset() {
+    let oracle_probe = run_cpython(
+        r#"class Boom:
+    def __index__(self):
+        b.clear()
+        return 0
+b = bytearray(b'Now you see me...')
+try:
+    b[0] = Boom()
+except Exception as error:
+    print(error.__class__.__name__, b)
+else:
+    print('accepted', b)
+class MutatesOnIndex:
+    def __init__(self):
+        self.ba = bytearray(0x180)
+    def __index__(self):
+        self.ba.clear()
+        self.new_ba = bytearray(0x180)
+        self.ba.extend([0] * 0x180)
+        return 0
+instance = MutatesOnIndex()
+instance.ba[instance] = ord('?')
+print(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))
+instance = MutatesOnIndex()
+instance.ba[instance:1] = [ord('?')]
+print(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))"#,
+    )
+    .expect("failed to probe CPython bytearray mutating index safety behavior");
+    let expected = b"IndexError bytearray(b'')\n63 0 384 True\n63 0 384 True\n";
+    if oracle_probe.stdout.as_slice() != expected {
+        eprintln!(
+            "skipping bytearray mutating index safety diff: CPython oracle has legacy behavior"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index / ::test_mutating_index_inbounds public safety subset",
+        name: "bytearray-mutating-index-safety",
+        source: r#"class Boom:
+    def __index__(self):
+        b.clear()
+        return 0
+b = bytearray(b'Now you see me...')
+try:
+    b[0] = Boom()
+except Exception as error:
+    print(error.__class__.__name__, b)
+else:
+    print('accepted', b)
+class MutatesOnIndex:
+    def __init__(self):
+        self.ba = bytearray(0x180)
+    def __index__(self):
+        self.ba.clear()
+        self.new_ba = bytearray(0x180)
+        self.ba.extend([0] * 0x180)
+        return 0
+instance = MutatesOnIndex()
+instance.ba[instance] = ord('?')
+print(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))
+instance = MutatesOnIndex()
+instance.ba[instance:1] = [ord('?')]
+print(instance.ba[0], instance.ba[1], len(instance.ba), instance.new_ba == bytearray(0x180))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_minimal_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py constructor, equality, hash, and argument errors public subset",
