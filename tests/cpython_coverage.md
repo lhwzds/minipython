@@ -1358,7 +1358,9 @@ Recent runtime migration notes:
   lists, shared user-instance fields and user-instance self-cycles, and shared
   `UserList` / `UserDict` / `deque` members plus `UserList` self-cycles,
   independent bytearray copy buffers, dictionary copy independence, and
-  representative arity TypeError classification.
+  representative arity TypeError classification. Full pickle dispatch-table contents,
+  pickle protocol byte compatibility, and arbitrary extension-object copy hooks
+  remain outside the sandbox `copy` subset.
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory

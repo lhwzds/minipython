@@ -6699,10 +6699,12 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "pickle protocol byte compatibility",
         "arbitrary extension-object copy hooks",
     ] {
-        assert!(
-            CPYTHON_MIGRATION.contains(excluded),
-            "copy migration notes must keep unsupported boundary `{excluded}` documented"
-        );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(excluded),
+                "copy docs must keep unsupported boundary `{excluded}` documented"
+            );
+        }
     }
 }
 
