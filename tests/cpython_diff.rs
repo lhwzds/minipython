@@ -16390,6 +16390,26 @@ print(expected == list(C.__dict__.items())[:2])
 print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
+            origin: "Lib/test/test_ordered_dict.py public constructor/update subset",
+            name: "ordered-dict-constructor-update-subset",
+            source: r#"from collections import OrderedDict
+samples = [
+    OrderedDict(a=1, b=2),
+    OrderedDict([('a', 1)], b=2),
+    OrderedDict({'b': 2, 'a': 1}),
+]
+for od in samples:
+    print(type(od).__name__, list(od.items()), bool(od))
+od = OrderedDict()
+print(od.update([('b', 2), ('a', 1)], c=3), list(od.items()))
+for expr in [lambda: OrderedDict(1), lambda: OrderedDict([('a', 1, 2)])]:
+    try:
+        expr()
+        print('ok')
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",
             name: "type-name-qualname",
             source: r#"C = type('C', (), {})

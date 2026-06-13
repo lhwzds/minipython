@@ -35606,6 +35606,23 @@ fn cpython_ordered_dict_mapping_mutation_subset() {
     );
 }
 
+// This ports the pure in-memory constructor/update edge of the OrderedDict
+// public surface without depending on version-specific OrderedDict repr shapes.
+#[test]
+fn cpython_ordered_dict_constructor_update_subset() {
+    assert_output(
+        "from collections import OrderedDict\nsamples = [\n    OrderedDict(a=1, b=2),\n    OrderedDict([('a', 1)], b=2),\n    OrderedDict({'b': 2, 'a': 1}),\n]\nfor od in samples:\n    print(type(od).__name__, list(od.items()), bool(od))\nod = OrderedDict()\nprint(od.update([('b', 2), ('a', 1)], c=3), list(od.items()))\nfor expr in [lambda: OrderedDict(1), lambda: OrderedDict([('a', 1, 2)])]:\n    try:\n        expr()\n        print('ok')\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        &[
+            "OrderedDict [('a', 1), ('b', 2)] True",
+            "OrderedDict [('a', 1), ('b', 2)] True",
+            "OrderedDict [('b', 2), ('a', 1)] True",
+            "None [('b', 2), ('a', 1), ('c', 3)]",
+            "TypeError",
+            "ValueError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_dir and
 // ::test_vars. This covers the executable introspection subset over local
 // scopes, modules, module subclasses, classes, instances, custom __dir__, and

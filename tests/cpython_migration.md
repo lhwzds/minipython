@@ -5700,7 +5700,7 @@ Completed in the type builtin pass:
   assignment override, and delete rejection that preserves the override.
 - Added `cpython_type_namespace_order_subset`, adapted from
   `TestType::test_namespace_order`, covering minimal `OrderedDict`
-  construction, public type/instance `__doc__` plus type `__module__` /
+  construction/update, public type/instance `__doc__` plus type `__module__` /
   `__qualname__` metadata, direct display/empty-format methods including
   recursive display, generic alias repr/module metadata, mapping mutation/iteration
   helpers, `copy()` preserving the `OrderedDict` result type, direct equality methods, type/instance `fromkeys()`,
