@@ -5522,6 +5522,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_ascii_builtin_subset",
             "cpython_builtin_cmp_absent_subset",
             "cpython_object_repr_str_direct_subset",
+            "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -5559,6 +5560,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_builtin_cmp_absent_diff_subset",
         "cpython_builtin_none_ne_direct_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
+        "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -5715,6 +5717,57 @@ fn object_repr_str_direct_subset_has_focused_diff_evidence() {
             document.contains("cpython_object_repr_str_direct_subset")
                 && document.contains("cpython_object_repr_str_direct_diff_subset"),
             "focused object repr/str evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
+fn str_builtin_custom_dunder_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_str_builtin_custom_dunder_subset(",
+        "str(custom)",
+        "f'{custom}'",
+        "'%s' % custom",
+        "object.__format__(custom, '')",
+        "str(Bad())",
+        "str(Raises())",
+        "instance_only.__str__",
+        "format-priority",
+        "str-sub",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused str custom-dunder subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_str_builtin_custom_dunder_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_repr / ::test_format public str dispatch subset",
+        "str(custom)",
+        "f'{custom}'",
+        "'%s' % custom",
+        "object.__format__(custom, '')",
+        "str(Bad())",
+        "str(Raises())",
+        "instance_only.__str__",
+        "format-priority",
+        "str-sub",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused str custom-dunder CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_str_builtin_custom_dunder_subset")
+                && document.contains("cpython_str_builtin_custom_dunder_diff_subset"),
+            "focused str custom-dunder evidence must be documented in coverage and CPython test manifest"
         );
     }
 }

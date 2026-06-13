@@ -3485,8 +3485,10 @@ Recent runtime migration notes:
   `object.__str__` delegation to `__repr__` rather than custom `__str__`, raw
   direct-call return behavior for non-string `__repr__` results, container
   subclass display, and arity/keyword TypeError paths.
-- `RUNTIME_BUILTINS` also includes `cpython_str_builtin_custom_dunder_subset`,
-  covering ordinary `str()` / `print()` / f-string `!s` / default f-string /
+- `RUNTIME_BUILTINS` also includes
+  `cpython_str_builtin_custom_dunder_subset` with direct CPython output parity
+  in `cpython_str_builtin_custom_dunder_diff_subset`, covering ordinary
+  `str()` / `print()` / f-string `!s` / default f-string /
   `object.__format__(..., "")` / string `%s` dispatch through class-level
   `__str__`, non-string result rejection, propagated exceptions, ignored
   instance-level `__str__`, custom `__format__` precedence, and empty-format

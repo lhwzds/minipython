@@ -6066,6 +6066,63 @@ for expr in [lambda: object.__repr__(), lambda: object.__repr__(plain, plain), l
 }
 
 #[test]
+fn cpython_str_builtin_custom_dunder_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_repr / ::test_format public str dispatch subset",
+        name: "str-builtin-custom-dunder",
+        source: r#"class Custom:
+    def __str__(self):
+        return 'custom-str'
+    def __repr__(self):
+        return 'custom-repr'
+custom = Custom()
+print(str(custom), f'{custom}', f'{custom!s}', '%s' % custom)
+print('print-call', custom)
+print(object.__str__(custom), object.__str__(custom) == repr(custom))
+print(object.__format__(custom, ''), format(custom, ''))
+class Bad:
+    def __str__(self):
+        return 1
+for label, expr in [('str-bad', lambda: str(Bad())), ('format-bad', lambda: f'{Bad()}'), ('percent-bad', lambda: '%s' % Bad())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, '__str__ returned non-string' in str(error))
+class Raises:
+    def __str__(self):
+        raise ValueError('boom')
+try:
+    str(Raises())
+except ValueError as error:
+    print('raises', type(error).__name__, str(error))
+class InstanceOnly:
+    pass
+instance_only = InstanceOnly()
+instance_only.__str__ = lambda: 'instance-str'
+instance_value = str(instance_only)
+print('instance-only', instance_value.startswith('<'), 'InstanceOnly object' in instance_value)
+class Blocked:
+    __str__ = None
+try:
+    str(Blocked())
+except TypeError as error:
+    print('blocked', type(error).__name__)
+class WithFormat:
+    def __str__(self):
+        return 'str-value'
+    def __format__(self, spec):
+        return 'format-' + spec
+formatted = WithFormat()
+print('format-priority', f'{formatted}', format(formatted, 'x'), str(formatted))
+class StrSub(str):
+    def __str__(self):
+        return 'sub-str'
+sub = StrSub('base')
+print('str-sub', str(sub), f'{sub}', '%s' % sub, format(sub, '>6'))"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",
