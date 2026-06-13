@@ -6938,6 +6938,91 @@ fn map_strict_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn reversed_builtin_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_reversed_builtin_subset(",
+        "Lib/test/test_enumerate.py::TestReversed::test_simple",
+        "Lib/test/test_dict.py reverse-iterator coverage",
+        "class A:",
+        "def __getitem__(self, index):",
+        "def __len__(self):",
+        "list(reversed('abc'))",
+        "list(reversed(range(5)))",
+        "list(reversed(tuple(enumerate('abc'))))",
+        "list(reversed(A()))",
+        "list(reversed(range(1, 17, 5)))",
+        "list(reversed(dict.fromkeys('abcde')))",
+        "list(reversed({}))",
+        "list(reversed({}.items()))",
+        "list(reversed({}.values()))",
+        "list(reversed({}.keys()))",
+        "class ReverseCustom:",
+        "def __reversed__(self):",
+        "return iter([3, 2, 1])",
+        "r = reversed([1, 2])",
+        "next(r), next(r)",
+        "stopped",
+        "class BadReverse:",
+        "lambda: reversed()",
+        "lambda: reversed([], a=1)",
+        "lambda: reversed({1})",
+        "lambda: list(reversed(BadReverse()))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused reversed() subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "reversed-sequences-and-dict-views",
+        "reversed-custom-protocols",
+        "dict-reverse-iterator-same-size-key-change",
+        "dict-reverse-view-live-values-and-same-size-key-change",
+        "Lib/test/test_dict.py::test_reverse_iterator_for_empty_dict plus sequence reversed tests",
+        "Lib/test/test_enumerate.py reverse iterator and Python data model __reversed__ sequence protocol",
+        "print(list(reversed([1, 2, 3])))",
+        "print(list(reversed((1, 2, 3))))",
+        "print(list(reversed(b'ab')))",
+        "print(list(reversed(range(1, 5))))",
+        "print(list(reversed(d)))",
+        "print(list(reversed(d.keys())))",
+        "print(list(reversed(d.values())))",
+        "print(list(reversed(d.items())))",
+        "class ReverseCustom:",
+        "class SequenceFallback:",
+        "print('len')",
+        "print('get', index)",
+        "class BadReverse:",
+        "print(reversed(BadReverse()))",
+        "for key in reversed(d):",
+        "values = reversed(d.values())",
+        "for item in reversed(d.items()):",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "focused reversed() CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_reversed_builtin_subset")
+            && CPYTHON_COVERAGE.contains("first-pass reversed iteration")
+            && CPYTHON_COVERAGE.contains("supported sequence, dict, and dict-view values"),
+        "coverage notes must describe reversed() runtime subset"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_reversed_builtin_subset")
+            && CPYTHON_MIGRATION.contains("first-pass `reversed()` coverage")
+            && CPYTHON_MIGRATION.contains("custom `__reversed__`")
+            && CPYTHON_MIGRATION.contains("sequence-protocol fallback")
+            && CPYTHON_MIGRATION.contains("dict `keys`/`values`/`items` views")
+            && CPYTHON_MIGRATION.contains("same-size key-set mutation behavior"),
+        "migration notes must document reversed() sequence, dict-view, custom protocol, and mutation behavior"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
