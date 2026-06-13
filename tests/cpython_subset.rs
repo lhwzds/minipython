@@ -24133,6 +24133,52 @@ fn cpython_builtin_getattr_public_subset() {
     );
 }
 
+// Focused slice from CPython `Lib/test/test_builtin.py::BuiltinTest::test_setattr`
+// and `::test_delattr`.
+#[test]
+fn cpython_builtin_setattr_delattr_public_subset() {
+    assert_output(
+        concat!(
+            "import sys\n",
+            "setattr(sys, 'eggs', 7)\n",
+            "print(sys.eggs, getattr(sys, 'eggs'))\n",
+            "delattr(sys, 'eggs')\n",
+            "print(hasattr(sys, 'eggs'))\n",
+            "class Box:\n",
+            "    pass\n",
+            "box = Box()\n",
+            "setattr(box, 'value', 3)\n",
+            "print(box.value, getattr(box, 'value'))\n",
+            "setattr(Box, 'label', 'box')\n",
+            "print(box.label, Box.label)\n",
+            "delattr(box, 'value')\n",
+            "print(hasattr(box, 'value'), getattr(box, 'value', 'missing'))\n",
+            "delattr(Box, 'label')\n",
+            "print(hasattr(Box, 'label'), getattr(box, 'label', 'missing'))\n",
+            "for expr in [lambda: setattr(), lambda: setattr(1, 'x'), lambda: setattr(1, 2, 3), lambda: setattr(1, 'x', 2), lambda: delattr(), lambda: delattr(1), lambda: delattr(1, 2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except (TypeError, AttributeError) as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "7 7",
+            "False",
+            "3 3",
+            "box box",
+            "False missing",
+            "False missing",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "AttributeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
 // dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
 // hook-loss errors. The default hook is a sandbox no-op stub; pdb integration

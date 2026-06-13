@@ -3423,6 +3423,13 @@ Recent runtime migration notes:
   `BuiltinTest::test_getattr` slice for module attributes, default values,
   instance/class attribute lookup, `sys.stdout`, maximum-valid-Unicode-scalar
   missing-name behavior, and public TypeError arity/name validation.
+- `RUNTIME_BUILTINS` also includes the focused
+  `cpython_builtin_setattr_delattr_public_subset` with direct CPython output
+  parity in `cpython_builtin_setattr_delattr_public_diff_subset`, covering the
+  supported `BuiltinTest::test_setattr` / `::test_delattr` slice for module
+  attributes, instance attributes, class attributes seen through instances,
+  class-attribute deletion, immutable-scalar write failure, and public
+  TypeError name/arity validation.
 - `RUNTIME_BUILTINS` also includes `cpython_vars_dir_builtin_subset` with
   direct CPython output parity in `cpython_vars_dir_builtin_diff_subset`,
   covering `BuiltinTest::test_dir` / `::test_vars` public behavior for local

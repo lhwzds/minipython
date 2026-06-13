@@ -5185,6 +5185,35 @@ for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambd
 }
 
 #[test]
+fn cpython_builtin_setattr_delattr_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_setattr / ::test_delattr public supported subset",
+        name: "builtin-setattr-delattr-public",
+        source: r#"import sys
+setattr(sys, 'eggs', 7)
+print(sys.eggs, getattr(sys, 'eggs'))
+delattr(sys, 'eggs')
+print(hasattr(sys, 'eggs'))
+class Box:
+    pass
+box = Box()
+setattr(box, 'value', 3)
+print(box.value, getattr(box, 'value'))
+setattr(Box, 'label', 'box')
+print(box.label, Box.label)
+delattr(box, 'value')
+print(hasattr(box, 'value'), getattr(box, 'value', 'missing'))
+delattr(Box, 'label')
+print(hasattr(Box, 'label'), getattr(box, 'label', 'missing'))
+for expr in [lambda: setattr(), lambda: setattr(1, 'x'), lambda: setattr(1, 2, 3), lambda: setattr(1, 'x', 2), lambda: delattr(), lambda: delattr(1), lambda: delattr(1, 2)]:
+    try:
+        expr()
+    except (TypeError, AttributeError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_ascii_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",

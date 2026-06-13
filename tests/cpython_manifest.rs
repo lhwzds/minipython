@@ -5633,6 +5633,55 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn builtin_setattr_delattr_public_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_setattr_delattr_public_subset(",
+        "setattr(sys, 'eggs', 7)",
+        "delattr(sys, 'eggs')",
+        "setattr(box, 'value', 3)",
+        "setattr(Box, 'label', 'box')",
+        "delattr(box, 'value')",
+        "delattr(Box, 'label')",
+        "lambda: setattr(1, 2, 3)",
+        "lambda: delattr(1, 2)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused setattr/delattr subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_builtin_setattr_delattr_public_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_setattr / ::test_delattr public supported subset",
+        "setattr(sys, 'eggs', 7)",
+        "delattr(sys, 'eggs')",
+        "setattr(box, 'value', 3)",
+        "setattr(Box, 'label', 'box')",
+        "delattr(box, 'value')",
+        "delattr(Box, 'label')",
+        "lambda: setattr(1, 2, 3)",
+        "lambda: delattr(1, 2)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused setattr/delattr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_builtin_setattr_delattr_public_subset")
+                && document.contains("cpython_builtin_setattr_delattr_public_diff_subset"),
+            "focused setattr/delattr evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
 fn exec_closure_subset_stays_documented_and_version_gated() {
     let subset_name = "cpython_exec_closure_subset";
     let diff_name = "cpython_exec_closure_diff_subset";
