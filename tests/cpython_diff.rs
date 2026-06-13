@@ -5185,6 +5185,35 @@ for expr in [lambda: 'hello'.expandtabs(42, 42), lambda: 'hello'.expandtabs(None
 }
 
 #[test]
+fn cpython_string_replace_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py replace subset",
+        name: "string-replace",
+        source: r#"print(repr(''.replace('', '')), repr(''.replace('', 'A')), repr(''.replace('A', '')), repr(''.replace('A', 'A')))
+print(repr(''.replace('', '', 100)), repr(''.replace('', 'A', 100)))
+try:
+    ''.replace('', '', 10 ** 30)
+except OverflowError as error:
+    print(error.__class__.__name__)
+print('A'.replace('', ''), 'A'.replace('', '*'), 'A'.replace('', '*1'))
+print('AA'.replace('', '*-', -1), 'AA'.replace('', '*-', 3), 'AA'.replace('', '*-', 2), 'AA'.replace('', '*-', 1), 'AA'.replace('', '*-', 0))
+print('abc'.replace('', '-'), 'abc'.replace('', '-', 3), 'abc'.replace('', '-', 0))
+print(repr('AAA'.replace('A', '')), repr('AAA'.replace('A', '', 2)), repr('AAA'.replace('A', '', 1)), repr('AAA'.replace('A', '', 0)))
+print('ABACADA'.replace('A', ''), 'ABACADA'.replace('A', '', 3), 'ABACADA'.replace('A', '', 2), 'ABACADA'.replace('A', '', 1))
+print('here and there and there'.replace('the', ''), 'here and there and there'.replace('the', '', 2), 'here and there and there'.replace('the', '', 1))
+print('Who goes there?'.replace('o', 'O', 2), 'Who goes there?'.replace('o', 'O', 1), 'Who goes there?'.replace('o', 'O', 0))
+print('This is a tissue'.replace('is', '**', 2), 'This is a tissue'.replace('is', '**', 1))
+print('Reykjavik'.replace('k', 'KK'), 'Reykjavik'.replace('k', 'KK', 1), '...м......<'.replace('<', '&lt;'))
+print('spam, spam, eggs and spam'.replace('spam', 'ham', 2), 'one!two!three!'.replace('!', '@', 3), 'bobobob'.replace('bobob', 'bob'))
+for expr in [lambda: 'hello'.replace(), lambda: 'hello'.replace(42), lambda: 'hello'.replace(42, 'h'), lambda: 'hello'.replace('h', 42), lambda: 'hello'.replace('h', 'x', None), lambda: 'hello'.replace('h', 'x', 1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

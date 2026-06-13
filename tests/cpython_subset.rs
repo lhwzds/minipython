@@ -30204,12 +30204,12 @@ fn cpython_string_expandtabs_subset() {
 // Adapted from CPython's string method coverage in
 // Lib/test/string_tests.py::test_replace. MiniPython covers empty-string
 // insertion, deletion, left-to-right non-overlapping replacement, bounded
-// counts, Unicode text, and representative TypeError paths.
+// counts, Unicode text, and representative TypeError/OverflowError paths.
 #[test]
 fn cpython_string_replace_subset() {
     assert_output(
-        "print(repr(''.replace('', '')), repr(''.replace('', 'A')), repr(''.replace('A', '')), repr(''.replace('A', 'A')))\nprint(repr(''.replace('', '', 100)), repr(''.replace('', 'A', 100)), repr(''.replace('', '', 10 ** 30)))",
-        &["'' 'A' '' ''", "'' 'A' ''"],
+        "print(repr(''.replace('', '')), repr(''.replace('', 'A')), repr(''.replace('A', '')), repr(''.replace('A', 'A')))\nprint(repr(''.replace('', '', 100)), repr(''.replace('', 'A', 100)))\ntry:\n    ''.replace('', '', 10 ** 30)\nexcept OverflowError as error:\n    print(error.__class__.__name__)",
+        &["'' 'A' '' ''", "'' 'A'", "OverflowError"],
     );
     assert_output(
         "print('A'.replace('', ''), 'A'.replace('', '*'), 'A'.replace('', '*1'))\nprint('AA'.replace('', '*-', -1), 'AA'.replace('', '*-', 3), 'AA'.replace('', '*-', 2), 'AA'.replace('', '*-', 1), 'AA'.replace('', '*-', 0))\nprint('abc'.replace('', '-'), 'abc'.replace('', '-', 3), 'abc'.replace('', '-', 0))",

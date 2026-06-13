@@ -63430,13 +63430,9 @@ fn string_replace_count_argument(value: &Value, method: &str) -> Result<i64, Str
     match value {
         Value::Bool(value) => Ok(bool_as_i64(*value)),
         Value::Number(value) => Ok(*value),
-        Value::BigInt(value) => Ok(value.to_i64().unwrap_or_else(|| {
-            if value.is_negative() {
-                i64::MIN
-            } else {
-                i64::MAX
-            }
-        })),
+        Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        }),
         value => Err(format!(
             "TypeError: {method} count must be an integer, not {}",
             type_name(value)

@@ -5361,10 +5361,10 @@ Completed in the string replace method pass:
   `Lib/test/string_tests.py::test_replace`.
 - Added runtime support for positional `str.replace(old, new[, count])`
   including empty-string insertion, deletion, left-to-right non-overlapping
-  replacement, bounded counts, Unicode text, and representative `TypeError`
-  paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  replacement behavior.
+  replacement, bounded counts, Unicode text, and representative `TypeError` /
+  `OverflowError` paths.
+- Added `cpython_string_replace_diff_subset` as the direct CPython/MiniPython
+  differential parity case for the same supported replacement behavior.
 
 Completed in the string removeprefix/removesuffix method pass:
 
