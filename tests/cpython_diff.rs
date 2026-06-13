@@ -6163,6 +6163,33 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_ast_compile_list_field_type_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py public AST compile list-field validation",
+        name: "ast-compile-list-field-types",
+        source: r#"import ast
+checks = [
+    ("boolop-tuple", ast.Expression(ast.BoolOp(ast.And(), (ast.Constant(1), ast.Constant(2))))),
+    ("boolop-int", ast.Expression(ast.BoolOp(ast.And(), 123))),
+    ("compare-ops-tuple", ast.Expression(ast.Compare(ast.Constant(1), (ast.Lt(),), [ast.Constant(2)]))),
+    ("compare-comparators-tuple", ast.Expression(ast.Compare(ast.Constant(1), [ast.Lt()], (ast.Constant(2),)))),
+    ("arguments-defaults-tuple", ast.Expression(
+        ast.Lambda(ast.arguments([], [ast.arg("x")], None, [], [], None, (ast.Constant(3),)), ast.Name("x", ast.Load()))
+    )),
+]
+for label, tree in checks:
+    ast.fix_missing_locations(tree)
+    try:
+        compile(tree, "<ast>", "eval" if isinstance(tree, ast.Expression) else "exec")
+    except TypeError as error:
+        print(label, error)
+valid = ast.Expression(ast.BoolOp(ast.And(), [ast.Constant(1), ast.Constant(2)]))
+ast.fix_missing_locations(valid)
+print(eval(compile(valid, "<ast>", "eval")))"#,
+    });
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",

@@ -15128,6 +15128,42 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_ast_compile_public_ast_list_field_type_subset() {
+    assert_output(
+        r#"import ast
+checks = [
+    ("boolop-tuple", ast.Expression(ast.BoolOp(ast.And(), (ast.Constant(1), ast.Constant(2))))),
+    ("boolop-int", ast.Expression(ast.BoolOp(ast.And(), 123))),
+    ("boolop-none", ast.Expression(ast.BoolOp(ast.And(), None))),
+    ("compare-ops-tuple", ast.Expression(ast.Compare(ast.Constant(1), (ast.Lt(),), [ast.Constant(2)]))),
+    ("compare-comparators-tuple", ast.Expression(ast.Compare(ast.Constant(1), [ast.Lt()], (ast.Constant(2),)))),
+    ("arguments-defaults-tuple", ast.Expression(
+        ast.Lambda(ast.arguments([], [ast.arg("x")], None, [], [], None, (ast.Constant(3),)), ast.Name("x", ast.Load()))
+    )),
+]
+for label, tree in checks:
+    ast.fix_missing_locations(tree)
+    try:
+        compile(tree, "<ast>", "eval" if isinstance(tree, ast.Expression) else "exec")
+    except TypeError as error:
+        print(label, error)
+valid = ast.Expression(ast.BoolOp(ast.And(), [ast.Constant(1), ast.Constant(2)]))
+ast.fix_missing_locations(valid)
+print(eval(compile(valid, "<ast>", "eval")))
+"#,
+        &[
+            "boolop-tuple BoolOp field \"values\" must be a list, not a tuple",
+            "boolop-int BoolOp field \"values\" must be a list, not a int",
+            "boolop-none BoolOp field \"values\" must be a list, not a NoneType",
+            "compare-ops-tuple Compare field \"ops\" must be a list, not a tuple",
+            "compare-comparators-tuple Compare field \"comparators\" must be a list, not a tuple",
+            "arguments-defaults-tuple arguments field \"defaults\" must be a list, not a tuple",
+            "2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_ast_dump_plain_first_pass_subset() {
     assert_output(
         r#"import ast

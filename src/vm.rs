@@ -36427,9 +36427,9 @@ fn ast_required_field_value_error(node: &Value, field: &str) -> String {
 fn ast_compile_list_field(node: &Value, field: &str) -> Result<Vec<Value>, String> {
     match ast_compile_required_field(node, field)? {
         Value::List(items) => Ok(items.borrow().clone()),
-        Value::Tuple(items) => Ok(items.as_ref().clone()),
         value => Err(format!(
-            "TypeError: field \"{field}\" must be a list, not {}",
+            "TypeError: {} field \"{field}\" must be a list, not a {}",
+            ast_node_kind(node).unwrap_or(type_name(node)),
             type_name(&value)
         )),
     }
