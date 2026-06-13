@@ -68,6 +68,9 @@ Direct diff mapping note: `cpython_memoryview_slice_and_attributes_diff_subset`
 directly compares the memoryview slice-reference and public buffer-attribute
 surfaces covered by `cpython_memoryview_slice_reference_subset` and
 `cpython_memoryview_public_buffer_attributes_subset`.
+Direct diff mapping note: `cpython_memoryview_count_index_diff_subset`
+directly compares the public memoryview count/index slice covered by
+`cpython_memoryview_getitem_index_count_compare_subset`.
 
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |

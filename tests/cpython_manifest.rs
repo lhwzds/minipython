@@ -1342,6 +1342,48 @@ fn cpython_memoryview_slice_attributes_diff_covers_runtime_subsets() {
 }
 
 #[test]
+fn cpython_memoryview_count_index_diff_covers_runtime_subset() {
+    let diff_name = "cpython_memoryview_count_index_diff_subset";
+    let subset_name = "cpython_memoryview_getitem_index_count_compare_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview count/index direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview getitem/index/count/compare runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "memoryview count/index docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview count/index diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "memoryview.count",
+        "m.count(ord('a'))",
+        "m.index(ord('c'))",
+        "memoryview(b'abc').count()",
+        "skipping memoryview.count/index diff",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview count/index diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
     let diff_name = "cpython_memoryview_rejection_and_hash_diff_subset";
     let runtime_subsets = [
