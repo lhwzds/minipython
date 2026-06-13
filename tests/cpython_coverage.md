@@ -3613,10 +3613,13 @@ Recent runtime migration notes:
   `cpython_isinstance_builtin_subset`, `cpython_issubclass_builtin_subset`,
   `cpython_enumerate_zip_sorted_builtin_subset`, `cpython_zip_strict_builtin_subset`,
   `cpython_map_filter_builtin_subset`, and `cpython_abs_builtin_subset`, covering
-  public namespace introspection, class/type relationship checks,
+  public namespace introspection including live module-scope `globals()` /
+  `locals()` mapping `get()` / `pop()` behavior and function-local snapshot
+  `get()` / `pop()` behavior, class/type relationship checks,
   iterator-producing builtins, strict zip, map/filter, and absolute-value
   behavior used by the sandbox builtin surface. Direct CPython output parity for
-  the class/type relationship checks is tracked by
+  the supported `globals()` / `locals()` subset is tracked by
+  `cpython_globals_locals_builtin_diff_subset`; class/type relationship checks are tracked by
   `cpython_isinstance_builtin_diff_subset` and
   `cpython_issubclass_builtin_diff_subset`.
 - `RUNTIME_BUILTINS` also includes

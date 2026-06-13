@@ -14795,6 +14795,20 @@ impl Vm {
                 store_subscript(dict.clone(), key.clone(), value.clone())?;
                 Ok(Value::None)
             }
+            "scope_dict.get" => {
+                let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
+                    return Err("get() expected a dict receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "get() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                ensure_hashable_key(key)?;
+                let default = rest.first().cloned().unwrap_or(Value::None);
+                Ok(scope_dict_lookup(scope, key).unwrap_or(default))
+            }
             "scope_dict.keys" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
                     return Err(format!(
@@ -14817,6 +14831,31 @@ impl Vm {
                         .map(|(key, value)| tuple_value(vec![key, value]))
                         .collect(),
                 ))
+            }
+            "scope_dict.pop" => {
+                let [Value::ScopeDict(scope), key, rest @ ..] = args.as_slice() else {
+                    return Err("pop() expected a dict receiver".to_string());
+                };
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "pop() expected at most 2 arguments, got {}",
+                        rest.len() + 1
+                    ));
+                }
+                ensure_hashable_key(key)?;
+                let Some(name) = value_as_string(key) else {
+                    if let Some(default) = rest.first() {
+                        return Ok(default.clone());
+                    }
+                    return Err(format!("KeyError: {}", format_key_error(key)));
+                };
+                if let Some(value) = scope.borrow_mut().remove(name) {
+                    return Ok(value);
+                }
+                if let Some(default) = rest.first() {
+                    return Ok(default.clone());
+                }
+                Err(format!("KeyError: {}", format_key_error(key)))
             }
             "scope_dict.update" => {
                 let [Value::ScopeDict(scope), rest @ ..] = args.as_slice() else {
@@ -51988,22 +52027,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::ScopeDict(scope) => match name {
-            "items" | "keys" | "update" | "values" | "__contains__" | "__delitem__"
-            | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                receiver: Box::new(Value::ScopeDict(scope)),
-                identity: Rc::new(()),
-            }),
+            "get" | "items" | "keys" | "pop" | "update" | "values" | "__contains__"
+            | "__delitem__" | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                    receiver: Box::new(Value::ScopeDict(scope)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
         Value::FrameLocalsProxy { locals } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
-            "items" | "keys" | "update" | "values" | "__contains__" | "__delitem__"
-            | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                receiver: Box::new(Value::ScopeDict(locals)),
-                identity: Rc::new(()),
-            }),
+            "get" | "items" | "keys" | "pop" | "update" | "values" | "__contains__"
+            | "__delitem__" | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                    receiver: Box::new(Value::ScopeDict(locals)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: FrameLocalsProxy has no attribute '{name}'"
             )),

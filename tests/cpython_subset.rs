@@ -35635,8 +35635,22 @@ fn cpython_globals_locals_builtin_subset() {
         &["True 1 1", "2 3 True True"],
     );
     assert_output(
-        "x = 1\ndef probe(arg):\n    local_value = 4\n    snapshot = locals()\n    print('arg' in snapshot, snapshot['arg'], 'local_value' in snapshot, snapshot['local_value'])\n    print(globals() is locals(), globals()['x'])\nprobe(3)",
-        &["True 3 True 4", "False 1"],
+        concat!(
+            "scope_temp = 1\n",
+            "g = globals()\n",
+            "print(g.get('scope_temp'), g.get('missing'), g.get('missing', 42))\n",
+            "print(g.pop('scope_temp'), 'scope_temp' in g)\n",
+            "print(g.pop('missing', 'fallback'))\n",
+            "try:\n",
+            "    g.pop('missing')\n",
+            "except KeyError as error:\n",
+            "    print(error.__class__.__name__)",
+        ),
+        &["1 None 42", "1 False", "fallback", "KeyError"],
+    );
+    assert_output(
+        "x = 1\ndef probe(arg):\n    local_value = 4\n    snapshot = locals()\n    print('arg' in snapshot, snapshot['arg'], 'local_value' in snapshot, snapshot['local_value'])\n    print(snapshot.get('arg'), snapshot.get('missing', 9))\n    print(snapshot.pop('local_value'), 'local_value' in snapshot)\n    print(globals() is locals(), globals()['x'])\nprobe(3)",
+        &["True 3 True 4", "3 9", "4 False", "False 1"],
     );
     assert_output(
         "for expr in [lambda: globals(1), lambda: locals(1)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",

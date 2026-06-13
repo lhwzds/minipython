@@ -6282,10 +6282,20 @@ print(g is l, g['x'], l['x'])
 g['from_globals'] = 2
 l['from_locals'] = 3
 print(from_globals, from_locals, globals() is g, locals() is l)
+scope_temp = 1
+print(g.get('scope_temp'), g.get('missing'), g.get('missing', 42))
+print(g.pop('scope_temp'), 'scope_temp' in g)
+print(g.pop('missing', 'fallback'))
+try:
+    g.pop('missing')
+except KeyError as error:
+    print(error.__class__.__name__)
 def probe(arg):
     local_value = 4
     snapshot = locals()
     print('arg' in snapshot, snapshot['arg'], 'local_value' in snapshot, snapshot['local_value'])
+    print(snapshot.get('arg'), snapshot.get('missing', 9))
+    print(snapshot.pop('local_value'), 'local_value' in snapshot)
     print(globals() is locals(), globals()['x'])
 probe(3)"#,
     });

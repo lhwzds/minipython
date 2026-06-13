@@ -7652,6 +7652,26 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    let globals_locals_start = CPYTHON_SUBSET
+        .find("fn cpython_globals_locals_builtin_subset()")
+        .expect("globals/locals builtin subset evidence must be extractable");
+    let globals_locals_end = CPYTHON_SUBSET[globals_locals_start..]
+        .find("\n#[test]")
+        .map(|offset| globals_locals_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let globals_locals_source = &CPYTHON_SUBSET[globals_locals_start..globals_locals_end];
+    for required in [
+        "g.get('scope_temp')",
+        "g.pop('scope_temp')",
+        "snapshot.get('arg')",
+        "snapshot.pop('local_value')",
+    ] {
+        assert!(
+            globals_locals_source.contains(required),
+            "globals/locals subset evidence must cover scope dict mapping method `{required}`"
+        );
+    }
 }
 
 #[test]
