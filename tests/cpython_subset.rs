@@ -38998,19 +38998,25 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
     );
 }
 
-// Covers CPython dict/set key matching for bool, int, and int subclasses
+// Covers CPython dict/set key matching for bool, int, float, and numeric subclasses
 // whose hashes and equality results match.
 #[test]
 fn cpython_dict_numeric_key_equivalence_subset() {
     assert_output(
-        "class I(int):\n    pass\npairs = [(I(1), True), (I(0), False), (I(2), 2)]\nfor a, b in pairs:\n    print(type(a).__name__, repr(a), repr(b), a == b, hash(a) == hash(b), {a: 'a', b: 'b'})\ns = {I(1), True, 1}\nprint(s, len(s), I(1) in {True}, True in {I(1)}, 1 in {I(1)})\nd = {I(1): 'i'}\nd[True] = 'b'\nprint(d, len(d), d[I(1)], d[1], d[True])\ne = {}\ne[I(0)] = 'i'\ne[False] = 'f'\nprint(e, len(e), e[I(0)], e[0], e[False])",
+        "class I(int):\n    pass\nclass F(float):\n    pass\npairs = [(I(1), True), (I(0), False), (I(2), 2), (I(1), 1.0), (F(1.0), 1), (F(0.0), False)]\nfor a, b in pairs:\n    print(type(a).__name__, repr(a), type(b).__name__, repr(b), a == b, hash(a) == hash(b), {a: 'a', b: 'b'})\ns = {I(1), True, 1, 1.0, F(1.0)}\nprint(s, len(s), I(1) in {True}, True in {I(1)}, 1.0 in {I(1)}, F(1.0) in {1})\nd = {I(1): 'i'}\nd[True] = 'b'\nd[1.0] = 'f'\nprint(d, len(d), d[I(1)], d[1], d[True], d[1.0])\ne = {}\ne[I(0)] = 'i'\ne[False] = 'f'\ne[F(0.0)] = 'z'\nprint(e, len(e), e[I(0)], e[0], e[False], e[0.0])\nnan = float('nan')\nother = float('nan')\nprint(nan != nan, nan in {nan}, other in {nan})\nnd = {nan: 'n'}\nprint(nd[nan])\ntry:\n    print(nd[other])\nexcept KeyError as error:\n    print(type(error).__name__)",
         &[
-            "I 1 True True True {1: 'b'}",
-            "I 0 False True True {0: 'b'}",
-            "I 2 2 True True {2: 'b'}",
-            "{1} 1 True True True",
-            "{1: 'b'} 1 b b b",
-            "{0: 'f'} 1 f f f",
+            "I 1 bool True True True {1: 'b'}",
+            "I 0 bool False True True {0: 'b'}",
+            "I 2 int 2 True True {2: 'b'}",
+            "I 1 float 1.0 True True {1: 'b'}",
+            "F 1.0 int 1 True True {1.0: 'b'}",
+            "F 0.0 bool False True True {0.0: 'b'}",
+            "{1} 1 True True True True",
+            "{1: 'f'} 1 f f f f",
+            "{0: 'z'} 1 z z z z",
+            "True True False",
+            "n",
+            "KeyError",
         ],
     );
 }

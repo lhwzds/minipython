@@ -68801,28 +68801,61 @@ fn hash_container_items_match(left: &Value, right: &Value) -> bool {
         return equal;
     }
 
-    if let Some(equal) = normalized_integer_keys_match(left, right) {
+    if is_identical(left, right) {
+        return true;
+    }
+
+    if let Some(equal) = normalized_numeric_keys_match(left, right) {
         return equal;
     }
 
-    is_identical(left, right) || left == right
+    left == right
 }
 
-fn normalized_integer_keys_match(left: &Value, right: &Value) -> Option<bool> {
-    let left = normalized_integer_key_value(left)?;
-    let right = normalized_integer_key_value(right)?;
-    Some(left == right)
+fn normalized_numeric_keys_match(left: &Value, right: &Value) -> Option<bool> {
+    let left = normalized_numeric_key_value(left)?;
+    let right = normalized_numeric_key_value(right)?;
+    Some(normalized_numeric_keys_equal(&left, &right))
 }
 
-fn normalized_integer_key_value(value: &Value) -> Option<Value> {
+enum NormalizedNumericKey {
+    Integer(BigInt),
+    Float(f64),
+}
+
+fn normalized_numeric_key_value(value: &Value) -> Option<NormalizedNumericKey> {
     if let Some(value) = int_subclass_integer(value) {
-        return Some(value);
+        return normalized_numeric_key_value(&value);
+    }
+    if let Some(value) = float_subclass_float(value) {
+        return Some(NormalizedNumericKey::Float(*value));
     }
     match value {
-        Value::Bool(value) => Some(Value::Number(bool_as_i64(*value))),
-        Value::Number(value) => Some(Value::Number(*value)),
-        Value::BigInt(value) => Some(Value::BigInt(value.clone())),
+        Value::Bool(value) => Some(NormalizedNumericKey::Integer(BigInt::from(bool_as_i64(
+            *value,
+        )))),
+        Value::Number(value) => Some(NormalizedNumericKey::Integer(BigInt::from(*value))),
+        Value::BigInt(value) => Some(NormalizedNumericKey::Integer(value.clone())),
+        Value::Float(value) => Some(NormalizedNumericKey::Float(**value)),
         _ => None,
+    }
+}
+
+fn normalized_numeric_keys_equal(
+    left: &NormalizedNumericKey,
+    right: &NormalizedNumericKey,
+) -> bool {
+    match (left, right) {
+        (NormalizedNumericKey::Integer(left), NormalizedNumericKey::Integer(right)) => {
+            left == right
+        }
+        (NormalizedNumericKey::Float(left), NormalizedNumericKey::Float(right)) => {
+            !left.is_nan() && !right.is_nan() && left == right
+        }
+        (NormalizedNumericKey::Integer(integer), NormalizedNumericKey::Float(float))
+        | (NormalizedNumericKey::Float(float), NormalizedNumericKey::Integer(integer)) => {
+            matches!(compare_float_bigint(*float, integer), Ok(Ordering::Equal))
+        }
     }
 }
 
