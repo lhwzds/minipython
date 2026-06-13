@@ -21509,7 +21509,7 @@ fn cpython_memoryview_count_index_diff_subset() {
 try:
     memoryview(b'abcdef').index(ord('x'))
 except ValueError as error:
-    print(error.__class__.__name__)
+    print(error.__class__.__name__, str(error))
 
 for expr in [
     lambda: memoryview(b'abc').count(),

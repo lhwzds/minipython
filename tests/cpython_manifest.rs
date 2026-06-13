@@ -1376,6 +1376,7 @@ fn cpython_memoryview_count_index_diff_covers_runtime_subset() {
         "m.count(ord('a'))",
         "m.index(ord('c'))",
         "memoryview(b'abc').count()",
+        "str(error)",
         "skipping memoryview.count/index diff",
     ] {
         assert!(
@@ -1383,6 +1384,10 @@ fn cpython_memoryview_count_index_diff_covers_runtime_subset() {
             "memoryview count/index diff evidence must contain `{required}`"
         );
     }
+    assert!(
+        CPYTHON_SUBSET.contains("memoryview.index(x): x not found"),
+        "memoryview count/index subset evidence must contain CPython miss text"
+    );
 }
 
 #[test]

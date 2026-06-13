@@ -18896,14 +18896,14 @@ impl Vm {
                 let bytes = memoryview_bytes(view)?;
                 let needle = self.memoryview_element_byte(view, needle.clone())?;
                 let Some(needle) = needle else {
-                    return Err("ValueError: subsection not found".to_string());
+                    return Err("ValueError: memoryview.index(x): x not found".to_string());
                 };
                 let (start, stop) = list_search_bounds(rest, bytes.len())?;
                 let index = bytes[start..stop]
                     .iter()
                     .position(|byte| *byte == needle)
                     .map(|index| start + index)
-                    .ok_or_else(|| "ValueError: subsection not found".to_string())?;
+                    .ok_or_else(|| "ValueError: memoryview.index(x): x not found".to_string())?;
                 i64::try_from(index)
                     .map(Value::Number)
                     .map_err(|_| "index() result is too large".to_string())

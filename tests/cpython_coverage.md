@@ -4104,9 +4104,10 @@ Recent runtime migration notes:
   `test_memoryview.py` getitem/index/count/compare behavior for the supported
   one-dimensional bytes-like surface: integer and negative indexing, invalid
   index exception classes, `index()` `start`/`stop` hits and misses, `count()`
-  over logical view contents, equality with bytes/bytearray/memoryview,
-  inequality with non-buffer objects, and TypeError for unsupported ordered
-  comparisons. The matching `cpython_memoryview_count_index_diff_subset`
+  over logical view contents, CPython's public `memoryview.index(x): x not
+  found` miss text, equality with bytes/bytearray/memoryview, inequality with
+  non-buffer objects, and TypeError for unsupported ordered comparisons. The
+  matching `cpython_memoryview_count_index_diff_subset`
   differential is capability-gated for CPython oracles that expose
   `memoryview.count()` / `memoryview.index()`.
 - `RUNTIME_BUILTINS` also includes

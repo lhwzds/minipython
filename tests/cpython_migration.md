@@ -1001,10 +1001,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `test_index`, `test_count`, and `test_compare`: integer getitem returns byte
   integers, negative indices are normalized, invalid index bounds and types
   raise the expected exception classes, `index()` matches list-style
-  `start`/`stop` behavior for hits and `ValueError` misses, `count()` matches
-  the logical view contents, equality works against bytes, bytearray, and
-  memoryview objects while non-buffer objects compare unequal, and unsupported
-  ordered comparisons raise Python-level `TypeError`. The
+  `start`/`stop` behavior for hits and CPython's public
+  `memoryview.index(x): x not found` miss text, `count()` matches the logical
+  view contents, equality works against bytes, bytearray, and memoryview
+  objects while non-buffer objects compare unequal, and unsupported ordered
+  comparisons raise Python-level `TypeError`. The
   `cpython_memoryview_count_index_diff_subset` differential is capability-gated
   because older local CPython oracles do not expose `memoryview.count()` /
   `memoryview.index()`.

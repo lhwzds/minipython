@@ -20087,7 +20087,7 @@ fn cpython_memoryview_minimal_runtime_subset() {
         ],
     );
     assert_output(
-        "for source in [b'abcdef', bytearray(b'abcdef'), memoryview(b'abcdef')[1:5]]:\n    m = memoryview(source)\n    print(m.tobytes(), m.tolist(), m.hex(), m.hex(':', 2))\n    print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.suboffsets, m.readonly, m.nbytes)\n    print(m.count(ord('a')), m.count(ord('c')), m.count(ord('x')))\n    try:\n        print(m.index(ord('c')), m.index(ord('c'), -10, 99))\n    except ValueError as error:\n        print(error.__class__.__name__)\n    print(m.toreadonly().readonly, m.toreadonly().tolist() == m.tolist())\ntry:\n    memoryview(b'abcdef').index(ord('x'))\nexcept ValueError as error:\n    print(error.__class__.__name__)\nfor expr in [lambda: memoryview(b'abc').tobytes(1), lambda: memoryview(b'abc').tolist(1), lambda: memoryview(b'abc').count(), lambda: memoryview(b'abc').index(), lambda: memoryview(b'abc').index(97, 0, 1, 2)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        "for source in [b'abcdef', bytearray(b'abcdef'), memoryview(b'abcdef')[1:5]]:\n    m = memoryview(source)\n    print(m.tobytes(), m.tolist(), m.hex(), m.hex(':', 2))\n    print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.suboffsets, m.readonly, m.nbytes)\n    print(m.count(ord('a')), m.count(ord('c')), m.count(ord('x')))\n    try:\n        print(m.index(ord('c')), m.index(ord('c'), -10, 99))\n    except ValueError as error:\n        print(error.__class__.__name__)\n    print(m.toreadonly().readonly, m.toreadonly().tolist() == m.tolist())\ntry:\n    memoryview(b'abcdef').index(ord('x'))\nexcept ValueError as error:\n    print(error.__class__.__name__, str(error))\nfor expr in [lambda: memoryview(b'abc').tobytes(1), lambda: memoryview(b'abc').tolist(1), lambda: memoryview(b'abc').count(), lambda: memoryview(b'abc').index(), lambda: memoryview(b'abc').index(97, 0, 1, 2)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "b'abcdef' [97, 98, 99, 100, 101, 102] 616263646566 6162:6364:6566",
             "B 1 1 (6,) (1,) () True 6",
@@ -20104,7 +20104,7 @@ fn cpython_memoryview_minimal_runtime_subset() {
             "0 1 0",
             "1 1",
             "True True",
-            "ValueError",
+            "ValueError memoryview.index(x): x not found",
             "TypeError",
             "TypeError",
             "TypeError",
