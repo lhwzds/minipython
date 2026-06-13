@@ -4156,8 +4156,14 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         "itertools core CPython diff evidence must not cover pairwise()"
     );
     assert!(
-        keyword_source.contains("multiple values"),
-        "itertools keyword-error CPython diff evidence must assert duplicate keyword diagnostics"
+        keyword_source.contains("itertools.count(foo=1)")
+            && keyword_source.contains("itertools.count(1, start=2)")
+            && keyword_source.contains("itertools.count(1, 2, step=3)")
+            && keyword_source.contains("itertools.repeat(object=1, times=2, bad=3)")
+            && keyword_source.contains("itertools.repeat(1, object=2)")
+            && keyword_source.contains("itertools.repeat(1, 2, times=3)")
+            && keyword_source.contains("str(error)"),
+        "itertools keyword-error CPython diff evidence must assert exact keyword diagnostics"
     );
     assert!(
         pairwise_source.contains("itertools.pairwise"),

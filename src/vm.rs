@@ -23796,18 +23796,31 @@ impl Vm {
                 args.len()
             ));
         }
+        if args.len() + keywords.len() > names.len() {
+            if args.is_empty() {
+                return Err(format!(
+                    "TypeError: count() takes at most 2 keyword arguments ({} given)",
+                    keywords.len()
+                ));
+            }
+            return Err(format!(
+                "TypeError: count() takes at most 2 arguments ({} given)",
+                args.len() + keywords.len()
+            ));
+        }
         for (index, value) in args.into_iter().enumerate() {
             values[index] = Some(value);
         }
         for (name, value) in keywords {
             let Some(index) = names.iter().position(|candidate| *candidate == name) else {
                 return Err(format!(
-                    "TypeError: count() got an unexpected keyword argument '{name}'"
+                    "TypeError: '{name}' is an invalid keyword argument for count()"
                 ));
             };
             if values[index].is_some() {
                 return Err(format!(
-                    "TypeError: count() got multiple values for argument '{name}'"
+                    "TypeError: argument for count() given by name ('{name}') and position ({})",
+                    index + 1
                 ));
             }
             values[index] = Some(value);
@@ -23846,18 +23859,31 @@ impl Vm {
                 args.len()
             ));
         }
+        if args.len() + keywords.len() > names.len() {
+            if args.is_empty() {
+                return Err(format!(
+                    "TypeError: repeat() takes at most 2 keyword arguments ({} given)",
+                    keywords.len()
+                ));
+            }
+            return Err(format!(
+                "TypeError: repeat() takes at most 2 arguments ({} given)",
+                args.len() + keywords.len()
+            ));
+        }
         for (index, value) in args.into_iter().enumerate() {
             values[index] = Some(value);
         }
         for (name, value) in keywords {
             let Some(index) = names.iter().position(|candidate| *candidate == name) else {
                 return Err(format!(
-                    "TypeError: repeat() got an unexpected keyword argument '{name}'"
+                    "TypeError: '{name}' is an invalid keyword argument for repeat()"
                 ));
             };
             if values[index].is_some() {
                 return Err(format!(
-                    "TypeError: repeat() got multiple values for argument '{name}'"
+                    "TypeError: argument for repeat() given by name ('{name}') and position ({})",
+                    index + 1
                 ));
             }
             values[index] = Some(value);
@@ -23937,7 +23963,9 @@ impl Vm {
         let mut iterable = args.first().cloned();
         let mut function = args.get(1).cloned().unwrap_or(Value::None);
         let mut initial = None;
-        let mut function_seen = args.len() >= 2;
+        let function_from_position = args.len() >= 2;
+        let mut function_keyword_seen = false;
+        let mut initial_keyword_seen = false;
         let mut total_count = args.len();
         for (keyword, value) in keywords {
             match keyword.as_str() {
@@ -23952,24 +23980,31 @@ impl Vm {
                     total_count += 1;
                 }
                 "func" => {
-                    if function_seen {
+                    if function_from_position {
                         return Err(
-                            "TypeError: accumulate() got multiple values for argument 'func'"
+                            "TypeError: argument for accumulate() given by name ('func') and position (2)"
+                                .to_string(),
+                        );
+                    }
+                    if function_keyword_seen {
+                        return Err(
+                            "TypeError: itertools.accumulate() got multiple values for keyword argument 'func'"
                                 .to_string(),
                         );
                     }
                     function = value;
-                    function_seen = true;
+                    function_keyword_seen = true;
                     total_count += 1;
                 }
                 "initial" => {
-                    if initial.is_some() {
+                    if initial_keyword_seen {
                         return Err(
-                            "TypeError: accumulate() got multiple values for argument 'initial'"
+                            "TypeError: itertools.accumulate() got multiple values for keyword argument 'initial'"
                                 .to_string(),
                         );
                     }
                     initial = Some(Box::new(value));
+                    initial_keyword_seen = true;
                     total_count += 1;
                 }
                 _ => {
@@ -24194,7 +24229,7 @@ impl Vm {
             }
             if fillvalue_seen {
                 return Err(
-                    "TypeError: zip_longest() got multiple values for keyword argument 'fillvalue'"
+                    "TypeError: itertools.zip_longest() got multiple values for keyword argument 'fillvalue'"
                         .to_string(),
                 );
             }

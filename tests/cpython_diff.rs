@@ -14096,14 +14096,21 @@ fn cpython_itertools_keyword_error_diff_subset() {
         origin: "Lib/test/test_itertools.py public duplicate-keyword error subset",
         name: "itertools-keyword-errors",
         source: r#"import itertools
-try:
-    itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left})
-except TypeError as error:
-    print(error.__class__.__name__, 'multiple values' in str(error))
-try:
-    itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1})
-except TypeError as error:
-    print(error.__class__.__name__, 'multiple values' in str(error))"#,
+def show(label, callback):
+    try:
+        callback()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+show('count-badkw', lambda: itertools.count(foo=1))
+show('count-dup-start', lambda: itertools.count(1, start=2))
+show('count-dup-step', lambda: itertools.count(1, 2, step=3))
+show('count-many-kw', lambda: itertools.count(start=1, step=2, foo=3))
+show('repeat-badkw', lambda: itertools.repeat(object=1, bad=3))
+show('repeat-many-kw', lambda: itertools.repeat(object=1, times=2, bad=3))
+show('repeat-dup-object', lambda: itertools.repeat(1, object=2))
+show('repeat-dup-times', lambda: itertools.repeat(1, 2, times=3))
+show('accumulate-dup-func', lambda: itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left}))
+show('zip-longest-dup-fillvalue', lambda: itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1}))"#,
     });
 }
 
