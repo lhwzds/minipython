@@ -9,6 +9,10 @@ CPython。MiniPython 应尽量完整覆盖 Python 语法前端，逐步实现核
 语义和安全的纯内存标准库子集，并按公共行为迁移 CPython 测试；对 CPython
 内部实现测试做分类标记，而不是为了通过它们去复制 CPython。
 
+CPython 是行为 oracle，不是实现来源。MiniPython 不应该 wholesale 搬 CPython
+`Lib/`；标准库行为只有在支持面和排除面写入 sandbox 文档，并有直接
+differential 证据支撑时才算进入 scope。
+
 ## 范围
 
 范围内：

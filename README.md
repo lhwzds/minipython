@@ -11,6 +11,11 @@ library subset, and migrate CPython tests by public behavior. CPython internal
 implementation tests should be classified and tagged rather than copied as
 runtime requirements.
 
+CPython is the behavior oracle, not an implementation source. MiniPython must
+not wholesale port CPython `Lib/`; standard-library behavior is accepted only
+when the supported and excluded sandbox surfaces are documented and backed by
+direct differential evidence.
+
 ## Scope
 
 In scope:

@@ -7,6 +7,8 @@ const CPYTHON_MIGRATION: &str = include_str!("cpython_migration.md");
 const CPYTHON_DIFF: &str = include_str!("cpython_diff.rs");
 const CPYTHON_SUBSET: &str = include_str!("cpython_subset.rs");
 const LANGUAGE_TESTS: &str = include_str!("language.rs");
+const README: &str = include_str!("../README.md");
+const README_CN: &str = include_str!("../README_CN.md");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
@@ -6275,6 +6277,40 @@ fn cpython_migration_documents_cpython_as_behavior_oracle_not_stdlib_source_drop
         assert!(
             CPYTHON_COVERAGE.contains(required),
             "coverage document must mention CPython migration boundary `{required}`"
+        );
+    }
+}
+
+#[test]
+fn readmes_document_cpython_oracle_not_implementation_source() {
+    for required in [
+        "sandbox-focused Rust Python",
+        "rather than a full CPython",
+        "CPython is the behavior oracle",
+        "not an implementation source",
+        "wholesale port CPython `Lib/`",
+        "CPython public behavior migration",
+        "executable differential tests",
+        "Every bundled stdlib module must have a matching `cpython_diff` case",
+    ] {
+        assert!(
+            README.contains(required),
+            "README must document CPython oracle boundary `{required}`"
+        );
+    }
+
+    for required in [
+        "面向 sandbox 的 Rust Python",
+        "而不是完整复制",
+        "CPython 是行为 oracle",
+        "不是实现来源",
+        "wholesale 搬 CPython",
+        "可执行 differential tests",
+        "每个 bundled stdlib 模块必须有对应的 `cpython_diff` case",
+    ] {
+        assert!(
+            README_CN.contains(required),
+            "README_CN must document CPython oracle boundary `{required}`"
         );
     }
 }
