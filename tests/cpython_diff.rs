@@ -21738,7 +21738,26 @@ for target in [b'abc', memoryview(b'abc')]:
     try:
         bio.readinto(target)
     except TypeError as error:
-        print(type(target).__name__, error.__class__.__name__)
+        print(type(target).__name__, error.__class__.__name__, str(error))
+for label, target in [
+    ('slice-mid', memoryview(bytearray(b'abcdef'))[2:5]),
+    ('slice-step', memoryview(bytearray(b'abcdef'))[::2]),
+    ('slice-rev', memoryview(bytearray(b'abcdef'))[::-1]),
+]:
+    bio = io.BytesIO(b'XYZW')
+    try:
+        n = bio.readinto(target)
+        print(label, 'ok', n, bytes(target), bytes(target.obj))
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+for label, target in [
+    ('readinto1-step', memoryview(bytearray(b'abcdef'))[::2]),
+    ('readinto1-rev', memoryview(bytearray(b'abcdef'))[::-1]),
+]:
+    try:
+        io.BytesIO(b'XYZW').readinto1(target)
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 bio = io.BytesIO(b'XYZW')
 ba = bytearray(b'abc')
 print(bio.readinto(ba), ba, bio.readinto(ba), ba, bio.readinto(ba), ba)

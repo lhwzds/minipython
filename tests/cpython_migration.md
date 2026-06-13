@@ -194,10 +194,11 @@ ported, partial, blocked by runtime/AST-module work, or not started.
 | CPython test manifest | Syntax-adjacent CPython modules now have group-level method counts from the current local source: `test_grammar.py` has 75 methods, `test_syntax.py` has 55, `test_compile.py` has 186 methods, and `test_ast/test_ast.py` has 216. `test_grammar.py` currently has no module-level `test_*` functions; its executable tests are under `TokenTests` and `GrammarTests`. `TokenTests`, `GrammarTests`, `SyntaxWarningTest`, `SyntaxErrorTestCase`, `LazyImportRestrictionTestCase`, `TestBooleanExpression`, `TestStaticAttributes`, `TestExpressionStackSize`, and `TestStackSizeStability` are now fully ported at method level for the current local CPython source. Python-visible `ast.parse()` / `ast.dump()` now exposes first-pass node fields and AST type checks, first-pass lazy import `is_lazy` fields, first-pass `compile(..., ast.PyCF_ONLY_AST)` returns public AST nodes, first-pass `compile(public_ast, ...)` executes representative public AST trees, including direct `FormattedValue` and `Interpolation` expression roots plus CPython list-field type validation and expr-context diagnostics, cyclic public-AST `RecursionError` detection and the first `to_tuple()` snippet round-trips, all current `ASTConstructorTests` methods are now covered by direct method-level Rust evidence, the first public AST iteration helpers are covered, first-pass `ast.literal_eval()` values, decimal integer digit-limit diagnostics, syntax-error multiline indentation behavior, and syntax-error context preservation are covered, first-pass location helpers for generated nodes are covered, first-pass parser-generated source locations for common expression/call shapes and multiline docstring expression start positions are covered, first-pass `ast.get_docstring()` is covered, first-pass `ast.get_source_segment()` is covered for supported parsed nodes plus explicit-location multi-line extraction, first-pass function/class definition source spans are covered, first-pass lambda/subscript/display source spans are covered including starred call-argument end positions, first-pass yield/await/comprehension source spans are covered, first-pass suite/control-flow source spans are covered including CPython's explicit `elif` statement start-position checks, first-pass import/import-from source spans are covered including parenthesized multi-line import-from, first-pass f-string replacement-expression source spans are covered, first-pass `ast.dump(indent=...)` formatting is covered, and first-pass incomplete-node / `show_empty` dump behavior is covered; full parser source locations for remaining node families, broader compile-from-AST execution, remaining public-AST dump edge cases, deeper `literal_eval()` edge cases, full `to_tuple()` parity, and most `test_compile.py` code-object/optimization/source-position groups remain open. | Continue with partial `test_ast.py` and `test_compile.py` classes method-by-method. |
 
 Rechecked `Lib/test/test_bytes.py::BytesTest::test_buffer_is_readonly` after the
-in-memory `io.BytesIO.readinto()` migration: the public read-only buffer target
-rejection is covered by `cpython_memoryview_bytesio_readinto_subset`, while the
-exact CPython fixture remains blocked only by host raw file I/O
-(`open(fd, "rb", buffering=0)`) and filesystem policy.
+in-memory `io.BytesIO.readinto()` migration: the public read-only and
+non-contiguous memoryview buffer target rejections are covered by
+`cpython_memoryview_bytesio_readinto_subset`, while the exact CPython fixture
+remains blocked only by host raw file I/O (`open(fd, "rb", buffering=0)`) and
+filesystem policy.
 
 Completed in the `test_bytes.py` bytes percent-format pass:
 
@@ -781,8 +782,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_memoryview_bytesio_readinto_subset`, adapted from
   `AbstractMemoryTests::test_writable_readonly`, covering the in-memory
   `io.BytesIO.readinto()` slice for writable `bytearray` and bytearray-backed
-  `memoryview` targets, read-only bytes-backed target rejection, stream-position
-  advancement, and `initial_bytes=` construction.
+  `memoryview` targets, contiguous sliced memoryviews, read-only bytes-backed
+  and non-contiguous writable target rejection for `readinto()` / `readinto1()`,
+  stream-position advancement, and `initial_bytes=` construction.
 - Classified remaining direct `test_memoryview.py` gaps beyond the supported
   `io.BytesIO.getbuffer()` slice: `test_refs`, `test_gc`, `test_buffer_reference_loop`,
   `test_picklebuffer_reference_loop`, and
@@ -1059,9 +1061,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_memoryview_bytesio_readinto_subset`, migrating the in-memory
   `io.BytesIO.readinto()` slice from CPython
   `Lib/test/test_memoryview.py::AbstractMemoryTests::test_writable_readonly`:
-  writable `bytearray` and bytearray-backed memoryview targets are filled,
-  read-only bytes-backed targets are rejected, stream position advances, and
-  `initial_bytes=` construction works. Direct CPython diff evidence is in
+  writable `bytearray`, bytearray-backed memoryview, and contiguous sliced
+  memoryview targets are filled, read-only bytes-backed and non-contiguous
+  writable memoryview targets are rejected with method-specific `TypeError`
+  text, stream position advances, and `initial_bytes=` construction works.
+  Direct CPython diff evidence is in
   `cpython_memoryview_bytesio_readinto_diff_subset`.
 - Added `cpython_memoryview_weakref_live_subset`, migrating the live-reference
   slice of CPython

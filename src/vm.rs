@@ -1119,14 +1119,14 @@ fn print_separator_or_end(name: &str, value: Value) -> Result<String, String> {
     }
 }
 
-fn readinto_buffer_type_error(value: &Value) -> String {
+fn readinto_buffer_type_error(method: &str, value: &Value) -> String {
     format!(
-        "TypeError: readinto() argument must be read-write bytes-like object, not {}",
+        "TypeError: {method}() argument must be read-write bytes-like object, not {}",
         type_name(value)
     )
 }
 
-fn writable_readinto_buffer_len(value: &Value) -> Result<usize, String> {
+fn writable_readinto_buffer_len(value: &Value, method: &str) -> Result<usize, String> {
     match value {
         Value::ByteArray(bytes) => Ok(bytes.borrow().len()),
         Value::MemoryView(view) => {
@@ -1135,15 +1135,24 @@ fn writable_readinto_buffer_len(value: &Value) -> Result<usize, String> {
                 return Err(released_memoryview_error());
             }
             if state.readonly {
-                return Err(readinto_buffer_type_error(value));
+                return Err(readinto_buffer_type_error(method, value));
             }
+            drop(state);
+            if !memoryview_is_contiguous(view)? {
+                return Err(readinto_buffer_type_error(method, value));
+            }
+            let state = view.borrow();
             Ok(state.len)
         }
-        value => Err(readinto_buffer_type_error(value)),
+        value => Err(readinto_buffer_type_error(method, value)),
     }
 }
 
-fn write_bytes_into_readinto_buffer(value: &Value, bytes: &[u8]) -> Result<(), String> {
+fn write_bytes_into_readinto_buffer(
+    value: &Value,
+    bytes: &[u8],
+    method: &str,
+) -> Result<(), String> {
     match value {
         Value::ByteArray(target) => {
             let mut target = target.borrow_mut();
@@ -1157,8 +1166,13 @@ fn write_bytes_into_readinto_buffer(value: &Value, bytes: &[u8]) -> Result<(), S
                     return Err(released_memoryview_error());
                 }
                 if state.readonly {
-                    return Err(readinto_buffer_type_error(value));
+                    return Err(readinto_buffer_type_error(method, value));
                 }
+                drop(state);
+                if !memoryview_is_contiguous(view)? {
+                    return Err(readinto_buffer_type_error(method, value));
+                }
+                let state = view.borrow();
                 let mut physical_indices = Vec::with_capacity(bytes.len());
                 for logical_index in 0..bytes.len() {
                     physical_indices.push(memoryview_physical_index(&state, logical_index)?);
@@ -1174,7 +1188,7 @@ fn write_bytes_into_readinto_buffer(value: &Value, bytes: &[u8]) -> Result<(), S
             }
             Ok(())
         }
-        value => Err(readinto_buffer_type_error(value)),
+        value => Err(readinto_buffer_type_error(method, value)),
     }
 }
 
@@ -18295,9 +18309,9 @@ impl Vm {
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
-        let target_len = writable_readinto_buffer_len(target)?;
+        let target_len = writable_readinto_buffer_len(target, method)?;
         let chunk = bytes_io_readinto_chunk(bytes_io, target_len);
-        write_bytes_into_readinto_buffer(target, &chunk)?;
+        write_bytes_into_readinto_buffer(target, &chunk, method)?;
         i64::try_from(chunk.len())
             .map(Value::Number)
             .map_err(|_| format!("{method}() result is too large"))

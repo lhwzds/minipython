@@ -1582,7 +1582,8 @@ Recent runtime migration notes:
   `write()` / all `truncate()` requests / `close()` across direct and derived memoryviews,
   release of function-scoped, deleted-binding, and expression-temporary exported views,
   `readinto()` / `readinto1()` over
-  writable bytearray targets, `tell()`, `seek()` with
+  writable bytearray and contiguous memoryview targets plus non-contiguous
+  memoryview rejection with method-specific `TypeError` text, `tell()`, `seek()` with
   public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
   `truncate()` including non-extending growth requests, position advancement,
   post-EOF empty reads/readinto results, sequential bytes-like line writes,
@@ -4137,8 +4138,10 @@ Recent runtime migration notes:
   `cpython_memoryview_bytesio_readinto_subset`, covering the in-memory
   CPython `test_memoryview.py::AbstractMemoryTests::test_writable_readonly`
   slice where `io.BytesIO.readinto()` fills writable `bytearray` and
-  bytearray-backed `memoryview` targets, rejects read-only bytes-backed
-  targets, advances the stream position, and accepts `initial_bytes=`.
+  bytearray-backed `memoryview` targets, fills contiguous sliced writable
+  memoryviews, rejects read-only bytes-backed and non-contiguous writable
+  memoryview targets for both `readinto()` and `readinto1()`, advances the
+  stream position, and accepts `initial_bytes=`.
   `cpython_memoryview_bytesio_readinto_diff_subset` directly compares this
   in-memory protocol surface against CPython.
 - `RUNTIME_BUILTINS` also includes `cpython_memoryview_weakref_live_subset`,
