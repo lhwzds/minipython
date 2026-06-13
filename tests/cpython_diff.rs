@@ -17045,6 +17045,42 @@ match "value":
 }
 
 #[test]
+fn cpython_match_capture_target_and_star_pattern_helper_rules_diff_subset() {
+    let probe = run_cpython("match [1, 2]:\n    case [first, *rest]:\n        print(first, rest)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"1 [2]\n" {
+        eprintln!(
+            "skipping match capture-target/star helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram pattern_capture_target and star_pattern public execution subset",
+        name: "match-capture-target-star-helper-rules",
+        source: r#"match [1, 2, 3]:
+    case [first, *middle]:
+        print(first, middle)
+match [1, 2, 3]:
+    case [first, *_, last]:
+        print(first, last)
+match 1:
+    case 1 as captured:
+        print(captured)
+match {'x': 1, 'y': 2}:
+    case {'x': value, **rest}:
+        print(value, rest)
+class Box:
+    __match_args__ = ('value',)
+    def __init__(self, value):
+        self.value = value
+match Box(4):
+    case Box(value=captured):
+        print(captured)"#,
+    });
+}
+
+#[test]
 fn cpython_match_sequence_helper_rules_diff_subset() {
     let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
         .expect("failed to probe CPython match statement support");
