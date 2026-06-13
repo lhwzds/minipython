@@ -16349,6 +16349,16 @@ other = OrderedDict([('b', 2), ('a', 1)])
 plain = {'b': 2, 'a': 1}
 print(od.__eq__(other), od.__ne__(other), OrderedDict.__eq__(od, other), OrderedDict.__ne__(od, other))
 print(od.__eq__(plain), od.__ne__(plain), OrderedDict.__eq__(od, []), OrderedDict.__ne__(od, []))
+union = od | {'c': 3}
+runion = {'z': 0} | od
+dunion = OrderedDict.__or__(od, {'d': 4})
+print(type(union).__name__, repr(union), list(union.items()))
+print(type(runion).__name__, repr(runion), list(runion.items()))
+print(type(dunion).__name__, repr(dunion), OrderedDict.__or__(od, []))
+mut = OrderedDict([('a', 1)])
+ret = mut.__ior__({'b': 2})
+mut |= {'c': 3}
+print(type(ret).__name__, list(mut.items()))
 for args in [(), (False,)]:
     sample = OrderedDict([('a', 1), ('b', 2)])
     print(sample.popitem(*args), list(sample.items()))
@@ -16361,7 +16371,7 @@ C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__eq__' in dir(od), '__ne__' in dir(od), '__or__' in dir(od), '__ior__' in dir(od), '__ror__' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",

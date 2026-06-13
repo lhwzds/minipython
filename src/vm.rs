@@ -26473,6 +26473,19 @@ impl Vm {
             (left, Value::FrameLocalsProxy { locals }) => {
                 return scope_dict_reverse_union(left, locals);
             }
+            (Value::OrderedDict(entries), other) => {
+                let updates = mapping_entries(other)
+                    .map_err(|_| format!("cannot bitwise-or {left} and {right}"))?;
+                return ordered_dict_union_from_entries(entries.borrow().clone(), updates);
+            }
+            (other, Value::OrderedDict(entries)) => {
+                let mut result = mapping_entries(other)
+                    .map_err(|_| format!("cannot bitwise-or {left} and {right}"))?;
+                for (key, value) in entries.borrow().iter().cloned() {
+                    insert_dict_entry(&mut result, key, value)?;
+                }
+                return build_ordered_dict(result);
+            }
             _ => {}
         }
         if let Some(value) = self.call_binary_special_method(&left, &right, "__or__", "__ror__")? {
@@ -26680,6 +26693,15 @@ impl Vm {
                 }
                 drop(entries_ref);
                 Ok(Value::Dict(entries))
+            }
+            Value::OrderedDict(entries) => {
+                let updates = self.dict_entries_from_update_source(right)?;
+                let mut entries_ref = entries.borrow_mut();
+                for (key, value) in updates {
+                    insert_live_dict_entry(&mut entries_ref, key, value)?;
+                }
+                drop(entries_ref);
+                Ok(Value::OrderedDict(entries))
             }
             Value::ScopeDict(scope) => {
                 let updates = self.dict_entries_from_update_source(right)?;
@@ -45609,11 +45631,14 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__eq__",
             "__format__",
             "__getitem__",
+            "__ior__",
             "__iter__",
             "__len__",
             "__ne__",
+            "__or__",
             "__repr__",
             "__reversed__",
+            "__ror__",
             "__setitem__",
             "__str__",
             "clear",
@@ -52593,6 +52618,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::OrderedDict(entries)),
                 identity: Rc::new(()),
             }),
+            "__or__" | "__ror__" | "__ior__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("OrderedDict.{name}"))),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
             | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
             | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -53416,6 +53446,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "OrderedDict" && matches!(name, "__eq__" | "__ne__") =>
+        {
+            Ok(Value::Builtin(format!("OrderedDict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "OrderedDict"
+                && matches!(name, "__or__" | "__ror__" | "__ior__") =>
         {
             Ok(Value::Builtin(format!("OrderedDict.{name}")))
         }
@@ -66869,6 +66905,47 @@ fn call_dict_method(
         }));
     }
 
+    if matches!(
+        name,
+        "OrderedDict.__or__" | "OrderedDict.__ror__" | "OrderedDict.__ior__"
+    ) {
+        reject_method_keywords(name, &keywords)?;
+        let [Value::OrderedDict(entries), other] = args.as_slice() else {
+            return Err(format!(
+                "{}() expected 1 argument, got {}",
+                method_display_name(name),
+                method_arg_count(&args)
+            ));
+        };
+        return match name {
+            "OrderedDict.__or__" => {
+                let Ok(updates) = mapping_entries(other) else {
+                    return Ok(Value::NotImplemented);
+                };
+                ordered_dict_union_from_entries(entries.borrow().clone(), updates)
+            }
+            "OrderedDict.__ror__" => {
+                let Ok(mut result) = mapping_entries(other) else {
+                    return Ok(Value::NotImplemented);
+                };
+                for (key, value) in entries.borrow().iter().cloned() {
+                    insert_dict_entry(&mut result, key, value)?;
+                }
+                build_ordered_dict(result)
+            }
+            "OrderedDict.__ior__" => {
+                let updates = vm.dict_entries_from_update_source(other.clone())?;
+                let mut entries_ref = entries.borrow_mut();
+                for (key, value) in updates {
+                    insert_live_dict_entry(&mut entries_ref, key, value)?;
+                }
+                drop(entries_ref);
+                Ok(Value::OrderedDict(entries.clone()))
+            }
+            _ => unreachable!("OrderedDict union method guard checked name"),
+        };
+    }
+
     let canonical_name;
     let name = if let Some(method) = name.strip_prefix("OrderedDict.") {
         canonical_name = format!("dict.{method}");
@@ -68933,6 +69010,16 @@ fn dict_union_from_entries(
         insert_dict_entry(&mut entries, key, value)?;
     }
     build_dict(entries)
+}
+
+fn ordered_dict_union_from_entries(
+    mut entries: Vec<(Value, Value)>,
+    updates: Vec<(Value, Value)>,
+) -> Result<Value, String> {
+    for (key, value) in updates {
+        insert_dict_entry(&mut entries, key, value)?;
+    }
+    build_ordered_dict(entries)
 }
 
 fn is_bytes_search_method(name: &str) -> bool {
