@@ -4240,6 +4240,8 @@ fn json_error_boundary_diff_covers_subset_surface() {
         "loads-invalid-utf8",
         "loads-trailing-data",
         "loads-array-trailing-comma",
+        "loads-leading-zero-extra",
+        "Extra data",
         "loads-invalid-escape",
         "dumps-bytearray",
         "dumps-memoryview",

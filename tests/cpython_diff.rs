@@ -1735,6 +1735,10 @@ show('loads-missing-colon', lambda: json.loads('{"a" 1}'))
 show('loads-uppercase-true', lambda: json.loads('True'))
 show('loads-uppercase-null', lambda: json.loads('NULL'))
 show('loads-leading-zero', lambda: json.loads('01'))
+try:
+    json.loads('01')
+except Exception as error:
+    print('loads-leading-zero-extra', 'Extra data' in str(error))
 show('loads-invalid-escape', lambda: json.loads('"\\x"'))
 show('loads-unclosed-array', lambda: json.loads('[1'))
 show('dumps-no-args', lambda: json.dumps())

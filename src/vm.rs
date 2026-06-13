@@ -58085,9 +58085,6 @@ impl<'a> JsonParser<'a> {
         match self.peek() {
             Some('0') => {
                 self.pos += 1;
-                if matches!(self.peek(), Some('0'..='9')) {
-                    return self.error("Invalid number");
-                }
             }
             Some('1'..='9') => {
                 self.pos += 1;
