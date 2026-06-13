@@ -72717,8 +72717,10 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         "bool" => matches!(subject, Value::Bool(_)),
         "list" => matches!(subject, Value::List(_)) || list_subclass_storage(subject).is_some(),
         "dict" => {
-            matches!(subject, Value::Dict(_) | Value::Counter { .. })
-                || counter_subclass_entries(subject).is_some()
+            matches!(
+                subject,
+                Value::Dict(_) | Value::Counter { .. } | Value::ScopeDict(_)
+            ) || counter_subclass_entries(subject).is_some()
                 || dict_subclass_entries(subject).is_some()
         }
         "Counter" => {

@@ -35638,6 +35638,7 @@ fn cpython_globals_locals_builtin_subset() {
         concat!(
             "scope_temp = 1\n",
             "g = globals()\n",
+            "print(isinstance(g, dict), g.__class__ is dict, type(g) is dict)\n",
             "copied = g.copy()\n",
             "print(type(copied).__name__, copied.get('scope_temp'), copied is g)\n",
             "print(g.get('scope_temp'), g.get('missing'), g.get('missing', 42))\n",
@@ -35708,6 +35709,7 @@ fn cpython_globals_locals_builtin_subset() {
             "clear_global_mapping(print, g)",
         ),
         &[
+            "True True True",
             "dict 1 False",
             "1 None 42",
             "1 1",

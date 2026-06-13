@@ -6283,6 +6283,7 @@ g['from_globals'] = 2
 l['from_locals'] = 3
 print(from_globals, from_locals, globals() is g, locals() is l)
 scope_temp = 1
+print(isinstance(g, dict), g.__class__ is dict, type(g) is dict)
 copied = g.copy()
 print(type(copied).__name__, copied.get('scope_temp'), copied is g)
 print(g.get('scope_temp'), g.get('missing'), g.get('missing', 42))

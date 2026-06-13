@@ -6343,8 +6343,9 @@ Completed in the namespace builtin pass:
   `dict_values` views, stable `reversed()` iteration over scope mappings and
   those views, deletion/reinsertion order for scope-backed mappings, recursive
   repr guards for scope-backed views, PEP 584 union and in-place union for
-  scope-backed mappings, rich equality against dict-compatible mappings, and
-  missing-key `KeyError` type parity.
+  scope-backed mappings, rich equality against dict-compatible mappings,
+  `dict` class identity and `isinstance(..., dict)` parity for module
+  namespaces, and missing-key `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 
