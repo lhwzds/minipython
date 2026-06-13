@@ -4923,6 +4923,49 @@ fn cpython_match_mapping_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_match_class_helper_diff_covers_runtime_subset() {
+    let diff_name = "cpython_match_class_helper_rules_diff_subset";
+    let subset_name = "cpython_match_class_helper_rules_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("match class helper CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "match class helper runtime subset evidence must exist"
+    );
+    for required in [
+        "case Empty()",
+        "case Point(1, value,)",
+        "case Point(x=1, y=[first, second],)",
+        "case Point(1, y=value,)",
+        "case Outer.Inner(value)",
+        "case int(value,)",
+        "case range()",
+        "case range(10)",
+        "case max(0, 1)",
+        "__match_args__",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "match class helper diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "match class helper docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_ast_dump_public_diff_covers_exact_subsets() {
     let diff_name = "cpython_ast_dump_public_diff_subset";
     let diff_start = CPYTHON_DIFF

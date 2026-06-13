@@ -17058,6 +17058,95 @@ match {'a': 0}:
 }
 
 #[test]
+fn cpython_match_class_helper_rules_diff_subset() {
+    let probe = run_cpython("match 1:\n    case int(value):\n        print(value)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"1\n" {
+        eprintln!("skipping match class helper diff: CPython oracle lacks match statement support");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram class_pattern, positional_patterns, keyword_patterns, and keyword_pattern public execution subset",
+        name: "match-class-helper-rules",
+        source: r#"class Empty:
+    pass
+match Empty():
+    case Empty():
+        print("empty")
+class Point:
+    __match_args__ = ("x", "y")
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+match Point(1, 2):
+    case Point(1, value,):
+        print(value)
+match Point(1, [2, 3]):
+    case Point(x=1, y=[first, second],):
+        print(first, second)
+match Point(1, 2):
+    case Point(1, y=value,):
+        print(value)
+class Outer:
+    class Inner:
+        __match_args__ = ("value",)
+        def __init__(self, value):
+            self.value = value
+match Outer.Inner("token"):
+    case Outer.Inner(value):
+        print(value)
+match 7:
+    case int(value,):
+        print(value)
+match "mini":
+    case str(text,):
+        print(text)
+match range(3):
+    case range():
+        print("range")
+match slice(1):
+    case slice():
+        print("slice")
+y = None
+try:
+    match range(10):
+        case range(10):
+            y = 0
+except TypeError as error:
+    print(error)
+print(y)
+y = None
+try:
+    match object():
+        case object(y):
+            pass
+except TypeError as error:
+    print(error)
+print(y)
+w = None
+try:
+    match 1:
+        case max(0, 1):
+            w = 0
+except TypeError as error:
+    print(error)
+print(w)
+class BadStringMatchArgs:
+    __match_args__ = "XYZ"
+x = BadStringMatchArgs()
+y = z = None
+try:
+    match x:
+        case BadStringMatchArgs(y):
+            z = 0
+except TypeError as error:
+    print(error)
+print(y, z)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_basics_and_empty_index_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_basics, ::test_ord, and ::test_empty_sequence public subset",

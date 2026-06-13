@@ -2540,6 +2540,8 @@ Completed in the match class-pattern supported-promotion pass:
   positional-only, keyword-only, positional-plus-keyword, dotted class,
   trailing-comma, nested subpattern, builtin class, duplicate keyword, and
   invalid keyword-then-positional forms.
+- Added `cpython_match_class_helper_rules_diff_subset` as direct CPython
+  output parity for the supported executable class-pattern forms.
 
 Completed in the decorators supported-promotion pass:
 
