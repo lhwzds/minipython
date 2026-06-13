@@ -5995,6 +5995,38 @@ for expr in [lambda: isinstance(E, 'foo'), lambda: isinstance(), lambda: isinsta
 }
 
 #[test]
+fn cpython_builtin_exception_hierarchy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py builtin exception hierarchy public subset",
+        name: "builtin-exception-hierarchy-direct",
+        source: r#"try:
+    raise OverflowError('big')
+except ArithmeticError as error:
+    print(error.__class__.__name__, error)
+try:
+    1 / 0
+except ArithmeticError as error:
+    print(error.__class__.__name__, error)
+try:
+    [][0]
+except LookupError as error:
+    print(error.__class__.__name__, error)
+try:
+    {}['key']
+except LookupError as error:
+    print(error.__class__.__name__, error)
+print(OverflowError.__bases__[0].__name__, ZeroDivisionError.__bases__[0].__name__, KeyError.__bases__[0].__name__)
+print(isinstance(OverflowError('x'), ArithmeticError), isinstance(KeyError('x'), LookupError), isinstance(ValueError('x'), ArithmeticError))
+try:
+    raise GeneratorExit('stop')
+except Exception:
+    print('wrong')
+except BaseException as error:
+    print(error.__class__.__name__, error)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",

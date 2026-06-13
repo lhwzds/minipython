@@ -5521,6 +5521,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_format_builtin_and_custom_dunder_format_subset",
             "cpython_ascii_builtin_subset",
             "cpython_builtin_cmp_absent_subset",
+            "cpython_builtin_none_ne_direct_subset",
+            "cpython_builtin_exception_hierarchy_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
@@ -5559,6 +5561,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_chr_ord_builtin_diff_subset",
         "cpython_builtin_cmp_absent_diff_subset",
         "cpython_builtin_none_ne_direct_diff_subset",
+        "cpython_builtin_exception_hierarchy_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
@@ -5587,6 +5590,51 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn builtin_exception_hierarchy_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_exception_hierarchy_subset(",
+        "raise OverflowError('big')",
+        "except ArithmeticError as error",
+        "except LookupError as error",
+        "OverflowError.__bases__[0].__name__",
+        "GeneratorExit('stop')",
+        "except BaseException as error",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused builtin exception hierarchy subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_builtin_exception_hierarchy_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_exceptions.py builtin exception hierarchy public subset",
+        "raise OverflowError('big')",
+        "except ArithmeticError as error",
+        "except LookupError as error",
+        "OverflowError.__bases__[0].__name__",
+        "GeneratorExit('stop')",
+        "except BaseException as error",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused builtin exception hierarchy CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_builtin_exception_hierarchy_subset")
+                && document.contains("cpython_builtin_exception_hierarchy_diff_subset"),
+            "focused builtin exception hierarchy evidence must be documented in coverage and migration notes"
         );
     }
 }
