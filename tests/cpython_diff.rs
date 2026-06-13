@@ -21724,7 +21724,7 @@ print('pow-complex-values', ok_complex_value, len(complex_value_cases), complex_
 // file so PEP 263 detection, BOM stripping, and codec decoding are tested
 // through the same entry point MiniPython exposes as `run_source_bytes()`.
 #[test]
-fn cpython_bytes_source_output_parity_subset() {
+fn cpython_bytes_source_output_parity_diff_subset() {
     for case in [
         BytesDiffCase {
             origin: "Lib/test/test_source_encoding.py::test_compilestring",
@@ -21846,7 +21846,7 @@ fn cpython_bytes_source_output_parity_subset() {
 // point than the host Python 3.9 file reader, whose long-line behavior predates
 // the current CPython tests.
 #[test]
-fn cpython_bytes_exec_source_output_parity_subset() {
+fn cpython_bytes_exec_source_output_parity_diff_subset() {
     const BUFSIZ: usize = 8192;
 
     let mut source = b"#".to_vec();
@@ -21909,7 +21909,7 @@ fn cpython_bytes_exec_source_output_parity_subset() {
 // Lib/test/test_tokenize.py::TestDetectEncoding. The exact SyntaxError wording
 // differs across CPython versions, so this asserts accept/reject parity.
 #[test]
-fn cpython_bytes_source_rejection_parity_subset() {
+fn cpython_bytes_source_rejection_parity_diff_subset() {
     for case in [
         BytesDiffCase {
             origin: "Lib/test/test_tokenize.py::TestDetectEncoding::test_short_files",

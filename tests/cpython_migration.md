@@ -7505,7 +7505,7 @@ Completed in the tokenizer source warning/error edge pass:
 
 Completed in the bytes-source differential encoding pass:
 
-- Added `cpython_bytes_source_output_parity_subset` to
+- Added `cpython_bytes_source_output_parity_diff_subset` to
   `tests/cpython_diff.rs`. The harness now writes CPython oracle inputs as
   actual byte files and compares their output with MiniPython's
   `run_source_bytes()` path.
@@ -7518,7 +7518,7 @@ Completed in the bytes-source differential encoding pass:
   ISO-8859-15 cookies, double coding-line precedence, non-UTF-8 bytes on
   ISO-8859-15 coding-cookie lines, UTF-8 BOM default decoding, and UTF-8 BOM
   files with UTF-8 comment lines.
-- Added `cpython_bytes_exec_source_output_parity_subset` for current CPython
+- Added `cpython_bytes_exec_source_output_parity_diff_subset` for current CPython
   `exec(bytes)` long-line source-encoding cases: long first- and second-line
   coding cookies, long coding-cookie lines, long normalized Latin-1 coding
   names, and long UTF-8 comment-only lines. The ordinary file-oracle
@@ -7536,7 +7536,7 @@ Completed in the bytes-source differential encoding pass:
 - Added CPython `Lib/test/test_source_encoding.py::test_error_message`
   differential output parity for a UTF-8 BOM followed by an otherwise empty
   source line.
-- Added `cpython_bytes_source_rejection_parity_subset` for CPython bytes-file
+- Added `cpython_bytes_source_rejection_parity_diff_subset` for CPython bytes-file
   rejection parity. It covers unknown coding cookies, BOM/cookie mismatches,
   partial UTF-8 BOM inputs, ASCII-cookie decode failures in the source body,
   default-UTF-8 decode failures after the first two lines, and invalid bytes
@@ -7567,7 +7567,7 @@ Completed in the SyntaxError parenthesis/string diagnostics pass:
 - Extended `cpython_syntax_error_message_parity_subset`,
   `cpython_syntax_error_parenthesis_subset`,
   `cpython_invalid_string_literal_subset`, and
-  `cpython_bytes_source_rejection_parity_subset` so these method-level ports are
+  `cpython_bytes_source_rejection_parity_diff_subset` so these method-level ports are
   covered both by MiniPython-local assertions and by CPython differential
   rejection checks.
 
