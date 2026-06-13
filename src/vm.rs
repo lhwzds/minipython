@@ -967,12 +967,14 @@ fn bytesio_initial_bytes(value: Value) -> Result<Vec<u8>, String> {
 
 fn bytes_io_readinto_chunk(bytes_io: &BytesIORef, target_len: usize) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let remaining = state.buffer.len().saturating_sub(state.position);
+    let start = state.position.min(state.buffer.len());
+    let remaining = state.buffer.len().saturating_sub(start);
     let count = remaining.min(target_len);
-    let start = state.position;
     let end = start + count;
     let chunk = state.buffer[start..end].to_vec();
-    state.position = end;
+    if count > 0 {
+        state.position = end;
+    }
     chunk
 }
 
@@ -986,20 +988,22 @@ fn bytes_io_ensure_open(bytes_io: &BytesIORef) -> Result<(), String> {
 
 fn bytes_io_read_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let remaining = state.buffer.len().saturating_sub(state.position);
+    let start = state.position.min(state.buffer.len());
+    let remaining = state.buffer.len().saturating_sub(start);
     let count = size.unwrap_or(remaining).min(remaining);
-    let start = state.position;
     let end = start + count;
     let chunk = state.buffer[start..end].to_vec();
-    state.position = end;
+    if count > 0 {
+        state.position = end;
+    }
     chunk
 }
 
 fn bytes_io_readline_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8> {
     let mut state = bytes_io.borrow_mut();
-    let remaining = state.buffer.len().saturating_sub(state.position);
+    let start = state.position.min(state.buffer.len());
+    let remaining = state.buffer.len().saturating_sub(start);
     let max_count = size.unwrap_or(remaining).min(remaining);
-    let start = state.position;
     let limit = start + max_count;
     let newline_end = state.buffer[start..limit]
         .iter()
@@ -1007,7 +1011,9 @@ fn bytes_io_readline_chunk(bytes_io: &BytesIORef, size: Option<usize>) -> Vec<u8
         .map(|offset| start + offset + 1)
         .unwrap_or(limit);
     let chunk = state.buffer[start..newline_end].to_vec();
-    state.position = newline_end;
+    if newline_end > start {
+        state.position = newline_end;
+    }
     chunk
 }
 

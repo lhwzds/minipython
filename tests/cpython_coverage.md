@@ -1340,7 +1340,8 @@ Recent runtime migration notes:
   `readinto1()` over writable bytearray targets, `tell()`, `seek()` with
   public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
   `truncate()` including non-extending growth requests, position advancement,
-  sequential bytes-like line writes, sparse write NUL filling,
+  post-EOF empty reads/readinto results, sequential bytes-like line writes,
+  sparse write NUL filling,
   size/sizehint line reads, line iteration through `__iter__()` / `__next__()`
   with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
   `isatty()`, `flush()`, `fileno()` / `detach()` `io.UnsupportedOperation`
