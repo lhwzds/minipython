@@ -3266,7 +3266,8 @@ Completed in the bytes prefix/suffix-method pass:
   `cpython_bytes_prefix_suffix_methods_diff_subset`.
 - Added `cpython_bytes_prefix_suffix_typeerror_messages_subset`, covering
   CPython's distinct public diagnostics for invalid top-level prefixes/suffixes
-  versus invalid tuple candidates.
+  versus invalid tuple candidates. Direct CPython diff evidence is in
+  `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`.
 - Adjusted tuple-candidate validation so `startswith()` / `endswith()` keep
   the top-level first-argument diagnostic for non-tuples while using CPython's
   generic `a bytes-like object is required` text for bad tuple items.

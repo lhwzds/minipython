@@ -1643,9 +1643,10 @@ Recent runtime migration notes:
   `BaseBytesTest` public `startswith()` / `endswith()` TypeError diagnostics
   where top-level invalid prefixes/suffixes use the first-argument message but
   invalid tuple candidates use the generic bytes-like-object message. Direct
-  CPython diff evidence for the public prefix/suffix success, tuple, `None`
-  bound, empty tuple, and representative TypeError paths is in
-  `cpython_bytes_prefix_suffix_methods_diff_subset`.
+  CPython diff evidence for the exact TypeError text is in
+  `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`; broader
+  prefix/suffix success, tuple, `None` bound, and empty tuple behavior remains
+  covered by `cpython_bytes_prefix_suffix_methods_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_replace_partition_methods_subset`,
   covering CPython `BaseBytesTest::test_replace`, current CPython main
   `test_replace_count_keyword`, `test_replace_int_error`, `test_partition`,

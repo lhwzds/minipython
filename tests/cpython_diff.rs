@@ -17728,6 +17728,27 @@ for expr in [
 }
 
 #[test]
+fn cpython_bytes_prefix_suffix_typeerror_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest startswith/endswith TypeError-message rows",
+        name: "bytes-prefix-suffix-typeerror-messages",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    b = ctor(b'abc')
+    prefix = ctor.__name__
+    for method, good in [('startswith', b'z'), ('endswith', b'z')]:
+        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)('a'), method + ' first arg must be bytes or a tuple of bytes, not str')
+        check(prefix + '.' + method + '.list', lambda b=b, method=method: getattr(b, method)([b'a']), method + ' first arg must be bytes or a tuple of bytes, not list')
+        check(prefix + '.' + method + '.tuple-str', lambda b=b, method=method, good=good: getattr(b, method)((good, 'a')), "a bytes-like object is required, not 'str'")
+        check(prefix + '.' + method + '.tuple-list', lambda b=b, method=method, good=good: getattr(b, method)((good, [b'a'])), "a bytes-like object is required, not 'list'")"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_strip_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_strip_bytearray, ::test_strip_string_error, and ::test_strip_int_error public subset",

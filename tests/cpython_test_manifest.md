@@ -82,6 +82,9 @@ Direct diff mapping note:
 `cpython_bytes_join_translate_maketrans_typeerror_messages_diff_subset`
 directly compares public join/translate/maketrans TypeError text covered by
 `cpython_bytes_join_translate_maketrans_typeerror_messages_subset`.
+Direct diff mapping note: `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`
+directly compares public startswith/endswith prefix/suffix TypeError text
+covered by `cpython_bytes_prefix_suffix_typeerror_messages_subset`.
 
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |

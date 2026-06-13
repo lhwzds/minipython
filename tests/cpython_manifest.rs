@@ -1728,6 +1728,48 @@ fn cpython_bytes_join_translate_maketrans_typeerror_diff_covers_runtime_subset()
 }
 
 #[test]
+fn cpython_bytes_prefix_suffix_typeerror_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_prefix_suffix_typeerror_messages_diff_subset";
+    let subset_name = "cpython_bytes_prefix_suffix_typeerror_messages_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes prefix/suffix TypeError direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes prefix/suffix TypeError runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes prefix/suffix TypeError docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes prefix/suffix TypeError diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "startswith",
+        "endswith",
+        "first arg must be bytes or a tuple of bytes",
+        "a bytes-like object is required",
+        "tuple-str",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes prefix/suffix TypeError diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_dunder_bytes_dispatch_diff_subset";
     let subset_name = "cpython_bytes_dunder_bytes_and_blocking_subset";
