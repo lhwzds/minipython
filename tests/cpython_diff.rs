@@ -13956,6 +13956,40 @@ except SyntaxError as error:
             source: "nums = [1, 2, 3, 4, 5]\nprint([3 * x for x in nums])\nprint([x for x in nums if x > 2])\nprint([(i, j) for i in [1, 2] for j in [3, 4]])",
         },
         DiffCase {
+            origin: "Lib/test/test_listcomps.py comprehension scope and public frame-release behavior",
+            name: "comprehension-scope-and-release",
+            source: r#"ba = bytearray(b'abc')
+holder = [memoryview(ba) for _ in [0]]
+del holder
+try:
+    ba.append(100)
+    print('listcomp-release', ba)
+except Exception as error:
+    print('listcomp-release', type(error).__name__, str(error))
+holder = {'v': memoryview(ba) for _ in [0]}
+del holder
+try:
+    ba.append(101)
+    print('dictcomp-release', ba)
+except Exception as error:
+    print('dictcomp-release', type(error).__name__, str(error))
+holder = [x for x in [memoryview(ba)]]
+del holder
+try:
+    ba.append(102)
+    print('listcomp-target-release', ba)
+except Exception as error:
+    print('listcomp-target-release', type(error).__name__, str(error))
+try:
+    print('_ exists', _)
+except NameError:
+    print('_ missing')
+try:
+    print('x exists', x)
+except NameError:
+    print('x missing')"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_grammar.py::test_comprehension_specials",
             name: "adjacent-if-filters-and-tuple-unpack-targets",
             source: "print([x for x in range(10) if x % 2 if x % 3])\nprint(list(x for x in range(10) if x % 2 if x % 3))\nprint([x for x, in [(4,), (5,), (6,)]])",

@@ -10588,9 +10588,10 @@ fn cpython_grammar_lambda_subset() {
         "def make_adder(n):\n    return lambda x: x + n\nadd2 = make_adder(2)\nprint(add2(3))",
         &["5"],
     );
-    assert_output(
+    assert_output_with_stack(
         "print([(lambda a: [a ** i for i in range(a + 1)])(j) for j in range(5)])",
         &["[[1], [1, 1], [1, 2, 4], [1, 3, 9, 27], [1, 4, 16, 64, 256]]"],
+        32 * 1024 * 1024,
     );
     assert_output(
         "print([x() for x in (lambda: True, lambda: False) if x()])",
@@ -26111,9 +26112,17 @@ fn cpython_atom_rule_subset() {
 #[test]
 fn cpython_grammar_async_for_subset() {
     let source = "class AsyncCounter:\n    def __init__(self, stop):\n        self.current = 0\n        self.stop = stop\n    def __aiter__(self):\n        return self\n    async def __anext__(self):\n        if self.current >= self.stop:\n            raise StopAsyncIteration\n        value = self.current\n        self.current += 1\n        return value\nasync def main():\n    async for value in AsyncCounter(3):\n        print(value)\n    async for value in AsyncCounter(0):\n        print(\"skip\")\n    else:\n        print(\"empty\")\n    async for value in AsyncCounter(3):\n        print(value)\n        break\n    else:\n        print(\"else\")\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration:\n    print(\"done\")";
-    assert_output(source, &["0", "1", "2", "empty", "0", "done"]);
+    assert_output_with_stack(
+        source,
+        &["0", "1", "2", "empty", "0", "done"],
+        32 * 1024 * 1024,
+    );
     let unpack_source = "class AsyncItems:\n    def __init__(self, items):\n        self.items = items\n        self.index = 0\n    def __aiter__(self):\n        return self\n    async def __anext__(self):\n        if self.index >= len(self.items):\n            raise StopAsyncIteration\n        value = self.items[self.index]\n        self.index += 1\n        return value\nasync def main():\n    async for head, *tail in AsyncItems([(1, 2, 3)]):  # type: tuple[int, ...]\n        print(head, tail)\n    async for [x, y] in AsyncItems([[4, 5]]):\n        print(x, y)\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration:\n    print(\"done\")";
-    assert_output(unpack_source, &["1 [2, 3]", "4 5", "done"]);
+    assert_output_with_stack(
+        unpack_source,
+        &["1 [2, 3]", "4 5", "done"],
+        32 * 1024 * 1024,
+    );
     assert_output(
         "async def consume(value):\n    async for item in value:\n        print(\"body\", item)\nclass MissingAnext:\n    def __aiter__(self):\n        return self\nclass BadAnext:\n    def __aiter__(self):\n        return self\n    def __anext__(self):\n        return ()\nfor value in [(1, 2), MissingAnext(), BadAnext()]:\n    try:\n        consume(value).send(None)\n    except TypeError as error:\n        print(error)",
         &[
@@ -26133,13 +26142,15 @@ fn cpython_grammar_async_for_subset() {
         "I = 0\nclass Manager:\n    async def __aenter__(self):\n        global I\n        I += 10000\n    async def __aexit__(self, *args):\n        global I\n        I += 100000\nclass Iterable:\n    def __init__(self):\n        self.i = 0\n    def __aiter__(self):\n        return self\n    async def __anext__(self):\n        if self.i > 10:\n            raise StopAsyncIteration\n        self.i += 1\n        return self.i\nmanager = Manager()\niterable = Iterable()\nasync def first():\n    global I\n    async with manager:\n        async for i in iterable:\n            I += 1\n    I += 1000\nasync def second():\n    global I\n    async with Manager():\n        async for i in Iterable():\n            I += 1\n    I += 1000\n    async with Manager():\n        async for i in Iterable():\n            I += 1\n    I += 1000\nasync def third():\n    global I\n    async with Manager():\n        I += 100\n        async for i in Iterable():\n            I += 1\n        else:\n            I += 10000000\n    I += 1000\n    async with Manager():\n        I += 100\n        async for i in Iterable():\n            I += 1\n        else:\n            I += 10000000\n    I += 1000\nfor coro in [first(), second(), third()]:\n    try:\n        coro.send(None)\n    except StopIteration:\n        print(I)\nCNT = 0\nclass AiterRaises:\n    def __aiter__(self):\n        1 / 0\nasync def raises_aiter():\n    global CNT\n    async for i in AiterRaises():\n        CNT += 1\n    CNT += 10\ntry:\n    raises_aiter().send(None)\nexcept ZeroDivisionError as error:\n    print(\"aiter\", error.__class__.__name__, CNT)",
         &["111011", "333033", "20555255", "aiter ZeroDivisionError 0"],
     );
-    assert_output(
+    assert_output_with_stack(
         "class BadTarget:\n    def __setitem__(self, key, value):\n        raise StopAsyncIteration(42)\ntgt = BadTarget()\nasync def source():\n    yield 10\nasync def run_for():\n    try:\n        async for tgt[0] in source():\n            print(\"body\")\n    except StopAsyncIteration as error:\n        print(\"target\", error)\n    return \"end\"\nasync def run_list():\n    try:\n        return [0 async for tgt[0] in source()]\n    except StopAsyncIteration as error:\n        print(\"list\", error)\n    return \"end\"\nfor coro in [run_for(), run_list()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
         &["target 42", "end", "list 42", "end"],
+        32 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         "class BadIterable:\n    def __iter__(self):\n        raise StopAsyncIteration(42)\nasync def badpairs():\n    yield BadIterable()\nasync def run_for():\n    try:\n        async for i, j in badpairs():\n            print(\"body\")\n    except StopAsyncIteration as error:\n        print(\"unpack\", error)\n    return \"end\"\nasync def run_list():\n    try:\n        return [0 async for i, j in badpairs()]\n    except StopAsyncIteration as error:\n        print(\"list\", error)\n    return \"end\"\nfor coro in [run_for(), run_list()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
         &["unpack 42", "end", "list 42", "end"],
+        32 * 1024 * 1024,
     );
     assert_error(
         "async for value in []:\n    pass",
@@ -28515,7 +28526,7 @@ x = [
 ]
 
 print(x)"#;
-    assert_output(
+    assert_output_with_stack(
         source,
         &[
             "['Apple', 'Banana', 'Coco  nut']",
@@ -28528,6 +28539,7 @@ print(x)"#;
             "[[1, 2], [3, 4], [5, 6]]",
             "[('Boeing', 'Airliner'), ('Boeing', 'Engine'), ('Ford', 'Engine'), ('Macdonalds', 'Cheeseburger')]",
         ],
+        32 * 1024 * 1024,
     );
     assert_error(
         "[i, s for i in nums for s in strs]",
@@ -28748,7 +28760,7 @@ try:
     coro.send(None)
 except StopIteration:
     print("finished")"#;
-    assert_output(
+    assert_output_with_stack(
         async_source,
         &[
             "[11, 12]",
@@ -28773,6 +28785,7 @@ except StopIteration:
             "generic fallback",
             "finished",
         ],
+        32 * 1024 * 1024,
     );
 
     assert_error(
@@ -28850,6 +28863,51 @@ print(list(x for x, in [(7,), (8,), (9,)]))"#;
             "[1, 5, 7]",
             "[4, 5, 6]",
             "[7, 8, 9]",
+        ],
+    );
+}
+
+// Adapted from CPython list/dict comprehension public scoping behavior plus
+// MiniPython's supported bytearray/memoryview export-release semantics.
+#[test]
+fn cpython_comprehension_scope_and_release_subset() {
+    assert_output(
+        r#"ba = bytearray(b'abc')
+holder = [memoryview(ba) for _ in [0]]
+del holder
+try:
+    ba.append(100)
+    print('listcomp-release', ba)
+except Exception as error:
+    print('listcomp-release', type(error).__name__, str(error))
+holder = {'v': memoryview(ba) for _ in [0]}
+del holder
+try:
+    ba.append(101)
+    print('dictcomp-release', ba)
+except Exception as error:
+    print('dictcomp-release', type(error).__name__, str(error))
+holder = [x for x in [memoryview(ba)]]
+del holder
+try:
+    ba.append(102)
+    print('listcomp-target-release', ba)
+except Exception as error:
+    print('listcomp-target-release', type(error).__name__, str(error))
+try:
+    print('_ exists', _)
+except NameError:
+    print('_ missing')
+try:
+    print('x exists', x)
+except NameError:
+    print('x missing')"#,
+        &[
+            "listcomp-release bytearray(b'abcd')",
+            "dictcomp-release bytearray(b'abcde')",
+            "listcomp-target-release bytearray(b'abcdef')",
+            "_ missing",
+            "x missing",
         ],
     );
 }
@@ -29014,7 +29072,7 @@ try:
     coro.send(None)
 except StopIteration:
     print("done")"#;
-    assert_output(
+    assert_output_with_stack(
         async_source,
         &[
             "[1, 3]",
@@ -29025,6 +29083,7 @@ except StopIteration:
             "{0: 10, 1: 11}",
             "done",
         ],
+        32 * 1024 * 1024,
     );
 
     assert_error(
@@ -44198,7 +44257,7 @@ fn cpython_types_class_creation_new_class_resolve_bases_subset() {
 // staticmethod metaclass `__new__`, and metaclass `__init__` super dispatch.
 #[test]
 fn cpython_types_class_creation_new_class_meta_helper_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import types\n",
             "class Meta(type):\n",
@@ -44243,6 +44302,7 @@ fn cpython_types_class_creation_new_class_meta_helper_subset() {
             "True True 0 1 2 True",
             "True",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -44418,7 +44478,7 @@ fn cpython_types_class_creation_mro_entries_multiple_subset() {
 // namespaces, base-order independence, and explicit compatible metaclasses.
 #[test]
 fn cpython_types_class_creation_metaclass_derivation_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import types\n",
             "new_calls = []\n",
@@ -44464,6 +44524,7 @@ fn cpython_types_class_creation_metaclass_derivation_subset() {
             "D True ['BMeta', 'AMeta'] True",
             "E True ['BMeta', 'AMeta'] True",
         ],
+        32 * 1024 * 1024,
     );
 }
 
@@ -54802,9 +54863,10 @@ fn cpython_type_params_typevar_runtime_subset() {
             "True None True True True False False",
         ],
     );
-    assert_output(
+    assert_output_with_stack(
         "from typing import TypeVar\ndef get_generator[A]():\n    def generator1[C]():\n        yield C\n    def generator2[B]():\n        yield A\n        yield B\n        yield from generator1()\n    return generator2\ngen = get_generator()\na, b, c = [x for x in gen()]\nprint(isinstance(a, TypeVar), a.__name__)\nprint(isinstance(b, TypeVar), b.__name__)\nprint(isinstance(c, TypeVar), c.__name__)",
         &["True A", "True B", "True C"],
+        32 * 1024 * 1024,
     );
     assert_output(
         "from typing import TypeVar\ndef get_coroutine[A]():\n    async def coroutine[B]():\n        return (A, B)\n    return coroutine\nco = get_coroutine()\ncoro = co()\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    a, b = done.args[0]\n    print(isinstance(a, TypeVar), a.__name__)\n    print(isinstance(b, TypeVar), b.__name__)",

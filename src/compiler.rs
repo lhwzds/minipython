@@ -752,6 +752,7 @@ struct Compiler {
     class_scope_prior_bindings: HashSet<String>,
     enclosing_function_bindings: Vec<HashSet<String>>,
     outer_scope_store_names: HashSet<String>,
+    comprehension_walrus_enclosing_function_depth: Option<usize>,
     static_block_depth: usize,
     optimize: i64,
     function_first_lines: Rc<RefCell<VecDeque<usize>>>,
@@ -817,6 +818,7 @@ impl Compiler {
             class_scope_prior_bindings: HashSet::new(),
             enclosing_function_bindings: Vec::new(),
             outer_scope_store_names: HashSet::new(),
+            comprehension_walrus_enclosing_function_depth: None,
             static_block_depth: 0,
             optimize: options.optimize,
             function_first_lines: Rc::new(RefCell::new(VecDeque::from(
@@ -3672,6 +3674,7 @@ impl Compiler {
             class_scope_prior_bindings: HashSet::new(),
             enclosing_function_bindings: self.enclosing_function_bindings.clone(),
             outer_scope_store_names: HashSet::new(),
+            comprehension_walrus_enclosing_function_depth: None,
             static_block_depth: 0,
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
@@ -3698,6 +3701,7 @@ impl Compiler {
             class_scope_prior_bindings: HashSet::new(),
             enclosing_function_bindings: Vec::new(),
             outer_scope_store_names: HashSet::new(),
+            comprehension_walrus_enclosing_function_depth: None,
             static_block_depth: 0,
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
@@ -3724,6 +3728,7 @@ impl Compiler {
             class_scope_prior_bindings: self.class_scope_prior_bindings.clone(),
             enclosing_function_bindings: self.enclosing_function_bindings.clone(),
             outer_scope_store_names: HashSet::new(),
+            comprehension_walrus_enclosing_function_depth: None,
             static_block_depth: self.static_block_depth,
             optimize: self.optimize,
             function_first_lines: self.function_first_lines.clone(),
@@ -3732,6 +3737,11 @@ impl Compiler {
             function_is_lambdas: self.function_is_lambdas.clone(),
             generator_expression_line_sequences: self.generator_expression_line_sequences.clone(),
         }
+    }
+
+    fn comprehension_walrus_enclosing_function_depth(&self) -> usize {
+        self.comprehension_walrus_enclosing_function_depth
+            .unwrap_or(self.function_depth)
     }
 
     fn next_function_first_line(&self) -> usize {
@@ -4444,14 +4454,37 @@ impl Compiler {
         if comprehension_inner_contains_yield(&[element], clauses) {
             return Err("yield inside list comprehension".to_string());
         }
+        let is_async = generator_comprehension_is_async(element, clauses);
 
-        let dst = self.alloc_register();
-        self.instructions.push(Instruction::BuildList {
-            dst,
+        let first_iter = self.compile_expr(&clauses[0].iter)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
+        let mut list_compiler = self.new_nested_function_compiler();
+        list_compiler.async_function_depth = self.async_function_depth;
+        list_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
+        list_compiler.configure_comprehension_scope(
+            &[element],
+            clauses,
+            comprehension_enclosing_depth,
+            &self.global_names,
+            &self.nonlocal_names,
+        );
+        let list = list_compiler.alloc_register();
+        list_compiler.instructions.push(Instruction::BuildList {
+            dst: list,
             items: Vec::new(),
         });
-        self.compile_list_comp_clause(dst, element, clauses, 0)?;
-        Ok(dst)
+        list_compiler.compile_list_comp_clause_from_first_iter(list, element, clauses, 0, ".0")?;
+        list_compiler
+            .instructions
+            .push(Instruction::Return { src: Some(list) });
+
+        let callee = self.compile_comprehension_function(
+            "<listcomp>",
+            list_compiler.instructions,
+            is_async,
+        )?;
+        Ok(self.emit_comprehension_call(callee, first_iter, is_async))
     }
 
     fn compile_type_scoped_list_comp_expr(
@@ -4468,10 +4501,21 @@ impl Compiler {
         if comprehension_inner_contains_yield(&[element], clauses) {
             return Err("yield inside list comprehension".to_string());
         }
+        let is_async = generator_comprehension_is_async(element, clauses);
 
         let first_iter = self.compile_type_scoped_expr(&clauses[0].iter, type_params)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
         let mut list_compiler = self.new_nested_function_compiler();
-        list_compiler.local_names.insert(".0".to_string());
+        list_compiler.async_function_depth = self.async_function_depth;
+        list_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
+        list_compiler.configure_comprehension_scope(
+            &[element],
+            clauses,
+            comprehension_enclosing_depth,
+            &self.global_names,
+            &self.nonlocal_names,
+        );
         let list = list_compiler.alloc_register();
         list_compiler.instructions.push(Instruction::BuildList {
             dst: list,
@@ -4500,19 +4544,89 @@ impl Compiler {
             None,
             list_compiler.instructions,
             false,
-            false,
+            is_async,
             1,
             vec![1],
             Vec::new(),
         )?;
+        Ok(self.emit_comprehension_call(callee, first_iter, is_async))
+    }
+
+    fn configure_comprehension_scope(
+        &mut self,
+        head_exprs: &[&Expr],
+        clauses: &[ComprehensionClause],
+        enclosing_function_depth: usize,
+        enclosing_global_names: &HashSet<String>,
+        enclosing_nonlocal_names: &HashSet<String>,
+    ) {
+        self.local_names.insert(".0".to_string());
+        for clause in clauses {
+            collect_comprehension_target_locals(&clause.target, &mut self.local_names);
+        }
+        for name in comprehension_named_expression_bindings(head_exprs, clauses) {
+            if enclosing_global_names.contains(&name) || enclosing_function_depth == 0 {
+                self.global_names.insert(name);
+            } else if enclosing_nonlocal_names.contains(&name) {
+                self.nonlocal_names.insert(name);
+            } else {
+                self.outer_scope_store_names.insert(name);
+            }
+        }
+    }
+
+    fn compile_comprehension_function(
+        &mut self,
+        name: &str,
+        body: Vec<Instruction>,
+        is_async: bool,
+    ) -> Result<Register, String> {
+        let params = FunctionParams {
+            positional: vec![Param {
+                name: ".0".to_string(),
+                annotation: None,
+                default: None,
+                type_comment: None,
+            }],
+            ..FunctionParams::default()
+        };
+        self.compile_function_value(
+            name,
+            &[],
+            &[],
+            &params,
+            None,
+            None,
+            body,
+            false,
+            is_async,
+            1,
+            vec![1],
+            Vec::new(),
+        )
+    }
+
+    fn emit_comprehension_call(
+        &mut self,
+        callee: Register,
+        first_iter: Register,
+        is_async: bool,
+    ) -> Register {
         let dst = self.alloc_register();
+        let call_dst = if is_async { self.alloc_register() } else { dst };
         self.instructions.push(Instruction::Call {
-            dst,
+            dst: call_dst,
             callee,
             args: vec![first_iter],
         });
-
-        Ok(dst)
+        if is_async {
+            self.instructions
+                .push(Instruction::Await { dst, src: call_dst });
+            self.instructions.push(Instruction::Pop { src: call_dst });
+        }
+        self.instructions.push(Instruction::Pop { src: first_iter });
+        self.instructions.push(Instruction::Pop { src: callee });
+        dst
     }
 
     fn reject_async_comprehension_outside_async_function(
@@ -4576,57 +4690,6 @@ impl Compiler {
         }
 
         (loop_start, iter_instruction, item)
-    }
-
-    fn compile_list_comp_clause(
-        &mut self,
-        list: Register,
-        element: &Expr,
-        clauses: &[ComprehensionClause],
-        index: usize,
-    ) -> Result<(), String> {
-        let clause = clauses
-            .get(index)
-            .ok_or_else(|| format!("missing list comprehension clause at index {index}"))?;
-        let iterable = self.compile_expr(&clause.iter)?;
-        let (loop_start, for_iter, item) = self.compile_comprehension_iter(clause, iterable);
-        self.compile_store_target(&clause.target, item)?;
-
-        let mut false_jumps = Vec::new();
-        for condition in &clause.ifs {
-            let condition = self.compile_expr(condition)?;
-            let false_jump = self.instructions.len();
-            self.instructions.push(Instruction::JumpIfFalse {
-                condition,
-                target: usize::MAX,
-            });
-            false_jumps.push(false_jump);
-        }
-
-        if index + 1 == clauses.len() {
-            match element {
-                Expr::Starred(value) => self.compile_list_extend_from_expr(list, value)?,
-                element => {
-                    let item = self.compile_expr(element)?;
-                    self.instructions
-                        .push(Instruction::ListAppend { list, item });
-                }
-            }
-        } else {
-            self.compile_list_comp_clause(list, element, clauses, index + 1)?;
-        }
-
-        let continue_target = self.instructions.len();
-        self.instructions
-            .push(Instruction::Jump { target: loop_start });
-
-        let end_target = self.instructions.len();
-        self.patch_jump_target(for_iter, end_target)?;
-        for false_jump in false_jumps {
-            self.patch_jump_target(false_jump, continue_target)?;
-        }
-
-        Ok(())
     }
 
     fn compile_list_extend_from_expr(
@@ -4737,27 +4800,54 @@ impl Compiler {
         if comprehension_inner_contains_yield(&[element], clauses) {
             return Err("yield inside set comprehension".to_string());
         }
+        let is_async = generator_comprehension_is_async(element, clauses);
 
-        let dst = self.alloc_register();
-        self.instructions.push(Instruction::BuildSet {
-            dst,
+        let first_iter = self.compile_expr(&clauses[0].iter)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
+        let mut set_compiler = self.new_nested_function_compiler();
+        set_compiler.async_function_depth = self.async_function_depth;
+        set_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
+        set_compiler.configure_comprehension_scope(
+            &[element],
+            clauses,
+            comprehension_enclosing_depth,
+            &self.global_names,
+            &self.nonlocal_names,
+        );
+        let set = set_compiler.alloc_register();
+        set_compiler.instructions.push(Instruction::BuildSet {
+            dst: set,
             items: Vec::new(),
         });
-        self.compile_set_comp_clause(dst, element, clauses, 0)?;
-        Ok(dst)
+        set_compiler.compile_set_comp_clause_from_first_iter(set, element, clauses, 0, ".0")?;
+        set_compiler
+            .instructions
+            .push(Instruction::Return { src: Some(set) });
+
+        let callee =
+            self.compile_comprehension_function("<setcomp>", set_compiler.instructions, is_async)?;
+        Ok(self.emit_comprehension_call(callee, first_iter, is_async))
     }
 
-    fn compile_set_comp_clause(
+    fn compile_set_comp_clause_from_first_iter(
         &mut self,
         set: Register,
         element: &Expr,
         clauses: &[ComprehensionClause],
         index: usize,
+        first_iter_name: &str,
     ) -> Result<(), String> {
         let clause = clauses
             .get(index)
             .ok_or_else(|| format!("missing set comprehension clause at index {index}"))?;
-        let iterable = self.compile_expr(&clause.iter)?;
+        let iterable = if index == 0 {
+            let dst = self.alloc_register();
+            self.emit_load_name(dst, first_iter_name);
+            dst
+        } else {
+            self.compile_expr(&clause.iter)?
+        };
         let (loop_start, for_iter, item) = self.compile_comprehension_iter(clause, iterable);
         self.compile_store_target(&clause.target, item)?;
 
@@ -4781,7 +4871,13 @@ impl Compiler {
                 }
             }
         } else {
-            self.compile_set_comp_clause(set, element, clauses, index + 1)?;
+            self.compile_set_comp_clause_from_first_iter(
+                set,
+                element,
+                clauses,
+                index + 1,
+                first_iter_name,
+            )?;
         }
 
         let continue_target = self.instructions.len();
@@ -4839,13 +4935,16 @@ impl Compiler {
         let (first_line, line_sequence) = self.next_generator_expression_line_sequence();
 
         let first_iter = self.compile_maybe_type_scoped_expr(&clauses[0].iter, type_params)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
         let mut generator_compiler = self.new_nested_function_compiler();
+        generator_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
         if is_async {
             generator_compiler.async_function_depth = self.async_function_depth + 1;
         }
         generator_compiler.local_names.insert(".0".to_string());
         for name in comprehension_named_expression_bindings(&[element], clauses) {
-            if self.name_is_declared_global(&name) || self.function_depth == 0 {
+            if self.name_is_declared_global(&name) || comprehension_enclosing_depth == 0 {
                 generator_compiler.global_names.insert(name);
             } else if self.name_is_declared_nonlocal(&name) {
                 generator_compiler.nonlocal_names.insert(name);
@@ -4993,28 +5092,60 @@ impl Compiler {
         if comprehension_inner_contains_yield(&[key, value], clauses) {
             return Err("yield inside dict comprehension".to_string());
         }
+        let is_async = generator_comprehension_is_async(key, clauses)
+            || comprehension_inner_contains_await(&[value], clauses);
 
-        let dst = self.alloc_register();
-        self.instructions.push(Instruction::BuildDict {
-            dst,
+        let first_iter = self.compile_expr(&clauses[0].iter)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
+        let mut dict_compiler = self.new_nested_function_compiler();
+        dict_compiler.async_function_depth = self.async_function_depth;
+        dict_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
+        dict_compiler.configure_comprehension_scope(
+            &[key, value],
+            clauses,
+            comprehension_enclosing_depth,
+            &self.global_names,
+            &self.nonlocal_names,
+        );
+        let dict = dict_compiler.alloc_register();
+        dict_compiler.instructions.push(Instruction::BuildDict {
+            dst: dict,
             entries: Vec::new(),
         });
-        self.compile_dict_comp_clause(dst, key, value, clauses, 0)?;
-        Ok(dst)
+        dict_compiler
+            .compile_dict_comp_clause_from_first_iter(dict, key, value, clauses, 0, ".0")?;
+        dict_compiler
+            .instructions
+            .push(Instruction::Return { src: Some(dict) });
+
+        let callee = self.compile_comprehension_function(
+            "<dictcomp>",
+            dict_compiler.instructions,
+            is_async,
+        )?;
+        Ok(self.emit_comprehension_call(callee, first_iter, is_async))
     }
 
-    fn compile_dict_comp_clause(
+    fn compile_dict_comp_clause_from_first_iter(
         &mut self,
         dict: Register,
         key: &Expr,
         value: &Expr,
         clauses: &[ComprehensionClause],
         index: usize,
+        first_iter_name: &str,
     ) -> Result<(), String> {
         let clause = clauses
             .get(index)
             .ok_or_else(|| format!("missing dict comprehension clause at index {index}"))?;
-        let iterable = self.compile_expr(&clause.iter)?;
+        let iterable = if index == 0 {
+            let dst = self.alloc_register();
+            self.emit_load_name(dst, first_iter_name);
+            dst
+        } else {
+            self.compile_expr(&clause.iter)?
+        };
         let (loop_start, for_iter, item) = self.compile_comprehension_iter(clause, iterable);
         self.compile_store_target(&clause.target, item)?;
 
@@ -5035,7 +5166,14 @@ impl Compiler {
             self.instructions
                 .push(Instruction::DictSetItem { dict, key, value });
         } else {
-            self.compile_dict_comp_clause(dict, key, value, clauses, index + 1)?;
+            self.compile_dict_comp_clause_from_first_iter(
+                dict,
+                key,
+                value,
+                clauses,
+                index + 1,
+                first_iter_name,
+            )?;
         }
 
         let continue_target = self.instructions.len();
@@ -5066,27 +5204,58 @@ impl Compiler {
         if comprehension_inner_contains_yield(&[value], clauses) {
             return Err("yield inside dict comprehension".to_string());
         }
+        let is_async = generator_comprehension_is_async(value, clauses);
 
-        let dst = self.alloc_register();
-        self.instructions.push(Instruction::BuildDict {
-            dst,
+        let first_iter = self.compile_expr(&clauses[0].iter)?;
+        let comprehension_enclosing_depth = self.comprehension_walrus_enclosing_function_depth();
+        let mut dict_compiler = self.new_nested_function_compiler();
+        dict_compiler.async_function_depth = self.async_function_depth;
+        dict_compiler.comprehension_walrus_enclosing_function_depth =
+            Some(comprehension_enclosing_depth);
+        dict_compiler.configure_comprehension_scope(
+            &[value],
+            clauses,
+            comprehension_enclosing_depth,
+            &self.global_names,
+            &self.nonlocal_names,
+        );
+        let dict = dict_compiler.alloc_register();
+        dict_compiler.instructions.push(Instruction::BuildDict {
+            dst: dict,
             entries: Vec::new(),
         });
-        self.compile_dict_unpack_comp_clause(dst, value, clauses, 0)?;
-        Ok(dst)
+        dict_compiler
+            .compile_dict_unpack_comp_clause_from_first_iter(dict, value, clauses, 0, ".0")?;
+        dict_compiler
+            .instructions
+            .push(Instruction::Return { src: Some(dict) });
+
+        let callee = self.compile_comprehension_function(
+            "<dictcomp>",
+            dict_compiler.instructions,
+            is_async,
+        )?;
+        Ok(self.emit_comprehension_call(callee, first_iter, is_async))
     }
 
-    fn compile_dict_unpack_comp_clause(
+    fn compile_dict_unpack_comp_clause_from_first_iter(
         &mut self,
         dict: Register,
         value: &Expr,
         clauses: &[ComprehensionClause],
         index: usize,
+        first_iter_name: &str,
     ) -> Result<(), String> {
         let clause = clauses.get(index).ok_or_else(|| {
             format!("missing dict unpacking comprehension clause at index {index}")
         })?;
-        let iterable = self.compile_expr(&clause.iter)?;
+        let iterable = if index == 0 {
+            let dst = self.alloc_register();
+            self.emit_load_name(dst, first_iter_name);
+            dst
+        } else {
+            self.compile_expr(&clause.iter)?
+        };
         let (loop_start, for_iter, item) = self.compile_comprehension_iter(clause, iterable);
         self.compile_store_target(&clause.target, item)?;
 
@@ -5106,7 +5275,13 @@ impl Compiler {
             self.instructions
                 .push(Instruction::DictUpdate { dict, src });
         } else {
-            self.compile_dict_unpack_comp_clause(dict, value, clauses, index + 1)?;
+            self.compile_dict_unpack_comp_clause_from_first_iter(
+                dict,
+                value,
+                clauses,
+                index + 1,
+                first_iter_name,
+            )?;
         }
 
         let continue_target = self.instructions.len();
@@ -7420,6 +7595,21 @@ fn collect_target_bindings(target: &Target, names: &mut HashSet<String>) {
     }
 }
 
+fn collect_comprehension_target_locals(target: &Target, names: &mut HashSet<String>) {
+    match target {
+        Target::Name(name) => {
+            names.insert(name.clone());
+        }
+        Target::Starred(target) => collect_comprehension_target_locals(target, names),
+        Target::Tuple(targets) | Target::List(targets) => {
+            for target in targets {
+                collect_comprehension_target_locals(target, names);
+            }
+        }
+        Target::Attribute { .. } | Target::Subscript { .. } | Target::Slice { .. } => {}
+    }
+}
+
 fn collect_pattern_bindings(pattern: &Pattern, names: &mut HashSet<String>) {
     match pattern {
         Pattern::Capture(name) | Pattern::Star(Some(name)) => {
@@ -9372,6 +9562,62 @@ mod tests {
         );
     }
 
+    fn assert_comprehension_function_call(
+        instructions: &[Instruction],
+        function_name: &str,
+        body_matches: impl Fn(&[Instruction]),
+    ) {
+        match instructions {
+            [
+                Instruction::LoadName {
+                    dst: first_iter,
+                    name,
+                },
+                Instruction::MakeFunction {
+                    dst: callee,
+                    name: actual_function_name,
+                    params,
+                    body,
+                    is_generator,
+                    ..
+                },
+                Instruction::Call {
+                    dst,
+                    callee: call_callee,
+                    args,
+                },
+                Instruction::Pop {
+                    src: popped_first_iter,
+                },
+                Instruction::Pop { src: popped_callee },
+                Instruction::Pop { src: popped_result },
+                Instruction::Halt,
+            ] => {
+                assert_eq!(name, "items");
+                assert_eq!(actual_function_name, function_name);
+                assert_eq!(params, &vec![".0".to_string()]);
+                assert!(!is_generator);
+                assert_eq!(call_callee, callee);
+                assert_eq!(args, &vec![*first_iter]);
+                assert_eq!(popped_first_iter, first_iter);
+                assert_eq!(popped_callee, callee);
+                assert_eq!(popped_result, dst);
+                assert!(body.iter().any(|instruction| {
+                    matches!(instruction, Instruction::LoadLocal { name, .. } if name == ".0")
+                }));
+                assert!(body.iter().any(|instruction| {
+                    matches!(instruction, Instruction::StoreName { name, .. } if name == "x")
+                }));
+                assert!(body.iter().any(|instruction| matches!(
+                    instruction,
+                    Instruction::Return { src: Some(_) }
+                )));
+                body_matches(body);
+            }
+            instructions => panic!("unexpected comprehension bytecode: {instructions:?}"),
+        }
+    }
+
     #[test]
     fn compiles_list_comprehension_to_loop_and_append_bytecode() {
         let program = Program {
@@ -9394,63 +9640,16 @@ mod tests {
             })],
         };
 
-        assert_eq!(
-            compile(&program),
-            Ok(vec![
-                Instruction::BuildList {
-                    dst: 0,
-                    items: vec![]
-                },
-                Instruction::LoadName {
-                    dst: 1,
-                    name: "items".to_string()
-                },
-                Instruction::GetIter { dst: 2, src: 1 },
-                Instruction::ForIter {
-                    iterator: 2,
-                    dst: 3,
-                    target: 14
-                },
-                Instruction::StoreName {
-                    name: "x".to_string(),
-                    src: 3
-                },
-                Instruction::LoadName {
-                    dst: 4,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 5,
-                    value: Value::Number(1)
-                },
-                Instruction::Greater {
-                    dst: 6,
-                    left: 4,
-                    right: 5
-                },
-                Instruction::JumpIfFalse {
-                    condition: 6,
-                    target: 13
-                },
-                Instruction::LoadName {
-                    dst: 7,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 8,
-                    value: Value::Number(2)
-                },
-                Instruction::Multiply {
-                    dst: 9,
-                    left: 7,
-                    right: 8
-                },
-                Instruction::ListAppend { list: 0, item: 9 },
-                Instruction::Jump { target: 3 },
-                Instruction::Pop { src: 0 },
-                Instruction::Halt,
-            ])
-        );
+        let instructions = compile(&program).unwrap();
+        assert_comprehension_function_call(&instructions, "<listcomp>", |body| {
+            assert!(body.iter().any(|instruction| {
+                matches!(instruction, Instruction::BuildList { items, .. } if items.is_empty())
+            }));
+            assert!(
+                body.iter()
+                    .any(|instruction| matches!(instruction, Instruction::ListAppend { .. }))
+            );
+        });
     }
 
     #[test]
@@ -9475,63 +9674,16 @@ mod tests {
             })],
         };
 
-        assert_eq!(
-            compile(&program),
-            Ok(vec![
-                Instruction::BuildSet {
-                    dst: 0,
-                    items: vec![]
-                },
-                Instruction::LoadName {
-                    dst: 1,
-                    name: "items".to_string()
-                },
-                Instruction::GetIter { dst: 2, src: 1 },
-                Instruction::ForIter {
-                    iterator: 2,
-                    dst: 3,
-                    target: 14
-                },
-                Instruction::StoreName {
-                    name: "x".to_string(),
-                    src: 3
-                },
-                Instruction::LoadName {
-                    dst: 4,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 5,
-                    value: Value::Number(1)
-                },
-                Instruction::Greater {
-                    dst: 6,
-                    left: 4,
-                    right: 5
-                },
-                Instruction::JumpIfFalse {
-                    condition: 6,
-                    target: 13
-                },
-                Instruction::LoadName {
-                    dst: 7,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 8,
-                    value: Value::Number(2)
-                },
-                Instruction::Multiply {
-                    dst: 9,
-                    left: 7,
-                    right: 8
-                },
-                Instruction::SetAdd { set: 0, item: 9 },
-                Instruction::Jump { target: 3 },
-                Instruction::Pop { src: 0 },
-                Instruction::Halt,
-            ])
-        );
+        let instructions = compile(&program).unwrap();
+        assert_comprehension_function_call(&instructions, "<setcomp>", |body| {
+            assert!(body.iter().any(|instruction| {
+                matches!(instruction, Instruction::BuildSet { items, .. } if items.is_empty())
+            }));
+            assert!(
+                body.iter()
+                    .any(|instruction| matches!(instruction, Instruction::SetAdd { .. }))
+            );
+        });
     }
 
     #[test]
@@ -9620,71 +9772,16 @@ mod tests {
             })],
         };
 
-        assert_eq!(
-            compile(&program),
-            Ok(vec![
-                Instruction::BuildDict {
-                    dst: 0,
-                    entries: vec![]
-                },
-                Instruction::LoadName {
-                    dst: 1,
-                    name: "items".to_string()
-                },
-                Instruction::GetIter { dst: 2, src: 1 },
-                Instruction::ForIter {
-                    iterator: 2,
-                    dst: 3,
-                    target: 15
-                },
-                Instruction::StoreName {
-                    name: "x".to_string(),
-                    src: 3
-                },
-                Instruction::LoadName {
-                    dst: 4,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 5,
-                    value: Value::Number(1)
-                },
-                Instruction::Greater {
-                    dst: 6,
-                    left: 4,
-                    right: 5
-                },
-                Instruction::JumpIfFalse {
-                    condition: 6,
-                    target: 14
-                },
-                Instruction::LoadName {
-                    dst: 7,
-                    name: "x".to_string()
-                },
-                Instruction::LoadName {
-                    dst: 8,
-                    name: "x".to_string()
-                },
-                Instruction::LoadConst {
-                    dst: 9,
-                    value: Value::Number(2)
-                },
-                Instruction::Multiply {
-                    dst: 10,
-                    left: 8,
-                    right: 9
-                },
-                Instruction::DictSetItem {
-                    dict: 0,
-                    key: 7,
-                    value: 10
-                },
-                Instruction::Jump { target: 3 },
-                Instruction::Pop { src: 0 },
-                Instruction::Halt,
-            ])
-        );
+        let instructions = compile(&program).unwrap();
+        assert_comprehension_function_call(&instructions, "<dictcomp>", |body| {
+            assert!(body.iter().any(|instruction| {
+                matches!(instruction, Instruction::BuildDict { entries, .. } if entries.is_empty())
+            }));
+            assert!(
+                body.iter()
+                    .any(|instruction| matches!(instruction, Instruction::DictSetItem { .. }))
+            );
+        });
     }
 
     #[test]
