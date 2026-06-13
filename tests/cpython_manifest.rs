@@ -5528,6 +5528,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_system_exit_oserror_attributes_subset",
             "cpython_syntax_error_attributes_subset",
             "cpython_unicode_error_attributes_subset",
+            "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
@@ -5602,6 +5603,42 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+}
+
+#[test]
+fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
+    for required in [
+        "fn cpython_attribute_error_keyword_attributes_subset(",
+        "AttributeError('foo', name='name', obj='obj')",
+        "error.args, error.name, error.obj",
+        "AttributeError('foo', invalid='value')",
+        "unexpected keyword argument 'invalid'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused AttributeError keyword-attribute subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_attribute_error_keyword_attributes_diff_subset("),
+        "AttributeError keyword-attribute subset must not claim default CPython diff parity while the local oracle rejects name=/obj="
+    );
+
+    for required in [
+        "cpython_attribute_error_keyword_attributes_subset",
+        "local `python3` oracle predates this CPython behavior",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "AttributeError keyword-attribute subset-only classification must document `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_attribute_error_keyword_attributes_subset"),
+        "AttributeError keyword-attribute subset must remain in coverage notes"
+    );
 }
 
 #[test]
