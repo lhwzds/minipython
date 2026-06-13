@@ -5208,6 +5208,99 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "sys")
+        .expect("sandbox stdlib manifest must include sys");
+
+    for excluded in [
+        "Real argv/process state",
+        "real stdin/stdout/stderr",
+        "refcount/GC/debug APIs",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "sys sandbox manifest must keep `{excluded}` outside the supported surface"
+        );
+    }
+
+    for supported in [
+        "cpython_float_hash_and_sys_info_subset",
+        "cpython_int_max_str_digits_runtime_subset",
+        "cpython_attribute_introspection_builtins_subset",
+        "cpython_types_frame_locals_proxy_type_subset",
+        "cpython_builtin_breakpoint_default_stub_subset",
+    ] {
+        assert!(
+            row.supported_surface.contains(supported),
+            "sys sandbox manifest must list supported in-memory evidence `{supported}`"
+        );
+    }
+
+    let stdio_start = CPYTHON_SUBSET
+        .find("fn cpython_attribute_introspection_builtins_subset()")
+        .expect("attribute introspection subset evidence must be extractable");
+    let stdio_end = CPYTHON_SUBSET[stdio_start..]
+        .find("\n#[test]")
+        .map(|offset| stdio_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let stdio_source = &CPYTHON_SUBSET[stdio_start..stdio_end];
+    for required in [
+        "hasattr(sys, 'stdout')",
+        "getattr(sys, 'stdout') is sys.stdout",
+        "from sys import stdin, stderr, stdout",
+        "stdin is sys.stdin",
+        "stderr is sys.stderr",
+        "stdout is sys.stdout",
+    ] {
+        assert!(
+            stdio_source.contains(required),
+            "sys stdio placeholder subset evidence must cover `{required}`"
+        );
+    }
+
+    let frame_start = CPYTHON_SUBSET
+        .find("fn cpython_types_frame_locals_proxy_type_subset()")
+        .expect("types.FrameType/sys frame subset evidence must be extractable");
+    let frame_end = CPYTHON_SUBSET[frame_start..]
+        .find("\n#[test]")
+        .map(|offset| frame_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let frame_source = &CPYTHON_SUBSET[frame_start..frame_end];
+    for required in [
+        "inspect.currentframe()",
+        "types.FrameLocalsProxyType",
+        "frame.f_locals",
+    ] {
+        assert!(
+            frame_source.contains(required),
+            "sys frame subset evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in ["stdin", "stdout", "stderr"] {
+            assert!(
+                document.contains(required),
+                "sys docs must describe stdio placeholder term `{required}`"
+            );
+        }
+    }
+
+    for required in [
+        "Real argv/process state",
+        "real stdin/stdout/stderr streams",
+        "implementation refcount/GC/debug APIs",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must keep sys stop-line term `{required}`"
+        );
+    }
+}
+
+#[test]
 fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",
