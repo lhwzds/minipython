@@ -6043,6 +6043,33 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_base_exception_with_traceback_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testWithTraceback / ::testInvalidTraceback public subset",
+        name: "base-exception-with-traceback-direct",
+        source: r#"try:
+    raise IndexError(4)
+except Exception as error:
+    tb = error.__traceback__
+print(type(tb).__name__, tb is None, tb.__class__.__name__)
+for error in [BaseException(), IndexError(5), Exception('wrapped')]:
+    same = error.with_traceback(tb)
+    print(same.__class__.__name__, same, same.args, same.__traceback__ is tb)
+for error in [BaseException(), IndexError(5), Exception('wrapped')]:
+    same = error.with_traceback(None)
+    print(same.__class__.__name__, same, same.args, same.__traceback__)
+try:
+    Exception().with_traceback(5)
+except TypeError as error:
+    print(error)
+try:
+    Exception().__traceback__ = 5
+except TypeError as error:
+    print(error)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
