@@ -3719,6 +3719,19 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let reduce_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_reduce_diff_subset");
+    for required in [
+        "reduce(add, [0, 1], initial='')",
+        "reduce(function=lambda x, y: (x or 1) + y, sequence=[1, 2, 3])",
+        "reduce(lambda x, y: x + y, sequence=[1, 2, 3], initial=1)",
+        "reduce(add, [1], 2, initial=3)",
+    ] {
+        assert!(
+            reduce_diff.contains(required),
+            "functools reduce CPython diff evidence must cover `{required}`"
+        );
+    }
+
     for excluded in [
         "Full CPython cache implementation internals",
         "weakref/lifecycle subtleties",

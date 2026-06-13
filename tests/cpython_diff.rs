@@ -13114,7 +13114,11 @@ checks = [
     lambda: reduce(42, (42, 42)),
     lambda: reduce(add, object()),
     lambda: reduce(add, SequenceClass(0)),
+    lambda: reduce(add, [0, 1], initial=''),
+    lambda: reduce(function=lambda x, y: (x or 1) + y, sequence=[1, 2, 3]),
+    lambda: reduce(lambda x, y: x + y, sequence=[1, 2, 3], initial=1),
     lambda: reduce(add, [1], 2, 3),
+    lambda: reduce(add, [1], 2, initial=3),
 ]
 for check in checks:
     try:

@@ -41707,9 +41707,6 @@ fn cpython_functools_reduce_subset() {
             "print(reduce(add, SequenceClass(0), 42), reduce(add, SequenceClass(1)), reduce(add, SequenceClass(1), 42))\n",
             "d = {'one': 1, 'two': 2, 'three': 3}\n",
             "print(reduce(add, d), ''.join(d.keys()))\n",
-            "print(reduce(add, ['a', 'b', 'c'], initial=''))\n",
-            "print(reduce(lambda x, y: x * y, range(2, 8), initial=1))\n",
-            "print(reduce(42, '', initial='1'))\n",
         ),
         &[
             "abc",
@@ -41722,9 +41719,6 @@ fn cpython_functools_reduce_subset() {
             "10 52",
             "42 0 42",
             "onetwothree onetwothree",
-            "abc",
-            "5040",
-            "1",
         ],
     );
     assert_output(

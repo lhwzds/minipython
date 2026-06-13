@@ -7951,30 +7951,13 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut keyword_initial = None;
-        for (keyword, value) in keywords {
-            if keyword == "initial" {
-                if keyword_initial.is_some() {
-                    return Err(
-                        "TypeError: reduce() got multiple values for argument 'initial'"
-                            .to_string(),
-                    );
-                }
-                keyword_initial = Some(value);
-            } else {
-                return Err("TypeError: reduce() takes no keyword arguments".to_string());
-            }
+        if !keywords.is_empty() {
+            return Err("TypeError: reduce() takes no keyword arguments".to_string());
         }
 
         let (function, iterable, initial) = match args.as_slice() {
-            [function, iterable] => (function.clone(), iterable.clone(), keyword_initial),
+            [function, iterable] => (function.clone(), iterable.clone(), None),
             [function, iterable, initial] => {
-                if keyword_initial.is_some() {
-                    return Err(
-                        "TypeError: reduce() got multiple values for argument 'initial'"
-                            .to_string(),
-                    );
-                }
                 (function.clone(), iterable.clone(), Some(initial.clone()))
             }
             values if values.len() < 2 => {
