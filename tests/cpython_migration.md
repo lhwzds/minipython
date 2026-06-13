@@ -4315,6 +4315,9 @@ Completed in the tokenizer max-indent pass:
   maximum stack size, including the base indentation level.
 - Added structured lexer spans for unmatched dedent and tab-indentation
   diagnostics in `cpython_tokenize_unmatched_indentation_subset`.
+- Added `cpython_tokenize_unmatched_indentation_diff_subset` as direct CPython
+  error-message parity evidence for unmatched outdents and inconsistent
+  tab/space indentation.
 
 Completed in the tokenizer tab-indentation pass:
 

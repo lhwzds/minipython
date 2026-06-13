@@ -785,6 +785,32 @@ fn cpython_tokenize_formfeed_whitespace_diff_subset() {
 }
 
 #[test]
+fn cpython_tokenize_unmatched_indentation_diff_subset() {
+    for case in [
+        ErrorMessageCase {
+            origin: "Lib/test/test_tokenize.py and test_syntax.py indentation rejection subset",
+            name: "tokenize-unmatched-outdent",
+            source: "if True:\n    print(1)\n  print(2)",
+            expected_message: "unindent does not match",
+        },
+        ErrorMessageCase {
+            origin: "Lib/test/test_tokenize.py and test_syntax.py indentation rejection subset",
+            name: "tokenize-bad-outdent",
+            source: "if 1:\n  foo()\n bar()",
+            expected_message: "unindent does not match",
+        },
+        ErrorMessageCase {
+            origin: "Lib/test/test_tokenize.py and test_syntax.py indentation rejection subset",
+            name: "tokenize-inconsistent-tabs-spaces",
+            source: "if True:\n\tprint(1)\n        print(2)",
+            expected_message: "inconsistent use of tabs and spaces in indentation",
+        },
+    ] {
+        assert_cpython_error_message_parity(&case);
+    }
+}
+
+#[test]
 fn cpython_tokenize_implicit_line_joining_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",
