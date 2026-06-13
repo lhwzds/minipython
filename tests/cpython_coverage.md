@@ -3936,6 +3936,15 @@ Recent runtime migration notes:
   Sandbox callers can also deny all builtin stdlib imports or allow only named
   stdlib modules; the policy propagates into virtual module execution and
   applies before returning non-virtual `sys.modules` cache entries.
+  `out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards
+  the default blocked runtime surface so host I/O (`open()`, `input()` and
+  TTY-like behavior), network and process modules (`asyncio`, `http`, `ssl`,
+  `socket`, `subprocess`, `signal`, `threading`, `pty`, `urllib`, and
+  `multiprocessing`), C ABI / extension modules (`_ssl`, `_socket`, `_ctypes`,
+  and `_testcapi`), CPython-internal contracts (`co_stacksize`, refcount,
+  GC-tracking, opcode identity, and specialization), locale-sensitive behavior,
+  and default `pdb` / `breakpoint` integration stay outside the sandbox product
+  surface unless the scope is explicitly promoted.
 
 ## Diagnostics Infrastructure
 

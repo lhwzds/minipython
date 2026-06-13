@@ -6416,6 +6416,40 @@ fn cpython_migration_documents_out_of_scope_runtime_stop_line_guard() {
 }
 
 #[test]
+fn cpython_coverage_documents_out_of_scope_runtime_stop_line_guard() {
+    for required in [
+        "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
+        "open()",
+        "input()",
+        "asyncio",
+        "http",
+        "ssl",
+        "socket",
+        "subprocess",
+        "signal",
+        "threading",
+        "pty",
+        "urllib",
+        "multiprocessing",
+        "_ssl",
+        "_socket",
+        "_ctypes",
+        "_testcapi",
+        "C ABI",
+        "CPython-internal",
+        "co_stacksize",
+        "locale-sensitive",
+        "pdb",
+        "breakpoint",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage document must mention out-of-scope runtime stop-line term `{required}`"
+        );
+    }
+}
+
+#[test]
 fn stdlib_create_module_registry_is_explicitly_tracked() {
     let actual = stdlib_create_module_names();
     let expected = [
