@@ -6070,6 +6070,19 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_system_exit_oserror_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes SystemExit/OSError subset",
+        name: "system-exit-oserror-attributes-direct",
+        source: r#"system = SystemExit('foo')
+print(system.args, system.code)
+for error in [OSError('foo'), OSError('foo', 'bar'), OSError('foo', 'bar', 'baz'), OSError('foo', 'bar', 'baz', None, 'quux')]:
+    print(error.args, error.errno, error.strerror, error.filename, error.filename2)
+    print(str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
