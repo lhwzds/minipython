@@ -66818,6 +66818,17 @@ fn call_dict_method(
         return reversed_value(Value::OrderedDict(entries.clone()));
     }
 
+    if name == "OrderedDict.copy" {
+        reject_method_keywords(name, &keywords)?;
+        let [Value::OrderedDict(entries)] = args.as_slice() else {
+            return Err(format!(
+                "copy() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        return build_ordered_dict(entries.borrow().clone());
+    }
+
     let canonical_name;
     let name = if let Some(method) = name.strip_prefix("OrderedDict.") {
         canonical_name = format!("dict.{method}");
