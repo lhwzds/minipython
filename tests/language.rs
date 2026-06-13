@@ -5024,11 +5024,12 @@ print(frame.f_lineno - frame.f_code.co_firstlineno)"#
 fn json_sandbox_subset_excludes_file_apis_and_extension_hooks() {
     assert_eq!(
         run_source(
-            "import json\nfor name in ['load', 'dump', 'JSONDecoder', 'JSONEncoder']:\n    print(name, hasattr(json, name))"
+            "import json\nfor name in ['load', 'dump', 'JSONDecodeError', 'JSONDecoder', 'JSONEncoder']:\n    print(name, hasattr(json, name))"
         ),
         Ok(output_lines(&[
             "load False",
             "dump False",
+            "JSONDecodeError False",
             "JSONDecoder False",
             "JSONEncoder False",
         ]))

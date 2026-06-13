@@ -2777,6 +2777,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "default",
             "cls",
             "File APIs",
+            "JSONDecodeError",
             "full `JSONDecodeError` compatibility",
         ],
     );

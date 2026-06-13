@@ -649,9 +649,9 @@ Recent runtime migration notes:
   such as `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, and
   `parse_constant`, `dumps()` hooks/options other than `allow_nan` /
   `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` /
-  `separators` such as `default` and `cls`, bytes/bytearray serialization,
-  unpaired surrogate storage, and full `JSONDecodeError` compatibility remain
-  intentionally outside this sandbox subset.
+  `separators` such as `default` and `cls`, the `JSONDecodeError` class and
+  full exception-shape compatibility, bytes/bytearray serialization, and
+  unpaired surrogate storage remain intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_keyword_error_subset`,
