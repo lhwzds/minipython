@@ -5523,6 +5523,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_builtin_cmp_absent_subset",
             "cpython_builtin_none_ne_direct_subset",
             "cpython_builtin_exception_hierarchy_subset",
+            "cpython_base_exception_args_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
@@ -5562,6 +5563,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_builtin_cmp_absent_diff_subset",
         "cpython_builtin_none_ne_direct_diff_subset",
         "cpython_builtin_exception_hierarchy_diff_subset",
+        "cpython_base_exception_args_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
@@ -5590,6 +5592,48 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn base_exception_args_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_base_exception_args_subset(",
+        "Exception()",
+        "Exception('foo')",
+        "Exception('foo', 1)",
+        "ValueError(3)",
+        "raise Exception('caught', 7)",
+        "error.args",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused BaseException args/display subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_base_exception_args_diff_subset");
+    for required in [
+        "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",
+        "Exception()",
+        "Exception('foo')",
+        "Exception('foo', 1)",
+        "ValueError(3)",
+        "raise Exception('caught', 7)",
+        "error.args",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused BaseException args/display CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_base_exception_args_subset")
+                && document.contains("cpython_base_exception_args_diff_subset"),
+            "focused BaseException args/display evidence must be documented in coverage and migration notes"
         );
     }
 }

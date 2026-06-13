@@ -6027,6 +6027,22 @@ except BaseException as error:
 }
 
 #[test]
+fn cpython_base_exception_args_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",
+        name: "base-exception-args-display-direct",
+        source: r#"for error in [Exception(), Exception('foo'), Exception('foo', 1), ValueError(3)]:
+    print(str(error))
+    print(repr(error))
+    print(error.args)
+try:
+    raise Exception('caught', 7)
+except Exception as error:
+    print(str(error), repr(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
