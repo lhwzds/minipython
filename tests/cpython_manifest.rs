@@ -1251,6 +1251,49 @@ fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
 }
 
 #[test]
+fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset() {
+    let diff_name = "cpython_memoryview_methods_release_diff_subset";
+    let subset_name = "cpython_memoryview_basic_methods_and_release_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview method/release direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview basic method/release runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "memoryview method/release docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview method/release diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "m.tobytes()",
+        "m.tolist()",
+        "m.toreadonly()",
+        "with m as cm",
+        "m.release()",
+        "list(reversed(m))",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview method/release diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
     let diff_name = "cpython_memoryview_rejection_and_hash_diff_subset";
     let runtime_subsets = [

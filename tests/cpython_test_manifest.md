@@ -61,6 +61,10 @@ Rust coverage.
 
 ## Source Groups
 
+Direct diff mapping note: `cpython_memoryview_methods_release_diff_subset`
+directly compares the public memoryview method/release/context-manager slice
+covered by `cpython_memoryview_basic_methods_and_release_subset`.
+
 | Source | Group | Test methods | Status | Migration evidence / next action |
 | --- | --- | ---: | --- | --- |
 | `Lib/test/test_grammar.py` | module-level `test_*` functions | 0 | `source_data` | The current local CPython source has no module-level `test_*` functions in this file; its executable tests live under `TokenTests` and `GrammarTests`. |
