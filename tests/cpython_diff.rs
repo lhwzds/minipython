@@ -5242,6 +5242,53 @@ for expr in [lambda: 'hello'.removeprefix(), lambda: 'hello'.removeprefix(42), l
 }
 
 #[test]
+fn cpython_string_split_rsplit_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py split/rsplit subset",
+        name: "string-split-rsplit",
+        source: r#"print('a b c d'.split())
+print('a  b  c d'.split())
+print(''.split())
+print('a b c d'.split(None, 1))
+print('  a b  '.split(None, 0))
+print('a|b|c|d'.split('|'))
+print('a|b|c|d'.split('|', 0))
+print('a|b|c|d'.split('|', 1))
+print('a||b||c||d'.split('|', 2))
+print('abcd'.split('|'), ''.split('|'), 'endcase |'.split('|'), '| startcase'.split('|'), '|bothcase|'.split('|'))
+print('a//b//c//d'.split('//'))
+print('a//b//c//d'.split('//', 2))
+print('a////b////c////d'.split('//', 2))
+print('test begincase'.split('test'), 'endcase test'.split('test'), 'aaa'.split('aaa'), 'abbaab'.split('ba'))
+print('a b c d'.rsplit())
+print('a  b  c d'.rsplit())
+print(''.rsplit())
+print('a b c d'.rsplit(None, 1))
+print('  a b  '.rsplit(None, 0))
+print('a|b|c|d'.rsplit('|'))
+print('a|b|c|d'.rsplit('|', 1))
+print('a|b|c|d'.rsplit('|', 2))
+print('a||b||c||d'.rsplit('|', 2))
+print('| begincase'.rsplit('|'), 'endcase |'.rsplit('|'), '|bothcase|'.rsplit('|'))
+print('a//b//c//d'.rsplit('//', 2))
+print('a////b////c////d'.rsplit('//', 2))
+print('test begincase'.rsplit('test'), 'endcase test'.rsplit('test'), 'aaa'.rsplit('aaa'), 'abbaab'.rsplit('ba'))
+print('a|b|c|d'.split(sep='|'), 'a|b|c|d'.split('|', maxsplit=1), 'a b c d'.split(maxsplit=1))
+print('a|b|c|d'.rsplit(sep='|'), 'a|b|c|d'.rsplit('|', maxsplit=1), 'a b c d'.rsplit(maxsplit=1))
+for expr in [lambda: 'hello'.split(42, 42, 42), lambda: 'hello'.rsplit(42, 42, 42), lambda: 'hello'.split(maxsplit=None), lambda: 'hello'.rsplit(maxsplit=None)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+for expr in [lambda: 'hello'.split(''), lambda: 'hello'.split('', 0), lambda: 'hello'.rsplit(''), lambda: 'hello'.rsplit('', 0)]:
+    try:
+        expr()
+    except ValueError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

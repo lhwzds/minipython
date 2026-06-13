@@ -5397,8 +5397,9 @@ Completed in the string split/rsplit method pass:
   whitespace splitting, explicit separators, right splitting, `maxsplit`,
   keyword `sep` / `maxsplit`, empty input, empty fields, and representative
   `TypeError` / `ValueError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  split behavior.
+- Added `cpython_string_split_rsplit_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported split
+  behavior.
 
 Completed in the string strip method pass:
 
