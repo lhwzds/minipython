@@ -4460,6 +4460,145 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_callable_helper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_callable_helper_subset(",
+        "OperatorTestCase public",
+        "callable helper behavior for call, attrgetter, itemgetter, and methodcaller",
+        "class S(str):",
+        "class A:",
+        "a.child.name = 'thomas'",
+        "operator.attrgetter('name')(a)",
+        "operator.attrgetter('child.name')(a)",
+        "operator.attrgetter('name', 'child.name')(a)",
+        "operator.attrgetter(S('name'))(a)",
+        "operator.attrgetter(S('name'), S('child.name'))(a)",
+        "lambda: operator.attrgetter()",
+        "lambda: operator.attrgetter(2)",
+        "lambda: operator.attrgetter('name')()",
+        "lambda: operator.attrgetter('name')(a, surname='dent')",
+        "operator.attrgetter('rank')(a)",
+        "operator.attrgetter('child.')(a)",
+        "operator.attrgetter('.child')(a)",
+        "class AttrBoom:",
+        "def __getattr__(self, name):",
+        "operator.itemgetter(2)(data)",
+        "operator.itemgetter(2, 10, 5)(data)",
+        "operator.itemgetter('key')(d)",
+        "operator.itemgetter(-1)(tuple('abcde'))",
+        "operator.itemgetter(slice(2, 4))(tuple('abcde'))",
+        "lambda: operator.itemgetter()",
+        "lambda: operator.itemgetter(2)()",
+        "lambda: operator.itemgetter(2)(data, size=3)",
+        "operator.itemgetter(10)('ABCDE')",
+        "operator.itemgetter('nonkey')(d)",
+        "class GetBoom:",
+        "def __getitem__(self, name):",
+        "operator.methodcaller('foo', 1, 2)(m)",
+        "operator.methodcaller('bar')(m)",
+        "operator.methodcaller(S('bar'))(m)",
+        "operator.methodcaller('baz', name='spam', self='eggs')(m)",
+        "operator.methodcaller('return_arguments', 0, 1, a=2)(m)",
+        "many_positional_arguments = tuple(range(10))",
+        "many_kw_arguments = dict(zip('abcdefghij', range(10)))",
+        "lambda: operator.methodcaller()",
+        "lambda: operator.methodcaller(12)",
+        "lambda: operator.methodcaller('foo')()",
+        "lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)",
+        "print(operator.call(func, 0, 1, a=2, obj=3))",
+        "callable(operator.attrgetter('name'))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator callable helper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_callable_helper_diff_subset");
+    for required in [
+        "OperatorTestCase callable helper public subset stable on CPython 3.9",
+        "operator-callable-helper",
+        "class S(str):",
+        "class A:",
+        "a.child.name = 'thomas'",
+        "operator.attrgetter('name')(a)",
+        "operator.attrgetter('child.name')(a)",
+        "operator.attrgetter('name', 'child.name')(a)",
+        "operator.attrgetter(S('name'))(a)",
+        "operator.attrgetter(S('name'), S('child.name'))(a)",
+        "lambda: operator.attrgetter()",
+        "lambda: operator.attrgetter(2)",
+        "lambda: operator.attrgetter('name')()",
+        "lambda: operator.attrgetter('name')(a, surname='dent')",
+        "operator.attrgetter('rank')(a)",
+        "operator.attrgetter('child.')(a)",
+        "operator.attrgetter('.child')(a)",
+        "class AttrBoom:",
+        "def __getattr__(self, name):",
+        "operator.itemgetter(2)(data)",
+        "operator.itemgetter(2, 10, 5)(data)",
+        "operator.itemgetter('key')(d)",
+        "operator.itemgetter(-1)(tuple('abcde'))",
+        "operator.itemgetter(slice(2, 4))(tuple('abcde'))",
+        "lambda: operator.itemgetter()",
+        "lambda: operator.itemgetter(2)()",
+        "lambda: operator.itemgetter(2)(data, size=3)",
+        "operator.itemgetter(10)('ABCDE')",
+        "operator.itemgetter('nonkey')(d)",
+        "class GetBoom:",
+        "def __getitem__(self, name):",
+        "operator.methodcaller('foo', 1, 2)(m)",
+        "operator.methodcaller('bar')(m)",
+        "operator.methodcaller(S('bar'))(m)",
+        "operator.methodcaller('baz', name='spam', self='eggs')(m)",
+        "operator.methodcaller('return_arguments', 0, 1, a=2)(m)",
+        "many_positional_arguments = tuple(range(10))",
+        "many_kw_arguments = dict(zip('abcdefghij', range(10)))",
+        "lambda: operator.methodcaller()",
+        "lambda: operator.methodcaller(12)",
+        "lambda: operator.methodcaller('foo')()",
+        "lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)",
+        "callable(operator.attrgetter('name'))",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator callable helper CPython diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        !body.contains("operator.call(func"),
+        "stable operator callable helper diff must leave newer operator.call to the gated call-helper diff"
+    );
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_callable_helper_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_callable_helper_diff_subset")
+            && CPYTHON_COVERAGE.contains("dotted attribute traversal")
+            && CPYTHON_COVERAGE.contains("subclass attrgetter/methodcaller")
+            && CPYTHON_COVERAGE.contains("names, multi-result tuple packing")
+            && CPYTHON_COVERAGE.contains("subscript forwarding")
+            && CPYTHON_COVERAGE.contains("stored method")
+            && CPYTHON_COVERAGE.contains("args/keywords")
+            && CPYTHON_COVERAGE.contains("callable forwarding")
+            && CPYTHON_COVERAGE.contains("public exception propagation"),
+        "coverage notes must describe operator callable helpers and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_callable_helper_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_callable_helper_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.call")
+            && CPYTHON_MIGRATION.contains("attrgetter")
+            && CPYTHON_MIGRATION.contains("itemgetter")
+            && CPYTHON_MIGRATION.contains("methodcaller")
+            && CPYTHON_MIGRATION.contains("dotted attributes")
+            && CPYTHON_MIGRATION.contains("multi-result tuple")
+            && CPYTHON_MIGRATION.contains("many-argument forwarding")
+            && CPYTHON_MIGRATION.contains("without copying CPython's helper object internals"),
+        "migration notes must describe operator callable helper public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
