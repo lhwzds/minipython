@@ -879,6 +879,7 @@ impl Compiler {
                 for target in targets {
                     self.compile_store_target(target, src)?;
                 }
+                self.instructions.push(Instruction::Pop { src });
                 Ok(())
             }
             Stmt::AnnAssign {
@@ -2329,6 +2330,7 @@ impl Compiler {
         if let Some(value) = value {
             let src = self.compile_expr(value)?;
             self.compile_store_target(target, src)?;
+            self.instructions.push(Instruction::Pop { src });
         } else {
             self.compile_annotation_target_side_effects(target)?;
         }
@@ -9848,6 +9850,7 @@ mod tests {
                     name: "x".to_string(),
                     src: 2
                 },
+                Instruction::Pop { src: 2 },
                 Instruction::Halt,
             ])
         );
@@ -9878,6 +9881,7 @@ mod tests {
                     name: "b".to_string(),
                     src: 0
                 },
+                Instruction::Pop { src: 0 },
                 Instruction::Halt,
             ])
         );
@@ -10091,6 +10095,7 @@ mod tests {
                     name: "b".to_string(),
                     src: 2
                 },
+                Instruction::Pop { src: 0 },
                 Instruction::Halt,
             ])
         );
@@ -10145,6 +10150,7 @@ mod tests {
                     name: "b".to_string(),
                     src: 3
                 },
+                Instruction::Pop { src: 0 },
                 Instruction::Halt,
             ])
         );

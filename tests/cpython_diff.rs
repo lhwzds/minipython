@@ -11433,6 +11433,14 @@ def make_buffer_view():
 make_buffer_view()
 print('scope-release-truncate', bio.truncate(0), bio.getvalue())
 bio = io.BytesIO(b'abc')
+view = bio.getbuffer()
+del view
+print('del-release-truncate', bio.truncate(0), bio.getvalue())
+bio = io.BytesIO(b'abc')
+view: object = bio.getbuffer()
+del view
+print('ann-del-release-truncate', bio.truncate(0), bio.getvalue())
+bio = io.BytesIO(b'abc')
 bio.getbuffer()
 print('temp-release-truncate', bio.truncate(0), bio.getvalue())
 bio = io.BytesIO(b'abc')
@@ -19091,7 +19099,17 @@ def release_temp():
     memoryview(local)
     local.extend(b'd')
     return local
-print('temp-release-fn', release_temp())"#,
+print('temp-release-fn', release_temp())
+ba = bytearray(b'abc')
+view = memoryview(ba)
+del view
+ba.append(ord('d'))
+print('del-release', ba)
+ba = bytearray(b'abc')
+view: object = memoryview(ba)
+del view
+ba.append(ord('e'))
+print('ann-del-release', ba)"#,
     });
 }
 

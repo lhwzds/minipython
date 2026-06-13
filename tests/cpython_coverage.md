@@ -1348,7 +1348,7 @@ Recent runtime migration notes:
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `getbuffer()` writable
   memoryview mutation and active-export `BufferError` protection for
   `write()` / all `truncate()` requests / `close()` across direct and derived memoryviews,
-  release of function-scoped and expression-temporary exported views,
+  release of function-scoped, deleted-binding, and expression-temporary exported views,
   `readinto()` / `readinto1()` over
   writable bytearray targets, `tell()`, `seek()` with
   public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
@@ -3527,7 +3527,8 @@ Recent runtime migration notes:
   bytearray, and memoryview exporters, CPython-style public constructor
   argument diagnostics, byte iteration, equality with bytes-like objects,
   read-only hashing, writable-hash rejection, one-dimensional byte-view
-  attributes, and direct method-level evidence for
+  attributes, deleted-binding and expression-temporary exported-view release,
+  and direct method-level evidence for
   `test_tobytes`, `test_tolist`, `test_attributes_readonly`,
   `test_attributes_writable`, `test_contextmanager`, `test_release`, and
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the

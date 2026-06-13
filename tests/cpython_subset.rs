@@ -20004,7 +20004,7 @@ fn cpython_memoryview_minimal_runtime_subset() {
 #[test]
 fn cpython_memoryview_basic_methods_and_release_subset() {
     assert_output(
-        "for source in [b'abcdef', bytearray(b'abcdef')]:\n    m = memoryview(source)\n    print(type(source).__name__, m.tobytes(), type(m.tobytes()).__name__, m.tolist())\n    print(type(source).__name__, m.format, m.itemsize, m.ndim, m.shape, len(m), m.strides, m.suboffsets, m.readonly)\n    for name in ['format', 'itemsize', 'ndim', 'shape', 'strides', 'suboffsets', 'readonly']:\n        try:\n            setattr(m, name, 'x')\n        except Exception as error:\n            print(type(source).__name__, name, error.__class__.__name__)\nbase = bytearray(b'abcdef')\nm = memoryview(base)\nreadonly = m.toreadonly()\nprint('readonly', readonly.readonly, memoryview(readonly).readonly, readonly.tolist() == m.tolist())\nreadonly.release()\nprint('base-alive', m.tolist())\nba = bytearray(b'a')\nmemoryview(ba)\nba.append(ord('b'))\nprint('temp-release', ba)\ndef release_temp():\n    local = bytearray(b'c')\n    memoryview(local)\n    local.extend(b'd')\n    return local\nprint('temp-release-fn', release_temp())\nfor source in [b'abc', bytearray(b'abc')]:\n    m = memoryview(source)\n    with m as cm:\n        print('ctx', type(source).__name__, cm is m, cm.tobytes())\n    for expr in [lambda m=m: m.tobytes(), lambda m=m: m.tolist(), lambda m=m: m.nbytes]:\n        try:\n            expr()\n        except Exception as error:\n            print('ctx-released', type(source).__name__, error.__class__.__name__)\n    m.release()\n    print('ctx-release-again', type(source).__name__, m.release())\nm = memoryview(b'abc')\nm.release()\nfor expr in [lambda: m.tobytes(), lambda: m.tolist(), lambda: m.nbytes]:\n    try:\n        expr()\n    except Exception as error:\n        print('released', error.__class__.__name__)\nprint('released-second', m.release())",
+        "for source in [b'abcdef', bytearray(b'abcdef')]:\n    m = memoryview(source)\n    print(type(source).__name__, m.tobytes(), type(m.tobytes()).__name__, m.tolist())\n    print(type(source).__name__, m.format, m.itemsize, m.ndim, m.shape, len(m), m.strides, m.suboffsets, m.readonly)\n    for name in ['format', 'itemsize', 'ndim', 'shape', 'strides', 'suboffsets', 'readonly']:\n        try:\n            setattr(m, name, 'x')\n        except Exception as error:\n            print(type(source).__name__, name, error.__class__.__name__)\nbase = bytearray(b'abcdef')\nm = memoryview(base)\nreadonly = m.toreadonly()\nprint('readonly', readonly.readonly, memoryview(readonly).readonly, readonly.tolist() == m.tolist())\nreadonly.release()\nprint('base-alive', m.tolist())\nba = bytearray(b'a')\nmemoryview(ba)\nba.append(ord('b'))\nprint('temp-release', ba)\ndef release_temp():\n    local = bytearray(b'c')\n    memoryview(local)\n    local.extend(b'd')\n    return local\nprint('temp-release-fn', release_temp())\nba = bytearray(b'abc')\nview = memoryview(ba)\ndel view\nba.append(ord('d'))\nprint('del-release', ba)\nba = bytearray(b'abc')\nview: object = memoryview(ba)\ndel view\nba.append(ord('e'))\nprint('ann-del-release', ba)\nfor source in [b'abc', bytearray(b'abc')]:\n    m = memoryview(source)\n    with m as cm:\n        print('ctx', type(source).__name__, cm is m, cm.tobytes())\n    for expr in [lambda m=m: m.tobytes(), lambda m=m: m.tolist(), lambda m=m: m.nbytes]:\n        try:\n            expr()\n        except Exception as error:\n            print('ctx-released', type(source).__name__, error.__class__.__name__)\n    m.release()\n    print('ctx-release-again', type(source).__name__, m.release())\nm = memoryview(b'abc')\nm.release()\nfor expr in [lambda: m.tobytes(), lambda: m.tolist(), lambda: m.nbytes]:\n    try:\n        expr()\n    except Exception as error:\n        print('released', error.__class__.__name__)\nprint('released-second', m.release())",
         &[
             "bytes b'abcdef' bytes [97, 98, 99, 100, 101, 102]",
             "bytes B 1 1 (6,) 6 (1,) () True",
@@ -20028,6 +20028,8 @@ fn cpython_memoryview_basic_methods_and_release_subset() {
             "base-alive [97, 98, 99, 100, 101, 102]",
             "temp-release bytearray(b'ab')",
             "temp-release-fn bytearray(b'cd')",
+            "del-release bytearray(b'abcd')",
+            "ann-del-release bytearray(b'abce')",
             "ctx bytes True b'abc'",
             "ctx-released bytes ValueError",
             "ctx-released bytes ValueError",
@@ -21544,6 +21546,14 @@ fn cpython_io_bytesio_public_subset() {
             "make_buffer_view()\n",
             "print('scope-release-truncate', bio.truncate(0), bio.getvalue())\n",
             "bio = io.BytesIO(b'abc')\n",
+            "view = bio.getbuffer()\n",
+            "del view\n",
+            "print('del-release-truncate', bio.truncate(0), bio.getvalue())\n",
+            "bio = io.BytesIO(b'abc')\n",
+            "view: object = bio.getbuffer()\n",
+            "del view\n",
+            "print('ann-del-release-truncate', bio.truncate(0), bio.getvalue())\n",
+            "bio = io.BytesIO(b'abc')\n",
             "bio.getbuffer()\n",
             "print('temp-release-truncate', bio.truncate(0), bio.getvalue())\n",
             "bio = io.BytesIO(b'abc')\n",
@@ -21677,6 +21687,8 @@ fn cpython_io_bytesio_public_subset() {
             "derived-slice-live BufferError Existing exports of data: object cannot be re-sized",
             "derived-close-after-release None True",
             "scope-release-truncate 0 b''",
+            "del-release-truncate 0 b''",
+            "ann-del-release-truncate 0 b''",
             "temp-release-truncate 0 b''",
             "temp-release-write 1 b'Zbc'",
             "2 2 b'abcd'",
