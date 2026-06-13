@@ -3382,6 +3382,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_functools_public_helpers_subset",
             "cpython_functools_partial_subset",
+            "cpython_functools_partial_instance_module_metadata_subset",
             "cpython_functools_partialmethod_subset",
             "cpython_functools_cmp_to_key_subset",
             "cpython_functools_update_wrapper_wraps_subset",
@@ -3402,6 +3403,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_functools_public_helpers_diff_subset",
         "cpython_functools_partial_diff_subset",
+        "cpython_functools_partial_instance_module_metadata_diff_subset",
         "cpython_functools_partialmethod_diff_subset",
         "cpython_functools_cmp_to_key_diff_subset",
         "cpython_functools_update_wrapper_wraps_diff_subset",
@@ -3415,6 +3417,27 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "functools sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+
+    let partial_module_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_partial_instance_module_metadata_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_reduce_diff_subset()")
+                .next()
+        })
+        .expect("functools partial module metadata diff evidence must be extractable");
+    for required in [
+        "hasattr(partial(int), '__module__')",
+        "skipping functools.partial instance module metadata diff",
+        "p.__module__",
+        "p.__module__ = 'custom'",
+        "del p.__module__",
+    ] {
+        assert!(
+            partial_module_diff.contains(required),
+            "functools partial module metadata CPython diff evidence must cover `{required}`"
         );
     }
 

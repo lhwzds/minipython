@@ -353,6 +353,7 @@ Recent runtime migration notes:
   `cpython_operator_helper_repr_diff_subset`,
   `cpython_functools_public_helpers_diff_subset`,
   `cpython_functools_partial_diff_subset`,
+  `cpython_functools_partial_instance_module_metadata_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
   `cpython_functools_cmp_to_key_diff_subset`,
   `cpython_functools_update_wrapper_wraps_diff_subset`,
@@ -1094,7 +1095,11 @@ Recent runtime migration notes:
   isolation, constructor keyword copying, positional/keyword combinations,
   public `repr()` shape for function/type callables and stored arguments,
   exception propagation, nested partial calls, custom attributes, default and
-  instance-overridden `__doc__` metadata, and readonly core attributes.
+  instance-overridden `__doc__` metadata, default and instance-overridden
+  `__module__` metadata with deletion fallback, and readonly core attributes.
+  The newer CPython partial instance `__module__` surface is also pinned by
+  `cpython_functools_partial_instance_module_metadata_subset` and gated
+  `cpython_functools_partial_instance_module_metadata_diff_subset`.
 - The bundled `functools` module also includes
   `cpython_functools_partialmethod_diff_subset` and
   `cpython_functools_partialmethod_subset`, covering CPython

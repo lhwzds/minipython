@@ -12632,6 +12632,31 @@ for attr in ['func', 'args', 'keywords']:
 }
 
 #[test]
+fn cpython_functools_partial_instance_module_metadata_diff_subset() {
+    let probe =
+        run_cpython("from functools import partial\nprint(hasattr(partial(int), '__module__'))")
+            .expect("failed to probe CPython functools.partial instance __module__ support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping functools.partial instance module metadata diff: CPython oracle lacks partial.__module__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "newer CPython functools.partial instance module metadata subset",
+        name: "functools-partial-instance-module-metadata",
+        source: r#"from functools import partial
+p = partial(int, base=2)
+print(p.__module__, '__module__' in p.__dict__)
+p.__module__ = 'custom'
+print(p.__module__, p.__dict__['__module__'])
+del p.__module__
+print(p.__module__, '__module__' in p.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_reduce_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestReduce public stable subset",

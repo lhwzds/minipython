@@ -40111,6 +40111,11 @@ fn cpython_functools_partial_subset() {
             "print(p.__doc__, p.__dict__['__doc__'])\n",
             "del p.__doc__\n",
             "print(type(p.__doc__).__name__, bool(p.__doc__))\n",
+            "print(p.__module__, '__module__' in p.__dict__)\n",
+            "p.__module__ = 'custom'\n",
+            "print(p.__module__, p.__dict__['__module__'])\n",
+            "del p.__module__\n",
+            "print(p.__module__, '__module__' in p.__dict__)\n",
             "print(p(3, 4, b=30, c=40))\n",
             "print(p.func is capture, p.args, p.keywords == {'a': 10, 'b': 20})\n",
             "rendered = repr(p)\n",
@@ -40192,6 +40197,9 @@ fn cpython_functools_partial_subset() {
             "str True",
             "custom partial doc custom partial doc",
             "str True",
+            "functools False",
+            "custom custom",
+            "functools False",
             "((1, 2, 3, 4), {'a': 10, 'b': 30, 'c': 40})",
             "True (1, 2) True",
             "True True",
@@ -40230,6 +40238,25 @@ fn cpython_functools_partial_subset() {
             "args AttributeError",
             "keywords AttributeError",
         ],
+    );
+}
+
+// Adapted from newer CPython functools.partial instance module metadata. This
+// pins the pure-memory metadata surface without expanding into weakref/pickle
+// behavior.
+#[test]
+fn cpython_functools_partial_instance_module_metadata_subset() {
+    assert_output(
+        concat!(
+            "from functools import partial\n",
+            "p = partial(int, base=2)\n",
+            "print(p.__module__, '__module__' in p.__dict__)\n",
+            "p.__module__ = 'custom'\n",
+            "print(p.__module__, p.__dict__['__module__'])\n",
+            "del p.__module__\n",
+            "print(p.__module__, '__module__' in p.__dict__)"
+        ),
+        &["functools False", "custom custom", "functools False"],
     );
 }
 

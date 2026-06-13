@@ -51832,6 +51832,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "args" => Ok(tuple_value(args)),
                 "keywords" => Ok(Value::Dict(keywords)),
                 "__dict__" => Ok(Value::ScopeDict(attrs)),
+                "__module__" => Ok(attrs
+                    .borrow()
+                    .get("__module__")
+                    .cloned()
+                    .unwrap_or_else(|| Value::String("functools".to_string()))),
                 "__doc__" => Ok(attrs
                     .borrow()
                     .get("__doc__")
