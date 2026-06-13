@@ -5957,6 +5957,87 @@ fn min_max_sum_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn all_any_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_all_any_builtin_subset(",
+        "class TestFailingBool",
+        "raise RuntimeError('bool fail')",
+        "class TestFailingIter",
+        "raise RuntimeError('iter fail')",
+        "all([2, 4, 6])",
+        "all([2, None, 6])",
+        "all([])",
+        "all([0, TestFailingBool()])",
+        "any([None, None, None])",
+        "any([None, 4, None])",
+        "any([])",
+        "any([1, TestFailingBool()])",
+        "all(x > 42 for x in [50, 60])",
+        "all(x > 42 for x in [50, 40, 60, TestFailingBool()])",
+        "any(x > 42 for x in [40, 60, 30, TestFailingBool()])",
+        "lambda: all([2, TestFailingBool(), 6])",
+        "lambda: all(TestFailingIter())",
+        "lambda: any([None, TestFailingBool(), 6])",
+        "lambda: any(TestFailingIter())",
+        "lambda: all(10)",
+        "lambda: all()",
+        "lambda: all([2, 4, 6], [])",
+        "lambda: any(10)",
+        "lambda: any()",
+        "lambda: any([2, 4, 6], [])",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused all/any builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_all_any_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_all / ::test_any",
+        "class TestFailingBool",
+        "raise RuntimeError('bool fail')",
+        "class TestFailingIter",
+        "raise RuntimeError('iter fail')",
+        "all([2, 4, 6])",
+        "all([2, None, 6])",
+        "all([])",
+        "all([0, TestFailingBool()])",
+        "any([None, None, None])",
+        "any([None, 4, None])",
+        "any([])",
+        "any([1, TestFailingBool()])",
+        "all(x > 42 for x in [50, 60])",
+        "any(x > 42 for x in [40, 60, 30])",
+        "lambda: all([2, TestFailingBool(), 6])",
+        "lambda: all(TestFailingIter())",
+        "lambda: any([None, TestFailingBool(), 6])",
+        "lambda: any(TestFailingIter())",
+        "lambda: all(10)",
+        "lambda: all()",
+        "lambda: all([2, 4, 6], [])",
+        "lambda: any(10)",
+        "lambda: any()",
+        "lambda: any([2, 4, 6], [])",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused all/any CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_all_any_builtin_subset")
+                && document.contains("cpython_all_any_builtin_diff_subset")
+                && document.contains("BuiltinTest::test_all")
+                && document.contains("test_any"),
+            "focused all/any evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
