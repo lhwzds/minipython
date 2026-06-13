@@ -4716,6 +4716,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_eval_builtin_subset",
             "cpython_exec_builtin_subset",
+            "cpython_exec_closure_subset",
             "cpython_eval_exec_builtins_mapping_subset",
             "cpython_compile_builtin_code_object_subset",
             "cpython_globals_locals_builtin_subset",
@@ -4806,6 +4807,49 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+}
+
+#[test]
+fn exec_closure_subset_stays_documented_and_version_gated() {
+    let subset_name = "cpython_exec_closure_subset";
+    let diff_name = "cpython_exec_closure_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "exec closure runtime subset evidence must exist"
+    );
+    assert!(
+        !CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "exec closure subset must not be mistaken for same-named direct CPython parity"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [subset_name, "CellType", "__closure__", "closure="] {
+            assert!(
+                document.contains(required),
+                "exec closure docs must mention `{required}`"
+            );
+        }
+    }
+    assert!(
+        MANIFEST.contains(
+            "Host CPython version differences keep this method out of differential parity",
+        ),
+        "test manifest must document why exec closure stays outside direct CPython diff parity"
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "builtins")
+        .expect("sandbox stdlib manifest must include builtins");
+    assert!(
+        row.supported_surface.contains(subset_name),
+        "builtins sandbox manifest must list exec closure subset evidence"
+    );
+    assert!(
+        !row.diff_evidence.contains(diff_name),
+        "builtins sandbox manifest must not cite same-named direct CPython diff evidence for version-gated exec closure"
+    );
 }
 
 #[test]
