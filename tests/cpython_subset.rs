@@ -35585,6 +35585,24 @@ fn cpython_type_namespace_order_subset() {
     );
 }
 
+// Adapted from CPython public OrderedDict mapping behavior. This keeps the
+// minimal OrderedDict sandbox surface aligned with dict-style mutation helpers
+// without promoting the full OrderedDict API.
+#[test]
+fn cpython_ordered_dict_mapping_mutation_subset() {
+    assert_output(
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(od.setdefault('a', 9), od.setdefault('c', 3), list(od.items()))\nprint(od.update({'d': 4}), list(od.items()))\nprint(od.pop('a'), od.pop('missing', 'fallback'), list(od.items()))\nprint(od.get('b'), 'b' in od, OrderedDict.__contains__(od, 'b'))\ndel od['b']\nprint(type(od).__name__, list(od.items()), 'b' in od)\nprint(od.clear(), list(od.items()), repr(od))",
+        &[
+            "1 3 [('a', 1), ('b', 2), ('c', 3)]",
+            "None [('a', 1), ('b', 2), ('c', 3), ('d', 4)]",
+            "1 fallback [('b', 2), ('c', 3), ('d', 4)]",
+            "2 True True",
+            "OrderedDict [('c', 3), ('d', 4)] False",
+            "None [] OrderedDict()",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::BuiltinTest::test_dir and
 // ::test_vars. This covers the executable introspection subset over local
 // scopes, modules, module subclasses, classes, instances, custom __dir__, and

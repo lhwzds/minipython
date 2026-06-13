@@ -3345,6 +3345,12 @@ Recent runtime migration notes:
   in-place union, iterable-pair update, iterable-pair rejection for `|`, and
   subclass result-type rules including `SubclassRor.__ror__ -> super()`.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_ordered_dict_mapping_mutation_subset`, with direct coverage in
+  `cpython_program_output_parity_smoke_diff_subset`, covering the minimal
+  `OrderedDict` sandbox surface for `setdefault()`, `update()`, `pop()`,
+  `get()`, key membership, direct `__contains__()`, item deletion, and
+  `clear()` while preserving ordered storage.
+- `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_new_class_resolve_bases_subset`, covering the
   first CPython `ClassCreationTests` public slice for `types.new_class()`,
   `types.prepare_class()`, and `types.resolve_bases()`: exported names,

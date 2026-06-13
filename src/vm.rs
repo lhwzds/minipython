@@ -20670,6 +20670,7 @@ impl Vm {
                 Ok(false)
             }
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
+            Value::OrderedDict(entries) => contains_value(needle, Value::Dict(entries)),
             Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
             Value::UserDict { data, .. } => contains_value(needle, Value::Dict(data)),
             Value::Set(items) => {
@@ -74747,7 +74748,12 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
         Value::MemoryView(_) => {
             Err("TypeError: memoryview object does not support item deletion".to_string())
         }
-        Value::Dict(entries) => {
+        object @ (Value::Dict(_) | Value::OrderedDict(_)) => {
+            let is_ordered_dict = matches!(object, Value::OrderedDict(_));
+            let entries = match object {
+                Value::Dict(entries) | Value::OrderedDict(entries) => entries,
+                _ => unreachable!("object shape checked above"),
+            };
             ensure_hashable_key(&index)?;
             let mut entries_borrowed = entries.borrow_mut();
             if let Some(position) = entries_borrowed
@@ -74757,7 +74763,11 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
                 entries_borrowed.remove(position);
                 mark_dict_changed(&mut entries_borrowed);
                 drop(entries_borrowed);
-                Ok(Value::Dict(entries))
+                if is_ordered_dict {
+                    Ok(Value::OrderedDict(entries))
+                } else {
+                    Ok(Value::Dict(entries))
+                }
             } else {
                 Err(format!("KeyError: {}", format_key_error(&index)))
             }
@@ -78752,7 +78762,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             Value::BigInt(needle) => Ok(range_contains_integer(&start, &stop, &step, &needle)),
             _ => Ok(false),
         },
-        Value::Dict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             ensure_hashable_key(&needle)?;
             Ok(entries
                 .borrow()
