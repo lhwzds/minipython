@@ -1045,7 +1045,10 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
 }
 
 fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) {
-    bytes_io.borrow_mut().buffer.resize(size, 0);
+    let mut state = bytes_io.borrow_mut();
+    if size < state.buffer.len() {
+        state.buffer.truncate(size);
+    }
 }
 
 fn print_separator_or_end(name: &str, value: Value) -> Result<String, String> {
