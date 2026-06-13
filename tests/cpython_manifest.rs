@@ -6119,6 +6119,92 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn aiter_anext_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_aiter_anext_builtin_subset(",
+        "CPython builtin async-iterator entrypoint public behavior",
+        "`aiter()` protocol validation separate from async-for lowering tests",
+        "class AI",
+        "def __aiter__(self):",
+        "async def __anext__(self):",
+        "raise StopAsyncIteration",
+        "class AiterRaises",
+        "raise ValueError(\"bad\")",
+        "class BadAiter",
+        "return 42",
+        "hasattr(__import__(\"builtins\"), \"aiter\")",
+        "callable(aiter)",
+        "aiter(ai) is ai",
+        "(\"missing\", lambda: aiter(()))",
+        "(\"raises\", lambda: aiter(AiterRaises()))",
+        "(\"bad\", lambda: aiter(BadAiter()))",
+        "(\"arity0\", lambda: aiter())",
+        "(\"arity2\", lambda: aiter(ai, ai))",
+        "\"missing TypeError 'tuple' object is not an async iterable\"",
+        "\"raises ValueError bad\"",
+        "\"bad TypeError aiter() returned not an async iterator of type 'int'\"",
+        "\"arity0 TypeError aiter() takes exactly one argument (0 given)\"",
+        "\"arity2 TypeError aiter() takes exactly one argument (2 given)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused aiter/anext builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_aiter_anext_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py aiter()/anext() public async-iterator subset",
+        "import builtins",
+        "class AI",
+        "def __aiter__(self):",
+        "async def __anext__(self):",
+        "raise StopAsyncIteration",
+        "class AiterRaises",
+        "raise ValueError(\"bad\")",
+        "class BadAiter",
+        "return 42",
+        "hasattr(builtins, \"aiter\")",
+        "callable(aiter)",
+        "aiter(ai) is ai",
+        "(\"missing\", lambda: aiter(()))",
+        "(\"raises\", lambda: aiter(AiterRaises()))",
+        "(\"bad\", lambda: aiter(BadAiter()))",
+        "(\"arity0\", lambda: aiter())",
+        "(\"arity2\", lambda: aiter(ai, ai))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused aiter/anext CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_aiter_anext_builtin_subset")
+                && document.contains("cpython_aiter_anext_builtin_diff_subset")
+                && document.contains("aiter()")
+                && document.contains("__aiter__")
+                && document.contains("__anext__"),
+            "focused aiter/anext evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_COVERAGE.contains("async-iterator return validation")
+            && CPYTHON_COVERAGE.contains("missing-protocol `TypeError`s")
+            && CPYTHON_COVERAGE.contains("one-argument arity"),
+        "focused aiter/anext coverage notes must describe arity and protocol validation"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("one-argument arity")
+            && CPYTHON_MIGRATION.contains("validation through `__anext__`")
+            && CPYTHON_MIGRATION.contains("CPython-compatible propagation of")
+            && CPYTHON_MIGRATION.contains("protocol errors"),
+        "focused aiter/anext migration notes must describe protocol validation and error propagation"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
