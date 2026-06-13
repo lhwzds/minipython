@@ -32656,6 +32656,36 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             *copied_items.borrow_mut() = copied_values;
             Ok(copied)
         }
+        Value::UserList { data, attrs } => {
+            let key = Rc::as_ptr(data) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_data = Rc::new(RefCell::new(Vec::new()));
+            let copied_attrs = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied = Value::UserList {
+                data: copied_data.clone(),
+                attrs: copied_attrs.clone(),
+            };
+            memo.insert(key, copied.clone());
+            let data = data.borrow().clone();
+            let copied_values = data
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?;
+            *copied_data.borrow_mut() = copied_values;
+            let attrs = attrs.borrow().entries.clone();
+            let copied_attr_values = attrs
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for (key, value) in copied_attr_values {
+                insert_live_dict_entry(&mut copied_attrs.borrow_mut(), key, value)?;
+            }
+            Ok(copied)
+        }
         Value::Tuple(items) => {
             let key = Rc::as_ptr(items) as usize;
             if let Some(copied) = memo.get(&key) {
@@ -32686,6 +32716,25 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                     .collect::<Result<Vec<_>, _>>()?,
             ),
         }),
+        Value::Deque { data, maxlen } => {
+            let key = Rc::as_ptr(data) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_data = Rc::new(RefCell::new(Vec::new()));
+            let copied = Value::Deque {
+                data: copied_data.clone(),
+                maxlen: *maxlen,
+            };
+            memo.insert(key, copied.clone());
+            let data = data.borrow().clone();
+            let copied_values = data
+                .iter()
+                .map(|item| deep_copy_value(item, memo))
+                .collect::<Result<Vec<_>, _>>()?;
+            *copied_data.borrow_mut() = copied_values;
+            Ok(copied)
+        }
         Value::Set(items) => Ok(set_value(
             items
                 .borrow()
@@ -32740,6 +32789,40 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             Ok(Value::Counter {
                 entries: dict_ref_from_entries(copied_entries)?,
             })
+        }
+        Value::UserDict { data, attrs } => {
+            let key = Rc::as_ptr(data) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_data = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied_attrs = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied = Value::UserDict {
+                data: copied_data.clone(),
+                attrs: copied_attrs.clone(),
+            };
+            memo.insert(key, copied.clone());
+            let data = data.borrow().entries.clone();
+            let copied_data_values = data
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for (key, value) in copied_data_values {
+                insert_live_dict_entry(&mut copied_data.borrow_mut(), key, value)?;
+            }
+            let attrs = attrs.borrow().entries.clone();
+            let copied_attr_values = attrs
+                .into_iter()
+                .map(|(key, value)| {
+                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                })
+                .collect::<Result<Vec<_>, String>>()?;
+            for (key, value) in copied_attr_values {
+                insert_live_dict_entry(&mut copied_attrs.borrow_mut(), key, value)?;
+            }
+            Ok(copied)
         }
         Value::ChainMap { maps } => Ok(Value::ChainMap {
             maps: maps

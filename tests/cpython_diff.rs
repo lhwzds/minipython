@@ -11275,6 +11275,7 @@ fn cpython_copy_public_diff_subset() {
         origin: "Lib/copy.py public pure-memory subset",
         name: "copy-public",
         source: r#"import copy
+from collections import UserDict, UserList, deque
 print(copy.Error is copy.error)
 print(copy.Error.__name__, copy.Error.__qualname__, copy.Error.__module__)
 try:
@@ -11327,6 +11328,19 @@ print('instance-alias', cbox is box, cbox.a is shared, cbox.a is cbox.b)
 box.self = box
 cbox = copy.deepcopy(box)
 print('instance-cycle', cbox is box, cbox.self is cbox)
+ul = UserList([shared, shared])
+cul = copy.deepcopy(ul)
+print('userlist-alias', cul is ul, cul.data is ul.data, cul[0] is shared, cul[0] is cul[1], cul)
+ul_cycle = UserList([])
+ul_cycle.append(ul_cycle)
+cul_cycle = copy.deepcopy(ul_cycle)
+print('userlist-cycle', cul_cycle is ul_cycle, cul_cycle[0] is cul_cycle, len(cul_cycle))
+ud = UserDict({'a': shared, 'b': shared})
+cud = copy.deepcopy(ud)
+print('userdict-alias', cud is ud, cud.data is ud.data, cud['a'] is shared, cud['a'] is cud['b'], list(cud.items()))
+dq = deque([shared, shared])
+cdq = copy.deepcopy(dq)
+print('deque-alias', cdq is dq, cdq[0] is shared, cdq[0] is cdq[1], list(cdq))
 for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:
     try:
         expr()

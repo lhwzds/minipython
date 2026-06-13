@@ -1331,9 +1331,10 @@ Recent runtime migration notes:
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
   and identity, nested list/dict shallow-vs-deep copy behavior, `deepcopy()`
   memo preservation for shared list/dict/tuple members and self-referential
-  lists, shared user-instance fields and user-instance self-cycles, independent
-  bytearray copy buffers, dictionary copy independence, and representative arity
-  TypeError classification.
+  lists, shared user-instance fields and user-instance self-cycles, and shared
+  `UserList` / `UserDict` / `deque` members plus `UserList` self-cycles,
+  independent bytearray copy buffers, dictionary copy independence, and
+  representative arity TypeError classification.
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
