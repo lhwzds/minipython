@@ -5350,7 +5350,8 @@ Completed in the string splitlines method pass:
 - Added runtime support for `str.splitlines()` including CR, LF, CRLF,
   terminal-break behavior, `keepends` as positional or keyword argument,
   Unicode line separators, and representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_splitlines_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported
   line-splitting behavior.
 
 Completed in the string replace method pass:

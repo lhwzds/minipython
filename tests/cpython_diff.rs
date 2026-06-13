@@ -5138,6 +5138,30 @@ for expr in [lambda: 'abc'.isidentifier(42), lambda: 'abc'.isprintable(42)]:
 }
 
 #[test]
+fn cpython_string_splitlines_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py splitlines subset",
+        name: "string-splitlines",
+        source: r#"print('abc\ndef\n\rghi'.splitlines())
+print('abc\ndef\n\r\nghi'.splitlines())
+print('abc\ndef\r\nghi'.splitlines())
+print('abc\ndef\r\nghi\n'.splitlines())
+print('abc\ndef\r\nghi\n\r'.splitlines())
+print('\nabc\ndef\r\nghi\n\r'.splitlines())
+print('\nabc\ndef\r\nghi\n\r'.splitlines(False))
+print('\nabc\ndef\r\nghi\n\r'.splitlines(keepends=True))
+print(''.splitlines(), 'one'.splitlines(), 'one\n'.splitlines(), '\n'.splitlines(), '\r\n'.splitlines())
+print('a\vb\fc\x1cd\x1ee\x85f\u2028g\u2029h'.splitlines())
+print('a\vb\fc\x1cd\x1ee\x85f\u2028g\u2029h'.splitlines(True) == ['a\v', 'b\f', 'c\x1c', 'd\x1e', 'e\x85', 'f\u2028', 'g\u2029', 'h'])
+for expr in [lambda: 'abc'.splitlines(True, False), lambda: 'abc'.splitlines(keepends=True, extra=False), lambda: 'abc'.splitlines(extra=True)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
