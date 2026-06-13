@@ -3229,6 +3229,32 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "functools sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    for excluded in [
+        "Full CPython cache implementation internals",
+        "weakref/lifecycle subtleties",
+        "unsupported descriptor edge cases",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "functools sandbox manifest must keep unsupported boundary `{excluded}` documented"
+        );
+    }
+
+    for required in [
+        "Full CPython cache implementation internals",
+        "weakref/lifecycle subtleties",
+        "unsupported descriptor edge cases",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "functools migration notes must document sandbox boundary `{required}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "functools coverage notes must document sandbox boundary `{required}`"
+        );
+    }
 }
 
 #[test]

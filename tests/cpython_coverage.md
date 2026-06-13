@@ -1043,6 +1043,9 @@ Recent runtime migration notes:
   covers stable explicit-registration and descriptor-composition behavior;
   missing-argument error classification stays in the local subset because older
   system CPython oracles raise a different exception class on that boundary.
+  Full CPython cache implementation internals, weakref/lifecycle subtleties,
+  and unsupported descriptor edge cases remain outside the sandbox subset until
+  separately promoted with direct public-behavior evidence.
 - The bundled `typing` module includes
   `cpython_typing_get_origin_args_subset`, covering CPython public
   `get_args()` and `get_origin()` behavior for builtin and user generic aliases,
