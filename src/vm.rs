@@ -57020,13 +57020,37 @@ fn json_dumps_dict_subclass_items(
     };
     let mut entries = Vec::new();
     for item in vm.collect_iterable_values_propagating(items)? {
-        let pair = vm.collect_iterable_values_propagating(item)?;
-        match pair.as_slice() {
-            [key, value] => entries.push((key.clone(), value.clone())),
-            _ => return Err("ValueError: too many values to unpack (expected 2)".to_string()),
-        }
+        entries.push(json_dumps_dict_subclass_item_pair(&item)?);
     }
     Ok(entries)
+}
+
+fn json_dumps_dict_subclass_item_pair(item: &Value) -> Result<(Value, Value), String> {
+    let values = match item {
+        Value::Tuple(values) | Value::NamedTuple { values, .. } => Some(values.as_slice()),
+        value if tuple_subclass_items(value).is_some() => {
+            let values =
+                tuple_subclass_items(value).expect("tuple subclass items exist after guard");
+            return json_dumps_tuple_item_pair(values.as_slice());
+        }
+        value if namedtuple_subclass_storage(value).is_some() => {
+            let (_, values) = namedtuple_subclass_storage(value)
+                .expect("namedtuple subclass storage after guard");
+            return json_dumps_tuple_item_pair(values.as_slice());
+        }
+        _ => None,
+    };
+    match values {
+        Some(values) => json_dumps_tuple_item_pair(values),
+        None => Err("ValueError: items must return 2-tuples".to_string()),
+    }
+}
+
+fn json_dumps_tuple_item_pair(values: &[Value]) -> Result<(Value, Value), String> {
+    let [key, value] = values else {
+        return Err("ValueError: items must return 2-tuples".to_string());
+    };
+    Ok((key.clone(), value.clone()))
 }
 
 fn json_dumps_sequence(

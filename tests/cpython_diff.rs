@@ -946,6 +946,11 @@ class DictSubclass(dict):
 class EmptyDictSubclass(dict):
     def items(self):
         return [('bad', self)]
+class Pair(tuple):
+    pass
+class TupleSubclassItems(dict):
+    def items(self):
+        return [Pair(('pair', 5))]
 cases = [
     {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
     {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
@@ -955,10 +960,19 @@ cases = [
     DictSubclass(ignored=1),
     EmptyDictSubclass(),
     {'empty': EmptyDictSubclass()},
+    TupleSubclassItems(x=1),
 ]
 for value in cases:
     print(json.dumps(value))
-    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))"#,
+    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))
+for items in [[['a', 1]], ['ab'], [('a',)], [('a', 1, 2)]]:
+    class BadItems(dict):
+        def items(self):
+            return items
+    try:
+        json.dumps(BadItems(x=1))
+    except ValueError as error:
+        print(type(error).__name__, str(error))"#,
     });
 }
 

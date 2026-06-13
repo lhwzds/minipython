@@ -629,8 +629,9 @@ Recent runtime migration notes:
   `int` / `float`
   subclass and `IntEnum` values/keys,
   list/tuple containers, non-empty dict subclass containers through public
-  `items()`, CPython's empty-dict-subclass `{}` fast path, `Counter` mapping
-  containers, and namedtuples, standard string escapes,
+  `items()` with CPython's 2-tuple item requirement, CPython's
+  empty-dict-subclass `{}` fast path, `Counter` mapping containers, and
+  namedtuples, standard string escapes,
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite
   float values and keys, `check_circular` cycle-error behavior,
   `ensure_ascii=False` direct non-ASCII string/key rendering,
