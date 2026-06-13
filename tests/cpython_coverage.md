@@ -29,7 +29,7 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
-- `collections.deque` is currently a minimal sandbox type surface only:
+- `collections.deque` is currently a documented pure-memory sandbox surface:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory
   construction from iterables, `maxlen` truncation and readonly access,
@@ -41,11 +41,12 @@ Recent runtime migration notes:
   `clear` / `copy`, membership, rich comparison between deque instances,
   integer indexing/assignment/deletion, concat/repeat, in-place concat/repeat,
   `.copy()` / `__copy__()` / `copy.copy()`, reverse iteration, concrete type
-  identity, and `MutableSequence` registration. Full deque construction/mutation APIs,
-  performance/lifetime internals, thread-safety stress, pickle/eval identity
-  matrices, and unported ABC edge matrices remain outside the default sandbox
-  `collections` / `collections.abc` surface until separately promoted with
-  direct public-behavior evidence.
+  identity, and `MutableSequence` registration. Full deque construction/mutation APIs
+  remain outside the default sandbox surface beyond this documented pure-memory
+  subset; slicing, pickle/eval identity matrices, performance/lifetime internals,
+  thread-safety stress, and unported ABC edge matrices also remain outside
+  `collections` / `collections.abc` until separately promoted with direct
+  public-behavior evidence.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`

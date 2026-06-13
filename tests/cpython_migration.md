@@ -7345,7 +7345,7 @@ Completed in the collections ABC ByteString deprecation-warning pass:
 
 Completed in the collections ABC mutable-sequence registration pass:
 
-- Added a minimal public stdlib type surface for `collections.deque` and
+- Added a first-pass public stdlib type surface for `collections.deque` and
   `array.array`, with `deque()` constructing an empty object and both type
   objects participating in builtin class checks.
 - Extended the ABC builtin-type helpers so `deque` and `array.array` inherit
@@ -7354,15 +7354,16 @@ Completed in the collections ABC mutable-sequence registration pass:
 - Extended `cpython_collections_abc_mutable_sequence_subset` to cover CPython's
   current `TestCollectionABCs::test_MutableSequence` registrations for `deque`
   instances and `array.array` as a type object.
-- Added direct public-surface evidence for the minimal `deque` sandbox slice in
+- Added direct public-surface evidence for the documented `deque` sandbox slice in
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset`; this slice now covers
   pure-memory construction from iterables, `maxlen` truncation and readonly
   access, iteration, len/bool/repr, and basic `append` / `appendleft` /
   `extend` / `extendleft` / `insert` / `remove` / `pop` / `popleft` /
   `count` / `index` / `rotate` / `reverse` / `clear` / `copy` operations.
-  Broader deque APIs, pickling, performance, lifetime, and thread-safety
-  semantics remain outside the sandbox default scope.
+  Full deque construction/mutation APIs remain outside the sandbox default
+  surface beyond this documented pure-memory subset; slicing, pickling,
+  performance, lifetime, and thread-safety semantics are also out of scope.
 - Promoted the strict method audit row for `test_MutableSequence` from
   `partial` to `ported`; at that point, `test_issue26915` NaN object identity
   and `test_Set_hash_matches_frozenset` range-stress hashing still remained for
