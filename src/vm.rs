@@ -14893,10 +14893,15 @@ impl Vm {
         };
 
         let method = method_display_name(name);
-        if matches!(method, "__eq__" | "__ne__") && is_identical(left, right) {
-            Ok(Value::Bool(method == "__eq__"))
-        } else {
-            Ok(Value::NotImplemented)
+        match method {
+            "__eq__" if is_identical(left, right) => Ok(Value::Bool(true)),
+            "__eq__" => Ok(Value::NotImplemented),
+            "__ne__" if is_identical(left, right) => Ok(Value::Bool(false)),
+            "__ne__" if object_direct_ne_uses_rich_equality(left, right) => {
+                Ok(Value::Bool(!self.rich_equal_values(left, right)?))
+            }
+            "__ne__" => Ok(Value::NotImplemented),
+            _ => Ok(Value::NotImplemented),
         }
     }
 
@@ -77225,6 +77230,36 @@ fn ordered_compare_values(left: Value, right: Value, op: &str) -> Result<Orderin
             message
         }
     })
+}
+
+fn object_direct_ne_uses_rich_equality(left: &Value, right: &Value) -> bool {
+    object_direct_ne_rich_operand(left) && object_direct_ne_rich_operand(right)
+}
+
+fn object_direct_ne_rich_operand(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::Number(_)
+            | Value::BigInt(_)
+            | Value::Float(_)
+            | Value::Complex { .. }
+            | Value::String(_)
+            | Value::IdentityString { .. }
+            | Value::Bytes(_)
+            | Value::ByteArray(_)
+            | Value::Bool(_)
+            | Value::List(_)
+            | Value::Tuple(_)
+            | Value::Set(_)
+            | Value::FrozenSet(_)
+            | Value::Dict(_)
+            | Value::OrderedDict(_)
+            | Value::Range { .. }
+            | Value::Deque { .. }
+            | Value::UserList { .. }
+            | Value::UserDict { .. }
+            | Value::SimpleNamespace { .. }
+    )
 }
 
 fn less_values(left: Value, right: Value) -> Result<bool, String> {

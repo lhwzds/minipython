@@ -5556,6 +5556,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_ascii_builtin_diff_subset",
         "cpython_chr_ord_builtin_diff_subset",
         "cpython_builtin_cmp_absent_diff_subset",
+        "cpython_builtin_none_ne_direct_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -5628,6 +5629,48 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
             document.contains("cpython_builtin_getattr_public_subset")
                 && document.contains("cpython_builtin_getattr_public_diff_subset"),
             "focused getattr evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
+fn builtin_none_ne_direct_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_none_ne_direct_subset(",
+        "None.__ne__(None)",
+        "None.__ne__(0) is NotImplemented",
+        "object.__eq__(left, right) is NotImplemented",
+        "object.__ne__(left, right) is NotImplemented",
+        "lambda: None.__ne__()",
+        "lambda: object.__ne__(None, 0, 1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused None.__ne__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_none_ne_direct_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
+        "None.__ne__(None)",
+        "None.__ne__(0) is NotImplemented",
+        "object.__eq__(left, right) is NotImplemented",
+        "object.__ne__(left, right) is NotImplemented",
+        "lambda: None.__ne__()",
+        "lambda: object.__ne__(None, 0, 1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused None.__ne__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_builtin_none_ne_direct_subset")
+                && document.contains("cpython_builtin_none_ne_direct_diff_subset"),
+            "focused None.__ne__ evidence must be documented in coverage and CPython test manifest"
         );
     }
 }

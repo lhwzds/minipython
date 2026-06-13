@@ -3471,10 +3471,12 @@ Recent runtime migration notes:
   input, source-list preservation, `key=`, `reverse=`, iterable input type
   coverage, and positional/keyword argument rejection.
 - `RUNTIME_BUILTINS` also includes
-  `cpython_builtin_none_ne_direct_subset`, covering CPython
+  `cpython_builtin_none_ne_direct_subset` with direct CPython output parity in
+  `cpython_builtin_none_ne_direct_diff_subset`, covering CPython
   `BuiltinTest::test___ne__` direct `None.__ne__` behavior plus the inherited
-  `object.__eq__` / `object.__ne__` identity comparison and `NotImplemented`
-  fallback for unrelated objects.
+  `object.__eq__` / `object.__ne__` direct-call identity comparison,
+  `NoneType` `NotImplemented` fallback for unrelated objects, and CPython's
+  direct `object.__ne__` bool result for builtin containers.
 - `RUNTIME_BUILTINS` also includes `cpython_object_repr_str_direct_subset`,
   covering direct `object.__repr__` and `object.__str__` descriptor lookup and
   calls, inherited instance bindings, `object.__repr__` generic object display,

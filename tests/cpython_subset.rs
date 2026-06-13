@@ -24432,8 +24432,8 @@ print('str-sub', str(sub), f'{sub}', '%s' % sub, format(sub, '>6'))"#,
 
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test___ne__`.
 // `NoneType` inherits these methods from `object`; the public behavior is direct
-// method-call identity comparison, returning `NotImplemented` for unrelated
-// objects.
+// method-call identity comparison, the `None` fallback to `NotImplemented`, and
+// CPython's direct `object.__ne__` bool result for builtin containers.
 #[test]
 fn cpython_builtin_none_ne_direct_subset() {
     assert_output(
@@ -24442,7 +24442,7 @@ fn cpython_builtin_none_ne_direct_subset() {
     );
     assert_output(
         "left = []\nright = []\nprint(object.__eq__(None, None))\nprint(object.__eq__(left, left))\nprint(object.__eq__(left, right) is NotImplemented)\nprint(object.__ne__(None, None))\nprint(object.__ne__(left, right) is NotImplemented)",
-        &["True", "True", "True", "False", "True"],
+        &["True", "True", "True", "False", "False"],
     );
     assert_output(
         "for expr in [lambda: None.__ne__(), lambda: None.__ne__(0, 1), lambda: object.__eq__(None), lambda: object.__ne__(None, 0, 1)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",

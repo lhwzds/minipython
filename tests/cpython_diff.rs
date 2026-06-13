@@ -5995,6 +5995,33 @@ for expr in [lambda: isinstance(E, 'foo'), lambda: isinstance(), lambda: isinsta
 }
 
 #[test]
+fn cpython_builtin_none_ne_direct_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
+        name: "builtin-none-ne-direct",
+        source: r#"print(None.__ne__(None))
+print(None.__ne__(0) is NotImplemented)
+print(None.__ne__('abc') is NotImplemented)
+print(None.__eq__(None))
+print(None.__eq__(0) is NotImplemented)
+print(type(None).__ne__(None, None))
+print(type(None).__ne__(None, 0) is NotImplemented)
+left = []
+right = []
+print(object.__eq__(None, None))
+print(object.__eq__(left, left))
+print(object.__eq__(left, right) is NotImplemented)
+print(object.__ne__(None, None))
+print(object.__ne__(left, right) is NotImplemented)
+for expr in [lambda: None.__ne__(), lambda: None.__ne__(0, 1), lambda: object.__eq__(None), lambda: object.__ne__(None, 0, 1)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_globals_locals_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py namespace builtins and Lib/test/test_scope.py locals behavior",
