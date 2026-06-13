@@ -11491,6 +11491,16 @@ obj = UserList()
 print(obj.data, type(obj).__name__)
 obj.append(123)
 print(obj.data, list(obj), len(obj), 123 in obj)
+print(repr(obj), str(obj), format(obj, ''))
+print(obj.__repr__(), obj.__str__(), obj.__format__(''))
+print(UserList.__repr__(obj), UserList.__str__(obj), UserList.__format__(obj, ''))
+try:
+    obj.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
+recursive = UserList()
+recursive.append(recursive)
+print(repr(recursive), recursive.__repr__())
 internal = obj.copy()
 print(internal.data is obj.data, internal.data == obj.data, type(internal).__name__)
 obj.test = [1234]

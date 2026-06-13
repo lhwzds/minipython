@@ -1388,6 +1388,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             repr_list_items_checked(&items, active)
         }
         Value::List(items) => repr_list_items_checked(items, active),
+        Value::UserList { data, .. } => repr_list_items_checked(data, active),
         Value::Tuple(items) => repr_tuple_checked(items, active),
         Value::Set(items) => {
             let ptr = Rc::as_ptr(items) as usize;
@@ -29237,6 +29238,42 @@ impl Vm {
             return get_iter(Value::List(data.clone()));
         }
 
+        if matches!(method, "__repr__" | "__str__") {
+            reject_method_keywords(name, &keywords)?;
+            if !rest.is_empty() {
+                return Err(format!(
+                    "{method}() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            }
+            return Ok(Value::String(repr_value_checked(&Value::List(
+                data.clone(),
+            ))?));
+        }
+
+        if method == "__format__" {
+            reject_method_keywords(name, &keywords)?;
+            let [format_spec] = rest else {
+                return Err(format!(
+                    "__format__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let format_spec = format_spec_string(format_spec, "object.__format__()")?;
+            if format_spec.is_empty() {
+                return Ok(Value::String(repr_value_checked(&Value::List(
+                    data.clone(),
+                ))?));
+            }
+            return Err(format!(
+                "TypeError: unsupported format string passed to {}.__format__",
+                type_name(&Value::UserList {
+                    data: data.clone(),
+                    attrs: attrs.clone()
+                })
+            ));
+        }
+
         if matches!(method, "__eq__" | "__ne__") {
             reject_method_keywords(name, &keywords)?;
             let [other] = rest else {
@@ -52336,12 +52373,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
                 | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
-                | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__setitem__" | "__lt__"
-                | "__le__" | "__gt__" | "__ge__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("UserList.{name}"))),
-                    receiver: Box::new(Value::UserList { data, attrs }),
-                    identity: Rc::new(()),
-                }),
+                | "__format__" | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__repr__"
+                | "__setitem__" | "__str__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("UserList.{name}"))),
+                        receiver: Box::new(Value::UserList { data, attrs }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!(
                     "AttributeError: UserList has no attribute '{name}'"
                 )),
@@ -53307,6 +53346,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserDict" && name == "__init__" => {
             Ok(Value::Builtin("UserDict.__init__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserList"
+                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+        {
+            Ok(Value::Builtin(format!("UserList.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "UserDict"

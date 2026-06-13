@@ -724,7 +724,9 @@ Recent runtime migration notes:
   empty-format behavior, with direct output parity evidence.
 - The bundled `collections` module also includes
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
-  CPython public `UserList` method subset with direct output parity evidence.
+  CPython public `UserList` method subset, including direct display,
+  empty-format, and recursive display behavior, with direct output parity
+  evidence.
 - The bundled `json` module includes `cpython_json_loads_dumps_diff_subset` /
   `cpython_json_loads_dumps_basic_diff_subset` /
   `cpython_json_loads_dumps_basic_subset`,
@@ -3280,8 +3282,9 @@ Recent runtime migration notes:
   `cpython_collections_userlist_public_methods_subset`, covering CPython
   `TestUserObjects` public `UserList` behavior for `dir(UserList)` protocol
   coverage against `list`, construction from lists and other UserList objects,
-  `.data`, list mutation/iteration/length/containment, `.copy()`, and
-  `copy.copy()` with shallow instance-attribute copying.
+  `.data`, list mutation/iteration/length/containment, direct
+  display/empty-format methods, recursive display, `.copy()`, and `copy.copy()`
+  with shallow instance-attribute copying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset` and
   `cpython_collections_userlist_namedtuple_sequence_order_subset`, covering
