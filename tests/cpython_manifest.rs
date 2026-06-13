@@ -4041,8 +4041,10 @@ fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence()
 fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries() {
     for required in [
         "default CPython oracle used by `cpython_diff` in this workspace",
-        "does not expose `bytearray.resize()`",
         "does not expose `bytearray.take_bytes()`",
+        "CPython-version-gated direct diff evidence",
+        "`cpython_bytearray_resize_diff_subset`",
+        "`cpython_bytearray_resize_forbidden_diff_subset`",
         "local subset evidence rather than direct `cpython_diff` evidence",
         "does not expose",
         "current public `__buffer__`",
@@ -4060,7 +4062,9 @@ fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries()
     for required in [
         "default CPython",
         "oracle used by `cpython_diff` in this workspace",
-        "does not expose `bytearray.resize()`",
+        "CPython-version-gated",
+        "`cpython_bytearray_resize_diff_subset`",
+        "`cpython_bytearray_resize_forbidden_diff_subset`",
         "does not expose",
         "`bytearray.take_bytes()`",
         "remains local subset evidence",

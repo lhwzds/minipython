@@ -3458,16 +3458,17 @@ Completed in the bytearray resize pass:
   negative-length `ValueError`, type/arity `TypeError`, `dir(bytearray)`
   visibility, and a sandbox-safe `MemoryError` guard for impractically large
   sizes such as `sys.maxsize`.
-- This remains local subset evidence rather than direct `cpython_diff` evidence
-  because the default CPython oracle used by `cpython_diff` in this workspace
-  does not expose `bytearray.resize()`.
+- Added CPython-version-gated direct diff evidence in
+  `cpython_bytearray_resize_diff_subset` for the small-size public behavior and
+  catchable error classes. The `sys.maxsize`-style impractically large
+  allocation guard remains local sandbox subset evidence.
 - Added `cpython_bytearray_resize_forbidden_subset`, adapted from current
   CPython `Lib/test/test_bytes.py::ByteArrayTest::test_resize_forbidden`,
   covering active memoryview exports blocking `bytearray.resize()`, resizing
   slice assignment, `pop()`, `remove()`, item deletion, and non-contiguous
-  slice-size changes before mutating the original bytearray. This remains local
-  subset evidence for the same default-oracle `bytearray.resize()` availability
-  boundary.
+  slice-size changes before mutating the original bytearray. Direct
+  CPython-version-gated diff evidence is in
+  `cpython_bytearray_resize_forbidden_diff_subset`.
 
 Completed in the bytearray take-bytes pass:
 
@@ -3504,9 +3505,9 @@ Completed in the bytearray allocation/subclass mutation pass:
   `__delitem__`, and identity-preserving `__iadd__` / `__imul__`.
 - Direct CPython diff evidence for the stable `__alloc__()` /
   generator-driven `__init__()` / subclass mutation slice is in
-  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; the subclass
-  `resize()` branch remains local subset evidence because the default oracle
-  does not expose `bytearray.resize()`.
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; broader subclass
+  `resize()` behavior remains local subset evidence outside the gated
+  `bytearray.resize()` diff slice.
 
 Completed in the bytearray iterator/repeat regression pass:
 

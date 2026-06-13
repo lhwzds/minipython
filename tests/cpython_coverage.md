@@ -1726,9 +1726,11 @@ Recent runtime migration notes:
   current CPython `ByteArrayTest::test_resize` public behavior for bytearray
   truncation, zero-filled growth, `__index__` length conversion, catchable
   arity/type/negative-length errors, `dir(bytearray)` visibility, and
-  sandbox-safe `MemoryError` behavior for impractically large sizes. This
-  remains local subset evidence because the default CPython oracle used by
-  `cpython_diff` in this workspace does not expose `bytearray.resize()`.
+  sandbox-safe `MemoryError` behavior for impractically large sizes. Direct
+  CPython diff evidence for the small-size public behavior and catchable error
+  classes is in the CPython-version-gated
+  `cpython_bytearray_resize_diff_subset`; the impractically large allocation
+  guard remains local sandbox subset evidence.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_alloc_and_subclass_mutation_subset`, covering CPython
   `ByteArrayTest::test_alloc` and `test_init_alloc` public `__alloc__()`
@@ -1737,15 +1739,16 @@ Recent runtime migration notes:
   inherited bytearray mutation methods on subclasses without copying CPython's
   exact allocator growth policy. Direct CPython diff evidence for the stable
   allocation/subclass mutation slice is in
-  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; the subclass
-  `resize()` branch remains local subset evidence because the default oracle
-  does not expose `bytearray.resize()`.
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; broader
+  subclass `resize()` behavior remains local subset evidence outside the
+  gated `bytearray.resize()` diff slice.
 - `STRING_RUNTIME` also includes `cpython_bytearray_resize_forbidden_subset`,
   covering current CPython `ByteArrayTest::test_resize_forbidden` public
   behavior for active memoryview exports blocking bytearray resizing through
   `resize()`, slice assignment, `pop()`, `remove()`, and deletion while
-  preserving the original bytes. This remains local subset evidence for the
-  same default-oracle `bytearray.resize()` availability boundary.
+  preserving the original bytes. Direct CPython diff evidence for the
+  sandbox-safe public behavior is in the CPython-version-gated
+  `cpython_bytearray_resize_forbidden_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_take_bytes_subset`, covering
   current CPython `ByteArrayTest::test_take_bytes` public behavior for
   take-and-delete bytearray prefix extraction, negative stop normalization,

@@ -17114,6 +17114,85 @@ for expr in [lambda: a.extend('def'), lambda: a.extend(1.0)]:
 }
 
 #[test]
+fn cpython_bytearray_resize_diff_subset() {
+    let probe = run_cpython("print(hasattr(bytearray(b''), 'resize'))")
+        .expect("failed to probe CPython bytearray.resize support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping bytearray.resize diff: CPython oracle lacks bytearray.resize");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_resize public small-size subset",
+        name: "bytearray-resize",
+        source: r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+ba = bytearray(b'abcdef')
+print(ba.resize(3), ba)
+print(ba.resize(10), len(ba), ba)
+ba[3:10] = b'defghij'
+print(ba)
+print(ba.resize(0), ba)
+print(ba.resize(10), len(ba), ba)
+print(ba.resize(Indexable(3)), ba)
+for expr in [lambda: bytearray().resize(), lambda: bytearray().resize(10, 10), lambda: bytearray().resize(-1), lambda: bytearray().resize(-200), lambda: bytearray().resize('3')]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)
+print('resize' in dir(bytearray), 'resize' in dir(bytearray()))"#,
+    });
+}
+
+#[test]
+fn cpython_bytearray_resize_forbidden_diff_subset() {
+    let probe = run_cpython("print(hasattr(bytearray(b''), 'resize'))")
+        .expect("failed to probe CPython bytearray.resize support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!(
+            "skipping bytearray.resize forbidden diff: CPython oracle lacks bytearray.resize"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_resize_forbidden public subset",
+        name: "bytearray-resize-forbidden",
+        source: r#"b = bytearray(10)
+v = memoryview(b)
+def manual_resize(n):
+    b[1:-1] = range(n + 1, 2*n - 1)
+def delitem():
+    del b[1]
+def delslice_assign():
+    b[1:-1:2] = b''
+b.resize(10)
+orig = b[:]
+for name, action in [
+    ('resize-grow', lambda: b.resize(11)),
+    ('manual-resize', lambda: manual_resize(11)),
+    ('resize-shrink', lambda: b.resize(9)),
+    ('resize-zero', lambda: b.resize(0)),
+    ('pop', lambda: b.pop(0)),
+    ('remove', lambda: b.remove(b[1])),
+    ('delitem', delitem),
+    ('delslice-assign', delslice_assign),
+]:
+    try:
+        action()
+    except BufferError as error:
+        print(name, error.__class__.__name__, b == orig)
+    else:
+        print(name, 'accepted', b == orig, b)
+v.release()
+print(b.resize(11), len(b), b[:10] == orig)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_alloc_and_subclass_mutation_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_alloc, ::test_init_alloc, and public subclass mutation slice",
