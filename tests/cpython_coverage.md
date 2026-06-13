@@ -577,8 +577,9 @@ Recent runtime migration notes:
 - The bundled `collections` module also includes
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
   CPython public `UserList` method subset with direct output parity evidence.
-- The bundled `json` module includes `cpython_json_loads_dumps_basic_subset`,
-  `cpython_json_loads_dumps_diff_subset`,
+- The bundled `json` module includes `cpython_json_loads_dumps_diff_subset` /
+  `cpython_json_loads_dumps_basic_diff_subset` /
+  `cpython_json_loads_dumps_basic_subset`,
   `cpython_json_keyword_argument_binding_diff_subset` /
   `cpython_json_keyword_argument_binding_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset` /

@@ -2699,7 +2699,6 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
     let expected = [
         "cpython_collections_chainmap_copy_pickle_eval_identity",
         "cpython_collections_namedtuple_pickle",
-        "cpython_json_loads_dumps_basic",
         "cpython_operator_pickle_helper",
     ]
     .into_iter()
@@ -2709,19 +2708,6 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         missing_same_named_diff, expected,
         "sandbox stdlib subset evidence without same-named CPython diff must be explicitly classified"
     );
-
-    for (subset, diff) in [(
-        "cpython_json_loads_dumps_basic_subset",
-        "cpython_json_loads_dumps_diff_subset",
-    )] {
-        assert!(
-            CPYTHON_COVERAGE.contains(subset)
-                && CPYTHON_COVERAGE.contains(diff)
-                && CPYTHON_MIGRATION.contains(subset)
-                && CPYTHON_MIGRATION.contains(diff),
-            "broader CPython diff `{diff}` must be documented as covering runtime subset `{subset}`"
-        );
-    }
 
     for subset in [
         "cpython_operator_pickle_helper_subset",
@@ -2783,6 +2769,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include json");
     for evidence in [
         "cpython_json_loads_dumps_diff_subset",
+        "cpython_json_loads_dumps_basic_diff_subset",
         "cpython_json_keyword_argument_binding_diff_subset",
         "cpython_json_loads_escape_and_duplicate_key_diff_subset",
         "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
@@ -2815,11 +2802,17 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
 #[test]
 fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
     let diff_name = "cpython_json_loads_dumps_diff_subset";
+    let direct_diff_name = "cpython_json_loads_dumps_basic_diff_subset";
+    let helper_name = "assert_cpython_json_loads_dumps_basic_diff";
     let subset_name = "cpython_json_loads_dumps_basic_subset";
 
     assert!(
         CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
         "json loads/dumps direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {direct_diff_name}(")),
+        "json loads/dumps same-named direct CPython diff evidence must exist"
     );
     assert!(
         CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
@@ -2828,8 +2821,10 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
-            document.contains(diff_name) && document.contains(subset_name),
-            "json docs must link `{diff_name}` to `{subset_name}`"
+            document.contains(diff_name)
+                && document.contains(direct_diff_name)
+                && document.contains(subset_name),
+            "json docs must link `{diff_name}` / `{direct_diff_name}` to `{subset_name}`"
         );
         assert!(
             document.contains("UTF-16")
@@ -2842,8 +2837,8 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
     }
 
     let diff_start = CPYTHON_DIFF
-        .find(&format!("fn {diff_name}("))
-        .expect("json loads/dumps diff evidence must exist");
+        .find(&format!("fn {helper_name}("))
+        .expect("json loads/dumps shared diff helper must exist");
     let diff_end = CPYTHON_DIFF[diff_start..]
         .find("\n#[test]")
         .map(|offset| diff_start + offset)

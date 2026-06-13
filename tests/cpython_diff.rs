@@ -456,11 +456,10 @@ fn cpython_bytes_case_path(name: &str) -> PathBuf {
     path
 }
 
-#[test]
-fn cpython_json_loads_dumps_diff_subset() {
+fn assert_cpython_json_loads_dumps_basic_diff(name: &'static str) {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads/dumps core data model subset",
-        name: "json-loads-dumps-core-values",
+        name,
         source: r#"import json
 import math
 from collections import namedtuple
@@ -588,6 +587,16 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
     value = json.loads(text)
     print(text, math.isnan(value), math.isinf(value), value < 0)"#,
     });
+}
+
+#[test]
+fn cpython_json_loads_dumps_diff_subset() {
+    assert_cpython_json_loads_dumps_basic_diff("json-loads-dumps-core-values");
+}
+
+#[test]
+fn cpython_json_loads_dumps_basic_diff_subset() {
+    assert_cpython_json_loads_dumps_basic_diff("json-loads-dumps-basic-direct");
 }
 
 #[test]
