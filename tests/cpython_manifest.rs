@@ -3761,6 +3761,106 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
 }
 
 #[test]
+fn json_hook_boundaries_stay_sandbox_classified() {
+    let diff_name = "cpython_json_keyword_argument_binding_diff_subset";
+    let subset_name = "cpython_json_keyword_argument_binding_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json keyword binding CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json keyword binding local subset evidence must exist"
+    );
+
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("json keyword binding diff evidence must be extractable");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+    for required in [
+        "cls=None",
+        "object_hook=None",
+        "parse_float=None",
+        "parse_int=None",
+        "parse_constant=None",
+        "object_pairs_hook=None",
+        "default=None",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "json CPython diff evidence must cover supported None hook keyword `{required}`"
+        );
+    }
+
+    let subset_start = CPYTHON_SUBSET
+        .find(&format!("fn {subset_name}("))
+        .expect("json keyword binding subset evidence must be extractable");
+    let subset_end = CPYTHON_SUBSET[subset_start..]
+        .find("\n#[test]")
+        .map(|offset| subset_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let subset_source = &CPYTHON_SUBSET[subset_start..subset_end];
+    for required in [
+        "loads-object-hook",
+        "loads-parse-int",
+        "dumps-cls",
+        "dumps-default",
+        "TypeError True",
+    ] {
+        assert!(
+            subset_source.contains(required),
+            "json local subset evidence must keep non-None hook boundary `{required}`"
+        );
+    }
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "json")
+        .expect("sandbox stdlib manifest must include json");
+    for excluded in [
+        "object_hook",
+        "object_pairs_hook",
+        "parse_float",
+        "parse_int",
+        "parse_constant",
+        "default",
+        "cls",
+        "File APIs",
+        "full `JSONDecodeError` compatibility",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "json sandbox manifest must keep `{excluded}` outside the supported surface"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("encoder/decoder") && document.contains("hooks"),
+            "json docs must keep encoder/decoder hooks outside the default sandbox surface"
+        );
+        for required in [
+            "File APIs",
+            "JSONDecodeError",
+            "object_hook",
+            "parse_int",
+            "default",
+            "cls",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must keep sandbox hook/file/error boundary `{required}` documented"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_error_boundary_diff_covers_subset_surface() {
     for (diff_name, subset_name) in [
         (
