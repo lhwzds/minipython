@@ -7537,6 +7537,12 @@ Completed in the operator differential-parity pass:
   direct subset tests. The named
   `cpython_tokenize_matrix_multiply_and_ellipsis_diff_subset` keeps this
   tokenizer subset tied to direct CPython output parity.
+- Extended the same matrix-multiply surface so `__matmul__` returning
+  `NotImplemented` falls through to `__rmatmul__`, and unsupported operands now
+  raise the CPython public `unsupported operand type(s) for @` `TypeError`
+  text. `cpython_operator_arithmetic_bitwise_subset` and
+  `cpython_operator_arithmetic_bitwise_diff_subset` pin the operator helper
+  behavior directly.
 
 Completed in the source-encoding detection pass:
 

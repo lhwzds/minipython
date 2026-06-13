@@ -9811,11 +9811,11 @@ fn cpython_tokenize_matrix_multiply_and_ellipsis_subset() {
     );
     assert_error(
         "print(1 @ 2)",
-        "runtime error: cannot matrix-multiply 1 and 2",
+        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
     );
     assert_error(
         "x = 1\nx @= 2",
-        "runtime error: cannot matrix-multiply 1 and 2",
+        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
     );
     assert_output(
         "class M:\n    def __matmul__(self, other):\n        return 4\n    def __imatmul__(self, other):\n        self.other = other\n        return self\nm = M()\nprint(m @ m)\nm @= 42\nprint(m.other)",
@@ -9828,6 +9828,18 @@ fn cpython_tokenize_matrix_multiply_and_ellipsis_subset() {
     assert_output(
         "class M:\n    def __rmatmul__(self, other):\n        return other + 2\nprint(40 @ M())",
         &["42"],
+    );
+    assert_output(
+        concat!(
+            "class Left:\n",
+            "    def __matmul__(self, other):\n",
+            "        return NotImplemented\n",
+            "class Right:\n",
+            "    def __rmatmul__(self, other):\n",
+            "        return 'right'\n",
+            "print(Left() @ Right())\n",
+        ),
+        &["right"],
     );
 }
 
@@ -23695,7 +23707,7 @@ fn cpython_augassign_operator_subset() {
     assert_output("v = 2\nv **= 3\nprint(v)", &["8"]);
     assert_error(
         "v = 1\nv @= 2",
-        "runtime error: cannot matrix-multiply 1 and 2",
+        "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'",
     );
     assert_output(
         "class M:\n    def __imatmul__(self, other):\n        self.other = other\n        return self\nm = M()\nm @= 2\nprint(m.other)",
@@ -39419,6 +39431,13 @@ fn cpython_operator_arithmetic_bitwise_subset() {
             "    def __matmul__(self, other):\n",
             "        return other - 1\n",
             "print(operator.matmul(M(), 42))\n",
+            "class Left:\n",
+            "    def __matmul__(self, other):\n",
+            "        return NotImplemented\n",
+            "class Right:\n",
+            "    def __rmatmul__(self, other):\n",
+            "        return 'right'\n",
+            "print(operator.matmul(Left(), Right()))\n",
             "class X:\n",
             "    def __index__(self):\n",
             "        return 1\n",
@@ -39428,6 +39447,10 @@ fn cpython_operator_arithmetic_bitwise_subset() {
             "        expr()\n",
             "    except TypeError as error:\n",
             "        print(type(error).__name__)\n",
+            "try:\n",
+            "    operator.matmul([], [])\n",
+            "except TypeError as error:\n",
+            "    print(str(error))\n",
             "for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:\n",
             "    try:\n",
             "        expr()\n",
@@ -39440,6 +39463,7 @@ fn cpython_operator_arithmetic_bitwise_subset() {
             "10 15 5 10 2",
             "-5 5 5 -5 -5 -5",
             "41",
+            "right",
             "1 0 2",
             "TypeError",
             "TypeError",
@@ -39453,6 +39477,7 @@ fn cpython_operator_arithmetic_bitwise_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "unsupported operand type(s) for @: 'list' and 'list'",
             "ValueError",
             "ValueError",
         ],

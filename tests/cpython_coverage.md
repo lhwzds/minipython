@@ -1616,8 +1616,10 @@ Recent runtime migration notes:
   `test_operator.py` arithmetic and bitwise helpers `abs`, `add`, `sub`, `mul`,
   `floordiv`, `truediv`, `mod`, `pow`, `and_`, `or_`, `xor`, `lshift`,
   `rshift`, unary `neg`/`pos`/`invert` aliases, `matmul`, and `index`, including
-  representative TypeError/ValueError classification. Direct CPython diff
-  evidence is in `cpython_operator_arithmetic_bitwise_diff_subset`.
+  `NotImplemented` matrix-multiply reflected-method fallback plus
+  representative TypeError/ValueError classification and CPython-style
+  unsupported-operand text for unsupported `matmul` operands. Direct CPython
+  diff evidence is in `cpython_operator_arithmetic_bitwise_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_sequence_member_subset`,
   covering CPython `test_operator.py` sequence and member helpers `concat`,
   `countOf`, `indexOf`, `contains`, `getitem`, `setitem`, and `delitem`,

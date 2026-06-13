@@ -4506,11 +4506,17 @@ fn reports_arithmetic_type_errors() {
     );
     assert_eq!(
         run_source("print(1 @ 2)"),
-        Err("runtime error: cannot matrix-multiply 1 and 2".to_string())
+        Err(
+            "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source("x = 1\nx @= 2"),
-        Err("runtime error: cannot matrix-multiply 1 and 2".to_string())
+        Err(
+            "runtime error: TypeError: unsupported operand type(s) for @: 'int' and 'int'"
+                .to_string()
+        )
     );
 }
 

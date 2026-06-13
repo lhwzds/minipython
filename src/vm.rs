@@ -13396,15 +13396,17 @@ impl Vm {
     }
 
     fn matrix_multiply_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
-        if let Some(method) = instance_special_method(&left, "__matmul__") {
-            return self.call_value(method, vec![right]);
+        if let Some(value) =
+            self.call_binary_special_method(&left, &right, "__matmul__", "__rmatmul__")?
+        {
+            return Ok(value);
         }
 
-        if let Some(method) = instance_special_method(&right, "__rmatmul__") {
-            return self.call_value(method, vec![left]);
-        }
-
-        Err(format!("cannot matrix-multiply {left} and {right}"))
+        Err(format!(
+            "TypeError: unsupported operand type(s) for @: '{}' and '{}'",
+            type_name(&left),
+            type_name(&right)
+        ))
     }
 
     fn in_place_matrix_multiply_values(

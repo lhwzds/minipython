@@ -12212,6 +12212,13 @@ class M:
     def __matmul__(self, other):
         return other - 1
 print(operator.matmul(M(), 42))
+class Left:
+    def __matmul__(self, other):
+        return NotImplemented
+class Right:
+    def __rmatmul__(self, other):
+        return 'right'
+print(operator.matmul(Left(), Right()))
 class X:
     def __index__(self):
         return 1
@@ -12221,6 +12228,10 @@ for expr in [lambda: operator.abs(), lambda: operator.abs(None), lambda: operato
         expr()
     except TypeError as error:
         print(type(error).__name__)
+try:
+    operator.matmul([], [])
+except TypeError as error:
+    print(str(error))
 for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:
     try:
         expr()
