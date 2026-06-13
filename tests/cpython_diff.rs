@@ -5575,6 +5575,20 @@ class Child(CallableClass):
     pass
 child = Child()
 print(callable(child), child(6))
+class Block(CallableClass):
+    __call__ = None
+print(callable(Block()))
+class DescriptorCall:
+    class D:
+        def __get__(self, obj, cls):
+            return lambda: 2
+    __call__ = D()
+print(callable(DescriptorCall()))
+class PropertyCall:
+    @property
+    def __call__(self):
+        return lambda: 3
+print(callable(PropertyCall()))
 for expr in [lambda: callable(), lambda: callable(1, 2)]:
     try:
         expr()

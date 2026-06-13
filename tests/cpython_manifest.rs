@@ -10028,6 +10028,12 @@ fn builtin_callable_public_subset_has_focused_diff_evidence() {
         "def __call__(self, value):",
         "callable(cc)",
         "callable(child)",
+        "class Block(CallableClass):",
+        "__call__ = None",
+        "class DescriptorCall:",
+        "def __get__(self, obj, cls):",
+        "class PropertyCall:",
+        "@property",
         "lambda: callable(1, 2)",
     ] {
         assert!(
@@ -10050,6 +10056,12 @@ fn builtin_callable_public_subset_has_focused_diff_evidence() {
         "def __call__(self, value):",
         "callable(cc)",
         "callable(child)",
+        "class Block(CallableClass):",
+        "__call__ = None",
+        "class DescriptorCall:",
+        "def __get__(self, obj, cls):",
+        "class PropertyCall:",
+        "@property",
         "lambda: callable(1, 2)",
     ] {
         assert!(
