@@ -579,8 +579,9 @@ Recent runtime migration notes:
   `cpython_collections_counter_public_subset`, covering CPython public
   `Counter` construction, mapping identity, missing-key zero lookup,
   values-based count totals, basic mutation helpers, `most_common()`,
-  `elements()`, update and subtract behavior, unary positive/negative
-  filtering, multiset arithmetic, and equality with matching counts.
+  `elements()`, direct display/empty-format methods, update and subtract
+  behavior, unary positive/negative filtering, multiset arithmetic, and equality
+  with matching counts.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public

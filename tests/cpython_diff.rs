@@ -10331,6 +10331,12 @@ fn cpython_collections_counter_public_diff_subset() {
         source: r#"from collections import Counter
 c = Counter('abracadabra')
 print(c['a'], c['z'], sorted(c.items()))
+print(c.__repr__(), c.__str__(), c.__format__(''))
+print(Counter.__repr__(c), Counter.__str__(c), Counter.__format__(c, ''))
+try:
+    c.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
 print(sum(c.values()), sorted((c + Counter({'z': 2, 'a': -5})).items()))
 print(sorted((c - Counter('aaa')).items()))
 print(sorted((+Counter({'a': 2, 'b': 0, 'c': -1})).items()))

@@ -25811,6 +25811,42 @@ impl Vm {
                 Ok(counter_in_place_value_from_operands(left, right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
+            "__repr__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__repr__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                counter_receiver_entries(receiver)?;
+                Ok(Value::String(repr_value_checked(receiver)?))
+            }
+            "__str__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__str__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                counter_receiver_entries(receiver)?;
+                Ok(Value::String(repr_value_checked(receiver)?))
+            }
+            "__format__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, format_spec] = args.as_slice() else {
+                    return Err(format!(
+                        "__format__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                counter_receiver_entries(receiver)?;
+                Ok(Value::String(self.call_object_format(vec![
+                    receiver.clone(),
+                    format_spec.clone(),
+                ])?))
+            }
             "__init__" | "update" | "subtract" => {
                 let Some((receiver, rest)) = args.split_first() else {
                     return Err(format!(
@@ -48539,6 +48575,7 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "values"
             | "__contains__"
             | "__delitem__"
+            | "__format__"
             | "__getitem__"
             | "__add__"
             | "__sub__"
@@ -48552,7 +48589,9 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__ixor__"
             | "__iter__"
             | "__len__"
+            | "__repr__"
             | "__setitem__"
+            | "__str__"
     )
 }
 
@@ -52381,15 +52420,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Counter { entries } => match name {
             "__init__" | "clear" | "copy" | "elements" | "fromkeys" | "get" | "items" | "keys"
             | "most_common" | "pop" | "popitem" | "setdefault" | "subtract" | "total"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__iter__"
-            | "__len__" | "__setitem__" | "__add__" | "__sub__" | "__or__" | "__and__"
-            | "__xor__" | "__iadd__" | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
-                    receiver: Box::new(Value::Counter { entries }),
-                    identity: Rc::new(()),
-                })
-            }
+            | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
+            | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__setitem__" | "__str__"
+            | "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" | "__iadd__"
+            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                receiver: Box::new(Value::Counter { entries }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
         },
         Value::UserDict { data, attrs } => {
