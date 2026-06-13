@@ -4844,6 +4844,46 @@ fn cpython_match_stmt_diff_covers_match_runtime_subset() {
 }
 
 #[test]
+fn cpython_match_numeric_helper_diff_covers_runtime_subset() {
+    let diff_name = "cpython_match_numeric_literal_helper_rules_diff_subset";
+    let subset_name = "cpython_match_numeric_literal_helper_rules_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("match numeric helper CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "match numeric helper runtime subset evidence must exist"
+    );
+    for required in [
+        "case 1",
+        "case -2",
+        "case 1.5",
+        "case 2j",
+        "case 1 + 2j",
+        "case -1.5 - 2.5j",
+        "case {-1.5 - 2.5j: item}",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "match numeric helper diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "match numeric helper docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_match_sequence_helper_diff_covers_runtime_subset() {
     let diff_name = "cpython_match_sequence_helper_rules_diff_subset";
     let subset_name = "cpython_match_sequence_helper_rules_subset";

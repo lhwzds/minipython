@@ -4189,11 +4189,11 @@ names like `from ._threading_handler import ...`.
 | `closed_pattern` | supported | Literal, capture, wildcard, value, group, sequence, mapping, and class alternatives are covered by `cpython_match_pattern_helper_rules_subset`, `cpython_grammar_match_stmt_subset`, and the focused match helper tests |
 | `literal_pattern` | supported | Numeric, signed, complex, adjacent-string, boolean, and None literal patterns are covered by `cpython_grammar_match_stmt_subset`; f-string and t-string match values are rejected by the parser like CPython |
 | `literal_expr` | supported | Literal mapping keys, adjacent-string keys, complex keys, singleton keys, dotted value keys, duplicate literal-key rejection, and rejected f-string/t-string mapping keys are covered by `cpython_match_pattern_helper_rules_subset` and `cpython_grammar_match_stmt_subset` |
-| `complex_number` | supported | Complex literal plus/minus alternatives in patterns and mapping keys are covered by `cpython_match_numeric_literal_helper_rules_subset` |
-| `signed_number` | supported | Positive and negative numeric literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` |
-| `signed_real_number` | supported | Positive and negative real parts of complex literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` |
-| `real_number` | supported | Real numeric literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` |
-| `imaginary_number` | supported | Imaginary literal patterns and complex imaginary parts are covered by `cpython_match_numeric_literal_helper_rules_subset` |
+| `complex_number` | supported | Complex literal plus/minus alternatives in patterns and mapping keys are covered by `cpython_match_numeric_literal_helper_rules_subset` / `cpython_match_numeric_literal_helper_rules_diff_subset` |
+| `signed_number` | supported | Positive and negative numeric literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` / `cpython_match_numeric_literal_helper_rules_diff_subset` |
+| `signed_real_number` | supported | Positive and negative real parts of complex literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` / `cpython_match_numeric_literal_helper_rules_diff_subset` |
+| `real_number` | supported | Real numeric literal patterns are covered by `cpython_match_numeric_literal_helper_rules_subset` / `cpython_match_numeric_literal_helper_rules_diff_subset` |
+| `imaginary_number` | supported | Imaginary literal patterns and complex imaginary parts are covered by `cpython_match_numeric_literal_helper_rules_subset` / `cpython_match_numeric_literal_helper_rules_diff_subset` |
 | `capture_pattern` | supported | Capture patterns are covered by `cpython_match_capture_wildcard_group_helper_rules_subset`, `cpython_match_pattern_helper_rules_subset`, and `runs_match_capture_pattern` |
 | `pattern_capture_target` | supported | Capture targets and their `_`, `.`, `(`, and `=` lookahead exclusions are covered by `cpython_match_capture_target_and_star_pattern_helper_rules_subset` and `cpython_match_pattern_helper_rules_subset` |
 | `wildcard_pattern` | supported | Wildcard cases and grouped wildcards are covered by `cpython_match_capture_wildcard_group_helper_rules_subset`, `cpython_grammar_match_stmt_subset`, and `runs_match_wildcard_case` |

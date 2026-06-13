@@ -16974,6 +16974,44 @@ match Point(1, 2):
 }
 
 #[test]
+fn cpython_match_numeric_literal_helper_rules_diff_subset() {
+    let probe = run_cpython("match 1:\n    case 1:\n        print('ok')")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"ok\n" {
+        eprintln!(
+            "skipping match numeric helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram complex_number, signed_number, signed_real_number, real_number, and imaginary_number public execution subset",
+        name: "match-numeric-literal-helper-rules",
+        source: r#"match 1:
+    case 1:
+        print("int")
+match -2:
+    case -2:
+        print("negative")
+match 1.5:
+    case 1.5:
+        print("real")
+match 2j:
+    case 2j:
+        print("imaginary")
+match 1 + 2j:
+    case 1 + 2j:
+        print("complex plus")
+match -1.5 - 2.5j:
+    case -1.5 - 2.5j:
+        print("complex minus")
+match {-1.5 - 2.5j: 'value'}:
+    case {-1.5 - 2.5j: item}:
+        print(item)"#,
+    });
+}
+
+#[test]
 fn cpython_match_sequence_helper_rules_diff_subset() {
     let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
         .expect("failed to probe CPython match statement support");

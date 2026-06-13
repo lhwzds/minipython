@@ -2502,6 +2502,12 @@ Completed in the with-statement supported-promotion pass:
   `as`, tuple/list/starred targets, mixed multiple managers, async-with context
   errors, and invalid `as` targets.
 
+Completed in the match numeric helper direct-diff pass:
+
+- Added `cpython_match_numeric_literal_helper_rules_diff_subset` as direct
+  CPython output parity for supported numeric literal match-pattern forms,
+  including signed real/imaginary/complex patterns and numeric mapping keys.
+
 Completed in the match sequence/mapping supported-promotion pass:
 
 - Added `cpython_match_sequence_helper_rules_subset` and promoted
