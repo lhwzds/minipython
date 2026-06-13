@@ -1145,10 +1145,16 @@ fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
     );
 
     for module in [
+        "asyncio",
+        "http",
+        "multiprocessing",
+        "ssl",
         "socket",
         "subprocess",
         "signal",
+        "threading",
         "pty",
+        "urllib",
         "_ssl",
         "_socket",
         "_ctypes",

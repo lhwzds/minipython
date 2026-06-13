@@ -68,10 +68,12 @@ and registry classification contract.
 
 The default stop line excludes:
 
-- Full CPython standard library coverage.
+- Full CPython standard library coverage, including higher-level packages such
+  as `asyncio`, `http`, `ssl`, `threading`, `urllib`, and `multiprocessing`.
 - Host I/O integration: real `open()`, file descriptors, TTY behavior,
   `input()`, and `pty`.
-- Network and process integration: `socket`, `subprocess`, and `signal`.
+- Network and process integration: `socket`, `subprocess`, `signal`, `ssl`,
+  `threading`, and `multiprocessing`.
 - C ABI and C extension compatibility, including `_ssl`, `_socket`, `_ctypes`,
   and `_testcapi`.
 - CPython implementation contracts: refcounts, GC tracking, bytecode/opcode
