@@ -4147,6 +4147,73 @@ fn operator_newer_helpers_and_pickle_stop_line_stay_classified() {
 }
 
 #[test]
+fn operator_pickle_helper_subset_has_focused_compatibility_evidence() {
+    for required in [
+        "fn cpython_operator_pickle_helper_subset(",
+        "test_operator.py::OperatorPickleTestCase",
+        "internal pickle payload",
+        "binary pickle",
+        "import operator, pickle",
+        "class A:",
+        "a.t.u.v = 'V'",
+        "attr_counts = [0, 0, 0]",
+        "operator.attrgetter('x')",
+        "operator.attrgetter('x', 'y', 'z')",
+        "operator.attrgetter('t.u.v')",
+        "repr(f2) == repr(f) and f2(a) == f(a) and f2 is not f",
+        "item_counts = [0, 0]",
+        "operator.itemgetter(2)",
+        "operator.itemgetter(2, 0, 4)",
+        "method_counts = [0, 0, 0, 0]",
+        "operator.methodcaller('bar')",
+        "operator.methodcaller('foo', 1, 2)",
+        "operator.methodcaller('bar', f=5)",
+        "operator.methodcaller('baz', self='eggs', name='spam')",
+        "stored = [1]",
+        "operator.methodcaller('capture', stored)",
+        "payload = pickle.dumps(f)",
+        "stored.append(2)",
+        "result.append(3)",
+        "attrgetter [6, 6, 6]",
+        "itemgetter [6, 6]",
+        "methodcaller [6, 6, 6, 6]",
+        "[1, 2] [1, 3] False",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator pickle helper subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_operator_pickle_helper_diff_subset("),
+        "operator pickle helper must remain subset-only while using MiniPython internal pickle payloads"
+    );
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_pickle_helper_subset")
+            && CPYTHON_COVERAGE.contains("OperatorPickleTestCase")
+            && CPYTHON_COVERAGE.contains("attrgetter")
+            && CPYTHON_COVERAGE.contains("itemgetter")
+            && CPYTHON_COVERAGE.contains("methodcaller")
+            && CPYTHON_COVERAGE.contains("fresh restored helper identity")
+            && CPYTHON_COVERAGE.contains("deep-copied stored methodcaller arguments")
+            && CPYTHON_COVERAGE.contains("internal pickle payload surface"),
+        "coverage notes must describe operator pickle helper subset behavior and internal-payload boundary"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_pickle_helper_subset")
+            && CPYTHON_MIGRATION.contains("test_operator.py::OperatorPickleTestCase")
+            && CPYTHON_MIGRATION.contains("internal pickle")
+            && CPYTHON_MIGRATION.contains("payload format")
+            && CPYTHON_MIGRATION.contains("preserve repr/call behavior")
+            && CPYTHON_MIGRATION.contains("fresh object identity")
+            && CPYTHON_MIGRATION.contains("deep-copy stored methodcaller arguments"),
+        "migration notes must describe operator pickle helper public behavior without CPython binary pickle parity"
+    );
+}
+
+#[test]
 fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "array",
