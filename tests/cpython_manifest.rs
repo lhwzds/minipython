@@ -4853,6 +4853,142 @@ fn operator_module_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_signature_repr_helpers_have_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_signature_helper_subset(",
+        "OperatorTestCase",
+        "signature coverage for attrgetter, itemgetter, and methodcaller",
+        "public string form",
+        "operator helpers rather",
+        "than a full inspect.Signature implementation",
+        "str(inspect.signature(operator.attrgetter))",
+        "str(inspect.signature(operator.attrgetter('x', 'z', 'y')))",
+        "str(inspect.signature(operator.itemgetter))",
+        "str(inspect.signature(operator.itemgetter(2, 3, 5)))",
+        "str(inspect.signature(operator.methodcaller))",
+        "str(inspect.signature(operator.methodcaller('foo', 2, y=3)))",
+        "lambda: inspect.signature()",
+        "lambda: inspect.signature(1)",
+        "lambda: inspect.signature(operator.add)",
+        "(attr, /, *attrs)",
+        "(item, /, *items)",
+        "(name, /, *args, **kwargs)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator signature subset evidence must cover `{required}`"
+        );
+    }
+
+    let signature_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_signature_helper_diff_subset",
+    );
+    for required in [
+        "inspect.signature(operator.attrgetter)",
+        "skipping operator signature helper diff",
+        "OperatorTestCase signature helper public subset",
+        "operator-signature-helper",
+        "str(inspect.signature(operator.attrgetter))",
+        "str(inspect.signature(operator.attrgetter('x', 'z', 'y')))",
+        "str(inspect.signature(operator.itemgetter))",
+        "str(inspect.signature(operator.itemgetter(2, 3, 5)))",
+        "str(inspect.signature(operator.methodcaller))",
+        "str(inspect.signature(operator.methodcaller('foo', 2, y=3)))",
+        "lambda: inspect.signature()",
+        "lambda: inspect.signature(1)",
+        "lambda: inspect.signature(operator.add)",
+    ] {
+        assert!(
+            signature_body.contains(required),
+            "operator signature CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn cpython_operator_helper_repr_subset(",
+        "OperatorPickleTestCase repr",
+        "helper object repr/str shape",
+        "independently of MiniPython's internal pickle",
+        "operator.attrgetter('x')",
+        "operator.attrgetter('x', 'y', 't.u.v')",
+        "operator.itemgetter(2)",
+        "operator.itemgetter(2, 0, 4)",
+        "operator.itemgetter(slice(2, 4))",
+        "operator.methodcaller('bar')",
+        "operator.methodcaller('foo', 1, 2)",
+        "operator.methodcaller('bar', f=5)",
+        "operator.methodcaller('baz', self='eggs', name='spam')",
+        "str(helper) == repr(helper)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator helper repr subset evidence must cover `{required}`"
+        );
+    }
+
+    let repr_body =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_helper_repr_diff_subset");
+    for required in [
+        "OperatorPickleTestCase repr public subset",
+        "operator-helper-repr",
+        "operator.attrgetter('x')",
+        "operator.attrgetter('x', 'y', 't.u.v')",
+        "operator.itemgetter(2)",
+        "operator.itemgetter(2, 0, 4)",
+        "operator.itemgetter(slice(2, 4))",
+        "operator.methodcaller('bar')",
+        "operator.methodcaller('foo', 1, 2)",
+        "operator.methodcaller('bar', f=5)",
+        "operator.methodcaller('baz', self='eggs', name='spam')",
+        "str(helper) == repr(helper)",
+    ] {
+        assert!(
+            repr_body.contains(required),
+            "operator helper repr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_signature_helper_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_signature_helper_diff_subset")
+            && CPYTHON_COVERAGE.contains("attrgetter")
+            && CPYTHON_COVERAGE.contains("itemgetter")
+            && CPYTHON_COVERAGE.contains("methodcaller")
+            && CPYTHON_COVERAGE.contains("str(inspect.signature(...))")
+            && CPYTHON_COVERAGE.contains("without claiming full")
+            && CPYTHON_COVERAGE.contains("gated for CPython oracles")
+            && CPYTHON_COVERAGE.contains("cpython_operator_helper_repr_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_helper_repr_diff_subset")
+            && CPYTHON_COVERAGE.contains("helper object repr/str shape")
+            && CPYTHON_COVERAGE.contains("dotted attributes")
+            && CPYTHON_COVERAGE.contains("slice")
+            && CPYTHON_COVERAGE.contains("ordered keyword method args"),
+        "coverage notes must describe operator signature/repr helpers and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_signature_helper_subset")
+            && CPYTHON_MIGRATION.contains("str(inspect.signature(...))")
+            && CPYTHON_MIGRATION.contains("does not claim full `inspect.Signature`")
+            && CPYTHON_MIGRATION.contains("current default CPython 3.9")
+            && CPYTHON_MIGRATION.contains("oracle")
+            && CPYTHON_MIGRATION.contains("cpython_operator_helper_repr_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_helper_repr_diff_subset")
+            && CPYTHON_MIGRATION.contains("constructor")
+            && CPYTHON_MIGRATION.contains("expressions")
+            && CPYTHON_MIGRATION.contains("operator.attrgetter('x')")
+            && CPYTHON_MIGRATION.contains("dotted attribute")
+            && CPYTHON_MIGRATION.contains("names, slice arguments")
+            && CPYTHON_MIGRATION.contains("slice arguments")
+            && CPYTHON_MIGRATION.contains("ordered keyword")
+            && CPYTHON_MIGRATION.contains("method args")
+            && CPYTHON_MIGRATION
+                .contains("without copying CPython's internal helper object layout"),
+        "migration notes must describe operator signature/repr public behavior and subset boundaries"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
