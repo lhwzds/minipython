@@ -3361,7 +3361,9 @@ Completed in the bytes join-method pass:
   `cpython_bytes_memoryview_contiguity_methods_diff_subset` evidence for
   bytes/bytearray `strip()`, `replace()`, `split()` / `rsplit()`,
   `translate(delete=...)`, and `maketrans()` rejecting non-contiguous
-  `memoryview` arguments with CPython's C-contiguous `BufferError`.
+  `memoryview` arguments with CPython's C-contiguous `BufferError`, plus the
+  partition special case where bytes rejects non-contiguous views but bytearray
+  accepts their logical contents.
 - Added `cpython_bytes_join_translate_maketrans_typeerror_messages_subset` to
   pin CPython's exact public `TypeError.args[0]` diagnostics for bytes and
   bytearray `join()` unbound, missing-argument, over-arity, and non-iterable

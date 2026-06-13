@@ -19378,7 +19378,16 @@ for ctor in [bytes, bytearray]:
     show(ctor.__name__ + '.split.step', lambda base=base, step=step: base.split(step))
     show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))
     show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))
-    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))"#,
+    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))
+
+for ctor in [bytes, bytearray]:
+    base = ctor(b'ace')
+    step = memoryview(bytearray(b'abcdef'))[::2]
+    rev = memoryview(bytearray(b'abcdef'))[::-1]
+    show(ctor.__name__ + '.partition.step', lambda base=base, step=step: base.partition(step))
+    show(ctor.__name__ + '.rpartition.step', lambda base=base, step=step: base.rpartition(step))
+    show(ctor.__name__ + '.partition.rev', lambda base=base, rev=rev: base.partition(rev))
+    show(ctor.__name__ + '.rpartition.rev', lambda base=base, rev=rev: base.rpartition(rev))"#,
     });
 }
 

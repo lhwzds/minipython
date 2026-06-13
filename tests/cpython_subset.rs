@@ -32382,7 +32382,7 @@ fn cpython_bytes_join_subset() {
 #[test]
 fn cpython_bytes_memoryview_contiguity_methods_subset() {
     assert_output(
-        "def show(label, func):\n    try:\n        result = func()\n        print(label, 'ok', type(result).__name__, result)\n    except Exception as error:\n        print(label, error.__class__.__name__, str(error), 'C-contiguous' in str(error))\nfor ctor in [bytes, bytearray]:\n    base = ctor(b'abcdef')\n    mid = memoryview(bytearray(b'abcdef'))[2:5]\n    step = memoryview(bytearray(b'abcdef'))[::2]\n    show(ctor.__name__ + '.strip.mid', lambda base=base, mid=mid: base.strip(mid))\n    show(ctor.__name__ + '.strip.step', lambda base=base, step=step: base.strip(step))\n    show(ctor.__name__ + '.replace.old.step', lambda base=base, step=step: base.replace(step, b'X'))\n    show(ctor.__name__ + '.replace.new.step', lambda base=base, step=step: base.replace(b'cd', step))\n    show(ctor.__name__ + '.split.step', lambda base=base, step=step: base.split(step))\n    show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))\n    show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))\n    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))",
+        "def show(label, func):\n    try:\n        result = func()\n        print(label, 'ok', type(result).__name__, result)\n    except Exception as error:\n        print(label, error.__class__.__name__, str(error), 'C-contiguous' in str(error))\nfor ctor in [bytes, bytearray]:\n    base = ctor(b'abcdef')\n    mid = memoryview(bytearray(b'abcdef'))[2:5]\n    step = memoryview(bytearray(b'abcdef'))[::2]\n    show(ctor.__name__ + '.strip.mid', lambda base=base, mid=mid: base.strip(mid))\n    show(ctor.__name__ + '.strip.step', lambda base=base, step=step: base.strip(step))\n    show(ctor.__name__ + '.replace.old.step', lambda base=base, step=step: base.replace(step, b'X'))\n    show(ctor.__name__ + '.replace.new.step', lambda base=base, step=step: base.replace(b'cd', step))\n    show(ctor.__name__ + '.split.step', lambda base=base, step=step: base.split(step))\n    show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))\n    show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))\n    show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))\nfor ctor in [bytes, bytearray]:\n    base = ctor(b'ace')\n    step = memoryview(bytearray(b'abcdef'))[::2]\n    rev = memoryview(bytearray(b'abcdef'))[::-1]\n    show(ctor.__name__ + '.partition.step', lambda base=base, step=step: base.partition(step))\n    show(ctor.__name__ + '.rpartition.step', lambda base=base, step=step: base.rpartition(step))\n    show(ctor.__name__ + '.partition.rev', lambda base=base, rev=rev: base.partition(rev))\n    show(ctor.__name__ + '.rpartition.rev', lambda base=base, rev=rev: base.rpartition(rev))",
         &[
             "bytes.strip.mid ok bytes b'abcdef'",
             "bytes.strip.step BufferError memoryview: underlying buffer is not C-contiguous True",
@@ -32400,6 +32400,14 @@ fn cpython_bytes_memoryview_contiguity_methods_subset() {
             "bytearray.rsplit.step BufferError memoryview: underlying buffer is not C-contiguous True",
             "bytearray.translate.delete.step BufferError memoryview: underlying buffer is not C-contiguous True",
             "bytearray.maketrans.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.partition.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.rpartition.step BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.partition.rev BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytes.rpartition.rev BufferError memoryview: underlying buffer is not C-contiguous True",
+            "bytearray.partition.step ok tuple (bytearray(b''), bytearray(b'ace'), bytearray(b''))",
+            "bytearray.rpartition.step ok tuple (bytearray(b''), bytearray(b'ace'), bytearray(b''))",
+            "bytearray.partition.rev ok tuple (bytearray(b'ace'), bytearray(b''), bytearray(b''))",
+            "bytearray.rpartition.rev ok tuple (bytearray(b''), bytearray(b''), bytearray(b'ace'))",
         ],
     );
 }

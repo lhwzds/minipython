@@ -70854,6 +70854,13 @@ fn call_bytes_partition_method(
     }
 
     let (receiver, kind) = bytes_method_receiver(receiver, method)?;
+    if matches!(kind, BytesResultKind::Bytes) {
+        if let Value::MemoryView(view) = &rest[0] {
+            if !memoryview_is_contiguous(view)? {
+                return Err(bytes_noncontiguous_memoryview_buffer_error());
+            }
+        }
+    }
     let separator = bytes_like_method_argument(&rest[0], method, "first")?;
     if separator.is_empty() {
         return Err("ValueError: empty separator".to_string());

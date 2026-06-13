@@ -91,7 +91,8 @@ Direct diff mapping note:
 the public bytes/bytearray method behavior covered by
 `cpython_bytes_memoryview_contiguity_methods_subset`, including
 non-contiguous `memoryview` `BufferError` handling for strip, replace, split,
-rsplit, translate delete, and maketrans arguments.
+rsplit, translate delete, maketrans, and bytes partition/rpartition arguments,
+plus bytearray partition/rpartition logical-content handling.
 Direct diff mapping note: `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`
 directly compares public startswith/endswith prefix/suffix TypeError text
 covered by `cpython_bytes_prefix_suffix_typeerror_messages_subset`.
