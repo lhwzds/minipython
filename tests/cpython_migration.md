@@ -5483,9 +5483,11 @@ Completed in the bytes hex/fromhex method pass:
 - Added direct CPython output parity evidence
   `cpython_bytes_fromhex_string_diff_subset` for the stable public
   string-input bytes/bytearray `fromhex()` behavior, including ASCII whitespace
-  skipping and representative `ValueError` / `TypeError` classes. Bytes-like
-  `fromhex()` inputs remain subset evidence for the newer local CPython source
-  surface rather than default-oracle parity.
+  skipping and representative `ValueError` / `TypeError` classes. Added
+  capability-gated direct CPython evidence in
+  `cpython_bytes_fromhex_bytes_like_diff_subset` for newer bytes-like
+  `fromhex()` inputs, including bytes, bytearray, memoryview, `array('B')`, and
+  bytes/bytearray subclass storage.
 - Added runtime support for `bytes.fromhex()` and `bytearray.fromhex()` over
   string input, plus MiniPython support for bytes/bytearray input matching the
   newer local CPython source.

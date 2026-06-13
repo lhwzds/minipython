@@ -16889,6 +16889,49 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_fromhex_bytes_like_diff_subset() {
+    let probe = run_cpython("print(bytes.fromhex(b'61'))")
+        .expect("failed to probe CPython bytes.fromhex bytes-like support");
+    if !probe.status.success() {
+        eprintln!(
+            "skipping bytes.fromhex bytes-like diff: CPython oracle lacks bytes-like fromhex inputs"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_fromhex bytes-like public subset",
+        name: "bytes-fromhex-bytes-like",
+        source: r#"import array
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+sources = [
+    b' 1A\n2B\t30\v',
+    bytearray(b' 1A 2B 30 '),
+    memoryview(b' 1A 2B 30 '),
+    array.array('B', b' 1A 2B 30 '),
+    B(b'61 62'),
+    BA(b'63 64'),
+]
+for source in sources:
+    print(type(source).__name__, bytes.fromhex(source), bytearray.fromhex(source))
+for label, source in [
+    ('bytes-non-ascii', bytes([30, 31, 128])),
+    ('bytearray-non-ascii', bytearray([30, 31, 128])),
+    ('memoryview-odd', memoryview(b'a')),
+    ('array-bad', array.array('B', b'12 3x 56')),
+]:
+    for ctor in [bytes, bytearray]:
+        try:
+            ctor.fromhex(source)
+        except ValueError as error:
+            print(ctor.__name__, label, error.__class__.__name__, 'position' in str(error) or 'even number' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_repeat_id_preserving_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BytesTest::test_repeat_id_preserving",
