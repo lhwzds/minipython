@@ -4006,6 +4006,97 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn operator_length_hint_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_length_hint_subset(",
+        "OperatorTestCase::test_length_hint",
+        "TestReversed::test_len",
+        "operator.length_hint fallback rules",
+        "class X:",
+        "def __length_hint__(self):",
+        "operator.length_hint([], 2)",
+        "operator.length_hint(iter([1, 2, 3]))",
+        "operator.length_hint(X(2))",
+        "operator.length_hint(X(NotImplemented), 4)",
+        "operator.length_hint(X(TypeError), 12)",
+        "operator.length_hint(Y(), 10)",
+        "X('abc')",
+        "X(-2)",
+        "X(LookupError)",
+        "operator.length_hint(X(2), 'abc')",
+        "for seq in ('hello', tuple('hello'), list('hello'), range(5)):",
+        "rev = reversed(seq)",
+        "operator.length_hint(rev)",
+        "class SeqWithWeirdLen:",
+        "operator.length_hint(reversed(SeqWithWeirdLen()))",
+        "ZeroDivisionError",
+        "itertools.repeat('x', 3)",
+        "operator.length_hint(itertools.repeat('x'))",
+        "itertools.repeat('x').__length_hint__()",
+        "itertools.repeat('x', 1).__length_hint__(1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator.length_hint subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_length_hint_diff_subset");
+    for required in [
+        "Lib/test/test_operator.py::OperatorTestCase::test_length_hint and Lib/test/test_enumerate.py::TestReversed::test_len public subset",
+        "operator-length-hint",
+        "class X:",
+        "def __length_hint__(self):",
+        "operator.length_hint([], 2)",
+        "operator.length_hint(iter([1, 2, 3]))",
+        "operator.length_hint(X(2))",
+        "operator.length_hint(X(NotImplemented), 4)",
+        "operator.length_hint(X(TypeError), 12)",
+        "operator.length_hint(Y(), 10)",
+        "X('abc')",
+        "X(-2)",
+        "X(LookupError)",
+        "operator.length_hint(X(2), 'abc')",
+        "for seq in ('hello', tuple('hello'), list('hello'), range(5)):",
+        "rev = reversed(seq)",
+        "operator.length_hint(rev)",
+        "class SeqWithWeirdLen:",
+        "operator.length_hint(reversed(SeqWithWeirdLen()))",
+        "itertools.repeat('x', 3)",
+        "operator.length_hint(itertools.repeat('x'))",
+        "itertools.repeat('x').__length_hint__()",
+        "itertools.repeat('x', 1).__length_hint__(1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator.length_hint CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_length_hint_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_length_hint_diff_subset")
+            && CPYTHON_COVERAGE.contains("fallback semantics")
+            && CPYTHON_COVERAGE.contains("reversed iterator length hints")
+            && CPYTHON_COVERAGE.contains("itertools.repeat()")
+            && CPYTHON_COVERAGE.contains("remaining-length hints")
+            && CPYTHON_COVERAGE.contains("infinite-repeat direct"),
+        "coverage notes must describe operator.length_hint fallback, reversed, and repeat behavior"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_length_hint_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_length_hint_diff_subset")
+            && CPYTHON_MIGRATION.contains("minimal `operator.length_hint()` module API")
+            && CPYTHON_MIGRATION.contains("prefers exact `len()` results")
+            && CPYTHON_MIGRATION.contains("falls back to custom `__length_hint__`")
+            && CPYTHON_MIGRATION.contains("returns the caller default")
+            && CPYTHON_MIGRATION.contains("rejects non-integer and")
+            && CPYTHON_MIGRATION.contains("re-reads sequence lengths"),
+        "migration notes must describe operator.length_hint public behavior and diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
