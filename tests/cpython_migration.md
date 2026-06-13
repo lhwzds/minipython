@@ -9450,10 +9450,12 @@ Completed in the CPython collections manifest expansion pass:
   calls, and public error classes for missing keys, empty pops, unexpected
   keywords, and duplicate `last` arguments.
   `cpython_ordered_dict_view_display_subset`, backed by the
-  `ordered-dict-view-display-subset` diff case, covers live `keys()` /
-  `items()` / `values()` views, `odict_keys` / `odict_items` / `odict_values`
-  public type names and reprs, type-level view calls, membership, empty-view
-  display, and a normal-dict regression guard.
+  `ordered-dict-view-display-subset` diff case plus gated
+  `cpython_ordered_dict_view_mapping_diff_subset` evidence for CPython oracles
+  with `dictview.mapping`, covers live `keys()` / `items()` / `values()` views,
+  `odict_keys` / `odict_items` / `odict_values` public type names and reprs,
+  type-level view calls, membership, ordered live `.mapping` `mappingproxy`
+  display, empty-view display, and a normal-dict regression guard.
   This is enough for the ChainMap order-preservation test, but it is not yet a
   full OrderedDict runtime surface.
 - Added `cpython_collections_chainmap_copy_pickle_eval_identity_subset`,

@@ -24866,6 +24866,37 @@ fn cpython_rejection_parity_smoke_diff_subset() {
 }
 
 #[test]
+fn cpython_ordered_dict_view_mapping_diff_subset() {
+    let probe = run_cpython(
+        "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",
+    )
+    .expect("failed to run CPython OrderedDict view mapping capability probe");
+    let probe_stdout = String::from_utf8(probe.stdout)
+        .expect("CPython OrderedDict view mapping probe emitted non-UTF-8");
+    if probe_stdout.trim() != "True" {
+        eprintln!("skipping OrderedDict view mapping diff: CPython oracle lacks view.mapping");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ordered_dict.py public view mapping subset",
+        name: "ordered-dict-view-mapping-subset",
+        source: r#"from collections import OrderedDict
+od = OrderedDict([('a', 1), ('b', 2)])
+keys = od.keys()
+items = od.items()
+values = od.values()
+od['c'] = 3
+od.move_to_end('a')
+for view in [keys, items, values]:
+    mapping = view.mapping
+    print(type(mapping).__name__, repr(mapping).startswith('mappingproxy(OrderedDict('), list(mapping.items()))
+od['d'] = 4
+print('mapping-live', list(keys.mapping.items()))"#,
+    });
+}
+
+#[test]
 fn cpython_int_rejects_trunc_only_object_diff_subset() {
     let probe = run_cpython(
         r#"class TruncOnly:

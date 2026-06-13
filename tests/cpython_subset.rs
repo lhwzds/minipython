@@ -35653,13 +35653,17 @@ fn cpython_ordered_dict_move_pop_keyword_subset() {
 #[test]
 fn cpython_ordered_dict_view_display_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nkeys = od.keys()\nitems = od.items()\nvalues = od.values()\nprint(type(keys).__name__, list(keys), list(items), list(values))\nod['c'] = 3\nod.move_to_end('a')\nprint(list(keys), list(items), list(values))\nprint('b' in keys, ('b', 2) in items, 2 in values)\nprint(list(OrderedDict.keys(od)), list(OrderedDict.items(od)), list(OrderedDict.values(od)))\nprint(repr(keys), repr(items), repr(values))\nempty = OrderedDict()\nprint(type(empty.keys()).__name__, repr(empty.keys()), repr(empty.items()), repr(empty.values()))\nd = {'x': 1}\nprint(type(d.keys()).__name__, repr(d.keys()), repr(d.items()), repr(d.values()))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nkeys = od.keys()\nitems = od.items()\nvalues = od.values()\nprint(type(keys).__name__, list(keys), list(items), list(values))\nod['c'] = 3\nod.move_to_end('a')\nprint(list(keys), list(items), list(values))\nprint('b' in keys, ('b', 2) in items, 2 in values)\nprint(list(OrderedDict.keys(od)), list(OrderedDict.items(od)), list(OrderedDict.values(od)))\nprint(repr(keys), repr(items), repr(values))\nfor view in [keys, items, values]:\n    mapping = view.mapping\n    print(type(mapping).__name__, repr(mapping).startswith('mappingproxy(OrderedDict('), list(mapping.items()))\nod['d'] = 4\nprint('mapping-live', list(keys.mapping.items()))\nempty = OrderedDict()\nprint(type(empty.keys()).__name__, repr(empty.keys()), repr(empty.items()), repr(empty.values()))\nd = {'x': 1}\nprint(type(d.keys()).__name__, repr(d.keys()), repr(d.items()), repr(d.values()))",
         &[
             "odict_keys ['a', 'b'] [('a', 1), ('b', 2)] [1, 2]",
             "['b', 'c', 'a'] [('b', 2), ('c', 3), ('a', 1)] [2, 3, 1]",
             "True True True",
             "['b', 'c', 'a'] [('b', 2), ('c', 3), ('a', 1)] [2, 3, 1]",
             "odict_keys(['b', 'c', 'a']) odict_items([('b', 2), ('c', 3), ('a', 1)]) odict_values([2, 3, 1])",
+            "mappingproxy True [('b', 2), ('c', 3), ('a', 1)]",
+            "mappingproxy True [('b', 2), ('c', 3), ('a', 1)]",
+            "mappingproxy True [('b', 2), ('c', 3), ('a', 1)]",
+            "mapping-live [('b', 2), ('c', 3), ('a', 1), ('d', 4)]",
             "odict_keys odict_keys([]) odict_items([]) odict_values([])",
             "dict_keys dict_keys(['x']) dict_items([('x', 1)]) dict_values([1])",
         ],

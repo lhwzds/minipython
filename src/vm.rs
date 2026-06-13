@@ -52874,6 +52874,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => {
             let type_name = dict_view_display_type_name(kind, ordered);
             match name {
+                "mapping" if ordered => Ok(Value::MappingProxyObject {
+                    mapping: Box::new(Value::OrderedDict(entries)),
+                }),
                 "mapping" => Ok(mapping_proxy_value(entries)),
                 "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
