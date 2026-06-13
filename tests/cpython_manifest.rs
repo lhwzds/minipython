@@ -3600,6 +3600,8 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
 
     for required in [
         "without exact address binding",
+        "public iterator/helper type `__module__` / `__qualname__` / `__doc__` metadata",
+        "`_grouper.__doc__ is None`",
         "Full itertools module",
         "pickling exactness",
         "exact address repr",
@@ -3614,6 +3616,8 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
 
     for required in [
         "without binding object addresses",
+        "public iterator/helper\n  type `__module__` / `__qualname__` / `__doc__` metadata",
+        "`_grouper.__doc__ is None`",
         "`tee()` cache compaction",
         "pickling exactness",
         "remaining public/helper",
@@ -3816,6 +3820,12 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         repr_source.contains("repr("),
         "itertools repr CPython diff evidence must cover public repr() behavior"
     );
+    for required in ["typ.__qualname__", "typ.__doc__", "values.append(group)"] {
+        assert!(
+            repr_source.contains(required),
+            "itertools repr CPython diff evidence must cover public type metadata `{required}`"
+        );
+    }
 }
 
 #[test]
