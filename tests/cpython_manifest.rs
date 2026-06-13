@@ -3160,9 +3160,21 @@ fn cpython_coverage_mentions_all_sandbox_stdlib_runtime_evidence() {
 
 #[test]
 fn cpython_docs_mention_all_sandbox_stdlib_excluded_surfaces() {
-    for (module, excluded_terms) in expected_sandbox_stdlib_excluded_terms() {
-        let row = sandbox_stdlib_rows()
-            .into_iter()
+    let expected = expected_sandbox_stdlib_excluded_terms();
+    let rows = sandbox_stdlib_rows();
+    let actual_modules = rows
+        .iter()
+        .map(|row| row.module.as_str())
+        .collect::<BTreeSet<_>>();
+    let expected_modules = expected.keys().copied().collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual_modules, expected_modules,
+        "sandbox stdlib excluded-surface guard must track every manifest row"
+    );
+
+    for (module, excluded_terms) in expected {
+        let row = rows
+            .iter()
             .find(|row| row.module == module)
             .unwrap_or_else(|| panic!("sandbox stdlib manifest must include {module}"));
 
