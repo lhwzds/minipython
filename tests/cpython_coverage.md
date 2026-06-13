@@ -362,6 +362,7 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_diff_subset`,
   `cpython_functools_cached_property_module_metadata_diff_subset`,
   `cpython_functools_cache_diff_subset`,
+  `cpython_functools_cache_wrapper_module_metadata_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
   `cpython_functools_singledispatchmethod_diff_subset`,
   `cpython_itertools_core_diff_subset`,
@@ -1138,7 +1139,9 @@ Recent runtime migration notes:
   internals.
 - The bundled `functools` module also includes
   `cpython_functools_cache_diff_subset` and
-  `cpython_functools_cache_subset`, covering CPython
+  `cpython_functools_cache_subset`, plus gated
+  `cpython_functools_cache_wrapper_module_metadata_diff_subset` and
+  `cpython_functools_cache_wrapper_module_metadata_subset`, covering CPython
   `test_functools.py::TestCache` and public `TestLRU` cache-wrapper behavior
   for `cache`, unbounded `lru_cache`, finite LRU eviction, `cache_info`,
   `cache_clear`, `cache_parameters`, `cache_info` / `cache_clear` bound-method
@@ -1152,6 +1155,7 @@ Recent runtime migration notes:
   equivalence with no keywords, `*args` key shape, cached method descriptor
   binding with shared cache statistics, wrapper-assignment metadata,
   bound-method wrapper metadata and instance-side cache control,
+  wrapper `__module__` metadata override and deletion fallback to `functools`,
   cache-parameter snapshot isolation, unhashable arguments, shallow/deep copy
   identity preservation for cached wrappers, finite-cache exception misses, and
   CPython-compatible cache statistics including size-one/size-two LRU behavior
@@ -1204,8 +1208,9 @@ Recent runtime migration notes:
   `test_functools.py::TestSingleDispatchMethod` public descriptor behavior,
   including instance and class access, descriptor `func` / `dispatcher` /
   `register` attributes, descriptor and bound callable `repr()` / `str()`
-  shapes, explicit and decorator registration through raw, class-bound, and
-  instance-bound access, `staticmethod` and `classmethod` implementations,
+  shapes, descriptor `__module__` metadata override and deletion fallback to
+  `functools`, explicit and decorator registration through raw, class-bound,
+  and instance-bound access, `staticmethod` and `classmethod` implementations,
   annotation-inferred registration, PEP 604 and
   `typing.Union` registration, and public TypeError paths. The default diff
   covers stable explicit-registration and descriptor-composition behavior;

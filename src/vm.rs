@@ -51939,6 +51939,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);
             }
+            if name == "__module__" {
+                return Ok(Value::String("functools".to_string()));
+            }
             match name {
                 "cache_info" | "cache_clear" | "cache_parameters" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("functools.lru_cache.{name}"))),
@@ -51998,6 +52001,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);
+            }
+            if name == "__module__" {
+                return Ok(Value::String("functools".to_string()));
             }
             match name {
                 "dispatcher" => Ok(*dispatcher),

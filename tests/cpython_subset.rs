@@ -40907,6 +40907,10 @@ fn cpython_functools_cache_subset() {
             "    return 42\n",
             "decorated_wrapper = lru_cache()(decorated_source)\n",
             "print(decorated_wrapper.__name__, decorated_wrapper.__doc__, decorated_wrapper.__module__, decorated_wrapper.__qualname__, decorated_wrapper.__wrapped__ is decorated_source)\n",
+            "decorated_wrapper.__module__ = 'custom'\n",
+            "print(decorated_wrapper.__module__, decorated_wrapper.__dict__['__module__'])\n",
+            "del decorated_wrapper.__module__\n",
+            "print(decorated_wrapper.__module__, '__module__' in decorated_wrapper.__dict__)\n",
             "for method in [decorated_wrapper.cache_info, decorated_wrapper.cache_clear]:\n",
             "    print(method.__name__, method.__qualname__, method.__module__, method.__doc__, method.__self__ is decorated_wrapper)\n",
             "\n",
@@ -40971,10 +40975,40 @@ fn cpython_functools_cache_subset() {
             "True True",
             "True True",
             "decorated_source f doc string __main__ decorated_source True",
+            "custom custom",
+            "functools False",
             "cache_info _lru_cache_wrapper.cache_info None None True",
             "cache_clear _lru_cache_wrapper.cache_clear None None True",
             "[('maxsize', 1000), ('typed', True)]",
             "True True True",
+        ],
+    );
+}
+
+// Adapted from newer CPython functools cache-wrapper module metadata. This
+// stays split from the stable cache diff because older CPython oracles lack the
+// deletion fallback for _lru_cache_wrapper.__module__.
+#[test]
+fn cpython_functools_cache_wrapper_module_metadata_subset() {
+    assert_output(
+        concat!(
+            "from functools import cache, lru_cache\n",
+            "def f():\n",
+            "    pass\n",
+            "for wrapper in [cache(f), lru_cache(maxsize=2)(f)]:\n",
+            "    print(wrapper.__module__, wrapper.__dict__['__module__'])\n",
+            "    wrapper.__module__ = 'custom'\n",
+            "    print(wrapper.__module__, wrapper.__dict__['__module__'])\n",
+            "    del wrapper.__module__\n",
+            "    print(wrapper.__module__, '__module__' in wrapper.__dict__)\n",
+        ),
+        &[
+            "__main__ __main__",
+            "custom custom",
+            "functools False",
+            "__main__ __main__",
+            "custom custom",
+            "functools False",
         ],
     );
 }
@@ -41435,6 +41469,11 @@ fn cpython_functools_singledispatchmethod_subset() {
             "print(C.m(c, 1), C.m(c, 'x'))\n",
             "descriptor = C.__dict__['m']\n",
             "print(callable(descriptor), type(descriptor).__name__, descriptor.func.__name__, descriptor.dispatcher.dispatch(int)(c, 2))\n",
+            "print(descriptor.__module__, '__module__' in descriptor.__dict__)\n",
+            "descriptor.__module__ = 'custom'\n",
+            "print(descriptor.__module__, descriptor.__dict__['__module__'])\n",
+            "del descriptor.__module__\n",
+            "print(descriptor.__module__, '__module__' in descriptor.__dict__)\n",
             "descriptor_repr = repr(descriptor)\n",
             "print(descriptor_repr.startswith('<functools.singledispatchmethod object at 0x'), descriptor_repr.endswith('>'))\n",
             "def c_float(self, arg):\n",
@@ -41487,6 +41526,9 @@ fn cpython_functools_singledispatchmethod_subset() {
             "int:1 int:True base:list cls:C:x",
             "base:int base:str",
             "False singledispatchmethod m int:2",
+            "functools False",
+            "custom custom",
+            "functools False",
             "True True",
             "True float:1.5",
             "tuple:2 bytes:3",

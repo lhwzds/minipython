@@ -13301,6 +13301,35 @@ for method in [decorated_wrapper.cache_info, decorated_wrapper.cache_clear]:
 }
 
 #[test]
+fn cpython_functools_cache_wrapper_module_metadata_diff_subset() {
+    let probe = run_cpython(
+        "from functools import lru_cache\n\ndef f():\n    pass\nw = lru_cache()(f)\ndel w.__module__\nprint(w.__module__)",
+    )
+    .expect("failed to probe CPython functools lru_cache wrapper __module__ support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "functools" {
+        eprintln!(
+            "skipping functools cache wrapper module metadata diff: CPython oracle lacks deletion fallback"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "newer CPython functools cache wrapper module metadata subset",
+        name: "functools-cache-wrapper-module-metadata",
+        source: r#"from functools import cache, lru_cache
+
+def f():
+    pass
+for wrapper in [cache(f), lru_cache(maxsize=2)(f)]:
+    print(wrapper.__module__, wrapper.__dict__['__module__'])
+    wrapper.__module__ = 'custom'
+    print(wrapper.__module__, wrapper.__dict__['__module__'])
+    del wrapper.__module__
+    print(wrapper.__module__, '__module__' in wrapper.__dict__)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_singledispatch_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py singledispatch public stable subset",
@@ -13383,6 +13412,11 @@ print(c.m(1), c.m(True), c.m([]), c.m('x'))
 print(C.m(c, 1), C.m(c, 'x'))
 descriptor = C.__dict__['m']
 print(callable(descriptor), type(descriptor).__name__, descriptor.func.__name__, descriptor.dispatcher.dispatch(int)(c, 2))
+print(descriptor.__module__, '__module__' in descriptor.__dict__)
+descriptor.__module__ = 'custom'
+print(descriptor.__module__, descriptor.__dict__['__module__'])
+del descriptor.__module__
+print(descriptor.__module__, '__module__' in descriptor.__dict__)
 descriptor_repr = repr(descriptor)
 print(descriptor_repr.startswith('<functools.singledispatchmethod object at 0x'), descriptor_repr.endswith('>'))
 

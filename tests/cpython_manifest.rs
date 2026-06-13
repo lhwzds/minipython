@@ -3388,6 +3388,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_update_wrapper_wraps_subset",
             "cpython_functools_total_ordering_subset",
             "cpython_functools_cache_subset",
+            "cpython_functools_cache_wrapper_module_metadata_subset",
             "cpython_functools_cached_property_subset",
             "cpython_functools_cached_property_module_metadata_subset",
             "cpython_functools_reduce_subset",
@@ -3410,6 +3411,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_update_wrapper_wraps_diff_subset",
         "cpython_functools_total_ordering_diff_subset",
         "cpython_functools_cache_diff_subset",
+        "cpython_functools_cache_wrapper_module_metadata_diff_subset",
         "cpython_functools_cached_property_diff_subset",
         "cpython_functools_cached_property_module_metadata_diff_subset",
         "cpython_functools_reduce_diff_subset",
@@ -3564,6 +3566,26 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         );
     }
 
+    let cache_wrapper_module_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_cache_wrapper_module_metadata_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_singledispatch_diff_subset()")
+                .next()
+        })
+        .expect("functools cache wrapper module metadata diff evidence must be extractable");
+    for required in [
+        "skipping functools cache wrapper module metadata diff",
+        "wrapper.__module__",
+        "wrapper.__module__ = 'custom'",
+        "del wrapper.__module__",
+    ] {
+        assert!(
+            cache_wrapper_module_diff.contains(required),
+            "cache wrapper module metadata diff evidence must cover detail `{required}`"
+        );
+    }
+
     let singledispatchmethod_diff = CPYTHON_DIFF
         .split("fn cpython_functools_singledispatchmethod_diff_subset()")
         .nth(1)
@@ -3575,6 +3597,9 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
     for required in [
         "descriptor = C.__dict__['m']",
         "descriptor.func.__name__",
+        "descriptor.__module__",
+        "descriptor.__module__ = 'custom'",
+        "del descriptor.__module__",
         "@staticmethod",
         "@classmethod",
         "@c.m.register(bytes)",
