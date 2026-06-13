@@ -28709,6 +28709,16 @@ impl Vm {
         if function == "methodcaller" {
             return self.call_operator_methodcaller_constructor(args, keywords);
         }
+        if function == "index" {
+            if !keywords.is_empty() {
+                return Err("TypeError: _operator.index() takes no keyword arguments".to_string());
+            }
+            let count = args.len();
+            let [value]: [Value; 1] = args.try_into().map_err(|_| {
+                format!("TypeError: _operator.index() takes exactly one argument ({count} given)")
+            })?;
+            return self.index_integer_value(value);
+        }
         if !keywords.is_empty() {
             return Err(format!(
                 "TypeError: {function}() does not accept keyword arguments"
@@ -28834,10 +28844,7 @@ impl Vm {
                 let (left, right) = operator_binary_args(function, args)?;
                 self.in_place_multiply_values(left, right)
             }
-            "index" => {
-                let value = operator_unary_arg(function, args)?;
-                self.index_integer_value(value)
-            }
+            "index" => unreachable!("operator.index is handled before generic keyword rejection"),
             "indexOf" => {
                 let (iterable, needle) = operator_binary_args(function, args)?;
                 self.operator_index_of(iterable, needle)

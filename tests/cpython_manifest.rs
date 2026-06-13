@@ -5341,6 +5341,10 @@ fn operator_arithmetic_bitwise_subset_has_focused_diff_evidence() {
         "lambda: operator.invert(None)",
         "lambda: operator.matmul(42, 42)",
         "lambda: operator.index(1.5)",
+        "operator.index()",
+        "operator.index(1, 2)",
+        "operator.index(a=1)",
+        "str(error)",
         "lambda: operator.lshift(2, -1)",
         "lambda: operator.rshift(2, -1)",
     ] {
@@ -5394,6 +5398,10 @@ fn operator_arithmetic_bitwise_subset_has_focused_diff_evidence() {
         "lambda: operator.invert(None)",
         "lambda: operator.matmul(42, 42)",
         "lambda: operator.index(1.5)",
+        "operator.index()",
+        "operator.index(1, 2)",
+        "operator.index(a=1)",
+        "str(error)",
         "lambda: operator.lshift(2, -1)",
         "lambda: operator.rshift(2, -1)",
     ] {

@@ -12264,6 +12264,11 @@ for expr in [lambda: operator.abs(), lambda: operator.abs(None), lambda: operato
         expr()
     except TypeError as error:
         print(type(error).__name__)
+for label, callback in [('index-noargs', lambda: operator.index()), ('index-many', lambda: operator.index(1, 2)), ('index-kw', lambda: operator.index(a=1))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 try:
     operator.matmul([], [])
 except TypeError as error:
