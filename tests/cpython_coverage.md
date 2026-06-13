@@ -33,13 +33,13 @@ Recent runtime migration notes:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory
   construction from iterables, `maxlen` truncation and readonly access,
-  iteration, len/bool/repr, basic `append` / `appendleft` / `extend` /
-  `extendleft` / `insert` / `remove` / `pop` / `popleft` / `count` /
-  `index` / `rotate` / `reverse` / `clear` / `copy`, membership, rich
-  comparison between deque instances, integer indexing/assignment/deletion,
-  concat/repeat, in-place concat/repeat, `.copy()` / `__copy__()` /
-  `copy.copy()`, reverse iteration, concrete type identity, and
-  `MutableSequence` registration. Full deque construction/mutation APIs,
+  iteration, len/bool/repr, direct display/empty-format methods, recursive
+  display, basic `append` / `appendleft` / `extend` / `extendleft` /
+  `insert` / `remove` / `pop` / `popleft` / `count` / `index` / `rotate` /
+  `reverse` / `clear` / `copy`, membership, rich comparison between deque
+  instances, integer indexing/assignment/deletion, concat/repeat, in-place
+  concat/repeat, `.copy()` / `__copy__()` / `copy.copy()`, reverse iteration,
+  concrete type identity, and `MutableSequence` registration. Full deque construction/mutation APIs,
   performance/lifetime internals, thread-safety stress, pickle/eval identity
   matrices, and unported ABC edge matrices remain outside the default sandbox
   `collections` / `collections.abc` surface until separately promoted with

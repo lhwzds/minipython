@@ -3304,6 +3304,16 @@ print(issubclass(deque, MutableSequence))
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:
     print(repr(d), list(d), len(d), bool(d), d.maxlen)
 d = deque([2], maxlen=3)
+display = deque([1, 2])
+print(display.__repr__(), display.__str__(), display.__format__(''))
+print(deque.__repr__(display), deque.__str__(display), deque.__format__(display, ''))
+try:
+    display.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
+recursive = deque()
+recursive.append(recursive)
+print(repr(recursive), recursive.__repr__())
 print(d.append(3), d.appendleft(1), list(d), repr(d))
 d.append(4)
 print(list(d), repr(d))

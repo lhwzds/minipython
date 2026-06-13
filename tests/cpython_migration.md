@@ -10523,6 +10523,11 @@ Completed in the CPython collections manifest expansion pass:
   assignment/deletion, direct `__setitem__()` / `__delitem__()`, and shallow
   copy parity through `.copy()`, `__copy__()`, and `copy.copy()`, while keeping
   slicing, pickle, eval, thread-safety, and performance contracts out of scope.
+- Extended the same `collections.deque` public surface with direct
+  `__repr__()` / `__str__()` / empty `__format__()` methods on instances and
+  the `deque` type, non-empty format rejection, and recursive display parity
+  for self-referential deques. This does not promote pickle/eval identity,
+  slicing, thread-safety, or performance contracts into the sandbox surface.
 
 Next:
 

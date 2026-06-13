@@ -1325,6 +1325,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         | Value::Tuple(_)
         | Value::Set(_)
         | Value::FrozenSet(_)
+        | Value::Deque { .. }
         | Value::Dict(_)
         | Value::UserDict { .. }
         | Value::ScopeDict(_)
@@ -1389,6 +1390,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         }
         Value::List(items) => repr_list_items_checked(items, active),
         Value::UserList { data, .. } => repr_list_items_checked(data, active),
+        Value::Deque { data, maxlen } => repr_deque_checked(data, *maxlen, active),
         Value::Tuple(items) => repr_tuple_checked(items, active),
         Value::Set(items) => {
             let ptr = Rc::as_ptr(items) as usize;
@@ -1488,6 +1490,23 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         Value::AstNode { .. } => ast_repr_value_checked(value),
         Value::BigInt(value) => repr_big_int_checked(value),
         _ => Ok(repr_value(value)),
+    }
+}
+
+fn repr_deque_checked(
+    data: &ListRef,
+    maxlen: Option<usize>,
+    active: &mut HashSet<usize>,
+) -> Result<String, String> {
+    let ptr = Rc::as_ptr(data) as usize;
+    if active.contains(&ptr) {
+        return Ok("[...]".to_string());
+    }
+    let rendered = repr_list_items_checked(data, active)?;
+    if let Some(maxlen) = maxlen {
+        Ok(format!("deque({rendered}, maxlen={maxlen})"))
+    } else {
+        Ok(format!("deque({rendered})"))
     }
 }
 
@@ -29327,6 +29346,40 @@ impl Vm {
             return Err(format!("{method}() expected a deque receiver"));
         };
         match method {
+            "__repr__" | "__str__" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "{method}() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                repr_value_checked(&Value::Deque {
+                    data: data.clone(),
+                    maxlen: *maxlen,
+                })
+                .map(Value::String)
+            }
+            "__format__" => {
+                let [format_spec] = rest else {
+                    return Err(format!(
+                        "__format__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let format_spec = format_spec_string(format_spec, "object.__format__()")?;
+                if format_spec.is_empty() {
+                    repr_value_checked(&Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    })
+                    .map(Value::String)
+                } else {
+                    Err(
+                        "TypeError: unsupported format string passed to collections.deque.__format__"
+                            .to_string(),
+                    )
+                }
+            }
             "__add__" => {
                 let [other] = rest else {
                     return Err(format!(
@@ -52396,13 +52449,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
                 | "__add__" | "__contains__" | "__copy__" | "__delitem__" | "__eq__" | "__ge__"
-                | "__getitem__" | "__gt__" | "__iadd__" | "__imul__" | "__iter__" | "__le__"
-                | "__len__" | "__lt__" | "__mul__" | "__ne__" | "__reversed__" | "__rmul__"
-                | "__setitem__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                    receiver: Box::new(Value::Deque { data, maxlen }),
-                    identity: Rc::new(()),
-                }),
+                | "__format__" | "__getitem__" | "__gt__" | "__iadd__" | "__imul__"
+                | "__iter__" | "__le__" | "__len__" | "__lt__" | "__mul__" | "__ne__"
+                | "__repr__" | "__reversed__" | "__rmul__" | "__setitem__" | "__str__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                        receiver: Box::new(Value::Deque { data, maxlen }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }
@@ -53358,6 +53413,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 && matches!(name, "__repr__" | "__str__" | "__format__") =>
         {
             Ok(Value::Builtin(format!("UserDict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "deque"
+                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+        {
+            Ok(Value::Builtin(format!("deque.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "Counter" && is_builtin_counter_type_method(name) =>
