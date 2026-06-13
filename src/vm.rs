@@ -57003,12 +57003,14 @@ fn json_dumps_dict_subclass_items(
     vm: &mut Vm,
     value: &Value,
 ) -> Result<Vec<(Value, Value)>, String> {
+    let storage = dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+    if storage.borrow().entries.is_empty() {
+        return Ok(Vec::new());
+    }
     let items_method = match vm.load_attribute_catching(value.clone(), "items")? {
         Ok(method) => method,
         Err(exception) if exception_matches_type_name(&exception, "AttributeError") => {
-            let entries =
-                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
-            return Ok(entries.borrow().entries.clone());
+            return Ok(storage.borrow().entries.clone());
         }
         Err(exception) => return Err(format_exception_error(&exception)),
     };
