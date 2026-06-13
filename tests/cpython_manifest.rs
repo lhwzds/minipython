@@ -4284,6 +4284,73 @@ fn collections_chainmap_pickle_eval_identity_stays_subset_only() {
 }
 
 #[test]
+fn collections_namedtuple_pickle_stays_subset_only() {
+    for required in [
+        "fn cpython_collections_namedtuple_pickle_subset(",
+        "TestNamedTuple::",
+        "test_pickle",
+        "internal payload",
+        "binary pickle byte stream",
+        "from collections import namedtuple",
+        "TestNT = namedtuple('TestNT', 'x y z')",
+        "p = TestNT(x=10, y=20, z=30)",
+        "protocols = [-1] + list(range(pickle.HIGHEST_PROTOCOL + 1))",
+        "for protocol in protocols:",
+        "payload = pickle.dumps(p, protocol)",
+        "q = pickle.loads(payload)",
+        "p == q and p._fields == q._fields and type(q) is TestNT",
+        "print('pickle', checked, len(protocols))",
+        "Box = namedtuple('Box', 'items')",
+        "box = Box([1, 2])",
+        "restored = pickle.loads(pickle.dumps(box, -1))",
+        "restored.items.append(3)",
+        "box.items is restored.items",
+        "pickle 7 7",
+        "[1, 2] [1, 2, 3] False",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "namedtuple pickle subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_collections_namedtuple_pickle_diff_subset("),
+        "namedtuple pickle must remain subset-only while using MiniPython internal pickle payloads"
+    );
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "collections / collections.abc")
+        .expect("sandbox stdlib manifest must include collections / collections.abc");
+    assert!(
+        !row.supported_surface
+            .contains("cpython_collections_namedtuple_pickle_subset")
+            && row
+                .excluded_surface
+                .contains("pickle/eval identity matrices"),
+        "collections manifest must keep namedtuple pickle outside the default sandbox surface"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_collections_namedtuple_pickle_subset")
+            && CPYTHON_COVERAGE.contains("TestNamedTuple")
+            && CPYTHON_COVERAGE.contains("_fields"),
+        "coverage notes must mention namedtuple pickle subset evidence and public fields"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_collections_namedtuple_pickle_subset")
+            && CPYTHON_MIGRATION.contains("TestNamedTuple::test_pickle")
+            && CPYTHON_MIGRATION.contains("protocol `-1`")
+            && CPYTHON_MIGRATION.contains("highest-protocol alias")
+            && CPYTHON_MIGRATION.contains("generated")
+            && CPYTHON_MIGRATION.contains("namedtuple type identity")
+            && CPYTHON_MIGRATION.contains("recursively")
+            && CPYTHON_MIGRATION.contains("mutable fields are independent"),
+        "migration notes must describe namedtuple pickle protocol and deep-copy behavior"
+    );
+}
+
+#[test]
 fn array_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "array",
