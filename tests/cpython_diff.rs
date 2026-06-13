@@ -12736,6 +12736,28 @@ print('temp-release-write', bio.write(b'Z'), bio.getvalue())
 bio = io.BytesIO()
 print(bio.write(b'ab'), bio.write(bytearray(b'cd')), bio.getvalue())
 print(bio.read())
+# CPython oracle text: memoryview: underlying buffer is not C-contiguous
+for label, data in [
+    ('mv', memoryview(bytearray(b'abcdef'))),
+    ('slice-mid', memoryview(bytearray(b'abcdef'))[2:5]),
+    ('slice-step', memoryview(bytearray(b'abcdef'))[::2]),
+    ('slice-rev', memoryview(bytearray(b'abcdef'))[::-1]),
+]:
+    bio = io.BytesIO()
+    try:
+        print('write-mv', label, bio.write(data), bio.getvalue())
+    except BufferError as error:
+        print('write-mv', label, error.__class__.__name__, str(error))
+for label, lines in [
+    ('lines-mid', [memoryview(bytearray(b'abcdef'))[2:5]]),
+    ('lines-step', [memoryview(bytearray(b'abcdef'))[::2]]),
+    ('lines-rev', [memoryview(bytearray(b'abcdef'))[::-1]]),
+]:
+    bio = io.BytesIO()
+    try:
+        print('writelines-mv', label, bio.writelines(lines), bio.getvalue())
+    except BufferError as error:
+        print('writelines-mv', label, error.__class__.__name__, str(error))
 bio = io.BytesIO(b'XYZW')
 target = bytearray(b'abc')
 print(bio.readinto(target), target)

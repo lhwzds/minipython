@@ -1059,6 +1059,17 @@ fn bytes_io_write_chunk(bytes_io: &BytesIORef, bytes: &[u8]) -> Result<usize, St
     Ok(bytes.len())
 }
 
+fn bytes_io_write_buffer_bytes(value: &Value) -> Result<Option<Vec<u8>>, String> {
+    if let Value::MemoryView(view) = value {
+        if !memoryview_is_contiguous(view)? {
+            return Err(
+                "BufferError: memoryview: underlying buffer is not C-contiguous".to_string(),
+            );
+        }
+    }
+    bytes_buffer_value_bytes(value)
+}
+
 fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usize, String> {
     let mut state = bytes_io.borrow_mut();
     let base = match whence {
@@ -18468,7 +18479,7 @@ impl Vm {
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
-        let Some(bytes) = bytes_buffer_value_bytes(data)? else {
+        let Some(bytes) = bytes_io_write_buffer_bytes(data)? else {
             return Err(format!(
                 "TypeError: a bytes-like object is required, not '{}'",
                 type_name(data)
@@ -18494,7 +18505,7 @@ impl Vm {
         bytes_io_ensure_open(bytes_io)?;
         let bytes_io = bytes_io.clone();
         for line in self.collect_iterable_values_propagating(lines.clone())? {
-            let Some(bytes) = bytes_buffer_value_bytes(&line)? else {
+            let Some(bytes) = bytes_io_write_buffer_bytes(&line)? else {
                 return Err(format!(
                     "TypeError: a bytes-like object is required, not '{}'",
                     type_name(&line)

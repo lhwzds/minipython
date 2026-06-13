@@ -1577,8 +1577,9 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
   construction from bytes-like objects, `read()`, `read1()`, `readline()`,
-  `readlines()`, `write()`, `writelines()`, `getvalue()`, `getbuffer()` writable
-  memoryview mutation and active-export `BufferError` protection for
+  `readlines()`, `write()` and `writelines()` over contiguous memoryview inputs
+  plus non-contiguous memoryview `BufferError` rejection, `getvalue()`,
+  `getbuffer()` writable memoryview mutation and active-export `BufferError` protection for
   `write()` / all `truncate()` requests / `close()` across direct and derived memoryviews,
   release of function-scoped, deleted-binding, and expression-temporary exported views,
   `readinto()` / `readinto1()` over
