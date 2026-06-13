@@ -5419,7 +5419,8 @@ Completed in the string partition/rpartition method pass:
 - Added runtime support for `str.partition()` and `str.rpartition()` including
   first/last separator search, not-found triples, Unicode separators, and
   representative `TypeError` / `ValueError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_partition_rpartition_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported
   partition behavior.
 
 Completed in the string join method pass:

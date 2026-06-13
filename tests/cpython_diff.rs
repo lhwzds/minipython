@@ -5311,6 +5311,33 @@ for expr in [lambda: 'hello'.strip(42), lambda: 'hello'.strip(42, 42), lambda: '
 }
 
 #[test]
+fn cpython_string_partition_rpartition_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py partition/rpartition subset",
+        name: "string-partition-rpartition",
+        source: r#"S = 'http://www.python.org'
+print(S.partition('://'))
+print(S.partition('?'))
+print(S.partition('http://'))
+print(S.partition('org'))
+print(S.rpartition('://'))
+print(S.rpartition('?'))
+print(S.rpartition('http://'))
+print(S.rpartition('org'))
+left = 'āĀ' * 3
+right = '𐌁𐌀' * 3
+print((left + right).partition('Ă'))
+print((left + 'Ă' + right).partition('Ă'))
+print((left + 'ĂĂ' + right).rpartition('ĂĂ'))
+for expr in [lambda: S.partition(''), lambda: S.rpartition(''), lambda: S.partition(None), lambda: S.rpartition(None), lambda: S.partition('x', 'y')]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
