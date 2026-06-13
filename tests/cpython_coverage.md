@@ -3533,8 +3533,8 @@ Recent runtime migration notes:
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the
   public `release()` lifecycle, context-manager entry/exit behavior,
   released-object `ValueError` checks for supported operations, released
-  `str()` / `repr()`, same-object identity through `with ... as`, and reversed
-  iteration.
+  `str()` / `repr()`, same-object identity through `with ... as`,
+  expression-temporary exported-view release after `Pop`, and reversed iteration.
 - `RUNTIME_BUILTINS` also includes `cpython_memoryview_getbuf_fail_subset`,
   covering CPython `test_memoryview.py::AbstractMemoryTests::test_getbuf_fail`
   public constructor rejection for non-buffer objects. Direct CPython diff

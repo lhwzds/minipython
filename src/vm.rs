@@ -5849,7 +5849,7 @@ impl Vm {
                     }
                 }
                 Instruction::Pop { src } => {
-                    self.read_register(src)?;
+                    self.take_register(src)?;
                 }
                 Instruction::Display { src } => {
                     let value = self.read_register(src)?;
@@ -5874,6 +5874,13 @@ impl Vm {
         self.registers
             .get(register)
             .and_then(Option::as_ref)
+            .ok_or_else(|| format!("register r{register} is not initialized"))
+    }
+
+    fn take_register(&mut self, register: Register) -> Result<Value, String> {
+        self.registers
+            .get_mut(register)
+            .and_then(Option::take)
             .ok_or_else(|| format!("register r{register} is not initialized"))
     }
 

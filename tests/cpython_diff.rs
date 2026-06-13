@@ -19075,7 +19075,17 @@ except ValueError as error:
 base = memoryview(b'abcdef')
 readonly = base.toreadonly()
 readonly.release()
-print(base.tolist())"#,
+print(base.tolist())
+ba = bytearray(b'a')
+memoryview(ba)
+ba.append(ord('b'))
+print('temp-release', ba)
+def release_temp():
+    local = bytearray(b'c')
+    memoryview(local)
+    local.extend(b'd')
+    return local
+print('temp-release-fn', release_temp())"#,
     });
 }
 
