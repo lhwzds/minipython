@@ -6340,7 +6340,8 @@ Completed in the namespace builtin pass:
   default values, snapshot copies, write-through insertion, ordered last-item
   removal for scope-inserted keys, live mapping clearing, recursive
   self-reference repr placeholders, live `dict_keys` / `dict_items` /
-  `dict_values` views, and missing-key `KeyError` type parity.
+  `dict_values` views, stable `reversed()` iteration over scope mappings and
+  those views, and missing-key `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 

@@ -14790,6 +14790,16 @@ impl Vm {
                 };
                 get_iter(dict.clone())
             }
+            "scope_dict.__reversed__" => {
+                let [Value::ScopeDict(scope)] = args.as_slice() else {
+                    return Err(format!(
+                        "__reversed__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let items = scope_dict_keys(scope);
+                Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+            }
             "scope_dict.__setitem__" => {
                 let [dict @ Value::ScopeDict(_), key, value] = args.as_slice() else {
                     return Err(format!(
@@ -24551,6 +24561,11 @@ impl Vm {
                 "TypeError: '{}' object is not reversible",
                 type_name(&value)
             ));
+        }
+
+        if let Value::MappingView { kind, mapping } = value {
+            let items = self.mapping_view_values(kind, *mapping)?;
+            return Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }));
         }
 
         if let Some(len_method) = instance_special_method(&value, "__len__")
@@ -52104,7 +52119,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::ScopeDict(scope) => match name {
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
-            | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
+            | "__iter__" | "__reversed__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(scope)),
                 identity: Rc::new(()),
@@ -52115,7 +52130,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
-            | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
+            | "__iter__" | "__reversed__" | "__setitem__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(locals)),
                 identity: Rc::new(()),
@@ -61732,6 +61747,14 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 expected_len,
                 expected_version,
             }))
+        }
+        Value::ScopeDict(scope) => {
+            let items = scope_dict_keys(&scope);
+            Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+        }
+        Value::FrameLocalsProxy { locals } => {
+            let items = scope_dict_keys(&locals);
+            Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
         }
         value => Err(format!(
             "TypeError: '{}' object is not reversible",
