@@ -656,12 +656,12 @@ Recent runtime migration notes:
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   and first-pass type, structural, literal, and data error classification. File APIs,
-  encoder/decoder subclass hooks, `loads()` hooks/options other than `strict`
-  such as `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, and
+  non-`None` encoder/decoder hooks, `loads()` hooks/options other than `strict`
+  such as non-`None` `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, and
   `parse_constant`, `dumps()` hooks/options other than `allow_nan` /
   `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` /
-  `separators` such as `default` and `cls`, the `JSONDecodeError` class and
-  full exception-shape compatibility, bytes/bytearray serialization, and
+  `separators` such as non-`None` `default` and `cls`, the `JSONDecodeError` class and
+  full `JSONDecodeError` compatibility, bytes/bytearray serialization, and
   unpaired surrogate storage remain intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
@@ -728,9 +728,9 @@ Recent runtime migration notes:
   `groupby()` without binding object addresses, plus public type `__module__`
   metadata for supported iterator/helper objects and public constructor
   `__qualname__` / `__module__` / `__doc__` metadata, including the gated
-  `pairwise()` and `batched()` constructor surfaces. The broader `itertools` module,
-  `tee()` cache compaction, pickling edge cases, and remaining public/helper
-  types remain open.
+  `pairwise()` and `batched()` constructor surfaces. Full itertools module,
+  pickling exactness, exact address repr, `tee()` cache compaction, and
+  remaining public/helper types remain outside the sandbox subset.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
   and `cpython_math_isclose_subset`, covering CPython
   `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,
@@ -3996,7 +3996,7 @@ Recent runtime migration notes:
   stay outside the product surface, as do implementation refcount/GC/debug APIs.
   `out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards
   the default blocked runtime surface so host I/O (`open()`, `input()` and
-  TTY-like behavior plus non-`None` `print(file=...)` targets), network and
+  host TTY behavior plus non-`None` `print(file=...)` targets), network and
   process modules (`asyncio`, `http`, `ssl`, `socket`, `subprocess`, `signal`,
   `threading`, `pty`, `urllib`, and `multiprocessing`), C ABI / extension
   modules (`_ssl`, `_socket`, `_ctypes`, and `_testcapi`), CPython-internal
@@ -4634,7 +4634,7 @@ visibility, `sys.breakpointhook` / `sys.__breakpointhook__` metadata, custom
 hook dispatch, positional/keyword passthrough, hook return values, custom-hook
 TypeError propagation, reset identity, a sandbox no-op default hook returning
 `None`, and the lost-hook `RuntimeError`.
-Default pdb-backed debugging, `PYTHONBREAKPOINT`, environment
+default pdb-backed breakpoint behavior, `PYTHONBREAKPOINT`, environment
 lookup, import warnings, and interactive debugger behavior remain
 runtime-blocked.
 `cpython_builtin_generator_dynamic_lookup_subset` now ports the public semantic

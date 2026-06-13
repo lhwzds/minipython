@@ -3158,6 +3158,144 @@ fn cpython_coverage_mentions_all_sandbox_stdlib_runtime_evidence() {
     );
 }
 
+#[test]
+fn cpython_docs_mention_all_sandbox_stdlib_excluded_surfaces() {
+    for (module, excluded_terms) in expected_sandbox_stdlib_excluded_terms() {
+        let row = sandbox_stdlib_rows()
+            .into_iter()
+            .find(|row| row.module == module)
+            .unwrap_or_else(|| panic!("sandbox stdlib manifest must include {module}"));
+
+        for term in excluded_terms {
+            assert!(
+                row.excluded_surface.contains(term),
+                "{module} sandbox manifest must keep excluded surface `{term}`"
+            );
+            for (document_name, document) in [
+                ("coverage", CPYTHON_COVERAGE),
+                ("migration", CPYTHON_MIGRATION),
+            ] {
+                assert!(
+                    document.contains(term),
+                    "{document_name} document must mention {module} excluded surface `{term}`"
+                );
+            }
+        }
+    }
+}
+
+fn expected_sandbox_stdlib_excluded_terms() -> BTreeMap<&'static str, Vec<&'static str>> {
+    BTreeMap::from([
+        (
+            "builtins",
+            vec![
+                "`open()`",
+                "`input()`",
+                "host TTY behavior",
+                "non-`None` `print(file=...)`",
+                "default pdb-backed breakpoint behavior",
+                "process/environment side effects",
+            ],
+        ),
+        (
+            "sys",
+            vec![
+                "Real argv/process state",
+                "real stdin/stdout/stderr streams",
+                "implementation refcount/GC/debug APIs",
+            ],
+        ),
+        (
+            "types",
+            vec![
+                "CPython object-layout internals",
+                "exact C descriptor types",
+                "pickle identity matrices",
+                "interpreter lifecycle behavior",
+            ],
+        ),
+        (
+            "collections / collections.abc",
+            vec![
+                "Full deque construction/mutation APIs",
+                "performance/lifetime internals",
+                "thread-safety stress",
+                "pickle/eval identity matrices",
+                "unported ABC edge matrices",
+            ],
+        ),
+        (
+            "math / math.integer",
+            vec![
+                "Platform/libm implementation quirks",
+                "exact libm special-function precision",
+                "locale-sensitive parsing/formatting",
+            ],
+        ),
+        (
+            "array",
+            vec!["Real file descriptors", "C buffer/allocator internals"],
+        ),
+        (
+            "copy",
+            vec![
+                "Full pickle dispatch-table contents",
+                "pickle protocol byte compatibility",
+                "arbitrary extension-object copy hooks",
+            ],
+        ),
+        (
+            "io.BytesIO",
+            vec![
+                "Real files",
+                "buffering layers",
+                "text I/O",
+                "file descriptors",
+                "OS-backed stream semantics",
+            ],
+        ),
+        (
+            "operator",
+            vec!["Full pickle metadata", "every CPython helper edge case"],
+        ),
+        (
+            "functools",
+            vec![
+                "Full CPython cache implementation internals",
+                "weakref/lifecycle subtleties",
+                "unsupported descriptor edge cases",
+            ],
+        ),
+        (
+            "itertools",
+            vec![
+                "Full itertools module",
+                "pickling exactness",
+                "exact address repr",
+                "`tee()` cache compaction",
+                "remaining public/helper types",
+            ],
+        ),
+        (
+            "json",
+            vec![
+                "File APIs",
+                "non-`None` encoder/decoder hooks",
+                "non-`None` `object_hook`",
+                "object_pairs_hook",
+                "parse_float",
+                "parse_int",
+                "parse_constant",
+                "non-`None` `default`",
+                "cls",
+                "bytes/bytearray serialization",
+                "unpaired surrogate storage",
+                "full `JSONDecodeError` compatibility",
+            ],
+        ),
+    ])
+}
+
 fn assert_sandbox_manifest_subset_evidence(
     module: &str,
     required_evidence: &[&str],
@@ -3427,7 +3565,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "without binding object addresses",
         "`tee()` cache compaction",
-        "pickling edge cases",
+        "pickling exactness",
         "remaining public/helper",
     ] {
         assert!(
