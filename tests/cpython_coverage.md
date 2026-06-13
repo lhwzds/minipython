@@ -1633,7 +1633,10 @@ Recent runtime migration notes:
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray
   `split()` / `rsplit()`, `partition()` / `rpartition()`, `strip()` /
   `lstrip()` / `rstrip()`, and `center()` / `ljust()` / `rjust()` fill
-  argument validation.
+  argument validation. Direct CPython diff evidence for the stable text rows is
+  in `cpython_bytes_method_typeerror_messages_diff_subset`; current fill-length
+  wording is covered by the CPython-version-gated
+  `cpython_bytes_fill_length_typeerror_messages_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_more_method_typeerror_messages_subset`, covering CPython
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray

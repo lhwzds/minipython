@@ -3344,7 +3344,11 @@ Completed in the bytes method TypeError diagnostics pass:
 
 - Added `cpython_bytes_method_typeerror_messages_subset`, adapted from CPython
   `Lib/test/test_bytes.py::BaseBytesTest` public error-message rows for bytes
-  and bytearray methods.
+  and bytearray methods. Direct CPython diff evidence for the stable text rows
+  is in `cpython_bytes_method_typeerror_messages_diff_subset`; direct evidence
+  for current fill-length wording is in
+  `cpython_bytes_fill_length_typeerror_messages_diff_subset` when the selected
+  CPython oracle exposes that wording.
 - Tightened `bytes` / `bytearray` `split()`, `rsplit()`, `partition()`,
   `rpartition()`, `strip()`, `lstrip()`, and `rstrip()` to emit CPython-style
   `a bytes-like object is required, not ...` diagnostics for non-bytes-like

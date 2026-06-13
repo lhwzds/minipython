@@ -16662,6 +16662,69 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_bytes_method_typeerror_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest public method TypeError-message rows",
+        name: "bytes-method-typeerror-messages",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    b = ctor(b'a b')
+    prefix = ctor.__name__
+    for method in ['split', 'rsplit']:
+        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)(' '), "a bytes-like object is required, not 'str'")
+        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), "a bytes-like object is required, not 'int'")
+    for method in ['partition', 'rpartition']:
+        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)(' '), "a bytes-like object is required, not 'str'")
+        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), "a bytes-like object is required, not 'int'")
+    for method in ['strip', 'lstrip', 'rstrip']:
+        check(prefix + '.' + method + '.str', lambda b=b, method=method: getattr(b, method)('ac'), "a bytes-like object is required, not 'str'")
+        check(prefix + '.' + method + '.int', lambda b=b, method=method: getattr(b, method)(32), "a bytes-like object is required, not 'int'")
+    b = ctor(b'abc')
+    for method in ['center', 'ljust', 'rjust']:
+        check(prefix + '.' + method + '.int-fill', lambda b=b, method=method: getattr(b, method)(7, 32), method + '() argument 2 must be a byte string of length 1, not int')
+        check(prefix + '.' + method + '.memoryview-fill', lambda b=b, method=method: getattr(b, method)(7, memoryview(b'-')), method + '() argument 2 must be a byte string of length 1, not memoryview')"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_fill_length_typeerror_messages_diff_subset() {
+    let probe = run_cpython(
+        r#"try:
+    b'abc'.center(7, b'')
+except TypeError as error:
+    print(error.args[0])"#,
+    )
+    .expect("failed to probe CPython bytes fill length TypeError support");
+    if !probe.status.success()
+        || probe.stdout.as_slice()
+            != b"center(): argument 2 must be a byte string of length 1, not a bytes object of length 0\n"
+    {
+        eprintln!("skipping bytes fill length TypeError text diff: CPython oracle has older wording");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest fill-length TypeError-message rows",
+        name: "bytes-fill-length-typeerror-messages",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    b = ctor(b'abc')
+    prefix = ctor.__name__
+    for method in ['center', 'ljust', 'rjust']:
+        check(prefix + '.' + method + '.empty-bytes-fill', lambda b=b, method=method: getattr(b, method)(7, b''), method + '(): argument 2 must be a byte string of length 1, not a bytes object of length 0')
+        check(prefix + '.' + method + '.long-bytearray-fill', lambda b=b, method=method: getattr(b, method)(7, bytearray(b'--')), method + '(): argument 2 must be a byte string of length 1, not a bytearray object of length 2')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and AssortedBytesTest repr/compare public subset",
