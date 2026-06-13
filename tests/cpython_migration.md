@@ -2520,6 +2520,12 @@ Completed in the match capture-target/star helper direct-diff pass:
   as direct CPython output parity for supported capture target and sequence
   star-pattern forms.
 
+Completed in the match value/attr/name_or_attr helper direct-diff pass:
+
+- Added `cpython_match_value_attr_name_or_attr_helper_rules_diff_subset` as
+  direct CPython output parity for supported dotted value, mapping-key, bare
+  class-name, and dotted class-name match-pattern forms.
+
 Completed in the match sequence/mapping supported-promotion pass:
 
 - Added `cpython_match_sequence_helper_rules_subset` and promoted

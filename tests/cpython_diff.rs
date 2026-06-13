@@ -17081,6 +17081,52 @@ match Box(4):
 }
 
 #[test]
+fn cpython_match_value_attr_name_or_attr_helper_rules_diff_subset() {
+    let probe =
+        run_cpython("class A:\n    B = 'ok'\nmatch 'ok':\n    case A.B:\n        print('ok')")
+            .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"ok\n" {
+        eprintln!(
+            "skipping match value/attr/name_or_attr helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram value_pattern, attr, and name_or_attr public execution subset",
+        name: "match-value-attr-name-or-attr-helper-rules",
+        source: r#"class A:
+    B = "token"
+match "token":
+    case A.B:
+        print("value")
+class Nested:
+    class Inner:
+        C = "nested"
+match "nested":
+    case Nested.Inner.C:
+        print("nested")
+class Keys:
+    class Names:
+        key = "x"
+match {'x': 4}:
+    case {Keys.Names.key: value}:
+        print(value)
+class Box:
+    pass
+match Box():
+    case Box():
+        print("class")
+class Outer:
+    class Inner:
+        pass
+match Outer.Inner():
+    case Outer.Inner():
+        print("nested class")"#,
+    });
+}
+
+#[test]
 fn cpython_match_sequence_helper_rules_diff_subset() {
     let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
         .expect("failed to probe CPython match statement support");
