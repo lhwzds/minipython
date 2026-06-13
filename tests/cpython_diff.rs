@@ -1214,9 +1214,18 @@ class SepList(list):
     pass
 class SepTuple(tuple):
     pass
+class SepIter:
+    def __iter__(self):
+        return iter((',', ':'))
+class SepGen:
+    def __iter__(self):
+        yield ','
+        yield ':'
 value = {'b': [1, 2], 'a': {'é': '𝄠'}}
 for separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), SepList([',', ':']), SepTuple((Sep(' / '), Sep(' -> ')))]:
     print(json.dumps(value, separators=separators))
+for separators in [iter((',', ':')), SepIter(), SepGen()]:
+    print(json.dumps({'b': [1, 2], 'a': 3}, separators=separators, sort_keys=True))
 print(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
 for separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:
     try:

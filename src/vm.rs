@@ -23646,7 +23646,7 @@ impl Vm {
         }
         if let Some(value) = values[7].as_ref() {
             separators_explicit = !matches!(value, Value::None);
-            json_dumps_apply_separators(&mut options, value)?;
+            json_dumps_apply_separators(self, &mut options, value)?;
         }
         json_unsupported_keyword_none("dumps", "default", values[8].as_ref())?;
         if let Some(value) = values[9].as_ref() {
@@ -58280,6 +58280,7 @@ fn json_dumps_indent_string(value: &Value) -> Result<Option<String>, String> {
 }
 
 fn json_dumps_apply_separators(
+    vm: &mut Vm,
     options: &mut JsonDumpsOptions,
     value: &Value,
 ) -> Result<(), String> {
@@ -58296,7 +58297,7 @@ fn json_dumps_apply_separators(
             .expect("list subclass storage exists after guard")
             .borrow()
             .clone(),
-        _ => return Err("ValueError: too many values to unpack (expected 2)".to_string()),
+        value => vm.collect_iterable_values_propagating(value.clone())?,
     };
     let [item_separator, key_separator] = values.as_slice() else {
         return if values.len() < 2 {

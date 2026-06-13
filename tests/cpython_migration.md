@@ -114,6 +114,11 @@ direct CPython diff evidence plus local subset/runtime evidence, not that the fu
 subclass behavior tied to CPython public iteration for list, tuple, and
 namedtuple subclasses without expanding into custom encoder hooks.
 
+`cpython_json_dumps_separators_subset`, backed by
+`cpython_json_dumps_separators_diff_subset`, now covers CPython public
+`separators` unpacking from two-string list/tuple values, subclasses, and
+general iterables such as tuple iterators, custom iterables, and generators.
+
 ## Runtime Compatibility Module Registry
 
 `src/stdlib.rs::create_module()` currently exposes additional pure-memory

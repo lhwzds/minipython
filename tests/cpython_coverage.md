@@ -799,7 +799,8 @@ Recent runtime migration notes:
   `indent` pretty-print formatting for int/string indent values,
   `skipkeys` omission of unsupported dict keys,
   `sort_keys` ordering for supported comparable keys, `separators`
-  compact/custom rendering for two-string list/tuple values and subclasses,
+  compact/custom rendering for two-string list/tuple values, subclasses, and
+  general iterables,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, `sys.set_int_max_str_digits()` enforcement for parsed
