@@ -66752,6 +66752,50 @@ fn call_dict_method(
         return Ok(Value::None);
     }
 
+    if name == "OrderedDict.popitem" {
+        let [Value::OrderedDict(entries), rest @ ..] = args.as_slice() else {
+            return Err(format!(
+                "popitem() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        if rest.len() > 1 {
+            return Err(format!(
+                "popitem() expected at most 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        }
+        let mut last = match rest {
+            [] => true,
+            [value] => vm.truth_value(value.clone())?,
+            _ => unreachable!("rest length checked above"),
+        };
+        for (keyword, value) in keywords {
+            if keyword != "last" {
+                return Err(format!(
+                    "popitem() got an unexpected keyword argument '{keyword}'"
+                ));
+            }
+            if !rest.is_empty() {
+                return Err("popitem() got multiple values for argument 'last'".to_string());
+            }
+            last = vm.truth_value(value)?;
+        }
+        let mut entries = entries.borrow_mut();
+        let item = if last {
+            entries.pop()
+        } else if entries.is_empty() {
+            None
+        } else {
+            Some(entries.remove(0))
+        };
+        let Some((key, value)) = item else {
+            return Err("KeyError: popitem(): dictionary is empty".to_string());
+        };
+        mark_dict_changed(&mut entries);
+        return Ok(tuple_value(vec![key, value]));
+    }
+
     let canonical_name;
     let name = if let Some(method) = name.strip_prefix("OrderedDict.") {
         canonical_name = format!("dict.{method}");
