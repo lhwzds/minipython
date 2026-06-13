@@ -19379,6 +19379,13 @@ for ctor in [bytes, bytearray]:
     show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))
     show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))
     show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))
+    show(ctor.__name__ + '.count.step', lambda base=base, step=step: base.count(step))
+    show(ctor.__name__ + '.find.step', lambda base=base, step=step: base.find(step))
+    show(ctor.__name__ + '.rfind.step', lambda base=base, step=step: base.rfind(step))
+    show(ctor.__name__ + '.index.step', lambda base=base, step=step: base.index(step))
+    show(ctor.__name__ + '.startswith.step', lambda base=base, step=step: base.startswith(step))
+    show(ctor.__name__ + '.endswith.step', lambda base=base, step=step: base.endswith(step))
+    show(ctor.__name__ + '.contains.step', lambda base=base, step=step: step in base)
 
 for ctor in [bytes, bytearray]:
     base = ctor(b'ace')

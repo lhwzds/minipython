@@ -19980,7 +19980,12 @@ impl Vm {
 
     fn bytes_search_needle(&mut self, value: Value) -> Result<Option<Vec<u8>>, String> {
         match value {
-            Value::MemoryView(view) => memoryview_bytes(&view).map(Some),
+            Value::MemoryView(view) => {
+                if !memoryview_is_contiguous(&view)? {
+                    return Err(bytes_noncontiguous_memoryview_buffer_error());
+                }
+                memoryview_bytes(&view).map(Some)
+            }
             value if bytes_base_value_bytes(&value).is_some() => Ok(Some(
                 bytes_base_value_bytes(&value)
                     .expect("bytes-like value passed recognizer")
@@ -71147,7 +71152,12 @@ fn bytes_like_prefix_suffix_argument(
     in_tuple: bool,
 ) -> Result<Vec<u8>, String> {
     match value {
-        Value::MemoryView(view) => memoryview_bytes(view),
+        Value::MemoryView(view) => {
+            if !memoryview_is_contiguous(view)? {
+                return Err(bytes_noncontiguous_memoryview_buffer_error());
+            }
+            memoryview_bytes(view)
+        }
         value if bytes_base_value_bytes(value).is_some() => Ok(bytes_base_value_bytes(value)
             .expect("bytes-like value passed recognizer")
             .0),
@@ -79327,6 +79337,9 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 .windows(needle.borrow().len())
                 .any(|window| window == needle.borrow().as_slice())),
             Value::MemoryView(needle) => {
+                if !memoryview_is_contiguous(&needle)? {
+                    return Err(bytes_noncontiguous_memoryview_buffer_error());
+                }
                 let needle = memoryview_bytes(&needle)?;
                 Ok(needle.is_empty()
                     || haystack
@@ -79371,6 +79384,9 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 .windows(needle.borrow().len())
                 .any(|window| window == needle.borrow().as_slice())),
             Value::MemoryView(needle) => {
+                if !memoryview_is_contiguous(&needle)? {
+                    return Err(bytes_noncontiguous_memoryview_buffer_error());
+                }
                 let needle = memoryview_bytes(&needle)?;
                 Ok(needle.is_empty()
                     || haystack

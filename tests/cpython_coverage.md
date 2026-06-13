@@ -2286,8 +2286,10 @@ Recent runtime migration notes:
   `maketrans()`, while accepting contiguous sliced views. It also covers the
   CPython split between `bytes.partition()` / `bytes.rpartition()` rejecting
   non-contiguous views and `bytearray.partition()` / `bytearray.rpartition()`
-  accepting their logical contents. Direct CPython diff evidence is in
-  `cpython_bytes_memoryview_contiguity_methods_diff_subset`.
+  accepting their logical contents. It additionally pins the same `BufferError`
+  for search, prefix/suffix, and membership operations: `count()`, `find()`,
+  `rfind()`, `index()`, `startswith()`, `endswith()`, and `in`. Direct CPython
+  diff evidence is in `cpython_bytes_memoryview_contiguity_methods_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and

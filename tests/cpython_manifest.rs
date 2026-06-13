@@ -1794,6 +1794,13 @@ fn cpython_bytes_method_memoryview_contiguity_diff_covers_runtime_subset() {
         "rpartition.step",
         "partition.rev",
         "rpartition.rev",
+        "count.step",
+        "find.step",
+        "rfind.step",
+        "index.step",
+        "startswith.step",
+        "endswith.step",
+        "contains.step",
         "C-contiguous",
     ] {
         assert!(
