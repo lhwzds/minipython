@@ -12416,6 +12416,20 @@ for expr in [lambda: operator.methodcaller(), lambda: operator.methodcaller(12),
         expr()
     except TypeError as error:
         print(type(error).__name__)
+diagnostic_checks = [
+    ('attr-ctor-kw', lambda: operator.attrgetter(attr='name')),
+    ('attr-call-kw', lambda: operator.attrgetter('name')(a, surname='dent')),
+    ('item-ctor-kw', lambda: operator.itemgetter(item=0)),
+    ('item-call-kw', lambda: operator.itemgetter(2)(data, size=3)),
+    ('method-noargs', lambda: operator.methodcaller()),
+    ('method-kw', lambda: operator.methodcaller(name='foo')),
+    ('method-call-kw', lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)),
+]
+for label, expr in diagnostic_checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 print(callable(operator.attrgetter('name')), callable(operator.itemgetter(0)), callable(operator.methodcaller('bar')))"#,
     });
 }

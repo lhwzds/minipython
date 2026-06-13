@@ -28709,6 +28709,11 @@ impl Vm {
         if function == "methodcaller" {
             return self.call_operator_methodcaller_constructor(args, keywords);
         }
+        if matches!(function, "attrgetter" | "itemgetter") && !keywords.is_empty() {
+            return Err(format!(
+                "TypeError: {function}() takes no keyword arguments"
+            ));
+        }
         if function == "index" {
             if !keywords.is_empty() {
                 return Err("TypeError: _operator.index() takes no keyword arguments".to_string());
@@ -28982,7 +28987,9 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((name, bound_args)) = args.split_first() else {
-            return Err("TypeError: methodcaller expected 1 argument, got 0".to_string());
+            return Err(
+                "TypeError: methodcaller needs at least one argument, the method name".to_string(),
+            );
         };
         let name = match name {
             Value::String(name) | Value::IdentityString { value: name, .. } => name.clone(),
@@ -29012,7 +29019,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: attrgetter() does not accept keyword arguments".to_string());
+            return Err("TypeError: attrgetter() takes no keyword arguments".to_string());
         }
         let object = operator_call_object_arg("attrgetter", args)?;
         let mut values = Vec::with_capacity(attrs.len());
@@ -29037,7 +29044,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: itemgetter() does not accept keyword arguments".to_string());
+            return Err("TypeError: itemgetter() takes no keyword arguments".to_string());
         }
         let object = operator_call_object_arg("itemgetter", args)?;
         let mut values = Vec::with_capacity(items.len());
@@ -29056,7 +29063,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: methodcaller() does not accept keyword arguments".to_string());
+            return Err("TypeError: methodcaller() takes no keyword arguments".to_string());
         }
         let object = operator_call_object_arg("methodcaller", args)?;
         let method = self.load_attribute_value(object, &name)?;
