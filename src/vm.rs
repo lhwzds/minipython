@@ -9312,6 +9312,13 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("dict.") => {
                 call_dict_method(self, &name, args, keywords)
             }
+            Value::Builtin(name)
+                if name.starts_with("dict_keys.")
+                    || name.starts_with("dict_items.")
+                    || name.starts_with("dict_values.") =>
+            {
+                call_dict_view_method(self, &name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("OrderedDict.") => {
                 call_dict_method(self, &name, args, keywords)
             }
@@ -52451,7 +52458,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             let type_name = dict_view_type_name(kind);
             match name {
                 "mapping" => Ok(mapping_proxy_value(entries)),
-                "__iter__" => Ok(Value::BoundMethod {
+                "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::DictView { kind, entries }),
+                    identity: Rc::new(()),
+                }),
+                "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::DictView { kind, entries }),
                     identity: Rc::new(()),
@@ -52504,7 +52516,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::MappingView { kind, mapping } => {
             let type_name = dict_view_type_name(kind);
             match name {
-                "__iter__" => Ok(Value::BoundMethod {
+                "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::MappingView { kind, mapping }),
+                    identity: Rc::new(()),
+                }),
+                "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::MappingView { kind, mapping }),
                     identity: Rc::new(()),
@@ -66736,6 +66753,68 @@ fn call_user_dict_method(
     }
 }
 
+fn call_dict_view_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    reject_method_keywords(name, &keywords)?;
+    match method_display_name(name) {
+        "__contains__" => {
+            let [view, needle] = args.as_slice() else {
+                return Err(format!(
+                    "__contains__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(kind) = dict_view_method_kind(view) else {
+                return Err("__contains__() expected a dict view receiver".to_string());
+            };
+            if !dict_view_is_set_like(kind) {
+                return Err("__contains__() expected a dict keys/items view receiver".to_string());
+            }
+            Ok(Value::Bool(
+                vm.contains_value(needle.clone(), view.clone())?,
+            ))
+        }
+        "__len__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__len__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__len__() expected a dict view receiver".to_string());
+            }
+            let len = i64::try_from(value_len(view)?)
+                .map_err(|_| "OverflowError: len() result is too large".to_string())?;
+            Ok(Value::Number(len))
+        }
+        "__repr__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__repr__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__repr__() expected a dict view receiver".to_string());
+            }
+            Ok(Value::String(repr_value_checked(view)?))
+        }
+        _ => Err(format!("unknown builtin: {name}")),
+    }
+}
+
+fn dict_view_method_kind(value: &Value) -> Option<DictViewKind> {
+    match value {
+        Value::DictView { kind, .. } | Value::MappingView { kind, .. } => Some(*kind),
+        _ => None,
+    }
+}
+
 fn dict_receiver_entries(value: &Value) -> Option<DictRef> {
     match value {
         Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
@@ -70177,6 +70256,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
         Value::ScopeDict(scope) => Ok(scope.borrow().len()),
         Value::FrameLocalsProxy { locals } => Ok(locals.borrow().len()),
         Value::DictView { entries, .. } => Ok(entries.borrow().len()),
+        Value::MappingView { mapping, .. } => value_len(mapping),
         Value::Range { start, stop, step } => Ok(range_len_usize(start, stop, step)?),
         value => Err(format!(
             "TypeError: object of type '{}' has no len()",

@@ -6338,6 +6338,7 @@ scope_keys = g.keys()
 scope_items = g.items()
 scope_values = g.values()
 print(type(scope_keys).__name__, type(scope_items).__name__, type(scope_values).__name__)
+print(scope_keys.__len__() == len(g), scope_keys.__contains__('scope_rev_a'), scope_items.__contains__(('scope_rev_a', 10)), scope_keys.__repr__().startswith('dict_keys'))
 for view in [scope_keys, scope_items, scope_values]:
     rendered = repr(view)
     print(type(view).__name__, 'scope_keys' in rendered, '...' in rendered)
@@ -15742,7 +15743,7 @@ print(d.x)"#,
         DiffCase {
             origin: "Lib/test/test_dict.py dict view objects",
             name: "dict-live-view-objects",
-            source: "d = {1: 2, 3: 4}\nkeys = d.keys()\nvalues = d.values()\nitems = d.items()\nprint(keys)\nprint(values)\nprint(items)\nd[5] = 6\nprint(len(keys), 5 in keys, 6 in values, (5, 6) in items)\nprint(list(keys))",
+            source: "d = {1: 2, 3: 4}\nkeys = d.keys()\nvalues = d.values()\nitems = d.items()\nprint(keys)\nprint(values)\nprint(items)\nd[5] = 6\nprint(len(keys), 5 in keys, 6 in values, (5, 6) in items)\nprint(keys.__len__(), keys.__contains__(5), items.__contains__((5, 6)), values.__repr__())\ntry:\n    values.__contains__(6)\nexcept AttributeError as error:\n    print(error.__class__.__name__)\nprint(list(keys))",
         },
         DiffCase {
             origin: "Lib/test/test_dict.py::test_dictview_set_operations_on_keys / ::test_dictview_set_operations_on_items / ::test_dictview_mixed_set_operations",

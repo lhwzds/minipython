@@ -3225,7 +3225,8 @@ Recent runtime migration notes:
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment
-  rejection.
+  rejection, plus direct dict-view `__len__` / `__contains__` / `__repr__`
+  methods where CPython exposes them.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_exact_dict_subset`, covering the exact-dict
   `types.MappingProxyType` constructor path plus `get`, live views, `copy`,
@@ -4244,6 +4245,8 @@ the same GenericAlias entry point on scope-backed module namespace mappings.
 subset covers the same display methods on scope-backed module namespaces.
 It also covers direct empty-format `dict.__format__` / `{}.__format__` and the
 matching scope-backed namespace `__format__` lookup.
+`cpython_globals_locals_builtin_subset` now also covers direct
+`__len__` / `__contains__` / `__repr__` methods on scope-backed namespace views.
 | `NEWLINE` | supported | `lexes_newline`, `cpython_compile_crlf_newlines_subset`, `cpython_compile_specifics_newline_and_indentation_subset`, `cpython_tokenize_explicit_line_joining_subset` and `cpython_tokenize_explicit_line_joining_diff_subset` including continuation-only lines that do not emit statement newlines, token-kind/text parity with the no-continuation spelling, comment backslashes that do not continue, and bad-indentation continuation rejection, `cpython_tokenize_implicit_line_joining_subset` and `cpython_tokenize_implicit_line_joining_diff_subset` including the logical newline after a bracketed block containing comments and CPython's bracketed tuple/list/dict continuation semantics, `cpython_tokenize_spanned_tokens_subset` including newline span, `cpython_tokenize_trailing_space_without_newline_subset` covering tokenizer-mode preservation of a final whitespace-only physical line and final comment-only physical line, `cpython_tokenize_bytes_encoding_token_subset` covering a synthesized final newline after very long comment-only bytes source without a final newline, and `cpython_tokenize_invalid_python_token_stream_subset` including tokenizer-mode synthetic final newline |
 | `INDENT` | supported | `lexes_if_block_indentation`, `lexes_tabs_in_indentation`, `cpython_tokenize_indentation_blank_line_subset`, `cpython_tokenize_indentation_blank_line_diff_subset`, `cpython_tokenize_nested_indentation_subset`, `cpython_tokenize_nested_indentation_diff_subset`, `cpython_tokenize_max_indent_subset`, `cpython_tokenize_unmatched_indentation_subset` / `cpython_tokenize_unmatched_indentation_diff_subset` including CPython-style tab expansion and inconsistent tab/space indentation rejection, `cpython_tokenize_formfeed_whitespace_subset` / `cpython_tokenize_formfeed_whitespace_diff_subset` including leading-formfeed indentation reset, `cpython_tokenize_explicit_line_joining_subset` including continuation-only lines that suppress unrelated indentation while still allowing a pending post-colon block indent, `cpython_tokenize_spanned_tokens_subset` including indent span |
 | `DEDENT` | supported | `lexes_if_block_indentation`, `cpython_tokenize_indentation_blank_line_subset`, `cpython_tokenize_indentation_blank_line_diff_subset`, `cpython_tokenize_nested_indentation_subset`, `cpython_tokenize_nested_indentation_diff_subset`, `cpython_tokenize_max_indent_subset`, `cpython_tokenize_unmatched_indentation_subset` / `cpython_tokenize_unmatched_indentation_diff_subset` including unmatched-dedent spans, `cpython_tokenize_spanned_tokens_subset` including dedent span |

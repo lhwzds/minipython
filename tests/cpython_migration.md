@@ -6342,7 +6342,8 @@ Completed in the namespace builtin pass:
   default values, snapshot copies, write-through insertion, ordered last-item
   removal for scope-inserted keys, live mapping clearing, recursive
   self-reference repr placeholders, live `dict_keys` / `dict_items` /
-  `dict_values` views, stable `reversed()` iteration over scope mappings and
+  `dict_values` views, direct `__len__` / `__contains__` / `__repr__` methods
+  on those views, stable `reversed()` iteration over scope mappings and
   those views, deletion/reinsertion order for scope-backed mappings, recursive
   repr guards for scope-backed views, PEP 584 union and in-place union for
   scope-backed mappings, rich equality against dict-compatible mappings,
@@ -6812,6 +6813,8 @@ Completed in the dict view mappingproxy pass:
 - Added the read-only `mappingproxy` runtime value exposed by built-in dict
   views through `.mapping`, including `type(type.__dict__)`, `isinstance`,
   live dict equality, item lookup, membership, and item-assignment rejection.
+- Added direct dict-view `__len__` / `__contains__` / `__repr__` methods where
+  CPython exposes them.
 - Registered `mappingproxy` as a read-only `Mapping`, `Sized`, `Iterable`,
   `Container`, `Collection`, and `Reversible` built-in type while keeping it
   outside `MutableMapping`.
