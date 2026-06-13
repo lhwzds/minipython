@@ -5701,8 +5701,8 @@ Completed in the type builtin pass:
 - Added `cpython_type_namespace_order_subset`, adapted from
   `TestType::test_namespace_order`, covering minimal `OrderedDict`
   construction, public type/instance `__doc__` plus type `__module__` /
-  `__qualname__` metadata, direct display and empty-format methods, generic
-  alias repr/module metadata, `copy()` preserving the `OrderedDict` result
+  `__qualname__` metadata, direct display/empty-format methods including
+  recursive display, generic alias repr/module metadata, `copy()` preserving the `OrderedDict` result
   type, direct equality methods, type/instance `fromkeys()`,
   `popitem(last=...)`, direct `__reversed__()`, mapping union operators
   including in-place identity preservation, `move_to_end()`, and preservation
@@ -9436,8 +9436,8 @@ Completed in the CPython collections manifest expansion pass:
   multi-map matrix for ChainMap iteration and `items()` order.
 - Exposed a first-pass `collections.OrderedDict` constructor alias over
   MiniPython's insertion-ordered dict storage, with minimal public metadata for
-  the exposed type plus direct display/empty-format methods and generic alias
-  repr/module metadata plus `copy()` preserving `OrderedDict`, type/instance
+  the exposed type plus direct display/empty-format methods including
+  recursive display and generic alias repr/module metadata plus `copy()` preserving `OrderedDict`, type/instance
   `fromkeys()`, `popitem(last=...)`, direct equality methods, and mapping union
   operators that preserve `OrderedDict` result type/order and in-place
   identity. Direct

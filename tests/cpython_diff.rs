@@ -16331,6 +16331,9 @@ print(type(od.__doc__).__name__, bool(od.__doc__))
 display = OrderedDict([('a', 1)])
 print(display.__repr__(), display.__str__(), display.__format__(''))
 print(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))
+recursive = OrderedDict()
+recursive['self'] = recursive
+print(repr(recursive), recursive.__repr__(), str(recursive))
 try:
     display.__format__('x')
 except TypeError as error:

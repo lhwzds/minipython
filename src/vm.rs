@@ -1327,6 +1327,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         | Value::FrozenSet(_)
         | Value::Deque { .. }
         | Value::Dict(_)
+        | Value::OrderedDict(_)
         | Value::UserDict { .. }
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. }
@@ -1454,6 +1455,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             repr_dict_entries_checked(&entries, active)
         }
         Value::Dict(entries) => repr_dict_entries_checked(entries, active),
+        Value::OrderedDict(entries) => repr_ordered_dict_entries_checked(entries, active),
         Value::UserDict { data, .. } => repr_dict_entries_checked(data, active),
         Value::ScopeDict(scope) => {
             let ptr = Rc::as_ptr(scope) as usize;
@@ -1641,6 +1643,34 @@ fn repr_dict_entries_checked(
     Ok(format!("{{{rendered}}}"))
 }
 
+fn repr_ordered_dict_entries_checked(
+    entries: &DictRef,
+    active: &mut HashSet<usize>,
+) -> Result<String, String> {
+    let ptr = Rc::as_ptr(entries) as usize;
+    if !active.insert(ptr) {
+        return Ok("...".to_string());
+    }
+    let entries = entries.borrow();
+    if entries.is_empty() {
+        active.remove(&ptr);
+        return Ok("OrderedDict()".to_string());
+    }
+    let rendered = entries
+        .iter()
+        .map(|(key, value)| {
+            Ok(format!(
+                "({}, {})",
+                repr_value_inner_checked(key, active)?,
+                repr_value_inner_checked(value, active)?
+            ))
+        })
+        .collect::<Result<Vec<_>, String>>()?
+        .join(", ");
+    active.remove(&ptr);
+    Ok(format!("OrderedDict([{rendered}])"))
+}
+
 fn repr_simple_namespace_checked(
     fields: &DictRef,
     active: &mut HashSet<usize>,
@@ -1781,6 +1811,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
             repr_dict_entries(&entries, active)
         }
         Value::Dict(entries) => repr_dict_entries(entries, active),
+        Value::OrderedDict(entries) => repr_ordered_dict_entries(entries, active),
         Value::UserDict { data, .. } => {
             let ptr = Rc::as_ptr(data) as usize;
             if !active.insert(ptr) {
@@ -1991,6 +2022,31 @@ fn repr_dict_entries(entries: &DictRef, active: &mut HashSet<usize>) -> String {
         .join(", ");
     active.remove(&ptr);
     format!("{{{rendered}}}")
+}
+
+fn repr_ordered_dict_entries(entries: &DictRef, active: &mut HashSet<usize>) -> String {
+    let ptr = Rc::as_ptr(entries) as usize;
+    if !active.insert(ptr) {
+        return "...".to_string();
+    }
+    let entries = entries.borrow();
+    if entries.is_empty() {
+        active.remove(&ptr);
+        return "OrderedDict()".to_string();
+    }
+    let rendered = entries
+        .iter()
+        .map(|(key, value)| {
+            format!(
+                "({}, {})",
+                repr_value_inner(key, active),
+                repr_value_inner(value, active)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    active.remove(&ptr);
+    format!("OrderedDict([{rendered}])")
 }
 
 fn repr_tuple(items: &[Value], active: &mut HashSet<usize>) -> String {
