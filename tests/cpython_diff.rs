@@ -17012,6 +17012,39 @@ match {-1.5 - 2.5j: 'value'}:
 }
 
 #[test]
+fn cpython_match_capture_wildcard_group_helper_rules_diff_subset() {
+    let probe = run_cpython("match 'ok':\n    case value:\n        print(value)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"ok\n" {
+        eprintln!(
+            "skipping match capture/wildcard/group helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram capture_pattern, wildcard_pattern, and group_pattern public execution subset",
+        name: "match-capture-wildcard-group-helper-rules",
+        source: r#"match "value":
+    case captured:
+        print(captured)
+_ = "outer"
+match "value":
+    case _:
+        print(_)
+match [1, 2]:
+    case ([1, value]):
+        print(value)
+match "value":
+    case (_):
+        print("wildcard")
+match "value":
+    case (captured):
+        print(captured)"#,
+    });
+}
+
+#[test]
 fn cpython_match_sequence_helper_rules_diff_subset() {
     let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
         .expect("failed to probe CPython match statement support");

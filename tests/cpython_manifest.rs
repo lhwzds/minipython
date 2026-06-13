@@ -4884,6 +4884,44 @@ fn cpython_match_numeric_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_match_capture_wildcard_group_helper_diff_covers_runtime_subset() {
+    let diff_name = "cpython_match_capture_wildcard_group_helper_rules_diff_subset";
+    let subset_name = "cpython_match_capture_wildcard_group_helper_rules_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("match capture/wildcard/group helper CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "match capture/wildcard/group helper runtime subset evidence must exist"
+    );
+    for required in [
+        "case captured",
+        "case _",
+        "case ([1, value])",
+        "case (_)",
+        "case (captured)",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "match capture/wildcard/group helper diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "match capture/wildcard/group helper docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_match_sequence_helper_diff_covers_runtime_subset() {
     let diff_name = "cpython_match_sequence_helper_rules_diff_subset";
     let subset_name = "cpython_match_sequence_helper_rules_subset";

@@ -2508,6 +2508,12 @@ Completed in the match numeric helper direct-diff pass:
   CPython output parity for supported numeric literal match-pattern forms,
   including signed real/imaginary/complex patterns and numeric mapping keys.
 
+Completed in the match capture/wildcard/group helper direct-diff pass:
+
+- Added `cpython_match_capture_wildcard_group_helper_rules_diff_subset` as
+  direct CPython output parity for supported capture, wildcard, and grouped
+  match-pattern forms.
+
 Completed in the match sequence/mapping supported-promotion pass:
 
 - Added `cpython_match_sequence_helper_rules_subset` and promoted
