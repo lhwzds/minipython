@@ -21151,6 +21151,22 @@ for tc in ['B', 'b']:
     );
 }
 
+// Adapted from CPython Lib/test/test_array.py public array.clear() behavior for
+// the supported one-byte B/b typecodes.
+#[test]
+fn cpython_array_one_byte_public_clear_subset() {
+    assert_output(
+        r#"import array
+for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
+    a = array.array(tc, vals)
+    print(tc, 'clear' in dir(a), a.clear(), repr(a), bool(a), len(a))"#,
+        &[
+            "B True None array('B') False 0",
+            "b True None array('b') False 0",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public subscript mutation
 // behavior for the supported one-byte B/b typecodes.
 #[test]

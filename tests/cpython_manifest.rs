@@ -3068,6 +3068,7 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
         candidates.push("cpython_id_builtin_subset".to_string());
     }
     if evidence == "cpython_array_one_byte_public_clear_diff_subset" {
+        candidates.push("cpython_array_one_byte_public_clear_subset".to_string());
         candidates.push("cpython_array_one_byte_public_mutation_methods_subset".to_string());
     }
     if evidence == "cpython_types_simple_namespace_recursive_diff_subset" {
@@ -5907,6 +5908,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_float_public_sequence_and_mutation_subset",
             "cpython_array_unicode_public_sequence_and_mutation_subset",
             "cpython_array_one_byte_public_mutation_methods_subset",
+            "cpython_array_one_byte_public_clear_subset",
             "cpython_array_one_byte_public_subscript_mutation_subset",
             "cpython_array_one_byte_public_copy_byteswap_compare_subset",
             "cpython_array_one_byte_public_concat_repeat_subset",
