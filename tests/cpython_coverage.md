@@ -836,7 +836,8 @@ Recent runtime migration notes:
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
-  and first-pass type, structural, literal, and data error classification. File APIs,
+  invalid UTF-8 byte input `UnicodeDecodeError` type classification, and
+  first-pass type, structural, literal, and data error classification. File APIs,
   non-`None` encoder/decoder hooks other than `object_hook`,
   `object_pairs_hook`, `parse_int`, `parse_float`, `parse_constant`, and
   `default`,

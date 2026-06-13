@@ -1728,6 +1728,10 @@ show('loads-extra-arg', lambda: json.loads('{}', 1))
 show('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))
 show('loads-memoryview', lambda: json.loads(memoryview(b'{}')))
 show('loads-invalid-utf8', lambda: json.loads(b'\xff'))
+try:
+    json.loads(bytes([255]))
+except Exception as error:
+    print('loads-invalid-utf8-unicode', isinstance(error, UnicodeDecodeError))
 show('loads-trailing-data', lambda: json.loads('{} []'))
 show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
 show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))

@@ -4238,6 +4238,8 @@ fn json_error_boundary_diff_covers_subset_surface() {
     for required in [
         "loads-memoryview",
         "loads-invalid-utf8",
+        "loads-invalid-utf8-unicode",
+        "UnicodeDecodeError",
         "loads-trailing-data",
         "loads-array-trailing-comma",
         "loads-leading-zero-extra",

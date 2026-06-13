@@ -58232,12 +58232,12 @@ impl<'a> JsonParser<'a> {
 
 fn json_loads_decode_bytes(bytes: &[u8]) -> Result<String, String> {
     json_loads_decode_bytes_inner(bytes)
-        .map_err(|_| "ValueError: json.loads() source must be decodable JSON text".to_string())
 }
 
-fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, ()> {
+fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
     if bytes.starts_with(&[0xef, 0xbb, 0xbf]) {
-        return String::from_utf8(bytes[3..].to_vec()).map_err(|_| ());
+        return String::from_utf8(bytes[3..].to_vec())
+            .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string());
     }
     if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) {
         return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Little);
@@ -58246,7 +58246,7 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, ()> {
         return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Big);
     }
     if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
-        return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict).map_err(|_| ());
+        return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict);
     }
     if bytes.len() >= 4 {
         if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
@@ -58256,20 +58256,19 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, ()> {
             return json_decode_utf32_bytes(bytes, Utf16Endian::Little);
         }
         if bytes[0] == 0 && bytes[2] == 0 {
-            return decode_utf16_bytes(bytes, Some(Utf16Endian::Big), CodecErrorMode::Strict)
-                .map_err(|_| ());
+            return decode_utf16_bytes(bytes, Some(Utf16Endian::Big), CodecErrorMode::Strict);
         }
         if bytes[1] == 0 && bytes[3] == 0 {
-            return decode_utf16_bytes(bytes, Some(Utf16Endian::Little), CodecErrorMode::Strict)
-                .map_err(|_| ());
+            return decode_utf16_bytes(bytes, Some(Utf16Endian::Little), CodecErrorMode::Strict);
         }
     }
-    String::from_utf8(bytes.to_vec()).map_err(|_| ())
+    String::from_utf8(bytes.to_vec())
+        .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string())
 }
 
-fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, ()> {
+fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, String> {
     if bytes.len() % 4 != 0 {
-        return Err(());
+        return Err("UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string());
     }
     let mut output = String::new();
     for chunk in bytes.chunks_exact(4) {
@@ -58277,7 +58276,8 @@ fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, 
             Utf16Endian::Little => u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
             Utf16Endian::Big => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
         };
-        let ch = char::from_u32(codepoint).ok_or(())?;
+        let ch = char::from_u32(codepoint)
+            .ok_or_else(|| "UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string())?;
         output.push(ch);
     }
     Ok(output)
