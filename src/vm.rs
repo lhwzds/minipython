@@ -28831,6 +28831,46 @@ impl Vm {
                 }
                 Err(format!("ValueError: {needle} is not in deque"))
             }
+            "insert" => {
+                let [index, value] = rest else {
+                    return Err(format!(
+                        "insert() expected 2 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let mut items = data.borrow_mut();
+                if maxlen.is_some_and(|maxlen| items.len() >= maxlen) {
+                    return Err("IndexError: deque already at its maximum size".to_string());
+                }
+                let len =
+                    i64::try_from(items.len()).map_err(|_| "deque is too large".to_string())?;
+                let index = self.index_i64(index.clone(), "deque index")?;
+                let index = if index < 0 {
+                    index.saturating_add(len).max(0)
+                } else {
+                    index.min(len)
+                };
+                let index =
+                    usize::try_from(index).map_err(|_| "deque index out of range".to_string())?;
+                items.insert(index, value.clone());
+                Ok(Value::None)
+            }
+            "remove" => {
+                let [needle] = rest else {
+                    return Err(format!(
+                        "remove() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let items = data.borrow().clone();
+                for (index, item) in items.iter().enumerate() {
+                    if self.equal_values(item.clone(), needle.clone())? {
+                        data.borrow_mut().remove(index);
+                        return Ok(Value::None);
+                    }
+                }
+                Err("ValueError: deque.remove(x): x not in deque".to_string())
+            }
             "clear" => {
                 if !rest.is_empty() {
                     return Err(format!(
@@ -51202,13 +51242,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
-                | "index" | "pop" | "popleft" | "reverse" | "rotate" | "__iter__" | "__len__" => {
-                    Ok(Value::BoundMethod {
-                        function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                        receiver: Box::new(Value::Deque { data, maxlen }),
-                        identity: Rc::new(()),
-                    })
-                }
+                | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
+                | "__iter__" | "__len__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                    receiver: Box::new(Value::Deque { data, maxlen }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }
