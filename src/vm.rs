@@ -36282,8 +36282,8 @@ fn ast_compile_validate_context(node: &Value, expected: &str) -> Result<(), Stri
     let ctx = ast_compile_required_field(node, "ctx")?;
     match ast_node_kind(&ctx) {
         Some(kind) if kind == expected => Ok(()),
-        Some("Load" | "Store" | "Del") => Err(format!(
-            "ValueError: expression must have {expected} context"
+        Some(kind @ ("Load" | "Store" | "Del")) => Err(format!(
+            "ValueError: expression must have {expected} context but has {kind} instead"
         )),
         Some(kind) => Err(format!(
             "TypeError: expected some sort of expr_context, but got {kind}()"

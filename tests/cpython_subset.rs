@@ -15164,6 +15164,32 @@ print(eval(compile(valid, "<ast>", "eval")))
 }
 
 #[test]
+fn cpython_ast_compile_public_ast_context_error_detail_subset() {
+    assert_output(
+        r#"import ast
+checks = [
+    ("load-store", ast.Expression(ast.Name("x", ast.Store())), "eval"),
+    ("load-del", ast.Expression(ast.Name("x", ast.Del())), "eval"),
+    ("store-load", ast.Module([ast.Assign([ast.Name("x", ast.Load())], ast.Constant(1))], []), "exec"),
+    ("del-load", ast.Module([ast.Delete([ast.Name("x", ast.Load())])], []), "exec"),
+]
+for label, tree, mode in checks:
+    ast.fix_missing_locations(tree)
+    try:
+        compile(tree, "<ast>", mode)
+    except ValueError as error:
+        print(label, error)
+"#,
+        &[
+            "load-store expression must have Load context but has Store instead",
+            "load-del expression must have Load context but has Del instead",
+            "store-load expression must have Store context but has Load instead",
+            "del-load expression must have Del context but has Load instead",
+        ],
+    );
+}
+
+#[test]
 fn cpython_ast_dump_plain_first_pass_subset() {
     assert_output(
         r#"import ast

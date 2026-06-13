@@ -6190,6 +6190,27 @@ print(eval(compile(valid, "<ast>", "eval")))"#,
 }
 
 #[test]
+fn cpython_ast_compile_context_error_detail_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py public AST compile expr_context validation",
+        name: "ast-compile-context-error-detail",
+        source: r#"import ast
+checks = [
+    ("load-store", ast.Expression(ast.Name("x", ast.Store())), "eval"),
+    ("load-del", ast.Expression(ast.Name("x", ast.Del())), "eval"),
+    ("store-load", ast.Module([ast.Assign([ast.Name("x", ast.Load())], ast.Constant(1))], []), "exec"),
+    ("del-load", ast.Module([ast.Delete([ast.Name("x", ast.Load())])], []), "exec"),
+]
+for label, tree, mode in checks:
+    ast.fix_missing_locations(tree)
+    try:
+        compile(tree, "<ast>", mode)
+    except ValueError as error:
+        print(label, error)"#,
+    });
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",
