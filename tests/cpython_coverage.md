@@ -995,8 +995,9 @@ Recent runtime migration notes:
   whose names differ from the wrapped function, reuse rejection under different
   names, reuse under the same name across classes, explicit post-class
   assignment before `__set_name__`, slot-only instances without `__dict__`, and
-  the shared user-descriptor `__set_name__` hook plus exception propagation for
-  both class statements and `type()` dynamic class creation.
+  the shared user-descriptor `__set_name__` hook plus CPython-style
+  `RuntimeError` wrapping for descriptor failures during both class statements
+  and `type()` dynamic class creation.
 - The bundled `functools` module also includes
   `cpython_functools_reduce_diff_subset` and
   `cpython_functools_reduce_subset`, covering CPython

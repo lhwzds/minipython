@@ -5821,8 +5821,9 @@ Completed in the pow builtin pass:
   `attrname`, wrapped-function/name mismatch, rejecting reuse under different
   names, allowing reuse under the same name across classes, explicit post-class
   assignment before `__set_name__`, slot-only instances without `__dict__`, and
-  user-descriptor `__set_name__` calls plus exception propagation from both
-  class statements and `type()` dynamic class creation.
+  user-descriptor `__set_name__` calls plus CPython-style `RuntimeError`
+  wrapping for descriptor failures during both class statements and `type()`
+  dynamic class creation.
   Metaclass mappingproxy assignment failures, cached_property subclass
   data-descriptor behavior, and exact object `__dict__` internals remain
   classified for later runtime work.

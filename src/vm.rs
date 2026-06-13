@@ -11602,17 +11602,26 @@ impl Vm {
             match descriptor {
                 descriptor @ Value::CachedProperty { .. } => {
                     self.cached_property_set_name(
-                        descriptor,
+                        descriptor.clone(),
                         class_value.clone(),
-                        Value::String(name),
-                    )?;
+                        Value::String(name.clone()),
+                    )
+                    .map_err(|_| class_set_name_error(&descriptor, class_value, &name))?;
                 }
                 descriptor => {
                     let Some(set_name) = instance_special_method(&descriptor, "__set_name__")
                     else {
                         continue;
                     };
-                    self.call_value(set_name, vec![class_value.clone(), Value::String(name)])?;
+                    match self.call_value_catching(
+                        set_name,
+                        vec![class_value.clone(), Value::String(name.clone())],
+                    )? {
+                        Ok(_) => {}
+                        Err(_) => {
+                            return Err(class_set_name_error(&descriptor, class_value, &name));
+                        }
+                    }
                 }
             }
         }
@@ -55376,6 +55385,19 @@ fn type_name(value: &Value) -> &str {
         Value::NotImplemented => "NotImplementedType",
         Value::Ellipsis => "ellipsis",
     }
+}
+
+fn class_set_name_error(descriptor: &Value, owner: &Value, name: &str) -> String {
+    let owner_name = match owner {
+        Value::Class { name, .. } => name.as_str(),
+        value => type_name(value),
+    };
+    format!(
+        "RuntimeError: Error calling __set_name__ on '{}' instance '{}' in '{}'",
+        type_name(descriptor),
+        name,
+        owner_name
+    )
 }
 
 fn iterator_type_name(iterator: &Value) -> &'static str {

@@ -12085,8 +12085,8 @@ for label, maker in [
                 def cost(self):
                     return 9
             Slots().cost
-    except (TypeError, RuntimeError):
-        print(label, 'error')
+    except (TypeError, RuntimeError) as error:
+        print(label, type(error).__name__, str(error))
 
 counter = 0
 @cached_property
