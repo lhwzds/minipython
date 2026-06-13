@@ -1347,7 +1347,9 @@ Recent runtime migration notes:
   `cpython_operator_public_helpers_subset`, covering CPython public helper
   parity for representative comparison, predicate, arithmetic, bitwise,
   sequence/member, item mutation, `attrgetter`, `itemgetter`, `methodcaller`,
-  and related callable-helper behavior.
+  and related callable-helper behavior. Full pickle metadata and every CPython helper edge case
+  remain outside the default sandbox `operator` surface until separately
+  promoted with direct public-behavior evidence.
 - The bundled `copy` module includes `cpython_copy_public_diff_subset` and
   `cpython_copy_public_subset`,
   covering CPython public `copy.Error` / `copy.error` exception metadata,

@@ -4319,13 +4319,21 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
-        &["Full pickle metadata"],
+        &["Full pickle metadata", "every CPython helper edge case"],
     );
 
     let row = sandbox_stdlib_rows()
         .into_iter()
         .find(|row| row.module == "operator")
         .expect("sandbox stdlib manifest must include operator");
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for excluded in ["Full pickle metadata", "every CPython helper edge case"] {
+            assert!(
+                document.contains(excluded),
+                "operator docs must keep excluded surface `{excluded}` documented"
+            );
+        }
+    }
     assert!(
         !row.supported_surface
             .contains("cpython_operator_pickle_helper_subset"),
@@ -5500,6 +5508,19 @@ fn operator_newer_helpers_and_pickle_stop_line_stay_classified() {
         row.excluded_surface.contains("Full pickle metadata"),
         "operator sandbox manifest must keep full pickle metadata outside the supported surface"
     );
+    assert!(
+        row.excluded_surface
+            .contains("every CPython helper edge case"),
+        "operator sandbox manifest must keep every CPython helper edge case outside the supported surface"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for excluded in ["Full pickle metadata", "every CPython helper edge case"] {
+            assert!(
+                document.contains(excluded),
+                "operator docs must keep unsupported boundary `{excluded}` documented"
+            );
+        }
+    }
     assert!(
         !row.supported_surface
             .contains("cpython_operator_pickle_helper_subset"),
