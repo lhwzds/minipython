@@ -14844,6 +14844,26 @@ impl Vm {
                 delete_subscript(dict.clone(), key.clone())?;
                 Ok(Value::None)
             }
+            "scope_dict.__eq__" | "scope_dict.__ne__" => {
+                let [Value::ScopeDict(scope), other] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let Some(other_entries) = scope_dict_direct_comparison_entries(other) else {
+                    return Ok(Value::NotImplemented);
+                };
+                let entries = scope_dict_entries(scope);
+                let equal = entries.len() == other_entries.len()
+                    && self.dict_item_entries_subset(&entries, &other_entries)?;
+                Ok(Value::Bool(if name == "scope_dict.__ne__" {
+                    !equal
+                } else {
+                    equal
+                }))
+            }
             "scope_dict.__getitem__" => {
                 let [dict @ Value::ScopeDict(_), key] = args.as_slice() else {
                     return Err(format!(
@@ -27227,6 +27247,28 @@ impl Vm {
         Ok(true)
     }
 
+    fn scope_backed_mapping_equal(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<bool>, String> {
+        if !is_scope_backed_mapping_value(left) && !is_scope_backed_mapping_value(right) {
+            return Ok(None);
+        }
+        let left_entries = match mapping_entries(left) {
+            Ok(entries) => entries,
+            Err(_) => return Ok(Some(false)),
+        };
+        let right_entries = match mapping_entries(right) {
+            Ok(entries) => entries,
+            Err(_) => return Ok(Some(false)),
+        };
+        Ok(Some(
+            left_entries.len() == right_entries.len()
+                && self.dict_item_entries_subset(&left_entries, &right_entries)?,
+        ))
+    }
+
     fn set_is_subset(&mut self, left: &[Value], right: &[Value]) -> Result<bool, String> {
         for item in left {
             if !self.set_contains_rich(right, item)? {
@@ -27271,6 +27313,10 @@ impl Vm {
         }
 
         if let Some(value) = self.dict_item_view_equal(left, right)? {
+            return Ok(value);
+        }
+
+        if let Some(value) = self.scope_backed_mapping_equal(left, right)? {
             return Ok(value);
         }
 
@@ -44747,6 +44793,35 @@ fn scope_dict_reverse_union(other: &Value, scope: &Scope) -> Result<Value, Strin
     dict_union_from_entries(entries, scope_dict_entries(scope))
 }
 
+fn is_scope_backed_mapping_value(value: &Value) -> bool {
+    matches!(value, Value::ScopeDict(_) | Value::FrameLocalsProxy { .. })
+}
+
+fn scope_dict_direct_comparison_entries(value: &Value) -> Option<Vec<(Value, Value)>> {
+    match value {
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+            Some(entries.borrow().entries.clone())
+        }
+        Value::ScopeDict(scope) => Some(scope_dict_entries(scope)),
+        Value::FrameLocalsProxy { locals } => Some(scope_dict_entries(locals)),
+        value if counter_subclass_entries(value).is_some() => Some(
+            counter_subclass_entries(value)
+                .expect("Counter subclass entries exist after guard")
+                .borrow()
+                .entries
+                .clone(),
+        ),
+        value if dict_subclass_entries(value).is_some() => Some(
+            dict_subclass_entries(value)
+                .expect("dict subclass entries exist after guard")
+                .borrow()
+                .entries
+                .clone(),
+        ),
+        _ => None,
+    }
+}
+
 fn scope_dict_popitem_entry(scope: &Scope) -> Option<(Value, Value)> {
     let values = scope.borrow();
     if let Some(Value::Tuple(order)) = values.get(CLASS_ATTR_ORDER_ATTR) {
@@ -52293,27 +52368,25 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::ScopeDict(scope) => match name {
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
-            | "__iter__" | "__len__" | "__or__" | "__reversed__" | "__ror__" | "__setitem__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                    receiver: Box::new(Value::ScopeDict(scope)),
-                    identity: Rc::new(()),
-                })
-            }
+            | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
+            | "__ior__" | "__iter__" | "__len__" | "__ne__" | "__or__" | "__reversed__"
+            | "__ror__" | "__setitem__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                receiver: Box::new(Value::ScopeDict(scope)),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
         Value::FrameLocalsProxy { locals } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
-            | "__iter__" | "__len__" | "__or__" | "__reversed__" | "__ror__" | "__setitem__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                    receiver: Box::new(Value::ScopeDict(locals)),
-                    identity: Rc::new(()),
-                })
-            }
+            | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
+            | "__ior__" | "__iter__" | "__len__" | "__ne__" | "__or__" | "__reversed__"
+            | "__ror__" | "__setitem__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                receiver: Box::new(Value::ScopeDict(locals)),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!(
                 "AttributeError: FrameLocalsProxy has no attribute '{name}'"
             )),

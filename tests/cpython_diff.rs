@@ -6321,6 +6321,10 @@ try:
     g | [('scope_bad', 1)]
 except TypeError as error:
     print(error.__class__.__name__, 'unsupported operand' in str(error))
+print(hasattr(g, '__eq__'), hasattr(g, '__ne__'))
+print(g == dict(g), dict(g) == g, g != dict(g))
+print(g.__eq__(dict(g)), g.__ne__(dict(g)))
+print(g == [], g.__eq__([]))
 g['scope_self'] = g
 print('scope_self' in repr(g), '{...}' in repr(g))
 items = dict(g.items())

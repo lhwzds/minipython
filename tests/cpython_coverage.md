@@ -3620,7 +3620,8 @@ Recent runtime migration notes:
   `dict_values` views over scope-backed mappings, stable `reversed()` iteration
   over scope mappings and their keys/items/values views, deletion/reinsertion
   order for scope-backed mappings, PEP 584 union and in-place union for
-  scope-backed mappings, recursive repr guards for those views, and function-local snapshot
+  scope-backed mappings, rich equality against dict-compatible mappings,
+  recursive repr guards for those views, and function-local snapshot
   `copy()` / `get()` / `pop()` / `setdefault()` behavior, class/type relationship checks,
   iterator-producing builtins, strict zip, map/filter, and absolute-value
   behavior used by the sandbox builtin surface. Direct CPython output parity for
