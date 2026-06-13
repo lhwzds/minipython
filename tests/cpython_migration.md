@@ -2510,6 +2510,8 @@ Completed in the match sequence/mapping supported-promotion pass:
   parenthesized, and naked comma sequence forms, empty sequences, optional
   trailing commas, plain and starred subpatterns, wildcard star targets, and
   duplicate-star rejection.
+- Added `cpython_match_sequence_helper_rules_diff_subset` as direct CPython
+  output parity for the supported executable sequence-pattern forms.
 - Added `cpython_match_mapping_helper_rules_subset` and promoted
   `mapping_pattern`, `items_pattern`, `key_value_pattern`, and
   `double_star_pattern` from `partial` to `supported` after covering empty,

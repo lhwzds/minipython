@@ -16974,6 +16974,44 @@ match Point(1, 2):
 }
 
 #[test]
+fn cpython_match_sequence_helper_rules_diff_subset() {
+    let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"1\n" {
+        eprintln!(
+            "skipping match sequence helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram sequence_pattern, open_sequence_pattern, maybe_sequence_pattern, and maybe_star_pattern public execution subset",
+        name: "match-sequence-helper-rules",
+        source: r#"match []:
+    case []:
+        print("empty list")
+match ():
+    case ():
+        print("empty tuple")
+match [1]:
+    case [value,]:
+        print(value)
+match (1,):
+    case (value,):
+        print(value)
+match [1, 2, 3]:
+    case [first, *middle, last,]:
+        print(first, middle, last)
+match range(4):
+    case first, *_, last:
+        print(first, last)
+match 1, 2:
+    case (left, right):
+        print(left, right)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_basics_and_empty_index_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_basics, ::test_ord, and ::test_empty_sequence public subset",
