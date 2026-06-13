@@ -674,7 +674,10 @@ evidence is in `cpython_memoryview_getbuf_fail_diff_subset`.
 `cpython_memoryview_hex_reentrant_release_subset` ports
 `AbstractMemoryTests::test_hex_use_after_free`, covering released-view
 `hex()` `ValueError` and bytearray exporter resize-locking while separator
-conversion invokes Python code.
+conversion invokes Python code. Direct `cpython_memoryview_hex_released_view_diff_subset`
+evidence covers released-view `hex()`, and gated direct
+`cpython_memoryview_hex_reentrant_release_diff_subset` evidence covers the
+re-entrant BufferError path for CPython oracles with the current fix.
 `cpython_memoryview_weakref_live_subset` ports the live-reference portion of
 `AbstractMemoryTests::test_weakref`, covering `weakref.ref(memoryview(...))`
 construction, callback argument acceptance, `callback=None`, direct ref calls,

@@ -3770,9 +3770,11 @@ Recent runtime migration notes:
   `ValueError`, while separator conversion keeps the exporter resize-locked so
   re-entrant view release plus bytearray clearing raises `BufferError`.
   `cpython_memoryview_hex_released_view_diff_subset` directly compares the
-  released-view `hex()` behavior; the stricter re-entrant resize guard remains
-  MiniPython subset evidence because the local CPython oracle accepts the
-  bytearray clear path.
+  released-view `hex()` behavior, and gated
+  `cpython_memoryview_hex_reentrant_release_diff_subset` evidence directly
+  compares the stricter re-entrant resize guard when the CPython oracle has the
+  current BufferError fix. Older CPython oracles that still accept the bytearray
+  clear path are explicitly skipped.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_copy_rejection_subset`, covering CPython
   `test_memoryview.py::OtherTest::test_copy` for public `copy.copy()`

@@ -20328,6 +20328,25 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_memoryview_hex_reentrant_release_diff_subset() {
+    let source = "ba = bytearray(b'A' * 8)\nmv = memoryview(ba)\nclass S(bytes):\n    def __len__(self):\n        mv.release()\n        ba.clear()\n        return 1\ntry:\n    mv.hex(S(b':'))\nexcept BufferError as error:\n    print(error.__class__.__name__, ba)\nelse:\n    print('accepted', ba)";
+    let probe = run_cpython(source)
+        .expect("failed to probe CPython memoryview.hex re-entrant release behavior");
+    if String::from_utf8_lossy(&probe.stdout).contains("accepted") {
+        eprintln!(
+            "skipping memoryview.hex re-entrant release diff: CPython oracle lacks BufferError regression fix"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py::AbstractMemoryTests::test_hex_use_after_free re-entrant public subset",
+        name: "memoryview-hex-reentrant-release",
+        source,
+    });
+}
+
+#[test]
 fn cpython_memoryview_release_during_index_read_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py release during __index__ public one-dimensional read subset",

@@ -997,9 +997,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   re-entrant `sep.__len__` that releases the view and clears the bytearray
   raises `BufferError` without mutating the exporter. Direct CPython diff
   evidence in `cpython_memoryview_hex_released_view_diff_subset` covers the
-  released-view `hex()` path; the stricter re-entrant resize guard remains
-  MiniPython subset evidence because the local CPython oracle accepts the
-  bytearray clear path.
+  released-view `hex()` path, and gated direct CPython diff evidence in
+  `cpython_memoryview_hex_reentrant_release_diff_subset` covers the stricter
+  re-entrant resize guard when the oracle has the current BufferError fix.
+  Older CPython oracles that still accept the bytearray clear path are
+  explicitly skipped.
 - Added `cpython_memoryview_copy_rejection_subset`, migrating CPython
   `Lib/test/test_memoryview.py::OtherTest::test_copy` for the supported
   read-only and writable memoryview surfaces: `copy.copy(memoryview(...))`

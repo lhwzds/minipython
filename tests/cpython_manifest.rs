@@ -1291,6 +1291,48 @@ fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
 }
 
 #[test]
+fn cpython_memoryview_hex_reentrant_release_diff_is_capability_gated() {
+    let diff_name = "cpython_memoryview_hex_reentrant_release_diff_subset";
+    let subset_name = "cpython_memoryview_hex_reentrant_release_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview hex re-entrant release direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview hex re-entrant release runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "memoryview hex re-entrant docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview hex re-entrant release diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "mv.hex(S(b':'))",
+        "mv.release()",
+        "BufferError",
+        "skipping memoryview.hex re-entrant release diff",
+        "accepted",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview hex re-entrant gated diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_base_methods_are_tracked() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let expected_count = python_test_class_method_counts(&source)
