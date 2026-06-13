@@ -10534,6 +10534,10 @@ Completed in the CPython collections manifest expansion pass:
   matching CPython's receiver-first method shape while keeping unsupported
   pickle/eval identity, slicing, thread-safety, and performance contracts out
   of scope.
+- Extended the same `collections.deque` public surface with CPython-style
+  public `__doc__` metadata on the type and instances plus `dir()` visibility
+  for documented deque methods. This keeps the `maxlen` type-level getset
+  descriptor object and broader descriptor internals out of scope.
 
 Next:
 

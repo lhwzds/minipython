@@ -45357,6 +45357,10 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         }
         Value::Bytes(_) => names.extend(builtin_type_dir_names("bytes")),
         Value::ByteArray(_) => names.extend(builtin_type_dir_names("bytearray")),
+        Value::Deque { .. } => {
+            names.extend(builtin_type_dir_names("deque"));
+            names.push("maxlen".to_string());
+        }
         Value::BytesIO(_) => names.extend(builtin_type_dir_names("io.BytesIO")),
         Value::MemoryView(_) => names.extend(builtin_type_dir_names("memoryview")),
         Value::Range { .. } => names.extend(builtin_type_dir_names("range")),
@@ -45732,6 +45736,44 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "tolist",
             "tounicode",
             "typecode",
+        ],
+        "deque" => &[
+            "__add__",
+            "__contains__",
+            "__copy__",
+            "__delitem__",
+            "__eq__",
+            "__format__",
+            "__ge__",
+            "__getitem__",
+            "__gt__",
+            "__iadd__",
+            "__imul__",
+            "__iter__",
+            "__le__",
+            "__len__",
+            "__lt__",
+            "__mul__",
+            "__ne__",
+            "__repr__",
+            "__reversed__",
+            "__rmul__",
+            "__setitem__",
+            "__str__",
+            "append",
+            "appendleft",
+            "clear",
+            "copy",
+            "count",
+            "extend",
+            "extendleft",
+            "index",
+            "insert",
+            "pop",
+            "popleft",
+            "remove",
+            "reverse",
+            "rotate",
         ],
         "tuple" | "range" => &["count", "index"],
         "bytes" => &[
@@ -52440,6 +52482,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Deque { data, maxlen } => {
+            if name == "__doc__" {
+                return Ok(Value::String(
+                    builtin_type_doc("deque")
+                        .expect("deque type doc is defined")
+                        .to_string(),
+                ));
+            }
             if name == "maxlen" {
                 return Ok(maxlen
                     .map(|value| normalize_big_int(BigInt::from(value)))
@@ -54270,6 +54319,11 @@ bytearray(string, encoding[, errors]) -> bytearray\n\
 bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer\n\
 bytearray(int) -> bytes object of size given by the parameter initialized with null bytes\n\
 bytearray() -> empty bytes object",
+        ),
+        "deque" => Some(
+            "deque([iterable[, maxlen]]) --> deque object\n\
+\n\
+A list-like sequence optimized for data accesses near its endpoints.",
         ),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         _ => None,
