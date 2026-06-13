@@ -6542,6 +6542,110 @@ fn zip_strict_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn map_filter_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_map_filter_builtin_subset(",
+        "BuiltinTest::test_map",
+        "::test_filter",
+        "class Squares",
+        "def __getitem__(self, index):",
+        "return index * index",
+        "map(lambda x: x * x, range(1, 4))",
+        "map(lambda x, y: x + y, [1, 3, 2], [9, 1, 4])",
+        "def plus(*values):",
+        "map(plus, [1, 3, 7])",
+        "map(plus, [1, 3, 7], [4, 9, 2])",
+        "map(plus, [1, 3, 7], [4, 9, 2], [1, 1, 0])",
+        "map(int, Squares(10))",
+        "def Max(a, b):",
+        "map(Max, Squares(3), Squares(2))",
+        "filter(lambda c: 'a' <= c <= 'z', 'Hello World')",
+        "filter(None, [1, 'hello', [], [3], '', None, 9, 0])",
+        "filter(lambda x: x > 0, [1, -3, 9, 0, 2])",
+        "filter(None, Squares(10))",
+        "filter(lambda x: x % 2, Squares(10))",
+        "filter(None, (1, 2))",
+        "filter(lambda x: x >= 3, (1, 2, 3, 4))",
+        "class BadSeq",
+        "raise ValueError",
+        "def badfunc():",
+        "lambda: filter()",
+        "lambda: filter(None)",
+        "lambda: filter(None, 42)",
+        "lambda: list(filter(42, (1, 2)))",
+        "lambda: list(filter(badfunc, range(5)))",
+        "lambda: map()",
+        "lambda: map(lambda x: x)",
+        "lambda: map(lambda x: x, 42)",
+        "lambda: list(map(None, [1]))",
+        "list(filter(lambda x: x, BadSeq()))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused map/filter subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_map_filter_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_map / ::test_filter",
+        "map-filter-builtins-direct",
+        "class Squares",
+        "def __getitem__(self, index):",
+        "return index * index",
+        "map(lambda x: x * x, range(1, 4))",
+        "map(lambda x, y: x + y, [1, 3, 2], [9, 1, 4])",
+        "def plus(*values):",
+        "map(plus, [1, 3, 7])",
+        "map(plus, [1, 3, 7], [4, 9, 2])",
+        "map(int, Squares(5))",
+        "filter(lambda c: 'a' <= c <= 'z', 'Hello World')",
+        "filter(None, [1, 'hello', [], [3], '', None, 9, 0])",
+        "filter(lambda x: x > 0, [1, -3, 9, 0, 2])",
+        "filter(None, Squares(5))",
+        "filter(lambda x: x % 2, Squares(5))",
+        "class BadSeq",
+        "raise ValueError",
+        "def badfunc():",
+        "lambda: filter()",
+        "lambda: filter(None)",
+        "lambda: filter(None, 42)",
+        "lambda: list(filter(42, (1, 2)))",
+        "lambda: list(filter(badfunc, range(5)))",
+        "lambda: map()",
+        "lambda: map(lambda x: x)",
+        "lambda: map(lambda x: x, 42)",
+        "lambda: list(map(None, [1]))",
+        "list(filter(lambda x: x, BadSeq()))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused map/filter CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_map_filter_builtin_subset")
+                && document.contains("cpython_map_filter_builtin_diff_subset")
+                && document.contains("map/filter"),
+            "focused map/filter evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_MIGRATION.contains("Lib/test/test_builtin.py")
+            && CPYTHON_MIGRATION.contains("test_map")
+            && CPYTHON_MIGRATION.contains("test_filter")
+            && CPYTHON_MIGRATION.contains("__getitem__")
+            && CPYTHON_MIGRATION.contains("filter(None")
+            && CPYTHON_MIGRATION.contains("truth filtering")
+            && CPYTHON_MIGRATION.contains("common CPython bad")
+            && CPYTHON_MIGRATION.contains("argument shapes"),
+        "focused map/filter migration notes must describe CPython sources, sequence fallback, truth filtering, and bad arguments"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
