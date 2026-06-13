@@ -3616,8 +3616,9 @@ Recent runtime migration notes:
   public namespace introspection including live module-scope `globals()` /
   `locals()` mapping `clear()` / `copy()` / `get()` / `pop()` / `popitem()` /
   `setdefault()` behavior, recursive self-reference repr placeholders for
-  scope-backed namespace mappings, and function-local snapshot `copy()` /
-  `get()` / `pop()` / `setdefault()` behavior, class/type relationship checks,
+  scope-backed namespace mappings, live `dict_keys` / `dict_items` /
+  `dict_values` views over scope-backed mappings, and function-local snapshot
+  `copy()` / `get()` / `pop()` / `setdefault()` behavior, class/type relationship checks,
   iterator-producing builtins, strict zip, map/filter, and absolute-value
   behavior used by the sandbox builtin surface. Direct CPython output parity for
   the supported `globals()` / `locals()` subset is tracked by

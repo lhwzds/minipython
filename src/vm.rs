@@ -14840,7 +14840,10 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                Ok(list_value(scope_dict_keys(scope)))
+                Ok(mapping_view_value(
+                    DictViewKind::Keys,
+                    Value::ScopeDict(scope.clone()),
+                ))
             }
             "scope_dict.items" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
@@ -14849,11 +14852,9 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                Ok(list_value(
-                    scope_dict_entries(scope)
-                        .into_iter()
-                        .map(|(key, value)| tuple_value(vec![key, value]))
-                        .collect(),
+                Ok(mapping_view_value(
+                    DictViewKind::Items,
+                    Value::ScopeDict(scope.clone()),
                 ))
             }
             "scope_dict.pop" => {
@@ -14944,7 +14945,10 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                Ok(list_value(scope_dict_values(scope)))
+                Ok(mapping_view_value(
+                    DictViewKind::Values,
+                    Value::ScopeDict(scope.clone()),
+                ))
             }
             _ => Err(format!("unknown builtin: {name}")),
         }
@@ -44644,13 +44648,6 @@ fn scope_dict_keys(scope: &Scope) -> Vec<Value> {
     scope_dict_entries(scope)
         .into_iter()
         .map(|(key, _)| key)
-        .collect()
-}
-
-fn scope_dict_values(scope: &Scope) -> Vec<Value> {
-    scope_dict_entries(scope)
-        .into_iter()
-        .map(|(_, value)| value)
         .collect()
 }
 

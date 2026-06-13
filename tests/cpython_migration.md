@@ -6339,7 +6339,8 @@ Completed in the namespace builtin pass:
   behavior for supported string-key globals and locals snapshots, including
   default values, snapshot copies, write-through insertion, ordered last-item
   removal for scope-inserted keys, live mapping clearing, recursive
-  self-reference repr placeholders, and missing-key `KeyError` type parity.
+  self-reference repr placeholders, live `dict_keys` / `dict_items` /
+  `dict_values` views, and missing-key `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 

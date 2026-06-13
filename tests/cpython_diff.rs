@@ -6296,6 +6296,14 @@ g['scope_self'] = g
 print('scope_self' in repr(g), '{...}' in repr(g))
 items = dict(g.items())
 print('scope_self' in items, '{...}' in repr(items['scope_self']))
+scope_keys = g.keys()
+scope_items = g.items()
+scope_values = g.values()
+print(type(scope_keys).__name__, type(scope_items).__name__, type(scope_values).__name__)
+g['scope_view_temp'] = 9
+print('scope_view_temp' in scope_keys, ('scope_view_temp', 9) in scope_items, 9 in scope_values)
+del g['scope_view_temp']
+print('scope_view_temp' in scope_keys)
 print(g.pop('missing', 'fallback'))
 try:
     g.pop('missing')
