@@ -7042,6 +7042,25 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
             "math sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    for required in [
+        "Platform/libm implementation quirks",
+        "exact libm special-function precision",
+        "locale-sensitive parsing/formatting",
+    ] {
+        assert!(
+            row.excluded_surface.contains(required),
+            "math sandbox manifest must keep unsupported boundary `{required}` documented"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "math migration notes must document sandbox boundary `{required}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "math coverage notes must document sandbox boundary `{required}`"
+        );
+    }
 }
 
 #[test]

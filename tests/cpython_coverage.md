@@ -881,6 +881,9 @@ Recent runtime migration notes:
   `__float__` and `__index__` input conversion, huge-index overflow,
   propagated conversion exceptions, and TypeError cases. Exact platform libm
   special-function precision remains out of scope unless separately promoted.
+  Platform/libm implementation quirks, exact libm special-function precision,
+  and locale-sensitive parsing/formatting stay outside the sandbox `math`
+  surface until separately promoted with direct public-behavior evidence.
 - The bundled `math` module also includes the newer-CPython-oracle-gated
   `cpython_math_exp_exp2_diff_subset` and `cpython_math_exp_exp2_subset`,
   covering CPython `test_math.py::MathTests::testExp` and `::testExp2`
