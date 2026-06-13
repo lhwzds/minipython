@@ -5391,6 +5391,81 @@ fn breakpoint_default_stub_stays_sandbox_only() {
 }
 
 #[test]
+fn builtins_host_io_and_default_debugger_stop_line_stays_out_of_scope() {
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "builtins")
+        .expect("sandbox stdlib manifest must include builtins");
+
+    for excluded in [
+        "`open()`",
+        "`input()`",
+        "host TTY behavior",
+        "default pdb-backed breakpoint behavior",
+        "process/environment side effects",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "builtins sandbox manifest must keep `{excluded}` outside the supported surface"
+        );
+    }
+
+    assert!(
+        row.supported_surface
+            .contains("cpython_builtin_breakpoint_default_stub_subset"),
+        "builtins sandbox manifest must list the default breakpoint stub only as local subset evidence"
+    );
+    assert!(
+        !row.diff_evidence
+            .contains("cpython_builtin_breakpoint_default_stub_diff_subset"),
+        "builtins sandbox manifest must not cite CPython diff parity for the default breakpoint stub"
+    );
+
+    let stub_start = CPYTHON_SUBSET
+        .find("fn cpython_builtin_breakpoint_default_stub_subset()")
+        .expect("breakpoint default-stub subset evidence must be extractable");
+    let stub_end = CPYTHON_SUBSET[stub_start..]
+        .find("\n#[test]")
+        .map(|offset| stub_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let stub_source = &CPYTHON_SUBSET[stub_start..stub_end];
+    for required in [
+        "breakpoint None",
+        "hook None",
+        "dunder None",
+        "sys.__breakpointhook__(1, key=2)",
+    ] {
+        assert!(
+            stub_source.contains(required),
+            "breakpoint default-stub subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["pdb", "breakpoint", "PYTHONBREAKPOINT"] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "builtins sandbox docs must keep debugger stop-line term `{required}` documented"
+        );
+    }
+
+    for required in [
+        "Host I/O integration",
+        "real `open()`",
+        "TTY behavior",
+        "`input()`",
+        "pty",
+        "Default `pdb` integration",
+        "breakpoint()",
+        "environment-variable",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration document must keep host/debugger out-of-scope term `{required}`"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
