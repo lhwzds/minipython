@@ -1478,7 +1478,13 @@ def boom(obj):
 try:
     json.dumps(box(4), default=boom)
 except Exception as error:
-    print('boom', type(error).__name__, str(error))"#,
+    print('boom', type(error).__name__, str(error))
+
+self_box = box(5)
+try:
+    json.dumps(self_box, default=lambda obj: obj)
+except Exception as error:
+    print('same-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))"#,
     });
 }
 

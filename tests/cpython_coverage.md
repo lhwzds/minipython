@@ -817,7 +817,8 @@ Recent runtime migration notes:
   `sort_keys` ordering for supported comparable keys, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and
   general iterables, `default` hook handling for otherwise unsupported objects
-  including nested values and exception propagation,
+  including nested values, exception propagation, and returned-self circular
+  detection,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, `parse_int`, `parse_float`, and `parse_constant`

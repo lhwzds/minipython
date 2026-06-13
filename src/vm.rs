@@ -58492,8 +58492,7 @@ fn json_dumps_value_inner(
         }
         value => {
             if let Some(hook) = options.default_hook.clone() {
-                let replacement = vm.call_value(hook, vec![value.clone()])?;
-                return json_dumps_value_at_depth(vm, &replacement, active, options, depth);
+                return json_dumps_default_value(vm, value, hook, active, options, depth);
             }
             Err(format!(
                 "TypeError: Object of type {} is not JSON serializable",
@@ -58501,6 +58500,38 @@ fn json_dumps_value_inner(
             ))
         }
     }
+}
+
+fn json_dumps_default_value(
+    vm: &mut Vm,
+    value: &Value,
+    hook: Value,
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+    depth: usize,
+) -> Result<String, String> {
+    let identity = json_dumps_default_identity(value);
+    if let Some(identity) = identity {
+        if !active.insert(identity) {
+            return if options.check_circular {
+                Err("ValueError: Circular reference detected".to_string())
+            } else {
+                Err(
+                    "RecursionError: maximum recursion depth exceeded while encoding a JSON object"
+                        .to_string(),
+                )
+            };
+        }
+    }
+    let replacement = vm.call_value(hook, vec![value.clone()]);
+    let result = match replacement {
+        Ok(replacement) => json_dumps_value_at_depth(vm, &replacement, active, options, depth),
+        Err(error) => Err(error),
+    };
+    if let Some(identity) = identity {
+        active.remove(&identity);
+    }
+    result
 }
 
 fn json_dumps_container_identity(value: &Value) -> Option<usize> {
@@ -58524,6 +58555,13 @@ fn json_dumps_container_identity(value: &Value) -> Option<usize> {
             Some(Rc::as_ptr(&values) as usize)
         }
         _ => None,
+    }
+}
+
+fn json_dumps_default_identity(value: &Value) -> Option<usize> {
+    match value {
+        Value::Instance { fields, .. } => Some(Rc::as_ptr(fields) as usize),
+        _ => json_dumps_container_identity(value),
     }
 }
 

@@ -4362,6 +4362,8 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "noncallable-unused",
                 "noncallable-used",
                 "boom-default",
+                "same-default",
+                "Circular reference detected",
             ][..],
         ),
     ];
