@@ -5142,6 +5142,162 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn types_coroutine_diff_covers_generator_async_runtime_subsets() {
+    for (subset, diff) in [
+        (
+            "cpython_types_coroutine_public_subset",
+            "cpython_types_coroutine_public_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_async_def_subset",
+            "cpython_types_coroutine_async_def_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_generator_wrapper_subset",
+            "cpython_types_coroutine_generator_wrapper_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_generator_frame_subset",
+            "cpython_types_coroutine_generator_frame_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_generator_yieldfrom_subset",
+            "cpython_types_coroutine_generator_yieldfrom_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_duck_generator_wrapper_subset",
+            "cpython_types_coroutine_duck_generator_wrapper_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_duck_generator_await_subset",
+            "cpython_types_coroutine_duck_generator_await_diff_subset",
+        ),
+        (
+            "cpython_types_coroutine_duck_generator_proxy_subset",
+            "cpython_types_coroutine_duck_generator_proxy_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "types.coroutine runtime subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "types.coroutine CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_COVERAGE.contains(diff),
+            "coverage document must link types.coroutine evidence `{subset}` / `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must describe types.coroutine runtime subset `{subset}`"
+        );
+    }
+
+    let public_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_public_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_async_def_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine public diff evidence must be extractable");
+    for required in [
+        "inspect.CO_ITERABLE_COROUTINE",
+        "types.CoroutineType",
+        "returns_itercoro() is gencoro",
+        "types.coroutine(types.coroutine(gen)) is gen",
+    ] {
+        assert!(
+            public_diff.contains(required),
+            "types.coroutine public diff evidence must cover `{required}`"
+        );
+    }
+
+    let wrapper_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_generator_wrapper_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_generator_frame_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine wrapper diff evidence must be extractable");
+    for required in [
+        "isinstance(wrapper, types._GeneratorWrapper)",
+        "isinstance(wrapper, collections.abc.Coroutine)",
+        "wrapper.cr_code is exact_gen.gi_code",
+        "wrapper.__await__() is exact_gen",
+        "wrapper.throw(Exception('ham'))",
+    ] {
+        assert!(
+            wrapper_diff.contains(required),
+            "types.coroutine wrapper diff evidence must cover `{required}`"
+        );
+    }
+
+    let frame_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_generator_frame_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_generator_yieldfrom_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine frame diff evidence must be extractable");
+    for required in [
+        "wrapper.cr_frame is gen.gi_frame",
+        "wrapper.cr_code is gen.gi_code",
+        "gen.gi_frame.f_code is gen.gi_code",
+        "wrapper.cr_frame is None",
+    ] {
+        assert!(
+            frame_diff.contains(required),
+            "types.coroutine frame diff evidence must cover `{required}`"
+        );
+    }
+
+    let yieldfrom_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_generator_yieldfrom_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_duck_generator_wrapper_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine yield-from diff evidence must be extractable");
+    for required in [
+        "result = yield from inner()",
+        "wrapper.gi_yieldfrom is gen.gi_yieldfrom",
+        "wrapper.cr_await is gen.gi_yieldfrom",
+        "wrapper.gi_yieldfrom is None",
+    ] {
+        assert!(
+            yieldfrom_diff.contains(required),
+            "types.coroutine yield-from diff evidence must cover `{required}`"
+        );
+    }
+
+    let duck_await_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_duck_generator_await_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_duck_generator_proxy_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine duck-generator await diff evidence must be extractable");
+    for required in [
+        "return await foo() + 100",
+        "coro.send(None)",
+        "coro.send(20)",
+        "ex.args[0]",
+    ] {
+        assert!(
+            duck_await_diff.contains(required),
+            "types.coroutine duck-generator await diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn types_new_class_metaclass_keywords_diff_covers_runtime_subset() {
     let subset_name = "cpython_types_class_creation_new_class_metaclass_keywords_subset";
     let diff_name = "cpython_types_class_creation_new_class_meta_helper_diff_subset";
