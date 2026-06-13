@@ -5597,6 +5597,43 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
 }
 
 #[test]
+fn tokenizer_interpolated_string_split_subsets_stay_documented_as_partial() {
+    for subset in [
+        "cpython_tokenize_f_string_span_subset",
+        "cpython_tokenize_f_string_split_token_subset",
+        "cpython_tokenize_t_string_span_subset",
+        "cpython_tokenize_t_string_split_token_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "interpolated-string tokenizer subset `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_MIGRATION.contains(subset),
+            "interpolated-string tokenizer subset `{subset}` must stay documented"
+        );
+
+        let diff_name = subset.replace("_subset", "_diff_subset");
+        assert!(
+            !CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "tokenizer API subset `{subset}` must not be mistaken for same-named CPython output diff `{diff_name}`"
+        );
+    }
+
+    for required in [
+        "parser still consumes collapsed",
+        "tokenize_cpython_with_spans()",
+        "split tokens",
+        "CPython tokenizer surface",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "tokenizer docs must keep interpolated-string partial surface note `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
     let diff_name = "cpython_program_output_parity_smoke_diff_subset";
     let diff_start = CPYTHON_DIFF
