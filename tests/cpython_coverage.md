@@ -603,6 +603,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_string_escape_subset`,
   `cpython_json_dumps_key_coercion_diff_subset` /
   `cpython_json_dumps_key_coercion_subset`,
+  `cpython_json_dumps_sequence_subclass_iter_diff_subset` /
   `cpython_json_dumps_sequence_subclass_iter_subset`,
   `cpython_json_dumps_allow_nan_diff_subset` /
   `cpython_json_dumps_allow_nan_subset`,

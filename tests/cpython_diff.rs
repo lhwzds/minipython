@@ -591,6 +591,44 @@ for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
 }
 
 #[test]
+fn cpython_json_dumps_sequence_subclass_iter_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps sequence subclass iteration subset",
+        name: "json-dumps-sequence-subclass-iter",
+        source: r#"import json
+from collections import namedtuple
+
+class JsonInt(int):
+    pass
+class JsonList(list):
+    def __iter__(self):
+        return iter([JsonInt(9), JsonInt(8)])
+class JsonTuple(tuple):
+    def __iter__(self):
+        return iter([JsonInt(7)])
+JsonPoint = namedtuple('JsonPoint', 'x y')
+class JsonPointSubclass(JsonPoint):
+    def __iter__(self):
+        return iter([JsonInt(6)])
+class EmptyList(list):
+    def __iter__(self):
+        return iter([JsonInt(5)])
+class BadList(list):
+    def __iter__(self):
+        raise RuntimeError('boom')
+
+print(json.dumps(JsonList([1, 2])))
+print(json.dumps(JsonTuple((3, 4))))
+print(json.dumps(JsonPointSubclass(1, 2)))
+print(json.dumps(EmptyList()))
+try:
+    json.dumps(BadList([1]))
+except Exception as error:
+    print(type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_tokenize_multiplicative_operators_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py::test_multiplicative public execution subset",
