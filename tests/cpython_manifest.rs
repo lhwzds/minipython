@@ -8465,6 +8465,63 @@ fn builtin_iterator_pickle_stays_subset_only_compatibility_evidence() {
 }
 
 #[test]
+fn enumerate_reversed_pickle_stays_subset_only_compatibility_evidence() {
+    for required in [
+        "fn cpython_enumerate_reversed_pickle_subset(",
+        "test_enumerate.py::EnumerateTestCase::test_pickle",
+        "TestEmpty/TestStart/TestLongStart inherited pickle coverage",
+        "TestReversed::test_pickle",
+        "internal payload",
+        "binary pickle byte stream",
+        "def check_pickle(iterator, expected):",
+        "for proto in range(pickle.HIGHEST_PROTOCOL + 1):",
+        "payload = pickle.dumps(iterator, proto)",
+        "restored = pickle.loads(payload)",
+        "advanced = pickle.loads(pickle.dumps(restored, proto))",
+        "base = sys.maxsize + 1",
+        "check_pickle(enumerate('abc'), [(0, 'a'), (1, 'b'), (2, 'c')])",
+        "check_pickle(enumerate(''), [])",
+        "check_pickle(enumerate('abc', start=11), [(11, 'a'), (12, 'b'), (13, 'c')])",
+        "check_pickle(enumerate('abc', start=base), [(base, 'a'), (base + 1, 'b'), (base + 2, 'c')])",
+        "for data in ['abc', range(5), tuple(enumerate('abc')), range(1, 17, 5)]:",
+        "check_pickle(reversed(data), list(data)[::-1])",
+        "enumerate [6, 6] [6, 6] [6, 6] [6, 6]",
+        "reversed [[6, 6], [6, 6], [6, 6], [6, 6]]",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "enumerate/reversed pickle subset evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        !CPYTHON_DIFF.contains("fn cpython_enumerate_reversed_pickle_diff_subset("),
+        "enumerate/reversed pickle must not claim direct CPython diff parity while using MiniPython internal pickle payloads"
+    );
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_enumerate_reversed_pickle_subset")
+            && CPYTHON_COVERAGE.contains("test_enumerate.py")
+            && CPYTHON_COVERAGE.contains("resumed already-advanced iterator pickles")
+            && CPYTHON_COVERAGE.contains("ordinary plus large `start` values")
+            && CPYTHON_COVERAGE.contains("internal pickle payload"),
+        "coverage notes must classify enumerate/reversed pickle as internal-payload subset evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_enumerate_reversed_pickle_subset")
+            && CPYTHON_MIGRATION.contains("test_enumerate.py::EnumerateTestCase::test_pickle")
+            && CPYTHON_MIGRATION.contains("TestReversed::test_pickle")
+            && CPYTHON_MIGRATION.contains("same internal pickle payload API")
+            && CPYTHON_MIGRATION.contains("already-advanced iterator pickles")
+            && CPYTHON_MIGRATION.contains("sys.maxsize + 1")
+            && CPYTHON_MIGRATION.contains("CPython's binary pickle")
+            && CPYTHON_MIGRATION.contains("byte-stream format")
+            && CPYTHON_MIGRATION.contains("subset-only compatibility"),
+        "migration notes must keep enumerate/reversed pickle outside CPython binary pickle parity"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_token_tests_method_audit_is_complete() {
     let methods = token_tests_methods();
 
