@@ -4898,6 +4898,131 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
+    for (subset, diff) in [
+        (
+            "cpython_io_bytesio_public_subset",
+            "cpython_io_bytesio_public_diff_subset",
+        ),
+        (
+            "cpython_memoryview_bytesio_readinto_subset",
+            "cpython_memoryview_bytesio_readinto_diff_subset",
+        ),
+        (
+            "cpython_array_one_byte_public_file_methods_subset",
+            "cpython_array_one_byte_public_file_methods_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "io.BytesIO pure-memory subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "io.BytesIO pure-memory CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_COVERAGE.contains(diff),
+            "coverage document must link io.BytesIO evidence `{subset}` / `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must describe io.BytesIO subset `{subset}`"
+        );
+    }
+
+    let bytesio_diff = CPYTHON_DIFF
+        .split("fn cpython_io_bytesio_public_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_public_helpers_diff_subset()")
+                .next()
+        })
+        .expect("io.BytesIO public diff evidence must be extractable");
+    for required in [
+        "io.BytesIO(b'abc')",
+        "bio.getbuffer()",
+        "io.UnsupportedOperation",
+        "bio.fileno",
+        "bio.detach",
+        "with io.BytesIO(b'xy') as inside:",
+        "bio.readinto(target)",
+    ] {
+        assert!(
+            bytesio_diff.contains(required),
+            "io.BytesIO public diff evidence must cover `{required}`"
+        );
+    }
+
+    let memoryview_diff = CPYTHON_DIFF
+        .split("fn cpython_memoryview_bytesio_readinto_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_memoryview_weakref_live_diff_subset()")
+                .next()
+        })
+        .expect("memoryview BytesIO readinto diff evidence must be extractable");
+    for required in [
+        "memoryview(bytearray(b'abc'))",
+        "memoryview(b'abc')",
+        "bio.readinto(target)",
+        "initial_bytes=b'ab'",
+    ] {
+        assert!(
+            memoryview_diff.contains(required),
+            "memoryview BytesIO diff evidence must cover `{required}`"
+        );
+    }
+
+    let array_file_diff = CPYTHON_DIFF
+        .split("fn cpython_array_one_byte_public_file_methods_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_array_one_byte_public_clear_diff_subset()")
+                .next()
+        })
+        .expect("array BytesIO file-method diff evidence must be extractable");
+    for required in [
+        "target = io.BytesIO()",
+        "a.tofile(target)",
+        "array.array(tc).fromfile(io.BytesIO(), 1, 2)",
+        "TextRead",
+        "ByteArrayRead",
+    ] {
+        assert!(
+            array_file_diff.contains(required),
+            "array BytesIO file-method diff evidence must cover `{required}`"
+        );
+    }
+
+    let row = sandbox_stdlib_rows()
+        .into_iter()
+        .find(|row| row.module == "io.BytesIO")
+        .expect("sandbox stdlib manifest must include io.BytesIO");
+    for excluded in ["Real files", "file descriptors"] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "io.BytesIO sandbox manifest must keep `{excluded}` outside the supported surface"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in ["in-memory", "io.BytesIO", "file descriptors"] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO docs must keep pure-memory boundary `{required}` documented"
+            );
+        }
+        assert!(
+            document.contains("Real files")
+                || document.contains("host file")
+                || document.contains("buffering layers"),
+            "io.BytesIO docs must keep host file APIs outside the sandbox subset"
+        );
+    }
+}
+
+#[test]
 fn math_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "math / math.integer",
