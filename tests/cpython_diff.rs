@@ -3305,6 +3305,8 @@ for value in [deque, deque()]:
     doc = value.__doc__
     print(type(doc).__name__, bool(doc), doc.splitlines()[0])
 print('__doc__' in dir(deque), '__doc__' in dir(deque()), 'append' in dir(deque()))
+alias = deque[int]
+print(deque.__module__, deque.__qualname__, repr(alias), alias.__origin__ is deque, alias.__origin__.__module__)
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:
     print(repr(d), list(d), len(d), bool(d), d.maxlen)
 d = deque([2], maxlen=3)

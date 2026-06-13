@@ -10538,6 +10538,10 @@ Completed in the CPython collections manifest expansion pass:
   public `__doc__` metadata on the type and instances plus `dir()` visibility
   for documented deque methods. This keeps the `maxlen` type-level getset
   descriptor object and broader descriptor internals out of scope.
+- Extended the same `collections.deque` public surface with type-level
+  `__module__` / `__qualname__` metadata and `collections.deque[int]`
+  generic-alias repr parity while keeping the runtime dispatch name as the
+  existing internal `deque` builtin.
 
 Next:
 

@@ -53706,6 +53706,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::String("types".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "deque" => {
+            Ok(Value::String("collections".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__new__" && function_name == "SimpleNamespace" =>
         {
@@ -53843,6 +53846,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__qualname__" && function_name == "SimpleNamespace" =>
         {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name) if name == "__qualname__" && function_name == "deque" => {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name)

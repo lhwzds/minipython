@@ -2328,9 +2328,8 @@ fn format_slice_part(value: &Option<Box<Value>>) -> String {
 
 fn format_generic_origin(origin: &Value) -> String {
     match origin {
-        Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
-            name.clone()
-        }
+        Value::Builtin(name) => format_generic_builtin_name(name),
+        Value::Class { name, .. } | Value::TypeParam { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => name.clone(),
         value => format_value_repr(value),
     }
@@ -2349,12 +2348,18 @@ fn format_generic_alias(origin: &Value, args: &[Value]) -> String {
 
 fn format_generic_alias_arg(value: &Value) -> String {
     match value {
-        Value::Builtin(name) | Value::Class { name, .. } | Value::TypeParam { name, .. } => {
-            name.clone()
-        }
+        Value::Builtin(name) => format_generic_builtin_name(name),
+        Value::Class { name, .. } | Value::TypeParam { name, .. } => name.clone(),
         Value::TypeAlias { name, .. } => name.clone(),
         Value::Unpack(value) => format!("*{}", format_generic_alias_arg(value)),
         value => format_value_repr(value),
+    }
+}
+
+fn format_generic_builtin_name(name: &str) -> String {
+    match name {
+        "deque" => "collections.deque".to_string(),
+        _ => name.to_string(),
     }
 }
 
