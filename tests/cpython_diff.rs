@@ -12768,6 +12768,7 @@ fn cpython_itertools_pairwise_diff_subset() {
         source: r#"import itertools
 p = itertools.pairwise('abcd')
 print(type(p).__name__, iter(p) is p, list(p), list(p))
+print(type(p).__module__, itertools.pairwise.__name__, itertools.pairwise.__qualname__, itertools.pairwise.__module__, type(itertools.pairwise.__doc__).__name__, bool(itertools.pairwise.__doc__))
 print(list(itertools.pairwise([1])), list(itertools.pairwise([])))
 print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))
 print(list(itertools.pairwise(value for value in [1, 2, 3, 4])))
@@ -12976,6 +12977,7 @@ fn cpython_itertools_batched_diff_subset() {
         source: r#"import itertools
 b = itertools.batched('ABCDEFG', 3)
 print(type(b).__name__, iter(b) is b, list(b), list(b))
+print(type(b).__module__, itertools.batched.__name__, itertools.batched.__qualname__, itertools.batched.__module__, type(itertools.batched.__doc__).__name__, bool(itertools.batched.__doc__))
 print(list(itertools.batched([1, 2, 3, 4], 2)))
 print(list(itertools.batched([1, 2, 3], 1)))
 it = itertools.batched((value for value in [1, 2, 3, 4, 5]), 2)

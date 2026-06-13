@@ -36456,6 +36456,7 @@ fn cpython_itertools_pairwise_subset() {
             "import itertools\n",
             "p = itertools.pairwise('abcd')\n",
             "print(type(p).__name__, iter(p) is p, list(p), list(p))\n",
+            "print(type(p).__module__, itertools.pairwise.__name__, itertools.pairwise.__qualname__, itertools.pairwise.__module__, type(itertools.pairwise.__doc__).__name__, bool(itertools.pairwise.__doc__))\n",
             "print(list(itertools.pairwise([1])), list(itertools.pairwise([])))\n",
             "print(list(itertools.islice(itertools.pairwise(itertools.count(5)), 3)))\n",
             "print(list(itertools.pairwise(value for value in [1, 2, 3, 4])))\n",
@@ -36471,6 +36472,7 @@ fn cpython_itertools_pairwise_subset() {
         ),
         &[
             "pairwise True [('a', 'b'), ('b', 'c'), ('c', 'd')] []",
+            "itertools pairwise pairwise itertools str True",
             "[] []",
             "[(5, 6), (6, 7), (7, 8)]",
             "[(1, 2), (2, 3), (3, 4)]",
@@ -36748,6 +36750,7 @@ fn cpython_itertools_batched_subset() {
             "import itertools\n",
             "b = itertools.batched('ABCDEFG', 3)\n",
             "print(type(b).__name__, iter(b) is b, list(b), list(b))\n",
+            "print(type(b).__module__, itertools.batched.__name__, itertools.batched.__qualname__, itertools.batched.__module__, type(itertools.batched.__doc__).__name__, bool(itertools.batched.__doc__))\n",
             "print(list(itertools.batched([1, 2, 3, 4], 2)))\n",
             "print(list(itertools.batched([1, 2, 3], 1)))\n",
             "it = itertools.batched((value for value in [1, 2, 3, 4, 5]), 2)\n",
@@ -36789,6 +36792,7 @@ fn cpython_itertools_batched_subset() {
         ),
         &[
             "batched True [('A', 'B', 'C'), ('D', 'E', 'F'), ('G',)] []",
+            "itertools batched batched itertools str True",
             "[(1, 2), (3, 4)]",
             "[(1,), (2,), (3,)]",
             "(1, 2) [(3, 4), (5,)]",

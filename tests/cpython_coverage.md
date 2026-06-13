@@ -720,7 +720,8 @@ Recent runtime migration notes:
   and public `repr()` shapes for `count()`, `repeat()`, `cycle()`, `_tee`, and
   `groupby()` without binding object addresses, plus public type `__module__`
   metadata for supported iterator/helper objects and public constructor
-  `__qualname__` / `__module__` / `__doc__` metadata. The broader `itertools` module,
+  `__qualname__` / `__module__` / `__doc__` metadata, including the gated
+  `pairwise()` and `batched()` constructor surfaces. The broader `itertools` module,
   `tee()` cache compaction, pickling edge cases, and remaining public/helper
   types remain open.
 - The bundled `math` module also includes `cpython_math_isclose_diff_subset`
