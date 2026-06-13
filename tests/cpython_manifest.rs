@@ -5523,6 +5523,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_builtin_cmp_absent_subset",
             "cpython_builtin_none_ne_direct_subset",
             "cpython_builtin_exception_hierarchy_subset",
+            "cpython_runtime_exception_capture_subset",
             "cpython_base_exception_args_subset",
             "cpython_base_exception_with_traceback_subset",
             "cpython_system_exit_oserror_attributes_subset",
@@ -5568,6 +5569,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_builtin_cmp_absent_diff_subset",
         "cpython_builtin_none_ne_direct_diff_subset",
         "cpython_builtin_exception_hierarchy_diff_subset",
+        "cpython_runtime_exception_capture_diff_subset",
         "cpython_base_exception_args_diff_subset",
         "cpython_base_exception_with_traceback_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
@@ -5601,6 +5603,52 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn runtime_exception_capture_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_runtime_exception_capture_subset(",
+        "[][10]",
+        "{}[\\\"key\\\"]",
+        "1[0]",
+        "for item in 1",
+        "1(2)",
+        "raise NotImplementedError(\\\"todo\\\")",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused runtime exception capture subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_runtime_exception_capture_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_exceptions.py runtime exception object capture subset",
+        "[][10]",
+        "{}[\"key\"]",
+        "1[0]",
+        "isinstance(error, TypeError)",
+        "for item in 1",
+        "1(2)",
+        "raise NotImplementedError(\"todo\")",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused runtime exception capture CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_runtime_exception_capture_subset")
+                && document.contains("cpython_runtime_exception_capture_diff_subset"),
+            "focused runtime exception capture evidence must be documented in coverage and migration notes"
         );
     }
 }

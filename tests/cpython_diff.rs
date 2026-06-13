@@ -6027,6 +6027,39 @@ except BaseException as error:
 }
 
 #[test]
+fn cpython_runtime_exception_capture_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py runtime exception object capture subset",
+        name: "runtime-exception-capture-direct",
+        source: r#"try:
+    [][10]
+except IndexError as error:
+    print(error.__class__.__name__, error)
+try:
+    {}["key"]
+except KeyError as error:
+    print(error.__class__.__name__, error)
+try:
+    1[0]
+except TypeError as error:
+    print(error.__class__.__name__, isinstance(error, TypeError))
+try:
+    for item in 1:
+        pass
+except TypeError as error:
+    print(error.__class__.__name__, isinstance(error, TypeError))
+try:
+    1(2)
+except TypeError as error:
+    print(error.__class__.__name__, isinstance(error, TypeError))
+try:
+    raise NotImplementedError("todo")
+except NotImplementedError as error:
+    print(error.__class__.__name__, error)"#,
+    });
+}
+
+#[test]
 fn cpython_base_exception_args_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py::testAttributes BaseException args/display subset",
