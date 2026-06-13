@@ -603,6 +603,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_string_escape_subset`,
   `cpython_json_dumps_key_coercion_diff_subset` /
   `cpython_json_dumps_key_coercion_subset`,
+  `cpython_json_dumps_sequence_subclass_iter_subset`,
   `cpython_json_dumps_allow_nan_diff_subset` /
   `cpython_json_dumps_allow_nan_subset`,
   `cpython_json_dumps_check_circular_diff_subset` /
@@ -628,7 +629,8 @@ Recent runtime migration notes:
   parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,
-  list/tuple containers, non-empty dict subclass containers through public
+  list/tuple containers, list/tuple/namedtuple subclass containers through
+  public iteration, non-empty dict subclass containers through public
   `items()` with CPython's 2-tuple item requirement, CPython's
   empty-dict-subclass `{}` fast path, `Counter` mapping containers, and
   namedtuples, standard string escapes,

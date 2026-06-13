@@ -33011,6 +33011,43 @@ fn cpython_json_loads_dumps_basic_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_sequence_subclass_iter_subset() {
+    assert_output(
+        r#"import json
+from collections import namedtuple
+
+class JsonInt(int):
+    pass
+class JsonList(list):
+    def __iter__(self):
+        return iter([JsonInt(9), JsonInt(8)])
+class JsonTuple(tuple):
+    def __iter__(self):
+        return iter([JsonInt(7)])
+JsonPoint = namedtuple('JsonPoint', 'x y')
+class JsonPointSubclass(JsonPoint):
+    def __iter__(self):
+        return iter([JsonInt(6)])
+class EmptyList(list):
+    def __iter__(self):
+        return iter([JsonInt(5)])
+class BadList(list):
+    def __iter__(self):
+        raise RuntimeError('boom')
+
+print(json.dumps(JsonList([1, 2])))
+print(json.dumps(JsonTuple((3, 4))))
+print(json.dumps(JsonPointSubclass(1, 2)))
+print(json.dumps(EmptyList()))
+try:
+    json.dumps(BadList([1]))
+except Exception as error:
+    print(type(error).__name__, str(error))"#,
+        &["[9, 8]", "[7]", "[6]", "[5]", "RuntimeError boom"],
+    );
+}
+
+#[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
         "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('loads-object-hook', lambda: json.loads('{}', object_hook=dict))\nshow('loads-parse-int', lambda: json.loads('1', parse_int=int))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",

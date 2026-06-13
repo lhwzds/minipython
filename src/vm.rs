@@ -57024,30 +57024,16 @@ fn json_dumps_value_inner(
         Value::Dict(entries) | Value::Counter { entries } => {
             json_dumps_dict(vm, &entries.borrow().entries, active, options, depth)
         }
-        value if list_subclass_storage(value).is_some() => json_dumps_sequence(
-            vm,
-            &list_subclass_storage(value)
-                .expect("list subclass storage exists after guard")
-                .borrow(),
-            active,
-            options,
-            depth,
-        ),
-        value if tuple_subclass_items(value).is_some() => json_dumps_sequence(
-            vm,
-            &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
-            active,
-            options,
-            depth,
-        ),
+        value
+            if list_subclass_storage(value).is_some()
+                || tuple_subclass_items(value).is_some()
+                || namedtuple_subclass_storage(value).is_some() =>
+        {
+            json_dumps_iterable_sequence(vm, value, active, options, depth)
+        }
         value if dict_subclass_entries(value).is_some() => {
             let entries = json_dumps_dict_subclass_items(vm, value)?;
             json_dumps_dict(vm, &entries, active, options, depth)
-        }
-        value if namedtuple_subclass_storage(value).is_some() => {
-            let (_, values) = namedtuple_subclass_storage(value)
-                .expect("namedtuple subclass storage after guard");
-            json_dumps_sequence(vm, &values, active, options, depth)
         }
         value => Err(format!(
             "TypeError: Object of type {} is not JSON serializable",
@@ -57132,6 +57118,17 @@ fn json_dumps_tuple_item_pair(values: &[Value]) -> Result<(Value, Value), String
         return Err("ValueError: items must return 2-tuples".to_string());
     };
     Ok((key.clone(), value.clone()))
+}
+
+fn json_dumps_iterable_sequence(
+    vm: &mut Vm,
+    value: &Value,
+    active: &mut HashSet<usize>,
+    options: &JsonDumpsOptions,
+    depth: usize,
+) -> Result<String, String> {
+    let items = vm.collect_iterable_values_propagating(value.clone())?;
+    json_dumps_sequence(vm, &items, active, options, depth)
 }
 
 fn json_dumps_sequence(

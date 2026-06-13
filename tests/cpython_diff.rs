@@ -547,6 +547,12 @@ class JsonList(list):
     pass
 class JsonTuple(tuple):
     pass
+class JsonIterList(list):
+    def __iter__(self):
+        return iter([JsonInt(9), JsonInt(8)])
+class JsonIterTuple(tuple):
+    def __iter__(self):
+        return iter([JsonInt(7)])
 class JsonDict(dict):
     pass
 for source in [JsonStr('{"sub": "str"}'), JsonBytes(b'{"sub": "bytes"}'), JsonByteArray(b'{"sub": "bytearray"}')]:
@@ -561,9 +567,15 @@ print(json.dumps(JsonCode.ok))
 print(json.dumps({JsonCode.ok: JsonCode.ok}))
 print(json.dumps(JsonList([1, 2])))
 print(json.dumps(JsonTuple((3, 4))))
+print(json.dumps(JsonIterList([1, 2])))
+print(json.dumps(JsonIterTuple((3, 4))))
 print(json.dumps(JsonDict({'nested': JsonList([JsonInt(5)])})))
 JsonPoint = namedtuple('JsonPoint', 'x y')
 print(json.dumps(JsonPoint(8, JsonInt(9))))
+class JsonIterPoint(JsonPoint):
+    def __iter__(self):
+        return iter([JsonInt(6)])
+print(json.dumps(JsonIterPoint(1, 2)))
 for item in [None, True, False, 0, -3, 12, 1.5, 'plain', 'a\nb', [1, True, None], {'a': 1, 'b': [False, None]}]:
     encoded = json.dumps(item)
     print(encoded)
