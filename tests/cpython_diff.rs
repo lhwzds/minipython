@@ -16891,6 +16891,30 @@ if failures:
 }
 
 #[test]
+fn cpython_bytes_join_translate_maketrans_typeerror_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest join/translate/maketrans TypeError rows",
+        name: "bytes-join-translate-maketrans-typeerror-messages",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    name = ctor.__name__
+    check(name + '.join.unbound', lambda ctor=ctor: ctor.join(), 'unbound method ' + name + '.join() needs an argument')
+    check(name + '.join.bound-missing', lambda ctor=ctor: ctor(b',').join(), name + '.join() takes exactly one argument (0 given)')
+    check(name + '.join.descriptor-missing', lambda ctor=ctor: ctor.join(ctor(b',')), name + '.join() takes exactly one argument (0 given)')
+    check(name + '.join.bound-too-many', lambda ctor=ctor: ctor(b',').join([b'a'], [b'b']), name + '.join() takes exactly one argument (2 given)')
+    check(name + '.join.noniter', lambda ctor=ctor: ctor(b',').join(3), 'can only join an iterable')
+    check(name + '.translate.unbound', lambda ctor=ctor: ctor.translate(), 'unbound method ' + name + '.translate() needs an argument')
+    check(name + '.translate.missing-table', lambda ctor=ctor: ctor(b'abc').translate(), 'translate() takes at least 1 positional argument (0 given)')
+    check(name + '.translate.descriptor-missing-table', lambda ctor=ctor: ctor.translate(ctor(b'abc')), 'translate() takes at least 1 positional argument (0 given)')
+    check(name + '.maketrans.no-args', lambda ctor=ctor: ctor.maketrans(), 'maketrans expected 2 arguments, got 0')"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and AssortedBytesTest repr/compare public subset",

@@ -1670,7 +1670,9 @@ Recent runtime migration notes:
   `cpython_bytes_join_translate_maketrans_typeerror_messages_subset`, covering
   CPython `BaseBytesTest` public exact TypeError diagnostics for bytes and
   bytearray `join()`, `translate()`, and `maketrans()` unbound, missing
-  argument, over-arity, non-iterable, and no-argument calls.
+  argument, over-arity, non-iterable, and no-argument calls. Direct CPython
+  diff evidence is in
+  `cpython_bytes_join_translate_maketrans_typeerror_messages_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_replace_partition_methods_subset`, covering bytes/bytearray
   `replace()`, `partition()`, and `rpartition()` result-type behavior,

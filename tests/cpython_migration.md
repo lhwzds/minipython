@@ -3248,7 +3248,9 @@ Completed in the bytes join-method pass:
 - Added `cpython_bytes_join_translate_maketrans_typeerror_messages_subset` to
   pin CPython's exact public `TypeError.args[0]` diagnostics for bytes and
   bytearray `join()` unbound, missing-argument, over-arity, and non-iterable
-  calls, plus the related `translate()` and `maketrans()` edge calls.
+  calls, plus the related `translate()` and `maketrans()` edge calls. Direct
+  CPython diff evidence is in
+  `cpython_bytes_join_translate_maketrans_typeerror_messages_diff_subset`.
 - Added `cpython_bytearray_join_reentrant_resize_subset`, adapted from CPython
   `Lib/test/test_builtin.py::BuiltinTest::test_bytearray_join_with_custom_iterator`
   and `::test_bytearray_join_with_misbehaving_iterator`.
