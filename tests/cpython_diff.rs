@@ -16358,7 +16358,7 @@ print(type(dunion).__name__, repr(dunion), OrderedDict.__or__(od, []))
 mut = OrderedDict([('a', 1)])
 ret = mut.__ior__({'b': 2})
 mut |= {'c': 3}
-print(type(ret).__name__, list(mut.items()))
+print(type(ret).__name__, ret is mut, list(mut.items()))
 for args in [(), (False,)]:
     sample = OrderedDict([('a', 1), ('b', 2)])
     print(sample.popitem(*args), list(sample.items()))

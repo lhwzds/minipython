@@ -78833,6 +78833,7 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         (Value::Set(left), Value::Set(right)) => Rc::ptr_eq(left, right),
         (Value::FrozenSet(left), Value::FrozenSet(right)) => Rc::ptr_eq(left, right),
         (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),
+        (Value::OrderedDict(left), Value::OrderedDict(right)) => Rc::ptr_eq(left, right),
         (Value::Counter { entries: left }, Value::Counter { entries: right }) => {
             Rc::ptr_eq(left, right)
         }

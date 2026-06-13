@@ -5704,9 +5704,9 @@ Completed in the type builtin pass:
   `__qualname__` metadata, direct display and empty-format methods, generic
   alias repr/module metadata, `copy()` preserving the `OrderedDict` result
   type, direct equality methods, type/instance `fromkeys()`,
-  `popitem(last=...)`, direct `__reversed__()`, mapping union operators,
-  `move_to_end()`, and preservation of ordered namespace entries in a dynamic
-  class `__dict__`.
+  `popitem(last=...)`, direct `__reversed__()`, mapping union operators
+  including in-place identity preservation, `move_to_end()`, and preservation
+  of ordered namespace entries in a dynamic class `__dict__`.
 - Added CPython/MiniPython differential parity cases for the supported
   `type()` subset, including keyword rejection and dynamic-class namespace
   order.
@@ -9439,7 +9439,8 @@ Completed in the CPython collections manifest expansion pass:
   the exposed type plus direct display/empty-format methods and generic alias
   repr/module metadata plus `copy()` preserving `OrderedDict`, type/instance
   `fromkeys()`, `popitem(last=...)`, direct equality methods, and mapping union
-  operators that preserve `OrderedDict` result type/order. Direct
+  operators that preserve `OrderedDict` result type/order and in-place
+  identity. Direct
   `__reversed__()` now returns reverse key iteration for the supported storage.
   This is enough for the ChainMap order-preservation test, but it is not yet a
   full OrderedDict runtime surface.
