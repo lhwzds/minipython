@@ -5119,6 +5119,25 @@ for expr in [lambda: 'abc'.islower(42), lambda: 'abc'.isupper(42), lambda: 'abc'
 }
 
 #[test]
+fn cpython_string_identifier_printable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_str.py isidentifier/isprintable subset",
+        name: "string-identifier-printable",
+        source: r#"print('a'.isidentifier(), 'Z'.isidentifier(), '_'.isidentifier(), 'b0'.isidentifier(), 'bc'.isidentifier(), 'b_'.isidentifier())
+print('µ'.isidentifier(), '𝔘𝔫𝔦𝔠𝔬𝔡𝔢'.isidentifier(), 'class'.isidentifier())
+print(''.isidentifier(), ' '.isidentifier(), '['.isidentifier(), '©'.isidentifier(), '0'.isidentifier(), '0abc'.isidentifier())
+print(''.isprintable(), ' '.isprintable(), 'abcdefg'.isprintable(), 'abcdefg\n'.isprintable())
+print('\u0374'.isprintable(), '\u0378'.isprintable(), '\U0001F46F'.isprintable(), '\U000E0020'.isprintable())
+print('\t'.isprintable(), '\u00a0'.isprintable(), '\u2028'.isprintable(), '\U00100001'.isprintable())
+for expr in [lambda: 'abc'.isidentifier(42), lambda: 'abc'.isprintable(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

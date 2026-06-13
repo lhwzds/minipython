@@ -5328,8 +5328,9 @@ Completed in the string identifier/printable predicate pass:
   using Unicode XID identifier checks and Unicode general-category printable
   checks. MiniPython excludes surrogate-only CPython cases because its strings
   store Rust Unicode scalar values.
-- Added a CPython/MiniPython differential parity case for the same supported
-  identifier and printable-character predicate behavior.
+- Added `cpython_string_identifier_printable_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported identifier
+  and printable-character predicate behavior.
 
 Completed in the string expandtabs method pass:
 
