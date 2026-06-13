@@ -2055,6 +2055,7 @@ Recent runtime migration notes:
   `BaseBytesTest::test_iterator_pickling` public iterator value/type
   round-trips for initial and already-advanced bytes/bytearray iterators.
 - `STRING_RUNTIME` also includes
+  `cpython_bytearray_iterator_pickle_shared_exporter_diff_subset` /
   `cpython_bytearray_iterator_pickle_shared_exporter_subset`, covering CPython
   `ByteArrayTest::test_iterator_pickling2` shared copied-bytearray exporter
   behavior for initial, running, empty, and exhausted bytearray iterators.

@@ -1172,7 +1172,8 @@ to subclass pickle behavior and CPython's real binary pickle stream.
 `BaseBytesTest::test_iterator_pickling` for supported bytes and bytearray
 iterators, covering initial and already-advanced iterator state across every
 exposed pickle protocol.
-`cpython_bytearray_iterator_pickle_shared_exporter_subset` ports
+`cpython_bytearray_iterator_pickle_shared_exporter_subset` with direct
+`cpython_bytearray_iterator_pickle_shared_exporter_diff_subset` evidence ports
 `ByteArrayTest::test_iterator_pickling2`, covering the relationship between a
 pickled bytearray iterator and the copied mutable bytearray object for initial,
 running, empty, and exhausted iterator states.

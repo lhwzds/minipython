@@ -1481,6 +1481,49 @@ fn cpython_bytearray_hex_reentrant_separator_diff_is_capability_gated() {
 }
 
 #[test]
+fn cpython_bytearray_iterator_pickle_shared_exporter_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytearray_iterator_pickle_shared_exporter_diff_subset";
+    let subset_name = "cpython_bytearray_iterator_pickle_shared_exporter_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray iterator shared-exporter pickle direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray iterator shared-exporter pickle runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytearray iterator shared-exporter docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytearray iterator shared-exporter diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "pickle.dumps((itorig, orig), proto)",
+        "pickle.loads(payload)",
+        "b[:] = data",
+        "list(it) == data[1:]",
+        "list(it) == []",
+        "print(counts)",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytearray iterator shared-exporter diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);

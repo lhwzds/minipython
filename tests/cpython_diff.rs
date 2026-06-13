@@ -19645,6 +19645,50 @@ print(b3)"#,
 }
 
 #[test]
+fn cpython_bytearray_iterator_pickle_shared_exporter_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iterator_pickling2 shared-exporter public subset",
+        name: "bytearray-iterator-pickle-shared-exporter",
+        source: r#"import pickle
+orig = bytearray(b'abc')
+data = list(b'qwerty')
+counts = [0, 0, 0, 0]
+for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+    itorig = iter(orig)
+    payload = pickle.dumps((itorig, orig), proto)
+    it, b = pickle.loads(payload)
+    b[:] = data
+    if type(it) is type(itorig) and list(it) == data:
+        counts[0] += 1
+
+    next(itorig)
+    payload = pickle.dumps((itorig, orig), proto)
+    it, b = pickle.loads(payload)
+    b[:] = data
+    if type(it) is type(itorig) and list(it) == data[1:]:
+        counts[1] += 1
+
+    for i in range(1, len(orig)):
+        next(itorig)
+    payload = pickle.dumps((itorig, orig), proto)
+    it, b = pickle.loads(payload)
+    b[:] = data
+    if type(it) is type(itorig) and list(it) == data[len(orig):]:
+        counts[2] += 1
+
+    try:
+        next(itorig)
+    except StopIteration:
+        payload = pickle.dumps((itorig, orig), proto)
+        it, b = pickle.loads(payload)
+        b[:] = data
+        if list(it) == []:
+            counts[3] += 1
+print(counts)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_exhausted_iterator_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",

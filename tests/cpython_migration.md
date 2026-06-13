@@ -3799,6 +3799,8 @@ Completed in the bytearray iterator shared-exporter pickle pass:
   unpickles to an iterator tied to the copied bytearray object. This covers
   initial, running, empty, and exhausted iterator states across every exposed
   pickle protocol.
+- Added direct CPython diff evidence in
+  `cpython_bytearray_iterator_pickle_shared_exporter_diff_subset`.
 - Remaining `test_bytes.py` pickle work is now mostly subclass pickle behavior
   and CPython's real binary pickle format, not the public bytearray iterator /
   copied-exporter relationship.
