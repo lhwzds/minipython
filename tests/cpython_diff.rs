@@ -11303,6 +11303,20 @@ ds = copy.copy(d)
 dd = copy.deepcopy(d)
 d['x'].append(2)
 print(ds is d, dd is d, ds['x'], dd['x'])
+shared = [1]
+outer = [shared, shared]
+cloned = copy.deepcopy(outer)
+print('list-alias', cloned is outer, cloned[0] is shared, cloned[0] is cloned[1], cloned)
+d = {'a': shared, 'b': shared}
+cd = copy.deepcopy(d)
+print('dict-alias', cd is d, cd['a'] is shared, cd['a'] is cd['b'], cd)
+t = (shared, shared)
+ct = copy.deepcopy(t)
+print('tuple-alias', ct is t, ct[0] is shared, ct[0] is ct[1], ct)
+cycle = []
+cycle.append(cycle)
+cc = copy.deepcopy(cycle)
+print('list-cycle', cc is cycle, cc[0] is cc, len(cc))
 for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:
     try:
         expr()

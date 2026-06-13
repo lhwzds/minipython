@@ -32640,27 +32640,42 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             *copied_attrs.borrow_mut() = DictStorage::new(copied_entries);
             Ok(copied)
         }
-        Value::List(items) => Ok(list_value(
-            items
-                .borrow()
+        Value::List(items) => {
+            let key = Rc::as_ptr(items) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_items = Rc::new(RefCell::new(Vec::new()));
+            let copied = Value::List(copied_items.clone());
+            memo.insert(key, copied.clone());
+            let items = items.borrow().clone();
+            let copied_values = items
                 .iter()
                 .map(|item| deep_copy_value(item, memo))
-                .collect::<Result<Vec<_>, _>>()?,
-        )),
+                .collect::<Result<Vec<_>, _>>()?;
+            *copied_items.borrow_mut() = copied_values;
+            Ok(copied)
+        }
         Value::Tuple(items) => {
+            let key = Rc::as_ptr(items) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
             let copied_items = items
                 .iter()
                 .map(|item| deep_copy_value(item, memo))
                 .collect::<Result<Vec<_>, _>>()?;
-            if items
+            let copied = if items
                 .iter()
                 .zip(copied_items.iter())
                 .all(|(item, copied)| is_identical(item, copied))
             {
-                Ok(value.clone())
+                value.clone()
             } else {
-                Ok(tuple_value(copied_items))
-            }
+                tuple_value(copied_items)
+            };
+            memo.insert(key, copied.clone());
+            Ok(copied)
         }
         Value::NamedTuple { typ, values } => Ok(Value::NamedTuple {
             typ: typ.clone(),
@@ -32694,14 +32709,25 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             Ok(copied)
         }
         Value::Dict(entries) => {
+            let key = Rc::as_ptr(entries) as usize;
+            if let Some(copied) = memo.get(&key) {
+                return Ok(copied.clone());
+            }
+            let copied_entries = Rc::new(RefCell::new(DictStorage::new(Vec::new())));
+            let copied = Value::Dict(copied_entries.clone());
+            memo.insert(key, copied.clone());
             let entries = entries.borrow().entries.clone();
-            let copied_entries = entries
+            let copied_values = entries
                 .into_iter()
                 .map(|(key, value)| {
                     Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
-            build_dict(copied_entries)
+            *copied_entries.borrow_mut() = DictStorage::new(Vec::new());
+            for (key, value) in copied_values {
+                insert_live_dict_entry(&mut copied_entries.borrow_mut(), key, value)?;
+            }
+            Ok(copied)
         }
         Value::Counter { entries } => {
             let entries = entries.borrow().entries.clone();

@@ -1329,9 +1329,10 @@ Recent runtime migration notes:
   covering CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
-  and identity, nested list/dict shallow-vs-deep copy behavior, independent
-  bytearray copy buffers, dictionary copy independence, and representative arity TypeError
-  classification.
+  and identity, nested list/dict shallow-vs-deep copy behavior, `deepcopy()`
+  memo preservation for shared list/dict/tuple members and self-referential
+  lists, independent bytearray copy buffers, dictionary copy independence, and
+  representative arity TypeError classification.
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
