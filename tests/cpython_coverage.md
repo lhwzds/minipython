@@ -31,8 +31,11 @@ Recent runtime migration notes:
   migrated through local Rust/runtime shims plus direct differential evidence.
 - `collections.deque` is currently a minimal sandbox type surface only:
   `cpython_collections_deque_public_surface_subset` and
-  `cpython_collections_deque_public_surface_diff_subset` cover empty
-  construction, concrete type identity, and `MutableSequence` registration.
+  `cpython_collections_deque_public_surface_diff_subset` cover pure-memory
+  construction from iterables, `maxlen` truncation and readonly access,
+  iteration, len/bool/repr, basic `append` / `appendleft` / `pop` /
+  `popleft` / `clear` / `copy`, concrete type identity, and
+  `MutableSequence` registration.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`

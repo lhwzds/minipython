@@ -2152,6 +2152,7 @@ fn stdlib_type_name(value: &Value) -> &str {
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
         Value::UserList { .. } => "UserList",
+        Value::Deque { .. } => "deque",
         Value::UserDict { .. } => "UserDict",
         Value::NamedTupleType(_) => "type",
         Value::NamedTuple { typ, .. } => typ.name.as_str(),

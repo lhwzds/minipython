@@ -3049,14 +3049,43 @@ print(operator.truth([]), operator.is_(None, None), operator.contains([1, 2], 2)
 #[test]
 fn cpython_collections_deque_public_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
-        origin: "Lib/test/test_collections.py deque public type and ABC registration subset",
+        origin: "Lib/test/test_collections.py deque public pure-memory subset",
         name: "collections-deque-public-surface",
         source: r#"from collections import deque
 from collections.abc import MutableSequence
 d = deque()
 print(type(d).__name__)
 print(isinstance(d, deque), isinstance(d, MutableSequence))
-print(issubclass(deque, MutableSequence))"#,
+print(issubclass(deque, MutableSequence))
+for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:
+    print(repr(d), list(d), len(d), bool(d), d.maxlen)
+d = deque([2], maxlen=3)
+print(d.append(3), d.appendleft(1), list(d), repr(d))
+d.append(4)
+print(list(d), repr(d))
+d.appendleft(0)
+print(list(d), repr(d))
+print(d.pop(), d.popleft(), list(d))
+copy = d.copy()
+d.append(99)
+print(list(copy), copy.maxlen, list(d))
+d.clear()
+print(list(d), len(d), bool(d))
+zero = deque([1, 2], maxlen=0)
+zero.append(3)
+zero.appendleft(4)
+print(list(zero), repr(zero), zero.maxlen)
+for label, callback in [
+    ('pop-empty', lambda: deque().pop()),
+    ('popleft-empty', lambda: deque().popleft()),
+    ('bad-maxlen', lambda: deque([], -1)),
+    ('bad-keyword', lambda: deque([], bad=1)),
+    ('duplicate-iterable', lambda: deque([], iterable=[])),
+]:
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"#,
     });
 }
 

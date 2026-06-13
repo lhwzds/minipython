@@ -44740,9 +44740,10 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 }
 
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
-// empty construction, concrete type identity, and MutableSequence registration.
-// Full deque construction, mutation, pickling, and performance semantics remain
-// outside the default sandbox surface.
+// pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
+// append/pop operations, and MutableSequence registration. Broader deque
+// APIs, pickling, performance, and thread-safety semantics remain outside the
+// default sandbox surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
@@ -44752,9 +44753,58 @@ fn cpython_collections_deque_public_surface_subset() {
             "d = deque()\n",
             "print(type(d).__name__)\n",
             "print(isinstance(d, deque), isinstance(d, MutableSequence))\n",
-            "print(issubclass(deque, MutableSequence))"
+            "print(issubclass(deque, MutableSequence))\n",
+            "for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:\n",
+            "    print(repr(d), list(d), len(d), bool(d), d.maxlen)\n",
+            "d = deque([2], maxlen=3)\n",
+            "print(d.append(3), d.appendleft(1), list(d), repr(d))\n",
+            "d.append(4)\n",
+            "print(list(d), repr(d))\n",
+            "d.appendleft(0)\n",
+            "print(list(d), repr(d))\n",
+            "print(d.pop(), d.popleft(), list(d))\n",
+            "copy = d.copy()\n",
+            "d.append(99)\n",
+            "print(list(copy), copy.maxlen, list(d))\n",
+            "d.clear()\n",
+            "print(list(d), len(d), bool(d))\n",
+            "zero = deque([1, 2], maxlen=0)\n",
+            "zero.append(3)\n",
+            "zero.appendleft(4)\n",
+            "print(list(zero), repr(zero), zero.maxlen)\n",
+            "for label, callback in [\n",
+            "    ('pop-empty', lambda: deque().pop()),\n",
+            "    ('popleft-empty', lambda: deque().popleft()),\n",
+            "    ('bad-maxlen', lambda: deque([], -1)),\n",
+            "    ('bad-keyword', lambda: deque([], bad=1)),\n",
+            "    ('duplicate-iterable', lambda: deque([], iterable=[])),\n",
+            "]:\n",
+            "    try:\n",
+            "        callback()\n",
+            "    except Exception as error:\n",
+            "        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"
         ),
-        &["deque", "True True", "True"],
+        &[
+            "deque",
+            "True True",
+            "True",
+            "deque([]) [] 0 False None",
+            "deque([1, 2, 3]) [1, 2, 3] 3 True None",
+            "deque([2, 3], maxlen=2) [2, 3] 2 True 2",
+            "deque([], maxlen=0) [] 0 False 0",
+            "None None [1, 2, 3] deque([1, 2, 3], maxlen=3)",
+            "[2, 3, 4] deque([2, 3, 4], maxlen=3)",
+            "[0, 2, 3] deque([0, 2, 3], maxlen=3)",
+            "3 0 [2]",
+            "[2] 3 [2, 99]",
+            "[] 0 False",
+            "[] deque([], maxlen=0) 0",
+            "pop-empty IndexError True",
+            "popleft-empty IndexError True",
+            "bad-maxlen ValueError True",
+            "bad-keyword TypeError True",
+            "duplicate-iterable TypeError True",
+        ],
     );
 }
 

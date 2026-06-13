@@ -9093,6 +9093,9 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("UserList.") => {
                 self.call_user_list_method(&name, args, keywords)
             }
+            Value::Builtin(name) if name.starts_with("deque.") => {
+                self.call_deque_method(&name, args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("dict.") => {
                 call_dict_method(self, &name, args, keywords)
             }
@@ -16279,6 +16282,7 @@ impl Vm {
             value if array_array_storage(&value).is_some() => Ok(self.len_value(value)? != 0),
             Value::ChainMap { maps } => Ok(!chain_map_entries(&maps)?.is_empty()),
             Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
+            Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
             Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
             Value::MappingView { mapping, .. } => Ok(self.len_value(*mapping)? != 0),
             Value::MappingProxyObject { mapping } => self.truth_value(*mapping),
@@ -16352,6 +16356,7 @@ impl Vm {
             }
             Value::ChainMap { maps } => Ok(chain_map_entries(&maps)?.len()),
             Value::UserList { data, .. } => Ok(data.borrow().len()),
+            Value::Deque { data, .. } => Ok(data.borrow().len()),
             Value::UserDict { data, .. } => Ok(data.borrow().len()),
             Value::MappingView { mapping, .. } => self.len_value(*mapping),
             Value::MappingProxyObject { mapping } => self.len_value(*mapping),
@@ -21182,21 +21187,75 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        if !keywords.is_empty() {
-            return Err("TypeError: deque() does not accept keyword arguments".to_string());
-        }
-        if !args.is_empty() {
+        let mut iterable = None;
+        let mut maxlen = None;
+        if args.len() > 2 {
             return Err(format!(
-                "TypeError: deque expected at most 0 arguments, got {}",
+                "TypeError: deque expected at most 2 arguments, got {}",
                 args.len()
             ));
         }
+        for (index, value) in args.into_iter().enumerate() {
+            match index {
+                0 => iterable = Some(value),
+                1 => maxlen = Some(value),
+                _ => unreachable!("deque positional count checked above"),
+            }
+        }
+        for (name, value) in keywords {
+            match name.as_str() {
+                "iterable" => {
+                    if iterable.is_some() {
+                        return Err(
+                            "TypeError: deque() got multiple values for argument 'iterable'"
+                                .to_string(),
+                        );
+                    }
+                    iterable = Some(value);
+                }
+                "maxlen" => {
+                    if maxlen.is_some() {
+                        return Err(
+                            "TypeError: deque() got multiple values for argument 'maxlen'"
+                                .to_string(),
+                        );
+                    }
+                    maxlen = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: deque() got an unexpected keyword argument '{name}'"
+                    ));
+                }
+            }
+        }
+        let maxlen = match maxlen {
+            None | Some(Value::None) => None,
+            Some(value) => {
+                let value = self.index_big_int(value)?;
+                if value.is_negative() {
+                    return Err("ValueError: maxlen must be non-negative".to_string());
+                }
+                Some(
+                    value
+                        .to_usize()
+                        .ok_or_else(|| "OverflowError: maxlen is too large".to_string())?,
+                )
+            }
+        };
+        let mut values = match iterable {
+            None => Vec::new(),
+            Some(value) => self.collect_iterable_values(value)?,
+        };
+        if let Some(maxlen) = maxlen {
+            if values.len() > maxlen {
+                values = values[values.len() - maxlen..].to_vec();
+            }
+        }
 
-        Ok(Value::Instance {
-            class_name: "deque".to_string(),
-            fields: new_scope(),
-            class_attrs: new_scope(),
-            class_bases: vec![Value::Builtin("deque".to_string())],
+        Ok(Value::Deque {
+            data: Rc::new(RefCell::new(values)),
+            maxlen,
         })
     }
 
@@ -28599,6 +28658,107 @@ impl Vm {
         list_args.extend(rest.iter().cloned());
         let list_method = format!("list.{method}");
         self.call_list_method(&list_method, list_args, keywords)
+    }
+
+    fn call_deque_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        reject_method_keywords(name, &keywords)?;
+        let method = method_display_name(name);
+        let [Value::Deque { data, maxlen }, rest @ ..] = args.as_slice() else {
+            return Err(format!("{method}() expected a deque receiver"));
+        };
+        match method {
+            "append" | "appendleft" => {
+                let [value] = rest else {
+                    return Err(format!(
+                        "{method}() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let mut items = data.borrow_mut();
+                if maxlen == &Some(0) {
+                    return Ok(Value::None);
+                }
+                if method == "append" {
+                    items.push(value.clone());
+                    if maxlen.is_some_and(|maxlen| items.len() > maxlen) {
+                        items.remove(0);
+                    }
+                } else {
+                    items.insert(0, value.clone());
+                    if let Some(maxlen) = maxlen {
+                        if items.len() > *maxlen {
+                            items.pop();
+                        }
+                    }
+                }
+                Ok(Value::None)
+            }
+            "pop" | "popleft" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "{method}() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let mut items = data.borrow_mut();
+                let value = if method == "pop" {
+                    items.pop()
+                } else if items.is_empty() {
+                    None
+                } else {
+                    Some(items.remove(0))
+                };
+                value.ok_or_else(|| "IndexError: pop from an empty deque".to_string())
+            }
+            "clear" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "clear() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                data.borrow_mut().clear();
+                Ok(Value::None)
+            }
+            "copy" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "copy() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                Ok(Value::Deque {
+                    data: Rc::new(RefCell::new(data.borrow().clone())),
+                    maxlen: *maxlen,
+                })
+            }
+            "__iter__" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "__iter__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                get_iter(Value::List(data.clone()))
+            }
+            "__len__" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "__len__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let len = i64::try_from(data.borrow().len())
+                    .map_err(|_| "OverflowError: deque length is too large".to_string())?;
+                Ok(Value::Number(len))
+            }
+            _ => Err(format!("AttributeError: deque has no attribute '{method}'")),
+        }
     }
 
     fn call_list_equality_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
@@ -45564,6 +45724,7 @@ fn is_iterable_abc_value(value: &Value) -> bool {
                 | Value::MappingView { .. }
                 | Value::MappingProxy { .. }
                 | Value::ChainMap { .. }
+                | Value::Deque { .. }
                 | Value::Range { .. }
                 | Value::Template { .. }
         )
@@ -45597,6 +45758,7 @@ fn is_reversible_abc_value(value: &Value) -> bool {
             | Value::DictView { .. }
             | Value::MappingView { .. }
             | Value::MappingProxy { .. }
+            | Value::Deque { .. }
             | Value::Range { .. }
     ) || list_subclass_storage(value).is_some()
         || instance_abc_bases_include(value, "Reversible")
@@ -45612,6 +45774,7 @@ fn is_sequence_abc_value(value: &Value) -> bool {
             | Value::ByteArray(_)
             | Value::MemoryView(_)
             | Value::List(_)
+            | Value::Deque { .. }
             | Value::Tuple(_)
             | Value::Range { .. }
     ) || list_subclass_storage(value).is_some()
@@ -45619,8 +45782,12 @@ fn is_sequence_abc_value(value: &Value) -> bool {
 }
 
 fn is_mutable_sequence_abc_value(value: &Value) -> bool {
-    matches!(value, Value::List(_) | Value::ByteArray(_))
-        || list_subclass_storage(value).is_some()
+    matches!(
+        value,
+        Value::List(_) | Value::ByteArray(_) | Value::Deque { .. }
+    ) || list_subclass_storage(value).is_some()
+        || bytearray_subclass_storage(value).is_some()
+        || array_array_storage(value).is_some()
         || instance_abc_bases_include(value, "MutableSequence")
 }
 
@@ -47394,6 +47561,7 @@ fn is_sized_abc_value(value: &Value) -> bool {
             | Value::DictView { .. }
             | Value::MappingView { .. }
             | Value::MappingProxy { .. }
+            | Value::Deque { .. }
             | Value::Range { .. }
     ) || list_subclass_storage(value).is_some()
         || instance_abc_bases_include(value, "Sized")
@@ -47423,6 +47591,7 @@ fn is_container_abc_value(value: &Value) -> bool {
             | Value::DictView { .. }
             | Value::MappingView { .. }
             | Value::MappingProxy { .. }
+            | Value::Deque { .. }
             | Value::Range { .. }
     ) || list_subclass_storage(value).is_some()
         || instance_abc_bases_include(value, "Container")
@@ -50907,6 +51076,22 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 _ => Err(format!(
                     "AttributeError: UserList has no attribute '{name}'"
                 )),
+            }
+        }
+        Value::Deque { data, maxlen } => {
+            if name == "maxlen" {
+                return Ok(maxlen
+                    .map(|value| normalize_big_int(BigInt::from(value)))
+                    .unwrap_or(Value::None));
+            }
+            match name {
+                "append" | "appendleft" | "clear" | "copy" | "pop" | "popleft" | "__iter__"
+                | "__len__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                    receiver: Box::new(Value::Deque { data, maxlen }),
+                    identity: Rc::new(()),
+                }),
+                _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }
         Value::Dict(entries) => match name {
@@ -54516,6 +54701,7 @@ fn type_name(value: &Value) -> &str {
         Value::MappingProxy { .. } | Value::MappingProxyObject { .. } => "mappingproxy",
         Value::ChainMap { .. } => "ChainMap",
         Value::UserList { .. } => "UserList",
+        Value::Deque { .. } => "deque",
         Value::UserDict { .. } => "UserDict",
         Value::NamedTupleType(_) => "type",
         Value::NamedTuple { typ, .. } => typ.name.as_str(),
@@ -68657,6 +68843,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
             .borrow()
             .len()),
         Value::UserList { data, .. } => Ok(data.borrow().len()),
+        Value::Deque { data, .. } => Ok(data.borrow().len()),
         Value::Tuple(items) => Ok(items.len()),
         Value::NamedTuple { values, .. } => Ok(values.len()),
         value if tuple_subclass_items(value).is_some() => Ok(tuple_subclass_items(value)
@@ -70376,6 +70563,7 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::MappingProxyObject { mapping } => hash_value_into(mapping, hasher)?,
         Value::List(_)
         | Value::UserList { .. }
+        | Value::Deque { .. }
         | Value::ByteArray(_)
         | Value::Set(_)
         | Value::Dict(_)
@@ -70600,6 +70788,7 @@ fn is_hashable_key(value: &Value) -> bool {
         | Value::WeakProxy { .. }
         | Value::List(_)
         | Value::UserList { .. }
+        | Value::Deque { .. }
         | Value::ByteArray(_)
         | Value::Set(_)
         | Value::Dict(_)
@@ -70726,6 +70915,11 @@ fn get_iter(value: Value) -> Result<Value, String> {
             exhausted: false,
         })),
         Value::UserList { data, .. } => Ok(shared_iterator(Value::ListIterator {
+            items: data,
+            index: 0,
+            exhausted: false,
+        })),
+        Value::Deque { data, .. } => Ok(shared_iterator(Value::ListIterator {
             items: data,
             index: 0,
             exhausted: false,
@@ -71301,6 +71495,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         }
         "ChainMap" => matches!(subject, Value::ChainMap { .. }),
         "UserList" => matches!(subject, Value::UserList { .. }),
+        "deque" => matches!(subject, Value::Deque { .. }),
         "UserDict" => matches!(subject, Value::UserDict { .. }),
         "module" => {
             matches!(subject, Value::Module { .. })
@@ -71376,7 +71571,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
                     Value::NamedTupleTypeMethod { .. } | Value::NamedTupleInstanceMethod { .. }
                 )
         }
-        "deque" | "array.array" => {
+        "array.array" => {
             matches!(
                 subject,
                 Value::Instance { class_bases, .. }
@@ -76870,6 +77065,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::BytesIO(_) => Ok(true),
         Value::List(items) => Ok(!items.borrow().is_empty()),
         Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
+        Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
         Value::Tuple(items) => Ok(!items.is_empty()),
         Value::Set(items) => Ok(!items.borrow().is_empty()),
         Value::FrozenSet(items) => Ok(!items.is_empty()),

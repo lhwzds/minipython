@@ -511,6 +511,10 @@ pub enum Value {
         data: ListRef,
         attrs: DictRef,
     },
+    Deque {
+        data: ListRef,
+        maxlen: Option<usize>,
+    },
     UserDict {
         data: DictRef,
         attrs: DictRef,
@@ -1113,6 +1117,14 @@ impl fmt::Display for Value {
             Value::UserList { data, .. } => {
                 let data = data.borrow();
                 write!(f, "[{}]", format_list_items(&data))
+            }
+            Value::Deque { data, maxlen } => {
+                let data = data.borrow();
+                if let Some(maxlen) = maxlen {
+                    write!(f, "deque([{}], maxlen={maxlen})", format_list_items(&data))
+                } else {
+                    write!(f, "deque([{}])", format_list_items(&data))
+                }
             }
             Value::UserDict { data, .. } => {
                 write!(f, "UserDict({{{}}})", format_dict(&data.borrow()))
@@ -1750,6 +1762,14 @@ fn format_value_repr(value: &Value) -> String {
         Value::UserList { data, .. } => {
             let data = data.borrow();
             format!("[{}]", format_list_items(&data))
+        }
+        Value::Deque { data, maxlen } => {
+            let data = data.borrow();
+            if let Some(maxlen) = maxlen {
+                format!("deque([{}], maxlen={maxlen})", format_list_items(&data))
+            } else {
+                format!("deque([{}])", format_list_items(&data))
+            }
         }
         Value::UserDict { data, .. } => {
             format!("UserDict({{{}}})", format_dict(&data.borrow()))
