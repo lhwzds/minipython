@@ -10451,6 +10451,13 @@ fn cpython_copy_public_diff_subset() {
         origin: "Lib/copy.py public pure-memory subset",
         name: "copy-public",
         source: r#"import copy
+print(copy.Error is copy.error)
+print(copy.Error.__name__, copy.Error.__qualname__, copy.Error.__module__)
+try:
+    raise copy.Error('boom')
+except copy.Error as error:
+    print(type(error).__name__, isinstance(error, Exception), str(error))
+print(type(copy.dispatch_table).__name__, copy.dispatch_table is copy.dispatch_table)
 nested = [1, [2], {'a': [3]}]
 shallow = copy.copy(nested)
 deep = copy.deepcopy(nested)

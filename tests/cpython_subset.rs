@@ -21374,6 +21374,13 @@ fn cpython_copy_public_subset() {
     assert_output(
         concat!(
             "import copy\n",
+            "print(copy.Error is copy.error)\n",
+            "print(copy.Error.__name__, copy.Error.__qualname__, copy.Error.__module__)\n",
+            "try:\n",
+            "    raise copy.Error('boom')\n",
+            "except copy.Error as error:\n",
+            "    print(type(error).__name__, isinstance(error, Exception), str(error))\n",
+            "print(type(copy.dispatch_table).__name__, copy.dispatch_table is copy.dispatch_table)\n",
             "nested = [1, [2], {'a': [3]}]\n",
             "shallow = copy.copy(nested)\n",
             "deep = copy.deepcopy(nested)\n",
@@ -21402,6 +21409,10 @@ fn cpython_copy_public_subset() {
             "        print(error.__class__.__name__)"
         ),
         &[
+            "True",
+            "Error Error copy",
+            "Error True boom",
+            "dict True",
             "False False",
             "True False [2, 4] [2]",
             "True False {'a': [3, 5]} {'a': [3]}",

@@ -1314,10 +1314,12 @@ Recent runtime migration notes:
   and related callable-helper behavior.
 - The bundled `copy` module includes `cpython_copy_public_diff_subset` and
   `cpython_copy_public_subset`,
-  covering CPython public `copy.copy()` and `copy.deepcopy()` parity for
-  supported pure-memory scalar equality, nested list/dict shallow-vs-deep copy
-  behavior, independent bytearray copy buffers, dictionary copy independence,
-  and representative arity TypeError classification.
+  covering CPython public `copy.Error` / `copy.error` exception metadata,
+  `dispatch_table` module attribute shape, `copy.copy()` and
+  `copy.deepcopy()` parity for supported pure-memory scalar equality, nested
+  list/dict shallow-vs-deep copy behavior, independent bytearray copy buffers,
+  dictionary copy independence, and representative arity TypeError
+  classification.
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory

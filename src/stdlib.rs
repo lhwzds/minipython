@@ -592,14 +592,7 @@ pub(crate) fn create_module(
                 ("dumps", Value::Builtin("json.dumps".to_string())),
             ],
         )),
-        "copy" => Ok(module_value(
-            "copy",
-            vec![
-                ("copy", Value::Builtin("copy.copy".to_string())),
-                ("deepcopy", Value::Builtin("copy.deepcopy".to_string())),
-                ("replace", Value::Builtin("copy.replace".to_string())),
-            ],
-        )),
+        "copy" => Ok(copy_module_value()),
         "weakref" => Ok(module_value(
             "weakref",
             vec![
@@ -2365,6 +2358,37 @@ fn module_value(name: &str, attrs: Vec<(&str, Value)>) -> Value {
 
     Value::Module {
         name: name.to_string(),
+        attrs: scope,
+    }
+}
+
+fn copy_module_value() -> Value {
+    let error = stdlib_exception_class("Error", "copy");
+    module_value(
+        "copy",
+        vec![
+            ("Error", error.clone()),
+            ("error", error),
+            ("dispatch_table", dict_value(Vec::new())),
+            ("copy", Value::Builtin("copy.copy".to_string())),
+            ("deepcopy", Value::Builtin("copy.deepcopy".to_string())),
+            ("replace", Value::Builtin("copy.replace".to_string())),
+        ],
+    )
+}
+
+fn stdlib_exception_class(name: &str, module: &str) -> Value {
+    let scope = new_scope();
+    {
+        let mut values = scope.borrow_mut();
+        values.insert("__module__".to_string(), Value::String(module.to_string()));
+    }
+
+    Value::Class {
+        name: name.to_string(),
+        type_params: Vec::new(),
+        metaclass: None,
+        bases: vec![builtin_type_value("Exception")],
         attrs: scope,
     }
 }
