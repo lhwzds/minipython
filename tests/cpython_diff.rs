@@ -16328,13 +16328,22 @@ for expr in [lambda: type('A', [], {}), lambda: type('A', (), []), lambda: type(
 od = OrderedDict([('a', 1), ('b', 2)])
 print(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))
 print(type(od.__doc__).__name__, bool(od.__doc__))
+display = OrderedDict([('a', 1)])
+print(display.__repr__(), display.__str__(), display.__format__(''))
+print(OrderedDict.__repr__(display), OrderedDict.__str__(display), OrderedDict.__format__(display, ''))
+try:
+    display.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
+alias = OrderedDict[str, int]
+print(repr(alias), alias.__origin__ is OrderedDict, alias.__origin__.__module__)
 od.move_to_end('a')
 expected = list(od.items())
 C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'move_to_end' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",

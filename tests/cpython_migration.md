@@ -5701,7 +5701,8 @@ Completed in the type builtin pass:
 - Added `cpython_type_namespace_order_subset`, adapted from
   `TestType::test_namespace_order`, covering minimal `OrderedDict`
   construction, public type/instance `__doc__` plus type `__module__` /
-  `__qualname__` metadata, `move_to_end()`, and preservation of ordered
+  `__qualname__` metadata, direct display and empty-format methods, generic
+  alias repr/module metadata, `move_to_end()`, and preservation of ordered
   namespace entries in a dynamic class `__dict__`.
 - Added CPython/MiniPython differential parity cases for the supported
   `type()` subset, including keyword rejection and dynamic-class namespace
@@ -9432,7 +9433,8 @@ Completed in the CPython collections manifest expansion pass:
   multi-map matrix for ChainMap iteration and `items()` order.
 - Exposed a first-pass `collections.OrderedDict` constructor alias over
   MiniPython's insertion-ordered dict storage, with minimal public metadata for
-  the exposed type. This is enough for the ChainMap order-preservation test,
+  the exposed type plus direct display/empty-format methods and generic alias
+  repr/module metadata. This is enough for the ChainMap order-preservation test,
   but it is not yet a full OrderedDict runtime surface.
 - Added `cpython_collections_chainmap_copy_pickle_eval_identity_subset`,
   adapted from CPython `TestChainMap::test_basics`, covering exact repr

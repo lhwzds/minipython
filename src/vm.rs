@@ -45578,10 +45578,13 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
         "OrderedDict" => &[
             "__contains__",
             "__delitem__",
+            "__format__",
             "__getitem__",
             "__iter__",
             "__len__",
+            "__repr__",
             "__setitem__",
+            "__str__",
             "clear",
             "copy",
             "fromkeys",
@@ -52538,6 +52541,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .expect("OrderedDict type doc is defined")
                     .to_string(),
             )),
+            "__format__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__format__".to_string())),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
+            "__repr__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("OrderedDict.{name}"))),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
             | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
             | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -53321,6 +53334,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "dict" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
         }
+        Value::Builtin(function_name) if function_name == "OrderedDict" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
+        }
         Value::Builtin(function_name) if name == "__class__" => {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
             {
@@ -53342,6 +53358,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "OrderedDict" && is_builtin_dict_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("OrderedDict.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "mappingproxy" && is_builtin_mappingproxy_type_method(name) =>

@@ -1120,9 +1120,7 @@ impl fmt::Display for Value {
             Value::Set(items) => write!(f, "{}", format_set(&items.borrow())),
             Value::FrozenSet(items) => write!(f, "{}", format_frozen_set(items)),
             Value::Dict(entries) => write!(f, "{{{}}}", format_dict(&entries.borrow())),
-            Value::OrderedDict(entries) => {
-                write!(f, "OrderedDict({{{}}})", format_dict(&entries.borrow()))
-            }
+            Value::OrderedDict(entries) => write!(f, "{}", format_ordered_dict(&entries.borrow())),
             Value::ScopeDict(scope) => write!(f, "{{{}}}", format_scope_dict(scope)),
             Value::DictView { kind, entries } => write!(
                 f,
@@ -1762,9 +1760,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::Set(items) => format_set(&items.borrow()),
         Value::FrozenSet(items) => format_frozen_set(items),
         Value::Dict(entries) => format!("{{{}}}", format_dict(&entries.borrow())),
-        Value::OrderedDict(entries) => {
-            format!("OrderedDict({{{}}})", format_dict(&entries.borrow()))
-        }
+        Value::OrderedDict(entries) => format_ordered_dict(&entries.borrow()),
         Value::ScopeDict(scope) => format!("{{{}}}", format_scope_dict(scope)),
         Value::DictView { kind, entries } => {
             format!(
@@ -2359,6 +2355,7 @@ fn format_generic_alias_arg(value: &Value) -> String {
 fn format_generic_builtin_name(name: &str) -> String {
     match name {
         "deque" => "collections.deque".to_string(),
+        "OrderedDict" => "collections.OrderedDict".to_string(),
         _ => name.to_string(),
     }
 }
@@ -4103,6 +4100,19 @@ fn format_dict(entries: &[(Value, Value)]) -> String {
         .map(|(key, value)| format!("{}: {}", format_value_repr(key), format_value_repr(value)))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+fn format_ordered_dict(entries: &[(Value, Value)]) -> String {
+    if entries.is_empty() {
+        return "OrderedDict()".to_string();
+    }
+
+    let items = entries
+        .iter()
+        .map(|(key, value)| format!("({}, {})", format_value_repr(key), format_value_repr(value)))
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("OrderedDict([{items}])")
 }
 
 fn format_counter(entries: &[(Value, Value)]) -> String {
