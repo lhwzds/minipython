@@ -5289,6 +5289,28 @@ for expr in [lambda: 'hello'.split(''), lambda: 'hello'.split('', 0), lambda: 'h
 }
 
 #[test]
+fn cpython_string_strip_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py strip subset",
+        name: "string-strip",
+        source: r#"print('   hello   '.strip(), '   hello   '.lstrip(), '   hello   '.rstrip(), 'hello'.strip())
+text = ' \t\n\r\f\vabc \t\n\r\f\v'
+print(text.strip())
+print(repr(text.lstrip()))
+print(repr(text.rstrip()))
+print('   hello   '.strip(None), '   hello   '.lstrip(None), '   hello   '.rstrip(None), 'hello'.strip(None))
+print('xyzzyhelloxyzzy'.strip('xyz'), 'xyzzyhelloxyzzy'.lstrip('xyz'), 'xyzzyhelloxyzzy'.rstrip('xyz'))
+print('hello'.strip('xyz'), 'mississippi'.strip('mississippi'), 'mississippi'.strip('i'))
+print('mississippi'.lstrip('im'), 'mississippi'.rstrip('ip'), 'abc'.strip(''))
+for expr in [lambda: 'hello'.strip(42), lambda: 'hello'.strip(42, 42), lambda: 'hello'.lstrip(42), lambda: 'hello'.lstrip(42, 42), lambda: 'hello'.rstrip(42), lambda: 'hello'.rstrip(42, 42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

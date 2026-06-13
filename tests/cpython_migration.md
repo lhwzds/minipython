@@ -5409,8 +5409,8 @@ Completed in the string strip method pass:
   including default whitespace stripping, explicit `None`, character-set
   stripping, endpoint-only behavior, empty character-set behavior, and
   representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  stripping behavior.
+- Added `cpython_string_strip_diff_subset` as the direct CPython/MiniPython
+  differential parity case for the same supported stripping behavior.
 
 Completed in the string partition/rpartition method pass:
 
