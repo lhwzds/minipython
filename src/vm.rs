@@ -56914,7 +56914,9 @@ fn json_dumps_value_inner(
         Value::List(items) => json_dumps_sequence(&items.borrow(), active, options, depth),
         Value::Tuple(items) => json_dumps_sequence(items, active, options, depth),
         Value::NamedTuple { values, .. } => json_dumps_sequence(values, active, options, depth),
-        Value::Dict(entries) => json_dumps_dict(&entries.borrow().entries, active, options, depth),
+        Value::Dict(entries) | Value::Counter { entries } => {
+            json_dumps_dict(&entries.borrow().entries, active, options, depth)
+        }
         value if list_subclass_storage(value).is_some() => json_dumps_sequence(
             &list_subclass_storage(value)
                 .expect("list subclass storage exists after guard")
@@ -56955,7 +56957,7 @@ fn json_dumps_container_identity(value: &Value) -> Option<usize> {
         Value::List(items) => Some(Rc::as_ptr(items) as usize),
         Value::Tuple(items) => Some(Rc::as_ptr(items) as usize),
         Value::NamedTuple { values, .. } => Some(Rc::as_ptr(values) as usize),
-        Value::Dict(entries) => Some(Rc::as_ptr(entries) as usize),
+        Value::Dict(entries) | Value::Counter { entries } => Some(Rc::as_ptr(entries) as usize),
         value if list_subclass_storage(value).is_some() => Some(Rc::as_ptr(
             &list_subclass_storage(value).expect("list subclass storage exists after guard"),
         ) as usize),

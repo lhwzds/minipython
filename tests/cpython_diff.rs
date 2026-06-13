@@ -927,6 +927,7 @@ fn cpython_json_dumps_key_coercion_diff_subset() {
         origin: "Lib/json public dumps dict key coercion subset",
         name: "json-dumps-key-coercion",
         source: r#"import json
+from collections import Counter
 from enum import IntEnum
 class S(str):
     pass
@@ -940,6 +941,8 @@ cases = [
     {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
     {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
     {Code.ok: Code.ok},
+    Counter({'a': 2, 'b': 0}),
+    Counter({2: 3, False: 1}),
 ]
 for value in cases:
     print(json.dumps(value))
