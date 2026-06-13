@@ -28746,6 +28746,39 @@ impl Vm {
                 };
                 value.ok_or_else(|| "IndexError: pop from an empty deque".to_string())
             }
+            "rotate" => {
+                if rest.len() > 1 {
+                    return Err(format!(
+                        "rotate() expected at most 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let mut items = data.borrow_mut();
+                if items.len() <= 1 {
+                    return Ok(Value::None);
+                }
+                let steps = match rest {
+                    [] => 1,
+                    [value] => {
+                        let value = self.index_big_int(value.clone())?;
+                        let len = BigInt::from(items.len());
+                        value.mod_floor(&len).to_usize().unwrap_or(0)
+                    }
+                    _ => unreachable!("rotate argument count checked above"),
+                };
+                items.rotate_right(steps);
+                Ok(Value::None)
+            }
+            "reverse" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "reverse() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                data.borrow_mut().reverse();
+                Ok(Value::None)
+            }
             "clear" => {
                 if !rest.is_empty() {
                     return Err(format!(
@@ -51117,11 +51150,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "extend" | "extendleft" | "pop"
-                | "popleft" | "__iter__" | "__len__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                    receiver: Box::new(Value::Deque { data, maxlen }),
-                    identity: Rc::new(()),
-                }),
+                | "popleft" | "reverse" | "rotate" | "__iter__" | "__len__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                        receiver: Box::new(Value::Deque { data, maxlen }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }

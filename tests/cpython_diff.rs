@@ -3067,6 +3067,10 @@ d.appendleft(0)
 print(list(d), repr(d))
 print(d.extend([4, 5, 6]), list(d), repr(d))
 print(d.extendleft([1, 0, -1]), list(d), repr(d))
+print(d.rotate(), list(d), repr(d))
+print(d.rotate(-2), list(d), repr(d))
+print(d.rotate(5), list(d), repr(d))
+print(d.reverse(), list(d), repr(d))
 print(d.pop(), d.popleft(), list(d))
 copy = d.copy()
 d.append(99)
@@ -3083,7 +3087,12 @@ def gen():
         yield value
 zero.extend(gen())
 zero.extendleft([4, 5])
-print(list(zero), repr(zero), zero.maxlen, seen)
+print(zero.rotate(3), list(zero), zero.reverse(), list(zero), repr(zero), zero.maxlen, seen)
+class IndexLike:
+    def __index__(self):
+        return -1
+idx = deque([1, 2, 3])
+print(idx.rotate(IndexLike()), list(idx))
 for label, callback in [
     ('pop-empty', lambda: deque().pop()),
     ('popleft-empty', lambda: deque().popleft()),

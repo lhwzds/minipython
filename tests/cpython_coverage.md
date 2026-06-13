@@ -34,8 +34,8 @@ Recent runtime migration notes:
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory
   construction from iterables, `maxlen` truncation and readonly access,
   iteration, len/bool/repr, basic `append` / `appendleft` / `extend` /
-  `extendleft` / `pop` / `popleft` / `clear` / `copy`, concrete type
-  identity, and `MutableSequence` registration.
+  `extendleft` / `pop` / `popleft` / `rotate` / `reverse` / `clear` /
+  `copy`, concrete type identity, and `MutableSequence` registration.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`

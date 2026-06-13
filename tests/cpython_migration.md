@@ -7213,9 +7213,10 @@ Completed in the collections ABC mutable-sequence registration pass:
   `cpython_collections_deque_public_surface_diff_subset`; this slice now covers
   pure-memory construction from iterables, `maxlen` truncation and readonly
   access, iteration, len/bool/repr, and basic `append` / `appendleft` /
-  `extend` / `extendleft` / `pop` / `popleft` / `clear` / `copy` operations.
-  Broader deque APIs, pickling, performance, lifetime, and thread-safety
-  semantics remain outside the sandbox default scope.
+  `extend` / `extendleft` / `pop` / `popleft` / `rotate` / `reverse` /
+  `clear` / `copy` operations. Broader deque APIs, pickling, performance,
+  lifetime, and thread-safety semantics remain outside the sandbox default
+  scope.
 - Promoted the strict method audit row for `test_MutableSequence` from
   `partial` to `ported`; at that point, `test_issue26915` NaN object identity
   and `test_Set_hash_matches_frozenset` range-stress hashing still remained for

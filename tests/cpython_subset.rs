@@ -44752,9 +44752,9 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
-// append/extend/pop operations, and MutableSequence registration. Broader
-// deque APIs, pickling, performance, and thread-safety semantics remain outside
-// the default sandbox surface.
+// append/extend/pop operations, simple reordering, and MutableSequence
+// registration. Broader deque APIs, pickling, performance, and thread-safety
+// semantics remain outside the default sandbox surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
@@ -44775,6 +44775,10 @@ fn cpython_collections_deque_public_surface_subset() {
             "print(list(d), repr(d))\n",
             "print(d.extend([4, 5, 6]), list(d), repr(d))\n",
             "print(d.extendleft([1, 0, -1]), list(d), repr(d))\n",
+            "print(d.rotate(), list(d), repr(d))\n",
+            "print(d.rotate(-2), list(d), repr(d))\n",
+            "print(d.rotate(5), list(d), repr(d))\n",
+            "print(d.reverse(), list(d), repr(d))\n",
             "print(d.pop(), d.popleft(), list(d))\n",
             "copy = d.copy()\n",
             "d.append(99)\n",
@@ -44791,7 +44795,12 @@ fn cpython_collections_deque_public_surface_subset() {
             "        yield value\n",
             "zero.extend(gen())\n",
             "zero.extendleft([4, 5])\n",
-            "print(list(zero), repr(zero), zero.maxlen, seen)\n",
+            "print(zero.rotate(3), list(zero), zero.reverse(), list(zero), repr(zero), zero.maxlen, seen)\n",
+            "class IndexLike:\n",
+            "    def __index__(self):\n",
+            "        return -1\n",
+            "idx = deque([1, 2, 3])\n",
+            "print(idx.rotate(IndexLike()), list(idx))\n",
             "for label, callback in [\n",
             "    ('pop-empty', lambda: deque().pop()),\n",
             "    ('popleft-empty', lambda: deque().popleft()),\n",
@@ -44817,10 +44826,15 @@ fn cpython_collections_deque_public_surface_subset() {
             "[0, 2, 3] deque([0, 2, 3], maxlen=3)",
             "None [4, 5, 6] deque([4, 5, 6], maxlen=3)",
             "None [-1, 0, 1] deque([-1, 0, 1], maxlen=3)",
-            "1 -1 [0]",
-            "[0] 3 [0, 99]",
+            "None [1, -1, 0] deque([1, -1, 0], maxlen=3)",
+            "None [0, 1, -1] deque([0, 1, -1], maxlen=3)",
+            "None [1, -1, 0] deque([1, -1, 0], maxlen=3)",
+            "None [0, -1, 1] deque([0, -1, 1], maxlen=3)",
+            "1 0 [-1]",
+            "[-1] 3 [-1, 99]",
             "[] 0 False",
-            "[] deque([], maxlen=0) 0 [1, 2, 3]",
+            "None [] None [] deque([], maxlen=0) 0 [1, 2, 3]",
+            "None [2, 3, 1]",
             "pop-empty IndexError True",
             "popleft-empty IndexError True",
             "bad-maxlen ValueError True",
