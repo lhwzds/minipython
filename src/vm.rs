@@ -68801,7 +68801,29 @@ fn hash_container_items_match(left: &Value, right: &Value) -> bool {
         return equal;
     }
 
+    if let Some(equal) = normalized_integer_keys_match(left, right) {
+        return equal;
+    }
+
     is_identical(left, right) || left == right
+}
+
+fn normalized_integer_keys_match(left: &Value, right: &Value) -> Option<bool> {
+    let left = normalized_integer_key_value(left)?;
+    let right = normalized_integer_key_value(right)?;
+    Some(left == right)
+}
+
+fn normalized_integer_key_value(value: &Value) -> Option<Value> {
+    if let Some(value) = int_subclass_integer(value) {
+        return Some(value);
+    }
+    match value {
+        Value::Bool(value) => Some(Value::Number(bool_as_i64(*value))),
+        Value::Number(value) => Some(Value::Number(*value)),
+        Value::BigInt(value) => Some(Value::BigInt(value.clone())),
+        _ => None,
+    }
 }
 
 fn weakref_live_targets_match(left: &Value, right: &Value) -> Option<bool> {

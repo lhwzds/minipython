@@ -38998,6 +38998,23 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
     );
 }
 
+// Covers CPython dict/set key matching for bool, int, and int subclasses
+// whose hashes and equality results match.
+#[test]
+fn cpython_dict_numeric_key_equivalence_subset() {
+    assert_output(
+        "class I(int):\n    pass\npairs = [(I(1), True), (I(0), False), (I(2), 2)]\nfor a, b in pairs:\n    print(type(a).__name__, repr(a), repr(b), a == b, hash(a) == hash(b), {a: 'a', b: 'b'})\ns = {I(1), True, 1}\nprint(s, len(s), I(1) in {True}, True in {I(1)}, 1 in {I(1)})\nd = {I(1): 'i'}\nd[True] = 'b'\nprint(d, len(d), d[I(1)], d[1], d[True])\ne = {}\ne[I(0)] = 'i'\ne[False] = 'f'\nprint(e, len(e), e[I(0)], e[0], e[False])",
+        &[
+            "I 1 True True True {1: 'b'}",
+            "I 0 False True True {0: 'b'}",
+            "I 2 2 True True {2: 'b'}",
+            "{1} 1 True True True",
+            "{1: 'b'} 1 b b b",
+            "{0: 'f'} 1 f f f",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_enumerate.py::TestReversed::test_simple
 // and Lib/test/test_dict.py reverse-iterator coverage.
 #[test]

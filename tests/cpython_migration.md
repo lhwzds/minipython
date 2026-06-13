@@ -6283,6 +6283,10 @@ Completed in the container constructor/reversed pass:
 - Added `cpython_dict_constructor_update_fromkeys_subset`, adapted from
   `Lib/test/test_dict.py::DictTest::test_constructor`, `::test_update`, and
   `::test_fromkeys`.
+- Added `cpython_dict_numeric_key_equivalence_subset`, backed by
+  `cpython_dict_numeric_key_equivalence_diff_subset`, covering CPython dict/set
+  key matching for `bool`, exact `int`, and `int` subclasses whose equality and
+  hash values match.
 - Added `cpython_reversed_builtin_subset`, adapted from
   `Lib/test/test_enumerate.py::TestReversed::test_simple` and CPython's dict
   reverse-iterator coverage. `cpython_enumerate_reversed_pickle_subset` adds the

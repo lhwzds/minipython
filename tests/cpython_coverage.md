@@ -3279,6 +3279,11 @@ Recent runtime migration notes:
   rejection, plus direct dict-view `__len__` / `__contains__` / `__repr__`
   methods where CPython exposes them.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_dict_numeric_key_equivalence_subset`, backed by direct CPython
+  output parity in `cpython_dict_numeric_key_equivalence_diff_subset`, covering
+  dict/set key matching for `bool`, exact `int`, and `int` subclasses whose
+  equality and hash values match.
+- `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_exact_dict_subset`, covering the exact-dict
   `types.MappingProxyType` constructor path plus `get`, live views, `copy`,
   iteration, reverse iteration, equality, ABC registration, and invalid
