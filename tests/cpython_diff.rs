@@ -12658,6 +12658,12 @@ print('memo-preseed-shared', memo_result, memo_result[0] is memo_result[1], id(o
 memo = {id(outer): ['outer-sentinel']}
 memo_result = copy.deepcopy(outer, memo)
 print('memo-preseed-outer', memo_result, id(outer) in memo)
+obj = [1]
+nil = []
+memo = {id(obj): nil}
+nil_result = copy.deepcopy(obj, memo, nil)
+print('memo-nil-sentinel', nil_result is nil, nil_result, memo[id(obj)] is nil, memo[id(obj)] is nil_result)
+print('nil-keyword', copy.deepcopy([1], _nil=[]))
 for memo_arg in [None, [], {1: 2}]:
     try:
         print('memo-arg', type(memo_arg).__name__, copy.deepcopy([1], memo_arg))

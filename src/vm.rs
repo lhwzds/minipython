@@ -23458,11 +23458,11 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = vec![None, None];
-        let names = ["x", "memo"];
+        let mut values = vec![None, None, None];
+        let names = ["x", "memo", "_nil"];
         if args.len() > names.len() {
             return Err(format!(
-                "TypeError: deepcopy() takes from 1 to 2 positional arguments but {} were given",
+                "TypeError: deepcopy() takes from 1 to 3 positional arguments but {} were given",
                 args.len()
             ));
         }
@@ -23487,7 +23487,8 @@ impl Vm {
             .take()
             .ok_or_else(|| "TypeError: deepcopy() missing required argument 'x'".to_string())?;
         let memo_value = values[1].take();
-        let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref())?;
+        let nil_value = values[2].take();
+        let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref(), nil_value.as_ref())?;
         let copied = deep_copy_value(&value, &mut memo)?;
         if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
             copy_deepcopy_sync_memo(value, &memo)?;
@@ -33538,7 +33539,10 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
     }
 }
 
-fn copy_deepcopy_memo_from_value(value: Option<&Value>) -> Result<HashMap<usize, Value>, String> {
+fn copy_deepcopy_memo_from_value(
+    value: Option<&Value>,
+    nil: Option<&Value>,
+) -> Result<HashMap<usize, Value>, String> {
     let mut memo = HashMap::new();
     let Some(value) = value else {
         return Ok(memo);
@@ -33547,6 +33551,9 @@ fn copy_deepcopy_memo_from_value(value: Option<&Value>) -> Result<HashMap<usize,
         Value::None => Ok(memo),
         Value::Dict(entries) => {
             for (key, value) in entries.borrow().entries.iter() {
+                if nil.is_some_and(|nil| is_identical(value, nil)) {
+                    continue;
+                }
                 if let Some(key) = copy_deepcopy_memo_key(key) {
                     memo.insert(key, value.clone());
                 }
