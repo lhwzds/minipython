@@ -4599,6 +4599,155 @@ fn operator_callable_helper_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_inplace_helper_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_inplace_helper_subset(",
+        "OperatorTestCase::test_inplace",
+        "test_iconcat_without_getitem",
+        "public operator.i* helper",
+        "CPython's dunder-alias and signature metadata",
+        "def __iadd__(self, other): return 'iadd'",
+        "def __iand__(self, other): return 'iand'",
+        "def __ifloordiv__(self, other): return 'ifloordiv'",
+        "def __ilshift__(self, other): return 'ilshift'",
+        "def __imod__(self, other): return 'imod'",
+        "def __imul__(self, other): return 'imul'",
+        "def __imatmul__(self, other): return 'imatmul'",
+        "def __ior__(self, other): return 'ior'",
+        "def __ipow__(self, other): return 'ipow'",
+        "def __irshift__(self, other): return 'irshift'",
+        "def __isub__(self, other): return 'isub'",
+        "def __itruediv__(self, other): return 'itruediv'",
+        "def __ixor__(self, other): return 'ixor'",
+        "def __getitem__(self, other): return 5",
+        "operator.iadd(c, 5)",
+        "operator.iand(c, 5)",
+        "operator.ifloordiv(c, 5)",
+        "operator.ilshift(c, 5)",
+        "operator.imod(c, 5)",
+        "operator.imul(c, 5)",
+        "operator.imatmul(c, 5)",
+        "operator.ior(c, 5)",
+        "operator.ipow(c, 5)",
+        "operator.irshift(c, 5)",
+        "operator.isub(c, 5)",
+        "operator.itruediv(c, 5)",
+        "operator.ixor(c, 5)",
+        "operator.iconcat(c, c)",
+        "operator.iadd(3, 4)",
+        "operator.isub(5, 2)",
+        "operator.imul(5, 2)",
+        "operator.ifloordiv(5, 2)",
+        "operator.itruediv(5, 2)",
+        "operator.imod(5, 2)",
+        "operator.ipow(3, 5)",
+        "operator.iand(0xf, 0xa)",
+        "operator.ior(0xa, 0x5)",
+        "operator.ixor(0xb, 0xc)",
+        "operator.ilshift(5, 1)",
+        "operator.irshift(5, 1)",
+        "result = operator.iadd(items, [3])",
+        "result is alias",
+        "result = operator.iconcat(items, [6])",
+        "operator.iconcat('py', 'thon')",
+        "lambda: operator.iadd()",
+        "lambda: operator.ifloordiv(1)",
+        "lambda: operator.iconcat(1)",
+        "lambda: operator.iadd(1, 2, extra=3)",
+        "lambda: operator.iconcat(1, 0.5)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator inplace helper subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_inplace_helper_diff_subset");
+    for required in [
+        "OperatorTestCase::test_inplace and ::test_iconcat_without_getitem",
+        "operator-inplace-helper",
+        "def __iadd__(self, other): return 'iadd'",
+        "def __iand__(self, other): return 'iand'",
+        "def __ifloordiv__(self, other): return 'ifloordiv'",
+        "def __ilshift__(self, other): return 'ilshift'",
+        "def __imod__(self, other): return 'imod'",
+        "def __imul__(self, other): return 'imul'",
+        "def __imatmul__(self, other): return 'imatmul'",
+        "def __ior__(self, other): return 'ior'",
+        "def __ipow__(self, other): return 'ipow'",
+        "def __irshift__(self, other): return 'irshift'",
+        "def __isub__(self, other): return 'isub'",
+        "def __itruediv__(self, other): return 'itruediv'",
+        "def __ixor__(self, other): return 'ixor'",
+        "def __getitem__(self, other): return 5",
+        "operator.iadd(c, 5)",
+        "operator.iand(c, 5)",
+        "operator.ifloordiv(c, 5)",
+        "operator.ilshift(c, 5)",
+        "operator.imod(c, 5)",
+        "operator.imul(c, 5)",
+        "operator.imatmul(c, 5)",
+        "operator.ior(c, 5)",
+        "operator.ipow(c, 5)",
+        "operator.irshift(c, 5)",
+        "operator.isub(c, 5)",
+        "operator.itruediv(c, 5)",
+        "operator.ixor(c, 5)",
+        "operator.iconcat(c, c)",
+        "operator.iadd(3, 4)",
+        "operator.isub(5, 2)",
+        "operator.imul(5, 2)",
+        "operator.ifloordiv(5, 2)",
+        "operator.itruediv(5, 2)",
+        "operator.imod(5, 2)",
+        "operator.ipow(3, 5)",
+        "operator.iand(0xf, 0xa)",
+        "operator.ior(0xa, 0x5)",
+        "operator.ixor(0xb, 0xc)",
+        "operator.ilshift(5, 1)",
+        "operator.irshift(5, 1)",
+        "result = operator.iadd(items, [3])",
+        "result is alias",
+        "result = operator.iconcat(items, [6])",
+        "operator.iconcat('py', 'thon')",
+        "lambda: operator.iadd()",
+        "lambda: operator.ifloordiv(1)",
+        "lambda: operator.iconcat(1)",
+        "lambda: operator.iadd(1, 2, extra=3)",
+        "lambda: operator.iconcat(1, 0.5)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator inplace helper CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_inplace_helper_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_inplace_helper_diff_subset")
+            && CPYTHON_COVERAGE.contains("in-place helper functions")
+            && CPYTHON_COVERAGE.contains("custom `__i*__`")
+            && CPYTHON_COVERAGE.contains("numeric fallback behavior")
+            && CPYTHON_COVERAGE.contains("list in-place mutation")
+            && CPYTHON_COVERAGE.contains("iconcat")
+            && CPYTHON_COVERAGE.contains("concat-type rejection"),
+        "coverage notes must describe operator inplace helpers and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_inplace_helper_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_inplace_helper_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.i*")
+            && CPYTHON_MIGRATION.contains("Custom `__i*__` methods dispatch")
+            && CPYTHON_MIGRATION.contains("numeric operands fall back")
+            && CPYTHON_MIGRATION.contains("list operands preserve in-place identity")
+            && CPYTHON_MIGRATION.contains("iconcat")
+            && CPYTHON_MIGRATION.contains("without claiming")
+            && CPYTHON_MIGRATION.contains("CPython's dunder-alias or signature metadata"),
+        "migration notes must describe operator inplace helper public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
