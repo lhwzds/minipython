@@ -28779,6 +28779,58 @@ impl Vm {
                 data.borrow_mut().reverse();
                 Ok(Value::None)
             }
+            "count" => {
+                let [needle] = rest else {
+                    return Err(format!(
+                        "count() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let items = data.borrow().clone();
+                let mut count = 0_i64;
+                for item in items {
+                    if self.equal_values(item, needle.clone())? {
+                        count = count
+                            .checked_add(1)
+                            .ok_or_else(|| "count() result is too large".to_string())?;
+                    }
+                }
+                Ok(Value::Number(count))
+            }
+            "index" => {
+                if rest.is_empty() || rest.len() > 3 {
+                    return Err(format!(
+                        "index() expected 1 to 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let needle = rest[0].clone();
+                let items = data.borrow().clone();
+                let len =
+                    i64::try_from(items.len()).map_err(|_| "deque is too large".to_string())?;
+                let start = match rest.get(1) {
+                    Some(value) => self.index_i64(value.clone(), "deque index")?,
+                    None => 0,
+                };
+                let stop = match rest.get(2) {
+                    Some(Value::None) | None => len,
+                    Some(value) => self.index_i64(value.clone(), "deque index")?,
+                };
+                let start = normalize_positive_slice_bound(start, len);
+                let stop = normalize_positive_slice_bound(stop, len).max(start);
+                let start =
+                    usize::try_from(start).map_err(|_| "deque index out of range".to_string())?;
+                let stop =
+                    usize::try_from(stop).map_err(|_| "deque index out of range".to_string())?;
+                for (offset, item) in items[start..stop].iter().enumerate() {
+                    if self.equal_values(item.clone(), needle.clone())? {
+                        return i64::try_from(start + offset)
+                            .map(Value::Number)
+                            .map_err(|_| "deque index out of range".to_string());
+                    }
+                }
+                Err(format!("ValueError: {needle} is not in deque"))
+            }
             "clear" => {
                 if !rest.is_empty() {
                     return Err(format!(
@@ -51149,8 +51201,8 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .unwrap_or(Value::None));
             }
             match name {
-                "append" | "appendleft" | "clear" | "copy" | "extend" | "extendleft" | "pop"
-                | "popleft" | "reverse" | "rotate" | "__iter__" | "__len__" => {
+                "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
+                | "index" | "pop" | "popleft" | "reverse" | "rotate" | "__iter__" | "__len__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("deque.{name}"))),
                         receiver: Box::new(Value::Deque { data, maxlen }),

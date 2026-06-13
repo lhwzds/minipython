@@ -44752,7 +44752,7 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
-// append/extend/pop operations, simple reordering, and MutableSequence
+// append/extend/pop operations, simple queries/reordering, and MutableSequence
 // registration. Broader deque APIs, pickling, performance, and thread-safety
 // semantics remain outside the default sandbox surface.
 #[test]
@@ -44779,6 +44779,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "print(d.rotate(-2), list(d), repr(d))\n",
             "print(d.rotate(5), list(d), repr(d))\n",
             "print(d.reverse(), list(d), repr(d))\n",
+            "print(d.count(1), d.count(42), d.index(1), d.index(1, 1), d.index(1, -10, 3))\n",
             "print(d.pop(), d.popleft(), list(d))\n",
             "copy = d.copy()\n",
             "d.append(99)\n",
@@ -44804,6 +44805,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "for label, callback in [\n",
             "    ('pop-empty', lambda: deque().pop()),\n",
             "    ('popleft-empty', lambda: deque().popleft()),\n",
+            "    ('index-missing', lambda: deque([1, 2]).index(9)),\n",
             "    ('bad-maxlen', lambda: deque([], -1)),\n",
             "    ('bad-keyword', lambda: deque([], bad=1)),\n",
             "    ('duplicate-iterable', lambda: deque([], iterable=[])),\n",
@@ -44830,6 +44832,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "None [0, 1, -1] deque([0, 1, -1], maxlen=3)",
             "None [1, -1, 0] deque([1, -1, 0], maxlen=3)",
             "None [0, -1, 1] deque([0, -1, 1], maxlen=3)",
+            "1 0 2 2 2",
             "1 0 [-1]",
             "[-1] 3 [-1, 99]",
             "[] 0 False",
@@ -44837,6 +44840,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "None [2, 3, 1]",
             "pop-empty IndexError True",
             "popleft-empty IndexError True",
+            "index-missing ValueError True",
             "bad-maxlen ValueError True",
             "bad-keyword TypeError True",
             "duplicate-iterable TypeError True",

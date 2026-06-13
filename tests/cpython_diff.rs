@@ -3071,6 +3071,7 @@ print(d.rotate(), list(d), repr(d))
 print(d.rotate(-2), list(d), repr(d))
 print(d.rotate(5), list(d), repr(d))
 print(d.reverse(), list(d), repr(d))
+print(d.count(1), d.count(42), d.index(1), d.index(1, 1), d.index(1, -10, 3))
 print(d.pop(), d.popleft(), list(d))
 copy = d.copy()
 d.append(99)
@@ -3096,6 +3097,7 @@ print(idx.rotate(IndexLike()), list(idx))
 for label, callback in [
     ('pop-empty', lambda: deque().pop()),
     ('popleft-empty', lambda: deque().popleft()),
+    ('index-missing', lambda: deque([1, 2]).index(9)),
     ('bad-maxlen', lambda: deque([], -1)),
     ('bad-keyword', lambda: deque([], bad=1)),
     ('duplicate-iterable', lambda: deque([], iterable=[])),
