@@ -5716,6 +5716,84 @@ fn builtin_singleton_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn hash_id_builtins_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_hash_builtin_subset(",
+        "type(hash(None)).__name__",
+        "hash(1) == hash(1.0)",
+        "hash(True) == hash(1)",
+        "hash('spam') == hash(b'spam')",
+        "hash((0, 1, 2, 3))",
+        "lambda: hash([])",
+        "lambda: hash({})",
+        "lambda: hash(([1],))",
+        "lambda: hash(Bad())",
+        "lambda: hash(NoHash())",
+        "hash(value) == 42",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused hash builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn cpython_id_builtin_subset(",
+        "type(id(None)).__name__",
+        "type(id(1)).__name__",
+        "type(id('spam')).__name__",
+        "id(items) == id(alias)",
+        "id(items) == id(other)",
+        "id(d) == id(d)",
+        "lambda: id()",
+        "lambda: id(1, 2)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused id builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_hash_id_builtins_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",
+        "type(hash(None)).__name__",
+        "hash(1) == hash(1.0)",
+        "hash(True) == hash(1)",
+        "hash('spam') == hash(b'spam')",
+        "hash((0, 1, 2, 3))",
+        "lambda: hash([])",
+        "lambda: hash({})",
+        "lambda: hash(([1],))",
+        "lambda: hash(Bad())",
+        "lambda: hash(NoHash())",
+        "hash(value) == 42",
+        "type(id(None)).__name__",
+        "type(id(1)).__name__",
+        "type(id('spam')).__name__",
+        "id(items) == id(alias)",
+        "id(items) == id(other)",
+        "id(d) == id(d)",
+        "lambda: id()",
+        "lambda: id(1, 2)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused hash/id CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_hash_builtin_subset")
+                && document.contains("cpython_id_builtin_subset")
+                && document.contains("cpython_hash_id_builtins_diff_subset"),
+            "focused hash/id builtins evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
