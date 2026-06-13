@@ -628,8 +628,8 @@ Recent runtime migration notes:
   parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,
-  list/tuple/dict subclass containers, `Counter` mapping containers, and
-  namedtuples, standard string escapes,
+  list/tuple containers, dict subclass containers through public `items()`,
+  `Counter` mapping containers, and namedtuples, standard string escapes,
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite
   float values and keys, `check_circular` cycle-error behavior,
   `ensure_ascii=False` direct non-ASCII string/key rendering,

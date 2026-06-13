@@ -23145,6 +23145,7 @@ impl Vm {
         }
         let mut active = HashSet::new();
         Ok(Value::String(json_dumps_value(
+            self,
             &value,
             &mut active,
             &options,
@@ -56872,14 +56873,16 @@ fn json_dumps_separator_string(value: &Value, label: &str) -> Result<String, Str
 }
 
 fn json_dumps_value(
+    vm: &mut Vm,
     value: &Value,
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
 ) -> Result<String, String> {
-    json_dumps_value_at_depth(value, active, options, 0)
+    json_dumps_value_at_depth(vm, value, active, options, 0)
 }
 
 fn json_dumps_value_at_depth(
+    vm: &mut Vm,
     value: &Value,
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
@@ -56896,14 +56899,15 @@ fn json_dumps_value_at_depth(
                 )
             };
         }
-        let result = json_dumps_value_inner(value, active, options, depth);
+        let result = json_dumps_value_inner(vm, value, active, options, depth);
         active.remove(&identity);
         return result;
     }
-    json_dumps_value_inner(value, active, options, depth)
+    json_dumps_value_inner(vm, value, active, options, depth)
 }
 
 fn json_dumps_value_inner(
+    vm: &mut Vm,
     value: &Value,
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
@@ -56933,13 +56937,14 @@ fn json_dumps_value_inner(
                 options
             )
         )),
-        Value::List(items) => json_dumps_sequence(&items.borrow(), active, options, depth),
-        Value::Tuple(items) => json_dumps_sequence(items, active, options, depth),
-        Value::NamedTuple { values, .. } => json_dumps_sequence(values, active, options, depth),
+        Value::List(items) => json_dumps_sequence(vm, &items.borrow(), active, options, depth),
+        Value::Tuple(items) => json_dumps_sequence(vm, items, active, options, depth),
+        Value::NamedTuple { values, .. } => json_dumps_sequence(vm, values, active, options, depth),
         Value::Dict(entries) | Value::Counter { entries } => {
-            json_dumps_dict(&entries.borrow().entries, active, options, depth)
+            json_dumps_dict(vm, &entries.borrow().entries, active, options, depth)
         }
         value if list_subclass_storage(value).is_some() => json_dumps_sequence(
+            vm,
             &list_subclass_storage(value)
                 .expect("list subclass storage exists after guard")
                 .borrow(),
@@ -56948,24 +56953,20 @@ fn json_dumps_value_inner(
             depth,
         ),
         value if tuple_subclass_items(value).is_some() => json_dumps_sequence(
+            vm,
             &tuple_subclass_items(value).expect("tuple subclass storage exists after guard"),
             active,
             options,
             depth,
         ),
-        value if dict_subclass_entries(value).is_some() => json_dumps_dict(
-            &dict_subclass_entries(value)
-                .expect("dict subclass entries exist after guard")
-                .borrow()
-                .entries,
-            active,
-            options,
-            depth,
-        ),
+        value if dict_subclass_entries(value).is_some() => {
+            let entries = json_dumps_dict_subclass_items(vm, value)?;
+            json_dumps_dict(vm, &entries, active, options, depth)
+        }
         value if namedtuple_subclass_storage(value).is_some() => {
             let (_, values) = namedtuple_subclass_storage(value)
                 .expect("namedtuple subclass storage after guard");
-            json_dumps_sequence(&values, active, options, depth)
+            json_dumps_sequence(vm, &values, active, options, depth)
         }
         value => Err(format!(
             "TypeError: Object of type {} is not JSON serializable",
@@ -56998,7 +56999,36 @@ fn json_dumps_container_identity(value: &Value) -> Option<usize> {
     }
 }
 
+fn json_dumps_dict_subclass_items(
+    vm: &mut Vm,
+    value: &Value,
+) -> Result<Vec<(Value, Value)>, String> {
+    let items_method = match vm.load_attribute_catching(value.clone(), "items")? {
+        Ok(method) => method,
+        Err(exception) if exception_matches_type_name(&exception, "AttributeError") => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            return Ok(entries.borrow().entries.clone());
+        }
+        Err(exception) => return Err(format_exception_error(&exception)),
+    };
+    let items = match vm.call_value_catching(items_method, Vec::new())? {
+        Ok(items) => items,
+        Err(exception) => return Err(format_exception_error(&exception)),
+    };
+    let mut entries = Vec::new();
+    for item in vm.collect_iterable_values_propagating(items)? {
+        let pair = vm.collect_iterable_values_propagating(item)?;
+        match pair.as_slice() {
+            [key, value] => entries.push((key.clone(), value.clone())),
+            _ => return Err("ValueError: too many values to unpack (expected 2)".to_string()),
+        }
+    }
+    Ok(entries)
+}
+
 fn json_dumps_sequence(
+    vm: &mut Vm,
     items: &[Value],
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
@@ -57006,7 +57036,13 @@ fn json_dumps_sequence(
 ) -> Result<String, String> {
     let mut parts = Vec::with_capacity(items.len());
     for item in items {
-        parts.push(json_dumps_value_at_depth(item, active, options, depth + 1)?);
+        parts.push(json_dumps_value_at_depth(
+            vm,
+            item,
+            active,
+            options,
+            depth + 1,
+        )?);
     }
     if let Some(indent) = &options.indent {
         if parts.is_empty() {
@@ -57025,6 +57061,7 @@ fn json_dumps_sequence(
 }
 
 fn json_dumps_dict(
+    vm: &mut Vm,
     entries: &[(Value, Value)],
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
@@ -57047,7 +57084,7 @@ fn json_dumps_dict(
             "\"{}\"{}{}",
             json_escape_string(&key, options),
             options.key_separator,
-            json_dumps_value_at_depth(value, active, options, depth + 1)?
+            json_dumps_value_at_depth(vm, value, active, options, depth + 1)?
         ));
     }
     if let Some(indent) = &options.indent {

@@ -937,12 +937,19 @@ class F(float):
     pass
 class Code(IntEnum):
     ok = 200
+class NestedDictSubclass(dict):
+    def items(self):
+        return [('é', 4)]
+class DictSubclass(dict):
+    def items(self):
+        return [('z', 3), ('a', NestedDictSubclass(ignored=0))]
 cases = [
     {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
     {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
     {Code.ok: Code.ok},
     Counter({'a': 2, 'b': 0}),
     Counter({2: 3, False: 1}),
+    DictSubclass(ignored=1),
 ]
 for value in cases:
     print(json.dumps(value))

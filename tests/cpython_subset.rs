@@ -33074,7 +33074,7 @@ fn cpython_json_dumps_string_escape_subset() {
 #[test]
 fn cpython_json_dumps_key_coercion_subset() {
     assert_output(
-        "import json\nfrom collections import Counter\nfrom enum import IntEnum\nclass S(str):\n    pass\nclass I(int):\n    pass\nclass F(float):\n    pass\nclass Code(IntEnum):\n    ok = 200\ncases = [\n    {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},\n    {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},\n    {Code.ok: Code.ok},\n    Counter({'a': 2, 'b': 0}),\n    Counter({2: 3, False: 1}),\n]\nfor value in cases:\n    print(json.dumps(value))\n    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))",
+        "import json\nfrom collections import Counter\nfrom enum import IntEnum\nclass S(str):\n    pass\nclass I(int):\n    pass\nclass F(float):\n    pass\nclass Code(IntEnum):\n    ok = 200\nclass NestedDictSubclass(dict):\n    def items(self):\n        return [('é', 4)]\nclass DictSubclass(dict):\n    def items(self):\n        return [('z', 3), ('a', NestedDictSubclass(ignored=0))]\ncases = [\n    {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},\n    {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},\n    {Code.ok: Code.ok},\n    Counter({'a': 2, 'b': 0}),\n    Counter({2: 3, False: 1}),\n    DictSubclass(ignored=1),\n]\nfor value in cases:\n    print(json.dumps(value))\n    print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))",
         &[
             "{\"s\": 1, \"2\": \"two\", \"4.5\": \"float\", \"false\": \"no\", \"null\": \"nil\"}",
             "{\"s\":1,\"2\":\"two\",\"4.5\":\"float\",\"false\":\"no\",\"null\":\"nil\"}",
@@ -33086,6 +33086,8 @@ fn cpython_json_dumps_key_coercion_subset() {
             "{\"a\":2,\"b\":0}",
             "{\"2\": 3, \"false\": 1}",
             "{\"2\":3,\"false\":1}",
+            "{\"z\": 3, \"a\": {\"\\u00e9\": 4}}",
+            "{\"z\":3,\"a\":{\"é\":4}}",
         ],
     );
 }
