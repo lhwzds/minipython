@@ -3370,6 +3370,45 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
             "itertools sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    for excluded in [
+        "Full itertools module",
+        "pickling exactness",
+        "exact address repr",
+        "`tee()` cache compaction",
+        "remaining public/helper types",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "itertools sandbox manifest must keep unsupported boundary `{excluded}` documented"
+        );
+    }
+
+    for required in [
+        "without exact address binding",
+        "Full itertools module",
+        "pickling exactness",
+        "exact address repr",
+        "`tee()` cache compaction",
+        "remaining public/helper types",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "itertools migration notes must document sandbox boundary `{required}`"
+        );
+    }
+
+    for required in [
+        "without binding object addresses",
+        "`tee()` cache compaction",
+        "pickling edge cases",
+        "remaining public/helper",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "itertools coverage notes must document sandbox boundary `{required}`"
+        );
+    }
 }
 
 #[test]
