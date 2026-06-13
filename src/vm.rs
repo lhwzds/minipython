@@ -71433,6 +71433,9 @@ fn uses_sequence_index_protocol(value: &Value) -> bool {
 }
 
 fn integer_dunder_result(method: &str, result: Value) -> Result<Value, String> {
+    if let Some(value) = int_subclass_integer(&result) {
+        return Ok(value);
+    }
     match numeric_bool_value(result) {
         Value::Number(value) => Ok(Value::Number(value)),
         Value::BigInt(value) => Ok(normalize_big_int(value)),

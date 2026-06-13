@@ -11782,6 +11782,33 @@ print(operator.methodcaller('replace', 'a', 'o')('banana'))"#,
 }
 
 #[test]
+fn cpython_operator_index_normalization_diff_subset() {
+    let source = r#"import operator
+class I(int):
+    pass
+class IndexSubclass:
+    def __index__(self):
+        return I(7)
+for value in [True, False, I(5), IndexSubclass(), 2**100]:
+    result = operator.index(value)
+    print('index', type(value).__name__, type(result).__name__, repr(result))"#;
+    let probe = run_cpython(source).expect("failed to probe CPython operator.index behavior");
+    let probe_stdout = String::from_utf8_lossy(&probe.stdout);
+    if !probe.status.success() || !probe_stdout.contains("index IndexSubclass int 7") {
+        eprintln!(
+            "skipping operator.index normalization diff: CPython oracle has legacy index result behavior"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_operator.py public operator.index normalization subset",
+        name: "operator-index-normalization",
+        source,
+    });
+}
+
+#[test]
 fn cpython_operator_length_hint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase::test_length_hint and Lib/test/test_enumerate.py::TestReversed::test_len public subset",

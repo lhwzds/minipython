@@ -1600,6 +1600,11 @@ Completed in the differential parity harness pass:
   `iadd`/`iconcat`, and `iconcat` rejects non-concat operands without claiming
   CPython's dunder-alias or signature metadata tests. Direct CPython diff
   evidence is in `cpython_operator_inplace_helper_diff_subset`.
+- Extended `cpython_operator_public_helpers_subset` and
+  the gated `cpython_operator_index_normalization_diff_subset` with
+  `operator.index()` normalization for bool, int-subclass inputs, int-subclass
+  `__index__` returns, and large integers. The gated diff skips older CPython
+  oracles with legacy int-subclass result behavior.
 - Added `cpython_operator_module_metadata_subset`, migrating public behavior
   from CPython `test_operator.py::OperatorTestCase::test___all__` and
   `::test_dunder_is_original`. MiniPython now exposes `operator.__all__` using
