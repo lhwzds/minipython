@@ -1079,10 +1079,10 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
 fn bytes_io_truncate(bytes_io: &BytesIORef, size: usize) -> Result<(), String> {
     let state = bytes_io.borrow();
     let mut buffer = state.buffer.borrow_mut();
+    if buffer.has_active_exports() {
+        return Err(bytes_io_export_resize_error());
+    }
     if size < buffer.len() {
-        if buffer.has_active_exports() {
-            return Err(bytes_io_export_resize_error());
-        }
         buffer.truncate(size);
     }
     Ok(())

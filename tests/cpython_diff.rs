@@ -11404,7 +11404,7 @@ view = bio.getbuffer()
 print(type(view).__name__, view.tolist(), view.readonly, view.format)
 view[0] = 122
 print(bio.getvalue())
-for label, expr in [('write-buffered', lambda: bio.write(b'Q')), ('truncate-buffered', lambda: bio.truncate(1)), ('close-buffered', bio.close)]:
+for label, expr in [('write-buffered', lambda: bio.write(b'Q')), ('truncate-buffered', lambda: bio.truncate(1)), ('truncate-same-buffered', lambda: bio.truncate(3)), ('truncate-grow-buffered', lambda: bio.truncate(4)), ('close-buffered', bio.close)]:
     try:
         expr()
     except Exception as error:

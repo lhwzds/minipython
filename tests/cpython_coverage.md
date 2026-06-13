@@ -1347,7 +1347,7 @@ Recent runtime migration notes:
   construction from bytes-like objects, `read()`, `read1()`, `readline()`,
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `getbuffer()` writable
   memoryview mutation and active-export `BufferError` protection for
-  `write()` / `truncate()` / `close()` across direct and derived memoryviews,
+  `write()` / all `truncate()` requests / `close()` across direct and derived memoryviews,
   `readinto()` / `readinto1()` over
   writable bytearray targets, `tell()`, `seek()` with
   public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
