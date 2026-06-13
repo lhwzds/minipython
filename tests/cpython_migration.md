@@ -5316,8 +5316,9 @@ Completed in the string predicate method pass:
   empty-string behavior, cased-word state, Unicode alphabetic/numeric
   predicates, the CPython `isascii()` alignment matrix from
   `Lib/test/string_tests.py`, and representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  string predicate behavior.
+- Added `cpython_string_predicate_methods_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported string
+  predicate behavior.
 
 Completed in the string identifier/printable predicate pass:
 

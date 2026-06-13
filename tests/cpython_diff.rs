@@ -5091,6 +5091,34 @@ for expr in [lambda: 'hello'.capitalize(42), lambda: 'hello'.title(42), lambda: 
 }
 
 #[test]
+fn cpython_string_predicate_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py string predicate method subset",
+        name: "string-predicate-methods",
+        source: r#"print(''.islower(), 'a'.islower(), 'A'.islower(), '\n'.islower(), 'abc'.islower(), 'aBc'.islower(), 'abc\n'.islower())
+print(''.isupper(), 'a'.isupper(), 'A'.isupper(), '\n'.isupper(), 'ABC'.isupper(), 'AbC'.isupper(), 'ABC\n'.isupper())
+print(''.istitle(), 'a'.istitle(), 'A'.istitle(), '\n'.istitle())
+print('A Titlecased Line'.istitle(), 'A\nTitlecased Line'.istitle(), 'A Titlecased, Line'.istitle())
+print('Not a capitalized String'.istitle(), 'Not\ta Titlecase String'.istitle(), 'Not--a Titlecase String'.istitle(), 'NOT'.istitle())
+print(''.isspace(), 'a'.isspace(), ' '.isspace(), '\t'.isspace(), '\r'.isspace(), '\n'.isspace(), ' \t\r\n'.isspace(), ' \t\r\na'.isspace())
+print(''.isalpha(), 'a'.isalpha(), 'A'.isalpha(), '\n'.isalpha(), 'abc'.isalpha(), 'aBc123'.isalpha(), 'abc\n'.isalpha())
+print(''.isalnum(), 'a'.isalnum(), 'A'.isalnum(), '\n'.isalnum(), '123abc456'.isalnum(), 'a1b3c'.isalnum(), 'aBc000 '.isalnum(), 'abc\n'.isalnum())
+print(''.isdigit(), 'a'.isdigit(), '0'.isdigit(), '0123456789'.isdigit(), '0123456789a'.isdigit())
+print('\u2460'.isdigit(), '\xbc'.isdigit(), '\u0660'.isdigit(), '\U0001d7f6'.isdigit(), '\U0001f107'.isdigit())
+print(''.isdecimal(), 'a'.isdecimal(), '0'.isdecimal(), '\u2460'.isdecimal(), '\xbc'.isdecimal(), '\u0660'.isdecimal(), '\U0001d7f6'.isdecimal(), '\U00011066'.isdecimal(), '\U000104a0'.isdecimal())
+print(''.isnumeric(), 'a'.isnumeric(), '0'.isnumeric(), '\u2460'.isnumeric(), '\xbc'.isnumeric(), '\u0660'.isnumeric(), '0123456789'.isnumeric(), '0123456789a'.isnumeric())
+print(''.isascii(), '\x00'.isascii(), '\x7f'.isascii(), '\x00\x7f'.isascii(), '\x80'.isascii(), '\xe9'.isascii(), '\u20ac'.isascii(), '\U0010ffff'.isascii())
+for p in range(8):
+    print((' ' * p + '\x7f').isascii(), (' ' * p + '\x80').isascii(), (' ' * p + '\x7f' + ' ' * 8).isascii(), (' ' * p + '\x80' + ' ' * 8).isascii())
+for expr in [lambda: 'abc'.islower(42), lambda: 'abc'.isupper(42), lambda: 'abc'.istitle(42), lambda: 'abc'.isspace(42), lambda: 'abc'.isalpha(42), lambda: 'abc'.isalnum(42), lambda: 'abc'.isdigit(42), lambda: 'abc'.isdecimal(42), lambda: 'abc'.isnumeric(42), lambda: 'abc'.isascii(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
