@@ -5862,9 +5862,11 @@ Completed in the pow builtin pass:
   public descriptor binding, instance and class access call argument order,
   nested `partialmethod` flattening, partial-over-partial calls,
   `staticmethod` and `classmethod` descriptor composition, keyword override
-  behavior, bound and unbound `__self__` visibility, descriptor `__module__` /
-  `__doc__` metadata including instance overrides, invalid constructor forms,
-  and raw descriptor non-callability/type reporting while leaving exact repr
+  behavior, bound and unbound `__self__` visibility, descriptor `__dict__`
+  entries for `func`, `args`, and `keywords` including override/delete
+  behavior, descriptor `__module__` / `__doc__` metadata including instance
+  overrides, invalid constructor forms, and raw descriptor non-callability/type
+  reporting while leaving exact repr
   formatting, abstract-method metadata, subclass optimizer paths, weakref,
   pickle, and C accelerator internals for later slices.
 - Added `functools.reduce` and `cpython_functools_reduce_subset`, adapted from

@@ -13017,6 +13017,19 @@ print(hasattr(a.both, '__self__'), a.both.__self__ is a)
 print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
 print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
 print(A.__dict__['both'].__module__)
+descriptor_state = partialmethod(capture, 3, b=4)
+state = descriptor_state.__dict__
+print(all(name in state for name in ['func', 'args', 'keywords']))
+print(state['func'] is descriptor_state.func, state['args'] == descriptor_state.args, state['keywords'] == descriptor_state.keywords)
+descriptor_state.func = 'custom-func'
+descriptor_state.args = ('custom-args',)
+descriptor_state.keywords = {'custom': 'keywords'}
+print(descriptor_state.func, descriptor_state.args, descriptor_state.keywords)
+del descriptor_state.func
+try:
+    descriptor_state.func
+except AttributeError as error:
+    print(error.__class__.__name__)
 print(type(A.__dict__['both'].__doc__).__name__, bool(A.__dict__['both'].__doc__))
 A.__dict__['both'].__doc__ = 'custom partialmethod doc'
 print(A.__dict__['both'].__doc__, A.__dict__['both'].__dict__['__doc__'])

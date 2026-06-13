@@ -6925,11 +6925,29 @@ impl Vm {
             );
         }
 
+        let attrs = new_scope();
+        attrs
+            .borrow_mut()
+            .insert("func".to_string(), function.clone());
+        attrs
+            .borrow_mut()
+            .insert("args".to_string(), tuple_value(args.clone()));
+        attrs.borrow_mut().insert(
+            "keywords".to_string(),
+            dict_value(
+                keywords
+                    .iter()
+                    .cloned()
+                    .map(|(name, value)| (Value::String(name), value))
+                    .collect(),
+            ),
+        );
+
         Ok(Value::PartialMethod {
             function: Box::new(function),
             args,
             keywords,
-            attrs: new_scope(),
+            attrs,
             identity: Rc::new(()),
         })
     }
@@ -51924,14 +51942,6 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(Value::String(functools_partialmethod_doc().to_string()));
             }
             match name {
-                "func" => Ok(*function),
-                "args" => Ok(tuple_value(args)),
-                "keywords" => Ok(dict_value(
-                    keywords
-                        .into_iter()
-                        .map(|(name, value)| (Value::String(name), value))
-                        .collect(),
-                )),
                 "__get__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin("partialmethod.__get__".to_string())),
                     receiver: Box::new(Value::PartialMethod {
@@ -54971,9 +54981,6 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             Ok(())
         }
         Value::PartialMethod { attrs, .. } => {
-            if matches!(name, "func" | "args" | "keywords") {
-                return Err(format!("AttributeError: readonly attribute '{name}'"));
-            }
             attrs.borrow_mut().insert(name.to_string(), value);
             Ok(())
         }
@@ -55216,9 +55223,6 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
         }
         Value::PartialMethod { attrs, .. } => {
-            if matches!(name, "func" | "args" | "keywords") {
-                return Err(format!("AttributeError: readonly attribute '{name}'"));
-            }
             if attrs.borrow_mut().remove(name).is_some() {
                 Ok(())
             } else {

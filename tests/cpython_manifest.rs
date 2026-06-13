@@ -3519,6 +3519,9 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         "partialmethod(classmethod(capture), d=9)",
         "A.both(a, 5, c=6)",
         "hasattr(a.both, '__self__')",
+        "state = descriptor_state.__dict__",
+        "descriptor_state.func = 'custom-func'",
+        "del descriptor_state.func",
     ] {
         assert!(
             partialmethod_diff.contains(required),

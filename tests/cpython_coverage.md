@@ -1109,8 +1109,9 @@ Recent runtime migration notes:
   and class access call argument order, nested `partialmethod` flattening,
   partial-over-partial calls, `staticmethod` and `classmethod` descriptors,
   keyword override behavior, bound and unbound `__self__` visibility,
-  descriptor `__module__` / `__doc__` metadata including instance overrides,
-  class-access `_method` function metadata, public
+  descriptor `__dict__` entries for `func`, `args`, and `keywords` including
+  override/delete behavior, descriptor `__module__` / `__doc__` metadata
+  including instance overrides, class-access `_method` function metadata, public
   `repr()` shape for empty, positional/keyword, and partial-over-partial
   descriptors plus instance-bound partialmethod calls, invalid constructor
   forms, and raw descriptor non-callability/type reporting.
