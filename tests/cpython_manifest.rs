@@ -1579,6 +1579,70 @@ fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
 }
 
 #[test]
+fn cpython_bytes_core_typeerror_diff_covers_runtime_subset() {
+    let subset_name = "cpython_bytes_core_method_typeerror_messages_subset";
+    let diff_names = [
+        "cpython_bytes_core_method_typeerror_messages_diff_subset",
+        "cpython_bytes_search_missing_typeerror_messages_diff_subset",
+    ];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes core TypeError runtime subset evidence must exist"
+    );
+
+    for diff_name in diff_names {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "bytes core TypeError direct CPython diff evidence `{diff_name}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "bytes core TypeError docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    let start = CPYTHON_DIFF
+        .find("fn cpython_bytes_core_method_typeerror_messages_diff_subset(")
+        .expect("bytes core TypeError diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "unbound method",
+        "slice indices must be integers or None or have an __index__ method",
+        "replace expected at least 2 arguments",
+        "failures = []",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes core TypeError diff evidence must contain `{required}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find("fn cpython_bytes_search_missing_typeerror_messages_diff_subset(")
+        .expect("bytes search missing-argument TypeError diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "count expected at least 1 argument, got 0",
+        "startswith",
+        "skipping bytes search missing-argument TypeError text diff",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes search missing-argument TypeError diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_dunder_bytes_dispatch_diff_subset";
     let subset_name = "cpython_bytes_dunder_bytes_and_blocking_subset";
