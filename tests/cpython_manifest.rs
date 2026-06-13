@@ -6382,6 +6382,89 @@ fn enumerate_zip_sorted_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_sorted_exact_subset(",
+        "Lib/test/test_builtin.py::TestSorted",
+        "deterministic shuffled input",
+        "all four methods",
+        "copy = [7, 0, 3, 1, 8, 2, 9, 4, 6, 5]",
+        "sorted(copy)",
+        "print(copy)",
+        "sorted(copy, key=lambda x: -x)",
+        "sorted(copy, reverse=True)",
+        "sorted([], key=None)",
+        "letters = sorted('abracadabra')",
+        "len(letters), letters[0], letters[1], letters[-1]",
+        "for T in [list, tuple, str, set, frozenset, dict.fromkeys]",
+        "sorted(T(unique)) == ['a', 'b', 'c', 'd', 'r']",
+        "lambda: sorted(iterable=[])",
+        "lambda: sorted([], None)",
+        "lambda: sorted('The quick Brown fox'.split(), None, lambda x, y: 0)",
+        "\"[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]\"",
+        "\"[7, 0, 3, 1, 8, 2, 9, 4, 6, 5]\"",
+        "\"[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]\"",
+        "\"11 a a r\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused sorted exact subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_sorted_exact_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::TestSorted public sorted() subset",
+        "copy = [7, 0, 3, 1, 8, 2, 9, 4, 6, 5]",
+        "sorted(copy)",
+        "print(copy)",
+        "sorted(copy, key=lambda x: -x)",
+        "sorted(copy, reverse=True)",
+        "sorted([], key=None)",
+        "letters = sorted('abracadabra')",
+        "len(letters), letters[0], letters[1], letters[-1]",
+        "for T in [list, tuple, str, set, frozenset, dict.fromkeys]",
+        "sorted(T(unique)) == ['a', 'b', 'c', 'd', 'r']",
+        "lambda: sorted(iterable=[])",
+        "lambda: sorted([], None)",
+        "lambda: sorted('The quick Brown fox'.split(), None, lambda x, y: 0)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused sorted exact CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_builtin_sorted_exact_subset")
+                && document.contains("cpython_builtin_sorted_exact_diff_subset")
+                && document.contains("Lib/test/test_builtin.py::TestSorted"),
+            "focused sorted exact evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_COVERAGE.contains("source-list preservation")
+            && CPYTHON_COVERAGE.contains("key=")
+            && CPYTHON_COVERAGE.contains("reverse=")
+            && CPYTHON_COVERAGE.contains("iterable input type")
+            && CPYTHON_COVERAGE.contains("positional/keyword argument rejection"),
+        "focused sorted exact coverage notes must describe supported TestSorted behavior and argument rejection"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("all four current")
+            && CPYTHON_MIGRATION.contains("without mutating the input list")
+            && CPYTHON_MIGRATION.contains("`key=None`")
+            && CPYTHON_MIGRATION.contains("accepted list/tuple/str/set/frozenset/dict-key")
+            && CPYTHON_MIGRATION.contains("positional-only `iterable` rejection")
+            && CPYTHON_MIGRATION.contains("legacy third positional")
+            && CPYTHON_MIGRATION.contains("comparison-function")
+            && CPYTHON_MIGRATION.contains("rejection"),
+        "focused sorted exact migration notes must describe direct TestSorted behavior and argument rejection"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
