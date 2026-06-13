@@ -7254,15 +7254,17 @@ fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
         }
     }
 
-    for required in [
-        "Real argv/process state",
-        "real stdin/stdout/stderr streams",
-        "implementation refcount/GC/debug APIs",
-    ] {
-        assert!(
-            CPYTHON_MIGRATION.contains(required),
-            "migration document must keep sys stop-line term `{required}`"
-        );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "Real argv/process state",
+            "real stdin/stdout/stderr streams",
+            "implementation refcount/GC/debug APIs",
+        ] {
+            assert!(
+                document.contains(required),
+                "sys docs must keep stop-line term `{required}`"
+            );
+        }
     }
 }
 
@@ -9367,6 +9369,18 @@ fn builtins_host_io_and_default_debugger_stop_line_stays_out_of_scope() {
         assert!(
             CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
             "builtins sandbox docs must keep debugger stop-line term `{required}` documented"
+        );
+    }
+
+    for required in [
+        "`open()`",
+        "`input()`",
+        "non-`None` `print(file=...)`",
+        "process/environment side effects",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "builtins sandbox docs must keep host I/O stop-line term `{required}` documented"
         );
     }
 
