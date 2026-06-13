@@ -10353,6 +10353,11 @@ Completed in the CPython collections manifest expansion pass:
   zero rendering, AST-node input, complex literal acceptance, and malformed
   expression rejection without pulling in version/config-sensitive integer
   digit-limit behavior.
+- Extended `cpython_collections_deque_public_surface_subset` and
+  `cpython_collections_deque_public_surface_diff_subset` with public
+  pure-memory `deque` membership and integer indexing, including `__index__`
+  coercion, without adding slicing or broader deque APIs to the sandbox
+  surface.
 
 Next:
 

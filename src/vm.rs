@@ -20145,6 +20145,15 @@ impl Vm {
         }
 
         match haystack {
+            Value::Deque { data, .. } => {
+                let items = data.borrow().clone();
+                for item in items {
+                    if self.equal_values(item, needle.clone())? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
             Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
             Value::UserDict { data, .. } => contains_value(needle, Value::Dict(data)),
@@ -28870,6 +28879,36 @@ impl Vm {
                     }
                 }
                 Err("ValueError: deque.remove(x): x not in deque".to_string())
+            }
+            "__contains__" => {
+                let [needle] = rest else {
+                    return Err(format!(
+                        "__contains__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let items = data.borrow().clone();
+                for item in items {
+                    if self.equal_values(item, needle.clone())? {
+                        return Ok(Value::Bool(true));
+                    }
+                }
+                Ok(Value::Bool(false))
+            }
+            "__getitem__" => {
+                let [index] = rest else {
+                    return Err(format!(
+                        "__getitem__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                load_subscript(
+                    Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    },
+                    index.clone(),
+                )
             }
             "clear" => {
                 if !rest.is_empty() {
@@ -51243,11 +51282,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
-                | "__iter__" | "__len__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                    receiver: Box::new(Value::Deque { data, maxlen }),
-                    identity: Rc::new(()),
-                }),
+                | "__contains__" | "__getitem__" | "__iter__" | "__len__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                        receiver: Box::new(Value::Deque { data, maxlen }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }
@@ -69157,6 +69198,7 @@ fn uses_sequence_index_protocol(value: &Value) -> bool {
             | Value::String(_)
             | Value::Bytes(_)
             | Value::ByteArray(_)
+            | Value::Deque { .. }
             | Value::Range { .. }
     ) || list_subclass_storage(value).is_some()
         || array_array_storage(value).is_some()
@@ -72268,6 +72310,14 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 Value::List(items) => Ok(Value::UserList { data: items, attrs }),
                 value => Ok(value),
             }
+        }
+        Value::Deque { data, .. } => {
+            let items = data.borrow();
+            let index = normalized_index(index, items.len(), "deque")?;
+            items
+                .get(index)
+                .cloned()
+                .ok_or_else(|| "deque index out of range".to_string())
         }
         Value::Tuple(items) => match index {
             Value::Slice { start, stop, step } => load_slice(
@@ -76545,6 +76595,10 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             .iter()
             .any(|item| sequence_items_match(item, &needle))),
         Value::UserList { data, .. } => Ok(data
+            .borrow()
+            .iter()
+            .any(|item| sequence_items_match(item, &needle))),
+        Value::Deque { data, .. } => Ok(data
             .borrow()
             .iter()
             .any(|item| sequence_items_match(item, &needle))),

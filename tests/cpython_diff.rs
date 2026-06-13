@@ -3072,6 +3072,11 @@ print(d.rotate(-2), list(d), repr(d))
 print(d.rotate(5), list(d), repr(d))
 print(d.reverse(), list(d), repr(d))
 print(d.count(1), d.count(42), d.index(1), d.index(1, 1), d.index(1, -10, 3))
+print(-1 in d, 42 in d, '1' in d)
+class DequeIndexLike:
+    def __index__(self):
+        return -1
+print(d[0], d[-1], d[DequeIndexLike()])
 q = deque([0, -1, 1])
 print(q.insert(1, 'x'), list(q), repr(q))
 print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))

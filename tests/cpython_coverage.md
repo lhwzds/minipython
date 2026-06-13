@@ -35,8 +35,8 @@ Recent runtime migration notes:
   construction from iterables, `maxlen` truncation and readonly access,
   iteration, len/bool/repr, basic `append` / `appendleft` / `extend` /
   `extendleft` / `insert` / `remove` / `pop` / `popleft` / `count` /
-  `index` / `rotate` / `reverse` / `clear` / `copy`, concrete type identity,
-  and `MutableSequence` registration.
+  `index` / `rotate` / `reverse` / `clear` / `copy`, membership, integer
+  indexing, concrete type identity, and `MutableSequence` registration.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; local subset-only diagnostics for
   mixed bytes/non-bytes literal rejection remain documented in the `STRING`
