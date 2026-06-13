@@ -5373,7 +5373,8 @@ Completed in the string removeprefix/removesuffix method pass:
 - Added runtime support for `str.removeprefix()` and `str.removesuffix()`
   including matching, non-matching, empty-affix, full-affix, Unicode, and
   representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_remove_affix_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported
   affix-removal behavior.
 
 Completed in the string alignment/zfill method pass:

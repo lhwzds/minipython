@@ -5214,6 +5214,34 @@ for expr in [lambda: 'hello'.replace(), lambda: 'hello'.replace(42), lambda: 'he
 }
 
 #[test]
+fn cpython_string_remove_affix_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py removeprefix/removesuffix subset",
+        name: "string-remove-affix",
+        source: r#"print('spam'.removeprefix('sp'))
+print('spamspamspam'.removeprefix('spam'))
+print('spam'.removeprefix('python'))
+print('spam'.removeprefix('spider'))
+print('spam'.removeprefix('spam and eggs'))
+print((''.removeprefix(''), ''.removeprefix('abcde'), 'abcde'.removeprefix(''), 'abcde'.removeprefix('abcde')))
+print('spam'.removesuffix('am'))
+print('spamspamspam'.removesuffix('spam'))
+print('spam'.removesuffix('python'))
+print('spam'.removesuffix('blam'))
+print('spam'.removesuffix('eggs and spam'))
+print((''.removesuffix(''), ''.removesuffix('abcde'), 'abcde'.removesuffix(''), 'abcde'.removesuffix('abcde')))
+print('āĀspam𐌁𐌀'.removeprefix('āĀ'))
+print('āĀspam𐌁𐌀'.removesuffix('𐌁𐌀'))
+print('āĀspam𐌁𐌀'.removeprefix('𐌁'), 'āĀspam𐌁𐌀'.removesuffix('āĀ'))
+for expr in [lambda: 'hello'.removeprefix(), lambda: 'hello'.removeprefix(42), lambda: 'hello'.removeprefix(42, 'h'), lambda: 'hello'.removeprefix('h', 42), lambda: 'hello'.removeprefix(('he', 'l')), lambda: 'hello'.removesuffix(), lambda: 'hello'.removesuffix(42), lambda: 'hello'.removesuffix(42, 'h'), lambda: 'hello'.removesuffix('h', 42), lambda: 'hello'.removesuffix(('lo', 'l'))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
