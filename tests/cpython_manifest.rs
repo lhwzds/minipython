@@ -4215,6 +4215,135 @@ fn operator_comparison_predicate_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_arithmetic_bitwise_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_arithmetic_bitwise_subset(",
+        "OperatorTestCase arithmetic",
+        "bitwise helper tests",
+        "existing arithmetic and rich special-method surfaces",
+        "operator.abs(-1)",
+        "operator.add(3, 4)",
+        "operator.sub(5, 2)",
+        "operator.mul(5, 2)",
+        "operator.floordiv(5, 2)",
+        "operator.truediv(5, 2)",
+        "operator.mod(5, 2)",
+        "operator.pow(3, 5)",
+        "operator.and_(0xf, 0xa)",
+        "operator.or_(0xa, 0x5)",
+        "operator.xor(0xf, 0xa)",
+        "operator.lshift(5, 1)",
+        "operator.rshift(5, 1)",
+        "operator.neg(5)",
+        "operator.pos(5)",
+        "operator.inv(4)",
+        "operator.invert(4)",
+        "class M:",
+        "def __matmul__(self, other):",
+        "operator.matmul(M(), 42)",
+        "class X:",
+        "def __index__(self):",
+        "operator.index(X())",
+        "operator.index(0)",
+        "operator.index(2)",
+        "lambda: operator.abs()",
+        "lambda: operator.abs(None)",
+        "lambda: operator.add(None, None)",
+        "lambda: operator.sub(None, None)",
+        "lambda: operator.truediv(None, None)",
+        "lambda: operator.pow(1)",
+        "lambda: operator.pow(1, 2, 3)",
+        "lambda: operator.neg(None)",
+        "lambda: operator.pos(None)",
+        "lambda: operator.invert(None)",
+        "lambda: operator.matmul(42, 42)",
+        "lambda: operator.index(1.5)",
+        "lambda: operator.lshift(2, -1)",
+        "lambda: operator.rshift(2, -1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator arithmetic/bitwise subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_arithmetic_bitwise_diff_subset",
+    );
+    for required in [
+        "OperatorTestCase arithmetic and bitwise helper public subset",
+        "operator-arithmetic-bitwise",
+        "operator.abs(-1)",
+        "operator.add(3, 4)",
+        "operator.sub(5, 2)",
+        "operator.mul(5, 2)",
+        "operator.floordiv(5, 2)",
+        "operator.truediv(5, 2)",
+        "operator.mod(5, 2)",
+        "operator.pow(3, 5)",
+        "operator.and_(0xf, 0xa)",
+        "operator.or_(0xa, 0x5)",
+        "operator.xor(0xf, 0xa)",
+        "operator.lshift(5, 1)",
+        "operator.rshift(5, 1)",
+        "operator.neg(5)",
+        "operator.pos(5)",
+        "operator.inv(4)",
+        "operator.invert(4)",
+        "class M:",
+        "def __matmul__(self, other):",
+        "operator.matmul(M(), 42)",
+        "class X:",
+        "def __index__(self):",
+        "operator.index(X())",
+        "operator.index(0)",
+        "operator.index(2)",
+        "lambda: operator.abs()",
+        "lambda: operator.abs(None)",
+        "lambda: operator.add(None, None)",
+        "lambda: operator.sub(None, None)",
+        "lambda: operator.truediv(None, None)",
+        "lambda: operator.pow(1)",
+        "lambda: operator.pow(1, 2, 3)",
+        "lambda: operator.neg(None)",
+        "lambda: operator.pos(None)",
+        "lambda: operator.invert(None)",
+        "lambda: operator.matmul(42, 42)",
+        "lambda: operator.index(1.5)",
+        "lambda: operator.lshift(2, -1)",
+        "lambda: operator.rshift(2, -1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator arithmetic/bitwise CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_arithmetic_bitwise_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_arithmetic_bitwise_diff_subset")
+            && CPYTHON_COVERAGE.contains("arithmetic and bitwise helpers")
+            && CPYTHON_COVERAGE.contains("matmul")
+            && CPYTHON_COVERAGE.contains("index")
+            && CPYTHON_COVERAGE.contains("TypeError/ValueError classification"),
+        "coverage notes must describe operator arithmetic/bitwise helpers and error classification"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_arithmetic_bitwise_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_arithmetic_bitwise_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.abs/add/sub/mul/floordiv")
+            && CPYTHON_MIGRATION.contains("truediv")
+            && CPYTHON_MIGRATION.contains("neg`/`pos`/`inv`/`invert")
+            && CPYTHON_MIGRATION.contains("__matmul__")
+            && CPYTHON_MIGRATION.contains("__index__")
+            && CPYTHON_MIGRATION.contains("TypeError")
+            && CPYTHON_MIGRATION.contains("ValueError"),
+        "migration notes must describe operator arithmetic/bitwise public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
