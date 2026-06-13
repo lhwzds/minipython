@@ -6646,6 +6646,94 @@ fn map_filter_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn map_strict_builtin_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_map_strict_builtin_subset(",
+        "BuiltinTest::test_map_strict",
+        "::test_map_strict_iterators",
+        "::test_map_strict_error_handling",
+        "::test_map_strict_error_handling_stopiteration",
+        "length checks",
+        "iterator-consumption side effects",
+        "StopIteration-to-ValueError",
+        "def pack(*values):",
+        "map(pack, (1, 2, 3), 'abc', strict=True)",
+        "map(pack, (1, 2), 'abc', strict=False)",
+        "map(pack, (1, 2, 3, 4), 'abc', strict=True)",
+        "map(pack, (1, 2), 'abc', strict=True)",
+        "map(pack, (1, 2), (1, 2), 'abc', strict=True)",
+        "map(pack, [1], bad=True)",
+        "ValueError map() argument 2 is shorter than argument 1",
+        "ValueError map() argument 2 is longer than argument 1",
+        "ValueError map() argument 3 is longer than arguments 1-2",
+        "TypeError 'bad' is an invalid keyword argument for map()",
+        "x = iter(range(5))",
+        "y = [0]",
+        "z = iter(range(5))",
+        "map(pack, x, y, z, strict=True)",
+        "\"2 1\"",
+        "class Error(Exception):",
+        "class Iter:",
+        "def show(label, iterable):",
+        "show('e1', map(pack, 'AB', Iter(1), strict=True))",
+        "show('e8', map(pack, Iter(3), 'AB', strict=True))",
+        "show('s1', map(pack, 'AB', Iter(1, True), strict=True))",
+        "show('s8', map(pack, Iter(3, True), 'AB', strict=True))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused map strict subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_map_strict_builtin_diff_subset");
+    for required in [
+        "map(pack, [1], [2], strict=True)",
+        "skipping map(strict) diff: CPython oracle lacks map strict support",
+        "Lib/test/test_builtin.py::BuiltinTest::test_map_strict / ::test_map_strict_iterators / ::test_map_strict_error_handling",
+        "map-strict-builtin",
+        "def pack(*values):",
+        "map(pack, (1, 2, 3), 'abc', strict=True)",
+        "map(pack, (1, 2), 'abc', strict=False)",
+        "map(pack, (1, 2, 3, 4), 'abc', strict=True)",
+        "map(pack, (1, 2), 'abc', strict=True)",
+        "map(pack, (1, 2), (1, 2), 'abc', strict=True)",
+        "map(pack, [1], bad=True)",
+        "x = iter(range(5))",
+        "y = [0]",
+        "z = iter(range(5))",
+        "map(pack, x, y, z, strict=True)",
+        "print(next(x), next(z))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused map strict CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_map_strict_builtin_subset")
+                && document.contains("cpython_map_strict_builtin_diff_subset"),
+            "focused map strict evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_COVERAGE.contains("strict `map()` length checks")
+            && CPYTHON_COVERAGE.contains("iterator-consumption side effects")
+            && CPYTHON_COVERAGE.contains("strict-mode `StopIteration` conversion"),
+        "focused map strict coverage notes must describe strict length, consumption, and StopIteration conversion"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("strict-map slice")
+            && CPYTHON_MIGRATION.contains("map(..., strict=True)")
+            && CPYTHON_MIGRATION.contains("strict mismatch `ValueError` cases")
+            && CPYTHON_MIGRATION.contains("iterator-consumption side effects"),
+        "focused map strict migration notes must describe strict mismatch and consumption behavior"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
