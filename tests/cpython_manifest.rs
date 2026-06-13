@@ -3723,15 +3723,17 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_operator_public_helpers_subset",
             "cpython_operator_length_hint_subset",
             "cpython_operator_comparison_predicate_subset",
+            "cpython_operator_is_none_predicates_subset",
             "cpython_operator_arithmetic_bitwise_subset",
             "cpython_operator_sequence_member_subset",
             "cpython_operator_callable_helper_subset",
+            "cpython_operator_call_helper_subset",
             "cpython_operator_inplace_helper_subset",
             "cpython_operator_module_metadata_subset",
             "cpython_operator_signature_helper_subset",
             "cpython_operator_helper_repr_subset",
         ],
-        &[],
+        &["Full pickle metadata"],
     );
 
     let row = sandbox_stdlib_rows()
@@ -3760,6 +3762,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_operator_is_none_predicates_diff_subset"),
+        "operator sandbox manifest must cite CPython is_none/is_not_none predicate diff evidence"
+    );
+    assert!(
+        row.diff_evidence
             .contains("cpython_operator_arithmetic_bitwise_diff_subset"),
         "operator sandbox manifest must cite CPython arithmetic/bitwise diff evidence"
     );
@@ -3772,6 +3779,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_operator_callable_helper_diff_subset"),
         "operator sandbox manifest must cite CPython callable helper diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_operator_call_helper_diff_subset"),
+        "operator sandbox manifest must cite CPython call helper diff evidence"
     );
     assert!(
         row.diff_evidence
