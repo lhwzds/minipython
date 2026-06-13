@@ -360,6 +360,7 @@ Recent runtime migration notes:
   `cpython_functools_total_ordering_diff_subset`,
   `cpython_functools_partialmethod_diff_subset`,
   `cpython_functools_cached_property_diff_subset`,
+  `cpython_functools_cached_property_module_metadata_diff_subset`,
   `cpython_functools_cache_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
   `cpython_functools_singledispatchmethod_diff_subset`,
@@ -1160,15 +1161,19 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_subset`, covering CPython
   `test_functools.py::TestCachedProperty` public descriptor behavior for
   instance `__dict__` caching, class-level descriptor access, copied doc,
-  fixed `functools` module, live public `__dict__` state for `func`,
-  `attrname`, and `__doc__` metadata, public descriptor `repr()` / `str()`
-  shape, runtime updates to `func` and string/`None` `attrname`, attributes
-  whose names differ from the wrapped function, reuse rejection under different
-  names, reuse under the same name across classes, explicit post-class
-  assignment before `__set_name__`, slot-only instances without `__dict__`, and
-  the shared user-descriptor `__set_name__` hook plus CPython-style
+  live public `__dict__` state for `func`, `attrname`, and `__doc__` metadata,
+  public descriptor `repr()` / `str()` shape, runtime updates to `func` and
+  string/`None` `attrname`, attributes whose names differ from the wrapped
+  function, reuse rejection under different names, reuse under the same name
+  across classes, explicit post-class assignment before `__set_name__`,
+  slot-only instances without `__dict__`, and the shared user-descriptor
+  `__set_name__` hook plus CPython-style
   `RuntimeError` wrapping for descriptor failures during both class statements
   and `type()` dynamic class creation.
+  `cpython_functools_cached_property_module_metadata_subset` and gated
+  `cpython_functools_cached_property_module_metadata_diff_subset` cover the
+  newer wrapped-function `__module__` metadata plus override and deletion
+  fallback.
 - The bundled `functools` module also includes
   `cpython_functools_reduce_diff_subset` and
   `cpython_functools_reduce_subset`, covering CPython

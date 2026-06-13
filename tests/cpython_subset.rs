@@ -40998,7 +40998,7 @@ fn cpython_functools_cached_property_subset() {
             "        return self._cost\n",
             "item = CachedCostItem()\n",
             "print(item.cost, item.cost, sorted(item.__dict__.items()))\n",
-            "print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)\n",
+            "print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.attrname)\n",
             "state = CachedCostItem.__dict__['cost'].__dict__\n",
             "print(all(key in state for key in ['func', 'attrname', '__doc__']), state['func'] is CachedCostItem.__dict__['cost'].func, state['attrname'], state['__doc__'])\n",
             "rendered = repr(CachedCostItem.__dict__['cost'])\n",
@@ -41113,7 +41113,7 @@ fn cpython_functools_cached_property_subset() {
         ),
         &[
             "2 2 [('_cost', 2), ('cost', 2)]",
-            "cached_property The cost of the item. functools cost",
+            "cached_property The cost of the item. cost",
             "True True cost The cost of the item.",
             "True True True",
             "9 [('other', 9)] other",
@@ -41130,6 +41130,29 @@ fn cpython_functools_cached_property_subset() {
             "RuntimeError Error calling __set_name__ on 'Boom' instance 'field' in 'X'",
             "RuntimeError Error calling __set_name__ on 'Boom' instance 'field' in 'Dynamic'",
         ],
+    );
+}
+
+// Adapted from newer CPython functools.cached_property module metadata. This
+// covers function-derived instance metadata and the deletion fallback without
+// expanding the descriptor surface.
+#[test]
+fn cpython_functools_cached_property_module_metadata_subset() {
+    assert_output(
+        concat!(
+            "from functools import cached_property\n",
+            "class CachedCostItem:\n",
+            "    @cached_property\n",
+            "    def cost(self):\n",
+            "        return 1\n",
+            "descriptor = CachedCostItem.__dict__['cost']\n",
+            "print(descriptor.__module__, descriptor.__dict__['__module__'])\n",
+            "descriptor.__module__ = 'custom'\n",
+            "print(descriptor.__module__, descriptor.__dict__['__module__'])\n",
+            "del descriptor.__module__\n",
+            "print(descriptor.__module__, '__module__' in descriptor.__dict__)"
+        ),
+        &["__main__ __main__", "custom custom", "functools False"],
     );
 }
 

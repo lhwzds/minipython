@@ -13064,7 +13064,7 @@ class CachedCostItem:
 
 item = CachedCostItem()
 print(item.cost, item.cost, sorted(item.__dict__.items()))
-print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.__module__, CachedCostItem.cost.attrname)
+print(type(CachedCostItem.cost).__name__, CachedCostItem.cost.__doc__, CachedCostItem.cost.attrname)
 state = CachedCostItem.__dict__['cost'].__dict__
 print(all(key in state for key in ['func', 'attrname', '__doc__']), state['func'] is CachedCostItem.__dict__['cost'].func, state['attrname'], state['__doc__'])
 rendered = repr(CachedCostItem.__dict__['cost'])
@@ -13163,6 +13163,36 @@ class DynamicDescriptor:
         calls.append((owner.__name__, name))
 Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})
 print(calls)"#,
+    });
+}
+
+#[test]
+fn cpython_functools_cached_property_module_metadata_diff_subset() {
+    let probe = run_cpython(
+        "from functools import cached_property\nclass A:\n    @cached_property\n    def p(self):\n        return 1\nprint(A.__dict__['p'].__module__)",
+    )
+    .expect("failed to probe CPython functools.cached_property __module__ support");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "__main__" {
+        eprintln!(
+            "skipping functools.cached_property module metadata diff: CPython oracle lacks function-derived cached_property.__module__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "newer CPython functools.cached_property module metadata subset",
+        name: "functools-cached-property-module-metadata",
+        source: r#"from functools import cached_property
+class CachedCostItem:
+    @cached_property
+    def cost(self):
+        return 1
+descriptor = CachedCostItem.__dict__['cost']
+print(descriptor.__module__, descriptor.__dict__['__module__'])
+descriptor.__module__ = 'custom'
+print(descriptor.__module__, descriptor.__dict__['__module__'])
+del descriptor.__module__
+print(descriptor.__module__, '__module__' in descriptor.__dict__)"#,
     });
 }
 

@@ -6953,6 +6953,13 @@ impl Vm {
             Err(exception) if exception.type_name == "AttributeError" => Value::None,
             Err(exception) => return Err(format_exception_error(&exception)),
         };
+        let module = match self.load_attribute_catching(function.clone(), "__module__")? {
+            Ok(value) => value,
+            Err(exception) if exception.type_name == "AttributeError" => {
+                Value::String("functools".to_string())
+            }
+            Err(exception) => return Err(format_exception_error(&exception)),
+        };
         attrs
             .borrow_mut()
             .insert("func".to_string(), function.clone());
@@ -6960,6 +6967,7 @@ impl Vm {
             .borrow_mut()
             .insert("attrname".to_string(), Value::None);
         attrs.borrow_mut().insert("__doc__".to_string(), doc);
+        attrs.borrow_mut().insert("__module__".to_string(), module);
 
         Ok(Value::CachedProperty {
             function: Box::new(function),
@@ -52063,11 +52071,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__dict__" {
                 return Ok(Value::ScopeDict(attrs));
             }
-            if name == "__module__" {
-                return Ok(Value::String("functools".to_string()));
-            }
             if let Some(value) = attrs.borrow().get(name).cloned() {
                 return Ok(value);
+            }
+            if name == "__module__" {
+                return Ok(Value::String("functools".to_string()));
             }
             match name {
                 "__get__" | "__set_name__" => Ok(Value::BoundMethod {
