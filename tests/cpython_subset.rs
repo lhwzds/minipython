@@ -22242,8 +22242,13 @@ fn cpython_memoryview_hex_reentrant_release_subset() {
 #[test]
 fn cpython_memoryview_copy_rejection_subset() {
     assert_output(
-        "import copy\nfor source in [b'abc', bytearray(b'abc')]:\n    try:\n        copy.copy(memoryview(source))\n    except TypeError as error:\n        print(error.__class__.__name__, 'memoryview' in str(error))",
-        &["TypeError True", "TypeError True"],
+        "import copy\nfor source in [b'abc', bytearray(b'abc')]:\n    for label, func in [('copy', copy.copy), ('deepcopy', copy.deepcopy)]:\n        try:\n            func(memoryview(source))\n        except TypeError as error:\n            print(label, error.__class__.__name__, 'memoryview' in str(error))",
+        &[
+            "copy TypeError True",
+            "deepcopy TypeError True",
+            "copy TypeError True",
+            "deepcopy TypeError True",
+        ],
     );
 }
 

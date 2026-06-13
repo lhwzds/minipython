@@ -1418,9 +1418,10 @@ fn cpython_memoryview_rejection_and_hash_diff_covers_split_runtime_subsets() {
         assert!(
             document.contains(diff_name)
                 && document.contains("copy rejection")
+                && document.contains("deepcopy")
                 && document.contains("pickle rejection")
                 && document.contains("hash/release-cache"),
-            "memoryview docs must explain that `{diff_name}` covers copy, pickle, and hash/release-cache behavior"
+            "memoryview docs must explain that `{diff_name}` covers copy/deepcopy, pickle, and hash/release-cache behavior"
         );
     }
 }

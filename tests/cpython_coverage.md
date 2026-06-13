@@ -4058,11 +4058,11 @@ Recent runtime migration notes:
   clear path are explicitly skipped.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_copy_rejection_subset`, covering CPython
-  `test_memoryview.py::OtherTest::test_copy` for public `copy.copy()`
-  rejection of supported read-only and writable memoryview objects.
+  `test_memoryview.py::OtherTest::test_copy` for public `copy.copy()` and
+  `copy.deepcopy()` rejection of supported read-only and writable memoryview objects.
   `cpython_memoryview_rejection_and_hash_diff_subset` directly compares the
-  copy rejection, pickle rejection, and hash/release-cache surfaces against
-  CPython.
+  copy rejection, deepcopy rejection, pickle rejection, and hash/release-cache
+  surfaces against CPython.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_pickle_rejection_subset`, covering CPython
   `test_memoryview.py::OtherTest::test_pickle` for public `pickle.dumps()`

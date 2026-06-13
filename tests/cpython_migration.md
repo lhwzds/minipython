@@ -1013,7 +1013,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_memoryview_copy_rejection_subset`, migrating CPython
   `Lib/test/test_memoryview.py::OtherTest::test_copy` for the supported
   read-only and writable memoryview surfaces: `copy.copy(memoryview(...))`
-  raises `TypeError` instead of duplicating or aliasing a view.
+  and `copy.deepcopy(memoryview(...))` raise `TypeError` instead of duplicating
+  or aliasing a view.
 - Added `cpython_memoryview_pickle_rejection_subset`, migrating CPython
   `Lib/test/test_memoryview.py::OtherTest::test_pickle` for MiniPython's
   internal pickle payload API: supported memoryview objects now raise
@@ -1025,8 +1026,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   memoryview that has already been hashed keeps that cached hash across
   `release()`, while first hash after release and writable memoryview hashing
   still raise `ValueError`. `cpython_memoryview_rejection_and_hash_diff_subset`
-  directly compares the copy rejection, pickle rejection, and hash/release-cache
-  surfaces against CPython.
+  directly compares the copy rejection, deepcopy rejection, pickle rejection,
+  and hash/release-cache surfaces against CPython.
 - Added `cpython_memoryview_release_during_index_subset`, migrating the
   supported one-dimensional public behavior from CPython
   `Lib/test/test_memoryview.py::OtherTest::test_use_released_memory`: scalar

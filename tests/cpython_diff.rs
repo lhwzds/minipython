@@ -21280,10 +21280,11 @@ fn cpython_memoryview_rejection_and_hash_diff_subset() {
 import pickle
 
 for source in [b'abc', bytearray(b'abc')]:
-    try:
-        copy.copy(memoryview(source))
-    except TypeError as error:
-        print('copy', error.__class__.__name__, 'memoryview' in str(error))
+    for label, func in [('copy', copy.copy), ('deepcopy', copy.deepcopy)]:
+        try:
+            func(memoryview(source))
+        except TypeError as error:
+            print(label, error.__class__.__name__, 'memoryview' in str(error))
 
 checked = 0
 for source in [b'abc', bytearray(b'abc')]:
