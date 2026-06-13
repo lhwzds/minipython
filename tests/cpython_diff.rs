@@ -5380,6 +5380,31 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_string_alignment_and_zfill_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py ljust/rjust/center/zfill subset",
+        name: "string-alignment-and-zfill",
+        source: r#"print(repr('abc'.ljust(10)), repr('abc'.ljust(6)), repr('abc'.ljust(3)), repr('abc'.ljust(2)), repr('abc'.ljust(10, '*')))
+print(repr('abc'.rjust(10)), repr('abc'.rjust(6)), repr('abc'.rjust(3)), repr('abc'.rjust(2)), repr('abc'.rjust(10, '*')))
+print(repr('abc'.center(10)), repr('abc'.center(6)), repr('abc'.center(3)), repr('abc'.center(2)), repr('abc'.center(10, '*')))
+print('x'.center(2, '\U0010ffff') == 'x\U0010ffff')
+print('x'.center(3, '\U0010ffff') == '\U0010ffffx\U0010ffff')
+print('x'.center(4, '\U0010ffff') == '\U0010ffffx\U0010ffff\U0010ffff')
+print('\U00100000'.ljust(3, '\U00010000') == '\U00100000\U00010000\U00010000')
+print('\U00100000'.rjust(3, '\U00010000') == '\U00010000\U00010000\U00100000')
+print('123'.zfill(2), '123'.zfill(3), '123'.zfill(4))
+print('+123'.zfill(3), '+123'.zfill(4), '+123'.zfill(5))
+print('-123'.zfill(3), '-123'.zfill(4), '-123'.zfill(5))
+print(repr(''.zfill(3)), '34'.zfill(1), '34'.zfill(4))
+for expr in [lambda: 'abc'.ljust(), lambda: 'abc'.rjust(), lambda: 'abc'.center(), lambda: '123'.zfill(), lambda: 'abc'.ljust('x'), lambda: 'abc'.rjust(5, ''), lambda: 'abc'.center(5, '**'), lambda: '123'.zfill(4, '0')]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",

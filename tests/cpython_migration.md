@@ -5386,8 +5386,9 @@ Completed in the string alignment/zfill method pass:
   and `str.zfill()` including width handling, custom one-character fills,
   sign-aware zero filling, Unicode fill characters, and representative
   `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  alignment and zero-fill behavior.
+- Added `cpython_string_alignment_and_zfill_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported alignment
+  and zero-fill behavior.
 
 Completed in the string split/rsplit method pass:
 
