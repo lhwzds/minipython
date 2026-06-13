@@ -5256,6 +5256,47 @@ for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:
 }
 
 #[test]
+fn cpython_builtin_callable_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_callable public supported subset",
+        name: "builtin-callable-public",
+        source: r#"print(callable(len), callable('a'), callable(callable))
+def f():
+    pass
+print(callable(f))
+class Plain:
+    pass
+plain = Plain()
+print(callable(Plain), callable(plain))
+class WithMethod:
+    def meth(self):
+        pass
+wm = WithMethod()
+print(callable(wm.meth), callable(WithMethod.meth))
+plain.__call__ = lambda: 1
+print(callable(plain))
+del plain.__call__
+print(callable(plain))
+class CallableClass:
+    def __call__(self, value):
+        return value + 1
+cc = CallableClass()
+print(callable(CallableClass), callable(cc), cc(4))
+cc.__call__ = None
+print(callable(cc), cc(5))
+class Child(CallableClass):
+    pass
+child = Child()
+print(callable(child), child(6))
+for expr in [lambda: callable(), lambda: callable(1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_ascii_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",

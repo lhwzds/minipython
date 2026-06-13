@@ -5732,6 +5732,60 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn builtin_callable_public_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_callable_public_subset(",
+        "callable(len)",
+        "callable('a')",
+        "callable(callable)",
+        "callable(f)",
+        "callable(Plain)",
+        "callable(plain)",
+        "callable(wm.meth)",
+        "plain.__call__ = lambda: 1",
+        "def __call__(self, value):",
+        "callable(cc)",
+        "callable(child)",
+        "lambda: callable(1, 2)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused callable subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_callable_public_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_callable public supported subset",
+        "callable(len)",
+        "callable('a')",
+        "callable(callable)",
+        "callable(f)",
+        "callable(Plain)",
+        "callable(plain)",
+        "callable(wm.meth)",
+        "plain.__call__ = lambda: 1",
+        "def __call__(self, value):",
+        "callable(cc)",
+        "callable(child)",
+        "lambda: callable(1, 2)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused callable CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_builtin_callable_public_subset")
+                && document.contains("cpython_builtin_callable_public_diff_subset"),
+            "focused callable evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
 fn exec_closure_subset_stays_documented_and_version_gated() {
     let subset_name = "cpython_exec_closure_subset";
     let diff_name = "cpython_exec_closure_diff_subset";

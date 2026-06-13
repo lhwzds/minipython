@@ -24234,6 +24234,61 @@ fn cpython_builtin_hasattr_public_subset() {
     );
 }
 
+// Focused slice from CPython `Lib/test/test_builtin.py::BuiltinTest::test_callable`.
+#[test]
+fn cpython_builtin_callable_public_subset() {
+    assert_output(
+        concat!(
+            "print(callable(len), callable('a'), callable(callable))\n",
+            "def f():\n",
+            "    pass\n",
+            "print(callable(f))\n",
+            "class Plain:\n",
+            "    pass\n",
+            "plain = Plain()\n",
+            "print(callable(Plain), callable(plain))\n",
+            "class WithMethod:\n",
+            "    def meth(self):\n",
+            "        pass\n",
+            "wm = WithMethod()\n",
+            "print(callable(wm.meth), callable(WithMethod.meth))\n",
+            "plain.__call__ = lambda: 1\n",
+            "print(callable(plain))\n",
+            "del plain.__call__\n",
+            "print(callable(plain))\n",
+            "class CallableClass:\n",
+            "    def __call__(self, value):\n",
+            "        return value + 1\n",
+            "cc = CallableClass()\n",
+            "print(callable(CallableClass), callable(cc), cc(4))\n",
+            "cc.__call__ = None\n",
+            "print(callable(cc), cc(5))\n",
+            "class Child(CallableClass):\n",
+            "    pass\n",
+            "child = Child()\n",
+            "print(callable(child), child(6))\n",
+            "for expr in [lambda: callable(), lambda: callable(1, 2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "True False True",
+            "True",
+            "True False",
+            "True True",
+            "False",
+            "False",
+            "True True 5",
+            "True 6",
+            "True 7",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
 // dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
 // hook-loss errors. The default hook is a sandbox no-op stub; pdb integration
