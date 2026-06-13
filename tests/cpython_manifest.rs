@@ -3084,6 +3084,23 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
     candidates
 }
 
+fn coverage_direct_sandbox_stdlib_diff_evidence() -> BTreeSet<String> {
+    let heading = "Direct sandbox stdlib `cpython_diff` evidence names are also mirrored here:";
+    let start = CPYTHON_COVERAGE
+        .find(heading)
+        .expect("coverage must include direct sandbox stdlib evidence mirror");
+    let tail = &CPYTHON_COVERAGE[start..];
+    let end = tail
+        .find("\n- `NUMBER`")
+        .expect("direct sandbox stdlib evidence mirror must end before NUMBER notes");
+
+    backtick_tokens(&tail[..end])
+        .into_iter()
+        .filter(|evidence| evidence.ends_with("_diff_subset"))
+        .map(str::to_string)
+        .collect()
+}
+
 #[test]
 fn cpython_coverage_links_sandbox_stdlib_scope_to_manifest() {
     for required in [
@@ -3131,6 +3148,26 @@ fn cpython_coverage_mentions_all_sandbox_stdlib_diff_evidence() {
             );
         }
     }
+}
+
+#[test]
+fn cpython_coverage_direct_sandbox_stdlib_mirror_matches_manifest() {
+    let manifest_evidence = sandbox_stdlib_rows()
+        .into_iter()
+        .flat_map(|row| {
+            backtick_tokens(row.diff_evidence)
+                .into_iter()
+                .filter(|evidence| evidence.ends_with("_diff_subset"))
+                .map(str::to_string)
+                .collect::<Vec<_>>()
+        })
+        .collect::<BTreeSet<_>>();
+    let coverage_mirror = coverage_direct_sandbox_stdlib_diff_evidence();
+
+    assert_eq!(
+        coverage_mirror, manifest_evidence,
+        "coverage direct sandbox stdlib evidence mirror must match the Sandbox Stdlib Manifest"
+    );
 }
 
 #[test]
