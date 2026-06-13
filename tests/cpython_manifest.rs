@@ -6465,6 +6465,83 @@ fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn zip_strict_builtin_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_zip_strict_builtin_subset(",
+        "BuiltinTest::test_zip_strict",
+        "::test_zip_strict_iterators",
+        "strict-length semantics",
+        "iterator consumption side effects",
+        "zip((1, 2, 3), 'abc', strict=True)",
+        "zip((1, 2), 'abc', strict=False)",
+        "zip(strict=True)",
+        "zip((1, 2, 3, 4), 'abc', strict=True)",
+        "zip((1, 2), 'abc', strict=True)",
+        "zip((1, 2), (1, 2), 'abc', strict=True)",
+        "zip([1], bad=True)",
+        "ValueError zip() argument 2 is shorter than argument 1",
+        "ValueError zip() argument 2 is longer than argument 1",
+        "ValueError zip() argument 3 is longer than arguments 1-2",
+        "TypeError 'bad' is an invalid keyword argument for zip()",
+        "x = iter(range(5))",
+        "y = [0]",
+        "z = iter(range(5))",
+        "list(zip(x, y, z, strict=True))",
+        "print(next(x), next(z))",
+        "\"2 1\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused zip strict subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_zip_strict_builtin_diff_subset");
+    for required in [
+        "print(list(zip([1], [2], strict=True)))",
+        "skipping zip(strict) diff: CPython oracle lacks zip strict support",
+        "Lib/test/test_builtin.py::BuiltinTest::test_zip_strict / ::test_zip_strict_iterators",
+        "zip-strict-builtin",
+        "zip((1, 2, 3), 'abc', strict=True)",
+        "zip((1, 2), 'abc', strict=False)",
+        "zip(strict=True)",
+        "zip((1, 2, 3, 4), 'abc', strict=True)",
+        "zip((1, 2), 'abc', strict=True)",
+        "zip((1, 2), (1, 2), 'abc', strict=True)",
+        "zip([1], bad=True)",
+        "x = iter(range(5))",
+        "y = [0]",
+        "z = iter(range(5))",
+        "list(zip(x, y, z, strict=True))",
+        "print(next(x), next(z))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused zip strict CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_zip_strict_builtin_subset")
+                && document.contains("cpython_zip_strict_builtin_diff_subset"),
+            "focused zip strict evidence must be documented in coverage and migration notes"
+        );
+    }
+    assert!(
+        CPYTHON_COVERAGE.contains("strict zip") && CPYTHON_MIGRATION.contains("strict-zip"),
+        "focused zip strict docs must describe the strict zip slice"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("zip(strict=True)")
+            && CPYTHON_MIGRATION.contains("strict mismatch `ValueError` cases")
+            && CPYTHON_MIGRATION.contains("invalid keyword")
+            && CPYTHON_MIGRATION.contains("iterator-consumption side effect"),
+        "focused zip strict migration notes must describe strict mismatch, invalid keyword, and consumption behavior"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
