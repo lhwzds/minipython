@@ -5274,8 +5274,9 @@ Completed in the string search method pass:
   `str.rindex()` including optional `start` / `end`, `None` bounds, empty
   needle behavior, Unicode character indexes, `TypeError` for non-string
   needles, and `ValueError` for failed `index` / `rindex` searches.
-- Added a CPython/MiniPython differential parity case for the same supported
-  string search behavior.
+- Added `cpython_string_find_index_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported string
+  search behavior.
 
 Completed in the string count/case method pass:
 

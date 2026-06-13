@@ -4998,6 +4998,38 @@ for expr in [lambda: 'hello'.startswith(), lambda: 'hello'.startswith(42), lambd
 }
 
 #[test]
+fn cpython_string_find_index_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py find/rfind/index/rindex subset",
+        name: "string-find-index",
+        source: r#"print('abcdefghiabc'.find('abc'), 'abcdefghiabc'.find('abc', 1), 'abcdefghiabc'.find('def', 4))
+print('abc'.find('', 0), 'abc'.find('', 3), 'abc'.find('', 4))
+print('rrarrrrrrrrra'.find('a'), 'rrarrrrrrrrra'.find('a', 4), 'rrarrrrrrrrra'.find('a', 4, 6), 'rrarrrrrrrrra'.find('a', 4, None), 'rrarrrrrrrrra'.find('a', None, 6))
+print(''.find(''), ''.find('', 1, 1), ''.find('', 10 ** 30, 0))
+print(''.find('xx'), ''.find('xx', 1, 1), ''.find('xx', 10 ** 30, 0))
+print('abcdefghiabc'.rfind('abc'), 'abcdefghiabc'.rfind(''), 'abcdefghiabc'.rfind('abcd'), 'abcdefghiabc'.rfind('abcz'))
+print('abc'.rfind('', 0), 'abc'.rfind('', 3), 'abc'.rfind('', 4))
+print('rrarrrrrrrrra'.rfind('a'), 'rrarrrrrrrrra'.rfind('a', 4), 'rrarrrrrrrrra'.rfind('a', 4, 6), 'rrarrrrrrrrra'.rfind('a', 4, None), 'rrarrrrrrrrra'.rfind('a', None, 6))
+print('<......м...'.rfind('<'))
+print('ab'.rfind('xxx', 10 ** 30, 0))
+print('abcdefghiabc'.index(''), 'abcdefghiabc'.index('def'), 'abcdefghiabc'.index('abc'), 'abcdefghiabc'.index('abc', 1))
+print('rrarrrrrrrrra'.index('a'), 'rrarrrrrrrrra'.index('a', 4), 'rrarrrrrrrrra'.index('a', 4, None), 'rrarrrrrrrrra'.index('a', None, 6))
+print('abcdefghiabc'.rindex(''), 'abcdefghiabc'.rindex('def'), 'abcdefghiabc'.rindex('abc'), 'abcdefghiabc'.rindex('abc', 0, -1))
+print('rrarrrrrrrrra'.rindex('a'), 'rrarrrrrrrrra'.rindex('a', 4), 'rrarrrrrrrrra'.rindex('a', 4, None), 'rrarrrrrrrrra'.rindex('a', None, 6))
+for expr in [lambda: 'hello'.find(), lambda: 'hello'.find(42), lambda: 'hello'.rfind(), lambda: 'hello'.rfind(42), lambda: 'hello'.index(), lambda: 'hello'.index(42), lambda: 'hello'.rindex(), lambda: 'hello'.rindex(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)
+for expr in [lambda: 'abcdefghiabc'.index('hib'), lambda: 'abcdefghiab'.index('abc', 1), lambda: 'abcdefghi'.index('ghi', 8), lambda: 'abcdefghi'.index('ghi', -1), lambda: 'rrarrrrrrrrra'.index('a', 4, 6), lambda: 'abcdefghiabc'.rindex('hib'), lambda: 'defghiabc'.rindex('def', 1), lambda: 'defghiabc'.rindex('abc', 0, -1), lambda: 'abcdefghi'.rindex('ghi', 0, 8), lambda: 'abcdefghi'.rindex('ghi', 0, -1), lambda: 'rrarrrrrrrrra'.rindex('a', 4, 6)]:
+    try:
+        expr()
+    except ValueError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
