@@ -6083,6 +6083,17 @@ for error in [OSError('foo'), OSError('foo', 'bar'), OSError('foo', 'bar', 'baz'
 }
 
 #[test]
+fn cpython_syntax_error_attributes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes SyntaxError stable subset",
+        name: "syntax-error-attributes-direct",
+        source: r#"for error in [SyntaxError(), SyntaxError('msgStr'), SyntaxError('msgStr', ('filenameStr', 'linenoStr', 'offsetStr', 'textStr')), SyntaxError('msgStr', 'filenameStr', 'linenoStr', 'offsetStr', 'textStr', 'endLinenoStr', 'endOffsetStr', 'print_file_and_lineStr')]:
+    print(error.args)
+    print(error.msg, error.text, error.filename, error.lineno, error.offset, getattr(error, 'end_lineno', None), getattr(error, 'end_offset', None), error.print_file_and_line)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",

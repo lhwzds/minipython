@@ -5526,6 +5526,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_base_exception_args_subset",
             "cpython_base_exception_with_traceback_subset",
             "cpython_system_exit_oserror_attributes_subset",
+            "cpython_syntax_error_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_builtin_bool_notimplemented_subset",
@@ -5568,6 +5569,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_base_exception_args_diff_subset",
         "cpython_base_exception_with_traceback_diff_subset",
         "cpython_system_exit_oserror_attributes_diff_subset",
+        "cpython_syntax_error_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
@@ -5596,6 +5598,48 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "builtins sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
+fn syntax_error_attributes_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_syntax_error_attributes_subset(",
+        "SyntaxError()",
+        "SyntaxError('msgStr')",
+        "('filenameStr', 'linenoStr', 'offsetStr', 'textStr', 'endLinenoStr', 'endOffsetStr')",
+        "error.msg",
+        "error.end_lineno",
+        "error.print_file_and_line",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused SyntaxError attributes subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_syntax_error_attributes_diff_subset");
+    for required in [
+        "Lib/test/test_exceptions.py::testAttributes SyntaxError stable subset",
+        "SyntaxError()",
+        "SyntaxError('msgStr')",
+        "('filenameStr', 'linenoStr', 'offsetStr', 'textStr')",
+        "error.msg",
+        "getattr(error, 'end_lineno', None)",
+        "error.print_file_and_line",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused SyntaxError attributes CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_syntax_error_attributes_subset")
+                && document.contains("cpython_syntax_error_attributes_diff_subset"),
+            "focused SyntaxError attributes evidence must be documented in coverage and migration notes"
         );
     }
 }
