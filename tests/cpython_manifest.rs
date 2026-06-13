@@ -4805,6 +4805,45 @@ fn cpython_control_flow_smoke_diff_covers_grammar_runtime_subsets() {
 }
 
 #[test]
+fn cpython_match_stmt_diff_covers_match_runtime_subset() {
+    let diff_name = "cpython_grammar_match_stmt_diff_subset";
+    let subset_name = "cpython_grammar_match_stmt_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("match statement CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "match statement runtime subset evidence must exist"
+    );
+    for required in [
+        "match subject",
+        "case 0",
+        "case [command, direction]",
+        "case {\"x\": value, **rest}",
+        "case Holder.token",
+        "case Point(1, y=value) as point",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "match statement diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "match statement docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_ast_dump_public_diff_covers_exact_subsets() {
     let diff_name = "cpython_ast_dump_public_diff_subset";
     let diff_start = CPYTHON_DIFF

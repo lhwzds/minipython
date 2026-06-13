@@ -2395,6 +2395,9 @@ Completed in the match literal/closed-pattern supported-promotion pass:
   adjacent string literal patterns, literal mapping keys, singleton mapping
   keys, complex mapping keys, and CPython's compile-time rejection for
   f-string/t-string match values and f-string mapping keys.
+- Added `cpython_grammar_match_stmt_diff_subset` as direct CPython output
+  parity for the supported public `match_stmt` execution surface, including
+  literal, guard, sequence, mapping, value, and class patterns.
 
 Completed in the match capture/wildcard/group supported-promotion pass:
 

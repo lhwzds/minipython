@@ -16910,6 +16910,70 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_grammar_match_stmt_diff_subset() {
+    let probe = run_cpython("match 1:\n    case 1:\n        print('ok')")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"ok\n" {
+        eprintln!("skipping match statement diff: CPython oracle lacks match statement support");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram match_stmt public execution subset and Lib/test/test_patma.py basics",
+        name: "grammar-match-stmt-core",
+        source: r#"class Holder:
+    token = "ok"
+class Point:
+    __match_args__ = ("x", "y")
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+for subject in [0, 2, "ab", None, False, True, -1, -1.5j, 0.25 + 1.75j]:
+    match subject:
+        case 0:
+            print("zero")
+        case 2:
+            print("two")
+        case "a" "b":
+            print("adjacent string")
+        case None:
+            print("none")
+        case False:
+            print("false")
+        case True:
+            print("true")
+        case -1:
+            print("negative")
+        case -1.5j:
+            print("imaginary")
+        case 0.25 + 1.75j:
+            print("complex plus")
+        case _:
+            print("other")
+
+match subject := (1, 2):
+    case first, second:
+        print(subject, first, second)
+match ["go", "n"]:
+    case [command, direction] if direction in "nesw":
+        print(command, direction)
+match [1, 2, 3]:
+    case [first, *middle, last]:
+        print(first, middle, last)
+match "ok":
+    case Holder.token:
+        print("value")
+match {"x": 1, "y": 2}:
+    case {"x": value, **rest}:
+        print(value, rest)
+match Point(1, 2):
+    case Point(1, y=value) as point:
+        print(value, point.x)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_basics_and_empty_index_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_basics, ::test_ord, and ::test_empty_sequence public subset",
