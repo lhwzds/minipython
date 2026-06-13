@@ -44753,9 +44753,9 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
 // append/extend/insert/remove/pop operations, simple queries/reordering,
-// membership, integer indexing, and MutableSequence registration. Broader deque
-// APIs, pickling, performance, and thread-safety semantics remain outside the
-// default sandbox surface.
+// membership, integer indexing, reverse iteration, and MutableSequence
+// registration. Broader deque APIs, pickling, performance, and thread-safety
+// semantics remain outside the default sandbox surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
@@ -44786,6 +44786,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "    def __index__(self):\n",
             "        return -1\n",
             "print(d[0], d[-1], d[DequeIndexLike()])\n",
+            "print(list(reversed(d)), list(d.__reversed__()))\n",
             "q = deque([0, -1, 1])\n",
             "print(q.insert(1, 'x'), list(q), repr(q))\n",
             "print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))\n",
@@ -44847,6 +44848,7 @@ fn cpython_collections_deque_public_surface_subset() {
             "1 0 2 2 2",
             "True False False",
             "0 1 1",
+            "[1, -1, 0] [1, -1, 0]",
             "None [0, 'x', -1, 1] deque([0, 'x', -1, 1])",
             "None None ['y', 0, 'x', -1, 1, 'z'] deque(['y', 0, 'x', -1, 1, 'z'])",
             "None ['y', 0, 'x', -1, 'z'] deque(['y', 0, 'x', -1, 'z'])",

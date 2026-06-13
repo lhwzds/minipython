@@ -10358,6 +10358,10 @@ Completed in the CPython collections manifest expansion pass:
   pure-memory `deque` membership and integer indexing, including `__index__`
   coercion, without adding slicing or broader deque APIs to the sandbox
   surface.
+- Extended the same `collections.deque` public surface with reverse iteration
+  through both `reversed(deque(...))` and `deque.__reversed__()`, reusing the
+  sequence reverse iterator path and keeping pickle, eval, thread-safety, and
+  performance contracts out of scope.
 
 Next:
 

@@ -28910,6 +28910,19 @@ impl Vm {
                     index.clone(),
                 )
             }
+            "__reversed__" => {
+                if !rest.is_empty() {
+                    return Err(format!(
+                        "__reversed__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+                let items_ref = data.borrow();
+                i64::try_from(items_ref.len())
+                    .map_err(|_| "__reversed__() length is too large".to_string())?;
+                let items = items_ref.iter().cloned().collect();
+                Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+            }
             "clear" => {
                 if !rest.is_empty() {
                     return Err(format!(
@@ -51282,7 +51295,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
-                | "__contains__" | "__getitem__" | "__iter__" | "__len__" => {
+                | "__contains__" | "__getitem__" | "__iter__" | "__len__" | "__reversed__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("deque.{name}"))),
                         receiver: Box::new(Value::Deque { data, maxlen }),
@@ -60901,6 +60914,13 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 .collect(),
             index: 0,
         })),
+        Value::Deque { data, .. } => {
+            let items_ref = data.borrow();
+            i64::try_from(items_ref.len())
+                .map_err(|_| "reversed() length is too large".to_string())?;
+            let items = items_ref.iter().cloned().collect();
+            Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+        }
         Value::MemoryView(view) => Ok(shared_iterator(Value::ReverseIterator {
             items: memoryview_values(&view)?,
             index: 0,

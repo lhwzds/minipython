@@ -3077,6 +3077,7 @@ class DequeIndexLike:
     def __index__(self):
         return -1
 print(d[0], d[-1], d[DequeIndexLike()])
+print(list(reversed(d)), list(d.__reversed__()))
 q = deque([0, -1, 1])
 print(q.insert(1, 'x'), list(q), repr(q))
 print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))
