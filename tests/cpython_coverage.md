@@ -1862,9 +1862,10 @@ Recent runtime migration notes:
   `BaseBytesTest::test_fromhex`, `test_hex`, `test_hex_separator_basics`,
   `test_hex_separator_five_bytes`, `test_hex_separator_six_bytes`, and current
   CPython main `test_hex_simd_boundaries` / `test_hex_nibble_boundaries` public
-  behavior for string and bytes-like `fromhex()` inputs including `memoryview`
-  and `array.array('B')`, ASCII whitespace skipping including vertical tab,
-  non-ASCII rejection, exact odd-hex-digit and invalid-position diagnostics,
+  behavior for string and bytes-like `fromhex()` inputs including contiguous
+  `memoryview` and `array.array('B')`, non-contiguous `memoryview` `BufferError`
+  rejection, ASCII whitespace skipping including vertical tab, non-ASCII
+  rejection, exact odd-hex-digit and invalid-position diagnostics,
   bytes/bytearray `hex()` separator grouping, separator-byte boundaries,
   `bytes_per_sep` `__index__` conversion, catchable C-int overflow errors, and
   public `hex()` output correctness across length and nibble boundary samples,

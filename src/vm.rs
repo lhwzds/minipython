@@ -64518,6 +64518,9 @@ fn bytes_fromhex(value: &Value) -> Result<Vec<u8>, String> {
             fromhex_ascii_bytes_text(&value)?
         }
         Value::MemoryView(view) => {
+            if !memoryview_is_contiguous(view)? {
+                return Err(bytes_noncontiguous_memoryview_buffer_error());
+            }
             let bytes = memoryview_bytes(view)?;
             fromhex_ascii_bytes_text(&bytes)?
         }

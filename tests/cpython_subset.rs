@@ -31370,7 +31370,7 @@ fn cpython_bytes_check_encoding_errors_devmode_subset() {
 #[test]
 fn cpython_bytes_hex_fromhex_subset() {
     assert_output(
-        "import array\nprint(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30\\v'), bytes.fromhex(b' 1A\\n2B\\t30\\v'))\nprint(bytes.fromhex(bytearray(b' 1A 2B 30 ')), bytes.fromhex(memoryview(b' 1A 2B 30 ')), bytes.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytearray.fromhex(bytearray(b' 1A 2B 30 ')), bytearray.fromhex(memoryview(b' 1A 2B 30 ')), bytearray.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytes.fromhex('0000'))",
+        "import array\nprint(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30\\v'), bytes.fromhex(b' 1A\\n2B\\t30\\v'))\nprint(bytes.fromhex(bytearray(b' 1A 2B 30 ')), bytes.fromhex(memoryview(b' 1A 2B 30 ')), bytes.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytearray.fromhex(bytearray(b' 1A 2B 30 ')), bytearray.fromhex(memoryview(b' 1A 2B 30 ')), bytearray.fromhex(array.array('B', b' 1A 2B 30 ')))\nmid = memoryview(bytearray(b' 1A 2B 30 '))[1:9]\nprint(bytes.fromhex(mid), bytearray.fromhex(mid))\nprint(bytes.fromhex('0000'))",
         &[
             "b'' bytearray(b'')",
             "b'\\x1a+0'",
@@ -31378,6 +31378,7 @@ fn cpython_bytes_hex_fromhex_subset() {
             "b'\\x1a+0' b'\\x1a+0'",
             "b'\\x1a+0' b'\\x1a+0' b'\\x1a+0'",
             "bytearray(b'\\x1a+0') bytearray(b'\\x1a+0') bytearray(b'\\x1a+0')",
+            "b'\\x1a+0' bytearray(b'\\x1a+0')",
             "b'\\x00\\x00'",
         ],
     );
@@ -31437,6 +31438,16 @@ fn cpython_bytes_hex_fromhex_subset() {
             "bytearray non-ascii True",
             "bytes-non-ascii True",
             "bytearray-non-ascii True",
+        ],
+    );
+
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    for label, source in [('memoryview-step', memoryview(bytearray(b'  661122  '))[::2]), ('memoryview-reversed', memoryview(bytearray(b' 26 16 '))[::-1])]:\n        try:\n            ctor.fromhex(source)\n        except BufferError as error:\n            print(ctor.__name__, label, error.__class__.__name__, str(error))",
+        &[
+            "bytes memoryview-step BufferError memoryview: underlying buffer is not C-contiguous",
+            "bytes memoryview-reversed BufferError memoryview: underlying buffer is not C-contiguous",
+            "bytearray memoryview-step BufferError memoryview: underlying buffer is not C-contiguous",
+            "bytearray memoryview-reversed BufferError memoryview: underlying buffer is not C-contiguous",
         ],
     );
 }

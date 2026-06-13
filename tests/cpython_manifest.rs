@@ -2167,6 +2167,57 @@ fn cpython_bytes_hex_memoryview_separator_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_fromhex_memoryview_contiguity_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_fromhex_bytes_like_diff_subset";
+    let subset_name = "cpython_bytes_hex_fromhex_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes fromhex bytes-like direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes fromhex runtime subset evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes fromhex docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes fromhex bytes-like diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "memoryview(bytearray",
+        "memoryview-step",
+        "memoryview-reversed",
+        "BufferError",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes fromhex memoryview contiguity diff evidence must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "memoryview-step BufferError memoryview: underlying buffer is not C-contiguous",
+        "memoryview-reversed BufferError memoryview: underlying buffer is not C-contiguous",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytes fromhex memoryview contiguity runtime subset must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytearray_iterator_pickle_shared_exporter_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytearray_iterator_pickle_shared_exporter_diff_subset";
     let subset_name = "cpython_bytearray_iterator_pickle_shared_exporter_subset";

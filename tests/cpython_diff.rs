@@ -20221,12 +20221,22 @@ sources = [
     b' 1A\n2B\t30\v',
     bytearray(b' 1A 2B 30 '),
     memoryview(b' 1A 2B 30 '),
+    memoryview(bytearray(b' 1A 2B 30 '))[1:9],
     array.array('B', b' 1A 2B 30 '),
     B(b'61 62'),
     BA(b'63 64'),
 ]
 for source in sources:
     print(type(source).__name__, bytes.fromhex(source), bytearray.fromhex(source))
+for label, source in [
+    ('memoryview-step', memoryview(bytearray(b'  661122  '))[::2]),
+    ('memoryview-reversed', memoryview(bytearray(b' 26 16 '))[::-1]),
+]:
+    for ctor in [bytes, bytearray]:
+        try:
+            ctor.fromhex(source)
+        except BufferError as error:
+            print(ctor.__name__, label, error.__class__.__name__, str(error))
 for label, source in [
     ('bytes-non-ascii', bytes([30, 31, 128])),
     ('bytearray-non-ascii', bytearray([30, 31, 128])),

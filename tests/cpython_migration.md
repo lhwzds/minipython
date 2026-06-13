@@ -5658,9 +5658,10 @@ Completed in the bytes hex/fromhex method pass:
   string input, plus MiniPython support for bytes/bytearray input matching the
   newer local CPython source.
 - Extended `bytes.fromhex()` and `bytearray.fromhex()` to accept `memoryview`
-  and bytes/bytearray subclass storage as bytes-like inputs, to skip CPython's
-  full ASCII whitespace set including vertical tab, to keep non-ASCII
-  whitespace/input bytes rejected as public `ValueError` paths, and to match
+  and bytes/bytearray subclass storage as bytes-like inputs, reject
+  non-contiguous `memoryview` input with CPython's public `BufferError`, skip
+  CPython's full ASCII whitespace set including vertical tab, keep non-ASCII
+  whitespace/input bytes rejected as public `ValueError` paths, and match
   CPython's public odd-hex-digit and invalid-position diagnostics.
 - Added runtime support for `bytes.hex()` and `bytearray.hex()` including
   optional `sep` and `bytes_per_sep` positional/keyword arguments, ASCII
