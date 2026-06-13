@@ -3231,6 +3231,102 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
+    for (subset, diff) in [
+        (
+            "cpython_functools_partialmethod_subset",
+            "cpython_functools_partialmethod_diff_subset",
+        ),
+        (
+            "cpython_functools_cached_property_subset",
+            "cpython_functools_cached_property_diff_subset",
+        ),
+        (
+            "cpython_functools_singledispatchmethod_subset",
+            "cpython_functools_singledispatchmethod_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(subset),
+            "functools descriptor runtime subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(diff),
+            "functools descriptor CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_COVERAGE.contains(diff),
+            "coverage document must link functools descriptor evidence `{subset}` / `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must describe functools descriptor subset `{subset}`"
+        );
+    }
+
+    let partialmethod_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_partialmethod_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_cached_property_diff_subset()")
+                .next()
+        })
+        .expect("functools partialmethod diff evidence must be extractable");
+    for required in [
+        "partialmethod(staticmethod(capture), 8)",
+        "partialmethod(classmethod(capture), d=9)",
+        "A.both(a, 5, c=6)",
+        "hasattr(a.both, '__self__')",
+    ] {
+        assert!(
+            partialmethod_diff.contains(required),
+            "partialmethod diff evidence must cover descriptor binding detail `{required}`"
+        );
+    }
+
+    let cached_property_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_cached_property_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_functools_cache_diff_subset()")
+                .next()
+        })
+        .expect("functools cached_property diff evidence must be extractable");
+    for required in [
+        "CachedCostItem.cost.__doc__",
+        "CachedCostItem.__dict__['cost'].__dict__",
+        "Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})",
+        "def __set_name__(self, owner, name):",
+    ] {
+        assert!(
+            cached_property_diff.contains(required),
+            "cached_property diff evidence must cover descriptor detail `{required}`"
+        );
+    }
+
+    let singledispatchmethod_diff = CPYTHON_DIFF
+        .split("fn cpython_functools_singledispatchmethod_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn assert_cpython_itertools_core_iterator_diff")
+                .next()
+        })
+        .expect("functools singledispatchmethod diff evidence must be extractable");
+    for required in [
+        "descriptor = C.__dict__['m']",
+        "descriptor.func.__name__",
+        "@staticmethod",
+        "@classmethod",
+        "@c.m.register(bytes)",
+    ] {
+        assert!(
+            singledispatchmethod_diff.contains(required),
+            "singledispatchmethod diff evidence must cover descriptor detail `{required}`"
+        );
+    }
+}
+
+#[test]
 fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "itertools",
