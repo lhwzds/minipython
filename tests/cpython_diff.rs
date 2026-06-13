@@ -6307,6 +6307,9 @@ scope_keys = g.keys()
 scope_items = g.items()
 scope_values = g.values()
 print(type(scope_keys).__name__, type(scope_items).__name__, type(scope_values).__name__)
+for view in [scope_keys, scope_items, scope_values]:
+    rendered = repr(view)
+    print(type(view).__name__, 'scope_keys' in rendered, '...' in rendered)
 g['scope_view_temp'] = 9
 print('scope_view_temp' in scope_keys, ('scope_view_temp', 9) in scope_items, 9 in scope_values)
 del g['scope_view_temp']

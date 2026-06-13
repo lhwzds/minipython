@@ -7673,6 +7673,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "'{...}' in repr(items['scope_self'])",
         "type(scope_keys).__name__",
         "dict_keys dict_items dict_values",
+        "'scope_keys' in rendered",
+        "'...' in rendered",
         "'scope_view_temp' in scope_keys",
         "('scope_view_temp', 9) in scope_items",
         "9 in scope_values",

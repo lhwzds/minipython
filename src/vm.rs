@@ -1490,6 +1490,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             active.remove(&ptr);
             Ok(format!("{{{rendered}}}"))
         }
+        Value::MappingView { kind, mapping } => repr_mapping_view_checked(*kind, mapping, active),
         Value::FrameLocalsProxy { .. } => Ok("<frame locals proxy object>".to_string()),
         Value::SimpleNamespace { fields } => repr_simple_namespace_checked(fields, active),
         Value::Iterator(state) => {
@@ -1505,6 +1506,31 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
         Value::BigInt(value) => repr_big_int_checked(value),
         _ => Ok(repr_value(value)),
     }
+}
+
+fn repr_mapping_view_checked(
+    kind: DictViewKind,
+    mapping: &Value,
+    active: &mut HashSet<usize>,
+) -> Result<String, String> {
+    let Some(identity) = mapping_view_repr_identity(kind, mapping) else {
+        return Ok(format!(
+            "{}({})",
+            dict_view_type_name(kind),
+            repr_value_inner_checked(mapping, active)?
+        ));
+    };
+    if !active.insert(identity) {
+        return Ok("...".to_string());
+    }
+    let values = mapping_view_repr_values(kind, mapping);
+    let rendered = values
+        .iter()
+        .map(|value| repr_value_inner_checked(value, active))
+        .collect::<Result<Vec<_>, _>>()?
+        .join(", ");
+    active.remove(&identity);
+    Ok(format!("{}([{rendered}])", dict_view_type_name(kind)))
 }
 
 fn repr_tuple_checked(items: &[Value], active: &mut HashSet<usize>) -> Result<String, String> {
@@ -1774,6 +1800,10 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
             format!("UserDict({{{rendered}}})")
         }
         Value::ScopeDict(scope) => {
+            let ptr = Rc::as_ptr(scope) as usize;
+            if !active.insert(ptr) {
+                return "{...}".to_string();
+            }
             let entries = scope_dict_entries(scope);
             let rendered = entries
                 .iter()
@@ -1786,8 +1816,10 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
+            active.remove(&ptr);
             format!("{{{rendered}}}")
         }
+        Value::MappingView { kind, mapping } => repr_mapping_view(*kind, mapping, active),
         Value::FrameLocalsProxy { .. } => "<frame locals proxy object>".to_string(),
         Value::SimpleNamespace { fields } => repr_simple_namespace(fields, active),
         Value::Exception {
@@ -1798,6 +1830,57 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
         Value::AstNode { .. } => ast_repr_value(value),
         _ => value.to_string(),
     }
+}
+
+fn repr_mapping_view(kind: DictViewKind, mapping: &Value, active: &mut HashSet<usize>) -> String {
+    let Some(identity) = mapping_view_repr_identity(kind, mapping) else {
+        return format!(
+            "{}({})",
+            dict_view_type_name(kind),
+            repr_value_inner(mapping, active)
+        );
+    };
+    if !active.insert(identity) {
+        return "...".to_string();
+    }
+    let values = mapping_view_repr_values(kind, mapping);
+    let rendered = values
+        .iter()
+        .map(|value| repr_value_inner(value, active))
+        .collect::<Vec<_>>()
+        .join(", ");
+    active.remove(&identity);
+    format!("{}([{rendered}])", dict_view_type_name(kind))
+}
+
+fn mapping_view_repr_identity(kind: DictViewKind, mapping: &Value) -> Option<usize> {
+    let ptr = match mapping {
+        Value::ScopeDict(scope) => Rc::as_ptr(scope) as usize,
+        Value::FrameLocalsProxy { locals } => Rc::as_ptr(locals) as usize,
+        _ => return None,
+    };
+    let tag = match kind {
+        DictViewKind::Keys => 1,
+        DictViewKind::Items => 2,
+        DictViewKind::Values => 3,
+    };
+    Some((ptr & !0b111) | tag)
+}
+
+fn mapping_view_repr_values(kind: DictViewKind, mapping: &Value) -> Vec<Value> {
+    let entries = match mapping {
+        Value::ScopeDict(scope) => scope_dict_entries(scope),
+        Value::FrameLocalsProxy { locals } => scope_dict_entries(locals),
+        _ => Vec::new(),
+    };
+    entries
+        .into_iter()
+        .map(|(key, value)| match kind {
+            DictViewKind::Keys => key,
+            DictViewKind::Values => value,
+            DictViewKind::Items => tuple_value(vec![key, value]),
+        })
+        .collect()
 }
 
 fn repr_simple_namespace(fields: &DictRef, active: &mut HashSet<usize>) -> String {
