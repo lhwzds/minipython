@@ -6538,12 +6538,21 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy sandbox manifest must cite copy public CPython diff evidence"
     );
 
-    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_copy_public_subset");
     for required in [
         "copy.Error is copy.error",
+        "copy.Error.__name__",
+        "raise copy.Error('boom')",
         "copy.dispatch_table",
         "copy.copy(nested)",
         "copy.deepcopy(nested)",
+        "copy.copy(value) == value",
+        "copy.deepcopy(value) == value",
+        "ba_shallow = copy.copy(ba)",
+        "ba_deep = copy.deepcopy(ba)",
+        "ds = copy.copy(d)",
+        "dd = copy.deepcopy(d)",
         "list-alias",
         "dict-alias",
         "tuple-alias",
@@ -6554,10 +6563,50 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "userlist-cycle",
         "userdict-alias",
         "deque-alias",
+        "lambda: copy.copy()",
+        "lambda: copy.copy(1, 2)",
+        "lambda: copy.deepcopy()",
     ] {
         assert!(
-            body.contains(required),
+            diff_body.contains(required),
             "copy CPython diff evidence must cover pure-memory behavior `{required}`"
+        );
+        assert!(
+            subset_body.contains(required),
+            "copy runtime subset evidence must cover pure-memory behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "Error",
+            "error",
+            "dispatch_table",
+            "immutable scalar",
+            "copy.deepcopy()",
+            "memo preservation",
+            "shared list/dict/tuple",
+            "self-referential",
+            "lists",
+            "UserList",
+            "UserDict",
+            "deque",
+        ] {
+            assert!(
+                document.contains(required),
+                "copy docs must describe pure-memory behavior `{required}`"
+            );
+        }
+    }
+
+    for excluded in [
+        "Full pickle dispatch-table contents",
+        "pickle protocol byte compatibility",
+        "arbitrary extension-object copy hooks",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(excluded),
+            "copy migration notes must keep unsupported boundary `{excluded}` documented"
         );
     }
 }
