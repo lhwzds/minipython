@@ -4152,7 +4152,7 @@ Completed in the string line-continuation tokenizer pass:
 
 Completed in the numeric-literal diagnostics pass:
 
-- Added `cpython_syntax_error_message_parity_subset` for CPython
+- Added `cpython_syntax_error_message_parity_diff_subset` for CPython
   `Lib/test/test_grammar.py::test_bad_numerical_literals` diagnostic messages.
 - Split MiniPython's generic `invalid number: ...` lexer errors into CPython-like
   categories for invalid binary, octal, hexadecimal, and decimal literals.
@@ -7350,7 +7350,7 @@ Completed in the collections ABC Collection direct-subclass pass:
 
 Completed in the selector/atom differential-parity pass:
 
-- Extended `cpython_program_output_parity_smoke_subset` with CPython
+- Extended `cpython_program_output_parity_smoke_diff_subset` with CPython
   `Lib/test/test_grammar.py::test_selectors` tuple-subscript key behavior,
   including assignment and lookup through `d[1,]`, `d[1, 2]`, and
   `d[1, 2, 3]`.
@@ -7360,7 +7360,7 @@ Completed in the selector/atom differential-parity pass:
 
 Completed in the operator differential-parity pass:
 
-- Extended `cpython_program_output_parity_smoke_subset` with CPython
+- Extended `cpython_program_output_parity_smoke_diff_subset` with CPython
   `Lib/test/test_grammar.py::test_binary_mask_ops`, `::test_shift_ops`,
   `::test_additive_ops`, `::test_multiplicative_ops`, and `::test_unary_ops`
   parity coverage for bitwise, shift, additive, multiplicative, and unary
@@ -7564,7 +7564,7 @@ Completed in the SyntaxError parenthesis/string diagnostics pass:
   changing ordinary and triple-quoted unterminated string diagnostics to
   CPython's `unterminated string literal` wording and preserving the escaped end
   quote hint for both ordinary and raw string prefixes.
-- Extended `cpython_syntax_error_message_parity_subset`,
+- Extended `cpython_syntax_error_message_parity_diff_subset`,
   `cpython_syntax_error_parenthesis_subset`,
   `cpython_invalid_string_literal_subset`, and
   `cpython_bytes_source_rejection_parity_diff_subset` so these method-level ports are
@@ -7600,7 +7600,7 @@ Completed in the SyntaxError multiline diagnostic pass:
   by recognizing adjacent string literal concatenation followed by a missing
   comma before a keyword-like argument and reporting `Perhaps you forgot a
   comma` with the span on the final adjacent string token.
-- Extended `cpython_syntax_error_message_parity_subset`,
+- Extended `cpython_syntax_error_message_parity_diff_subset`,
   `cpython_invalid_call_argument_helper_rules_subset`, and
   `cpython_multiline_string_concat_missing_comma_subset` to cover both the
   CPython-facing message parity and MiniPython's exact diagnostic spans.
@@ -10347,7 +10347,7 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_itertools_core_diff_subset` with public `count()` arithmetic for
   float, complex, and bool start/step values, while keeping nonnumeric
   start/step construction as TypeError.
-- Extended `cpython_program_output_parity_smoke_subset` with
+- Extended `cpython_program_output_parity_smoke_diff_subset` with
   `comparison-operators-and-chaining`, a direct CPython diff case covering
   equality, ordering, membership, identity, and chained-comparison observable
   behavior from `Lib/test/test_grammar.py::test_comparison`. Added a manifest

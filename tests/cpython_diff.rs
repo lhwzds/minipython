@@ -12866,7 +12866,7 @@ print(type(itertools.chain.from_iterable.__doc__).__name__, bool(itertools.chain
 // `python3` on this machine can act as the oracle. Set MINIPYTHON_CPYTHON to a
 // local CPython build when migrating newer syntax.
 #[test]
-fn cpython_program_output_parity_smoke_subset() {
+fn cpython_program_output_parity_smoke_diff_subset() {
     for case in [
         DiffCase {
             origin: "Lib/test/test_grammar.py::test_additive_ops",
@@ -21994,7 +21994,7 @@ fn cpython_bytes_source_rejection_parity_diff_subset() {
 // Differential rejection tests keep the migration honest without depending on
 // CPython's exact SyntaxError wording or MiniPython's internal error phase.
 #[test]
-fn cpython_rejection_parity_smoke_subset() {
+fn cpython_rejection_parity_smoke_diff_subset() {
     for case in [
         DiffCase {
             origin: "Lib/test/test_grammar.py::test_if",
@@ -23008,7 +23008,7 @@ else:
 }
 
 #[test]
-fn cpython_syntax_error_message_parity_subset() {
+fn cpython_syntax_error_message_parity_diff_subset() {
     for case in [
         ErrorMessageCase {
             origin: "Lib/test/test_syntax.py::SyntaxErrorTestCase::test_expression_with_assignment",
@@ -23730,7 +23730,7 @@ fn cpython_syntax_error_message_parity_subset() {
 }
 
 #[test]
-fn cpython_runtime_error_message_parity_subset() {
+fn cpython_runtime_error_message_parity_diff_subset() {
     for case in [
         ErrorMessageCase {
             origin: "Lib/test/test_dict.py::test_mutating_iteration",

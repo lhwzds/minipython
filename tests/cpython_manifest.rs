@@ -4641,7 +4641,7 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
 
 #[test]
 fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
-    let diff_name = "cpython_program_output_parity_smoke_subset";
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
     let diff_start = CPYTHON_DIFF
         .find(&format!("fn {diff_name}("))
         .expect("program output parity smoke diff must exist");
@@ -4696,7 +4696,7 @@ fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
 
 #[test]
 fn cpython_control_flow_smoke_diff_covers_grammar_runtime_subsets() {
-    let diff_name = "cpython_program_output_parity_smoke_subset";
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
     let diff_start = CPYTHON_DIFF
         .find(&format!("fn {diff_name}("))
         .expect("program output parity smoke diff must exist");
