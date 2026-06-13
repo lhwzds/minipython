@@ -60342,6 +60342,21 @@ fn call_math_trunc(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
         ));
     };
 
+    if let Value::Instance {
+        class_name,
+        class_attrs,
+        class_bases,
+        ..
+    } = value
+        && let Some(descriptor) = find_class_attr(class_attrs, class_bases, "__trunc__")
+    {
+        let owner = instance_type_object(class_name, class_attrs, class_bases);
+        if let Some(method) = vm.descriptor_get(descriptor.clone(), value.clone(), owner)? {
+            return vm.call_value(method, Vec::new());
+        }
+        return vm.call_value(bind_method(descriptor, value.clone()), Vec::new());
+    }
+
     if let Some(method) = instance_special_method(value, "__trunc__") {
         return vm.call_value(method, Vec::new());
     }

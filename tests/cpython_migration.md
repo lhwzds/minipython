@@ -5130,10 +5130,8 @@ Completed in the float method/property pass:
   exposes `trunc()` for integer/float truncation, bool and big-integer
   preservation, exact large finite-float integer results, normal `__trunc__`
   dispatch with direct return-value propagation, propagated exceptions, NaN/inf
-  integer conversion errors, and TypeError cases supported by the current
-  runtime. CPython's descriptor lookup edge case for a class-level bad
-  `__trunc__` descriptor is intentionally left outside this subset pending a
-  broader special-method descriptor audit.
+  integer conversion errors, class-level bad `__trunc__` descriptor propagation,
+  and TypeError cases supported by the current runtime.
 - Added `cpython_math_ceil_diff_subset`, `cpython_math_ceil_subset`,
   `cpython_math_floor_diff_subset`, and `cpython_math_floor_subset`, adapted
   from CPython `Lib/test/test_math.py::MathTests::testCeil` and `::testFloor`. The

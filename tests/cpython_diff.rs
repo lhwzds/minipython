@@ -1867,6 +1867,11 @@ class FloatTruncResult:
         return 23.5
 class TestNoTrunc:
     pass
+class BadTruncDescriptor:
+    def __get__(self, obj, owner=None):
+        raise ValueError('bad descriptor')
+class DescriptorTrunc:
+    __trunc__ = BadTruncDescriptor()
 
 print(math.trunc(TestTrunc()))
 print(type(math.trunc(FloatTruncResult())).__name__)
@@ -1879,6 +1884,7 @@ for expr in [
     lambda: math.trunc(float('inf')),
     lambda: math.trunc(TestNoTrunc()),
     lambda: math.trunc(TestRaises()),
+    lambda: math.trunc(DescriptorTrunc()),
     lambda: math.trunc(x=1),
 ]:
     try:
