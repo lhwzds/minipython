@@ -5448,7 +5448,8 @@ Completed in the string maketrans/translate method pass:
   including deletion entries, character-key normalization, non-ASCII
   replacements, invalid Unicode code point errors, and representative
   `TypeError` / `ValueError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
+- Added `cpython_string_maketrans_translate_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported
   translation behavior.
 
 Completed in the string/bytes codec method pass:

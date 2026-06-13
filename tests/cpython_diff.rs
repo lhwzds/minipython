@@ -5405,6 +5405,35 @@ for expr in [lambda: 'abc'.ljust(), lambda: 'abc'.rjust(), lambda: 'abc'.center(
 }
 
 #[test]
+fn cpython_string_maketrans_translate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_str.py maketrans/translate subset",
+        name: "string-maketrans-translate",
+        source: r#"print('abababc'.translate({97: None}))
+print('abababc'.translate({97: None, 98: 105}))
+print('abababc'.translate({97: None, 98: 105, 99: 'x'}))
+print('abababc'.translate({97: None, 98: ''}))
+print('xzx'.translate({122: 'yy'}))
+print('abababc'.translate({'b': '<i>'}))
+tbl = str.maketrans({'a': None, 'b': '<i>'})
+print('abababc'.translate(tbl))
+tbl = str.maketrans('abc', 'xyz', 'd')
+print('abdcdcbdddd'.translate(tbl))
+print('[a]'.translate(str.maketrans('a', 'X')))
+print('[a]'.translate(str.maketrans({'a': 'XXX'})))
+print('[a]'.translate(str.maketrans({'a': '\xe9'})))
+print('axb'.translate(str.maketrans({'a': None, 'b': '123'})))
+print('[\xe9]'.translate(str.maketrans({'\xe9': 'a'})))
+print('[\xe9]'.translate(str.maketrans({'\xe9': None})))
+for expr in [lambda: str.maketrans(), lambda: str.maketrans('abc', 'defg'), lambda: str.maketrans(2, 'def'), lambda: str.maketrans('abc', 2), lambda: str.maketrans('abc', 'def', 2), lambda: str.maketrans({'xy': 2}), lambda: str.maketrans({(1,): 2}), lambda: 'hello'.translate(), lambda: 'abababc'.translate('abc', 'xyz'), lambda: '[a]'.translate(str.maketrans({'a': 1114112}))]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
