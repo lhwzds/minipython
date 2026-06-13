@@ -1045,6 +1045,7 @@ print(json.loads(s=b'[1, 2]', strict=True))
 print(json.loads(s='{"none": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))
 print(json.loads('1', parse_int=lambda s: 'hook'))
 print(json.loads('{"x": 1}', object_hook=lambda d: {'hooked': d['x']}))
+print(json.loads('{"x": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))
 print(json.dumps(obj={'b': [2]}, sort_keys=True))
 print(json.dumps(obj='é', ensure_ascii=False))
 print(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))
@@ -1602,6 +1603,43 @@ for label, source, kwargs in [
         json.loads(source, **kwargs)
     except Exception as error:
         if label == 'object-hook-boom':
+            print(label, type(error).__name__, str(error))
+        else:
+            print(label, type(error).__name__, isinstance(error, TypeError))"#,
+    });
+}
+
+#[test]
+fn cpython_json_loads_object_pairs_hook_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public loads object_pairs_hook subset",
+        name: "json-loads-object-pairs-hook",
+        source: r#"import json
+
+def pairs(value):
+    print('pairs', value)
+    return ('pairs', value)
+
+def obj(value):
+    print('obj', value)
+    return ('obj', value)
+
+print(json.loads('{}', object_pairs_hook=pairs))
+print(json.loads('{"a": 1, "a": 2, "b": {"c": 3}}', object_pairs_hook=pairs))
+print(json.loads('{"a": 1, "b": {"c": 2}}', object_hook=obj, object_pairs_hook=pairs))
+print(json.loads('[1, 2]', object_pairs_hook=1))
+
+def boom(value):
+    raise ValueError('boom-pairs')
+
+for label, source, kwargs in [
+    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),
+    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),
+]:
+    try:
+        json.loads(source, **kwargs)
+    except Exception as error:
+        if label == 'pairs-boom':
             print(label, type(error).__name__, str(error))
         else:
             print(label, type(error).__name__, isinstance(error, TypeError))"#,

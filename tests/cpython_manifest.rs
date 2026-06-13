@@ -3332,7 +3332,6 @@ fn expected_sandbox_stdlib_excluded_terms() -> BTreeMap<&'static str, Vec<&'stat
             vec![
                 "File APIs",
                 "non-`None` encoder/decoder hooks",
-                "object_pairs_hook",
                 "non-`None` `default`",
                 "cls",
                 "bytes/bytearray serialization",
@@ -4002,11 +4001,11 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_nonfinite_constants_subset",
             "cpython_json_loads_parse_hooks_subset",
             "cpython_json_loads_object_hook_subset",
+            "cpython_json_loads_object_pairs_hook_subset",
             "cpython_json_loads_dumps_error_boundary_subset",
             "cpython_json_loads_string_error_boundary_subset",
         ],
         &[
-            "object_pairs_hook",
             "default",
             "cls",
             "File APIs",
@@ -4044,6 +4043,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_loads_nonfinite_constants_diff_subset",
         "cpython_json_loads_parse_hooks_diff_subset",
         "cpython_json_loads_object_hook_diff_subset",
+        "cpython_json_loads_object_pairs_hook_diff_subset",
         "cpython_json_loads_dumps_error_boundary_diff_subset",
         "cpython_json_loads_string_error_boundary_diff_subset",
     ] {
@@ -4163,7 +4163,7 @@ fn json_hook_boundaries_stay_sandbox_classified() {
     let subset_source = &CPYTHON_SUBSET[subset_start..subset_end];
     for required in [
         "object_hook=lambda",
-        "loads-object-pairs-hook",
+        "object_pairs_hook=lambda",
         "parse_int=lambda",
         "dumps-cls",
         "dumps-default",
@@ -4180,7 +4180,6 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         .find(|row| row.module == "json")
         .expect("sandbox stdlib manifest must include json");
     for excluded in [
-        "object_pairs_hook",
         "default",
         "cls",
         "File APIs",
@@ -4561,6 +4560,16 @@ fn json_loads_parsing_diff_covers_subset_surface() {
                 "boom-object",
             ][..],
         ),
+        (
+            "cpython_json_loads_object_pairs_hook_diff_subset",
+            "cpython_json_loads_object_pairs_hook_subset",
+            &[
+                "object_pairs_hook",
+                "pairs-noncallable",
+                "pairs-boom",
+                "boom-pairs",
+            ][..],
+        ),
     ];
 
     for (diff_name, subset_name, required_snippets) in parsing_pairs {
@@ -4612,6 +4621,7 @@ fn json_loads_parsing_diff_covers_subset_surface() {
         "parse_float",
         "parse_constant",
         "object_hook",
+        "object_pairs_hook",
         "sys.set_int_max_str_digits",
         "top-level scalars and empty containers",
         "CPython default non-finite constants",
@@ -4622,8 +4632,7 @@ fn json_loads_parsing_diff_covers_subset_surface() {
         );
     }
     for excluded in [
-        "loads()` hooks/options other than `strict` / `object_hook`",
-        "object_pairs_hook",
+        "loads()` hooks/options other than `strict` / `object_hook` / `object_pairs_hook`",
         "unpaired surrogate storage",
         "full `JSONDecodeError` compatibility",
     ] {

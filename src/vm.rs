@@ -23564,7 +23564,7 @@ impl Vm {
         let parse_float = json_optional_hook(values[3].take());
         let parse_int = json_optional_hook(values[4].take());
         let parse_constant = json_optional_hook(values[5].take());
-        json_unsupported_keyword_none("loads", "object_pairs_hook", values[6].as_ref())?;
+        let object_pairs_hook = json_optional_hook(values[6].take());
         let strict = values[7]
             .as_ref()
             .map(|value| self.truth_value(value.clone()))
@@ -23596,6 +23596,7 @@ impl Vm {
             &source,
             strict,
             object_hook,
+            object_pairs_hook,
             parse_float,
             parse_int,
             parse_constant,
@@ -57877,6 +57878,7 @@ struct JsonParser<'a> {
     pos: usize,
     strict: bool,
     object_hook: Option<Value>,
+    object_pairs_hook: Option<Value>,
     parse_float: Option<Value>,
     parse_int: Option<Value>,
     parse_constant: Option<Value>,
@@ -57888,6 +57890,7 @@ impl<'a> JsonParser<'a> {
         source: &str,
         strict: bool,
         object_hook: Option<Value>,
+        object_pairs_hook: Option<Value>,
         parse_float: Option<Value>,
         parse_int: Option<Value>,
         parse_constant: Option<Value>,
@@ -57898,6 +57901,7 @@ impl<'a> JsonParser<'a> {
             pos: 0,
             strict,
             object_hook,
+            object_pairs_hook,
             parse_float,
             parse_int,
             parse_constant,
@@ -57952,8 +57956,9 @@ impl<'a> JsonParser<'a> {
         self.expect_char('{')?;
         self.skip_whitespace();
         let mut entries = Vec::new();
+        let mut pairs = Vec::new();
         if self.consume_if('}') {
-            return self.apply_object_hook(dict_value(entries));
+            return self.apply_object_hooks(entries, pairs);
         }
         loop {
             self.skip_whitespace();
@@ -57965,14 +57970,16 @@ impl<'a> JsonParser<'a> {
             self.expect_char(':')?;
             self.skip_whitespace();
             let value = self.parse_value()?;
-            insert_dict_entry(&mut entries, Value::String(key), value)?;
+            let key = Value::String(key);
+            pairs.push(tuple_value(vec![key.clone(), value.clone()]));
+            insert_dict_entry(&mut entries, key, value)?;
             self.skip_whitespace();
             if self.consume_if('}') {
                 break;
             }
             self.expect_char(',')?;
         }
-        self.apply_object_hook(dict_value(entries))
+        self.apply_object_hooks(entries, pairs)
     }
 
     fn parse_array(&mut self) -> Result<Value, String> {
@@ -58148,7 +58155,15 @@ impl<'a> JsonParser<'a> {
         Ok(float_value(default))
     }
 
-    fn apply_object_hook(&mut self, object: Value) -> Result<Value, String> {
+    fn apply_object_hooks(
+        &mut self,
+        entries: Vec<(Value, Value)>,
+        pairs: Vec<Value>,
+    ) -> Result<Value, String> {
+        if let Some(hook) = self.object_pairs_hook.clone() {
+            return self.vm.call_value(hook, vec![list_value(pairs)]);
+        }
+        let object = dict_value(entries);
         if let Some(hook) = self.object_hook.clone() {
             return self.vm.call_value(hook, vec![object]);
         }

@@ -33561,13 +33561,14 @@ except Exception as error:
 #[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
-        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.loads('{\"x\": 1}', object_hook=lambda d: {'hooked': d['x']}))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('loads-object-pairs-hook', lambda: json.loads('{}', object_pairs_hook=dict))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
+        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.loads('{\"x\": 1}', object_hook=lambda d: {'hooked': d['x']}))\nprint(json.loads('{\"x\": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
         &[
             "1",
             "[1, 2]",
             "{'none': True}",
             "hook",
             "{'hooked': 1}",
+            "('pairs', [('x', 1)])",
             "{\"b\": [2]}",
             "\"é\"",
             "{\"b\": [2]}",
@@ -33575,7 +33576,6 @@ fn cpython_json_keyword_argument_binding_subset() {
             "dumps-duplicate-obj TypeError True",
             "loads-missing-s TypeError True",
             "dumps-missing-obj TypeError True",
-            "loads-object-pairs-hook TypeError True",
             "dumps-cls TypeError True",
             "dumps-default TypeError True",
         ],
@@ -34022,6 +34022,26 @@ fn cpython_json_loads_object_hook_subset() {
             "[1, 2]",
             "object-hook-noncallable TypeError True",
             "object-hook-boom ValueError boom-object",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_loads_object_pairs_hook_subset() {
+    assert_output(
+        "import json\n\ndef pairs(value):\n    print('pairs', value)\n    return ('pairs', value)\n\ndef obj(value):\n    print('obj', value)\n    return ('obj', value)\n\nprint(json.loads('{}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"a\": 2, \"b\": {\"c\": 3}}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"b\": {\"c\": 2}}', object_hook=obj, object_pairs_hook=pairs))\nprint(json.loads('[1, 2]', object_pairs_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-pairs')\n\nfor label, source, kwargs in [\n    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),\n    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'pairs-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, isinstance(error, TypeError))",
+        &[
+            "pairs []",
+            "('pairs', [])",
+            "pairs [('c', 3)]",
+            "pairs [('a', 1), ('a', 2), ('b', ('pairs', [('c', 3)]))]",
+            "('pairs', [('a', 1), ('a', 2), ('b', ('pairs', [('c', 3)]))])",
+            "pairs [('c', 2)]",
+            "pairs [('a', 1), ('b', ('pairs', [('c', 2)]))]",
+            "('pairs', [('a', 1), ('b', ('pairs', [('c', 2)]))])",
+            "[1, 2]",
+            "pairs-noncallable TypeError True",
+            "pairs-boom ValueError boom-pairs",
         ],
     );
 }
