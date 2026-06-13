@@ -6641,6 +6641,132 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_array_one_byte_public_file_methods_diff_subset"),
         "io.BytesIO sandbox manifest must cite CPython diff evidence for array tofile/fromfile BytesIO behavior"
     );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_io_bytesio_public_diff_subset");
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_io_bytesio_public_subset");
+    for required in [
+        "io.BytesIO(b'abc')",
+        "bio.read(1)",
+        "bio.getvalue()",
+        "view = bio.getbuffer()",
+        "view[0] = 122",
+        "write-buffered",
+        "truncate-buffered",
+        "close-buffered",
+        "derived-copy-live",
+        "derived-slice-live",
+        "scope-release-truncate",
+        "del-release-truncate",
+        "ann-del-release-truncate",
+        "temp-release-truncate",
+        "temp-release-write",
+        "bio.write(bytearray(b'cd'))",
+        "bio.readinto(target)",
+        "bio.read1(2)",
+        "bio.readinto1(target)",
+        "bio.seek(-1, 1)",
+        "io.SEEK_SET",
+        "io.SEEK_CUR",
+        "io.SEEK_END",
+        "bio.truncate(3)",
+        "bio.truncate(5)",
+        "bio.readline()",
+        "bio.readlines(hint)",
+        "bio.writelines",
+        "bio.readable()",
+        "bio.writable()",
+        "bio.seekable()",
+        "bio.isatty()",
+        "io.UnsupportedOperation",
+        "bio.fileno",
+        "bio.detach",
+        "bio.close()",
+        "closed-getvalue",
+        "closed-read",
+        "closed-write",
+        "bio.__enter__()",
+        "bio.__exit__",
+        "with io.BytesIO(b'xy')",
+        "iter(bio)",
+        "next-eof",
+        "next-closed",
+        "bad-source",
+        "too-many",
+        "write-str",
+        "read1-bad-size",
+        "seek-bad-whence",
+        "truncate-neg",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "io.BytesIO CPython diff evidence must cover pure-memory behavior `{required}`"
+        );
+        assert!(
+            subset_body.contains(required),
+            "io.BytesIO runtime subset evidence must cover pure-memory behavior `{required}`"
+        );
+    }
+
+    let readinto_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_memoryview_bytesio_readinto_diff_subset",
+    );
+    let readinto_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_memoryview_bytesio_readinto_subset");
+    for required in [
+        "io.BytesIO(b'XYZW')",
+        "bio.readinto",
+        "memoryview",
+        "bytearray",
+        "memoryview(b'abc')",
+        "TypeError",
+        "initial_bytes=None",
+        "initial_bytes=b'ab'",
+    ] {
+        assert!(
+            readinto_diff.contains(required),
+            "io.BytesIO readinto CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            readinto_subset.contains(required),
+            "io.BytesIO readinto runtime subset evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "io.BytesIO",
+            "readinto",
+            "getbuffer",
+            "BufferError",
+            "readable()",
+            "writable()",
+            "seekable()",
+            "UnsupportedOperation",
+            "context-manager",
+            "line iteration",
+            "None",
+            "bytes-like",
+        ] {
+            assert!(
+                document.contains(required),
+                "io.BytesIO docs must describe pure-memory behavior `{required}`"
+            );
+        }
+    }
+
+    for excluded in [
+        "Real files",
+        "buffering layers",
+        "text I/O",
+        "file descriptors",
+        "OS-backed stream semantics",
+    ] {
+        assert!(
+            row.excluded_surface.contains(excluded),
+            "io.BytesIO sandbox manifest must keep unsupported host I/O boundary `{excluded}` documented"
+        );
+    }
 }
 
 #[test]
