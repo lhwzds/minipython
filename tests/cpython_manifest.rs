@@ -4748,6 +4748,111 @@ fn operator_inplace_helper_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_module_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_module_metadata_subset(",
+        "OperatorTestCase::test___all__",
+        "test_dunder_is_original",
+        "public module metadata and alias",
+        "without depending on CPython's `_operator` accelerator",
+        "expected = ['abs', 'add', 'and_', 'attrgetter', 'call'",
+        "'is_none'",
+        "'is_not_none'",
+        "print(operator.__all__ == expected)",
+        "computed_all = set()",
+        "for name in vars(operator):",
+        "getattr(value, '__module__', None) in ('operator', '_operator')",
+        "actual_all = set(operator.__all__)",
+        "print(len(actual_all), len(computed_all), computed_all == actual_all)",
+        "print(operator.add.__name__, operator.add.__module__)",
+        "for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']",
+        "value.__qualname__ == name",
+        "type(value.__doc__).__name__",
+        "for name in dir(operator):",
+        "dunder = getattr(operator, '__' + name.strip('_') + '__', None)",
+        "dunder is not getattr(operator, name)",
+        "print(len(aliases), failures)",
+        "operator.__add__ is operator.add",
+        "operator.__not__ is operator.not_",
+        "operator.__iconcat__ is operator.iconcat",
+        "operator.__call__ is operator.call",
+        "hasattr(operator, '__countOf__')",
+        "hasattr(operator, '__is_none__')",
+        "hasattr(operator, '__length_hint__')",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator module metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_operator_module_metadata_diff_subset");
+    for required in [
+        "OperatorTestCase::test___all__ and ::test_dunder_is_original",
+        "operator-module-metadata",
+        "for name in ['add', 'not_', 'iconcat', 'abs', 'attrgetter', 'itemgetter', 'methodcaller', 'length_hint']",
+        "getattr(value, '__name__', None)",
+        "getattr(value, '__qualname__', None)",
+        "getattr(value, '__module__', None) in ('operator', '_operator')",
+        "type(value.__doc__).__name__",
+        "operator.__add__ is operator.add",
+        "operator.__not__ is operator.not_",
+        "operator.__iconcat__ is operator.iconcat",
+        "hasattr(operator, '__countOf__')",
+        "hasattr(operator, '__length_hint__')",
+        "stable_exports = ['abs', 'add', 'and_', 'attrgetter'",
+        "all(name in operator.__all__ for name in stable_exports)",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator module metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+    for newer in [
+        "is_none",
+        "is_not_none",
+        "operator.__call__ is operator.call",
+        "'call'",
+    ] {
+        assert!(
+            !body.contains(newer),
+            "stable operator module metadata diff must leave newer `{newer}` evidence to gated helper diffs"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_module_metadata_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_module_metadata_diff_subset")
+            && CPYTHON_COVERAGE.contains("exported `operator.__all__` names")
+            && CPYTHON_COVERAGE.contains("callable `__module__`")
+            && CPYTHON_COVERAGE.contains("__name__")
+            && CPYTHON_COVERAGE.contains("__qualname__")
+            && CPYTHON_COVERAGE.contains("__doc__")
+            && CPYTHON_COVERAGE.contains("dunder aliases")
+            && CPYTHON_COVERAGE.contains("__call__")
+            && CPYTHON_COVERAGE.contains("gated direct CPython evidence"),
+        "coverage notes must describe operator module metadata and gated newer evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_module_metadata_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_module_metadata_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.__all__")
+            && CPYTHON_MIGRATION.contains("public helper list")
+            && CPYTHON_MIGRATION.contains("operator.*` builtin callable")
+            && CPYTHON_MIGRATION.contains("__name__")
+            && CPYTHON_MIGRATION.contains("__module__")
+            && CPYTHON_MIGRATION.contains("dunder aliases")
+            && CPYTHON_MIGRATION.contains("__call__")
+            && CPYTHON_MIGRATION.contains("signature and pickle tests")
+            && CPYTHON_MIGRATION.contains("not a requirement")
+            && CPYTHON_MIGRATION.contains("for this slice")
+            && CPYTHON_MIGRATION
+                .contains("newer `operator.call` entry has gated direct CPython evidence"),
+        "migration notes must describe operator module metadata public behavior and gated direct diff evidence"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
