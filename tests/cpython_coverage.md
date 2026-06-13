@@ -2052,6 +2052,7 @@ Recent runtime migration notes:
   round-trips for supported bytes and bytearray values through MiniPython's
   current internal pickle payload surface.
 - `STRING_RUNTIME` also includes
+  `cpython_bytes_iterator_pickle_roundtrip_diff_subset` /
   `cpython_bytes_iterator_pickle_roundtrip_subset`, covering CPython
   `BaseBytesTest::test_iterator_pickling` public iterator value/type
   round-trips for initial and already-advanced bytes/bytearray iterators.

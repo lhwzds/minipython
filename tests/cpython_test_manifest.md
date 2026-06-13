@@ -1170,7 +1170,8 @@ value/type round-trip assertions from `BaseBytesTest::test_pickling` for
 supported bytes and bytearray payloads. The remaining pickle gap in the
 source-group row refers to subclass pickle behavior and CPython's real binary
 pickle stream.
-`cpython_bytes_iterator_pickle_roundtrip_subset` ports
+`cpython_bytes_iterator_pickle_roundtrip_subset` with direct
+`cpython_bytes_iterator_pickle_roundtrip_diff_subset` evidence ports
 `BaseBytesTest::test_iterator_pickling` for supported bytes and bytearray
 iterators, covering initial and already-advanced iterator state across every
 exposed pickle protocol.

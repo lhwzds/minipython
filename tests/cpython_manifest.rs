@@ -1566,6 +1566,49 @@ fn cpython_bytes_pickle_roundtrip_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_iterator_pickle_roundtrip_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_iterator_pickle_roundtrip_diff_subset";
+    let subset_name = "cpython_bytes_iterator_pickle_roundtrip_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes/bytearray iterator pickle round-trip direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes/bytearray iterator pickle round-trip runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes/bytearray iterator pickle docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes/bytearray iterator pickle diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "pickle.dumps(itorg, proto)",
+        "pickle.loads(payload)",
+        "type(itorg) is type(it)",
+        "list(again) == data",
+        "list(it) == data[1:]",
+        "print(ctor.__name__, initial, repeated, running)",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes/bytearray iterator pickle diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);

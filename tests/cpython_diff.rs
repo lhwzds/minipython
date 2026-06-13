@@ -19713,6 +19713,39 @@ print(mutable, restored, restored is mutable)"#,
 }
 
 #[test]
+fn cpython_bytes_iterator_pickle_roundtrip_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_iterator_pickling public iterator value/type subset",
+        name: "bytes-bytearray-iterator-pickle-roundtrip",
+        source: r#"import pickle
+samples = [b'', b'a', b'abc', b'\xffab\x80', b'\0\0\377\0\0']
+for ctor in [bytes, bytearray]:
+    initial = 0
+    repeated = 0
+    running = 0
+    for proto in range(pickle.HIGHEST_PROTOCOL + 1):
+        for raw in samples:
+            itorg = iter(ctor(raw))
+            data = list(ctor(raw))
+            payload = pickle.dumps(itorg, proto)
+            it = pickle.loads(payload)
+            if type(itorg) is type(it) and list(it) == data:
+                initial += 1
+            again = pickle.loads(payload)
+            if list(again) == data:
+                repeated += 1
+            if raw:
+                it = pickle.loads(payload)
+                next(it)
+                payload = pickle.dumps(it, proto)
+                it = pickle.loads(payload)
+                if type(itorg) is type(it) and list(it) == data[1:]:
+                    running += 1
+    print(ctor.__name__, initial, repeated, running)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_exhausted_iterator_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator",

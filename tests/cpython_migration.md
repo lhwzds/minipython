@@ -3784,6 +3784,8 @@ Completed in the bytes iterator pickle round-trip pass:
 - Fixed `pickle.dumps()` / `pickle.loads()` over shared `Value::Iterator`
   wrappers so each unpickle creates a fresh iterator state instead of sharing
   and consuming the payload's original `Rc<RefCell<_>>`.
+- Added direct CPython diff evidence in
+  `cpython_bytes_iterator_pickle_roundtrip_diff_subset`.
 - Covered bytes and bytearray iterator value/type preservation for initial and
   already-advanced iterators across every exposed pickle protocol. The remaining
   pickle gap after this pass still included bytearray iterator pickles that must
