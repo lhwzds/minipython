@@ -23658,7 +23658,7 @@ impl Vm {
             separators_explicit = !matches!(value, Value::None);
             json_dumps_apply_separators(self, &mut options, value)?;
         }
-        json_unsupported_keyword_none("dumps", "default", values[8].as_ref())?;
+        options.default_hook = json_optional_hook(values[8].take());
         if let Some(value) = values[9].as_ref() {
             options.sort_keys = self.truth_value(value.clone())?;
         }
@@ -58305,6 +58305,7 @@ struct JsonDumpsOptions {
     item_separator: String,
     key_separator: String,
     indent: Option<String>,
+    default_hook: Option<Value>,
 }
 
 impl Default for JsonDumpsOptions {
@@ -58318,6 +58319,7 @@ impl Default for JsonDumpsOptions {
             item_separator: ", ".to_string(),
             key_separator: ": ".to_string(),
             indent: None,
+            default_hook: None,
         }
     }
 }
@@ -58488,10 +58490,16 @@ fn json_dumps_value_inner(
             let entries = json_dumps_dict_subclass_items(vm, value)?;
             json_dumps_dict(vm, &entries, active, options, depth)
         }
-        value => Err(format!(
-            "TypeError: Object of type {} is not JSON serializable",
-            type_name(value)
-        )),
+        value => {
+            if let Some(hook) = options.default_hook.clone() {
+                let replacement = vm.call_value(hook, vec![value.clone()])?;
+                return json_dumps_value_at_depth(vm, &replacement, active, options, depth);
+            }
+            Err(format!(
+                "TypeError: Object of type {} is not JSON serializable",
+                type_name(value)
+            ))
+        }
     }
 }
 

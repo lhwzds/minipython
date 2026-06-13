@@ -33561,7 +33561,7 @@ except Exception as error:
 #[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
-        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.loads('{\"x\": 1}', object_hook=lambda d: {'hooked': d['x']}))\nprint(json.loads('{\"x\": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow('dumps-default', lambda: json.dumps(object(), default=str))",
+        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.loads('{\"x\": 1}', object_hook=lambda d: {'hooked': d['x']}))\nprint(json.loads('{\"x\": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nprint(json.dumps(object(), default=lambda obj: 'fallback'))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))",
         &[
             "1",
             "[1, 2]",
@@ -33572,12 +33572,12 @@ fn cpython_json_keyword_argument_binding_subset() {
             "{\"b\": [2]}",
             "\"é\"",
             "{\"b\": [2]}",
+            "\"fallback\"",
             "loads-duplicate-s TypeError True",
             "dumps-duplicate-obj TypeError True",
             "loads-missing-s TypeError True",
             "dumps-missing-obj TypeError True",
             "dumps-cls TypeError True",
-            "dumps-default TypeError True",
         ],
     );
 }
@@ -33913,6 +33913,25 @@ fn cpython_json_dumps_float_spelling_subset() {
             "1.2345 1.2345",
             "1e-06 1e-06",
             "1e+20 1e+20",
+        ],
+    );
+}
+
+#[test]
+fn cpython_json_dumps_default_hook_subset() {
+    assert_output(
+        "import json\n\nclass Box:\n    pass\n\nclass Bad:\n    pass\n\ndef box(value):\n    item = Box()\n    item.value = value\n    return item\n\ndef default(obj):\n    print('default', type(obj).__name__, getattr(obj, 'value', 'missing'))\n    if isinstance(obj, Box):\n        return {'box': obj.value}\n    raise TypeError('nope')\n\nfor label, obj, kwargs in [\n    ('top', box(1), dict(default=default, sort_keys=True)),\n    ('nested', {'x': [box(2)]}, dict(default=default, sort_keys=True)),\n    ('scalar-ok', box('s'), dict(default=lambda o: o.value)),\n    ('noncallable-unused', {'x': 1}, dict(default=1, sort_keys=True)),\n    ('noncallable-used', box(3), dict(default=1)),\n    ('typeerror', Bad(), dict(default=default)),\n]:\n    try:\n        print(label, json.dumps(obj, **kwargs))\n    except Exception as error:\n        if label == 'noncallable-used':\n            print(label, type(error).__name__, isinstance(error, TypeError))\n        else:\n            print(label, type(error).__name__, str(error), isinstance(error, TypeError))\n\ndef boom(obj):\n    raise ValueError('boom-default')\n\ntry:\n    json.dumps(box(4), default=boom)\nexcept Exception as error:\n    print('boom', type(error).__name__, str(error))",
+        &[
+            "default Box 1",
+            "top {\"box\": 1}",
+            "default Box 2",
+            "nested {\"x\": [{\"box\": 2}]}",
+            "scalar-ok \"s\"",
+            "noncallable-unused {\"x\": 1}",
+            "noncallable-used TypeError True",
+            "default Bad missing",
+            "typeerror TypeError nope True",
+            "boom ValueError boom-default",
         ],
     );
 }

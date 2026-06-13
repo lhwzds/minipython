@@ -394,6 +394,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_skipkeys_diff_subset`,
   `cpython_json_dumps_sort_keys_diff_subset`,
   `cpython_json_dumps_separators_diff_subset`,
+  `cpython_json_dumps_default_hook_diff_subset`,
   `cpython_json_dumps_float_spelling_diff_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset`,
@@ -788,7 +789,9 @@ Recent runtime migration notes:
   `cpython_json_dumps_sort_keys_diff_subset` /
   `cpython_json_dumps_sort_keys_subset`,
   `cpython_json_dumps_separators_diff_subset` /
-  `cpython_json_dumps_separators_subset`, and
+  `cpython_json_dumps_separators_subset`,
+  `cpython_json_dumps_default_hook_diff_subset` /
+  `cpython_json_dumps_default_hook_subset`, and
   `cpython_json_dumps_float_spelling_diff_subset` /
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
@@ -813,7 +816,8 @@ Recent runtime migration notes:
   `skipkeys` omission of unsupported dict keys,
   `sort_keys` ordering for supported comparable keys, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and
-  general iterables,
+  general iterables, `default` hook handling for otherwise unsupported objects
+  including nested values and exception propagation,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, `parse_int`, `parse_float`, and `parse_constant`
@@ -829,12 +833,13 @@ Recent runtime migration notes:
   container paths, raw control-character rejection, malformed escape rejection,
   and first-pass type, structural, literal, and data error classification. File APIs,
   non-`None` encoder/decoder hooks other than `object_hook`,
-  `object_pairs_hook`, `parse_int`, `parse_float`, and `parse_constant`,
+  `object_pairs_hook`, `parse_int`, `parse_float`, `parse_constant`, and
+  `default`,
   `loads()` hooks/options other than `strict` / `object_hook` /
   `object_pairs_hook`,
   `dumps()` hooks/options other than `allow_nan` /
   `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` /
-  `separators` such as non-`None` `default` and `cls`, the `JSONDecodeError` class and
+  `separators` / `default` such as non-`None` `cls`, the `JSONDecodeError` class and
   full `JSONDecodeError` compatibility, bytes/bytearray serialization, and
   unpaired surrogate storage remain intentionally outside this sandbox subset.
 - The bundled `itertools` module includes

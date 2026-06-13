@@ -1049,6 +1049,7 @@ print(json.loads('{"x": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))
 print(json.dumps(obj={'b': [2]}, sort_keys=True))
 print(json.dumps(obj='é', ensure_ascii=False))
 print(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))
+print(json.dumps(object(), default=lambda obj: 'fallback'))
 show('loads-duplicate-s', lambda: json.loads('{}', s='[]'))
 show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
 show('loads-missing-s', lambda: json.loads(strict=False))
@@ -1428,6 +1429,56 @@ fn cpython_json_dumps_float_spelling_diff_subset() {
         source: r#"import json
 for value in [-0.0, 0.0, 1.0, -1.0, 1.2345, 1e-06, 1e+20]:
     print(repr(value), json.dumps(value))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_default_hook_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook subset",
+        name: "json-dumps-default-hook",
+        source: r#"import json
+
+class Box:
+    pass
+
+class Bad:
+    pass
+
+def box(value):
+    item = Box()
+    item.value = value
+    return item
+
+def default(obj):
+    print('default', type(obj).__name__, getattr(obj, 'value', 'missing'))
+    if isinstance(obj, Box):
+        return {'box': obj.value}
+    raise TypeError('nope')
+
+for label, obj, kwargs in [
+    ('top', box(1), dict(default=default, sort_keys=True)),
+    ('nested', {'x': [box(2)]}, dict(default=default, sort_keys=True)),
+    ('scalar-ok', box('s'), dict(default=lambda o: o.value)),
+    ('noncallable-unused', {'x': 1}, dict(default=1, sort_keys=True)),
+    ('noncallable-used', box(3), dict(default=1)),
+    ('typeerror', Bad(), dict(default=default)),
+]:
+    try:
+        print(label, json.dumps(obj, **kwargs))
+    except Exception as error:
+        if label == 'noncallable-used':
+            print(label, type(error).__name__, isinstance(error, TypeError))
+        else:
+            print(label, type(error).__name__, str(error), isinstance(error, TypeError))
+
+def boom(obj):
+    raise ValueError('boom-default')
+
+try:
+    json.dumps(box(4), default=boom)
+except Exception as error:
+    print('boom', type(error).__name__, str(error))"#,
     });
 }
 

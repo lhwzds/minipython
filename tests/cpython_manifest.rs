@@ -3332,7 +3332,6 @@ fn expected_sandbox_stdlib_excluded_terms() -> BTreeMap<&'static str, Vec<&'stat
             vec![
                 "File APIs",
                 "non-`None` encoder/decoder hooks",
-                "non-`None` `default`",
                 "cls",
                 "bytes/bytearray serialization",
                 "unpaired surrogate storage",
@@ -3995,6 +3994,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_sort_keys_subset",
             "cpython_json_dumps_separators_subset",
             "cpython_json_dumps_float_spelling_subset",
+            "cpython_json_dumps_default_hook_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -4006,7 +4006,6 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_loads_string_error_boundary_subset",
         ],
         &[
-            "default",
             "cls",
             "File APIs",
             "JSONDecodeError",
@@ -4037,6 +4036,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_sort_keys_diff_subset",
         "cpython_json_dumps_separators_diff_subset",
         "cpython_json_dumps_float_spelling_diff_subset",
+        "cpython_json_dumps_default_hook_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -4165,8 +4165,8 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         "object_hook=lambda",
         "object_pairs_hook=lambda",
         "parse_int=lambda",
+        "default=lambda",
         "dumps-cls",
-        "dumps-default",
         "TypeError True",
     ] {
         assert!(
@@ -4179,12 +4179,7 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         .into_iter()
         .find(|row| row.module == "json")
         .expect("sandbox stdlib manifest must include json");
-    for excluded in [
-        "default",
-        "cls",
-        "File APIs",
-        "full `JSONDecodeError` compatibility",
-    ] {
+    for excluded in ["cls", "File APIs", "full `JSONDecodeError` compatibility"] {
         assert!(
             row.excluded_surface.contains(excluded),
             "json sandbox manifest must keep `{excluded}` outside the supported surface"
@@ -4359,6 +4354,16 @@ fn json_dumps_options_diff_covers_subset_surface() {
             "cpython_json_dumps_float_spelling_subset",
             &["-0.0", "1.2345", "1e-06", "1e+20"][..],
         ),
+        (
+            "cpython_json_dumps_default_hook_diff_subset",
+            "cpython_json_dumps_default_hook_subset",
+            &[
+                "default=default",
+                "noncallable-unused",
+                "noncallable-used",
+                "boom-default",
+            ][..],
+        ),
     ];
 
     for (diff_name, subset_name, required_snippets) in option_pairs {
@@ -4399,6 +4404,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
         "skipkeys",
         "sort_keys",
         "separators",
+        "default",
         "finite and default non-finite float spelling",
     ] {
         assert!(
@@ -4409,7 +4415,6 @@ fn json_dumps_options_diff_covers_subset_surface() {
     for excluded in [
         "dumps()` hooks/options",
         "other than `allow_nan`",
-        "non-`None` `default`",
         "cls",
         "bytes/bytearray serialization",
         "full `JSONDecodeError` compatibility",
