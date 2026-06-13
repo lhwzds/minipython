@@ -1925,6 +1925,11 @@ class IndexLike:
         return self.value
 class TestNoCeil:
     pass
+class BadCeilDescriptor:
+    def __get__(self, obj, owner=None):
+        raise ValueError('bad descriptor')
+class DescriptorCeil:
+    __ceil__ = BadCeilDescriptor()
 
 print(math.ceil(TestCeil()), type(math.ceil(FloatCeilResult())).__name__)
 print(math.ceil(FloatLike(42.5)), math.ceil(FloatLike(+1.0)), math.ceil(FloatLike(-1.0)))
@@ -1938,6 +1943,7 @@ for expr in [
     lambda: math.ceil(float('inf')),
     lambda: math.ceil(IndexLike(10**10000)),
     lambda: math.ceil(TestNoCeil()),
+    lambda: math.ceil(DescriptorCeil()),
     lambda: math.ceil(x=1),
 ]:
     try:
@@ -1978,6 +1984,11 @@ class IndexLike:
         return self.value
 class TestNoFloor:
     pass
+class BadFloorDescriptor:
+    def __get__(self, obj, owner=None):
+        raise ValueError('bad descriptor')
+class DescriptorFloor:
+    __floor__ = BadFloorDescriptor()
 
 print(math.floor(TestFloor()), type(math.floor(FloatFloorResult())).__name__)
 print(math.floor(FloatLike(41.9)), math.floor(FloatLike(+1.0)), math.floor(FloatLike(-1.0)))
@@ -1991,6 +2002,7 @@ for expr in [
     lambda: math.floor(float('-inf')),
     lambda: math.floor(IndexLike(10**10000)),
     lambda: math.floor(TestNoFloor()),
+    lambda: math.floor(DescriptorFloor()),
     lambda: math.floor(x=1),
 ]:
     try:

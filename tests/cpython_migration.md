@@ -5139,9 +5139,8 @@ Completed in the float method/property pass:
   rounding-to-integral behavior, bool and big-integer preservation, exact large
   finite-float integer results, normal `__ceil__` / `__floor__` dispatch with
   direct return-value propagation, `__float__` and `__index__` fallback,
-  NaN/inf integer conversion errors, huge-index overflow, and TypeError cases
-  supported by the current runtime. CPython's bad-descriptor lookup edge cases
-  remain outside this subset pending a broader special-method descriptor audit.
+  NaN/inf integer conversion errors, huge-index overflow, class-level bad
+  descriptor propagation, and TypeError cases supported by the current runtime.
 - Added `cpython_math_degrees_radians_diff_subset` and
   `cpython_math_degrees_radians_subset`, adapted from CPython
   `Lib/test/test_math.py::MathTests::testDegrees` and `::testRadians`. The
