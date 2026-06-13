@@ -5285,8 +5285,9 @@ Completed in the string count/case method pass:
 - Added runtime support for `str.count()`, `str.lower()`, and `str.upper()`
   including bounded non-overlapping counts, empty-needle edge cases,
   Unicode-aware case conversion, and representative `TypeError` paths.
-- Added a CPython/MiniPython differential parity case for the same supported
-  count and case-conversion behavior.
+- Added `cpython_string_count_case_diff_subset` as the direct
+  CPython/MiniPython differential parity case for the same supported count and
+  case-conversion behavior.
 
 Completed in the string capitalize/title/swapcase/casefold method pass:
 

@@ -5030,6 +5030,27 @@ for expr in [lambda: 'abcdefghiabc'.index('hib'), lambda: 'abcdefghiab'.index('a
 }
 
 #[test]
+fn cpython_string_count_case_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/string_tests.py count/lower/upper subset",
+        name: "string-count-case",
+        source: r#"print('aaa'.count('a'), 'aaa'.count('b'), 'aaa'.count('aa'))
+print('aaa'.count('a', 1), 'aaa'.count('a', 10), 'aaa'.count('a', -1), 'aaa'.count('a', -10))
+print('aaa'.count('a', 0, 1), 'aaa'.count('a', 0, 10), 'aaa'.count('a', 0, -1), 'aaa'.count('a', 0, -10))
+print('aaa'.count('', 1), 'aaa'.count('', 3), 'aaa'.count('', 10), 'aaa'.count('', -1), 'aaa'.count('', -10))
+print(''.count(''), ''.count('', 1, 1), ''.count('', 10 ** 30, 0))
+print(''.count('xx'), ''.count('xx', 1, 1), ''.count('xx', 10 ** 30, 0))
+print('HeLLo'.lower(), 'hello'.lower(), 'Straße'.upper())
+print('HeLLo'.upper(), 'HELLO'.upper(), 'MIXED 123'.lower())
+for expr in [lambda: 'hello'.count(), lambda: 'hello'.count(42), lambda: 'hello'.lower(42), lambda: 'hello'.upper(42)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_cmp_absent_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_cmp",
