@@ -6307,6 +6307,20 @@ print(list(g)[-2:])
 print(list(reversed(g))[:2])
 print(g.popitem())
 del g['scope_reinsert_b']
+print(hasattr(g, '__or__'), hasattr(g, '__ior__'), hasattr(g, '__ror__'))
+scope_union = g | {'scope_union_b': 15}
+print(type(scope_union).__name__, scope_union['scope_rev_a'], scope_union['scope_union_b'], 'scope_union_b' in g)
+scope_runion = {'scope_union_z': 0} | g
+print(type(scope_runion).__name__, scope_runion['scope_union_z'], scope_runion['scope_rev_a'])
+print(g.__or__({'scope_union_q': 16})['scope_union_q'], g.__ror__({'scope_union_r': 17})['scope_rev_a'])
+g |= {'scope_ior_c': 18}
+print(scope_ior_c, g['scope_ior_c'])
+g |= [('scope_ior_d', 19)]
+print(scope_ior_d, g['scope_ior_d'])
+try:
+    g | [('scope_bad', 1)]
+except TypeError as error:
+    print(error.__class__.__name__, 'unsupported operand' in str(error))
 g['scope_self'] = g
 print('scope_self' in repr(g), '{...}' in repr(g))
 items = dict(g.items())

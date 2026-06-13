@@ -14873,6 +14873,28 @@ impl Vm {
                 };
                 get_iter(dict.clone())
             }
+            "scope_dict.__ior__" => {
+                let [Value::ScopeDict(scope), other] = args.as_slice() else {
+                    return Err(format!(
+                        "__ior__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let updates = self.dict_entries_from_update_source(other.clone())?;
+                for (key, value) in updates {
+                    insert_scope_dict_entry(scope, key, value)?;
+                }
+                Ok(Value::ScopeDict(scope.clone()))
+            }
+            "scope_dict.__or__" => {
+                let [Value::ScopeDict(scope), other] = args.as_slice() else {
+                    return Err(format!(
+                        "__or__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                scope_dict_union(scope, other)
+            }
             "scope_dict.__reversed__" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
                     return Err(format!(
@@ -14882,6 +14904,15 @@ impl Vm {
                 };
                 let items = scope_dict_keys(scope);
                 Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
+            }
+            "scope_dict.__ror__" => {
+                let [Value::ScopeDict(scope), other] = args.as_slice() else {
+                    return Err(format!(
+                        "__ror__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                scope_dict_reverse_union(other, scope)
             }
             "scope_dict.__setitem__" => {
                 let [dict @ Value::ScopeDict(_), key, value] = args.as_slice() else {
@@ -26247,6 +26278,15 @@ impl Vm {
 
     fn bit_or_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
         let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        match (&left, &right) {
+            (Value::ScopeDict(scope), other) => return scope_dict_union(scope, other),
+            (left, Value::ScopeDict(scope)) => return scope_dict_reverse_union(left, scope),
+            (Value::FrameLocalsProxy { locals }, other) => return scope_dict_union(locals, other),
+            (left, Value::FrameLocalsProxy { locals }) => {
+                return scope_dict_reverse_union(left, locals);
+            }
+            _ => {}
+        }
         if let Some(value) = self.call_binary_special_method(&left, &right, "__or__", "__ror__")? {
             return Ok(value);
         }
@@ -26452,6 +26492,20 @@ impl Vm {
                 }
                 drop(entries_ref);
                 Ok(Value::Dict(entries))
+            }
+            Value::ScopeDict(scope) => {
+                let updates = self.dict_entries_from_update_source(right)?;
+                for (key, value) in updates {
+                    insert_scope_dict_entry(&scope, key, value)?;
+                }
+                Ok(Value::ScopeDict(scope))
+            }
+            Value::FrameLocalsProxy { locals } => {
+                let updates = self.dict_entries_from_update_source(right)?;
+                for (key, value) in updates {
+                    insert_scope_dict_entry(&locals, key, value)?;
+                }
+                Ok(Value::FrameLocalsProxy { locals })
             }
             left @ Value::ChainMap { .. } => {
                 let maps = chain_map_receiver_maps(&left)?;
@@ -44673,6 +44727,26 @@ fn scope_dict_entries(scope: &Scope) -> Vec<(Value, Value)> {
     entries
 }
 
+fn scope_dict_union(scope: &Scope, other: &Value) -> Result<Value, String> {
+    let updates = mapping_entries(other).map_err(|_| {
+        format!(
+            "TypeError: unsupported operand type(s) for |: 'dict' and '{}'",
+            type_name(other)
+        )
+    })?;
+    dict_union_from_entries(scope_dict_entries(scope), updates)
+}
+
+fn scope_dict_reverse_union(other: &Value, scope: &Scope) -> Result<Value, String> {
+    let entries = mapping_entries(other).map_err(|_| {
+        format!(
+            "TypeError: unsupported operand type(s) for |: '{}' and 'dict'",
+            type_name(other)
+        )
+    })?;
+    dict_union_from_entries(entries, scope_dict_entries(scope))
+}
+
 fn scope_dict_popitem_entry(scope: &Scope) -> Option<(Value, Value)> {
     let values = scope.borrow();
     if let Some(Value::Tuple(order)) = values.get(CLASS_ATTR_ORDER_ATTR) {
@@ -52219,23 +52293,27 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::ScopeDict(scope) => match name {
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
-            | "__iter__" | "__reversed__" | "__setitem__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                receiver: Box::new(Value::ScopeDict(scope)),
-                identity: Rc::new(()),
-            }),
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
+            | "__iter__" | "__len__" | "__or__" | "__reversed__" | "__ror__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                    receiver: Box::new(Value::ScopeDict(scope)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
         Value::FrameLocalsProxy { locals } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
-            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
-            | "__iter__" | "__reversed__" | "__setitem__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
-                receiver: Box::new(Value::ScopeDict(locals)),
-                identity: Rc::new(()),
-            }),
+            | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
+            | "__iter__" | "__len__" | "__or__" | "__reversed__" | "__ror__" | "__setitem__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
+                    receiver: Box::new(Value::ScopeDict(locals)),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!(
                 "AttributeError: FrameLocalsProxy has no attribute '{name}'"
             )),
