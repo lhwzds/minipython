@@ -44753,9 +44753,10 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
 // Minimal public deque surface supported by MiniPython's sandbox stdlib:
 // pure-memory construction, iteration, len/bool/repr, maxlen, basic two-ended
 // append/extend/insert/remove/pop operations, simple queries/reordering,
-// membership, rich comparison, integer indexing, reverse iteration, and MutableSequence
-// registration. Broader deque APIs, pickling, performance, and thread-safety
-// semantics remain outside the default sandbox surface.
+// membership, rich comparison, integer indexing, concat/repeat, reverse
+// iteration, and MutableSequence registration. Broader deque APIs, pickling,
+// performance, and thread-safety semantics remain outside the default sandbox
+// surface.
 #[test]
 fn cpython_collections_deque_public_surface_subset() {
     assert_output(
@@ -44793,6 +44794,21 @@ fn cpython_collections_deque_public_surface_subset() {
             "print(d < higher, d <= same, higher > d, same >= d)\n",
             "print(d.__eq__(same), d.__ne__(higher), d.__eq__([0, -1, 1]) is NotImplemented)\n",
             "print(d.__lt__(higher), d.__le__(same), higher.__gt__(d), same.__ge__(d), d.__lt__([0]) is NotImplemented)\n",
+            "added = deque([1], maxlen=3) + deque([2, 3, 4], maxlen=9)\n",
+            "print(list(added), added.maxlen, repr(added))\n",
+            "print(list(deque([1, 2], maxlen=5) * 3), list(3 * deque([1, 2], maxlen=5)))\n",
+            "class RepeatIndex:\n",
+            "    def __index__(self):\n",
+            "        return 2\n",
+            "print(list(deque([1, 2]) * RepeatIndex()))\n",
+            "mut = deque([1], maxlen=3)\n",
+            "alias = mut\n",
+            "result = mut.__iadd__(deque([2, 3, 4]))\n",
+            "print(result is mut, mut is alias, list(mut), mut.maxlen)\n",
+            "mut = deque([1, 2], maxlen=5)\n",
+            "result = mut.__imul__(2)\n",
+            "print(result is mut, list(mut), mut.maxlen)\n",
+            "print(list(deque([1, 2], maxlen=5) * 0), list(deque([1, 2], maxlen=5) * -1))\n",
             "q = deque([0, -1, 1])\n",
             "print(q.insert(1, 'x'), list(q), repr(q))\n",
             "print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))\n",
@@ -44825,6 +44841,9 @@ fn cpython_collections_deque_public_surface_subset() {
             "    ('index-missing', lambda: deque([1, 2]).index(9)),\n",
             "    ('remove-missing', lambda: deque([1, 2]).remove(9)),\n",
             "    ('insert-full', lambda: deque([1], maxlen=1).insert(0, 2)),\n",
+            "    ('add-list', lambda: deque([1]) + [2]),\n",
+            "    ('mul-bad', lambda: deque([1]) * 'x'),\n",
+            "    ('iadd-noniter', lambda: deque([1]).__iadd__(3)),\n",
             "    ('bad-maxlen', lambda: deque([], -1)),\n",
             "    ('bad-keyword', lambda: deque([], bad=1)),\n",
             "    ('duplicate-iterable', lambda: deque([], iterable=[])),\n",
@@ -44859,6 +44878,12 @@ fn cpython_collections_deque_public_surface_subset() {
             "True True True True",
             "True True True",
             "True True True True True",
+            "[2, 3, 4] 3 deque([2, 3, 4], maxlen=3)",
+            "[2, 1, 2, 1, 2] [2, 1, 2, 1, 2]",
+            "[1, 2, 1, 2]",
+            "True True [2, 3, 4] 3",
+            "True [1, 2, 1, 2] 5",
+            "[] []",
             "None [0, 'x', -1, 1] deque([0, 'x', -1, 1])",
             "None None ['y', 0, 'x', -1, 1, 'z'] deque(['y', 0, 'x', -1, 1, 'z'])",
             "None ['y', 0, 'x', -1, 'z'] deque(['y', 0, 'x', -1, 'z'])",
@@ -44872,6 +44897,9 @@ fn cpython_collections_deque_public_surface_subset() {
             "index-missing ValueError True",
             "remove-missing ValueError True",
             "insert-full IndexError True",
+            "add-list TypeError True",
+            "mul-bad TypeError True",
+            "iadd-noniter TypeError True",
             "bad-maxlen ValueError True",
             "bad-keyword TypeError True",
             "duplicate-iterable TypeError True",

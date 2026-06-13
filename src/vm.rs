@@ -13130,6 +13130,12 @@ impl Vm {
             return Ok(left);
         }
 
+        if let Value::Deque { data, maxlen } = &left {
+            let values = self.collect_iterable_values(right)?;
+            deque_extend_values(data, *maxlen, values);
+            return Ok(left);
+        }
+
         in_place_add_values(left, right)
     }
 
@@ -13141,6 +13147,15 @@ impl Vm {
         if array_array_storage(&right).is_some() {
             let count = self.array_array_repeat_count_operator(left)?;
             return self.array_array_repeat_value(&right, count);
+        }
+
+        if matches!(left, Value::Deque { .. }) {
+            let count = self.deque_repeat_count_operator(right)?;
+            return deque_repeat_value(&left, count);
+        }
+        if matches!(right, Value::Deque { .. }) {
+            let count = self.deque_repeat_count_operator(left)?;
+            return deque_repeat_value(&right, count);
         }
 
         multiply_values(left, right)
@@ -13162,6 +13177,12 @@ impl Vm {
         if array_array_storage(&left).is_some() {
             let count = self.array_array_repeat_count_operator(right)?;
             self.array_array_repeat_in_place(&left, count)?;
+            return Ok(left);
+        }
+
+        if let Value::Deque { data, maxlen } = &left {
+            let count = self.deque_repeat_count_operator(right)?;
+            deque_repeat_in_place(data, *maxlen, count)?;
             return Ok(left);
         }
 
@@ -21768,6 +21789,10 @@ impl Vm {
         Ok(())
     }
 
+    fn deque_repeat_count_operator(&mut self, count: Value) -> Result<i64, String> {
+        repeat_count_from_integer_value(self.index_integer_value(count)?)
+    }
+
     fn store_array_array_subscript_value(
         &mut self,
         receiver: Value,
@@ -25797,6 +25822,10 @@ impl Vm {
             return self.array_array_concat_value(&left, &right, "append");
         }
 
+        if matches!(left, Value::Deque { .. }) {
+            return deque_concat_value(&left, &right);
+        }
+
         let left = int_subclass_integer(&left).unwrap_or(left);
         let right = int_subclass_integer(&right).unwrap_or(right);
         add_values(left, right)
@@ -28690,6 +28719,59 @@ impl Vm {
             return Err(format!("{method}() expected a deque receiver"));
         };
         match method {
+            "__add__" => {
+                let [other] = rest else {
+                    return Err(format!(
+                        "__add__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                deque_concat_value(
+                    &Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    },
+                    other,
+                )
+            }
+            "__iadd__" => {
+                let [other] = rest else {
+                    return Err(format!(
+                        "__iadd__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let values = self.collect_iterable_values(other.clone())?;
+                deque_extend_values(data, *maxlen, values);
+                Ok(args[0].clone())
+            }
+            "__mul__" | "__rmul__" => {
+                let [count] = rest else {
+                    return Err(format!(
+                        "{method}() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let count = self.deque_repeat_count_operator(count.clone())?;
+                deque_repeat_value(
+                    &Value::Deque {
+                        data: data.clone(),
+                        maxlen: *maxlen,
+                    },
+                    count,
+                )
+            }
+            "__imul__" => {
+                let [count] = rest else {
+                    return Err(format!(
+                        "__imul__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let count = self.deque_repeat_count_operator(count.clone())?;
+                deque_repeat_in_place(data, *maxlen, count)?;
+                Ok(args[0].clone())
+            }
             "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
                 let [other] = rest else {
                     return Err(format!(
@@ -51331,14 +51413,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "append" | "appendleft" | "clear" | "copy" | "count" | "extend" | "extendleft"
                 | "index" | "insert" | "pop" | "popleft" | "remove" | "reverse" | "rotate"
-                | "__contains__" | "__eq__" | "__ge__" | "__getitem__" | "__gt__" | "__iter__"
-                | "__le__" | "__len__" | "__lt__" | "__ne__" | "__reversed__" => {
-                    Ok(Value::BoundMethod {
-                        function: Box::new(Value::Builtin(format!("deque.{name}"))),
-                        receiver: Box::new(Value::Deque { data, maxlen }),
-                        identity: Rc::new(()),
-                    })
-                }
+                | "__add__" | "__contains__" | "__eq__" | "__ge__" | "__getitem__" | "__gt__"
+                | "__iadd__" | "__imul__" | "__iter__" | "__le__" | "__len__" | "__lt__"
+                | "__mul__" | "__ne__" | "__reversed__" | "__rmul__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("deque.{name}"))),
+                    receiver: Box::new(Value::Deque { data, maxlen }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!("AttributeError: deque has no attribute '{name}'")),
             }
         }
@@ -74038,6 +74119,78 @@ fn repeat_values(values: Vec<Value>, count: i64) -> Result<Vec<Value>, String> {
     Ok(repeated)
 }
 
+fn deque_concat_value(left: &Value, right: &Value) -> Result<Value, String> {
+    let Value::Deque { data, maxlen } = left else {
+        return Err("__add__() expected a deque receiver".to_string());
+    };
+    let Value::Deque {
+        data: right_data, ..
+    } = right
+    else {
+        return Err(format!(
+            "TypeError: can only concatenate deque (not \"{}\") to deque",
+            type_name(right)
+        ));
+    };
+
+    let mut values = data.borrow().clone();
+    for value in right_data.borrow().iter().cloned() {
+        deque_push_back_with_maxlen_vec(&mut values, *maxlen, value);
+    }
+    Ok(Value::Deque {
+        data: Rc::new(RefCell::new(values)),
+        maxlen: *maxlen,
+    })
+}
+
+fn deque_repeat_value(receiver: &Value, count: i64) -> Result<Value, String> {
+    let Value::Deque { data, maxlen } = receiver else {
+        return Err("__mul__() expected a deque receiver".to_string());
+    };
+    let mut values = repeat_values(data.borrow().clone(), count)?;
+    deque_truncate_left_to_maxlen(&mut values, *maxlen);
+    Ok(Value::Deque {
+        data: Rc::new(RefCell::new(values)),
+        maxlen: *maxlen,
+    })
+}
+
+fn deque_repeat_in_place(data: &ListRef, maxlen: Option<usize>, count: i64) -> Result<(), String> {
+    let mut values = repeat_values(data.borrow().clone(), count)?;
+    deque_truncate_left_to_maxlen(&mut values, maxlen);
+    *data.borrow_mut() = values;
+    Ok(())
+}
+
+fn deque_extend_values(data: &ListRef, maxlen: Option<usize>, values: Vec<Value>) {
+    let mut items = data.borrow_mut();
+    for value in values {
+        deque_push_back_with_maxlen(&mut items, maxlen, value);
+    }
+}
+
+fn deque_push_back_with_maxlen(items: &mut Vec<Value>, maxlen: Option<usize>, value: Value) {
+    deque_push_back_with_maxlen_vec(items, maxlen, value);
+}
+
+fn deque_push_back_with_maxlen_vec(items: &mut Vec<Value>, maxlen: Option<usize>, value: Value) {
+    if maxlen == Some(0) {
+        return;
+    }
+    items.push(value);
+    deque_truncate_left_to_maxlen(items, maxlen);
+}
+
+fn deque_truncate_left_to_maxlen(items: &mut Vec<Value>, maxlen: Option<usize>) {
+    let Some(maxlen) = maxlen else {
+        return;
+    };
+    if items.len() > maxlen {
+        let drop_count = items.len() - maxlen;
+        items.drain(0..drop_count);
+    }
+}
+
 fn repeat_string(value: String, count: i64) -> Result<String, String> {
     if count <= 0 {
         return Ok(String::new());
@@ -76915,6 +77068,9 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         ) => Rc::ptr_eq(left_data, right_data),
         (Value::Tuple(left), Value::Tuple(right)) => Rc::ptr_eq(left, right),
         (Value::ByteArray(left), Value::ByteArray(right)) => Rc::ptr_eq(left, right),
+        (Value::Deque { data: left, .. }, Value::Deque { data: right, .. }) => {
+            Rc::ptr_eq(left, right)
+        }
         (Value::Set(left), Value::Set(right)) => Rc::ptr_eq(left, right),
         (Value::FrozenSet(left), Value::FrozenSet(right)) => Rc::ptr_eq(left, right),
         (Value::Dict(left), Value::Dict(right)) => Rc::ptr_eq(left, right),

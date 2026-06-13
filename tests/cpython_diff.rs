@@ -3084,6 +3084,21 @@ print(d == same, d != higher, d == [0, -1, 1], d != [0, -1, 1])
 print(d < higher, d <= same, higher > d, same >= d)
 print(d.__eq__(same), d.__ne__(higher), d.__eq__([0, -1, 1]) is NotImplemented)
 print(d.__lt__(higher), d.__le__(same), higher.__gt__(d), same.__ge__(d), d.__lt__([0]) is NotImplemented)
+added = deque([1], maxlen=3) + deque([2, 3, 4], maxlen=9)
+print(list(added), added.maxlen, repr(added))
+print(list(deque([1, 2], maxlen=5) * 3), list(3 * deque([1, 2], maxlen=5)))
+class RepeatIndex:
+    def __index__(self):
+        return 2
+print(list(deque([1, 2]) * RepeatIndex()))
+mut = deque([1], maxlen=3)
+alias = mut
+result = mut.__iadd__(deque([2, 3, 4]))
+print(result is mut, mut is alias, list(mut), mut.maxlen)
+mut = deque([1, 2], maxlen=5)
+result = mut.__imul__(2)
+print(result is mut, list(mut), mut.maxlen)
+print(list(deque([1, 2], maxlen=5) * 0), list(deque([1, 2], maxlen=5) * -1))
 q = deque([0, -1, 1])
 print(q.insert(1, 'x'), list(q), repr(q))
 print(q.insert(-99, 'y'), q.insert(99, 'z'), list(q), repr(q))
@@ -3116,6 +3131,9 @@ for label, callback in [
     ('index-missing', lambda: deque([1, 2]).index(9)),
     ('remove-missing', lambda: deque([1, 2]).remove(9)),
     ('insert-full', lambda: deque([1], maxlen=1).insert(0, 2)),
+    ('add-list', lambda: deque([1]) + [2]),
+    ('mul-bad', lambda: deque([1]) * 'x'),
+    ('iadd-noniter', lambda: deque([1]).__iadd__(3)),
     ('bad-maxlen', lambda: deque([], -1)),
     ('bad-keyword', lambda: deque([], bad=1)),
     ('duplicate-iterable', lambda: deque([], iterable=[])),

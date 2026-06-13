@@ -10366,6 +10366,11 @@ Completed in the CPython collections manifest expansion pass:
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,
   repetition, pickle, or thread-safety contracts.
+- Extended the same `collections.deque` public surface with pure-memory
+  deque-to-deque concatenation, integer repetition including reflected
+  repetition, and in-place concat/repeat while preserving left-hand `maxlen`
+  truncation. Pickle, eval, thread-safety, and performance contracts remain out
+  of scope.
 
 Next:
 
