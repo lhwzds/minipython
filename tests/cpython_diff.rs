@@ -19379,6 +19379,8 @@ for ctor in [bytes, bytearray]:
     show(ctor.__name__ + '.rsplit.step', lambda base=base, step=step: base.rsplit(step))
     show(ctor.__name__ + '.translate.delete.step', lambda base=base, step=step: base.translate(None, step))
     show(ctor.__name__ + '.maketrans.step', lambda ctor=ctor, step=step: ctor.maketrans(step, b'xy'))
+    show(ctor.__name__ + '.removeprefix.step', lambda base=base, step=step: base.removeprefix(step))
+    show(ctor.__name__ + '.removesuffix.step', lambda base=base, step=step: base.removesuffix(step))
     show(ctor.__name__ + '.count.step', lambda base=base, step=step: base.count(step))
     show(ctor.__name__ + '.find.step', lambda base=base, step=step: base.find(step))
     show(ctor.__name__ + '.rfind.step', lambda base=base, step=step: base.rfind(step))

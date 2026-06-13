@@ -70538,7 +70538,7 @@ fn call_bytes_remove_affix_method(
     }
 
     let (receiver, kind) = bytes_method_receiver(receiver, method)?;
-    let affix = bytes_like_method_argument(&rest[0], method, "first")?;
+    let affix = bytes_c_contiguous_method_argument(&rest[0], method, "first")?;
     let remove_prefix = method == "removeprefix";
     Ok(bytes_result_value(
         kind,

@@ -3360,8 +3360,9 @@ Completed in the bytes join-method pass:
 - Added `cpython_bytes_memoryview_contiguity_methods_subset` with direct
   `cpython_bytes_memoryview_contiguity_methods_diff_subset` evidence for
   bytes/bytearray `strip()`, `replace()`, `split()` / `rsplit()`,
-  `translate(delete=...)`, and `maketrans()` rejecting non-contiguous
-  `memoryview` arguments with CPython's C-contiguous `BufferError`, plus the
+  `translate(delete=...)`, `maketrans()`, `removeprefix()`, and
+  `removesuffix()` rejecting non-contiguous `memoryview` arguments with
+  CPython's C-contiguous `BufferError`, plus the
   partition special case where bytes rejects non-contiguous views but bytearray
   accepts their logical contents. The same evidence now covers bytes/bytearray
   search, prefix/suffix, and membership operations over non-contiguous

@@ -2283,7 +2283,8 @@ Recent runtime migration notes:
   `cpython_bytes_memoryview_contiguity_methods_subset`, covering CPython's
   `BufferError` for non-contiguous `memoryview` arguments to bytes/bytearray
   `strip()`, `replace()`, `split()` / `rsplit()`, `translate(delete=...)`, and
-  `maketrans()`, while accepting contiguous sliced views. It also covers the
+  `maketrans()`, `removeprefix()`, and `removesuffix()`, while accepting
+  contiguous sliced views. It also covers the
   CPython split between `bytes.partition()` / `bytes.rpartition()` rejecting
   non-contiguous views and `bytearray.partition()` / `bytearray.rpartition()`
   accepting their logical contents. It additionally pins the same `BufferError`
