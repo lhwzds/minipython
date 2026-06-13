@@ -9236,6 +9236,22 @@ impl Vm {
 
                 self.call_dict_fromkeys(args)
             }
+            Value::Builtin(name) if name == "dict.__class_getitem__" => {
+                if !keywords.is_empty() {
+                    return Err("__class_getitem__() does not accept keyword arguments".to_string());
+                }
+                let [item] = args.as_slice() else {
+                    return Err(format!(
+                        "__class_getitem__() expected 1 argument, got {}",
+                        args.len()
+                    ));
+                };
+                Ok(Value::GenericAlias {
+                    origin: Box::new(Value::Builtin("dict".to_string())),
+                    args: generic_alias_args(item.clone()),
+                    union_unhashable_count: 0,
+                })
+            }
             Value::Builtin(name) if name == "bytes.__new__" => self.call_bytes_new(args, keywords),
             Value::Builtin(name) if name == "bytearray.__new__" => {
                 self.call_bytearray_new(args, keywords)
@@ -45339,6 +45355,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "sort",
         ],
         "dict" | "UserDict" => &[
+            "__class_getitem__",
             "__contains__",
             "__delitem__",
             "__getitem__",
@@ -52207,6 +52224,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Dict(entries) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
+            "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
             | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -52369,6 +52387,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::ScopeDict(scope) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
+            "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
             | "__ior__" | "__iter__" | "__len__" | "__ne__" | "__or__" | "__reversed__"
@@ -52975,6 +52994,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::Builtin(function_name) if function_name == "dict" && name == "fromkeys" => {
             Ok(Value::Builtin("dict.fromkeys".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
+            Ok(Value::Builtin("dict.__class_getitem__".to_string()))
         }
         Value::Builtin(function_name) if name == "__class__" => {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)

@@ -6315,6 +6315,7 @@ scope_runion = {'scope_union_z': 0} | g
 print(type(scope_runion).__name__, scope_runion['scope_union_z'], scope_runion['scope_rev_a'])
 print(g.__or__({'scope_union_q': 16})['scope_union_q'], g.__ror__({'scope_union_r': 17})['scope_rev_a'])
 print(g.fromkeys(('scope_fk_a', 'scope_fk_b'), 20))
+print(g.__class_getitem__((str, int)) == dict[str, int])
 g |= {'scope_ior_c': 18}
 print(scope_ior_c, g['scope_ior_c'])
 g |= [('scope_ior_d', 19)]
@@ -7799,6 +7800,7 @@ print(constructed.__origin__ is list, constructed.__args__[0] is int, type(const
 constructed = types.GenericAlias(list, int)
 print(constructed.__origin__ is list, constructed.__args__[0] is int)
 print(types.UnionType[int] is int, types.UnionType[int, int] is int, types.UnionType[int, str] == int | str, isinstance(types.UnionType[int, str], types.UnionType))
+print(dict.__class_getitem__((str, int)) == dict[str, int], {}.__class_getitem__((str, int)) == dict[str, int])
 for expr in (lambda: types.GenericAlias(list), lambda: types.GenericAlias(list, (int,), 3), lambda: types.GenericAlias(origin=list, args=(int,)), lambda: types.UnionType()):
     try:
         expr()

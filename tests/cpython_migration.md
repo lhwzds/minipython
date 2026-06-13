@@ -6345,9 +6345,10 @@ Completed in the namespace builtin pass:
   those views, deletion/reinsertion order for scope-backed mappings, recursive
   repr guards for scope-backed views, PEP 584 union and in-place union for
   scope-backed mappings, rich equality against dict-compatible mappings,
-  classmethod-style `fromkeys()` lookup on scope-backed module namespaces,
-  `dict` class identity and `isinstance(..., dict)` parity for module
-  namespaces, and missing-key `KeyError` type parity.
+  classmethod-style `fromkeys()` and `__class_getitem__()` lookup on
+  scope-backed module namespaces, `dict` class identity and
+  `isinstance(..., dict)` parity for module namespaces, and missing-key
+  `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 
