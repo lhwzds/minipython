@@ -44742,6 +44742,22 @@ fn append_scope_attr_order(values: &mut HashMap<String, Value>, name: &str) {
     );
 }
 
+fn remove_scope_attr_order(values: &mut HashMap<String, Value>, name: &str) {
+    let Some(Value::Tuple(items)) = values.get(CLASS_ATTR_ORDER_ATTR) else {
+        return;
+    };
+    let order = items
+        .iter()
+        .filter_map(|item| match item {
+            Value::String(existing) if !existing.starts_with('\0') && existing != name => {
+                Some(Value::String(existing.clone()))
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    values.insert(CLASS_ATTR_ORDER_ATTR.to_string(), tuple_value(order));
+}
+
 fn scope_dict_keys(scope: &Scope) -> Vec<Value> {
     scope_dict_entries(scope)
         .into_iter()
@@ -44774,7 +44790,9 @@ fn delete_scope_dict_entry(scope: &Scope, key: &Value) -> Result<(), String> {
     let Some(key) = value_as_string(key) else {
         return Err(format!("KeyError: {}", format_key_error(key)));
     };
-    if scope.borrow_mut().remove(key).is_some() {
+    let mut values = scope.borrow_mut();
+    if values.remove(key).is_some() {
+        remove_scope_attr_order(&mut values, key);
         Ok(())
     } else {
         Err(format!("KeyError: {}", repr_string(key)))

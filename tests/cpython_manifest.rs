@@ -7682,6 +7682,8 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "list(reversed(g.keys()))[:2]",
         "list(reversed(g.items()))[:2]",
         "list(reversed(g.values()))[:2]",
+        "g.update({'scope_reinsert_a': 14})",
+        "list(g)[-2:]",
         "snapshot.copy()",
         "snapshot.get('arg')",
         "snapshot.pop('local_value')",

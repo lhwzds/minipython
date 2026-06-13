@@ -6299,6 +6299,14 @@ print(list(reversed(g))[:2])
 print(list(reversed(g.keys()))[:2])
 print(list(reversed(g.items()))[:2])
 print(list(reversed(g.values()))[:2])
+g['scope_reinsert_a'] = 12
+g['scope_reinsert_b'] = 13
+del g['scope_reinsert_a']
+g.update({'scope_reinsert_a': 14})
+print(list(g)[-2:])
+print(list(reversed(g))[:2])
+print(g.popitem())
+del g['scope_reinsert_b']
 g['scope_self'] = g
 print('scope_self' in repr(g), '{...}' in repr(g))
 items = dict(g.items())
