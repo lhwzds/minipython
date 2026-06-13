@@ -22009,6 +22009,32 @@ fn cpython_rejection_parity_smoke_subset() {
 }
 
 #[test]
+fn cpython_int_rejects_trunc_only_object_diff_subset() {
+    let probe = run_cpython(
+        r#"class TruncOnly:
+    def __trunc__(self):
+        return 1
+try:
+    int(TruncOnly())
+except TypeError:
+    print(True)
+else:
+    print(False)"#,
+    )
+    .expect("failed to probe CPython int __trunc__-only rejection behavior");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping int __trunc__-only rejection diff: CPython oracle accepts __trunc__");
+        return;
+    }
+
+    assert_cpython_rejection_parity(&DiffCase {
+        origin: "Lib/test/test_int.py::IntTestCases::test_intconversion __trunc__-only rejection",
+        name: "int-rejects-trunc-only-object",
+        source: "class TruncOnly:\n    def __trunc__(self):\n        return 1\nint(TruncOnly())",
+    });
+}
+
+#[test]
 fn cpython_syntax_error_message_parity_subset() {
     for case in [
         ErrorMessageCase {

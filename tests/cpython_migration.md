@@ -1395,9 +1395,9 @@ Completed in the differential parity harness pass:
   sequence indexing/slicing, including CPython-style rejection when those
   methods return non-numeric values. The `test_intconversion` slice now also
   covers rejecting objects without numeric conversion methods and using
-  `__int__` instead of `__trunc__` when both are present; the newer CPython
-  rejection for `__trunc__`-only objects is left until the default oracle matches
-  the local CPython source. The `int(value, base)` slice now covers
+  `__int__` instead of `__trunc__` when both are present, plus gated direct
+  CPython diff evidence that `__trunc__`-only objects are rejected. The
+  `int(value, base)` slice now covers
   positional and keyword base arguments, base supplied through `__index__`,
   binary/octal/hex prefix autodetection for base `0`, byte strings, bases
   2 through 36, explicit-base rejection for non-string inputs, and CPython's
