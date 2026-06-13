@@ -6338,8 +6338,8 @@ Completed in the namespace builtin pass:
   `clear()`, `copy()`, `get()`, `pop()`, `popitem()`, and `setdefault()`
   behavior for supported string-key globals and locals snapshots, including
   default values, snapshot copies, write-through insertion, ordered last-item
-  removal for scope-inserted keys, live mapping clearing, and missing-key
-  `KeyError` type parity.
+  removal for scope-inserted keys, live mapping clearing, recursive
+  self-reference repr placeholders, and missing-key `KeyError` type parity.
 - Added a CPython/MiniPython differential parity case for the supported
   `globals()` / `locals()` subset.
 

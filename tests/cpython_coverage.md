@@ -3615,8 +3615,9 @@ Recent runtime migration notes:
   `cpython_map_filter_builtin_subset`, and `cpython_abs_builtin_subset`, covering
   public namespace introspection including live module-scope `globals()` /
   `locals()` mapping `clear()` / `copy()` / `get()` / `pop()` / `popitem()` /
-  `setdefault()` behavior and function-local snapshot `copy()` / `get()` /
-  `pop()` / `setdefault()` behavior, class/type relationship checks,
+  `setdefault()` behavior, recursive self-reference repr placeholders for
+  scope-backed namespace mappings, and function-local snapshot `copy()` /
+  `get()` / `pop()` / `setdefault()` behavior, class/type relationship checks,
   iterator-producing builtins, strict zip, map/filter, and absolute-value
   behavior used by the sandbox builtin surface. Direct CPython output parity for
   the supported `globals()` / `locals()` subset is tracked by

@@ -6292,6 +6292,10 @@ print(g.pop('scope_temp'), 'scope_temp' in g)
 print(g.pop('new_scope'), 'new_scope' in g)
 g['scope_popitem_temp'] = 7
 print(g.popitem())
+g['scope_self'] = g
+print('scope_self' in repr(g), '{...}' in repr(g))
+items = dict(g.items())
+print('scope_self' in items, '{...}' in repr(items['scope_self']))
 print(g.pop('missing', 'fallback'))
 try:
     g.pop('missing')

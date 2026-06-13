@@ -1471,6 +1471,10 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             Ok(format!("UserDict({{{rendered}}})"))
         }
         Value::ScopeDict(scope) => {
+            let ptr = Rc::as_ptr(scope) as usize;
+            if !active.insert(ptr) {
+                return Ok("{...}".to_string());
+            }
             let entries = scope_dict_entries(scope);
             let rendered = entries
                 .iter()
@@ -1483,6 +1487,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
                 })
                 .collect::<Result<Vec<_>, String>>()?
                 .join(", ");
+            active.remove(&ptr);
             Ok(format!("{{{rendered}}}"))
         }
         Value::FrameLocalsProxy { .. } => Ok("<frame locals proxy object>".to_string()),
