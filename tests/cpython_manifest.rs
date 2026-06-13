@@ -5794,6 +5794,75 @@ fn hash_id_builtins_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn len_builtin_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_len_builtin_subset(",
+        "len('123')",
+        "len((1, 2, 3, 4))",
+        "len([1, 2, 3, 4])",
+        "len({'a': 1, 'b': 2})",
+        "class BadSeq",
+        "raise ValueError",
+        "class InvalidLen",
+        "return None",
+        "class FloatLen",
+        "return 4.5",
+        "class NegativeLen",
+        "return -10",
+        "class HugeLen",
+        "sys.maxsize + 1",
+        "class HugeNegativeLen",
+        "-sys.maxsize - 10",
+        "class NoLenMethod",
+        "lambda: len()",
+        "lambda: len([], [])",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused len builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_len_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_len",
+        "len('123')",
+        "len((1, 2, 3, 4))",
+        "len([1, 2, 3, 4])",
+        "len({'a': 1, 'b': 2})",
+        "class BadSeq",
+        "raise ValueError",
+        "class InvalidLen",
+        "return None",
+        "class FloatLen",
+        "return 4.5",
+        "class NegativeLen",
+        "return -10",
+        "class HugeLen",
+        "sys.maxsize + 1",
+        "class HugeNegativeLen",
+        "-sys.maxsize - 10",
+        "class NoLenMethod",
+        "lambda: len()",
+        "lambda: len([], [])",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused len builtin CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_len_builtin_subset")
+                && document.contains("cpython_len_builtin_diff_subset")
+                && document.contains("BuiltinTest::test_len"),
+            "focused len builtin evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
