@@ -16792,6 +16792,105 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_core_method_typeerror_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest core public TypeError-message rows",
+        name: "bytes-core-method-typeerror-messages",
+        source: r#"failures = []
+def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        actual = error.args[0] if error.args else ''
+        if actual != expected:
+            failures.append(label + ' -> ' + actual)
+    except BaseException as error:
+        failures.append(label + ' raised ' + type(error).__name__)
+    else:
+        failures.append(label + ' did not raise')
+for ctor in [bytes, bytearray]:
+    name = ctor.__name__
+    sample = ctor(b'a b a')
+    for method in ['split', 'rsplit']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b' ', 1, 2), method + '() takes at most 2 arguments (3 given)')
+        check(name + '.' + method + '.bad-maxsplit', lambda sample=sample, method=method: getattr(sample, method)(b' ', 'x'), "'str' object cannot be interpreted as an integer")
+    for method in ['strip', 'lstrip', 'rstrip']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), method + ' expected at most 1 argument, got 2')
+    for method in ['count', 'find', 'rfind', 'index', 'rindex']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.bad-start', lambda sample=sample, method=method: getattr(sample, method)(b'a', 'x'), 'slice indices must be integers or None or have an __index__ method')
+    for method in ['startswith', 'endswith']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.bad-start', lambda sample=sample, method=method: getattr(sample, method)(b'a', 'x'), 'slice indices must be integers or None or have an __index__ method')
+    for method in ['center', 'ljust', 'rjust']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')
+        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(5, b' ', b' '), method + ' expected at most 2 arguments, got 3')
+        check(name + '.' + method + '.bad-width', lambda sample=sample, method=method: getattr(sample, method)('x'), "'str' object cannot be interpreted as an integer")
+    for method in ['partition', 'rpartition']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), name + '.' + method + '() takes exactly one argument (0 given)')
+        check(name + '.' + method + '.too-many', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), name + '.' + method + '() takes exactly one argument (2 given)')
+    check(name + '.replace.unbound', lambda ctor=ctor: ctor.replace(), 'unbound method ' + name + '.replace() needs an argument')
+    check(name + '.replace.missing-old', lambda sample=sample: sample.replace(), 'replace expected at least 2 arguments, got 0')
+    check(name + '.replace.missing-new', lambda sample=sample: sample.replace(b'a'), 'replace expected at least 2 arguments, got 1')
+    check(name + '.replace.too-many', lambda sample=sample: sample.replace(b'a', b'b', 1, 2), 'replace expected at most 3 arguments, got 4')
+    check(name + '.replace.bad-count', lambda sample=sample: sample.replace(b'a', b'b', 'x'), "'str' object cannot be interpreted as an integer")
+print(len(failures))
+if failures:
+    print(failures[:5])"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_search_missing_typeerror_messages_diff_subset() {
+    let probe = run_cpython(
+        r#"try:
+    b'abc'.count()
+except TypeError as error:
+    print(error.args[0])"#,
+    )
+    .expect("failed to probe CPython bytes search missing-argument TypeError support");
+    if !probe.status.success()
+        || probe.stdout.as_slice() != b"count expected at least 1 argument, got 0\n"
+    {
+        eprintln!(
+            "skipping bytes search missing-argument TypeError text diff: CPython oracle has older wording"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest search/prefix missing-argument TypeError rows",
+        name: "bytes-search-missing-typeerror-messages",
+        source: r#"failures = []
+def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        actual = error.args[0] if error.args else ''
+        if actual != expected:
+            failures.append(label + ' -> ' + actual)
+    except BaseException as error:
+        failures.append(label + ' raised ' + type(error).__name__)
+    else:
+        failures.append(label + ' did not raise')
+for ctor in [bytes, bytearray]:
+    name = ctor.__name__
+    sample = ctor(b'a b a')
+    for method in ['count', 'find', 'rfind', 'index', 'rindex']:
+        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')
+    for method in ['startswith', 'endswith']:
+        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), method + ' expected at least 1 argument, got 0')
+print(len(failures))
+if failures:
+    print(failures[:5])"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and AssortedBytesTest repr/compare public subset",

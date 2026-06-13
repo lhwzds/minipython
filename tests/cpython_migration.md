@@ -3369,7 +3369,11 @@ Completed in the bytes method TypeError diagnostics pass:
   bytes/bytearray `split()` / `rsplit()`, search, prefix/suffix, strip,
   alignment, partition, and replace public diagnostics for unbound method
   calls, bound arity errors, slice-bound conversion, maxsplit/width/count
-  conversion, and exact partition arity text.
+  conversion, and exact partition arity text. Direct CPython diff evidence for
+  stable rows is in `cpython_bytes_core_method_typeerror_messages_diff_subset`;
+  current search/prefix missing-argument wording is covered by
+  `cpython_bytes_search_missing_typeerror_messages_diff_subset` when the
+  selected CPython oracle exposes that wording.
 
 Completed in the bytes removeprefix/removesuffix-method pass:
 

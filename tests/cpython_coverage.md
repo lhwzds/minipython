@@ -1651,7 +1651,10 @@ Recent runtime migration notes:
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray
   `split()` / `rsplit()`, search, prefix/suffix, strip, alignment,
   partition, and replace unbound, arity, bound-index, width, maxsplit, and
-  count-conversion edge calls.
+  count-conversion edge calls. Direct CPython diff evidence for stable rows is
+  in `cpython_bytes_core_method_typeerror_messages_diff_subset`; current
+  search/prefix missing-argument wording is covered by the CPython-version-gated
+  `cpython_bytes_search_missing_typeerror_messages_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_alignment_methods_subset`,
   covering bytes/bytearray `center()`, `ljust()`, and `rjust()` width and
   fill-byte behavior, unchanged-width cases, receiver-driven result types, and
