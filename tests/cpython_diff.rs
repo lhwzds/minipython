@@ -18780,6 +18780,25 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytearray_hex_reentrant_separator_buffererror_diff_subset() {
+    let source = "ba = bytearray(b'\\xaa')\nclass S(bytes):\n    def __len__(self):\n        ba.clear()\n        return 1\ntry:\n    ba.hex(S(b':'))\nexcept BufferError as error:\n    print(error.__class__.__name__, ba)\nelse:\n    print('accepted', ba)";
+    let probe = run_cpython(source)
+        .expect("failed to probe CPython bytearray.hex re-entrant separator behavior");
+    if String::from_utf8_lossy(&probe.stdout).contains("accepted") {
+        eprintln!(
+            "skipping bytearray.hex re-entrant separator diff: CPython oracle lacks BufferError regression fix"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_hex_use_after_free public subset",
+        name: "bytearray-hex-reentrant-separator-buffererror",
+        source,
+    });
+}
+
+#[test]
 fn cpython_bytes_fromhex_string_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_fromhex stable string-input public subset",

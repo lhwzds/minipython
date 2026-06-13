@@ -356,9 +356,10 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   the bytearray receiver resize-locked while a bytes-subclass separator runs
   re-entrant `__len__` code, so the attempted `clear()` raises a catchable
   `BufferError` and leaves the receiver unchanged.
-- This regression stays in `tests/cpython_subset.rs` rather than the default
-  `tests/cpython_diff.rs` oracle because macOS system Python 3.9 still has the
-  old accepted-and-cleared behavior.
+- Added gated direct CPython diff evidence in
+  `cpython_bytearray_hex_reentrant_separator_buffererror_diff_subset`. Older
+  CPython oracles, including macOS system Python 3.9, still expose the old
+  accepted-and-cleared behavior and are explicitly skipped.
 
 Completed in the `test_compile.py` boolean/control-flow pass:
 

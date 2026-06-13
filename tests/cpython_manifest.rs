@@ -1398,6 +1398,47 @@ fn cpython_bytes_warning_compare_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytearray_hex_reentrant_separator_diff_is_capability_gated() {
+    let diff_name = "cpython_bytearray_hex_reentrant_separator_buffererror_diff_subset";
+    let subset_name = "cpython_bytearray_hex_reentrant_separator_buffererror_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray hex re-entrant separator direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray hex re-entrant separator runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytearray hex re-entrant docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytearray hex re-entrant diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "ba.hex(S(b':'))",
+        "BufferError",
+        "skipping bytearray.hex re-entrant separator diff",
+        "accepted",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytearray hex re-entrant gated diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let class_counts = python_test_class_method_counts(&source);

@@ -1984,10 +1984,13 @@ Recent runtime migration notes:
   `cpython_bytes_warning_compare_subset` covers
   `AssortedBytesTest::test_compare` for `sys.flags.bytes_warning`,
   `BytesWarning` capture, and `-bb` warning-as-error behavior. This is followed by
+  `cpython_bytearray_hex_reentrant_separator_buffererror_diff_subset` /
   `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, covering the
   current CPython `ByteArrayTest::test_hex_use_after_free` behavior where
   bytearray `hex()` keeps the receiver resize-locked while a bytes-subclass
-  separator executes re-entrant `__len__` code.
+  separator executes re-entrant `__len__` code. The direct diff is capability
+  gated because older CPython oracles still expose the old accepted-and-cleared
+  behavior.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_extended_slice_assignment_subset`, covering bytearray
   extended slice assignment/deletion, integer-iterable RHS conversion,
