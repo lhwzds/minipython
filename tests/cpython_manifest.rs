@@ -3665,6 +3665,57 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
 }
 
 #[test]
+fn json_error_boundary_diff_covers_subset_surface() {
+    for (diff_name, subset_name) in [
+        (
+            "cpython_json_loads_dumps_error_boundary_diff_subset",
+            "cpython_json_loads_dumps_error_boundary_subset",
+        ),
+        (
+            "cpython_json_loads_string_error_boundary_diff_subset",
+            "cpython_json_loads_string_error_boundary_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json error-boundary CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json error-boundary subset evidence `{subset_name}` must exist"
+        );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    for required in [
+        "loads-memoryview",
+        "loads-invalid-utf8",
+        "loads-trailing-data",
+        "loads-array-trailing-comma",
+        "loads-invalid-escape",
+        "dumps-bytearray",
+        "dumps-memoryview",
+        "dumps-list-cycle",
+        "dumps-dict-cycle",
+        "dumps-namedtuple-cycle",
+        "short-unicode-escape",
+        "nonhex-unicode-escape",
+        "raw-newline",
+        "raw-tab",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json error-boundary diff and subset evidence must both cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn operator_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "operator",
