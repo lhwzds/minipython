@@ -263,7 +263,7 @@ fn cpython_test_manifest_compile_source_positions_method_audit_matches_current_s
         methods.iter().all(|method| {
             matches!(
                 method.status,
-                "ported" | "partial" | "blocked_by_cpython_internal" | "not_started"
+                "ported" | "partial" | "blocked_by_cpython_internal"
             )
         }),
         "TestSourcePositions method audit contains an unknown status"
@@ -1041,7 +1041,7 @@ fn cpython_test_manifest_builtin_eval_exec_method_audit_is_tracked() {
     assert!(
         methods
             .iter()
-            .all(|method| matches!(method.status, "ported" | "not_started")),
+            .all(|method| matches!(method.status, "ported")),
         "BuiltinTest eval/exec audit contains an unexpected status"
     );
 
@@ -2346,10 +2346,9 @@ fn cpython_test_manifest_builtin_compile_io_regression_method_audit_is_tracked()
         "blocked_by_runtime BuiltinTest compile/I/O/regression audit count drifted"
     );
     assert!(
-        methods.iter().all(|method| matches!(
-            method.status,
-            "ported" | "not_started" | "blocked_by_runtime"
-        )),
+        methods
+            .iter()
+            .all(|method| matches!(method.status, "ported" | "blocked_by_runtime")),
         "BuiltinTest compile/I/O/regression audit contains an unexpected status"
     );
 
@@ -11712,8 +11711,8 @@ fn cpython_test_manifest_collections_chainmap_method_audit_is_complete() {
     assert!(
         methods
             .iter()
-            .all(|method| matches!(method.status, "ported" | "partial" | "not_started")),
-        "TestChainMap method statuses should be ported, partial, or not_started"
+            .all(|method| matches!(method.status, "ported" | "partial")),
+        "TestChainMap method statuses should be ported or partial"
     );
     assert_eq!(
         methods
@@ -11772,9 +11771,9 @@ fn cpython_test_manifest_collections_namedtuple_method_audit_is_complete() {
     assert!(
         methods.iter().all(|method| matches!(
             method.status,
-            "ported" | "partial" | "not_started" | "blocked_by_cpython_internal"
+            "ported" | "partial" | "blocked_by_cpython_internal"
         )),
-        "TestNamedTuple method statuses should be ported, partial, not_started, or blocked_by_cpython_internal"
+        "TestNamedTuple method statuses should be ported, partial, or blocked_by_cpython_internal"
     );
     assert_eq!(
         methods
@@ -11854,8 +11853,8 @@ fn cpython_test_manifest_collections_user_objects_method_audit_is_complete() {
     assert!(
         methods
             .iter()
-            .all(|method| matches!(method.status, "ported" | "not_started")),
-        "TestUserObjects method statuses should be ported or not_started"
+            .all(|method| matches!(method.status, "ported")),
+        "TestUserObjects method statuses should be ported"
     );
     assert_eq!(
         methods
@@ -11963,9 +11962,9 @@ fn cpython_test_manifest_collections_collection_abcs_method_audit_matches_curren
     assert!(
         methods.iter().all(|method| matches!(
             method.status,
-            "ported" | "partial" | "not_started" | "blocked_by_cpython_internal"
+            "ported" | "partial" | "blocked_by_cpython_internal"
         )),
-        "TestCollectionABCs method statuses should be ported, partial, not_started, or blocked_by_cpython_internal"
+        "TestCollectionABCs method statuses should be ported, partial, or blocked_by_cpython_internal"
     );
     assert_eq!(
         methods
@@ -12027,8 +12026,8 @@ fn cpython_test_manifest_collections_counter_method_audit_is_complete() {
     assert!(
         methods
             .iter()
-            .all(|method| matches!(method.status, "ported" | "partial" | "not_started")),
-        "TestCounter method statuses should be ported, partial, or not_started"
+            .all(|method| matches!(method.status, "ported" | "partial")),
+        "TestCounter method statuses should be ported or partial"
     );
     assert_eq!(
         methods
