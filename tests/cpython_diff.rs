@@ -16410,6 +16410,41 @@ for expr in [lambda: OrderedDict(1), lambda: OrderedDict([('a', 1, 2)])]:
         print(error.__class__.__name__)"#,
         },
         DiffCase {
+            origin: "Lib/test/test_ordered_dict.py public move_to_end/popitem keyword subset",
+            name: "ordered-dict-move-pop-keyword-subset",
+            source: r#"from collections import OrderedDict
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('move-last-false', (od.move_to_end('b', last=False), list(od.items())))
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('move-last-true', (od.move_to_end('a', last=True), list(od.items())))
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('move-direct-keyword', (OrderedDict.move_to_end(od, 'c', last=False), list(od.items())))
+for label, expr in [
+    ('move-missing', "OrderedDict([('a', 1)]).move_to_end('x')"),
+    ('move-unknown-kw', "OrderedDict([('a', 1)]).move_to_end('a', nope=False)"),
+    ('move-dup-last', "OrderedDict([('a', 1)]).move_to_end('a', True, last=False)"),
+]:
+    try:
+        eval(expr)
+    except Exception as error:
+        print(label, error.__class__.__name__)
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('pop-last-false', (od.popitem(last=False), list(od.items())))
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('pop-last-true', (od.popitem(last=True), list(od.items())))
+od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
+print('pop-direct-keyword', (OrderedDict.popitem(od, last=False), list(od.items())))
+for label, expr in [
+    ('pop-empty', "OrderedDict().popitem()"),
+    ('pop-unknown-kw', "OrderedDict([('a', 1)]).popitem(nope=False)"),
+    ('pop-dup-last', "OrderedDict([('a', 1)]).popitem(True, last=False)"),
+]:
+    try:
+        eval(expr)
+    except Exception as error:
+        print(label, error.__class__.__name__)"#,
+        },
+        DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",
             name: "type-name-qualname",
             source: r#"C = type('C', (), {})

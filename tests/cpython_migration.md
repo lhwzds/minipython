@@ -9443,6 +9443,11 @@ Completed in the CPython collections manifest expansion pass:
   operators that preserve `OrderedDict` result type/order and in-place
   identity. Direct
   `__reversed__()` now returns reverse key iteration for the supported storage.
+  `cpython_ordered_dict_move_pop_keyword_subset`, backed by the
+  `ordered-dict-move-pop-keyword-subset` diff case, separately covers
+  `move_to_end()` / `popitem()` `last=` keyword binding, type-level method
+  calls, and public error classes for missing keys, empty pops, unexpected
+  keywords, and duplicate `last` arguments.
   This is enough for the ChainMap order-preservation test, but it is not yet a
   full OrderedDict runtime surface.
 - Added `cpython_collections_chainmap_copy_pickle_eval_identity_subset`,

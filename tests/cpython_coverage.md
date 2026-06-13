@@ -3355,6 +3355,13 @@ Recent runtime migration notes:
   `__getitem__()`, `__setitem__()`, item deletion, and `clear()` while
   preserving ordered storage.
 - `CONTAINER_RUNTIME` also includes
+  `cpython_ordered_dict_move_pop_keyword_subset`, backed by
+  `cpython_program_output_parity_smoke_diff_subset` through the
+  `ordered-dict-move-pop-keyword-subset` case, covering `move_to_end()` and
+  `popitem()` `last=` keyword binding, type-level method calls, missing-key
+  errors, empty-pop errors, unexpected-keyword errors, and duplicate-argument
+  errors without promoting the full OrderedDict runtime surface.
+- `CONTAINER_RUNTIME` also includes
   `cpython_types_class_creation_new_class_resolve_bases_subset`, covering the
   first CPython `ClassCreationTests` public slice for `types.new_class()`,
   `types.prepare_class()`, and `types.resolve_bases()`: exported names,

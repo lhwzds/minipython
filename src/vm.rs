@@ -53507,6 +53507,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("OrderedDict.{name}")))
         }
         Value::Builtin(function_name)
+            if function_name == "OrderedDict" && name == "move_to_end" =>
+        {
+            Ok(Value::Builtin("OrderedDict.move_to_end".to_string()))
+        }
+        Value::Builtin(function_name)
             if function_name == "OrderedDict"
                 && matches!(name, "__or__" | "__ror__" | "__ior__") =>
         {
@@ -66832,7 +66837,6 @@ fn call_dict_method(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if name == "OrderedDict.move_to_end" {
-        reject_method_keywords(name, &keywords)?;
         let [Value::OrderedDict(entries), key, rest @ ..] = args.as_slice() else {
             return Err(format!(
                 "move_to_end() expected 1 argument, got {}",
@@ -66850,6 +66854,18 @@ fn call_dict_method(
             [value] => vm.truth_value(value.clone())?,
             _ => unreachable!("rest length checked above"),
         };
+        let mut last = last;
+        for (keyword, value) in keywords {
+            if keyword != "last" {
+                return Err(format!(
+                    "move_to_end() got an unexpected keyword argument '{keyword}'"
+                ));
+            }
+            if !rest.is_empty() {
+                return Err("move_to_end() got multiple values for argument 'last'".to_string());
+            }
+            last = vm.truth_value(value)?;
+        }
         ensure_hashable_key(key)?;
         let mut entries = entries.borrow_mut();
         let Some(position) = entries
