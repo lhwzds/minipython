@@ -7687,6 +7687,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "hasattr(g, '__or__')",
         "scope_union = g | {'scope_union_b': 15}",
         "scope_runion = {'scope_union_z': 0} | g",
+        "g.fromkeys(('scope_fk_a', 'scope_fk_b'), 20)",
         "g |= {'scope_ior_c': 18}",
         "g |= [('scope_ior_d', 19)]",
         "g | [('scope_bad', 1)]",

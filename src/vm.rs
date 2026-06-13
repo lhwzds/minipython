@@ -52206,6 +52206,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::Dict(entries) => match name {
+            "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__len__"
             | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -52367,6 +52368,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
         }
         Value::ScopeDict(scope) => match name {
+            "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
             | "__ior__" | "__iter__" | "__len__" | "__ne__" | "__or__" | "__reversed__"

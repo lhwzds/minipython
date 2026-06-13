@@ -6314,6 +6314,7 @@ print(type(scope_union).__name__, scope_union['scope_rev_a'], scope_union['scope
 scope_runion = {'scope_union_z': 0} | g
 print(type(scope_runion).__name__, scope_runion['scope_union_z'], scope_runion['scope_rev_a'])
 print(g.__or__({'scope_union_q': 16})['scope_union_q'], g.__ror__({'scope_union_r': 17})['scope_rev_a'])
+print(g.fromkeys(('scope_fk_a', 'scope_fk_b'), 20))
 g |= {'scope_ior_c': 18}
 print(scope_ior_c, g['scope_ior_c'])
 g |= [('scope_ior_d', 19)]
@@ -15722,7 +15723,7 @@ print(d.x)"#,
         DiffCase {
             origin: "Lib/test/test_dict.py::test_update / ::test_copy",
             name: "dict-method-update-copy-get-pop-fromkeys",
-            source: "d = {}\nd.update({1: 100})\nd.update({2: 20})\nd.update({1: 1, 2: 2, 3: 3})\nprint(d[1], d[2], d[3])\ncopy = d.copy()\nd[4] = 4\nprint(copy is d, copy == d, 4 in copy, 4 in d)\nd.update(x=5)\nprint(d.get(9, \"missing\"), d[\"x\"])\nprint(d.pop(2), 2 in d, d.pop(9, \"fallback\"))\nfromkeys = dict.fromkeys([\"a\", \"b\"], 7)\nprint(fromkeys[\"a\"], fromkeys[\"b\"])",
+            source: "d = {}\nd.update({1: 100})\nd.update({2: 20})\nd.update({1: 1, 2: 2, 3: 3})\nprint(d[1], d[2], d[3])\ncopy = d.copy()\nd[4] = 4\nprint(copy is d, copy == d, 4 in copy, 4 in d)\nd.update(x=5)\nprint(d.get(9, \"missing\"), d[\"x\"])\nprint(d.pop(2), 2 in d, d.pop(9, \"fallback\"))\nfromkeys = dict.fromkeys([\"a\", \"b\"], 7)\ninstance_fromkeys = {}.fromkeys((\"x\", \"y\"), 8)\nprint(fromkeys[\"a\"], fromkeys[\"b\"], instance_fromkeys[\"x\"], instance_fromkeys[\"y\"])",
         },
         DiffCase {
             origin: "Lib/test/test_set.py set mutation/copy methods",
