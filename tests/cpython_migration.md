@@ -3354,6 +3354,9 @@ Completed in the bytes join-method pass:
   stress joins, and representative `TypeError` paths for non-iterable inputs
   and non-bytes-like items. Direct CPython diff evidence is in
   `cpython_bytes_join_diff_subset`.
+- Added direct coverage for `memoryview` contiguity: contiguous sliced views are
+  accepted as join items, while non-contiguous stepped or reversed views raise
+  CPython's `memoryview found` `TypeError`.
 - Added `cpython_bytes_join_translate_maketrans_typeerror_messages_subset` to
   pin CPython's exact public `TypeError.args[0]` diagnostics for bytes and
   bytearray `join()` unbound, missing-argument, over-arity, and non-iterable

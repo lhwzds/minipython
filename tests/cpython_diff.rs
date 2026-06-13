@@ -19326,6 +19326,16 @@ fn cpython_bytes_join_diff_subset() {
     print(dot_join([b'ab', memoryview(b'cd')]))
     print(dot_join([bytearray(b'ab'), b'cd']))
     print(dot_join([b'ab', bytearray(b'cd')]))
+    for label, item in [
+        ('join-slice-mid', memoryview(bytearray(b'abcdef'))[2:5]),
+        ('join-slice-step', memoryview(bytearray(b'abcdef'))[::2]),
+        ('join-slice-rev', memoryview(bytearray(b'abcdef'))[::-1]),
+    ]:
+        try:
+            result = dot_join([item])
+            print(label, type(result).__name__, result)
+        except TypeError as error:
+            print(label, error.__class__.__name__, str(error), 'memoryview found' in str(error))
     seq = [b'abc'] * 100
     joined = dot_join(seq)
     expected = b'abc' + b'.:abc' * 99

@@ -30173,6 +30173,13 @@ impl Vm {
         let mut output = Vec::new();
 
         for (index, value) in values.into_iter().enumerate() {
+            if let Value::MemoryView(view) = &value {
+                if !memoryview_is_contiguous(view)? {
+                    return Err(format!(
+                        "TypeError: sequence item {index}: expected a bytes-like object, memoryview found"
+                    ));
+                }
+            }
             let part = match bytes_buffer_value_bytes(&value)? {
                 Some(bytes) => bytes,
                 None => {

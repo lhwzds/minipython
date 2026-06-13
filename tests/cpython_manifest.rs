@@ -1731,6 +1731,37 @@ fn cpython_bytes_join_translate_maketrans_typeerror_diff_covers_runtime_subset()
 }
 
 #[test]
+fn cpython_bytes_join_memoryview_contiguity_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_join_diff_subset";
+    let subset_name = "cpython_bytes_join_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes join direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes join runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes join docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    for (name, haystack) in [(diff_name, CPYTHON_DIFF), (subset_name, CPYTHON_SUBSET)] {
+        for required in ["join-slice-mid", "join-slice-step", "memoryview found"] {
+            assert!(
+                haystack.contains(required),
+                "{name} evidence must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn cpython_bytes_prefix_suffix_typeerror_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_prefix_suffix_typeerror_messages_diff_subset";
     let subset_name = "cpython_bytes_prefix_suffix_typeerror_messages_subset";

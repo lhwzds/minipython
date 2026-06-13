@@ -32335,7 +32335,7 @@ fn cpython_bytes_search_prefix_suffix_error_messages_subset() {
 #[test]
 fn cpython_bytes_join_subset() {
     assert_output(
-        "for ctor in [bytes, bytearray]:\n    empty = ctor(b'')\n    print(empty.join([]))\n    print(empty.join([b'']))\n    for parts in [[b'abc'], [b'a', b'bc'], [b'ab', b'c'], [b'a', b'b', b'c']]:\n        values = list(map(ctor, parts))\n        print(empty.join(values), empty.join(tuple(values)), empty.join(iter(values)))\n    dot_join = ctor(b'.:').join\n    print(dot_join([b'ab', b'cd']))\n    print(dot_join([memoryview(b'ab'), b'cd']))\n    print(dot_join([b'ab', memoryview(b'cd')]))\n    print(dot_join([bytearray(b'ab'), b'cd']))\n    print(dot_join([b'ab', bytearray(b'cd')]))\n    seq = [b'abc'] * 100\n    joined = dot_join(seq)\n    expected = b'abc' + b'.:abc' * 99\n    print(joined == ctor(expected), len(joined))\n    joined = empty.join(seq)\n    expected = b'abc' * 100\n    print(joined == ctor(expected), len(joined))\n    for expr in [lambda: ctor(b' ').join(None), lambda: dot_join([bytearray(b'ab'), 'cd', b'ef']), lambda: dot_join([memoryview(b'ab'), 'cd', b'ef'])]:\n        try:\n            expr()\n        except TypeError as error:\n            print(error.__class__.__name__)",
+        "for ctor in [bytes, bytearray]:\n    empty = ctor(b'')\n    print(empty.join([]))\n    print(empty.join([b'']))\n    for parts in [[b'abc'], [b'a', b'bc'], [b'ab', b'c'], [b'a', b'b', b'c']]:\n        values = list(map(ctor, parts))\n        print(empty.join(values), empty.join(tuple(values)), empty.join(iter(values)))\n    dot_join = ctor(b'.:').join\n    print(dot_join([b'ab', b'cd']))\n    print(dot_join([memoryview(b'ab'), b'cd']))\n    print(dot_join([b'ab', memoryview(b'cd')]))\n    print(dot_join([bytearray(b'ab'), b'cd']))\n    print(dot_join([b'ab', bytearray(b'cd')]))\n    for label, item in [('join-slice-mid', memoryview(bytearray(b'abcdef'))[2:5]), ('join-slice-step', memoryview(bytearray(b'abcdef'))[::2]), ('join-slice-rev', memoryview(bytearray(b'abcdef'))[::-1])]:\n        try:\n            result = dot_join([item])\n            print(label, type(result).__name__, result)\n        except TypeError as error:\n            print(label, error.__class__.__name__, str(error), 'memoryview found' in str(error))\n    seq = [b'abc'] * 100\n    joined = dot_join(seq)\n    expected = b'abc' + b'.:abc' * 99\n    print(joined == ctor(expected), len(joined))\n    joined = empty.join(seq)\n    expected = b'abc' * 100\n    print(joined == ctor(expected), len(joined))\n    for expr in [lambda: ctor(b' ').join(None), lambda: dot_join([bytearray(b'ab'), 'cd', b'ef']), lambda: dot_join([memoryview(b'ab'), 'cd', b'ef'])]:\n        try:\n            expr()\n        except TypeError as error:\n            print(error.__class__.__name__)",
         &[
             "b''",
             "b''",
@@ -32348,6 +32348,9 @@ fn cpython_bytes_join_subset() {
             "b'ab.:cd'",
             "b'ab.:cd'",
             "b'ab.:cd'",
+            "join-slice-mid bytes b'cde'",
+            "join-slice-step TypeError sequence item 0: expected a bytes-like object, memoryview found True",
+            "join-slice-rev TypeError sequence item 0: expected a bytes-like object, memoryview found True",
             "True 498",
             "True 300",
             "TypeError",
@@ -32364,6 +32367,9 @@ fn cpython_bytes_join_subset() {
             "bytearray(b'ab.:cd')",
             "bytearray(b'ab.:cd')",
             "bytearray(b'ab.:cd')",
+            "join-slice-mid bytearray bytearray(b'cde')",
+            "join-slice-step TypeError sequence item 0: expected a bytes-like object, memoryview found True",
+            "join-slice-rev TypeError sequence item 0: expected a bytes-like object, memoryview found True",
             "True 498",
             "True 300",
             "TypeError",

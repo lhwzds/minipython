@@ -2275,8 +2275,10 @@ Recent runtime migration notes:
 - `STRING_RUNTIME` also includes `cpython_bytes_join_subset`, covering
   bytes/bytearray `join()` receiver-driven result types, list/tuple/iterator
   inputs, bytes-like items, empty joins/separators, reduced stress joins, and
-  representative TypeError paths. Direct CPython diff evidence is in
-  `cpython_bytes_join_diff_subset`.
+  representative TypeError paths. It also pins CPython's distinction between
+  contiguous sliced `memoryview` items, which are accepted, and non-contiguous
+  `memoryview` items, which raise `TypeError` with `memoryview found`. Direct
+  CPython diff evidence is in `cpython_bytes_join_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and
