@@ -32426,6 +32426,27 @@ fn cpython_bytes_memoryview_contiguity_methods_subset() {
     );
 }
 
+#[test]
+fn cpython_bytes_memoryview_concat_subset() {
+    assert_output(
+        "def show(label, func):\n    try:\n        result = func()\n        print(label, 'ok', type(result).__name__, result)\n    except Exception as error:\n        print(label, error.__class__.__name__, str(error))\nEXPECTED_BYTES_CONCAT = \"can't concat memoryview to bytes\"\nEXPECTED_BYTEARRAY_CONCAT = \"can't concat memoryview to bytearray\"\nEXPECTED_BYTEARRAY_EXTEND = \"can't set bytearray slice from memoryview\"\nmid = memoryview(bytearray(b'abcdef'))[2:5]\nstep = memoryview(bytearray(b'abcdef'))[::2]\nrev = memoryview(bytearray(b'abcdef'))[::-1]\nshow('bytes.plus.mid', lambda: b'x' + mid)\nshow('bytearray.plus.mid', lambda: bytearray(b'x') + mid)\ndef iadd_mid():\n    data = bytearray(b'x')\n    data.__iadd__(mid)\n    return data\nshow('bytearray.iadd.mid', iadd_mid)\ndef extend_mid():\n    data = bytearray(b'x')\n    data.extend(mid)\n    return data\nshow('bytearray.extend.mid', extend_mid)\nshow('bytes.plus.step', lambda: b'x' + step)\nshow('bytearray.plus.step', lambda: bytearray(b'x') + step)\ndef iadd_step():\n    data = bytearray(b'x')\n    data.__iadd__(step)\n    return data\nshow('bytearray.iadd.step', iadd_step)\ndef extend_step():\n    data = bytearray(b'x')\n    data.extend(step)\n    return data\nshow('bytearray.extend.step', extend_step)\nshow('bytes.plus.rev', lambda: b'x' + rev)\nshow('bytearray.plus.rev', lambda: bytearray(b'x') + rev)\ndef iadd_rev():\n    data = bytearray(b'x')\n    data.__iadd__(rev)\n    return data\nshow('bytearray.iadd.rev', iadd_rev)\ndef extend_rev():\n    data = bytearray(b'x')\n    data.extend(rev)\n    return data\nshow('bytearray.extend.rev', extend_rev)",
+        &[
+            "bytes.plus.mid ok bytes b'xcde'",
+            "bytearray.plus.mid ok bytearray bytearray(b'xcde')",
+            "bytearray.iadd.mid ok bytearray bytearray(b'xcde')",
+            "bytearray.extend.mid ok bytearray bytearray(b'xcde')",
+            "bytes.plus.step TypeError can't concat memoryview to bytes",
+            "bytearray.plus.step TypeError can't concat memoryview to bytearray",
+            "bytearray.iadd.step TypeError can't concat memoryview to bytearray",
+            "bytearray.extend.step TypeError can't set bytearray slice from memoryview",
+            "bytes.plus.rev TypeError can't concat memoryview to bytes",
+            "bytearray.plus.rev TypeError can't concat memoryview to bytearray",
+            "bytearray.iadd.rev TypeError can't concat memoryview to bytearray",
+            "bytearray.extend.rev TypeError can't set bytearray slice from memoryview",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest public
 // join/translate/maketrans TypeError rows. This pins descriptor arity,
 // bound-method arity, and non-iterable join diagnostics for bytes and

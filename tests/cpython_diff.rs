@@ -19399,6 +19399,63 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_memoryview_concat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py bytes/bytearray memoryview concat public subset",
+        name: "bytes-memoryview-concat",
+        source: r#"def show(label, func):
+    try:
+        result = func()
+        print(label, 'ok', type(result).__name__, result)
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
+
+EXPECTED_BYTES_CONCAT = "can't concat memoryview to bytes"
+EXPECTED_BYTEARRAY_CONCAT = "can't concat memoryview to bytearray"
+EXPECTED_BYTEARRAY_EXTEND = "can't set bytearray slice from memoryview"
+mid = memoryview(bytearray(b'abcdef'))[2:5]
+step = memoryview(bytearray(b'abcdef'))[::2]
+rev = memoryview(bytearray(b'abcdef'))[::-1]
+show('bytes.plus.mid', lambda: b'x' + mid)
+show('bytearray.plus.mid', lambda: bytearray(b'x') + mid)
+def iadd_mid():
+    data = bytearray(b'x')
+    data.__iadd__(mid)
+    return data
+show('bytearray.iadd.mid', iadd_mid)
+def extend_mid():
+    data = bytearray(b'x')
+    data.extend(mid)
+    return data
+show('bytearray.extend.mid', extend_mid)
+show('bytes.plus.step', lambda: b'x' + step)
+show('bytearray.plus.step', lambda: bytearray(b'x') + step)
+def iadd_step():
+    data = bytearray(b'x')
+    data.__iadd__(step)
+    return data
+show('bytearray.iadd.step', iadd_step)
+def extend_step():
+    data = bytearray(b'x')
+    data.extend(step)
+    return data
+show('bytearray.extend.step', extend_step)
+show('bytes.plus.rev', lambda: b'x' + rev)
+show('bytearray.plus.rev', lambda: bytearray(b'x') + rev)
+def iadd_rev():
+    data = bytearray(b'x')
+    data.__iadd__(rev)
+    return data
+show('bytearray.iadd.rev', iadd_rev)
+def extend_rev():
+    data = bytearray(b'x')
+    data.extend(rev)
+    return data
+show('bytearray.extend.rev', extend_rev)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_copy_module_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_copy public subset",

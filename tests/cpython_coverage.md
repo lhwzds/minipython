@@ -2290,6 +2290,11 @@ Recent runtime migration notes:
   for search, prefix/suffix, and membership operations: `count()`, `find()`,
   `rfind()`, `index()`, `startswith()`, `endswith()`, and `in`. Direct CPython
   diff evidence is in `cpython_bytes_memoryview_contiguity_methods_diff_subset`.
+- `STRING_RUNTIME` also includes `cpython_bytes_memoryview_concat_subset`,
+  covering contiguous sliced `memoryview` acceptance and non-contiguous
+  `memoryview` rejection for `bytes + view`, `bytearray + view`,
+  `bytearray.__iadd__(view)`, and `bytearray.extend(view)`. Direct CPython diff
+  evidence is in `cpython_bytes_memoryview_concat_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_builtin_bytearray_translate_extend_errors_subset`, covering CPython
   `BuiltinTest::test_bytearray_translate` and

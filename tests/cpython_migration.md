@@ -3366,6 +3366,11 @@ Completed in the bytes join-method pass:
   accepts their logical contents. The same evidence now covers bytes/bytearray
   search, prefix/suffix, and membership operations over non-contiguous
   `memoryview` needles.
+- Added `cpython_bytes_memoryview_concat_subset` with direct
+  `cpython_bytes_memoryview_concat_diff_subset` evidence for bytes/bytearray
+  concatenation, bytearray in-place concatenation, and `bytearray.extend()`
+  rejecting non-contiguous `memoryview` inputs with CPython TypeError text while
+  still accepting contiguous sliced views.
 - Added `cpython_bytes_join_translate_maketrans_typeerror_messages_subset` to
   pin CPython's exact public `TypeError.args[0]` diagnostics for bytes and
   bytearray `join()` unbound, missing-argument, over-arity, and non-iterable

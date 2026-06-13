@@ -19357,7 +19357,12 @@ impl Vm {
 
     fn bytearray_extend_bytes(&mut self, value: Value) -> Result<Vec<u8>, String> {
         match value {
-            Value::MemoryView(view) => memoryview_bytes(&view),
+            Value::MemoryView(view) => {
+                if !memoryview_is_contiguous(&view)? {
+                    return Err("TypeError: can't set bytearray slice from memoryview".to_string());
+                }
+                memoryview_bytes(&view)
+            }
             Value::String(_) => {
                 Err("TypeError: expected iterable of integers; got: 'str'".to_string())
             }
@@ -76242,6 +76247,11 @@ fn in_place_add_values(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn bytearray_iadd_extension(value: Value) -> Result<Vec<u8>, String> {
+    if let Value::MemoryView(view) = &value {
+        if !memoryview_is_contiguous(view)? {
+            return Err("TypeError: can't concat memoryview to bytearray".to_string());
+        }
+    }
     match bytes_buffer_value_bytes(&value)? {
         Some(bytes) => Ok(bytes),
         None => Err(format!(
@@ -76461,6 +76471,17 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
 
 fn bytes_concat_values(left: &Value, right: &Value) -> Option<Result<Value, String>> {
     let (mut left_bytes, kind) = bytes_base_value_bytes(left)?;
+    if let Value::MemoryView(view) = right {
+        if let Ok(false) = memoryview_is_contiguous(view) {
+            let target = match kind {
+                BytesResultKind::Bytes => "bytes",
+                BytesResultKind::ByteArray => "bytearray",
+            };
+            return Some(Err(format!(
+                "TypeError: can't concat memoryview to {target}"
+            )));
+        }
+    }
     let right_bytes = match bytes_buffer_value_bytes(right) {
         Ok(Some(bytes)) => bytes,
         Ok(None) => return None,

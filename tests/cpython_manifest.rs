@@ -1811,6 +1811,43 @@ fn cpython_bytes_method_memoryview_contiguity_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_memoryview_concat_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_memoryview_concat_diff_subset";
+    let subset_name = "cpython_bytes_memoryview_concat_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes memoryview concat direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes memoryview concat runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes memoryview concat docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    for required in [
+        "bytes.plus.step",
+        "bytearray.plus.step",
+        "bytearray.iadd.step",
+        "bytearray.extend.step",
+        "can't concat memoryview to bytes",
+        "can't concat memoryview to bytearray",
+        "can't set bytearray slice from memoryview",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytes memoryview concat evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_prefix_suffix_typeerror_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_prefix_suffix_typeerror_messages_diff_subset";
     let subset_name = "cpython_bytes_prefix_suffix_typeerror_messages_subset";

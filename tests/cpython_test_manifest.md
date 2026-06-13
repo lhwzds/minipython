@@ -94,6 +94,11 @@ non-contiguous `memoryview` `BufferError` handling for strip, replace, split,
 rsplit, translate delete, maketrans, and bytes partition/rpartition arguments,
 plus bytearray partition/rpartition logical-content handling and non-contiguous
 search, prefix/suffix, and membership needles.
+Direct diff mapping note: `cpython_bytes_memoryview_concat_diff_subset`
+directly compares the public bytes/bytearray concat and bytearray extend
+behavior covered by `cpython_bytes_memoryview_concat_subset`, including
+contiguous sliced `memoryview` acceptance and non-contiguous `memoryview`
+TypeErrors.
 Direct diff mapping note: `cpython_bytes_prefix_suffix_typeerror_messages_diff_subset`
 directly compares public startswith/endswith prefix/suffix TypeError text
 covered by `cpython_bytes_prefix_suffix_typeerror_messages_subset`.
