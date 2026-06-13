@@ -4065,6 +4065,28 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         keyword_source.contains("multiple values"),
         "itertools keyword-error runtime evidence must assert duplicate keyword diagnostics"
     );
+    for required in [
+        "itertools.compress()",
+        "itertools.compress([1])",
+        "itertools.compress([1], data=[])",
+        "compress() missing required argument 'data' (pos 1)",
+        "compress() missing required argument 'selectors' (pos 2)",
+        "itertools.groupby()",
+        "itertools.groupby([1], iterable=[])",
+        "groupby() missing required argument 'iterable' (pos 1)",
+        "itertools.combinations()",
+        "itertools.combinations([1])",
+        "combinations() missing required argument 'r' (pos 2)",
+        "itertools.combinations_with_replacement()",
+        "combinations_with_replacement() missing required argument 'r' (pos 2)",
+        "itertools.permutations()",
+        "permutations() missing required argument 'iterable' (pos 1)",
+    ] {
+        assert!(
+            keyword_source.contains(required),
+            "itertools keyword-error runtime evidence must cover `{required}`"
+        );
+    }
     assert!(
         pairwise_source.contains("itertools.pairwise"),
         "itertools pairwise runtime evidence must cover pairwise()"
@@ -4162,6 +4184,12 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
             && keyword_source.contains("itertools.repeat(object=1, times=2, bad=3)")
             && keyword_source.contains("itertools.repeat(1, object=2)")
             && keyword_source.contains("itertools.repeat(1, 2, times=3)")
+            && keyword_source.contains("itertools.compress()")
+            && keyword_source.contains("itertools.compress([1], data=[])")
+            && keyword_source.contains("itertools.groupby([1], iterable=[])")
+            && keyword_source.contains("itertools.combinations([1], 1, r=2)")
+            && keyword_source.contains("itertools.combinations_with_replacement([1], 1, r=2)")
+            && keyword_source.contains("itertools.permutations([1], 1, r=2)")
             && keyword_source.contains("str(error)"),
         "itertools keyword-error CPython diff evidence must assert exact keyword diagnostics"
     );

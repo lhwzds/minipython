@@ -3694,6 +3694,64 @@ fn bind_keyword_call(
     Ok(values)
 }
 
+fn bind_itertools_keyword_call(
+    function_name: &str,
+    parameters: &[&str],
+    required: usize,
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Vec<Option<Value>>, String> {
+    let total = args.len() + keywords.len();
+    if total > parameters.len() {
+        return Err(format!(
+            "TypeError: {function_name}() takes at most {} arguments ({total} given)",
+            parameters.len()
+        ));
+    }
+
+    let mut values = vec![None; parameters.len()];
+    for (index, value) in args.into_iter().enumerate() {
+        values[index] = Some(value);
+    }
+
+    for (keyword, value) in keywords {
+        let Some(index) = parameters
+            .iter()
+            .position(|parameter| *parameter == keyword.as_str())
+        else {
+            return Err(format!(
+                "TypeError: {function_name}() got an unexpected keyword argument '{keyword}'"
+            ));
+        };
+        if values[index].is_some() {
+            for (missing_index, missing_parameter) in parameters.iter().take(required).enumerate() {
+                if values[missing_index].is_none() {
+                    return Err(format!(
+                        "TypeError: {function_name}() missing required argument '{missing_parameter}' (pos {})",
+                        missing_index + 1
+                    ));
+                }
+            }
+            return Err(format!(
+                "TypeError: argument for {function_name}() given by name ('{keyword}') and position ({})",
+                index + 1
+            ));
+        }
+        values[index] = Some(value);
+    }
+
+    for (index, parameter) in parameters.iter().take(required).enumerate() {
+        if values[index].is_none() {
+            return Err(format!(
+                "TypeError: {function_name}() missing required argument '{parameter}' (pos {})",
+                index + 1
+            ));
+        }
+    }
+
+    Ok(values)
+}
+
 fn new_module_cache() -> ModuleCache {
     let Value::Dict(entries) = dict_value(Vec::new()) else {
         unreachable!("dict_value always returns a dict")
@@ -24164,7 +24222,8 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_keyword_call("compress", &["data", "selectors"], 2, args, keywords)?;
+        let mut values =
+            bind_itertools_keyword_call("compress", &["data", "selectors"], 2, args, keywords)?;
         let data = values[0]
             .take()
             .ok_or_else(|| "TypeError: compress() missing required argument 'data'".to_string())?;
@@ -24202,7 +24261,8 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_keyword_call("groupby", &["iterable", "key"], 1, args, keywords)?;
+        let mut values =
+            bind_itertools_keyword_call("groupby", &["iterable", "key"], 1, args, keywords)?;
         let iterable = values[0].take().ok_or_else(|| {
             "TypeError: groupby() missing required argument 'iterable'".to_string()
         })?;
@@ -24468,7 +24528,8 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_keyword_call("combinations", &["iterable", "r"], 2, args, keywords)?;
+        let mut values =
+            bind_itertools_keyword_call("combinations", &["iterable", "r"], 2, args, keywords)?;
         let iterable = values[0].take().ok_or_else(|| {
             "TypeError: combinations() missing required argument 'iterable'".to_string()
         })?;
@@ -24499,7 +24560,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_keyword_call(
+        let mut values = bind_itertools_keyword_call(
             "combinations_with_replacement",
             &["iterable", "r"],
             2,
@@ -24539,7 +24600,8 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let mut values = bind_keyword_call("permutations", &["iterable", "r"], 1, args, keywords)?;
+        let mut values =
+            bind_itertools_keyword_call("permutations", &["iterable", "r"], 1, args, keywords)?;
         let iterable = values[0].take().ok_or_else(|| {
             "TypeError: permutations() missing required argument 'iterable'".to_string()
         })?;

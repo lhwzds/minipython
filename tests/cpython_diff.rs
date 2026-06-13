@@ -14146,7 +14146,22 @@ show('repeat-many-kw', lambda: itertools.repeat(object=1, times=2, bad=3))
 show('repeat-dup-object', lambda: itertools.repeat(1, object=2))
 show('repeat-dup-times', lambda: itertools.repeat(1, 2, times=3))
 show('accumulate-dup-func', lambda: itertools.accumulate([1], func=lambda left, right: left + right, **{'func': lambda left, right: left}))
-show('zip-longest-dup-fillvalue', lambda: itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1}))"#,
+show('zip-longest-dup-fillvalue', lambda: itertools.zip_longest([1], fillvalue=0, **{'fillvalue': 1}))
+show('compress-noargs', lambda: itertools.compress())
+show('compress-one', lambda: itertools.compress([1]))
+show('compress-dup-data', lambda: itertools.compress([1], data=[]))
+show('compress-extra', lambda: itertools.compress([1], [1], data=[]))
+show('groupby-noargs', lambda: itertools.groupby())
+show('groupby-dup-iterable', lambda: itertools.groupby([1], iterable=[]))
+show('groupby-extra', lambda: itertools.groupby([1], None, 3))
+show('combinations-noargs', lambda: itertools.combinations())
+show('combinations-one', lambda: itertools.combinations([1]))
+show('combinations-extra', lambda: itertools.combinations([1], 1, r=2))
+show('combinations_with_replacement-noargs', lambda: itertools.combinations_with_replacement())
+show('combinations_with_replacement-one', lambda: itertools.combinations_with_replacement([1]))
+show('combinations_with_replacement-extra', lambda: itertools.combinations_with_replacement([1], 1, r=2))
+show('permutations-noargs', lambda: itertools.permutations())
+show('permutations-extra', lambda: itertools.permutations([1], 1, r=2))"#,
     });
 }
 
