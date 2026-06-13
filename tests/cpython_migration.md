@@ -9375,8 +9375,8 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_chainmap_public_methods_subset`, adapted from
   CPython `Lib/test/test_collections.py::TestChainMap`, covering constructor,
   bool, first-map assignment/deletion, `maps`, `parents`, `new_child()`,
-  ordering, dict coercion, iteration, views, containment, lookup, `get()`, and
-  shallow copy behavior.
+  ordering, dict coercion, iteration, views, containment, lookup, direct
+  display/empty-format methods, `get()`, and shallow copy behavior.
 - Extended the `ChainMap` runtime surface with `maps`, `parents`,
   `new_child()`, first-map item assignment/deletion, and CPython-style shallow
   copy of the first map while sharing parent maps.

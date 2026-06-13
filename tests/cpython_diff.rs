@@ -10959,6 +10959,12 @@ cm = ChainMap(override, base)
 print(ChainMap().maps)
 print(ChainMap({'x': 1}).maps)
 print(bool(ChainMap()), bool(ChainMap({}, {})), bool(ChainMap({'x': 1}, {})), bool(ChainMap({}, {'x': 1})))
+print(cm.__repr__(), cm.__str__(), cm.__format__(''))
+print(ChainMap.__repr__(cm), ChainMap.__str__(cm), ChainMap.__format__(cm, ''))
+try:
+    cm.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
 print(list(cm.items()), list(cm), len(cm), dict(cm))
 print('a' in cm, 'b' in cm, 'c' in cm, 'z' in cm)
 print(cm['a'], cm['b'], cm['c'], cm.get('z', 100))

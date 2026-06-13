@@ -25507,6 +25507,42 @@ impl Vm {
                 chain_map_update_first_from_source(&maps, other.clone())?;
                 Ok(receiver.clone())
             }
+            "__repr__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__repr__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                chain_map_receiver_maps(receiver)?;
+                Ok(Value::String(repr_value_checked(receiver)?))
+            }
+            "__str__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "__str__() expected 0 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                chain_map_receiver_maps(receiver)?;
+                Ok(Value::String(repr_value_checked(receiver)?))
+            }
+            "__format__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver, format_spec] = args.as_slice() else {
+                    return Err(format!(
+                        "__format__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                chain_map_receiver_maps(receiver)?;
+                Ok(Value::String(self.call_object_format(vec![
+                    receiver.clone(),
+                    format_spec.clone(),
+                ])?))
+            }
             "__setitem__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver, key, value] = args.as_slice() else {
@@ -48444,8 +48480,9 @@ fn chain_map_subclass_attribute(receiver: Value, name: &str) -> Result<Option<Va
         "maps" => Ok(Some(list_value(maps))),
         "parents" => Ok(Some(chain_map_parents(&maps)?)),
         "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
-        | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__" | "__iter__"
-        | "__len__" | "__or__" | "__ror__" | "__setitem__" => Ok(Some(Value::BoundMethod {
+        | "values" | "__contains__" | "__delitem__" | "__format__" | "__getitem__" | "__ior__"
+        | "__iter__" | "__len__" | "__or__" | "__repr__" | "__ror__" | "__setitem__"
+        | "__str__" => Ok(Some(Value::BoundMethod {
             function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
             receiver: Box::new(receiver),
             identity: Rc::new(()),
@@ -48468,13 +48505,16 @@ fn is_builtin_chain_map_type_method(name: &str) -> bool {
             | "values"
             | "__contains__"
             | "__delitem__"
+            | "__format__"
             | "__getitem__"
             | "__ior__"
             | "__iter__"
             | "__len__"
             | "__or__"
+            | "__repr__"
             | "__ror__"
             | "__setitem__"
+            | "__str__"
     )
 }
 
@@ -52561,14 +52601,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "maps" => Ok(list_value(maps.clone())),
             "parents" => chain_map_parents(&maps),
             "clear" | "copy" | "get" | "items" | "keys" | "new_child" | "pop" | "popitem"
-            | "values" | "__contains__" | "__delitem__" | "__getitem__" | "__ior__"
-            | "__iter__" | "__len__" | "__or__" | "__ror__" | "__setitem__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
-                    receiver: Box::new(Value::ChainMap { maps }),
-                    identity: Rc::new(()),
-                })
-            }
+            | "values" | "__contains__" | "__delitem__" | "__format__" | "__getitem__"
+            | "__ior__" | "__iter__" | "__len__" | "__or__" | "__repr__" | "__ror__"
+            | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("ChainMap.{name}"))),
+                receiver: Box::new(Value::ChainMap { maps }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!(
                 "AttributeError: ChainMap has no attribute '{name}'"
             )),
@@ -53252,6 +53291,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "Counter" && is_builtin_counter_type_method(name) =>
         {
             Ok(Value::Builtin(format!("Counter.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "ChainMap" && is_builtin_chain_map_type_method(name) =>
+        {
+            Ok(Value::Builtin(format!("ChainMap.{name}")))
         }
         Value::Builtin(function_name) if function_name == "complex" && name == "from_number" => {
             Ok(Value::Builtin("complex.from_number".to_string()))
