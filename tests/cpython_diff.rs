@@ -17127,6 +17127,59 @@ match Outer.Inner():
 }
 
 #[test]
+fn cpython_match_pattern_helper_rules_diff_subset() {
+    let probe = run_cpython("match 1:\n    case value:\n        print(value)")
+        .expect("failed to probe CPython match statement support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"1\n" {
+        eprintln!(
+            "skipping match pattern helper diff: CPython oracle lacks match statement support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Grammar/python.gram subject_expr, case_block, guard, patterns, pattern, as_pattern, or_pattern, and closed_pattern public execution subset",
+        name: "match-pattern-helper-rules",
+        source: r#"match 1, 2:
+    case left, right:
+        print(left, right)
+match 3:
+    case 1 | 2:
+        print("small")
+    case value if value > 2:
+        print("guard", value)
+match ["ok", 2]:
+    case [label, 1] | [label, 2]:
+        print(label)
+match item := ['go', 'n']:
+    case [command, direction] if direction in "nesw" and (seen := command):
+        print(item, seen, direction)
+match [1, 2]:
+    case ([1, value]):
+        print(value)
+match [1, 2, 3]:
+    case [first, *middle, last]:
+        print(first, middle, last)
+class Holder:
+    token = "ok"
+match "ok":
+    case Holder.token:
+        print("value")
+match {'x': 1, 'y': 2}:
+    case {'x': value, **rest}:
+        print(value, rest)
+class Point:
+    __match_args__ = ('x', 'y')
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+match Point(1, 2):
+    case Point(1, y=value) as point:
+        print(value, point.x)"#,
+    });
+}
+
+#[test]
 fn cpython_match_sequence_helper_rules_diff_subset() {
     let probe = run_cpython("match [1]:\n    case [value]:\n        print(value)")
         .expect("failed to probe CPython match statement support");

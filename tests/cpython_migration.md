@@ -2526,6 +2526,12 @@ Completed in the match value/attr/name_or_attr helper direct-diff pass:
   direct CPython output parity for supported dotted value, mapping-key, bare
   class-name, and dotted class-name match-pattern forms.
 
+Completed in the match pattern helper direct-diff pass:
+
+- Added `cpython_match_pattern_helper_rules_diff_subset` as direct CPython
+  output parity for supported executable subject, guard, as-pattern,
+  OR-pattern, and closed-pattern combinations.
+
 Completed in the match sequence/mapping supported-promotion pass:
 
 - Added `cpython_match_sequence_helper_rules_subset` and promoted

@@ -4998,6 +4998,48 @@ fn cpython_match_value_attr_name_or_attr_helper_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_match_pattern_helper_diff_covers_runtime_subset() {
+    let diff_name = "cpython_match_pattern_helper_rules_diff_subset";
+    let subset_name = "cpython_match_pattern_helper_rules_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("match pattern helper CPython diff evidence must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "match pattern helper runtime subset evidence must exist"
+    );
+    for required in [
+        "case left, right",
+        "case value if value > 2",
+        "case [label, 1] | [label, 2]",
+        "match item := ['go', 'n']",
+        "case ([1, value])",
+        "case [first, *middle, last]",
+        "case Holder.token",
+        "case {'x': value, **rest}",
+        "case Point(1, y=value) as point",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "match pattern helper diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "match pattern helper docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_match_sequence_helper_diff_covers_runtime_subset() {
     let diff_name = "cpython_match_sequence_helper_rules_diff_subset";
     let subset_name = "cpython_match_sequence_helper_rules_subset";
