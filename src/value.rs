@@ -1158,9 +1158,7 @@ impl fmt::Display for Value {
                     write!(f, "deque([{}])", format_list_items(&data))
                 }
             }
-            Value::UserDict { data, .. } => {
-                write!(f, "UserDict({{{}}})", format_dict(&data.borrow()))
-            }
+            Value::UserDict { data, .. } => write!(f, "{{{}}}", format_dict(&data.borrow())),
             Value::NamedTupleType(typ) => write!(f, "<class '{}'>", typ.name),
             Value::NamedTuple { typ, values } => {
                 write!(f, "{}", format_named_tuple(typ, values))
@@ -1803,9 +1801,7 @@ fn format_value_repr(value: &Value) -> String {
                 format!("deque([{}])", format_list_items(&data))
             }
         }
-        Value::UserDict { data, .. } => {
-            format!("UserDict({{{}}})", format_dict(&data.borrow()))
-        }
+        Value::UserDict { data, .. } => format!("{{{}}}", format_dict(&data.borrow())),
         Value::SimpleNamespace { fields } => format_simple_namespace(fields),
         Value::PicklePayload(_) => "<pickle payload>".to_string(),
         Value::AstNode { kind, .. } => format!("<ast.{kind} object>"),

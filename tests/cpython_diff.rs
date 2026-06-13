@@ -11459,6 +11459,16 @@ print(set(dir(UserDict)) >= set(dir(dict)))
 obj = UserDict()
 obj[123] = 'abc'
 print(obj[123], list(obj), len(obj), 123 in obj, obj.get(999))
+print(repr(obj), str(obj), format(obj, ''))
+print(obj.__repr__(), obj.__str__(), obj.__format__(''))
+print(UserDict.__repr__(obj), UserDict.__str__(obj), UserDict.__format__(obj, ''))
+try:
+    obj.__format__('x')
+except TypeError as error:
+    print(error.__class__.__name__)
+recursive = UserDict()
+recursive['self'] = recursive
+print(repr(recursive), recursive.__repr__())
 internal = obj.copy()
 print(internal.data is obj.data, internal.data == obj.data, type(internal).__name__)
 obj.test = [1234]

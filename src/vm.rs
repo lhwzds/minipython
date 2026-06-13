@@ -1451,26 +1451,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             repr_dict_entries_checked(&entries, active)
         }
         Value::Dict(entries) => repr_dict_entries_checked(entries, active),
-        Value::UserDict { data, .. } => {
-            let ptr = Rc::as_ptr(data) as usize;
-            if !active.insert(ptr) {
-                return Ok("UserDict({...})".to_string());
-            }
-            let entries = data.borrow();
-            let rendered = entries
-                .iter()
-                .map(|(key, value)| {
-                    Ok(format!(
-                        "{}: {}",
-                        repr_value_inner_checked(key, active)?,
-                        repr_value_inner_checked(value, active)?
-                    ))
-                })
-                .collect::<Result<Vec<_>, String>>()?
-                .join(", ");
-            active.remove(&ptr);
-            Ok(format!("UserDict({{{rendered}}})"))
-        }
+        Value::UserDict { data, .. } => repr_dict_entries_checked(data, active),
         Value::ScopeDict(scope) => {
             let ptr = Rc::as_ptr(scope) as usize;
             if !active.insert(ptr) {
@@ -51350,10 +51331,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         | "values"
                         | "__contains__"
                         | "__delitem__"
+                        | "__format__"
                         | "__getitem__"
                         | "__iter__"
                         | "__len__"
+                        | "__repr__"
                         | "__setitem__"
+                        | "__str__"
                 ) {
                     return Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
@@ -52445,13 +52429,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             match name {
                 "__init__" | "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem"
                 | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
-                | "__getitem__" | "__iter__" | "__len__" | "__setitem__" => {
-                    Ok(Value::BoundMethod {
-                        function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
-                        receiver: Box::new(Value::UserDict { data, attrs }),
-                        identity: Rc::new(()),
-                    })
-                }
+                | "__format__" | "__getitem__" | "__iter__" | "__len__" | "__repr__"
+                | "__setitem__" | "__str__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("UserDict.{name}"))),
+                    receiver: Box::new(Value::UserDict { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!(
                     "AttributeError: UserDict has no attribute '{name}'"
                 )),
@@ -53324,6 +53307,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "UserDict" && name == "__init__" => {
             Ok(Value::Builtin("UserDict.__init__".to_string()))
+        }
+        Value::Builtin(function_name)
+            if function_name == "UserDict"
+                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+        {
+            Ok(Value::Builtin(format!("UserDict.{name}")))
         }
         Value::Builtin(function_name)
             if function_name == "Counter" && is_builtin_counter_type_method(name) =>
@@ -66836,6 +66825,35 @@ fn call_user_dict_method(
             data: dict_ref_from_entries(data.borrow().entries.clone())?,
             attrs: dict_ref_from_entries(attrs)?,
         });
+    }
+
+    if matches!(method, "__repr__" | "__str__") {
+        reject_method_keywords(name, &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "{method}() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        }
+        return Ok(Value::String(repr_value_checked(&Value::Dict(data))?));
+    }
+
+    if method == "__format__" {
+        reject_method_keywords(name, &keywords)?;
+        let [format_spec] = rest else {
+            return Err(format!(
+                "__format__() expected 1 argument, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        let format_spec = format_spec_string(format_spec, "object.__format__()")?;
+        if format_spec.is_empty() {
+            return Ok(Value::String(repr_value_checked(&Value::Dict(data))?));
+        }
+        return Err(format!(
+            "TypeError: unsupported format string passed to {}.__format__",
+            type_name(receiver)
+        ));
     }
 
     if method == "__iter__" {

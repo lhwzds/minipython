@@ -9357,7 +9357,8 @@ Completed in the CPython collections manifest expansion pass:
   `test_dict_protocol` and `test_dict_copy` for supported `UserDict`
   behavior: `dir(UserDict)` includes the current dict protocol surface,
   item assignment/deletion, lookup, iteration, containment, `get()`, `.data`,
-  `.copy()`, and `copy.copy()` with shallow instance-attribute copying.
+  direct display/empty-format methods, recursive display, `.copy()`, and
+  `copy.copy()` with shallow instance-attribute copying.
 - Added `cpython_collections_userlist_public_methods_diff_subset` and
   `cpython_collections_userlist_public_methods_subset`, adapted from CPython
   `Lib/test/test_collections.py::TestUserObjects`, covering
