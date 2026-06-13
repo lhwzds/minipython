@@ -4456,6 +4456,183 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn collections_abc_generator_coroutine_diff_covers_runtime_subsets() {
+    for (subset, diff) in [
+        (
+            "cpython_collections_abc_async_generator_core_mixin_subset",
+            "cpython_collections_abc_async_generator_core_mixin_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_async_generator_throw_close_mixin_subset",
+            "cpython_collections_abc_async_generator_throw_close_mixin_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_generator_mixin_subset",
+            "cpython_collections_abc_generator_mixin_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_generator_sample_matrix_subset",
+            "cpython_collections_abc_generator_sample_matrix_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_generator_runtime_subset",
+            "cpython_collections_abc_generator_runtime_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_types_coroutine_subset",
+            "cpython_collections_abc_types_coroutine_diff_subset",
+        ),
+        (
+            "cpython_collections_abc_coroutine_mixin_subset",
+            "cpython_collections_abc_coroutine_mixin_diff_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "collections.abc generator/coroutine subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "collections.abc generator/coroutine CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_COVERAGE.contains(diff),
+            "coverage document must link collections.abc generator/coroutine evidence `{subset}` / `{diff}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(subset),
+            "migration document must describe collections.abc generator/coroutine subset `{subset}`"
+        );
+    }
+
+    let async_core_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_async_generator_core_mixin_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_async_generator_throw_close_mixin_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc AsyncGenerator core diff evidence must be extractable");
+    for required in [
+        "class MinimalAGen(AsyncGenerator):",
+        "isinstance(mgen, AsyncIterator)",
+        "mgen.__aiter__() is mgen",
+        "await mgen.__anext__()",
+        "await mgen.asend(2)",
+    ] {
+        assert!(
+            async_core_diff.contains(required),
+            "collections.abc AsyncGenerator core diff evidence must cover `{required}`"
+        );
+    }
+
+    let async_throw_close_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_async_generator_throw_close_mixin_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_generator_mixin_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc AsyncGenerator throw/close diff evidence must be extractable");
+    for required in [
+        "AsyncGenerator.athrow(mgen, ValueError)",
+        "AsyncGenerator.aclose(mgen)",
+        "closed.send(None)",
+        "athrow traceback object",
+        "IgnoreGeneratorExit().aclose()",
+    ] {
+        assert!(
+            async_throw_close_diff.contains(required),
+            "collections.abc AsyncGenerator throw/close diff evidence must cover `{required}`"
+        );
+    }
+
+    let generator_mixin_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_generator_mixin_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_generator_sample_matrix_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc Generator mixin diff evidence must be extractable");
+    for required in [
+        "class MinimalGen(Generator):",
+        "iter(mgen) is mgen",
+        "mgen.send(None) is next(mgen)",
+        "FailOnClose().close()",
+        "IgnoreGeneratorExit().close()",
+    ] {
+        assert!(
+            generator_mixin_diff.contains(required),
+            "collections.abc Generator mixin diff evidence must cover `{required}`"
+        );
+    }
+
+    let generator_runtime_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_generator_runtime_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_types_coroutine_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc Generator runtime diff evidence must be extractable");
+    for required in [
+        "issubclass(Generator, Iterator)",
+        "class GenBlocked(GenLike):",
+        "async def agen():",
+        "issubclass(AsyncGenerator, AsyncIterator)",
+        "class AGenBlocked(AGenLike):",
+    ] {
+        assert!(
+            generator_runtime_diff.contains(required),
+            "collections.abc Generator runtime diff evidence must cover `{required}`"
+        );
+    }
+
+    let types_coroutine_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_types_coroutine_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_coroutine_mixin_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc types.coroutine diff evidence must be extractable");
+    for required in [
+        "@types.coroutine",
+        "isinstance(wrapped, Awaitable)",
+        "isinstance(wrapped, Coroutine)",
+        "result = await iterable_coro()",
+        "Coroutine.register(CoroLike)",
+    ] {
+        assert!(
+            types_coroutine_diff.contains(required),
+            "collections.abc types.coroutine diff evidence must cover `{required}`"
+        );
+    }
+
+    let coroutine_mixin_diff = CPYTHON_DIFF
+        .split("fn cpython_collections_abc_coroutine_mixin_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_collections_abc_abstract_methods_diff_subset()")
+                .next()
+        })
+        .expect("collections.abc Coroutine mixin diff evidence must be extractable");
+    for required in [
+        "class DefaultCoro(Coroutine):",
+        "super().send(value)",
+        "super().throw(typ, val, tb)",
+        "IgnoreExit().close()",
+        "FailClose().close()",
+    ] {
+        assert!(
+            coroutine_mixin_diff.contains(required),
+            "collections.abc Coroutine mixin diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn collections_abc_newer_oracle_diff_evidence_stays_capability_gated() {
     for (function, required) in [
         (
