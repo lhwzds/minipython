@@ -3360,7 +3360,11 @@ Completed in the bytes method TypeError diagnostics pass:
   bytes/bytearray ASCII case/predicate, `splitlines()`, `expandtabs()`,
   `zfill()`, `removeprefix()`, and `removesuffix()` public diagnostics for
   unbound method calls, bound arity errors, and non-integer tabsize/width
-  conversion.
+  conversion. Direct CPython diff evidence for stable rows is in
+  `cpython_bytes_more_method_typeerror_messages_diff_subset`; current
+  `expandtabs()` converter wording is covered by
+  `cpython_bytes_expandtabs_typeerror_message_diff_subset` when the selected
+  CPython oracle exposes that wording.
 - Added `cpython_bytes_core_method_typeerror_messages_subset` and tightened
   bytes/bytearray `split()` / `rsplit()`, search, prefix/suffix, strip,
   alignment, partition, and replace public diagnostics for unbound method

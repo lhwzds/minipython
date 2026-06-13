@@ -16725,6 +16725,73 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_more_method_typeerror_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest additional public TypeError-message rows",
+        name: "bytes-more-method-typeerror-messages",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    name = ctor.__name__
+    sample = ctor(b'abc')
+    for method in ['lower', 'upper', 'capitalize', 'title', 'swapcase']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(1), name + '.' + method + '() takes no arguments (1 given)')
+    for method in ['islower', 'isupper', 'istitle', 'isspace', 'isalpha', 'isalnum', 'isdigit', 'isascii']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(1), name + '.' + method + '() takes no arguments (1 given)')
+    check(name + '.expandtabs.unbound', lambda ctor=ctor: ctor.expandtabs(), 'unbound method ' + name + '.expandtabs() needs an argument')
+    check(name + '.expandtabs.extra', lambda sample=sample: sample.expandtabs(1, 2), 'expandtabs() takes at most 1 argument (2 given)')
+    check(name + '.splitlines.unbound', lambda ctor=ctor: ctor.splitlines(), 'unbound method ' + name + '.splitlines() needs an argument')
+    check(name + '.splitlines.extra', lambda sample=sample: sample.splitlines(False, 1), 'splitlines() takes at most 1 argument (2 given)')
+    check(name + '.zfill.unbound', lambda ctor=ctor: ctor.zfill(), 'unbound method ' + name + '.zfill() needs an argument')
+    check(name + '.zfill.missing', lambda sample=sample: sample.zfill(), name + '.zfill() takes exactly one argument (0 given)')
+    check(name + '.zfill.extra', lambda sample=sample: sample.zfill(4, 0), name + '.zfill() takes exactly one argument (2 given)')
+    check(name + '.zfill.bad-width', lambda sample=sample: sample.zfill('x'), "'str' object cannot be interpreted as an integer")
+    for method in ['removeprefix', 'removesuffix']:
+        check(name + '.' + method + '.unbound', lambda ctor=ctor, method=method: getattr(ctor, method)(), 'unbound method ' + name + '.' + method + '() needs an argument')
+        check(name + '.' + method + '.missing', lambda sample=sample, method=method: getattr(sample, method)(), name + '.' + method + '() takes exactly one argument (0 given)')
+        check(name + '.' + method + '.extra', lambda sample=sample, method=method: getattr(sample, method)(b'a', b'b'), name + '.' + method + '() takes exactly one argument (2 given)')"#,
+    });
+}
+
+#[test]
+fn cpython_bytes_expandtabs_typeerror_message_diff_subset() {
+    let probe = run_cpython(
+        r#"try:
+    b'abc'.expandtabs('x')
+except TypeError as error:
+    print(error.args[0])"#,
+    )
+    .expect("failed to probe CPython bytes expandtabs TypeError support");
+    if !probe.status.success()
+        || probe.stdout.as_slice() != b"'str' object cannot be interpreted as an integer\n"
+    {
+        eprintln!(
+            "skipping bytes expandtabs TypeError text diff: CPython oracle has older wording"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest expandtabs TypeError-message rows",
+        name: "bytes-expandtabs-typeerror-message",
+        source: r#"def check(label, expr, expected):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.args[0] == expected)
+for ctor in [bytes, bytearray]:
+    name = ctor.__name__
+    sample = ctor(b'abc')
+    check(name + '.expandtabs.bad-tabsize', lambda sample=sample: sample.expandtabs('x'), "'str' object cannot be interpreted as an integer")"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_custom and AssortedBytesTest repr/compare public subset",

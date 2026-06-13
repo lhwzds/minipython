@@ -1642,7 +1642,10 @@ Recent runtime migration notes:
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray
   ASCII case and predicate methods, `splitlines()`, `expandtabs()`, `zfill()`,
   `removeprefix()`, and `removesuffix()` unbound, arity, and integer-converter
-  edge calls.
+  edge calls. Direct CPython diff evidence for stable rows is in
+  `cpython_bytes_more_method_typeerror_messages_diff_subset`; current
+  `expandtabs()` converter wording is covered by the CPython-version-gated
+  `cpython_bytes_expandtabs_typeerror_message_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_core_method_typeerror_messages_subset`, covering CPython
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray
