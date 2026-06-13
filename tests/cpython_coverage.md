@@ -3281,9 +3281,9 @@ Recent runtime migration notes:
 - `CONTAINER_RUNTIME` also includes
   `cpython_dict_numeric_key_equivalence_subset`, backed by direct CPython
   output parity in `cpython_dict_numeric_key_equivalence_diff_subset`, covering
-  dict/set key matching for `bool`, exact `int`, exact `float`, and numeric
-  subclasses whose equality and hash values match, while preserving identity
-  lookup for a stored `NaN` key.
+  dict/set key matching for `bool`, exact `int`, exact `float`, exact
+  `complex`, and numeric subclasses whose equality and hash values match,
+  while preserving identity lookup for a stored `NaN` key.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_exact_dict_subset`, covering the exact-dict
   `types.MappingProxyType` constructor path plus `get`, live views, `copy`,

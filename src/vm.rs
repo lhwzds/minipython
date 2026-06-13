@@ -68821,6 +68821,7 @@ fn normalized_numeric_keys_match(left: &Value, right: &Value) -> Option<bool> {
 enum NormalizedNumericKey {
     Integer(BigInt),
     Float(f64),
+    Complex { real: f64, imag: f64 },
 }
 
 fn normalized_numeric_key_value(value: &Value) -> Option<NormalizedNumericKey> {
@@ -68830,6 +68831,9 @@ fn normalized_numeric_key_value(value: &Value) -> Option<NormalizedNumericKey> {
     if let Some(value) = float_subclass_float(value) {
         return Some(NormalizedNumericKey::Float(*value));
     }
+    if let Some((real, imag)) = complex_subclass_parts(value) {
+        return Some(NormalizedNumericKey::Complex { real, imag });
+    }
     match value {
         Value::Bool(value) => Some(NormalizedNumericKey::Integer(BigInt::from(bool_as_i64(
             *value,
@@ -68837,6 +68841,10 @@ fn normalized_numeric_key_value(value: &Value) -> Option<NormalizedNumericKey> {
         Value::Number(value) => Some(NormalizedNumericKey::Integer(BigInt::from(*value))),
         Value::BigInt(value) => Some(NormalizedNumericKey::Integer(value.clone())),
         Value::Float(value) => Some(NormalizedNumericKey::Float(**value)),
+        Value::Complex { real, imag, .. } => Some(NormalizedNumericKey::Complex {
+            real: *real,
+            imag: *imag,
+        }),
         _ => None,
     }
 }
@@ -68855,6 +68863,31 @@ fn normalized_numeric_keys_equal(
         (NormalizedNumericKey::Integer(integer), NormalizedNumericKey::Float(float))
         | (NormalizedNumericKey::Float(float), NormalizedNumericKey::Integer(integer)) => {
             matches!(compare_float_bigint(*float, integer), Ok(Ordering::Equal))
+        }
+        (NormalizedNumericKey::Complex { real, imag }, NormalizedNumericKey::Integer(integer))
+        | (NormalizedNumericKey::Integer(integer), NormalizedNumericKey::Complex { real, imag }) => {
+            *imag == 0.0 && matches!(compare_float_bigint(*real, integer), Ok(Ordering::Equal))
+        }
+        (NormalizedNumericKey::Complex { real, imag }, NormalizedNumericKey::Float(float))
+        | (NormalizedNumericKey::Float(float), NormalizedNumericKey::Complex { real, imag }) => {
+            *imag == 0.0 && !real.is_nan() && !float.is_nan() && real == float
+        }
+        (
+            NormalizedNumericKey::Complex {
+                real: left_real,
+                imag: left_imag,
+            },
+            NormalizedNumericKey::Complex {
+                real: right_real,
+                imag: right_imag,
+            },
+        ) => {
+            !left_real.is_nan()
+                && !left_imag.is_nan()
+                && !right_real.is_nan()
+                && !right_imag.is_nan()
+                && left_real == right_real
+                && left_imag == right_imag
         }
     }
 }

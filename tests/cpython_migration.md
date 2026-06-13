@@ -6285,9 +6285,9 @@ Completed in the container constructor/reversed pass:
   `::test_fromkeys`.
 - Added `cpython_dict_numeric_key_equivalence_subset`, backed by
   `cpython_dict_numeric_key_equivalence_diff_subset`, covering CPython dict/set
-  key matching for `bool`, exact `int`, exact `float`, and numeric subclasses
-  whose equality and hash values match, while preserving identity lookup for a
-  stored `NaN` key.
+  key matching for `bool`, exact `int`, exact `float`, exact `complex`, and
+  numeric subclasses whose equality and hash values match, while preserving
+  identity lookup for a stored `NaN` key.
 - Added `cpython_reversed_builtin_subset`, adapted from
   `Lib/test/test_enumerate.py::TestReversed::test_simple` and CPython's dict
   reverse-iterator coverage. `cpython_enumerate_reversed_pickle_subset` adds the
