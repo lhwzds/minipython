@@ -1549,7 +1549,9 @@ Recent runtime migration notes:
   size/sizehint line reads, line iteration through `__iter__()` / `__next__()`
   with EOF `StopIteration`, `readable()`, `writable()`, `seekable()`,
   `isatty()`, `flush()`, `fileno()` / `detach()` `io.UnsupportedOperation`
-  stubs, `close()`, `closed`, supported method visibility through `dir()`,
+  stubs, type `__name__` / `__module__` / `__qualname__` / `__doc__`
+  metadata, instance `__dict__` and custom attribute set/delete behavior,
+  `close()`, `closed`, supported method visibility through `dir()`,
   `None` initial-value empty-buffer construction, closed-stream `ValueError`,
   context-manager entry/exit lifecycle behavior, and representative
   constructor/method TypeError/ValueError/OSError classification. Real files,

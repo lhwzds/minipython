@@ -52609,21 +52609,29 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: memoryview has no attribute '{name}'"
             )),
         },
-        Value::BytesIO(bytes_io) => match name {
-            "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
-            "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
-            "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "detach" | "fileno"
-            | "flush" | "getbuffer" | "getvalue" | "isatty" | "read" | "read1" | "readable"
-            | "readinto" | "readinto1" | "readline" | "readlines" | "seek" | "seekable"
-            | "tell" | "truncate" | "write" | "writable" | "writelines" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
-                receiver: Box::new(Value::BytesIO(bytes_io)),
-                identity: Rc::new(()),
-            }),
-            _ => Err(format!(
-                "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
-            )),
-        },
+        Value::BytesIO(bytes_io) => {
+            if let Some(value) = bytes_io.borrow().attrs.borrow().get(name).cloned() {
+                return Ok(value);
+            }
+            match name {
+                "__class__" => Ok(Value::Builtin("io.BytesIO".to_string())),
+                "__dict__" => Ok(Value::ScopeDict(bytes_io.borrow().attrs.clone())),
+                "closed" => Ok(Value::Bool(bytes_io.borrow().closed)),
+                "__enter__" | "__exit__" | "__iter__" | "__next__" | "close" | "detach"
+                | "fileno" | "flush" | "getbuffer" | "getvalue" | "isatty" | "read" | "read1"
+                | "readable" | "readinto" | "readinto1" | "readline" | "readlines" | "seek"
+                | "seekable" | "tell" | "truncate" | "write" | "writable" | "writelines" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("io.BytesIO.{name}"))),
+                        receiver: Box::new(Value::BytesIO(bytes_io)),
+                        identity: Rc::new(()),
+                    })
+                }
+                _ => Err(format!(
+                    "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
+                )),
+            }
+        }
         Value::Range { start, stop, step } => {
             immutable_sequence_method("range", Value::Range { start, stop, step }, name)
         }
@@ -53991,6 +53999,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "OrderedDict" => {
             Ok(Value::String("collections".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "io.BytesIO" => {
+            Ok(Value::String("_io".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__new__" && function_name == "SimpleNamespace" =>
         {
@@ -54058,6 +54069,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__qualname__" && is_collections_abc_type_name(&function_name) =>
         {
             Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "io.BytesIO" =>
+        {
+            Ok(Value::String("BytesIO".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && is_weakref_builtin_type_name(&function_name) =>
@@ -54346,6 +54362,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if name == "__doc__" && is_json_builtin(&function_name) => {
             Ok(Value::String(json_builtin_doc(&function_name).to_string()))
+        }
+        Value::Builtin(function_name) if name == "__doc__" && function_name == "io.BytesIO" => {
+            Ok(Value::String(
+                "Buffered I/O implementation using an in-memory bytes buffer.".to_string(),
+            ))
         }
         Value::Builtin(function_name) if name == "__dict__" && is_json_builtin(&function_name) => {
             Ok(dict_value(Vec::new()))
@@ -54943,6 +54964,14 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             Ok(())
         }
         Value::WeakProxy { target, .. } => store_attribute(*target, name, value),
+        Value::BytesIO(bytes_io) => {
+            bytes_io
+                .borrow()
+                .attrs
+                .borrow_mut()
+                .insert(name.to_string(), value);
+            Ok(())
+        }
         Value::MagicMock {
             attrs, side_effect, ..
         } => {
@@ -55210,6 +55239,15 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
         }
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),
+        Value::BytesIO(bytes_io) => {
+            if bytes_io.borrow().attrs.borrow_mut().remove(name).is_some() {
+                Ok(())
+            } else {
+                Err(format!(
+                    "AttributeError: '_io.BytesIO' object has no attribute '{name}'"
+                ))
+            }
+        }
         Value::Partial { attrs, .. } => {
             if matches!(name, "func" | "args" | "keywords") {
                 return Err(format!("AttributeError: readonly attribute '{name}'"));

@@ -109,6 +109,7 @@ pub struct BytesIOState {
     pub buffer: ByteArrayRef,
     pub position: usize,
     pub closed: bool,
+    pub attrs: Scope,
 }
 
 #[derive(Debug, Clone)]
@@ -166,6 +167,7 @@ impl BytesIOState {
             buffer: Rc::new(RefCell::new(ByteArrayStorage::new(buffer))),
             position: 0,
             closed: false,
+            attrs: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 }

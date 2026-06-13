@@ -12441,6 +12441,16 @@ print(bio.seek(1), bio.writelines([b'a', b'b']), bio.getvalue(), bio.tell())
 bio = io.BytesIO(b'abc')
 print(bio.readable(), bio.writable(), bio.seekable(), bio.isatty(), bio.flush(), bio.tell(), bio.getvalue())
 print(hasattr(bio, 'readable'), hasattr(bio, 'writable'), hasattr(bio, 'seekable'), hasattr(bio, 'isatty'), hasattr(bio, 'flush'))
+print(type(bio).__name__, type(bio).__module__, type(bio).__qualname__)
+print(io.BytesIO.__name__, io.BytesIO.__module__, io.BytesIO.__qualname__, type(io.BytesIO.__doc__).__name__, bool(io.BytesIO.__doc__))
+print(type(bio.__dict__).__name__, bio.__dict__)
+bio.label = 'custom'
+print(bio.label, bio.__dict__['label'])
+del bio.label
+try:
+    bio.label
+except AttributeError as error:
+    print(error.__class__.__name__)
 required = ['close', 'closed', 'detach', 'fileno', 'flush', 'getvalue', 'isatty', 'read', 'read1', 'readable', 'readinto', 'readinto1', 'readline', 'readlines', 'seek', 'seekable', 'tell', 'truncate', 'writable', 'write', 'writelines', '__enter__', '__exit__', '__iter__', '__next__']
 print(all(name in dir(bio) for name in required), all(name in dir(io.BytesIO) for name in required))
 print(hasattr(io, 'UnsupportedOperation'), 'UnsupportedOperation' in dir(io), io.UnsupportedOperation.__name__)
