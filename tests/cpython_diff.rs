@@ -5153,6 +5153,38 @@ fn cpython_attribute_introspection_builtins_diff_subset() {
 }
 
 #[test]
+fn cpython_builtin_getattr_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_getattr public supported subset",
+        name: "builtin-getattr-public",
+        source: r#"import sys
+setattr(sys, 'spam', 1)
+print(getattr(sys, 'spam'), getattr(sys, 'missing', 'fallback'))
+delattr(sys, 'spam')
+class Box:
+    pass
+box = Box()
+box.value = 3
+Box.label = 'box'
+print(getattr(box, 'value'), getattr(box, 'label'), getattr(Box, 'label'))
+del box.value
+print(getattr(box, 'value', 42))
+print(hasattr(sys, 'stdout'), getattr(sys, 'stdout') is sys.stdout)
+name = chr(0x10ffff)
+print(hasattr(sys, name))
+try:
+    getattr(sys, name)
+except AttributeError as error:
+    print(error.__class__.__name__)
+for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 'x', 2, 3)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_ascii_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",

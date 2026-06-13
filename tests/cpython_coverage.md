@@ -3417,6 +3417,12 @@ Recent runtime migration notes:
   attribute lookup, `from sys import stdin, stderr, stdout`, missing high
   Unicode-name attribute errors, and the rule that `hasattr()` only suppresses
   `AttributeError` while propagating `SystemExit` and `ValueError`.
+- `RUNTIME_BUILTINS` also includes the focused
+  `cpython_builtin_getattr_public_subset` with direct CPython output parity in
+  `cpython_builtin_getattr_public_diff_subset`, covering the supported
+  `BuiltinTest::test_getattr` slice for module attributes, default values,
+  instance/class attribute lookup, `sys.stdout`, maximum-valid-Unicode-scalar
+  missing-name behavior, and public TypeError arity/name validation.
 - `RUNTIME_BUILTINS` also includes `cpython_vars_dir_builtin_subset` with
   direct CPython output parity in `cpython_vars_dir_builtin_diff_subset`,
   covering `BuiltinTest::test_dir` / `::test_vars` public behavior for local

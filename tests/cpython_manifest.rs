@@ -5587,6 +5587,52 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn builtin_getattr_public_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_getattr_public_subset(",
+        "getattr(sys, 'spam')",
+        "getattr(sys, 'missing', 'fallback')",
+        "getattr(box, 'value')",
+        "getattr(box, 'label')",
+        "getattr(Box, 'label')",
+        "getattr(sys, 'stdout') is sys.stdout",
+        "chr(0x10ffff)",
+        "lambda: getattr(1, 2)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused getattr subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_getattr_public_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_getattr public supported subset",
+        "getattr(sys, 'spam')",
+        "getattr(sys, 'missing', 'fallback')",
+        "getattr(box, 'value')",
+        "getattr(box, 'label')",
+        "getattr(Box, 'label')",
+        "getattr(sys, 'stdout') is sys.stdout",
+        "chr(0x10ffff)",
+        "lambda: getattr(1, 2)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused getattr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, MANIFEST] {
+        assert!(
+            document.contains("cpython_builtin_getattr_public_subset")
+                && document.contains("cpython_builtin_getattr_public_diff_subset"),
+            "focused getattr evidence must be documented in coverage and CPython test manifest"
+        );
+    }
+}
+
+#[test]
 fn exec_closure_subset_stays_documented_and_version_gated() {
     let subset_name = "cpython_exec_closure_subset";
     let diff_name = "cpython_exec_closure_diff_subset";

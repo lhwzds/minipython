@@ -24088,6 +24088,51 @@ fn cpython_attribute_introspection_builtins_subset() {
     );
 }
 
+// Focused slice from CPython `Lib/test/test_builtin.py::BuiltinTest::test_getattr`.
+#[test]
+fn cpython_builtin_getattr_public_subset() {
+    assert_output(
+        concat!(
+            "import sys\n",
+            "setattr(sys, 'spam', 1)\n",
+            "print(getattr(sys, 'spam'), getattr(sys, 'missing', 'fallback'))\n",
+            "delattr(sys, 'spam')\n",
+            "class Box:\n",
+            "    pass\n",
+            "box = Box()\n",
+            "box.value = 3\n",
+            "Box.label = 'box'\n",
+            "print(getattr(box, 'value'), getattr(box, 'label'), getattr(Box, 'label'))\n",
+            "del box.value\n",
+            "print(getattr(box, 'value', 42))\n",
+            "print(hasattr(sys, 'stdout'), getattr(sys, 'stdout') is sys.stdout)\n",
+            "name = chr(0x10ffff)\n",
+            "print(hasattr(sys, name))\n",
+            "try:\n",
+            "    getattr(sys, name)\n",
+            "except AttributeError as error:\n",
+            "    print(error.__class__.__name__)\n",
+            "for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 'x', 2, 3)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "1 fallback",
+            "3 box box",
+            "42",
+            "True True",
+            "False",
+            "AttributeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
 // dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
 // hook-loss errors. The default hook is a sandbox no-op stub; pdb integration
