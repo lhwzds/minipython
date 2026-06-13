@@ -4337,6 +4337,8 @@ Completed in the tokenizer formfeed-whitespace pass:
 - Covered executable parity for `x\x0c=1` and leading-formfeed indentation after
   a compound header, plus tokenizer span coverage for the skipped formfeed
   between `NAME` and `EQUAL`.
+- Added `cpython_tokenize_formfeed_whitespace_diff_subset` so the executable
+  formfeed tokenizer behavior is tied to direct CPython output parity.
 
 Completed in the f-string comment migration pass:
 

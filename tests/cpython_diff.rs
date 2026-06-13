@@ -776,6 +776,15 @@ print("done")"#,
 }
 
 #[test]
+fn cpython_tokenize_formfeed_whitespace_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Parser/lexer formfeed whitespace public execution subset",
+        name: "tokenize-formfeed-whitespace",
+        source: "x\x0c=1\nprint(x)\nif True:\n\x0c    print('indented')",
+    });
+}
+
+#[test]
 fn cpython_tokenize_implicit_line_joining_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",
