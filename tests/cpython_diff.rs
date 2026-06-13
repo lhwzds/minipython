@@ -20125,6 +20125,11 @@ for ctor in [bytes, bytearray]:
             print(ctor.__name__, 'overflow', n.bit_length(), error.__class__.__name__)
     six = ctor(x * 3 for x in range(1, 7))
     print(ctor.__name__, six.hex(':', 5), six.hex(b'@', -5), six.hex(':', -6), six.hex(' ', -95))
+    for label, sep in [('mv1', memoryview(b':')), ('mv2', memoryview(b'::')), ('mvempty', memoryview(b'')), ('mvnonascii', memoryview(bytes([255]))), ('mvstep', memoryview(b'::')[::2])]:
+        try:
+            print(ctor.__name__, label, three.hex(sep))
+        except (TypeError, ValueError) as error:
+            print(ctor.__name__, label, error.__class__.__name__, str(error))
 
 five = bytes(range(90, 95))
 print('five', five.hex())

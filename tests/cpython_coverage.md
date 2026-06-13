@@ -1868,7 +1868,8 @@ Recent runtime migration notes:
   bytes/bytearray `hex()` separator grouping, separator-byte boundaries,
   `bytes_per_sep` `__index__` conversion, catchable C-int overflow errors, and
   public `hex()` output correctness across length and nibble boundary samples,
-  plus exact unbound and invalid-receiver `hex()` descriptor diagnostics.
+  `memoryview` separator length/type error boundaries, plus exact unbound and
+  invalid-receiver `hex()` descriptor diagnostics.
 - `STRING_RUNTIME` also includes `cpython_bytes_search_methods_subset`,
   covering CPython `BaseBytesTest` public `count()`, `find()`, `rfind()`,
   `index()`, and `rindex()` behavior for bytes-like and integer byte needles,

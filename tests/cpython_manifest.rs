@@ -2119,6 +2119,54 @@ fn cpython_bytearray_hex_reentrant_separator_diff_is_capability_gated() {
 }
 
 #[test]
+fn cpython_bytes_hex_memoryview_separator_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_hex_separator_diff_subset";
+    let subset_name = "cpython_bytes_hex_separator_boundaries_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes hex separator direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes hex separator runtime subset evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes hex separator docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("bytes hex separator diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "memoryview(b':')",
+        "memoryview(b'::')",
+        "memoryview(b'::')[::2]",
+        "TypeError, ValueError",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes hex memoryview separator evidence must contain `{required}`"
+        );
+    }
+
+    for required in ["sep must be str or bytes.", "sep must be length 1."] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "bytes hex memoryview separator runtime subset must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytearray_iterator_pickle_shared_exporter_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytearray_iterator_pickle_shared_exporter_diff_subset";
     let subset_name = "cpython_bytearray_iterator_pickle_shared_exporter_subset";

@@ -64496,6 +64496,12 @@ fn hex_separator(vm: &mut Vm, value: &Value) -> Result<char, String> {
             }
             Ok(*byte as char)
         }
+        Value::MemoryView(view) => {
+            if memoryview_len(view)? != 1 {
+                return Err("ValueError: sep must be length 1.".to_string());
+            }
+            Err("TypeError: sep must be str or bytes.".to_string())
+        }
         value => Err(format!(
             "TypeError: object of type '{}' has no len()",
             type_name(value)

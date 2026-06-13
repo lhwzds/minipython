@@ -31501,6 +31501,22 @@ fn cpython_bytes_hex_separator_boundaries_subset() {
             "bytearray True 090a90999aa0a9aa00ff True",
         ],
     );
+
+    assert_output(
+        "for ctor in [bytes, bytearray]:\n    base = ctor(b'abc')\n    for label, sep in [('mv1', memoryview(b':')), ('mv2', memoryview(b'::')), ('mvempty', memoryview(b'')), ('mvnonascii', memoryview(bytes([255]))), ('mvstep', memoryview(b'::')[::2])]:\n        try:\n            print(ctor.__name__, label, base.hex(sep))\n        except (TypeError, ValueError) as error:\n            print(ctor.__name__, label, error.__class__.__name__, str(error))",
+        &[
+            "bytes mv1 TypeError sep must be str or bytes.",
+            "bytes mv2 ValueError sep must be length 1.",
+            "bytes mvempty ValueError sep must be length 1.",
+            "bytes mvnonascii TypeError sep must be str or bytes.",
+            "bytes mvstep TypeError sep must be str or bytes.",
+            "bytearray mv1 TypeError sep must be str or bytes.",
+            "bytearray mv2 ValueError sep must be length 1.",
+            "bytearray mvempty ValueError sep must be length 1.",
+            "bytearray mvnonascii TypeError sep must be str or bytes.",
+            "bytearray mvstep TypeError sep must be str or bytes.",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_bytes.py::AssortedBytesTest::
