@@ -4095,11 +4095,12 @@ Recent runtime migration notes:
   `cpython_memoryview_cast_one_byte_format_subset`, covering the supported
   public one-byte `memoryview.cast()` surface from CPython
   `test_memoryview.py`: `B` / `b` / `c` formats, positional and keyword
-  `format` / one-dimensional `shape` binding, format preservation through
-  `memoryview(m)`, slicing, and `toreadonly()`, `c`-format scalar/list/reversed
-  values, `c`-format item and slice assignment, bytes-like membership, and
-  non-contiguous cast rejection. `cpython_memoryview_cast_one_byte_format_diff_subset`
-  directly compares this one-byte format surface against CPython.
+  `format` / one-dimensional `shape` binding, invalid `shape` boundary errors,
+  format preservation through `memoryview(m)`, slicing, and `toreadonly()`,
+  `c`-format scalar/list/reversed values, `c`-format item and slice assignment,
+  bytes-like membership, and non-contiguous cast rejection.
+  `cpython_memoryview_cast_one_byte_format_diff_subset` directly compares this
+  one-byte format surface against CPython.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_getitem_index_count_compare_subset`, covering CPython
   `test_memoryview.py` getitem/index/count/compare behavior for the supported

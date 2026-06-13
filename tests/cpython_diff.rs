@@ -21710,6 +21710,17 @@ for fmt in ['B', 'b', 'c']:
 print(memoryview(b'abc').cast(format='B').tolist())
 print(memoryview(b'abc').cast('B', [3]).tolist())
 print(memoryview(b'abc').cast('B', shape=(3,)).tolist())
+for expr in [
+    lambda: memoryview(b'abc').cast('B', shape=[0]),
+    lambda: memoryview(b'abc').cast('B', shape=[2]),
+    lambda: memoryview(b'abc').cast('B', shape=[]),
+    lambda: memoryview(b'abc').cast('B', shape='3'),
+    lambda: memoryview(b'abc').cast('B', shape=[1.0]),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(error.__class__.__name__, str(error))
 base = bytearray(b'abc')
 m = memoryview(base).cast('c')
 m[0] = b'X'

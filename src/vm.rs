@@ -19144,21 +19144,50 @@ impl Vm {
             Value::List(items) => items.borrow().clone(),
             Value::Tuple(items) => items.as_ref().clone(),
             Value::None => return Ok(expected_len),
-            value => {
-                return Err(format!(
-                    "TypeError: memoryview.cast(): shape must be a list or tuple, not {}",
-                    type_name(&value)
-                ));
+            _ => {
+                return Err("TypeError: shape must be a list or a tuple".to_string());
             }
         };
+        if values.is_empty() {
+            if expected_len == 1 {
+                return Err(
+                    "NotImplementedError: zero-dimensional memoryview casts are not supported"
+                        .to_string(),
+                );
+            }
+            return Err(
+                "TypeError: memoryview: product(shape) * itemsize != buffer size".to_string(),
+            );
+        }
         if values.len() != 1 {
             return Err(
                 "NotImplementedError: multidimensional memoryview casts are not supported"
                     .to_string(),
             );
         }
-        let len = self.index_i64(values[0].clone(), "memoryview.cast() shape")?;
-        if len < 0 {
+        let len = match values[0].clone() {
+            Value::Number(value) => value,
+            Value::Bool(value) => i64::from(value),
+            value => {
+                let indexed = self.index_integer_value(value).map_err(|error| {
+                    if error.contains("object cannot be interpreted as an integer") {
+                        "TypeError: memoryview.cast(): elements of shape must be integers"
+                            .to_string()
+                    } else {
+                        error
+                    }
+                })?;
+                match indexed {
+                    Value::Number(value) => value,
+                    Value::Bool(value) => i64::from(value),
+                    _ => {
+                        return Err("TypeError: __index__ returned non-int (type not supported)"
+                            .to_string());
+                    }
+                }
+            }
+        };
+        if len <= 0 {
             return Err(
                 "ValueError: memoryview.cast(): elements of shape must be integers > 0".to_string(),
             );

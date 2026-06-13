@@ -1351,6 +1351,55 @@ fn cpython_memoryview_slice_attributes_diff_covers_runtime_subsets() {
 }
 
 #[test]
+fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
+    let diff_name = "cpython_memoryview_cast_one_byte_format_diff_subset";
+    let subset_name = "cpython_memoryview_cast_one_byte_format_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview cast direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview cast runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "memoryview cast docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview cast diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "memoryview(b'abc').cast(format='B')",
+        "memoryview(b'abc').cast('B', [3])",
+        "memoryview(b'abc').cast('B', shape=(3,))",
+        "memoryview(b'abc').cast('B', shape=[0])",
+        "memoryview(b'abc').cast('B', shape='3')",
+        "memoryview(b'abcd')[::2].cast('B')",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview cast diff evidence must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_SUBSET.contains("shape must be a list or a tuple")
+            && CPYTHON_SUBSET.contains("memoryview.cast(): elements of shape must be integers > 0"),
+        "memoryview cast subset must contain invalid shape error text"
+    );
+}
+
+#[test]
 fn cpython_memoryview_count_index_diff_covers_runtime_subset() {
     let diff_name = "cpython_memoryview_count_index_diff_subset";
     let subset_name = "cpython_memoryview_getitem_index_count_compare_subset";

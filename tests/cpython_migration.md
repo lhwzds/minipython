@@ -1136,10 +1136,12 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `Lib/test/test_memoryview.py::OtherTest::test_ctypes_cast`: MiniPython now
   supports `memoryview.cast()` for one-byte `B`, `b`, and `c` formats, including
   positional and keyword `format` / one-dimensional `shape` arguments,
-  format-aware `tolist()`, scalar indexing, iteration, reversed iteration,
-  membership, writable `c`-format item and slice assignment, format preservation
-  through `memoryview(m)`, slicing, and `toreadonly()`, plus CPython-style
-  rejection of non-contiguous casts. Non-byte formats, ctypes exporters, and
+  invalid `shape` boundary errors, format-aware `tolist()`, scalar indexing,
+  iteration, reversed iteration, membership, writable `c`-format item and slice
+  assignment, format preservation through `memoryview(m)`, slicing, and
+  `toreadonly()`, plus CPython-style rejection of non-contiguous casts. The
+  `cpython_memoryview_cast_one_byte_format_diff_subset` case directly compares
+  this slice with CPython. Non-byte formats, ctypes exporters, and
   multidimensional casts remain outside this slice.
 - `TestSpecifics` remains `partial`; the next useful slice is still the subset
   that avoids direct assertions about deeper CPython code-object internals such
