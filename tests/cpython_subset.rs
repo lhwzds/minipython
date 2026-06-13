@@ -15091,6 +15091,43 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_ast_compile_public_ast_interpolation_root_subset() {
+    assert_output(
+        r#"import ast
+cases = [
+    ast.Interpolation(ast.Constant(3), "3", -1),
+    ast.Interpolation(ast.Constant("x"), "name", 114),
+    ast.Interpolation(ast.Constant("é"), "name", 97),
+    ast.Interpolation(
+        ast.Constant(3.14159),
+        "value",
+        -1,
+        ast.JoinedStr([ast.Constant(".2f")]),
+    ),
+]
+for node in cases:
+    tree = ast.Expression(node)
+    ast.fix_missing_locations(tree)
+    value = eval(compile(tree, "<ast>", "eval"))
+    print(type(value).__name__, value.value, value.expression, value.conversion, value.format_spec)
+try:
+    tree = ast.Expression(ast.Interpolation(ast.Name("x", ast.Store()), "x", -1))
+    ast.fix_missing_locations(tree)
+    compile(tree, "<ast>", "eval")
+except ValueError as error:
+    print(error.__class__.__name__, "must have Load context" in str(error))
+"#,
+        &[
+            "Interpolation 3 3 None ",
+            "Interpolation x name r ",
+            "Interpolation é name a ",
+            "Interpolation 3.14159 value None .2f",
+            "ValueError True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_ast_dump_plain_first_pass_subset() {
     assert_output(
         r#"import ast
@@ -25813,29 +25850,36 @@ fn cpython_grammar_yield_stmt_subset() {
 // and `yield from expression`.
 #[test]
 fn cpython_yield_expression_helper_rule_subset() {
-    assert_output(
+    let stack_size = 16 * 1024 * 1024;
+    assert_output_with_stack(
         "def g():\n    value = yield\n    yield value\ngen = g()\nprint(next(gen))\nprint(gen.send(\"sent\"))",
         &["None", "sent"],
+        stack_size,
     );
-    assert_output(
+    assert_output_with_stack(
         "def g():\n    yield 1, *[2, 3]\nprint(next(g()))",
         &["(1, 2, 3)"],
+        stack_size,
     );
-    assert_output(
+    assert_output_with_stack(
         "def g():\n    result = yield from [1, 2]\n    yield result\nfor value in g():\n    print(value)",
         &["1", "2", "None"],
+        stack_size,
     );
-    assert_output(
+    assert_output_with_stack(
         "def g():\n    result = [x + 1 for x in (yield [1, 2])]\n    yield result\ngen = g()\nprint(next(gen))\nprint(gen.send([3, 4]))",
         &["[1, 2]", "[4, 5]"],
+        stack_size,
     );
-    assert_output(
+    assert_output_with_stack(
         "def g():\n    result = (x + 1 for x in (yield [1, 2]))\n    yield list(result)\ngen = g()\nprint(next(gen))\nprint(gen.send([3, 4]))",
         &["[1, 2]", "[4, 5]"],
+        stack_size,
     );
-    assert_output(
+    assert_output_with_stack(
         "def g():\n    result = {x: x + 1 for x in (yield [1, 2])}\n    yield result\ngen = g()\nprint(next(gen))\nprint(gen.send([3, 4]))",
         &["[1, 2]", "{3: 4, 4: 5}"],
+        stack_size,
     );
 }
 

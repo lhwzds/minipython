@@ -328,6 +328,14 @@ fn top_level_expr_contains_await(expr: &Expr) -> bool {
         | Expr::Name(_) => false,
         Expr::JoinedString(parts) => parts.iter().any(fstring_part_contains_top_level_await),
         Expr::TemplateString(parts) => parts.iter().any(template_part_contains_top_level_await),
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            top_level_expr_contains_await(value)
+                || format_spec
+                    .as_deref()
+                    .is_some_and(|parts| parts.iter().any(fstring_part_contains_top_level_await))
+        }
         Expr::Attribute { object, .. }
         | Expr::Unary {
             operand: object, ..
@@ -4092,6 +4100,17 @@ impl Compiler {
             }
             Expr::JoinedString(parts) => self.compile_joined_string_expr(parts),
             Expr::TemplateString(parts) => self.compile_template_string_expr(parts),
+            Expr::TemplateInterpolation {
+                value,
+                expression,
+                conversion,
+                format_spec,
+            } => self.compile_template_interpolation_expr(
+                value,
+                expression,
+                *conversion,
+                format_spec.as_deref(),
+            ),
             Expr::Bool(value) => {
                 let dst = self.alloc_register();
                 self.instructions.push(Instruction::LoadConst {
@@ -4398,6 +4417,29 @@ impl Compiler {
             dst,
             parts: compiled_parts,
         });
+        Ok(dst)
+    }
+
+    fn compile_template_interpolation_expr(
+        &mut self,
+        value: &Expr,
+        expression: &str,
+        conversion: Option<FStringConversion>,
+        format_spec: Option<&[FStringPart]>,
+    ) -> Result<Register, String> {
+        let value = self.compile_expr(value)?;
+        let format_spec = format_spec
+            .map(|parts| self.compile_joined_string_expr(parts))
+            .transpose()?;
+        let dst = self.alloc_register();
+        self.instructions
+            .push(Instruction::BuildTemplateInterpolation {
+                dst,
+                value,
+                expression: expression.to_string(),
+                conversion: conversion.map(f_string_conversion_to_bytecode),
+                format_spec,
+            });
         Ok(dst)
     }
 
@@ -6190,6 +6232,16 @@ fn collect_static_attributes_from_expr(expr: &Expr, attributes: &mut BTreeSet<St
                 collect_static_attributes_from_template_string_part(part, attributes);
             }
         }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            collect_static_attributes_from_expr(value, attributes);
+            if let Some(format_spec) = format_spec {
+                for part in format_spec {
+                    collect_static_attributes_from_f_string_part(part, attributes);
+                }
+            }
+        }
         Expr::Attribute { object, .. } => collect_static_attributes_from_expr(object, attributes),
         Expr::Binary { left, right, .. }
         | Expr::Comparison { left, right, .. }
@@ -7009,6 +7061,14 @@ impl ScopeDeclarationTracker {
                     }
                 }
             }
+            Expr::TemplateInterpolation {
+                value, format_spec, ..
+            } => {
+                self.visit_expr(value);
+                if let Some(format_spec) = format_spec {
+                    self.visit_f_string_parts(format_spec);
+                }
+            }
             Expr::Number(_)
             | Expr::BigInt(_)
             | Expr::Float(_)
@@ -7481,6 +7541,14 @@ fn collect_expr_bindings(expr: &Expr, names: &mut HashSet<String>) {
                         }
                     }
                 }
+            }
+        }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            collect_expr_bindings(value, names);
+            if let Some(format_spec) = format_spec {
+                collect_f_string_bindings(format_spec, names);
             }
         }
         Expr::ListComp { element, clauses }
@@ -8241,6 +8309,14 @@ fn expr_contains_yield(expr: &Expr) -> bool {
                         .is_some_and(f_string_parts_contain_yield)
             }
         }),
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            expr_contains_yield(value)
+                || format_spec
+                    .as_deref()
+                    .is_some_and(f_string_parts_contain_yield)
+        }
         Expr::ListComp { element, clauses } | Expr::SetComp { element, clauses } => {
             comprehension_contains_yield(element, clauses)
         }
@@ -8428,6 +8504,16 @@ fn expr_contains_await_for_comprehension(expr: &Expr) -> bool {
         Expr::TemplateString(parts) => parts
             .iter()
             .any(template_string_part_contains_await_for_comprehension),
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            expr_contains_await_for_comprehension(value)
+                || format_spec.as_deref().is_some_and(|parts| {
+                    parts
+                        .iter()
+                        .any(f_string_part_contains_await_for_comprehension)
+                })
+        }
         Expr::ListComp { element, clauses } | Expr::SetComp { element, clauses } => {
             expr_contains_await_for_comprehension(element)
                 || clauses.iter().any(|clause| {
@@ -8728,6 +8814,14 @@ fn expr_contains_yield_from(expr: &Expr) -> bool {
                         .is_some_and(f_string_parts_contain_yield_from)
             }
         }),
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            expr_contains_yield_from(value)
+                || format_spec
+                    .as_deref()
+                    .is_some_and(f_string_parts_contain_yield_from)
+        }
         Expr::ListComp { element, clauses } | Expr::SetComp { element, clauses } => {
             comprehension_contains_yield_from(element, clauses)
         }

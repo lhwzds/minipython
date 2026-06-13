@@ -1172,6 +1172,16 @@ fn collect_identity_literal_warnings_expr(expr: &Expr, warnings: &mut Vec<LexWar
                 collect_identity_literal_warnings_template_string_part(part, warnings);
             }
         }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            collect_identity_literal_warnings_expr(value, warnings);
+            if let Some(format_spec) = format_spec {
+                for part in format_spec {
+                    collect_identity_literal_warnings_f_string_part(part, warnings);
+                }
+            }
+        }
         Expr::Attribute { object, .. } => collect_identity_literal_warnings_expr(object, warnings),
         Expr::Binary { left, right, .. } | Expr::Logical { left, right, .. } => {
             collect_identity_literal_warnings_expr(left, warnings);

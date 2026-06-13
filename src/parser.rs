@@ -5222,6 +5222,7 @@ fn invalid_import_expression_target_name(expr: &Expr) -> &'static str {
         | Expr::Bytes(_)
         | Expr::JoinedString(_)
         | Expr::TemplateString(_)
+        | Expr::TemplateInterpolation { .. }
         | Expr::Ellipsis => "literal",
         _ => invalid_named_expression_target_name(expr),
     }
@@ -5369,6 +5370,7 @@ fn invalid_named_expression_target_name(expr: &Expr) -> &'static str {
         | Expr::Bytes(_)
         | Expr::JoinedString(_)
         | Expr::TemplateString(_)
+        | Expr::TemplateInterpolation { .. }
         | Expr::Ellipsis => "literal",
         Expr::Binary { .. }
         | Expr::Comparison { .. }
@@ -5600,6 +5602,14 @@ fn expr_has_kind(expr: &Expr, kind: ExprKind) -> bool {
         }
         Expr::JoinedString(parts) => f_string_parts_have_kind(parts, kind),
         Expr::TemplateString(parts) => template_string_parts_have_kind(parts, kind),
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            expr_has_kind(value, kind)
+                || format_spec
+                    .as_deref()
+                    .is_some_and(|parts| f_string_parts_have_kind(parts, kind))
+        }
     }
 }
 
@@ -5854,6 +5864,14 @@ fn comprehension_class_body_expr_has_named_expression(expr: &Expr) -> bool {
         }
         Expr::TemplateString(parts) => {
             comprehension_class_body_template_string_parts_have_named_expression(parts)
+        }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            comprehension_class_body_expr_has_named_expression(value)
+                || format_spec
+                    .as_deref()
+                    .is_some_and(comprehension_class_body_f_string_parts_have_named_expression)
         }
     }
 }
@@ -6379,6 +6397,22 @@ fn validate_comprehension_target_expr_rebindings(
                 prior_filter_named_expression_names,
             )?;
         }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            validate_comprehension_target_expr_rebindings(
+                value,
+                seen_target_names,
+                prior_filter_named_expression_names,
+            )?;
+            if let Some(format_spec) = format_spec {
+                validate_comprehension_target_f_string_part_rebindings(
+                    format_spec,
+                    seen_target_names,
+                    prior_filter_named_expression_names,
+                )?;
+            }
+        }
     }
 
     Ok(())
@@ -6686,6 +6720,14 @@ fn collect_named_expression_names(expr: &Expr, names: &mut Vec<String>) {
         Expr::TemplateString(parts) => {
             collect_named_expression_names_from_template_string_parts(parts, names)
         }
+        Expr::TemplateInterpolation {
+            value, format_spec, ..
+        } => {
+            collect_named_expression_names(value, names);
+            if let Some(format_spec) = format_spec {
+                collect_named_expression_names_from_f_string_parts(format_spec, names);
+            }
+        }
         Expr::Lambda { .. } => {}
     }
 }
@@ -6961,7 +7003,8 @@ fn invalid_delete_target_name(expr: &Expr) -> &'static str {
         | Expr::String(_)
         | Expr::Bytes(_)
         | Expr::JoinedString(_)
-        | Expr::TemplateString(_) => "literal",
+        | Expr::TemplateString(_)
+        | Expr::TemplateInterpolation { .. } => "literal",
         Expr::Call { .. } | Expr::KeywordCall { .. } | Expr::UnpackCall { .. } => "function call",
         Expr::IfExpression { .. } => "conditional expression",
         Expr::NamedExpr { .. } => "named expression",

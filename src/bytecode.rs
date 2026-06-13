@@ -71,6 +71,13 @@ pub enum Instruction {
         dst: Register,
         parts: Vec<TemplatePartRegister>,
     },
+    BuildTemplateInterpolation {
+        dst: Register,
+        value: Register,
+        expression: String,
+        conversion: Option<FormatConversion>,
+        format_spec: Option<Register>,
+    },
     BuildUnpack {
         dst: Register,
         value: Register,

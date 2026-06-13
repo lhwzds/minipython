@@ -4550,6 +4550,21 @@ impl Vm {
                     let value = self.build_template(parts)?;
                     self.write_register(dst, value);
                 }
+                Instruction::BuildTemplateInterpolation {
+                    dst,
+                    value,
+                    expression,
+                    conversion,
+                    format_spec,
+                } => {
+                    let value = self.build_template_interpolation(
+                        value,
+                        expression,
+                        conversion,
+                        format_spec,
+                    )?;
+                    self.write_register(dst, value);
+                }
                 Instruction::BuildUnpack { dst, value } => {
                     let value = self.read_register(value)?.clone();
                     self.write_register(dst, Value::Unpack(Box::new(value)));
@@ -5937,6 +5952,34 @@ impl Vm {
             strings,
             interpolations,
         })
+    }
+
+    fn build_template_interpolation(
+        &self,
+        value: Register,
+        expression: String,
+        conversion: Option<FormatConversion>,
+        format_spec: Option<Register>,
+    ) -> Result<Value, String> {
+        let value = self.read_register(value)?.clone();
+        let format_spec = format_spec
+            .map(|register| {
+                let value = self.read_register(register)?;
+                match value {
+                    Value::String(value) => Ok(value.clone()),
+                    value => Err(format!(
+                        "template format specifier must be a string, got {value}"
+                    )),
+                }
+            })
+            .transpose()?
+            .unwrap_or_default();
+        Ok(Value::TemplateInterpolation(TemplateInterpolation {
+            value: Box::new(value),
+            expression,
+            conversion: conversion.map(template_conversion_name),
+            format_spec,
+        }))
     }
 
     fn jump_to(&mut self, target: usize) -> Result<(), String> {
@@ -35100,6 +35143,7 @@ fn ast_compile_expr(node: &Value) -> Result<syntax::Expr, String> {
         Some("TemplateStr") => Ok(syntax::Expr::TemplateString(
             ast_compile_template_string_parts_field(node, "values")?,
         )),
+        Some("Interpolation") => ast_compile_template_interpolation_expr(node),
         Some("expr") => Err("TypeError: expected some sort of expr, but got expr()".to_string()),
         Some(kind) => Err(format!(
             "TypeError: compile() does not yet support AST expression {kind}"
@@ -36136,6 +36180,24 @@ fn ast_compile_template_string_part(node: &Value) -> Result<syntax::TemplateStri
             type_name(node)
         )),
     }
+}
+
+fn ast_compile_template_interpolation_expr(node: &Value) -> Result<syntax::Expr, String> {
+    let syntax::TemplateStringPart::Interpolation {
+        value,
+        expression,
+        conversion,
+        format_spec,
+    } = ast_compile_template_string_part(node)?
+    else {
+        unreachable!("Interpolation AST node compiles to an interpolation part")
+    };
+    Ok(syntax::Expr::TemplateInterpolation {
+        value,
+        expression,
+        conversion,
+        format_spec,
+    })
 }
 
 fn ast_compile_optional_format_spec_field(
@@ -37677,6 +37739,39 @@ fn ast_expr_node(expr: &syntax::Expr) -> Value {
                 "values",
                 ast_nodes_list(parts.iter().map(ast_template_string_part_node).collect()),
             )],
+        ),
+        syntax::Expr::TemplateInterpolation {
+            value,
+            expression,
+            conversion,
+            format_spec,
+        } => ast_node(
+            "Interpolation",
+            vec![
+                ("value", ast_expr_node(value)),
+                ("str", Value::String(expression.clone())),
+                (
+                    "conversion",
+                    Value::Number(ast_fstring_conversion_code(*conversion)),
+                ),
+                (
+                    "format_spec",
+                    format_spec
+                        .as_ref()
+                        .map(|parts| {
+                            ast_node(
+                                "JoinedStr",
+                                vec![(
+                                    "values",
+                                    ast_nodes_list(
+                                        parts.iter().map(ast_fstring_part_node).collect(),
+                                    ),
+                                )],
+                            )
+                        })
+                        .unwrap_or(Value::None),
+                ),
+            ],
         ),
     }
 }

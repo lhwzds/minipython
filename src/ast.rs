@@ -229,6 +229,12 @@ pub enum Expr {
     Bytes(Vec<u8>),
     JoinedString(Vec<FStringPart>),
     TemplateString(Vec<TemplateStringPart>),
+    TemplateInterpolation {
+        value: Box<Expr>,
+        expression: String,
+        conversion: Option<FStringConversion>,
+        format_spec: Option<Vec<FStringPart>>,
+    },
     Bool(bool),
     None,
     Ellipsis,

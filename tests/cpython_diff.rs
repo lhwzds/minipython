@@ -6125,6 +6125,44 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_ast_compile_interpolation_root_diff_subset() {
+    let probe = run_cpython("import ast\nprint(hasattr(ast, 'Interpolation'))")
+        .expect("failed to probe CPython ast.Interpolation support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!("skipping AST Interpolation root diff: CPython oracle lacks ast.Interpolation");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py public AST compile behavior for Interpolation expressions",
+        name: "ast-compile-interpolation-root",
+        source: r#"import ast
+cases = [
+    ast.Interpolation(ast.Constant(3), "3", -1),
+    ast.Interpolation(ast.Constant("x"), "name", 114),
+    ast.Interpolation(ast.Constant("é"), "name", 97),
+    ast.Interpolation(
+        ast.Constant(3.14159),
+        "value",
+        -1,
+        ast.JoinedStr([ast.Constant(".2f")]),
+    ),
+]
+for node in cases:
+    tree = ast.Expression(node)
+    ast.fix_missing_locations(tree)
+    value = eval(compile(tree, "<ast>", "eval"))
+    print(type(value).__name__, value.value, value.expression, value.conversion, value.format_spec)
+try:
+    tree = ast.Expression(ast.Interpolation(ast.Name("x", ast.Store()), "x", -1))
+    ast.fix_missing_locations(tree)
+    compile(tree, "<ast>", "eval")
+except ValueError as error:
+    print(error.__class__.__name__, "must have Load context" in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_ast_literal_eval_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py::ASTHelpers_Test::test_literal_eval / ::test_literal_eval_complex",
