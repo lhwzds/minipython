@@ -5654,6 +5654,68 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn builtin_singleton_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_builtin_construct_singletons_subset(",
+        "for const in [None, Ellipsis, NotImplemented]",
+        "tp = type(const)",
+        "tp() is const",
+        "lambda: tp(1, 2)",
+        "lambda: tp(a=1, b=2)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused singleton construction subset evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn cpython_builtin_singleton_attribute_access_subset(",
+        "for singleton in [NotImplemented, Ellipsis]",
+        "type(singleton) is singleton.__class__",
+        "type(singleton).__class__ is type",
+        "setattr(singleton, 'prop', 1)",
+        "setattr(type(singleton), 'prop', 1)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused singleton attribute subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_builtin_singleton_construction_and_attributes_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",
+        "for const in [None, Ellipsis, NotImplemented]",
+        "tp() is const",
+        "lambda: tp(1, 2)",
+        "lambda: tp(a=1, b=2)",
+        "for singleton in [NotImplemented, Ellipsis]",
+        "type(singleton) is singleton.__class__",
+        "setattr(singleton, 'prop', 1)",
+        "setattr(type(singleton), 'prop', 1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused singleton CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_builtin_construct_singletons_subset")
+                && document.contains("cpython_builtin_singleton_attribute_access_subset")
+                && document
+                    .contains("cpython_builtin_singleton_construction_and_attributes_diff_subset"),
+            "focused singleton evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
