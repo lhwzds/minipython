@@ -1611,6 +1611,7 @@ def boom_float(s):
 def boom_constant(s):
     raise ValueError('boom-constant')
 
+# expected non-callable hook error: 'int' object is not callable
 for label, source, kwargs in [
     ('int-noncallable', '1', dict(parse_int=1)),
     ('float-noncallable', '1.5', dict(parse_float=1)),
@@ -1619,7 +1620,7 @@ for label, source, kwargs in [
     try:
         json.loads(source, **kwargs)
     except Exception as error:
-        print(label, type(error).__name__, isinstance(error, TypeError))
+        print(label, type(error).__name__, str(error))
 for label, kwargs in [
     ('int-boom', dict(parse_int=boom_int)),
     ('float-boom', dict(parse_float=boom_float)),
@@ -1652,6 +1653,7 @@ print(json.loads('[1, 2]', object_hook=1))
 def boom(value):
     raise ValueError('boom-object')
 
+# expected non-callable hook error: 'int' object is not callable
 for label, source, kwargs in [
     ('object-hook-noncallable', '{}', dict(object_hook=1)),
     ('object-hook-boom', '{}', dict(object_hook=boom)),
@@ -1662,7 +1664,7 @@ for label, source, kwargs in [
         if label == 'object-hook-boom':
             print(label, type(error).__name__, str(error))
         else:
-            print(label, type(error).__name__, isinstance(error, TypeError))"#,
+            print(label, type(error).__name__, str(error))"#,
     });
 }
 
@@ -1689,6 +1691,7 @@ print(json.loads('[1, 2]', object_pairs_hook=1))
 def boom(value):
     raise ValueError('boom-pairs')
 
+# expected non-callable hook error: 'int' object is not callable
 for label, source, kwargs in [
     ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),
     ('pairs-boom', '{}', dict(object_pairs_hook=boom)),
@@ -1699,7 +1702,7 @@ for label, source, kwargs in [
         if label == 'pairs-boom':
             print(label, type(error).__name__, str(error))
         else:
-            print(label, type(error).__name__, isinstance(error, TypeError))"#,
+            print(label, type(error).__name__, str(error))"#,
     });
 }
 

@@ -4552,6 +4552,7 @@ fn json_loads_parsing_diff_covers_subset_surface() {
                 "int-noncallable",
                 "float-noncallable",
                 "constant-noncallable",
+                "'int' object is not callable",
                 "boom-int",
                 "boom-float",
                 "boom-constant",
@@ -4563,6 +4564,7 @@ fn json_loads_parsing_diff_covers_subset_surface() {
             &[
                 "object_hook",
                 "object-hook-noncallable",
+                "'int' object is not callable",
                 "object-hook-boom",
                 "boom-object",
             ][..],
@@ -4573,6 +4575,7 @@ fn json_loads_parsing_diff_covers_subset_surface() {
             &[
                 "object_pairs_hook",
                 "pairs-noncallable",
+                "'int' object is not callable",
                 "pairs-boom",
                 "boom-pairs",
             ][..],

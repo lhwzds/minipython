@@ -58127,7 +58127,7 @@ impl<'a> JsonParser<'a> {
         let text: String = self.chars[start..self.pos].iter().collect();
         if is_float {
             if let Some(hook) = self.parse_float.clone() {
-                return self.vm.call_value(hook, vec![Value::String(text)]);
+                return self.call_hook(hook, vec![Value::String(text)]);
             }
             let value = text
                 .parse::<f64>()
@@ -58135,7 +58135,7 @@ impl<'a> JsonParser<'a> {
             Ok(float_value(value))
         } else {
             if let Some(hook) = self.parse_int.clone() {
-                return self.vm.call_value(hook, vec![Value::String(text)]);
+                return self.call_hook(hook, vec![Value::String(text)]);
             }
             let digit_count = text.strip_prefix('-').unwrap_or(&text).len();
             let max_digits = get_int_max_str_digits();
@@ -58150,9 +58150,7 @@ impl<'a> JsonParser<'a> {
 
     fn parse_constant_value(&mut self, text: &str, default: f64) -> Result<Value, String> {
         if let Some(hook) = self.parse_constant.clone() {
-            return self
-                .vm
-                .call_value(hook, vec![Value::String(text.to_string())]);
+            return self.call_hook(hook, vec![Value::String(text.to_string())]);
         }
         Ok(float_value(default))
     }
@@ -58163,13 +58161,23 @@ impl<'a> JsonParser<'a> {
         pairs: Vec<Value>,
     ) -> Result<Value, String> {
         if let Some(hook) = self.object_pairs_hook.clone() {
-            return self.vm.call_value(hook, vec![list_value(pairs)]);
+            return self.call_hook(hook, vec![list_value(pairs)]);
         }
         let object = dict_value(entries);
         if let Some(hook) = self.object_hook.clone() {
-            return self.vm.call_value(hook, vec![object]);
+            return self.call_hook(hook, vec![object]);
         }
         Ok(object)
+    }
+
+    fn call_hook(&mut self, hook: Value, args: Vec<Value>) -> Result<Value, String> {
+        if !is_callable_value(&hook) {
+            return Err(format!(
+                "TypeError: '{}' object is not callable",
+                type_name(&hook)
+            ));
+        }
+        self.vm.call_value(hook, args)
     }
 
     fn expect_literal(&mut self, literal: &str) -> Result<(), String> {

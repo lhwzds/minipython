@@ -34017,7 +34017,7 @@ fn cpython_json_loads_nonfinite_constants_subset() {
 #[test]
 fn cpython_json_loads_parse_hooks_subset() {
     assert_output(
-        "import json\n\ndef pint(s):\n    print('parse_int', s)\n    return 'I:' + s\n\ndef pfloat(s):\n    print('parse_float', s)\n    return 'F:' + s\n\ndef pconst(s):\n    print('parse_constant', s)\n    return 'C:' + s\nvalue = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)\nprint(value)\nprint(json.loads('{\"a\": 123, \"b\": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))\nprint(json.loads('\"x\"', parse_int=1))\ndef boom_int(s):\n    raise ValueError('boom-int')\n\ndef boom_float(s):\n    raise ValueError('boom-float')\n\ndef boom_constant(s):\n    raise ValueError('boom-constant')\n\nfor label, source, kwargs in [\n    ('int-noncallable', '1', dict(parse_int=1)),\n    ('float-noncallable', '1.5', dict(parse_float=1)),\n    ('constant-noncallable', 'NaN', dict(parse_constant=1)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\nfor label, kwargs in [\n    ('int-boom', dict(parse_int=boom_int)),\n    ('float-boom', dict(parse_float=boom_float)),\n    ('constant-boom', dict(parse_constant=boom_constant)),\n]:\n    try:\n        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))",
+        "import json\n\ndef pint(s):\n    print('parse_int', s)\n    return 'I:' + s\n\ndef pfloat(s):\n    print('parse_float', s)\n    return 'F:' + s\n\ndef pconst(s):\n    print('parse_constant', s)\n    return 'C:' + s\nvalue = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)\nprint(value)\nprint(json.loads('{\"a\": 123, \"b\": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))\nprint(json.loads('\"x\"', parse_int=1))\ndef boom_int(s):\n    raise ValueError('boom-int')\n\ndef boom_float(s):\n    raise ValueError('boom-float')\n\ndef boom_constant(s):\n    raise ValueError('boom-constant')\n\nfor label, source, kwargs in [\n    ('int-noncallable', '1', dict(parse_int=1)),\n    ('float-noncallable', '1.5', dict(parse_float=1)),\n    ('constant-noncallable', 'NaN', dict(parse_constant=1)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))\nfor label, kwargs in [\n    ('int-boom', dict(parse_int=boom_int)),\n    ('float-boom', dict(parse_float=boom_float)),\n    ('constant-boom', dict(parse_constant=boom_constant)),\n]:\n    try:\n        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))",
         &[
             "parse_int 1",
             "parse_int -2",
@@ -34030,9 +34030,9 @@ fn cpython_json_loads_parse_hooks_subset() {
             "['I:1', 'I:-2', 'F:3.5', 'F:-0.0', 'F:6.02e+23', 'C:NaN', 'C:Infinity', 'C:-Infinity']",
             "{'a': ('int', '123'), 'b': ('float', '4.5')}",
             "x",
-            "int-noncallable TypeError True",
-            "float-noncallable TypeError True",
-            "constant-noncallable TypeError True",
+            "int-noncallable TypeError 'int' object is not callable",
+            "float-noncallable TypeError 'int' object is not callable",
+            "constant-noncallable TypeError 'int' object is not callable",
             "int-boom ValueError boom-int",
             "float-boom ValueError boom-float",
             "constant-boom ValueError boom-constant",
@@ -34043,7 +34043,7 @@ fn cpython_json_loads_parse_hooks_subset() {
 #[test]
 fn cpython_json_loads_object_hook_subset() {
     assert_output(
-        "import json\n\nevents = []\ndef hook(value):\n    print('hook', sorted(value.items()))\n    events.append(sorted(value.items()))\n    return {'seen': len(events), 'value': value}\n\nprint(json.loads('{}', object_hook=hook))\nprint(json.loads('{\"outer\": {\"inner\": 1}, \"list\": [{\"x\": 2}]}', object_hook=hook))\nprint(json.loads('[1, 2]', object_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-object')\n\nfor label, source, kwargs in [\n    ('object-hook-noncallable', '{}', dict(object_hook=1)),\n    ('object-hook-boom', '{}', dict(object_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'object-hook-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, isinstance(error, TypeError))",
+        "import json\n\nevents = []\ndef hook(value):\n    print('hook', sorted(value.items()))\n    events.append(sorted(value.items()))\n    return {'seen': len(events), 'value': value}\n\nprint(json.loads('{}', object_hook=hook))\nprint(json.loads('{\"outer\": {\"inner\": 1}, \"list\": [{\"x\": 2}]}', object_hook=hook))\nprint(json.loads('[1, 2]', object_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-object')\n\nfor label, source, kwargs in [\n    ('object-hook-noncallable', '{}', dict(object_hook=1)),\n    ('object-hook-boom', '{}', dict(object_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'object-hook-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
         &[
             "hook []",
             "{'seen': 1, 'value': {}}",
@@ -34052,7 +34052,7 @@ fn cpython_json_loads_object_hook_subset() {
             "hook [('list', [{'seen': 3, 'value': {'x': 2}}]), ('outer', {'seen': 2, 'value': {'inner': 1}})]",
             "{'seen': 4, 'value': {'outer': {'seen': 2, 'value': {'inner': 1}}, 'list': [{'seen': 3, 'value': {'x': 2}}]}}",
             "[1, 2]",
-            "object-hook-noncallable TypeError True",
+            "object-hook-noncallable TypeError 'int' object is not callable",
             "object-hook-boom ValueError boom-object",
         ],
     );
@@ -34061,7 +34061,7 @@ fn cpython_json_loads_object_hook_subset() {
 #[test]
 fn cpython_json_loads_object_pairs_hook_subset() {
     assert_output(
-        "import json\n\ndef pairs(value):\n    print('pairs', value)\n    return ('pairs', value)\n\ndef obj(value):\n    print('obj', value)\n    return ('obj', value)\n\nprint(json.loads('{}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"a\": 2, \"b\": {\"c\": 3}}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"b\": {\"c\": 2}}', object_hook=obj, object_pairs_hook=pairs))\nprint(json.loads('[1, 2]', object_pairs_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-pairs')\n\nfor label, source, kwargs in [\n    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),\n    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'pairs-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, isinstance(error, TypeError))",
+        "import json\n\ndef pairs(value):\n    print('pairs', value)\n    return ('pairs', value)\n\ndef obj(value):\n    print('obj', value)\n    return ('obj', value)\n\nprint(json.loads('{}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"a\": 2, \"b\": {\"c\": 3}}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"b\": {\"c\": 2}}', object_hook=obj, object_pairs_hook=pairs))\nprint(json.loads('[1, 2]', object_pairs_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-pairs')\n\nfor label, source, kwargs in [\n    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),\n    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'pairs-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
         &[
             "pairs []",
             "('pairs', [])",
@@ -34072,7 +34072,7 @@ fn cpython_json_loads_object_pairs_hook_subset() {
             "pairs [('a', 1), ('b', ('pairs', [('c', 2)]))]",
             "('pairs', [('a', 1), ('b', ('pairs', [('c', 2)]))])",
             "[1, 2]",
-            "pairs-noncallable TypeError True",
+            "pairs-noncallable TypeError 'int' object is not callable",
             "pairs-boom ValueError boom-pairs",
         ],
     );

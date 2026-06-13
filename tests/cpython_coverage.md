@@ -822,10 +822,13 @@ Recent runtime migration notes:
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, `parse_int`, `parse_float`, and `parse_constant`
-  hooks, `object_hook` post-processing for decoded objects including nested
-  objects and exception propagation, `object_pairs_hook` pair-list
+  hooks including CPython-style non-callable hook `TypeError` text,
+  `object_hook` post-processing for decoded objects including nested
+  objects, exception propagation, and non-callable hook `TypeError` text,
+  `object_pairs_hook` pair-list
   post-processing with duplicate-key preservation and `object_hook`
-  precedence, `sys.set_int_max_str_digits()`
+  precedence plus non-callable hook `TypeError` text,
+  `sys.set_int_max_str_digits()`
   enforcement for default parsed JSON integer values, top-level scalar values,
   empty containers, finite and
   default non-finite float spelling, booleans, null,
