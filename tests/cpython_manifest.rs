@@ -4097,6 +4097,124 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn operator_comparison_predicate_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_operator_comparison_predicate_subset(",
+        "OperatorTestCase comparison",
+        "predicate helper tests",
+        "list aliasing for identity checks",
+        "print(operator.lt(1, 0), operator.lt(1, 1), operator.lt(1, 2))",
+        "print(operator.le(1, 0), operator.le(1, 1), operator.le(1, 2))",
+        "print(operator.eq(1, 0), operator.eq(1, 1), operator.eq(1, 2))",
+        "print(operator.ne(1, 0), operator.ne(1, 1), operator.ne(1, 2))",
+        "print(operator.ge(1, 0), operator.ge(1, 1), operator.ge(1, 2))",
+        "print(operator.gt(1, 0), operator.gt(1, 1), operator.gt(1, 2))",
+        "class EqBoom:",
+        "def __eq__(self, other):",
+        "class NeBoom:",
+        "def __ne__(self, other):",
+        "class TruthBoom:",
+        "def __bool__(self):",
+        "operator.eq(EqBoom(), EqBoom())",
+        "operator.ne(NeBoom(), NeBoom())",
+        "operator.truth(TruthBoom())",
+        "operator.not_(TruthBoom())",
+        "operator.truth(5)",
+        "operator.not_(5)",
+        "operator.is_(a, b)",
+        "operator.is_not(a, b)",
+        "operator.is_none(a)",
+        "operator.is_not_none(None)",
+        "lambda: operator.lt()",
+        "lambda: operator.truth()",
+        "lambda: operator.is_none()",
+        "lambda: operator.is_()",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator comparison/predicate subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_comparison_predicate_diff_subset",
+    );
+    for required in [
+        "OperatorTestCase comparison and predicate helpers public subset",
+        "operator-comparison-predicate",
+        "print(operator.lt(1, 0), operator.lt(1, 1), operator.lt(1, 2))",
+        "print(operator.le(1, 0), operator.le(1, 1), operator.le(1, 2))",
+        "print(operator.eq(1, 0), operator.eq(1, 1), operator.eq(1, 2))",
+        "print(operator.ne(1, 0), operator.ne(1, 1), operator.ne(1, 2))",
+        "print(operator.ge(1, 0), operator.ge(1, 1), operator.ge(1, 2))",
+        "print(operator.gt(1, 0), operator.gt(1, 1), operator.gt(1, 2))",
+        "class EqBoom:",
+        "class NeBoom:",
+        "class TruthBoom:",
+        "operator.eq(EqBoom(), EqBoom())",
+        "operator.ne(NeBoom(), NeBoom())",
+        "operator.truth(TruthBoom())",
+        "operator.not_(TruthBoom())",
+        "operator.truth(5)",
+        "operator.not_(5)",
+        "operator.is_(a, b)",
+        "operator.is_not(a, b)",
+        "lambda: operator.lt()",
+        "lambda: operator.truth()",
+        "lambda: operator.is_()",
+    ] {
+        assert!(
+            body.contains(required),
+            "operator comparison/predicate CPython diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        !body.contains("operator.is_none(") && !body.contains("operator.is_not_none("),
+        "operator None predicates must stay in the gated is_none diff, not the default-oracle stable comparison diff"
+    );
+
+    let is_none_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_operator_is_none_predicates_diff_subset",
+    );
+    for required in [
+        "hasattr(operator, 'is_none')",
+        "skipping operator.is_none diff",
+        "operator.is_none(value)",
+        "operator.is_not_none(value)",
+        "name in operator.__all__",
+    ] {
+        assert!(
+            is_none_body.contains(required),
+            "operator None-predicate gated CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_operator_comparison_predicate_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_comparison_predicate_diff_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_is_none_predicates_subset")
+            && CPYTHON_COVERAGE.contains("cpython_operator_is_none_predicates_diff_subset")
+            && CPYTHON_COVERAGE.contains("custom rich")
+            && CPYTHON_COVERAGE.contains("exception propagation"),
+        "coverage notes must describe operator comparison/predicate and gated None-predicate evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_operator_comparison_predicate_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_comparison_predicate_diff_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_is_none_predicates_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.lt/le/eq/ne/ge/gt")
+            && CPYTHON_MIGRATION.contains("truth")
+            && CPYTHON_MIGRATION.contains("identity helpers")
+            && CPYTHON_MIGRATION.contains("None predicates")
+            && CPYTHON_MIGRATION.contains("__ne__")
+            && CPYTHON_MIGRATION.contains("default-oracle stable slice"),
+        "migration notes must describe operator comparison/predicate public behavior and gated None predicates"
+    );
+}
+
+#[test]
 fn operator_signature_diff_evidence_stays_capability_gated() {
     let start = CPYTHON_DIFF
         .find("fn cpython_operator_signature_helper_diff_subset()")
