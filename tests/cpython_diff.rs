@@ -1354,6 +1354,14 @@ for indent in [None, 0, 2, '', '--']:
 for args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:
     print('SEP', args['indent'], repr(args['separators']))
     print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))
+class IndexIndent:
+    def __index__(self):
+        return 2
+class BoolIndexIndent:
+    def __index__(self):
+        return True
+for indent in [IndexIndent(), BoolIndexIndent()]:
+    print('INDEX', type(indent).__name__, repr(json.dumps([1, 2], indent=indent)))
 for indent in [True, False, 1.5, [], object()]:
     try:
         print('BAD', repr(json.dumps([1, 2], indent=indent)))

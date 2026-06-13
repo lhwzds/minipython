@@ -23642,7 +23642,7 @@ impl Vm {
         }
         json_unsupported_keyword_none("dumps", "cls", values[5].as_ref())?;
         if let Some(value) = values[6].as_ref() {
-            options.indent = json_dumps_indent_string(value)?;
+            options.indent = json_dumps_indent_string(self, value)?;
         }
         if let Some(value) = values[7].as_ref() {
             separators_explicit = !matches!(value, Value::None);
@@ -58251,7 +58251,7 @@ impl Default for JsonDumpsOptions {
     }
 }
 
-fn json_dumps_indent_string(value: &Value) -> Result<Option<String>, String> {
+fn json_dumps_indent_string(vm: &mut Vm, value: &Value) -> Result<Option<String>, String> {
     match value {
         Value::None => Ok(None),
         Value::Bool(true) => Ok(Some(" ".to_string())),
@@ -58275,7 +58275,18 @@ fn json_dumps_indent_string(value: &Value) -> Result<Option<String>, String> {
         value if str_subclass_string(value).is_some() => Ok(Some(
             str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
-        _ => Err("TypeError: json.dumps() indent must be str, int or None".to_string()),
+        value => match vm.index_integer_value(value.clone())? {
+            Value::Number(value) => Ok(Some(" ".repeat(value.max(0) as usize))),
+            Value::BigInt(value) => {
+                let Some(value) = value.to_i64() else {
+                    return Err(
+                        "TypeError: json.dumps() indent must be str, int or None".to_string()
+                    );
+                };
+                Ok(Some(" ".repeat(value.max(0) as usize)))
+            }
+            _ => unreachable!("index_integer_value returns an integer"),
+        },
     }
 }
 
