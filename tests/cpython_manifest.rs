@@ -7662,10 +7662,14 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         .unwrap_or(CPYTHON_SUBSET.len());
     let globals_locals_source = &CPYTHON_SUBSET[globals_locals_start..globals_locals_end];
     for required in [
+        "g.copy()",
         "g.get('scope_temp')",
         "g.pop('scope_temp')",
+        "g.setdefault('new_scope', 3)",
+        "snapshot.copy()",
         "snapshot.get('arg')",
         "snapshot.pop('local_value')",
+        "snapshot.setdefault('new_local', 5)",
     ] {
         assert!(
             globals_locals_source.contains(required),

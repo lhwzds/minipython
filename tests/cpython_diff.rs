@@ -6283,8 +6283,13 @@ g['from_globals'] = 2
 l['from_locals'] = 3
 print(from_globals, from_locals, globals() is g, locals() is l)
 scope_temp = 1
+copied = g.copy()
+print(type(copied).__name__, copied.get('scope_temp'), copied is g)
 print(g.get('scope_temp'), g.get('missing'), g.get('missing', 42))
+print(g.setdefault('scope_temp', 2), scope_temp)
+print(g.setdefault('new_scope', 3), new_scope)
 print(g.pop('scope_temp'), 'scope_temp' in g)
+print(g.pop('new_scope'), 'new_scope' in g)
 print(g.pop('missing', 'fallback'))
 try:
     g.pop('missing')
@@ -6293,8 +6298,12 @@ except KeyError as error:
 def probe(arg):
     local_value = 4
     snapshot = locals()
+    copied = snapshot.copy()
+    print(type(copied).__name__, copied.get('arg'), copied is snapshot)
     print('arg' in snapshot, snapshot['arg'], 'local_value' in snapshot, snapshot['local_value'])
     print(snapshot.get('arg'), snapshot.get('missing', 9))
+    print(snapshot.setdefault('arg', 8), snapshot['arg'])
+    print(snapshot.setdefault('new_local', 5), snapshot['new_local'])
     print(snapshot.pop('local_value'), 'local_value' in snapshot)
     print(globals() is locals(), globals()['x'])
 probe(3)"#,
