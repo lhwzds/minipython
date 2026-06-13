@@ -45368,6 +45368,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__class_getitem__",
             "__contains__",
             "__delitem__",
+            "__format__",
             "__getitem__",
             "__iter__",
             "__len__",
@@ -52239,6 +52240,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Dict(entries) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
+            "__format__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__format__".to_string())),
+                receiver: Box::new(Value::Dict(entries)),
+                identity: Rc::new(()),
+            }),
             "__repr__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("dict.{name}"))),
                 receiver: Box::new(Value::Dict(entries)),
@@ -52407,6 +52413,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::ScopeDict(scope) => match name {
             "fromkeys" => Ok(Value::Builtin("dict.fromkeys".to_string())),
             "__class_getitem__" => Ok(Value::Builtin("dict.__class_getitem__".to_string())),
+            "__format__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("object.__format__".to_string())),
+                receiver: Box::new(Value::ScopeDict(scope)),
+                identity: Rc::new(()),
+            }),
             "__repr__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("scope_dict.{name}"))),
                 receiver: Box::new(Value::ScopeDict(scope)),
@@ -53021,6 +53032,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name) if function_name == "dict" && name == "__class_getitem__" => {
             Ok(Value::Builtin("dict.__class_getitem__".to_string()))
+        }
+        Value::Builtin(function_name) if function_name == "dict" && name == "__format__" => {
+            Ok(Value::Builtin("object.__format__".to_string()))
         }
         Value::Builtin(function_name) if name == "__class__" => {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
