@@ -16346,13 +16346,14 @@ for args in [(), (False,)]:
     print(sample.popitem(*args), list(sample.items()))
 sample = OrderedDict([('a', 1), ('b', 2)])
 print(sample.popitem(last=False), list(sample.items()))
+print(list(od.__reversed__()), list(OrderedDict.__reversed__(od)))
 od.move_to_end('a')
 expected = list(od.items())
 C = type('C', (), od)
 print(expected)
 print(list(C.__dict__.items())[:2])
 print(expected == list(C.__dict__.items())[:2])
-print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), 'move_to_end' in dir({}))"#,
+print(type(od).__name__, 'fromkeys' in dir(OrderedDict), 'move_to_end' in dir(od), '__repr__' in dir(od), '__format__' in dir(od), '__reversed__' in dir(od), 'move_to_end' in dir({}))"#,
         },
         DiffCase {
             origin: "Lib/test/test_builtin.py::TestType::test_type_name / ::test_type_qualname",

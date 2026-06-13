@@ -45611,6 +45611,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "__iter__",
             "__len__",
             "__repr__",
+            "__reversed__",
             "__setitem__",
             "__str__",
             "clear",
@@ -52580,6 +52581,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::OrderedDict(entries)),
                 identity: Rc::new(()),
             }),
+            "__reversed__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("OrderedDict.__reversed__".to_string())),
+                receiver: Box::new(Value::OrderedDict(entries)),
+                identity: Rc::new(()),
+            }),
             "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
             | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
             | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -53395,6 +53401,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if function_name == "OrderedDict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("OrderedDict.{name}")))
+        }
+        Value::Builtin(function_name)
+            if function_name == "OrderedDict" && name == "__reversed__" =>
+        {
+            Ok(Value::Builtin("OrderedDict.__reversed__".to_string()))
         }
         Value::Builtin(function_name)
             if function_name == "mappingproxy" && is_builtin_mappingproxy_type_method(name) =>
@@ -66794,6 +66805,17 @@ fn call_dict_method(
         };
         mark_dict_changed(&mut entries);
         return Ok(tuple_value(vec![key, value]));
+    }
+
+    if name == "OrderedDict.__reversed__" {
+        reject_method_keywords(name, &keywords)?;
+        let [Value::OrderedDict(entries)] = args.as_slice() else {
+            return Err(format!(
+                "__reversed__() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        };
+        return reversed_value(Value::OrderedDict(entries.clone()));
     }
 
     let canonical_name;
