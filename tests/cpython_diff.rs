@@ -12320,6 +12320,20 @@ print('userdict-alias', cud is ud, cud.data is ud.data, cud['a'] is shared, cud[
 dq = deque([shared, shared])
 cdq = copy.deepcopy(dq)
 print('deque-alias', cdq is dq, cdq[0] is shared, cdq[0] is cdq[1], list(cdq))
+memo = {}
+memo_result = copy.deepcopy(outer, memo)
+print('memo-populated', memo_result[0] is memo_result[1], id(outer) in memo, id(shared) in memo)
+memo = {id(shared): ['sentinel']}
+memo_result = copy.deepcopy(outer, memo)
+print('memo-preseed-shared', memo_result, memo_result[0] is memo_result[1], id(outer) in memo, id(shared) in memo)
+memo = {id(outer): ['outer-sentinel']}
+memo_result = copy.deepcopy(outer, memo)
+print('memo-preseed-outer', memo_result, id(outer) in memo)
+for memo_arg in [None, [], {1: 2}]:
+    try:
+        print('memo-arg', type(memo_arg).__name__, copy.deepcopy([1], memo_arg))
+    except Exception as error:
+        print('memo-arg', type(memo_arg).__name__, type(error).__name__)
 marker = [1]
 bio = io.BytesIO(b'abc')
 bio.seek(1)

@@ -23378,8 +23378,13 @@ impl Vm {
         let value = values[0]
             .take()
             .ok_or_else(|| "TypeError: deepcopy() missing required argument 'x'".to_string())?;
-        let mut memo = HashMap::new();
-        deep_copy_value(&value, &mut memo)
+        let memo_value = values[1].take();
+        let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref())?;
+        let copied = deep_copy_value(&value, &mut memo)?;
+        if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
+            copy_deepcopy_sync_memo(value, &memo)?;
+        }
+        Ok(copied)
     }
 
     fn call_copy_replace(
@@ -33406,6 +33411,51 @@ fn shallow_copy_value(value: &Value) -> Result<Value, String> {
         Value::MemoryView(_) => Err("TypeError: cannot pickle 'memoryview' object".to_string()),
         _ => Ok(value.clone()),
     }
+}
+
+fn copy_deepcopy_memo_from_value(value: Option<&Value>) -> Result<HashMap<usize, Value>, String> {
+    let mut memo = HashMap::new();
+    let Some(value) = value else {
+        return Ok(memo);
+    };
+    match value {
+        Value::None => Ok(memo),
+        Value::Dict(entries) => {
+            for (key, value) in entries.borrow().entries.iter() {
+                if let Some(key) = copy_deepcopy_memo_key(key) {
+                    memo.insert(key, value.clone());
+                }
+            }
+            Ok(memo)
+        }
+        value => Err(format!(
+            "AttributeError: '{}' object has no attribute 'get'",
+            type_name(value)
+        )),
+    }
+}
+
+fn copy_deepcopy_memo_key(value: &Value) -> Option<usize> {
+    match value {
+        Value::Number(value) if *value >= 0 => usize::try_from(*value).ok(),
+        Value::BigInt(value) if !value.is_negative() => value.to_usize(),
+        _ => None,
+    }
+}
+
+fn copy_deepcopy_sync_memo(memo_value: &Value, memo: &HashMap<usize, Value>) -> Result<(), String> {
+    let Value::Dict(entries) = memo_value else {
+        return Ok(());
+    };
+    let mut entries = entries.borrow_mut();
+    for (key, value) in memo {
+        insert_live_dict_entry(
+            &mut entries,
+            normalize_big_int(BigInt::from(*key)),
+            value.clone(),
+        )?;
+    }
+    Ok(())
 }
 
 fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Value, String> {
