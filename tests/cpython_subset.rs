@@ -35554,8 +35554,10 @@ fn cpython_type_typeparams_subset() {
 #[test]
 fn cpython_type_namespace_order_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'move_to_end' in dir(od), 'move_to_end' in dir({}))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))\nprint(type(od.__doc__).__name__, bool(od.__doc__))\nod.move_to_end('a')\nexpected = list(od.items())\nC = type('C', (), od)\nprint(expected)\nprint(list(C.__dict__.items())[:2])\nprint(expected == list(C.__dict__.items())[:2])\nprint(type(od).__name__, 'move_to_end' in dir(od), 'move_to_end' in dir({}))",
         &[
+            "collections OrderedDict str True",
+            "str True",
             "[('b', 2), ('a', 1)]",
             "[('b', 2), ('a', 1)]",
             "True",

@@ -16326,6 +16326,8 @@ for expr in [lambda: type('A', [], {}), lambda: type('A', (), []), lambda: type(
             name: "type-namespace-order",
             source: r#"from collections import OrderedDict
 od = OrderedDict([('a', 1), ('b', 2)])
+print(OrderedDict.__module__, OrderedDict.__qualname__, type(OrderedDict.__doc__).__name__, bool(OrderedDict.__doc__))
+print(type(od.__doc__).__name__, bool(od.__doc__))
 od.move_to_end('a')
 expected = list(od.items())
 C = type('C', (), od)

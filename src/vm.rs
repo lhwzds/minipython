@@ -52533,6 +52533,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
         Value::OrderedDict(entries) => match name {
+            "__doc__" => Ok(Value::String(
+                builtin_type_doc("OrderedDict")
+                    .expect("OrderedDict type doc is defined")
+                    .to_string(),
+            )),
             "clear" | "copy" | "get" | "items" | "keys" | "move_to_end" | "pop" | "popitem"
             | "setdefault" | "update" | "values" | "__contains__" | "__delitem__"
             | "__getitem__" | "__len__" | "__iter__" | "__setitem__" => Ok(Value::BoundMethod {
@@ -53709,6 +53714,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__module__" && function_name == "deque" => {
             Ok(Value::String("collections".to_string()))
         }
+        Value::Builtin(function_name) if name == "__module__" && function_name == "OrderedDict" => {
+            Ok(Value::String("collections".to_string()))
+        }
         Value::Builtin(function_name)
             if name == "__new__" && function_name == "SimpleNamespace" =>
         {
@@ -53849,6 +53857,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name) if name == "__qualname__" && function_name == "deque" => {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "OrderedDict" =>
+        {
             Ok(Value::String(function_name))
         }
         Value::Builtin(function_name)
@@ -54331,6 +54344,7 @@ bytearray() -> empty bytes object",
 \n\
 A list-like sequence optimized for data accesses near its endpoints.",
         ),
+        "OrderedDict" => Some("Dictionary that remembers insertion order."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         _ => None,
     }
