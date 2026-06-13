@@ -17138,6 +17138,10 @@ print(ba)
 print(ba.resize(0), ba)
 print(ba.resize(10), len(ba), ba)
 print(ba.resize(Indexable(3)), ba)
+class BA(bytearray):
+    pass
+sub = BA(b'abc')
+print(sub.resize(2), type(sub).__name__, sub)
 for expr in [lambda: bytearray().resize(), lambda: bytearray().resize(10, 10), lambda: bytearray().resize(-1), lambda: bytearray().resize(-200), lambda: bytearray().resize('3')]:
     try:
         expr()

@@ -3505,9 +3505,9 @@ Completed in the bytearray allocation/subclass mutation pass:
   `__delitem__`, and identity-preserving `__iadd__` / `__imul__`.
 - Direct CPython diff evidence for the stable `__alloc__()` /
   generator-driven `__init__()` / subclass mutation slice is in
-  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; broader subclass
-  `resize()` behavior remains local subset evidence outside the gated
-  `bytearray.resize()` diff slice.
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; inherited
+  subclass `resize()` behavior has gated direct diff evidence in
+  `cpython_bytearray_resize_diff_subset`.
 
 Completed in the bytearray iterator/repeat regression pass:
 

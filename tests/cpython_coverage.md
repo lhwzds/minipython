@@ -1739,9 +1739,9 @@ Recent runtime migration notes:
   inherited bytearray mutation methods on subclasses without copying CPython's
   exact allocator growth policy. Direct CPython diff evidence for the stable
   allocation/subclass mutation slice is in
-  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; broader
-  subclass `resize()` behavior remains local subset evidence outside the
-  gated `bytearray.resize()` diff slice.
+  `cpython_bytearray_alloc_and_subclass_mutation_diff_subset`; inherited
+  subclass `resize()` behavior has gated direct diff evidence in
+  `cpython_bytearray_resize_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytearray_resize_forbidden_subset`,
   covering current CPython `ByteArrayTest::test_resize_forbidden` public
   behavior for active memoryview exports blocking bytearray resizing through
@@ -1788,12 +1788,11 @@ Recent runtime migration notes:
   `cpython_bytearray_extend_empty_buffer_overflow_subset`, covering current
   CPython `ByteArrayTest::test_extend_empty_buffer_overflow` public behavior for
   `bytearray.extend()` over zero-length-hint iterators and catchable
-  `float(bytearray())` `ValueError` parsing failures. This remains local subset
-  evidence under the local default oracle because system CPython 3.9.6 still
-  exhibits the historical corrupted-bytearray behavior that CPython's regression test prevents
-  in fixed oracles. Capability-gated diff evidence is in
+  `float(bytearray())` `ValueError` parsing failures. Capability-gated direct
+  CPython diff evidence is in
   `cpython_bytearray_extend_empty_buffer_overflow_diff_subset` when the selected
-  CPython oracle has the fixed public behavior.
+  oracle has the fixed public behavior; older system CPython oracles can still
+  exhibit the historical corrupted-bytearray behavior that CPython's regression test prevents.
 - `STRING_RUNTIME` also includes `cpython_bytearray_regexps_subset`, covering
   CPython `ByteArrayTest::test_regexps` public behavior for the supported
   `re.findall()` bytes-pattern subset: ASCII `\w+` over bytes-like subjects
