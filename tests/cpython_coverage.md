@@ -1780,10 +1780,10 @@ Recent runtime migration notes:
   `cpython_bytearray_search_reentrancy_buffererror_subset`, covering current
   CPython `ByteArrayTest::test_search_methods_reentrancy_raises_buffererror`
   public behavior for bytearray search, membership, `split()`, and `rsplit()`
-  when `__buffer__` argument conversion re-enters and attempts to resize the
-  locked receiver bytearray. This remains local subset evidence because the
-  local default oracle is system CPython 3.9.6, which does not expose the
-  current public `__buffer__` protocol behavior needed by this test.
+  when current public `__buffer__` protocol argument conversion re-enters and
+  attempts to resize the locked receiver bytearray. Direct CPython diff
+  evidence is in the CPython-version-gated
+  `cpython_bytearray_search_reentrancy_buffererror_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_extend_empty_buffer_overflow_subset`, covering current
   CPython `ByteArrayTest::test_extend_empty_buffer_overflow` public behavior for

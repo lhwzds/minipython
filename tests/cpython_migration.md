@@ -3565,9 +3565,9 @@ Completed in the bytearray search reentrancy BufferError pass:
 - Covered `bytearray.find()`, `count()`, `index()`, `rindex()`, `rfind()`,
   membership, `split()`, and `rsplit()` when argument conversion re-enters and
   attempts to clear the receiver bytearray.
-- This case is not added to `tests/cpython_diff.rs`: the local default oracle is
-  system CPython 3.9.6, which does not expose the current public `__buffer__`
-  protocol behavior needed by this test.
+- Added CPython-version-gated direct diff evidence in
+  `cpython_bytearray_search_reentrancy_buffererror_diff_subset` for oracles
+  that expose the current public `__buffer__` protocol behavior.
 
 Completed in the bytearray extend empty-buffer overflow pass:
 

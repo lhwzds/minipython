@@ -17689,6 +17689,65 @@ print(seen)"#,
 }
 
 #[test]
+fn cpython_bytearray_search_reentrancy_buffererror_diff_subset() {
+    let probe = run_cpython("print(hasattr(bytearray(), '__buffer__'))")
+        .expect("failed to probe CPython bytearray __buffer__ support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping bytearray search reentrancy diff: CPython oracle lacks __buffer__");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_search_methods_reentrancy_raises_buffererror public subset",
+        name: "bytearray-search-reentrancy-buffererror",
+        source: r#"class Evil:
+    def __init__(self, ba):
+        self.ba = ba
+    def __buffer__(self, flags):
+        self.ba.clear()
+        return memoryview(self.ba)
+    def __release_buffer__(self, view):
+        view.release()
+    def __index__(self):
+        self.ba.clear()
+        return ord('A')
+def make_case():
+    ba = bytearray(b'A')
+    return ba, Evil(ba)
+for name in ('find', 'count', 'index', 'rindex', 'rfind'):
+    ba, evil = make_case()
+    try:
+        if name == 'find':
+            ba.find(evil)
+        elif name == 'count':
+            ba.count(evil)
+        elif name == 'index':
+            ba.index(evil)
+        elif name == 'rindex':
+            ba.rindex(evil)
+        else:
+            ba.rfind(evil)
+    except BufferError as error:
+        print(name, error.__class__.__name__, ba)
+    else:
+        print(name, 'accepted', ba)
+for name in ('contains', 'split', 'rsplit'):
+    ba, evil = make_case()
+    try:
+        if name == 'contains':
+            evil in ba
+        elif name == 'split':
+            ba.split(evil)
+        else:
+            ba.rsplit(evil)
+    except BufferError as error:
+        print(name, error.__class__.__name__, ba)
+    else:
+        print(name, 'accepted', ba)"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_extend_empty_buffer_overflow_diff_subset() {
     let oracle_probe = run_cpython(
         r#"class EvilIter:
