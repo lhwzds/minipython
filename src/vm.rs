@@ -53415,8 +53415,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(format!("UserDict.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "deque"
-                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+            if function_name == "deque" && is_builtin_deque_type_method(name) =>
         {
             Ok(Value::Builtin(format!("deque.{name}")))
         }
@@ -55010,6 +55009,7 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "dict" | "OrderedDict" => is_builtin_dict_type_method(method),
         "Counter" => is_builtin_counter_type_method(method),
         "ChainMap" => is_builtin_chain_map_type_method(method),
+        "deque" => is_builtin_deque_type_method(method),
         "complex" => is_builtin_complex_type_method(method),
         "int" | "bool" => is_builtin_int_type_method(method) && method != "from_bytes",
         "list" => is_builtin_list_type_method(method),
@@ -55017,6 +55017,48 @@ fn builtin_method_descriptor_requires_receiver(name: &str) -> bool {
         "tuple" | "range" | "str" | "bytes" => is_immutable_sequence_type_method(type_name, method),
         _ => false,
     }
+}
+
+fn is_builtin_deque_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "append"
+            | "appendleft"
+            | "clear"
+            | "copy"
+            | "count"
+            | "extend"
+            | "extendleft"
+            | "index"
+            | "insert"
+            | "pop"
+            | "popleft"
+            | "remove"
+            | "reverse"
+            | "rotate"
+            | "__add__"
+            | "__contains__"
+            | "__copy__"
+            | "__delitem__"
+            | "__eq__"
+            | "__format__"
+            | "__ge__"
+            | "__getitem__"
+            | "__gt__"
+            | "__iadd__"
+            | "__imul__"
+            | "__iter__"
+            | "__le__"
+            | "__len__"
+            | "__lt__"
+            | "__mul__"
+            | "__ne__"
+            | "__repr__"
+            | "__reversed__"
+            | "__rmul__"
+            | "__setitem__"
+            | "__str__"
+    )
 }
 
 fn is_builtin_method_descriptor_name(name: &str) -> bool {

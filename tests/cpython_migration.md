@@ -10528,6 +10528,12 @@ Completed in the CPython collections manifest expansion pass:
   the `deque` type, non-empty format rejection, and recursive display parity
   for self-referential deques. This does not promote pickle/eval identity,
   slicing, thread-safety, or performance contracts into the sandbox surface.
+- Extended the same `collections.deque` public surface with type-level public
+  method calls such as `deque.append(d, value)`, `deque.copy(d)`,
+  `deque.__copy__(d)`, `deque.__iter__(d)`, and `deque.__reversed__(d)`,
+  matching CPython's receiver-first method shape while keeping unsupported
+  pickle/eval identity, slicing, thread-safety, and performance contracts out
+  of scope.
 
 Next:
 
