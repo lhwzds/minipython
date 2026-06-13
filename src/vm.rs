@@ -58391,8 +58391,11 @@ fn json_dumps_apply_separators(
         value => vm.collect_iterable_values_propagating(value.clone())?,
     };
     let [item_separator, key_separator] = values.as_slice() else {
+        let got = values.len();
         return if values.len() < 2 {
-            Err("ValueError: not enough values to unpack (expected 2, got 1)".to_string())
+            Err(format!(
+                "ValueError: not enough values to unpack (expected 2, got {got})"
+            ))
         } else {
             Err("ValueError: too many values to unpack (expected 2)".to_string())
         };
@@ -58408,10 +58411,16 @@ fn json_dumps_separator_string(value: &Value, label: &str) -> Result<String, Str
         value if str_subclass_string(value).is_some() => {
             Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
         }
-        value => Err(format!(
-            "TypeError: json.dumps() {label} separator must be str, not {}",
-            type_name(value)
-        )),
+        value => {
+            let argument = match label {
+                "key" => 5,
+                _ => 6,
+            };
+            Err(format!(
+                "TypeError: make_encoder() argument {argument} must be str, not {}",
+                type_name(value)
+            ))
+        }
     }
 }
 

@@ -4297,7 +4297,10 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "separators in [None, (',', ':'), [',', ': ']",
                 "separators in [iter((',', ':')), SepIter(), SepGen()]",
                 "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
-                "separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]",
+                "separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', (1, ':')]",
+                "not enough values to unpack (expected 2, got 0)",
+                "too many values to unpack (expected 2)",
+                "make_encoder() argument 6 must be str, not int",
             ][..],
         ),
         (

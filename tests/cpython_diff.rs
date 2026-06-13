@@ -1278,11 +1278,12 @@ for separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), Sep
 for separators in [iter((',', ':')), SepIter(), SepGen()]:
     print(json.dumps({'b': [1, 2], 'a': 3}, separators=separators, sort_keys=True))
 print(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
-for separators in [(',',), (',', ':', 'x'), 'bad', (1, ':')]:
+# CPython oracle text: not enough values to unpack (expected 2, got 0); too many values to unpack (expected 2); make_encoder() argument 6 must be str, not int
+for separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', (1, ':')]:
     try:
         json.dumps(value, separators=separators)
     except Exception as error:
-        print(type(error).__name__, isinstance(error, (TypeError, ValueError)))"#,
+        print(type(error).__name__, isinstance(error, (TypeError, ValueError)), str(error))"#,
     });
 }
 
