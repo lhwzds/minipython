@@ -2453,6 +2453,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include itertools");
     for evidence in [
         "cpython_itertools_core_diff_subset",
+        "cpython_itertools_core_iterator_diff_subset",
         "cpython_itertools_keyword_error_diff_subset",
         "cpython_itertools_pairwise_diff_subset",
         "cpython_itertools_product_diff_subset",
@@ -2698,7 +2699,6 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
     let expected = [
         "cpython_collections_chainmap_copy_pickle_eval_identity",
         "cpython_collections_namedtuple_pickle",
-        "cpython_itertools_core_iterator",
         "cpython_json_loads_dumps_basic",
         "cpython_operator_pickle_helper",
     ]
@@ -2710,16 +2710,10 @@ fn sandbox_stdlib_subset_without_same_named_diff_is_explicitly_classified() {
         "sandbox stdlib subset evidence without same-named CPython diff must be explicitly classified"
     );
 
-    for (subset, diff) in [
-        (
-            "cpython_json_loads_dumps_basic_subset",
-            "cpython_json_loads_dumps_diff_subset",
-        ),
-        (
-            "cpython_itertools_core_iterator_subset",
-            "cpython_itertools_core_diff_subset",
-        ),
-    ] {
+    for (subset, diff) in [(
+        "cpython_json_loads_dumps_basic_subset",
+        "cpython_json_loads_dumps_diff_subset",
+    )] {
         assert!(
             CPYTHON_COVERAGE.contains(subset)
                 && CPYTHON_COVERAGE.contains(diff)

@@ -12625,11 +12625,10 @@ print(K.m(1), K().m(1), K.m('x'), K().m('x'))"#,
     });
 }
 
-#[test]
-fn cpython_itertools_core_diff_subset() {
+fn assert_cpython_itertools_core_iterator_diff(name: &'static str) {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
-        name: "itertools-core-iterators",
+        name,
         source: r#"import itertools
 c = itertools.count(2, 3)
 print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
@@ -12807,6 +12806,16 @@ for expr in [
     except (TypeError, ValueError) as error:
         print(error.__class__.__name__)"#,
     });
+}
+
+#[test]
+fn cpython_itertools_core_diff_subset() {
+    assert_cpython_itertools_core_iterator_diff("itertools-core-iterators");
+}
+
+#[test]
+fn cpython_itertools_core_iterator_diff_subset() {
+    assert_cpython_itertools_core_iterator_diff("itertools-core-iterator-direct");
 }
 
 #[test]

@@ -671,6 +671,7 @@ Recent runtime migration notes:
   `cpython_itertools_groupby_subset`, and
   `cpython_itertools_repr_subset`, and
   `cpython_itertools_core_diff_subset`,
+  `cpython_itertools_core_iterator_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
   `cpython_itertools_product_diff_subset`, and
