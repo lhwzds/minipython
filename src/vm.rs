@@ -23560,7 +23560,7 @@ impl Vm {
             .take()
             .expect("required json.loads source is present after keyword binding");
         json_unsupported_keyword_none("loads", "cls", values[1].as_ref())?;
-        json_unsupported_keyword_none("loads", "object_hook", values[2].as_ref())?;
+        let object_hook = json_optional_hook(values[2].take());
         let parse_float = json_optional_hook(values[3].take());
         let parse_int = json_optional_hook(values[4].take());
         let parse_constant = json_optional_hook(values[5].take());
@@ -23595,6 +23595,7 @@ impl Vm {
             self,
             &source,
             strict,
+            object_hook,
             parse_float,
             parse_int,
             parse_constant,
@@ -57875,6 +57876,7 @@ struct JsonParser<'a> {
     chars: Vec<char>,
     pos: usize,
     strict: bool,
+    object_hook: Option<Value>,
     parse_float: Option<Value>,
     parse_int: Option<Value>,
     parse_constant: Option<Value>,
@@ -57885,6 +57887,7 @@ impl<'a> JsonParser<'a> {
         vm: &'a mut Vm,
         source: &str,
         strict: bool,
+        object_hook: Option<Value>,
         parse_float: Option<Value>,
         parse_int: Option<Value>,
         parse_constant: Option<Value>,
@@ -57894,6 +57897,7 @@ impl<'a> JsonParser<'a> {
             chars: source.chars().collect(),
             pos: 0,
             strict,
+            object_hook,
             parse_float,
             parse_int,
             parse_constant,
@@ -57949,7 +57953,7 @@ impl<'a> JsonParser<'a> {
         self.skip_whitespace();
         let mut entries = Vec::new();
         if self.consume_if('}') {
-            return Ok(dict_value(entries));
+            return self.apply_object_hook(dict_value(entries));
         }
         loop {
             self.skip_whitespace();
@@ -57968,7 +57972,7 @@ impl<'a> JsonParser<'a> {
             }
             self.expect_char(',')?;
         }
-        Ok(dict_value(entries))
+        self.apply_object_hook(dict_value(entries))
     }
 
     fn parse_array(&mut self) -> Result<Value, String> {
@@ -58142,6 +58146,13 @@ impl<'a> JsonParser<'a> {
                 .call_value(hook, vec![Value::String(text.to_string())]);
         }
         Ok(float_value(default))
+    }
+
+    fn apply_object_hook(&mut self, object: Value) -> Result<Value, String> {
+        if let Some(hook) = self.object_hook.clone() {
+            return self.vm.call_value(hook, vec![object]);
+        }
+        Ok(object)
     }
 
     fn expect_literal(&mut self, literal: &str) -> Result<(), String> {

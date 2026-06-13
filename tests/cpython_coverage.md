@@ -400,6 +400,7 @@ Recent runtime migration notes:
   `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`,
   `cpython_json_loads_nonfinite_constants_diff_subset`,
   `cpython_json_loads_parse_hooks_diff_subset`,
+  `cpython_json_loads_object_hook_diff_subset`,
   `cpython_json_loads_dumps_error_boundary_diff_subset`, and
   `cpython_json_loads_string_error_boundary_diff_subset`.
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
@@ -763,6 +764,8 @@ Recent runtime migration notes:
   `cpython_json_loads_nonfinite_constants_subset`,
   `cpython_json_loads_parse_hooks_diff_subset` /
   `cpython_json_loads_parse_hooks_subset`,
+  `cpython_json_loads_object_hook_diff_subset` /
+  `cpython_json_loads_object_hook_subset`,
   `cpython_json_dumps_string_escape_diff_subset` /
   `cpython_json_dumps_string_escape_subset`,
   `cpython_json_dumps_key_coercion_diff_subset` /
@@ -811,16 +814,18 @@ Recent runtime migration notes:
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges, `parse_int`, `parse_float`, and `parse_constant`
-  hooks, `sys.set_int_max_str_digits()` enforcement for default parsed JSON
-  integer values, top-level scalar values, empty containers, finite and
+  hooks, `object_hook` post-processing for decoded objects including nested
+  objects and exception propagation, `sys.set_int_max_str_digits()`
+  enforcement for default parsed JSON integer values, top-level scalar values,
+  empty containers, finite and
   default non-finite float spelling, booleans, null,
   CPython's basic dict-key coercion for `str` / `int` / `float` / `bool` /
   `None`, circular-reference rejection for list/dict/tuple/namedtuple
   container paths, raw control-character rejection, malformed escape rejection,
   and first-pass type, structural, literal, and data error classification. File APIs,
-  non-`None` encoder/decoder hooks other than `parse_int`, `parse_float`, and
-  `parse_constant`, `loads()` hooks/options other than `strict` such as
-  non-`None` `object_hook` and `object_pairs_hook`,
+  non-`None` encoder/decoder hooks other than `object_hook`, `parse_int`,
+  `parse_float`, and `parse_constant`, `loads()` hooks/options other than
+  `strict` / `object_hook` such as non-`None` `object_pairs_hook`,
   `dumps()` hooks/options other than `allow_nan` /
   `check_circular` / `ensure_ascii` / `indent` / `skipkeys` / `sort_keys` /
   `separators` such as non-`None` `default` and `cls`, the `JSONDecodeError` class and
