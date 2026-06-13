@@ -5743,7 +5743,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_one_byte_public_unicode_method_rejection_subset",
             "cpython_array_one_byte_public_file_methods_subset",
         ],
-        &["Real file descriptors"],
+        &["Real file descriptors", "C buffer/allocator internals"],
     );
 
     let row = sandbox_stdlib_rows()
@@ -5772,6 +5772,17 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "array sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+
+    for required in ["Real file descriptors", "C buffer/allocator internals"] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "array migration notes must document sandbox boundary `{required}`"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "array coverage notes must document sandbox boundary `{required}`"
         );
     }
 }

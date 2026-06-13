@@ -3659,6 +3659,9 @@ Recent runtime migration notes:
   typecode `ValueError`, non-string and wrong-arity constructor `TypeError`s,
   keyword rejection, and zero-length array self-slice / concat / repeat
   behavior without constructing half-initialized arrays.
+  Real file descriptors and C buffer/allocator internals remain outside the
+  sandbox `array` surface; file-oriented behavior is limited to pure in-memory
+  `io.BytesIO` evidence.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_subclass_public_construction_subset`, covering CPython public
   `array.array` subclass construction: ordinary subclasses, custom
