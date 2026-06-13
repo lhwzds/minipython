@@ -24179,6 +24179,61 @@ fn cpython_builtin_setattr_delattr_public_subset() {
     );
 }
 
+// Focused slice from CPython `Lib/test/test_builtin.py::BuiltinTest::test_hasattr`.
+#[test]
+fn cpython_builtin_hasattr_public_subset() {
+    assert_output(
+        concat!(
+            "import sys\n",
+            "sys.probe = 5\n",
+            "print(hasattr(sys, 'probe'), hasattr(sys, 'missing'))\n",
+            "del sys.probe\n",
+            "class Box:\n",
+            "    pass\n",
+            "box = Box()\n",
+            "box.value = 3\n",
+            "Box.label = 'box'\n",
+            "print(hasattr(box, 'value'), hasattr(box, 'label'), hasattr(Box, 'label'))\n",
+            "del box.value\n",
+            "print(hasattr(box, 'value'))\n",
+            "name = chr(0x10ffff)\n",
+            "print(hasattr(sys, name))\n",
+            "class Missing:\n",
+            "    def __getattr__(self, name):\n",
+            "        raise AttributeError(name)\n",
+            "class Exit:\n",
+            "    def __getattr__(self, name):\n",
+            "        raise SystemExit('exit')\n",
+            "class Bad:\n",
+            "    def __getattr__(self, name):\n",
+            "        raise ValueError('bad')\n",
+            "print(hasattr(Missing(), 'x'))\n",
+            "for obj in [Exit(), Bad()]:\n",
+            "    try:\n",
+            "        hasattr(obj, 'x')\n",
+            "    except BaseException as error:\n",
+            "        print(error.__class__.__name__, str(error))\n",
+            "for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)"
+        ),
+        &[
+            "True False",
+            "True True True",
+            "False",
+            "False",
+            "False",
+            "SystemExit exit",
+            "ValueError bad",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::TestBreakpoint` public hook
 // dispatch rows. MiniPython covers custom `sys.breakpointhook` dispatch and
 // hook-loss errors. The default hook is a sandbox no-op stub; pdb integration

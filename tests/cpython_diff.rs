@@ -5214,6 +5214,48 @@ for expr in [lambda: setattr(), lambda: setattr(1, 'x'), lambda: setattr(1, 2, 3
 }
 
 #[test]
+fn cpython_builtin_hasattr_public_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_hasattr public supported subset",
+        name: "builtin-hasattr-public",
+        source: r#"import sys
+sys.probe = 5
+print(hasattr(sys, 'probe'), hasattr(sys, 'missing'))
+del sys.probe
+class Box:
+    pass
+box = Box()
+box.value = 3
+Box.label = 'box'
+print(hasattr(box, 'value'), hasattr(box, 'label'), hasattr(Box, 'label'))
+del box.value
+print(hasattr(box, 'value'))
+name = chr(0x10ffff)
+print(hasattr(sys, name))
+class Missing:
+    def __getattr__(self, name):
+        raise AttributeError(name)
+class Exit:
+    def __getattr__(self, name):
+        raise SystemExit('exit')
+class Bad:
+    def __getattr__(self, name):
+        raise ValueError('bad')
+print(hasattr(Missing(), 'x'))
+for obj in [Exit(), Bad()]:
+    try:
+        hasattr(obj, 'x')
+    except BaseException as error:
+        print(error.__class__.__name__, str(error))
+for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_ascii_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_ascii",
