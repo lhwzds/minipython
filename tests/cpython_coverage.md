@@ -816,10 +816,11 @@ Recent runtime migration notes:
   `skipkeys` omission of unsupported dict keys,
   `sort_keys` ordering for supported comparable keys, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and
-  general iterables plus CPython-style unpack length `ValueError` text,
-  `default` hook handling for otherwise unsupported objects including nested
-  values, exception propagation, CPython-style non-callable hook `TypeError`
-  text, and returned-self circular detection,
+  general iterables plus CPython-style unpack length `ValueError` text and
+  item/key separator element `TypeError` text, `default` hook handling for
+  otherwise unsupported objects including nested values, exception propagation,
+  CPython-style non-callable hook `TypeError` text, and returned-self circular
+  detection,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges including leading-zero extra-data classification,
