@@ -3527,8 +3527,8 @@ Recent runtime migration notes:
   bytearray, and memoryview exporters, CPython-style public constructor
   argument diagnostics, byte iteration, equality with bytes-like objects,
   read-only hashing, writable-hash rejection, one-dimensional byte-view
-  attributes, deleted-binding and expression-temporary exported-view release,
-  and direct method-level evidence for
+  attributes, deleted-binding, display-container, augmented-assignment, and
+  expression-temporary exported-view release, and direct method-level evidence for
   `test_tobytes`, `test_tolist`, `test_attributes_readonly`,
   `test_attributes_writable`, `test_contextmanager`, `test_release`, and
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the

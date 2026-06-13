@@ -2397,6 +2397,9 @@ impl Compiler {
                 let dst = self.alloc_register();
                 self.compile_augmented_binary_instruction(op, left, right, dst);
                 self.emit_store_name(name, dst);
+                self.instructions.push(Instruction::Pop { src: left });
+                self.instructions.push(Instruction::Pop { src: right });
+                self.instructions.push(Instruction::Pop { src: dst });
             }
             Target::Attribute { object, name } => {
                 let object = self.compile_expr(object)?;
@@ -2414,6 +2417,10 @@ impl Compiler {
                     name: self.mangle_private_name(name),
                     src: dst,
                 });
+                self.instructions.push(Instruction::Pop { src: object });
+                self.instructions.push(Instruction::Pop { src: left });
+                self.instructions.push(Instruction::Pop { src: right });
+                self.instructions.push(Instruction::Pop { src: dst });
             }
             Target::Subscript { object, index } => {
                 let object_register = self.compile_expr(object)?;
@@ -2432,6 +2439,15 @@ impl Compiler {
                     index: index_register,
                     src: dst,
                 });
+                self.instructions.push(Instruction::Pop {
+                    src: object_register,
+                });
+                self.instructions.push(Instruction::Pop {
+                    src: index_register,
+                });
+                self.instructions.push(Instruction::Pop { src: left });
+                self.instructions.push(Instruction::Pop { src: right });
+                self.instructions.push(Instruction::Pop { src: dst });
             }
             Target::Slice {
                 object,
@@ -2470,6 +2486,21 @@ impl Compiler {
                     step,
                     src: dst,
                 });
+                self.instructions.push(Instruction::Pop {
+                    src: object_register,
+                });
+                if let Some(start) = start {
+                    self.instructions.push(Instruction::Pop { src: start });
+                }
+                if let Some(stop) = stop {
+                    self.instructions.push(Instruction::Pop { src: stop });
+                }
+                if let Some(step) = step {
+                    self.instructions.push(Instruction::Pop { src: step });
+                }
+                self.instructions.push(Instruction::Pop { src: left });
+                self.instructions.push(Instruction::Pop { src: right });
+                self.instructions.push(Instruction::Pop { src: dst });
             }
             Target::Tuple(_) | Target::List(_) | Target::Starred(_) => {
                 return Err(
@@ -3404,8 +3435,15 @@ impl Compiler {
                 .map(|element| self.compile_maybe_type_scoped_expr(element, type_params))
                 .collect::<Result<Vec<_>, String>>()?;
             let dst = self.alloc_register();
-            self.instructions
-                .push(Instruction::BuildList { dst, items });
+            self.instructions.push(Instruction::BuildList {
+                dst,
+                items: items.clone(),
+            });
+            if type_params.is_none() {
+                for item in items {
+                    self.instructions.push(Instruction::Pop { src: item });
+                }
+            }
             return Ok(dst);
         }
 
@@ -3421,11 +3459,17 @@ impl Compiler {
                     let iterable = self.compile_maybe_type_scoped_expr(value, type_params)?;
                     self.instructions
                         .push(Instruction::ListExtend { list, iterable });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src: iterable });
+                    }
                 }
                 element => {
                     let item = self.compile_maybe_type_scoped_expr(element, type_params)?;
                     self.instructions
                         .push(Instruction::ListAppend { list, item });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src: item });
+                    }
                 }
             }
         }
@@ -3454,8 +3498,15 @@ impl Compiler {
                 .map(|element| self.compile_maybe_type_scoped_expr(element, type_params))
                 .collect::<Result<Vec<_>, String>>()?;
             let dst = self.alloc_register();
-            self.instructions
-                .push(Instruction::BuildTuple { dst, items });
+            self.instructions.push(Instruction::BuildTuple {
+                dst,
+                items: items.clone(),
+            });
+            if type_params.is_none() {
+                for item in items {
+                    self.instructions.push(Instruction::Pop { src: item });
+                }
+            }
             return Ok(dst);
         }
 
@@ -3463,6 +3514,9 @@ impl Compiler {
         let dst = self.alloc_register();
         self.instructions
             .push(Instruction::BuildTupleFromList { dst, list });
+        if type_params.is_none() {
+            self.instructions.push(Instruction::Pop { src: list });
+        }
         Ok(dst)
     }
 
@@ -3480,7 +3534,15 @@ impl Compiler {
                 .map(|element| self.compile_maybe_type_scoped_expr(element, type_params))
                 .collect::<Result<Vec<_>, String>>()?;
             let dst = self.alloc_register();
-            self.instructions.push(Instruction::BuildSet { dst, items });
+            self.instructions.push(Instruction::BuildSet {
+                dst,
+                items: items.clone(),
+            });
+            if type_params.is_none() {
+                for item in items {
+                    self.instructions.push(Instruction::Pop { src: item });
+                }
+            }
             return Ok(dst);
         }
 
@@ -3496,10 +3558,16 @@ impl Compiler {
                     let iterable = self.compile_maybe_type_scoped_expr(value, type_params)?;
                     self.instructions
                         .push(Instruction::SetUpdate { set, iterable });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src: iterable });
+                    }
                 }
                 element => {
                     let item = self.compile_maybe_type_scoped_expr(element, type_params)?;
                     self.instructions.push(Instruction::SetAdd { set, item });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src: item });
+                    }
                 }
             }
         }
@@ -3513,8 +3581,13 @@ impl Compiler {
             .map(|element| self.compile_expr(element))
             .collect::<Result<Vec<_>, _>>()?;
         let dst = self.alloc_register();
-        self.instructions
-            .push(Instruction::BuildFrozenSet { dst, items });
+        self.instructions.push(Instruction::BuildFrozenSet {
+            dst,
+            items: items.clone(),
+        });
+        for item in items {
+            self.instructions.push(Instruction::Pop { src: item });
+        }
         Ok(dst)
     }
 
@@ -3538,8 +3611,16 @@ impl Compiler {
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             let dst = self.alloc_register();
-            self.instructions
-                .push(Instruction::BuildDict { dst, entries });
+            self.instructions.push(Instruction::BuildDict {
+                dst,
+                entries: entries.clone(),
+            });
+            if type_params.is_none() {
+                for (key, value) in entries {
+                    self.instructions.push(Instruction::Pop { src: key });
+                    self.instructions.push(Instruction::Pop { src: value });
+                }
+            }
             return Ok(dst);
         }
 
@@ -3556,11 +3637,18 @@ impl Compiler {
                     let value = self.compile_maybe_type_scoped_expr(value, type_params)?;
                     self.instructions
                         .push(Instruction::DictSetItem { dict, key, value });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src: key });
+                        self.instructions.push(Instruction::Pop { src: value });
+                    }
                 }
                 DictItem::Unpack(expr) => {
                     let src = self.compile_maybe_type_scoped_expr(expr, type_params)?;
                     self.instructions
                         .push(Instruction::DictUpdate { dict, src });
+                    if type_params.is_none() {
+                        self.instructions.push(Instruction::Pop { src });
+                    }
                 }
             }
         }
@@ -9276,6 +9364,8 @@ mod tests {
                     dst: 4,
                     items: vec![0, 3]
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 3 },
                 Instruction::Pop { src: 4 },
                 Instruction::Halt,
             ])
@@ -9634,6 +9724,8 @@ mod tests {
                     dst: 4,
                     items: vec![0, 3]
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 3 },
                 Instruction::Pop { src: 4 },
                 Instruction::Halt,
             ])
@@ -9691,6 +9783,10 @@ mod tests {
                     dst: 6,
                     entries: vec![(0, 1), (2, 5)]
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
+                Instruction::Pop { src: 5 },
                 Instruction::Pop { src: 6 },
                 Instruction::Halt,
             ])
@@ -9722,6 +9818,7 @@ mod tests {
                     name: "base".to_string()
                 },
                 Instruction::DictUpdate { dict: 0, src: 1 },
+                Instruction::Pop { src: 1 },
                 Instruction::LoadConst {
                     dst: 2,
                     value: Value::String("x".to_string())
@@ -9735,11 +9832,14 @@ mod tests {
                     key: 2,
                     value: 3
                 },
+                Instruction::Pop { src: 2 },
+                Instruction::Pop { src: 3 },
                 Instruction::LoadName {
                     dst: 4,
                     name: "override".to_string()
                 },
                 Instruction::DictUpdate { dict: 0, src: 4 },
+                Instruction::Pop { src: 4 },
                 Instruction::Pop { src: 0 },
                 Instruction::Halt,
             ])
@@ -9988,6 +10088,9 @@ mod tests {
                     name: "x".to_string(),
                     src: 2
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
                 Instruction::Halt,
             ])
         );
@@ -10023,6 +10126,9 @@ mod tests {
                     name: "x".to_string(),
                     src: 2
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
                 Instruction::Halt,
             ])
         );
@@ -10058,6 +10164,9 @@ mod tests {
                     name: "x".to_string(),
                     src: 2
                 },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
                 Instruction::Halt,
             ])
         );
@@ -10388,6 +10497,7 @@ mod tests {
                     dst: 2,
                     items: vec![1]
                 },
+                Instruction::Pop { src: 1 },
                 Instruction::Contains {
                     dst: 3,
                     needle: 0,
@@ -10424,6 +10534,7 @@ mod tests {
                     dst: 2,
                     items: vec![1]
                 },
+                Instruction::Pop { src: 1 },
                 Instruction::Contains {
                     dst: 3,
                     needle: 0,

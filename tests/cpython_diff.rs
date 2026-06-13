@@ -19109,7 +19109,28 @@ ba = bytearray(b'abc')
 view: object = memoryview(ba)
 del view
 ba.append(ord('e'))
-print('ann-del-release', ba)"#,
+print('ann-del-release', ba)
+ba = bytearray(b'abc')
+holder = [memoryview(ba)]
+del holder
+ba.append(ord('f'))
+print('list-display-release', ba)
+ba = bytearray(b'abc')
+holder = (memoryview(ba),)
+del holder
+ba.append(ord('g'))
+print('tuple-display-release', ba)
+ba = bytearray(b'abc')
+holder = {'view': memoryview(ba)}
+del holder
+ba.append(ord('h'))
+print('dict-display-release', ba)
+ba = bytearray(b'abc')
+holder = []
+holder += [memoryview(ba)]
+del holder
+ba.append(ord('i'))
+print('augassign-release', ba)"#,
     });
 }
 
