@@ -1348,7 +1348,7 @@ Recent runtime migration notes:
   `readlines()`, `write()`, `writelines()`, `getvalue()`, `getbuffer()` writable
   memoryview mutation and active-export `BufferError` protection for
   `write()` / all `truncate()` requests / `close()` across direct and derived memoryviews,
-  release of function-scoped exported views when the frame exits,
+  release of function-scoped and expression-temporary exported views,
   `readinto()` / `readinto1()` over
   writable bytearray targets, `tell()`, `seek()` with
   public `io.SEEK_SET` / `io.SEEK_CUR` / `io.SEEK_END` constants,
