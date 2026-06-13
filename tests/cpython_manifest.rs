@@ -4066,6 +4066,178 @@ fn json_dumps_options_diff_covers_subset_surface() {
 }
 
 #[test]
+fn json_loads_parsing_diff_covers_subset_surface() {
+    let parsing_pairs = [
+        (
+            "cpython_json_loads_escape_and_duplicate_key_diff_subset",
+            "cpython_json_loads_escape_and_duplicate_key_subset",
+            &[
+                "json.loads",
+                "\\\"a\\\": 1",
+                "\\\"a\\\": 2",
+                "\\\\/",
+                "\\\\b",
+                "\\\\f",
+                "\\\\r",
+                "\\\\t",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
+            "cpython_json_loads_unicode_escape_roundtrip_subset",
+            &[
+                "\\\\u0041",
+                "\\\\u00e9",
+                "\\\\u20ac",
+                "\\\\ud834\\\\udd20",
+                "\\\\u0061",
+                "music",
+                "json.dumps(value, ensure_ascii=True)",
+                "json.dumps(value, ensure_ascii=False)",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_strict_diff_subset",
+            "cpython_json_loads_strict_subset",
+            &[
+                "chr(10)",
+                "chr(9)",
+                "chr(0)",
+                "strict in [True, 1, False, 0, []]",
+                "json.loads(source, strict=strict)",
+                "json.loads('{}', strict=False, unknown=1)",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_number_and_whitespace_diff_subset",
+            "cpython_json_loads_number_and_whitespace_subset",
+            &[
+                "[1, 2, 3]",
+                "\"negzero\": -0",
+                "\"negfloat\": -0.0",
+                "\"exp\": 6.02e+23",
+                "\"small\": 1E-2",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_int_digit_limit_diff_subset",
+            "cpython_json_loads_int_digit_limit_subset",
+            &[
+                "sys.get_int_max_str_digits",
+                "sys.set_int_max_str_digits",
+                "skipping json int digit-limit diff",
+                "json.loads('1' * maxdigits)",
+                "json.loads('-' + '1' * maxdigits)",
+                "'array', '[' + '1' * (maxdigits + 1) + ']'",
+                "\"n\"",
+                "sys.set_int_max_str_digits(0)",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
+            "cpython_json_loads_top_level_scalar_and_empty_container_subset",
+            &[
+                "'null'",
+                "'true'",
+                "'false'",
+                "'\"\"'",
+                "'[]'",
+                "'{}'",
+                "'[[], {}]'",
+                "empty_list",
+                "empty_dict",
+            ][..],
+        ),
+        (
+            "cpython_json_loads_nonfinite_constants_diff_subset",
+            "cpython_json_loads_nonfinite_constants_subset",
+            &[
+                "'NaN'",
+                "'Infinity'",
+                "'-Infinity'",
+                "'[NaN, Infinity, -Infinity]'",
+                "\"x\"",
+                "\"y\"",
+                "json.dumps(value)",
+                "json.loads(encoded)",
+                "math.isnan",
+                "math.isinf",
+            ][..],
+        ),
+    ];
+
+    for (diff_name, subset_name, required_snippets) in parsing_pairs {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json loads parsing CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json loads parsing runtime subset evidence `{subset_name}` must exist"
+        );
+        let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+        let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+        for required in required_snippets {
+            let raw_form = required.replace("\\\"", "\"").replace("\\\\", "\\");
+            let quote_escaped_form = required.replace('"', "\\\"");
+            assert!(
+                diff_body.contains(required)
+                    || diff_body.contains(&raw_form)
+                    || diff_body.contains(&quote_escaped_form),
+                "json loads parsing diff `{diff_name}` must cover `{required}`"
+            );
+            if !required.starts_with("skipping ") {
+                assert!(
+                    subset_body.contains(required)
+                        || subset_body.contains(&raw_form)
+                        || subset_body.contains(&quote_escaped_form),
+                    "json loads parsing subset `{subset_name}` must cover `{required}`"
+                );
+            }
+        }
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    for required in [
+        "ordinary `\\uXXXX` escapes",
+        "surrogate-pair Unicode escapes",
+        "strict=False",
+        "raw control-character string parsing",
+        "duplicate-object-key last-value behavior",
+        "JSON whitespace",
+        "integer/float number grammar edges",
+        "sys.set_int_max_str_digits",
+        "top-level scalars and empty containers",
+        "CPython default non-finite constants",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "json migration notes must describe loads parsing behavior `{required}`"
+        );
+    }
+    for excluded in [
+        "loads()` hooks/options other than `strict`",
+        "object_hook",
+        "object_pairs_hook",
+        "parse_float",
+        "parse_int",
+        "parse_constant",
+        "unpaired surrogate storage",
+        "full `JSONDecodeError` compatibility",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(excluded),
+            "json migration notes must keep unsupported loads boundary `{excluded}` documented"
+        );
+    }
+}
+
+#[test]
 fn operator_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "operator",
