@@ -796,7 +796,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
   arrays, `str` / `bytes` / `bytearray` input values and subclasses, UTF-8 BOM
-  and UTF-16/UTF-32 encoded byte input, ordinary `\uXXXX` escapes and valid
+  and UTF-16/UTF-32 encoded byte input, string-input UTF-8 BOM rejection text,
+  ordinary `\uXXXX` escapes and valid
   surrogate-pair Unicode escapes, `loads()` / `dumps()` public function
   `__name__` / `__qualname__` / `__module__` / `__doc__` / `__dict__` / `__defaults__` /
   `__kwdefaults__` / `__annotations__` metadata, option truthiness through

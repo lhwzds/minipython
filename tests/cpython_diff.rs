@@ -1741,6 +1741,10 @@ try:
     json.loads(bytes([255]))
 except Exception as error:
     print('loads-invalid-utf8-unicode', isinstance(error, UnicodeDecodeError))
+try:
+    json.loads(chr(65279) + '{}')
+except Exception as error:
+    print('loads-string-bom', isinstance(error, ValueError), 'Unexpected UTF-8 BOM' in str(error))
 show('loads-trailing-data', lambda: json.loads('{} []'))
 show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
 show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))
