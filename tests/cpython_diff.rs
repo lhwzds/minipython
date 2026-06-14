@@ -25068,6 +25068,7 @@ print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.don
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode in (0, 1))
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode in (False, True))
 print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimize in (0, 1, 2))
+print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode in (0, 1))
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__)

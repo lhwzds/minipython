@@ -481,6 +481,7 @@ pub(crate) fn create_module(
                             ),
                             (Value::String("dev_mode".to_string()), Value::Bool(false)),
                             (Value::String("optimize".to_string()), Value::Number(0)),
+                            (Value::String("utf8_mode".to_string()), Value::Number(0)),
                         ]),
                     },
                 ),

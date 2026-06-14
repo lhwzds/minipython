@@ -12319,6 +12319,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.flags.dont_write_bytecode")
             && LANGUAGE_TESTS.contains("sys.flags.dev_mode")
             && LANGUAGE_TESTS.contains("sys.flags.optimize")
+            && LANGUAGE_TESTS.contains("sys.flags.utf8_mode")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
@@ -12362,6 +12363,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.dont_write_bytecode",
         "sys.flags.dev_mode",
         "sys.flags.optimize",
+        "sys.flags.utf8_mode",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",
