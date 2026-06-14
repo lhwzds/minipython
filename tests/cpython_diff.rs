@@ -14640,6 +14640,27 @@ print(list(itertools.starmap(combine, [(5, 1), (8, 3)])), calls)"#,
 }
 
 #[test]
+fn cpython_itertools_accumulate_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public accumulate subset",
+        name: "itertools-accumulate",
+        source: r#"import itertools
+acc = itertools.accumulate([1, 2, 3])
+print(type(acc).__name__, iter(acc) is acc, list(acc), list(acc))
+print(list(itertools.accumulate([1, 2, 3], lambda left, right: left * right)))
+print(list(itertools.accumulate([], initial=10)))
+print(list(itertools.accumulate([1, 2], initial=10)))
+print(list(itertools.accumulate([1, 2], initial=None)))
+print(list(itertools.accumulate(iterable=[1, 2], func=lambda left, right: left * right, initial=10)))
+calls = []
+def combine(left, right):
+    calls.append((left, right))
+    return left + right
+print(list(itertools.accumulate((value for value in [1, 2, 3]), combine)), calls)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_zip_longest_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public zip_longest subset",

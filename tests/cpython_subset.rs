@@ -37917,6 +37917,38 @@ fn cpython_itertools_starmap_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public accumulate behavior
+// over pure in-memory iterables.
+#[test]
+fn cpython_itertools_accumulate_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "acc = itertools.accumulate([1, 2, 3])\n",
+            "print(type(acc).__name__, iter(acc) is acc, list(acc), list(acc))\n",
+            "print(list(itertools.accumulate([1, 2, 3], lambda left, right: left * right)))\n",
+            "print(list(itertools.accumulate([], initial=10)))\n",
+            "print(list(itertools.accumulate([1, 2], initial=10)))\n",
+            "print(list(itertools.accumulate([1, 2], initial=None)))\n",
+            "print(list(itertools.accumulate(iterable=[1, 2], func=lambda left, right: left * right, initial=10)))\n",
+            "calls = []\n",
+            "def combine(left, right):\n",
+            "    calls.append((left, right))\n",
+            "    return left + right\n",
+            "print(list(itertools.accumulate((value for value in [1, 2, 3]), combine)), calls)"
+        ),
+        &[
+            "accumulate True [1, 3, 6] []",
+            "[1, 2, 6]",
+            "[10]",
+            "[10, 11, 13]",
+            "[1, 3]",
+            "[10, 10, 20]",
+            "[1, 3, 6] [(1, 2), (3, 3)]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_itertools.py public zip_longest behavior
 // over pure in-memory iterables.
 #[test]

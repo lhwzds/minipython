@@ -399,6 +399,8 @@ Recent runtime migration notes:
   `cpython_itertools_dropwhile_subset`,
   `cpython_itertools_starmap_diff_subset` and
   `cpython_itertools_starmap_subset`,
+  `cpython_itertools_accumulate_diff_subset` and
+  `cpython_itertools_accumulate_subset`,
   `cpython_itertools_zip_longest_diff_subset` and
   `cpython_itertools_zip_longest_subset`,
   `cpython_itertools_islice_diff_subset` and
@@ -925,6 +927,7 @@ Recent runtime migration notes:
   `cpython_itertools_takewhile_diff_subset`,
   `cpython_itertools_dropwhile_diff_subset`,
   `cpython_itertools_starmap_diff_subset`,
+  `cpython_itertools_accumulate_diff_subset`,
   `cpython_itertools_zip_longest_diff_subset`,
   `cpython_itertools_islice_diff_subset`,
   `cpython_itertools_combinations_diff_subset`, and
