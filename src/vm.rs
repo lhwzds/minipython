@@ -29326,7 +29326,7 @@ impl Vm {
         }
         if !keywords.is_empty() {
             return Err(format!(
-                "TypeError: {function}() does not accept keyword arguments"
+                "TypeError: _operator.{function}() takes no keyword arguments"
             ));
         }
 

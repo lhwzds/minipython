@@ -13115,9 +13115,11 @@ for expr in [lambda: operator.is_none(), lambda: operator.is_none(None, None), l
 #[test]
 fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // CPython oracle text: add expected 2 arguments, got 0;
-    // add expected 2 arguments, got 1; add expected 2 arguments, got 3
+    // add expected 2 arguments, got 1; add expected 2 arguments, got 3;
+    // _operator.add() takes no keyword arguments
     // CPython oracle text: _operator.abs() takes exactly one argument (0 given);
     // _operator.abs() takes exactly one argument (2 given);
+    // _operator.abs() takes no keyword arguments;
     // _operator.neg() takes exactly one argument (0 given);
     // _operator.neg() takes exactly one argument (2 given)
     assert_cpython_output_parity(&DiffCase {
@@ -13153,12 +13155,12 @@ for label, callback in [('index-noargs', lambda: operator.index()), ('index-many
         callback()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
-for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lambda: operator.add(1)), ('add-many', lambda: operator.add(1, 2, 3))]:
+for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lambda: operator.add(1)), ('add-many', lambda: operator.add(1, 2, 3)), ('add-kw', lambda: operator.add(1, 2, z=3))]:
     try:
         callback()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
-for label, callback in [('abs0', lambda: operator.abs()), ('abs2', lambda: operator.abs(1, 2)), ('neg0', lambda: operator.neg()), ('neg2', lambda: operator.neg(1, 2))]:
+for label, callback in [('abs0', lambda: operator.abs()), ('abs2', lambda: operator.abs(1, 2)), ('abs-kw', lambda: operator.abs(1, z=2)), ('neg0', lambda: operator.neg()), ('neg2', lambda: operator.neg(1, 2))]:
     try:
         callback()
     except TypeError as error:
