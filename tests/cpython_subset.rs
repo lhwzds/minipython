@@ -37841,6 +37841,32 @@ fn cpython_itertools_filterfalse_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public takewhile behavior
+// over pure in-memory iterables.
+#[test]
+fn cpython_itertools_takewhile_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "tw = itertools.takewhile(lambda value: value < 3, [1, 2, 3, 1])\n",
+            "print(type(tw).__name__, iter(tw) is tw, list(tw), list(tw))\n",
+            "print(list(itertools.takewhile(lambda value: value, (value for value in [1, 2, 0, 3]))))\n",
+            "calls = []\n",
+            "def before_three(value):\n",
+            "    calls.append(value)\n",
+            "    return value < 3\n",
+            "print(list(itertools.takewhile(before_three, [1, 2, 3, 4])), calls)\n",
+            "print(list(itertools.takewhile(lambda value: False, [1, 2, 3])))"
+        ),
+        &[
+            "takewhile True [1, 2] []",
+            "[1, 2]",
+            "[1, 2] [1, 2, 3]",
+            "[]",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
