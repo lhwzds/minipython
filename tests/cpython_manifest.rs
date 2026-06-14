@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 7, 390),
+        ("partial", 6, 347),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -3181,7 +3181,7 @@ fn cpython_test_manifest_bytes_group_counts_match_current_source() {
     for (group, status) in [
         ("BaseBytesTest", "partial"),
         ("BytesTest", "ported_public"),
-        ("ByteArrayTest", "partial"),
+        ("ByteArrayTest", "ported_public"),
         ("AssortedBytesTest", "ported"),
         ("BytearrayPEP3137Test", "ported"),
         ("SubclassTest", "ported"),
@@ -3227,6 +3227,44 @@ fn cpython_test_manifest_bytes_test_stop_lines_stay_sandbox_scoped() {
         assert!(
             MANIFEST.contains(required),
             "BytesTest manifest row must keep sandbox stop-line `{required}` visible"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_bytearray_test_stop_lines_stay_sandbox_scoped() {
+    let groups = manifest_groups();
+    assert_manifest_group_status(
+        &groups,
+        "Lib/test/test_bytes.py",
+        "ByteArrayTest",
+        "ported_public",
+    );
+
+    let row = groups
+        .iter()
+        .find(|group| group.source == "Lib/test/test_bytes.py" && group.group == "ByteArrayTest")
+        .expect("manifest must include ByteArrayTest row");
+    assert_eq!(row.methods, 43, "ByteArrayTest method count drifted");
+
+    for required in [
+        "test_bytearray_api",
+        "host file I/O",
+        "readinto()",
+        "binary-write policy",
+        "test_take_bytes_optimization",
+        "test_fifo_overrun",
+        "test_del_expand",
+        "CPython allocator/layout details",
+        "test_obsolete_write_lock",
+        "_testcapi",
+        "_testlimitedcapi",
+        "outside MiniPython's public runtime contract",
+        "default sandbox public contract",
+    ] {
+        assert!(
+            MANIFEST.contains(required),
+            "ByteArrayTest manifest row must keep sandbox stop-line `{required}` visible"
         );
     }
 }
@@ -4063,6 +4101,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
         ("Lib/test/test_builtin.py", "TestBreakpoint"),
         ("Lib/test/test_float.py", "GeneralFloatCases"),
         ("Lib/test/test_bytes.py", "BytesTest"),
+        ("Lib/test/test_bytes.py", "ByteArrayTest"),
         ("Lib/test/test_ast/test_ast.py", "AST_Tests"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),

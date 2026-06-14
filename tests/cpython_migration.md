@@ -3943,6 +3943,10 @@ Completed in the bytearray mutating-index safety pass:
   behavior.
 - Classified `_testlimitedcapi.sequence_setitem` branches as CPython C API
   coverage, not MiniPython runtime behavior.
+- Classified `Lib/test/test_bytes.py::ByteArrayTest` as `ported_public` for the
+  default sandbox contract. The remaining CPython rows require host file I/O,
+  `_testcapi` / `_testlimitedcapi`, or CPython allocator/layout behavior rather
+  than MiniPython public runtime semantics.
 
 Completed in the bytearray search reentrancy BufferError pass:
 

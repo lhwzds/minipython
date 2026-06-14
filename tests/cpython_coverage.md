@@ -2562,7 +2562,10 @@ without adding general custom encoder/decoder class support.
   bytearray `hex()` keeps the receiver resize-locked while a bytes-subclass
   separator executes re-entrant `__len__` code. The direct diff is capability
   gated because older CPython oracles still expose the old accepted-and-cleared
-  behavior.
+  behavior. `ByteArrayTest` is classified as `ported_public` for the default
+  sandbox contract: the remaining CPython rows require host file I/O,
+  `_testcapi` / `_testlimitedcapi`, or CPython allocator/layout behavior rather
+  than MiniPython public runtime semantics.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_extended_slice_assignment_subset`, covering bytearray
   extended slice assignment/deletion, integer-iterable RHS conversion,
