@@ -13077,6 +13077,8 @@ for expr in [lambda: operator.is_none(), lambda: operator.is_none(None, None), l
 
 #[test]
 fn cpython_operator_arithmetic_bitwise_diff_subset() {
+    // CPython oracle text: add expected 2 arguments, got 0;
+    // add expected 2 arguments, got 1; add expected 2 arguments, got 3
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -13110,6 +13112,11 @@ for label, callback in [('index-noargs', lambda: operator.index()), ('index-many
         callback()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
+for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lambda: operator.add(1)), ('add-many', lambda: operator.add(1, 2, 3))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 try:
     operator.matmul([], [])
 except TypeError as error:
@@ -13124,6 +13131,9 @@ for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:
 
 #[test]
 fn cpython_operator_sequence_member_diff_subset() {
+    // CPython oracle text: getitem expected 2 arguments, got 0;
+    // getitem expected 2 arguments, got 1; setitem expected 3 arguments, got 2;
+    // delitem expected 2 arguments, got 0
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase sequence and member helper public subset",
         name: "operator-sequence-member",
@@ -13181,6 +13191,11 @@ for expr in [lambda: operator.concat(), lambda: operator.concat(None, None), lam
         expr()
     except TypeError as error:
         print(type(error).__name__)
+for label, expr in [('getitem-noargs', lambda: operator.getitem()), ('getitem-one', lambda: operator.getitem(a)), ('setitem-two', lambda: operator.setitem(a, 0)), ('delitem-noargs', lambda: operator.delitem())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexOf(BadIterable(), 1)]:
     try:
         expr()

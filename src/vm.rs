@@ -72829,9 +72829,9 @@ fn operator_unary_arg(function: &str, args: Vec<Value>) -> Result<Value, String>
 
 fn operator_binary_args(function: &str, args: Vec<Value>) -> Result<(Value, Value), String> {
     let count = args.len();
-    let [left, right]: [Value; 2] = args.try_into().map_err(|_| {
-        format!("TypeError: {function}() expected 2 positional arguments, got {count}")
-    })?;
+    let [left, right]: [Value; 2] = args
+        .try_into()
+        .map_err(|_| format!("TypeError: {function} expected 2 arguments, got {count}"))?;
     Ok((left, right))
 }
 
@@ -72840,9 +72840,9 @@ fn operator_ternary_args(
     args: Vec<Value>,
 ) -> Result<(Value, Value, Value), String> {
     let count = args.len();
-    let [first, second, third]: [Value; 3] = args.try_into().map_err(|_| {
-        format!("TypeError: {function}() expected 3 positional arguments, got {count}")
-    })?;
+    let [first, second, third]: [Value; 3] = args
+        .try_into()
+        .map_err(|_| format!("TypeError: {function} expected 3 arguments, got {count}"))?;
     Ok((first, second, third))
 }
 
