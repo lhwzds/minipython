@@ -14161,6 +14161,24 @@ print(tuple(finite_bad.cache_info()))"#,
 }
 
 #[test]
+fn cpython_functools_lru_cache_keyword_order_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestLRU keyword-order subset",
+        name: "functools-lru-cache-keyword-order",
+        source: r#"from functools import lru_cache
+calls = []
+@lru_cache(maxsize=10)
+def kwargs_order(**kwargs):
+    calls.append(tuple(kwargs.items()))
+    return list(kwargs.items())
+print(kwargs_order(a=1, b=2))
+print(kwargs_order(b=2, a=1))
+print(tuple(kwargs_order.cache_info()), calls)
+print(kwargs_order(a=1, b=2), tuple(kwargs_order.cache_info()), calls)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cache_wrapper_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cache wrapper public method subset",

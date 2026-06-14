@@ -42652,6 +42652,32 @@ fn cpython_functools_lru_cache_exception_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestLRU public keyword
+// cache-key behavior: keyword order is significant for lru_cache keys.
+#[test]
+fn cpython_functools_lru_cache_keyword_order_subset() {
+    assert_output(
+        concat!(
+            "from functools import lru_cache\n",
+            "calls = []\n",
+            "@lru_cache(maxsize=10)\n",
+            "def kwargs_order(**kwargs):\n",
+            "    calls.append(tuple(kwargs.items()))\n",
+            "    return list(kwargs.items())\n",
+            "print(kwargs_order(a=1, b=2))\n",
+            "print(kwargs_order(b=2, a=1))\n",
+            "print(tuple(kwargs_order.cache_info()), calls)\n",
+            "print(kwargs_order(a=1, b=2), tuple(kwargs_order.cache_info()), calls)"
+        ),
+        &[
+            "[('a', 1), ('b', 2)]",
+            "[('b', 2), ('a', 1)]",
+            "(0, 2, 10, 2) [(('a', 1), ('b', 2)), (('b', 2), ('a', 1))]",
+            "[('a', 1), ('b', 2)] (1, 2, 10, 2) [(('a', 1), ('b', 2)), (('b', 2), ('a', 1))]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_functools.py::TestLRU public wrapper
 // metadata and helper methods.
 #[test]
