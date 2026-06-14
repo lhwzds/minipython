@@ -9557,10 +9557,10 @@ Completed in the AST_Tests method-audit pass:
 
 - Added a method-level `AST_Tests` audit table to `cpython_test_manifest.md`,
   covering all 61 current methods from the local CPython source.
-- All portable public `AST_Tests` methods now have method-level Rust evidence;
-  the row remains `partial` only because weakref/cyclic-GC runtime behavior and
-  CPython-only implementation checks are classified outside the current public
-  AST surface.
+- All portable public `AST_Tests` methods now have method-level Rust evidence,
+  so the source group is classified as `ported_public`; weakref/cyclic-GC
+  runtime behavior and CPython-only implementation checks are outside the
+  current default sandbox public AST surface.
 - CPython-only or runtime-policy cases are now explicitly classified:
   `test_AST_garbage_collection` needs public `weakref` / cyclic GC support,
   while `test_issue31592`, `test_precedence_enum`, and

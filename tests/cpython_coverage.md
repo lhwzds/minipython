@@ -3234,7 +3234,9 @@ without adding general custom encoder/decoder class support.
   `AST_Tests.test_AST_garbage_collection` remains outside the current public AST
   evidence because it requires public `weakref` plus cyclic GC behavior for AST
   objects; the method stays `blocked_by_runtime` until that runtime surface is
-  explicitly promoted.
+  explicitly promoted. The `AST_Tests` source group is therefore
+  `ported_public` for the default sandbox public AST contract rather than
+  blocked on CPython GC behavior.
   `cpython_ast_get_docstring_first_pass_subset` adds first-pass
   `ast.get_docstring()` support for modules, classes, functions, async
   functions, `clean=False`, missing docstrings, and unsupported-node

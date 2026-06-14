@@ -32,7 +32,7 @@ Rust coverage.
 - `ported`: every CPython test method in the row has equivalent Rust coverage.
 - `ported_public`: every portable public CPython method in the row has
   equivalent Rust coverage, and all remaining methods are explicitly classified
-  as `blocked_by_cpython_internal`.
+  as sandbox runtime stop-lines or CPython implementation internals.
 - `partial`: some source shapes or assertions from the row have been migrated,
   but full method-level parity has not been proven.
 - `blocked_by_runtime`: the test is syntax-adjacent, but migration needs
@@ -50,8 +50,8 @@ Rust coverage.
 | Status | Groups | Test methods |
 | --- | ---: | ---: |
 | `ported` | 56 | 658 |
-| `ported_public` | 7 | 151 |
-| `partial` | 8 | 451 |
+| `ported_public` | 8 | 212 |
+| `partial` | 7 | 390 |
 | `blocked_by_runtime` | 4 | 13 |
 | `blocked_by_ast_module` | 2 | 16 |
 | `blocked_by_cpython_internal` | 5 | 10 |
@@ -204,7 +204,7 @@ rejection covered by `cpython_bytes_bytearray_index_error_and_hash_subset`.
 | `Lib/test/test_bytes.py` | `FreeThreadingTest` | 2 | `blocked_by_cpython_internal` | `test_free_threading_bytearray` and `test_free_threading_bytearrayiter` are CPython free-threading stress tests gated on `support.Py_GIL_DISABLED`; they validate C-level thread-safety/refcount races rather than MiniPython language semantics. |
 | `Lib/test/test_ast/test_ast.py` | module-level `test_*` functions | 0 | `source_data` | The current local CPython source has no module-level `test_*` functions in this file; executable tests live under the unittest classes below. |
 | `Lib/test/test_ast/test_ast.py` | `LazyImportTest` | 1 | `blocked_by_runtime` | The current CPython method is `@support.cpython_only` and calls `ensure_lazy_imports("ast", ...)`, which runs a child CPython process and asserts importing `ast` does not populate selected modules in `sys.modules`. MiniPython tracks lazy-import syntax and public AST `is_lazy` fields elsewhere; this method is a host import-runtime side-effect check. |
-| `Lib/test/test_ast/test_ast.py` | `AST_Tests` | 61 | `partial` | All portable public methods now have method-level Rust evidence, including public AST constructor/base-object behavior, generated ASDL class hierarchy/inventory/signatures, `_field_types` / `__annotations__`, `test_ast_validation` parser-produced public AST validation over the snippet matrix, compare modes, `test_snippets` public `to_tuple()` and `_assertTrueorder` slices, full `test_repr` snapshot parity from CPython's current `exec_tests + eval_tests`, feature-version cases, null-byte handling, import/alias/slice field checks, default end-position compile-from-AST cases, parser warning capture, and t-string structure. The row remains `partial` because `test_AST_garbage_collection` is blocked on public weakref/cyclic-GC runtime support and the remaining CPython-only methods are classified as implementation-internal. |
+| `Lib/test/test_ast/test_ast.py` | `AST_Tests` | 61 | `ported_public` | All portable public methods now have method-level Rust evidence, including public AST constructor/base-object behavior, generated ASDL class hierarchy/inventory/signatures, `_field_types` / `__annotations__`, `test_ast_validation` parser-produced public AST validation over the snippet matrix, compare modes, `test_snippets` public `to_tuple()` and `_assertTrueorder` slices, full `test_repr` snapshot parity from CPython's current `exec_tests + eval_tests`, feature-version cases, null-byte handling, import/alias/slice field checks, default end-position compile-from-AST cases, parser warning capture, and t-string structure. `test_AST_garbage_collection` stays blocked on public weakref/cyclic-GC runtime support, and the remaining CPython-only methods are implementation-internal, so neither blocks the default sandbox public AST contract. |
 | `Lib/test/test_ast/test_ast.py` | `CopyTests` | 14 | `ported` | The method audit below now covers all 14 current methods. Direct method-level Rust evidence covers pickling, parent-link deepcopy, replace interface/native loops, native class fields/attributes, custom class fields/attributes, extra/missing field rejection, defaulted missing fields, and non-string unpacked keywords. Binary pickle byte compatibility remains outside this AST-only slice. |
 | `Lib/test/test_ast/test_ast.py` | `ASTHelpers_Test` | 29 | `ported` | All 29 current CPython methods now have direct method-level Rust evidence, covering parse and parse-in-error behavior, dump variants, iterator helpers, literal evaluation and diagnostics, recursion detection, location helpers, docstring helpers, source-segment/end-position helpers, import-from validation, lazy import AST fields, and compile-from-public-AST helper coverage. |
 | `Lib/test/test_ast/test_ast.py` | `ASTValidatorTests` | 40 | `ported` | All 40 current CPython methods now have method-level Rust evidence, covering public-AST root modes, statement and expression context validation, function/class/try/try-star validation, argument validation, comprehensions, match-pattern validation, `test_stdlib_validates` file-backed compile seeds, and recursive stdlib compile seeds. |
@@ -2454,9 +2454,9 @@ direct method-level evidence.
 1. Continue public behavior migration in partial runtime rows that already have
    a working foundation, especially `Lib/test/test_bytes.py::BaseBytesTest` and
    `Lib/test/test_memoryview.py` direct methods.
-2. Revisit `AST_Tests` only after public weakref/cyclic-GC support exists; its
-   remaining unported rows are blocked runtime or CPython-internal
-   implementation checks.
+2. Revisit `AST_Tests.test_AST_garbage_collection` only after public
+   weakref/cyclic-GC support becomes part of the sandbox runtime contract; the
+   `AST_Tests` source group is otherwise `ported_public`.
 
 The acceptance bar for moving a row to `ported` is deliberately high: every
 method in the row needs a named Rust test or documented differential parity

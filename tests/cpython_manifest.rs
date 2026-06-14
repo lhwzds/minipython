@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 8, 451),
+        ("partial", 7, 390),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -3723,12 +3723,13 @@ fn cpython_test_manifest_ast_garbage_collection_stays_runtime_blocked() {
         .find(|group| group.source == "Lib/test/test_ast/test_ast.py" && group.group == "AST_Tests")
         .expect("AST_Tests manifest group must exist");
     assert_eq!(
-        ast_group.status, "partial",
-        "AST_Tests group must remain partial while the garbage-collection method is runtime-blocked"
+        ast_group.status, "ported_public",
+        "AST_Tests group must be ported_public once only sandbox runtime stop-lines and CPython internals remain"
     );
     for required in [
         "test_AST_garbage_collection",
         "weakref/cyclic-GC runtime support",
+        "default sandbox public AST contract",
         "CPython-only methods",
     ] {
         assert!(
@@ -4062,6 +4063,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
         ("Lib/test/test_builtin.py", "TestBreakpoint"),
         ("Lib/test/test_float.py", "GeneralFloatCases"),
         ("Lib/test/test_bytes.py", "BytesTest"),
+        ("Lib/test/test_ast/test_ast.py", "AST_Tests"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),
         ("Lib/test/test_types.py", "UnionTests"),
