@@ -1039,6 +1039,15 @@ and circular-reference rejection for list, dict, tuple, list/dict subclasses, an
 bad escapes, short Unicode escapes, non-hex Unicode escapes, raw newline, and raw tab,
 without adding full `JSONDecodeError` compatibility or host-backed serialization.
 
+`cpython_json_loads_escape_and_duplicate_key_subset`, backed by
+`cpython_json_loads_escape_and_duplicate_key_diff_subset`, keeps `loads()` escape and duplicate-key parsing for
+duplicate object keys preserving CPython last-value behavior and standard JSON escapes for slash, backspace, formfeed, carriage return, and tab.
+`cpython_json_loads_unicode_escape_roundtrip_subset`, backed by
+`cpython_json_loads_unicode_escape_roundtrip_diff_subset`, keeps `loads()` Unicode escape round trips for
+BMP escapes and valid surrogate-pair non-BMP escapes, object keys and values decoded from Unicode escapes,
+and `dumps(..., ensure_ascii=True)` and `ensure_ascii=False` round trips,
+without adding unpaired surrogate storage or full decoder customization.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

@@ -4999,6 +4999,107 @@ fn json_error_boundary_docs_cover_subset_limits() {
 }
 
 #[test]
+fn json_loads_escape_unicode_docs_cover_parsing_boundaries() {
+    let parsing_pairs = [
+        (
+            "cpython_json_loads_escape_and_duplicate_key_diff_subset",
+            "cpython_json_loads_escape_and_duplicate_key_subset",
+        ),
+        (
+            "cpython_json_loads_unicode_escape_roundtrip_diff_subset",
+            "cpython_json_loads_unicode_escape_roundtrip_subset",
+        ),
+    ];
+
+    for (diff_name, subset_name) in parsing_pairs {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json loads escape/unicode CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json loads escape/unicode runtime subset evidence `{subset_name}` must exist"
+        );
+    }
+
+    for required in [
+        "json.loads",
+        "\\\\/",
+        "\\\\b",
+        "\\\\f",
+        "\\\\r",
+        "\\\\t",
+        "json.dumps(json.loads",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads escape/duplicate-key diff and subset evidence must both cover `{required}`"
+        );
+    }
+    assert!(
+        CPYTHON_DIFF.contains("duplicate key") && CPYTHON_SUBSET.contains("\"{'a': 2}\""),
+        "json loads escape/duplicate-key evidence must pin duplicate-key last-value behavior"
+    );
+
+    for required in [
+        "\\\\u0041",
+        "\\\\u00e9",
+        "\\\\u20ac",
+        "\\\\ud834\\\\udd20",
+        "\\\\u0061",
+        "music",
+        "ensure_ascii=True",
+        "ensure_ascii=False",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads unicode escape diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"{'a': 2}\"",
+        "\"'/\\\\x08\\\\x0c\\\\r\\\\t'\"",
+        "\"\\\"/\\\\b\\\\f\\\\r\\\\t\\\"\"",
+        "\"'A'\"",
+        "\"'é'\"",
+        "\"'€'\"",
+        "\"'𝄠'\"",
+        "\"{\\\"a\\\": \\\"\\\\u00e9\\\", \\\"music\\\": \\\"\\\\ud834\\\\udd20\\\"}\"",
+        "\"{\\\"a\\\": \\\"é\\\", \\\"music\\\": \\\"𝄠\\\"}\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads escape/unicode subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for (diff_name, subset_name) in parsing_pairs {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+        for required in [
+            "`loads()` escape and duplicate-key parsing",
+            "duplicate object keys preserving CPython last-value behavior",
+            "standard JSON escapes for slash, backspace, formfeed, carriage return, and tab",
+            "`loads()` Unicode escape round trips",
+            "BMP escapes and valid surrogate-pair non-BMP escapes",
+            "object keys and values decoded from Unicode escapes",
+            "`dumps(..., ensure_ascii=True)` and `ensure_ascii=False` round trips",
+            "without adding unpaired surrogate storage or full decoder customization",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe escape/unicode parsing boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_dumps_options_diff_covers_subset_surface() {
     let option_pairs = [
         (
