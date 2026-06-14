@@ -901,7 +901,8 @@ Recent runtime migration notes:
   nonnumeric `count()` argument rejection, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
   arbitrary supported iterables, lazy `chain.from_iterable()` flattening,
-  default and callable `accumulate()` reduction with `initial`, cached
+  default and callable `accumulate()` reduction with `initial`, including
+  CPython's `initial=None` omission behavior, cached
   `cycle()` replay over finite and generator sources,
   selector-truthy `compress()` filtering with shortest-input exhaustion,
   false-predicate `filterfalse()` selection with callable or `None`, and

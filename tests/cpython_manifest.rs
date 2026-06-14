@@ -4117,6 +4117,11 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         !core_source.contains("pairwise"),
         "itertools core runtime evidence must not cover pairwise()"
     );
+    assert!(
+        core_source.contains("itertools.accumulate([1, 2], initial=None)")
+            && core_source.contains("\"[1, 3]\""),
+        "itertools core runtime evidence must assert accumulate(initial=None) omission"
+    );
     for required in [
         "(True, False) [True, 1, 1, 1, 1]",
         "(True, True) [1, 2, 3, 4, 5]",

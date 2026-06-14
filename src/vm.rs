@@ -24154,7 +24154,9 @@ impl Vm {
                                 .to_string(),
                         );
                     }
-                    initial = Some(Box::new(value));
+                    if !matches!(value, Value::None) {
+                        initial = Some(Box::new(value));
+                    }
                     initial_keyword_seen = true;
                     total_count += 1;
                 }
