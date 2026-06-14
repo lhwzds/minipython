@@ -1676,6 +1676,11 @@ value = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', par
 print(value)
 print(json.loads('{"a": 123, "b": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))
 print(json.loads('"x"', parse_int=1))
+print(json.loads('1', parse_int=lambda s: None))
+print(json.loads('1', parse_int=lambda s: [s]))
+print(json.loads('1.5', parse_float=lambda s: None))
+print(json.loads('NaN', parse_constant=lambda s: [s]))
+print(json.loads('[1, 2]', parse_int=lambda s: {'n': s}))
 def boom_int(s):
     raise ValueError('boom-int')
 

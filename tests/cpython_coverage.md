@@ -847,7 +847,8 @@ Recent runtime migration notes:
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
   number grammar edges including leading-zero extra-data classification,
   `parse_int`, `parse_float`, and `parse_constant`
-  hooks including CPython-style non-callable hook `TypeError` text,
+  hooks including arbitrary returned values and CPython-style non-callable hook
+  `TypeError` text,
   `object_hook` post-processing for decoded objects including nested
   objects, exception propagation, and non-callable hook `TypeError` text,
   `object_pairs_hook` pair-list
