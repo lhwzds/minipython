@@ -24022,6 +24022,12 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let [object] = args.as_slice() else {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: replace() missing 1 required positional argument: 'obj'"
+                        .to_string(),
+                );
+            }
             return Err(format!(
                 "TypeError: replace() expected 1 positional argument, got {}",
                 args.len()

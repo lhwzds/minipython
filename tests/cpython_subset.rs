@@ -21935,7 +21935,7 @@ fn cpython_copy_public_subset() {
             "        fn(closed)\n",
             "    except ValueError as error:\n",
             "        print('bytesio-closed', fn.__name__, type(error).__name__)\n",
-            "for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy()]:\n",
+            "for expr in [lambda: copy.copy(), lambda: copy.copy(1, 2), lambda: copy.deepcopy(), lambda: copy.replace()]:\n",
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
@@ -21990,6 +21990,7 @@ fn cpython_copy_public_subset() {
             "TypeError copy() missing 1 required positional argument: 'x'",
             "TypeError copy() takes 1 positional argument but 2 were given",
             "TypeError deepcopy() missing 1 required positional argument: 'x'",
+            "TypeError replace() missing 1 required positional argument: 'obj'",
         ],
     );
 }

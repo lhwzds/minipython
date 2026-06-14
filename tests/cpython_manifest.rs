@@ -11205,6 +11205,15 @@ fn copy_public_diff_covers_pure_memory_subset() {
         );
     }
     for required in [
+        "lambda: copy.replace()",
+        "replace() missing 1 required positional argument: 'obj'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "copy.replace version-gated subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
         "copy() missing 1 required positional argument: 'x'",
         "copy() takes 1 positional argument but 2 were given",
         "deepcopy() missing 1 required positional argument: 'x'",
