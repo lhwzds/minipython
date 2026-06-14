@@ -4605,6 +4605,94 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
 }
 
 #[test]
+fn json_loads_dumps_basic_docs_cover_core_data_model() {
+    let diff_name = "cpython_json_loads_dumps_diff_subset";
+    let direct_diff_name = "cpython_json_loads_dumps_basic_diff_subset";
+    let subset_name = "cpython_json_loads_dumps_basic_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}("))
+            && CPYTHON_DIFF.contains(&format!("fn {direct_diff_name}(")),
+        "json loads/dumps basic CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads/dumps basic runtime subset evidence must exist"
+    );
+
+    for required in [
+        "json.loads.__kwdefaults__",
+        "json.dumps.__kwdefaults__",
+        "json.loads(b'",
+        "json.loads(bytearray",
+        "utf8-bom",
+        "utf16-le",
+        "utf32-bom-be",
+        "JsonStr",
+        "JsonBytes",
+        "JsonByteArray",
+        "JsonInt",
+        "JsonFloat",
+        "JsonList",
+        "JsonTuple",
+        "JsonDict",
+        "IntEnum",
+        "namedtuple",
+        "deep-list-len",
+        "json.dumps(float('nan'))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads/dumps basic diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"loads loads json\"",
+        "\"dumps dumps json\"",
+        "\"[None, None, None, None, None, None]\"",
+        "\"[False, True, True, True, None, None, None, None, False]\"",
+        "\"utf16-le {'enc': 'utf16-le'}\"",
+        "\"utf32-bom-be {'enc': 'utf32-bom-be'}\"",
+        "\"JsonByteArray {'sub': 'bytearray'}\"",
+        "\"{\\\"nested\\\": [5]}\"",
+        "\"[8, 9]\"",
+        "\"NaN Infinity -Infinity\"",
+        "\"deep-list-len 401\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads/dumps basic subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains(direct_diff_name)
+                && document.contains(subset_name),
+            "json docs must link `{diff_name}` / `{direct_diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` / `dumps()` core pure-memory data model",
+            "function metadata and keyword-default shape",
+            "`str`, `bytes`, and `bytearray` input values and subclasses",
+            "UTF-8 BOM, UTF-16, and UTF-32 encoded byte input",
+            "`str`, `int`, `float`, list, tuple, dict, `IntEnum`, and namedtuple output paths",
+            "standard bool/null/list/dict/scalar round trips",
+            "200-level nested list encoding",
+            "default non-finite float spelling",
+            "without adding file APIs, custom encoder classes, or CPython internals",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads/dumps core data-model boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_dumps_sequence_subclass_iter_diff_covers_subset_surface() {
     let diff_name = "cpython_json_dumps_sequence_subclass_iter_diff_subset";
     let subset_name = "cpython_json_dumps_sequence_subclass_iter_subset";

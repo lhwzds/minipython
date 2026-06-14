@@ -1064,6 +1064,14 @@ quote and backslash escaping, default `ensure_ascii=True` non-ASCII scalar escap
 and valid surrogate-pair output for non-BMP characters,
 without adding alternate encoders or unpaired surrogate storage.
 
+`cpython_json_loads_dumps_basic_subset`, backed by
+`cpython_json_loads_dumps_diff_subset` and `cpython_json_loads_dumps_basic_diff_subset`, keeps
+`loads()` / `dumps()` core pure-memory data model behavior for function metadata and keyword-default shape,
+`str`, `bytes`, and `bytearray` input values and subclasses, UTF-8 BOM, UTF-16, and UTF-32 encoded byte input,
+`str`, `int`, `float`, list, tuple, dict, `IntEnum`, and namedtuple output paths,
+standard bool/null/list/dict/scalar round trips, 200-level nested list encoding, and default non-finite float spelling,
+without adding file APIs, custom encoder classes, or CPython internals.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
