@@ -5477,6 +5477,7 @@ print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name
 print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name__ == 'str' for option in sys.warnoptions))
 print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.dont_write_bytecode)
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode)
+print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimize)
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
@@ -5520,6 +5521,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-warnoptions list True",
             "sys-dont-write-bytecode bool False",
             "sys-flags-dont-write-bytecode int 0",
+            "sys-flags-optimize int 0",
             "sys-byteorder str True",
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",

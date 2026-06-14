@@ -479,6 +479,7 @@ pub(crate) fn create_module(
                                 Value::String("dont_write_bytecode".to_string()),
                                 Value::Number(0),
                             ),
+                            (Value::String("optimize".to_string()), Value::Number(0)),
                         ]),
                     },
                 ),
