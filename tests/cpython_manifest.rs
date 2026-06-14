@@ -4954,6 +4954,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_reduce_initial_keyword_diff_subset",
         "cpython_functools_singledispatch_diff_subset",
         "cpython_functools_singledispatchmethod_diff_subset",
+        "cpython_functools_singledispatch_union_diff_subset",
     ] {
         assert!(
             row.diff_evidence.contains(evidence),
@@ -5274,6 +5275,25 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         assert!(
             singledispatchmethod_diff.contains(required),
             "singledispatchmethod diff evidence must cover descriptor detail `{required}`"
+        );
+    }
+
+    let union_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_singledispatch_union_diff_subset",
+    );
+    for required in [
+        "skipping functools singledispatch union diff",
+        "def _(obj: int | str):",
+        "from typing import Union",
+        "def _(obj: Union[str, bytes]):",
+        "def _(obj: float | complex):",
+        "g.register(tuple | list, pair)",
+        "descriptor.register(tuple | list, method_pair)",
+    ] {
+        assert!(
+            union_diff.contains(required),
+            "functools singledispatch union gated diff evidence must cover `{required}`"
         );
     }
 }

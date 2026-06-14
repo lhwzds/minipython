@@ -418,6 +418,7 @@ Recent runtime migration notes:
   `cpython_functools_cache_wrapper_module_metadata_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
   `cpython_functools_singledispatchmethod_diff_subset`,
+  `cpython_functools_singledispatch_union_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
   `cpython_itertools_chain_diff_subset` and
@@ -1557,9 +1558,11 @@ without adding general custom encoder/decoder class support.
   annotation-inferred registration, PEP 604 and
   `typing.Union` registration, lazy failure for non-callable implementations,
   and TypeError rejection for non-class registration/dispatch keys. The default
-  diff covers the stable explicit-registration core; current strict invalid-key
-  rejection stays in the local subset because older system CPython oracles
-  accept some of those boundary calls.
+  diff covers the stable explicit-registration core; PEP 604 and
+  `typing.Union` registration also has gated direct CPython evidence in
+  `cpython_functools_singledispatch_union_diff_subset`. Current strict
+  invalid-key rejection stays in the local subset because older system CPython
+  oracles accept some of those boundary calls.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatchmethod_diff_subset` and
   `cpython_functools_singledispatchmethod_subset`, covering CPython
@@ -1572,7 +1575,9 @@ without adding general custom encoder/decoder class support.
   through raw, class-bound, and instance-bound access, `staticmethod` and `classmethod` implementations,
   annotation-inferred registration, PEP 604 and
   `typing.Union` registration, and public TypeError paths. The default diff
-  covers stable explicit-registration and descriptor-composition behavior;
+  covers stable explicit-registration and descriptor-composition behavior; PEP
+  604 and `typing.Union` registration also has gated direct CPython evidence in
+  `cpython_functools_singledispatch_union_diff_subset`;
   missing-argument error classification stays in the local subset because older
   system CPython oracles raise a different exception class on that boundary.
   Full CPython cache implementation internals, weakref/lifecycle subtleties,

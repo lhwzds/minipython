@@ -15015,6 +15015,71 @@ print(K.m(1), K().m(1), K.m('x'), K().m('x'))"#,
     });
 }
 
+#[test]
+fn cpython_functools_singledispatch_union_diff_subset() {
+    let probe = run_cpython(
+        r#"try:
+    exec("from functools import singledispatch\n@singledispatch\ndef g(obj):\n    return 'base'\n@g.register\ndef _(obj: int | str):\n    return 'union'\nprint(g(1), g('x'), g(1.5))")
+except Exception as error:
+    print(type(error).__name__)
+"#,
+    )
+    .expect("failed to run CPython singledispatch union feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "union union base" {
+        eprintln!(
+            "skipping functools singledispatch union diff: CPython oracle lacks union registration"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py singledispatch union registration public subset",
+        name: "functools-singledispatch-union",
+        source: r#"from functools import singledispatch, singledispatchmethod
+from typing import Union
+
+@singledispatch
+def g(obj):
+    return 'base'
+@g.register
+def _(obj: int):
+    return 'int'
+@g.register
+def _(obj: Union[str, bytes]):
+    return 'text'
+@g.register
+def _(obj: float | complex):
+    return 'number'
+def pair(obj):
+    return 'pair'
+print(g.register(tuple | list, pair) is pair)
+print(g(1), g('a'), g(b'a'), g(1.5), g(1j), g([]), g(()), g({}))
+print(g.dispatch(str).__name__, g.dispatch(bytes).__name__, g.dispatch(list).__name__, g.dispatch(tuple).__name__)
+
+class C:
+    @singledispatchmethod
+    def m(self, arg):
+        return 'base'
+    @m.register
+    def _(self, arg: int):
+        return 'int'
+    @m.register
+    def _(self, arg: Union[str, bytes]):
+        return 'text'
+    @m.register
+    def _(self, arg: float | complex):
+        return 'number'
+def method_pair(self, arg):
+    return 'pair'
+descriptor = C.__dict__['m']
+print(descriptor.register(tuple | list, method_pair) is method_pair)
+c = C()
+print(c.m(1), c.m('a'), c.m(b'a'), c.m(1.5), c.m(1j), c.m([]), c.m(()), c.m({}))
+print(descriptor.dispatcher.dispatch(str).__name__, descriptor.dispatcher.dispatch(bytes).__name__)
+print(descriptor.dispatcher.dispatch(list).__name__, descriptor.dispatcher.dispatch(tuple).__name__)"#,
+    });
+}
+
 fn assert_cpython_itertools_core_iterator_diff(name: &'static str) {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public pure-memory iterator core subset",
