@@ -140,6 +140,7 @@ fn cpython_test_manifest_keeps_unfinished_scope_visible() {
         ("partial", 11, 492),
         ("blocked_by_runtime", 5, 15),
         ("blocked_by_ast_module", 2, 16),
+        ("blocked_by_cpython_internal", 5, 10),
     ];
 
     for (status, expected_groups, expected_methods) in unfinished_statuses {
@@ -168,8 +169,10 @@ fn cpython_test_manifest_keeps_unfinished_scope_visible() {
         "partial",
         "blocked_by_runtime",
         "blocked_by_ast_module",
+        "blocked_by_cpython_internal",
         "full method-level parity has not been proven",
         "MiniPython does not yet implement",
+        "CPython-internal",
     ] {
         assert!(
             CPYTHON_MIGRATION.contains(required),
