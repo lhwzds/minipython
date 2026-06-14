@@ -38,6 +38,9 @@ Recent runtime migration notes:
 - The same iterator evidence covers CPython's `__iter__ = None` blocking for
   direct `iter()`, list construction, and star-unpacking over objects that also
   define `__getitem__`.
+- `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
+  blocking over otherwise sequence-like objects, keeping the public reverse
+  protocol distinct from sequence fallback.
 - `collections.deque` is currently a documented pure-memory sandbox surface:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory

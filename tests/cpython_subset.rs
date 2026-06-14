@@ -39652,8 +39652,39 @@ fn cpython_reversed_builtin_subset() {
         ],
     );
     assert_output(
-        "class BadReverse:\n    def __reversed__(self):\n        return 42\nfor expr in [lambda: reversed(), lambda: reversed([], a=1), lambda: reversed({1}), lambda: list(reversed(BadReverse()))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
-        &["TypeError", "TypeError", "TypeError", "TypeError"],
+        concat!(
+            "class BadReverse:\n",
+            "    def __reversed__(self):\n",
+            "        return 42\n",
+            "class BlockReverse:\n",
+            "    __reversed__ = None\n",
+            "    def __len__(self):\n",
+            "        return 2\n",
+            "    def __getitem__(self, index):\n",
+            "        if index < 2:\n",
+            "            return index\n",
+            "        raise IndexError\n",
+            "class BlockOnly:\n",
+            "    __reversed__ = None\n",
+            "for expr in [lambda: reversed(), lambda: reversed([], a=1), lambda: reversed({1}), lambda: list(reversed(BadReverse()))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "for label, expr in [('fallback', lambda: list(reversed(BlockReverse()))), ('only', lambda: reversed(BlockOnly()))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, error)",
+        ),
+        &[
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+            "fallback 'BlockReverse' object is not reversible",
+            "only 'BlockOnly' object is not reversible",
+        ],
     );
 }
 

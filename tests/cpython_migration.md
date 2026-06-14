@@ -1423,7 +1423,8 @@ Completed in the differential parity harness pass:
   range tests. MiniPython now supports `reversed()` over lists, tuples, strings,
   bytes, ranges, dictionaries, and dict `keys`/`values`/`items` views, including
   empty dict-view cases, custom `__reversed__`, sequence-protocol fallback via
-  `__len__` plus `__getitem__`, size-change invalidation for reverse dict
+  `__len__` plus `__getitem__`, CPython-style `__reversed__ = None` fallback
+  blocking, size-change invalidation for reverse dict
   iterators, live value reads, and common same-size key-set mutation behavior.
   Repeated same-size reverse-iterator mutations can still diverge from CPython
   because CPython scans dictionary table positions while MiniPython tracks
@@ -6336,7 +6337,9 @@ Completed in the container constructor/reversed pass:
   identity lookup for a stored `NaN` key.
 - Added `cpython_reversed_builtin_subset`, adapted from
   `Lib/test/test_enumerate.py::TestReversed::test_simple` and CPython's dict
-  reverse-iterator coverage. `cpython_enumerate_reversed_pickle_subset` adds the
+  reverse-iterator coverage. The subset now also covers CPython's
+  `__reversed__ = None` blocking over objects that would otherwise have
+  sequence-protocol fallback. `cpython_enumerate_reversed_pickle_subset` adds the
   adjacent enumerate/reversed iterator pickle round-trip surface over
   MiniPython's internal pickle payload API, and
   `cpython_operator_length_hint_subset` adds the adjacent `operator.length_hint`

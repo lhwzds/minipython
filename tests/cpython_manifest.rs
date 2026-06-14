@@ -9756,6 +9756,11 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
         "lambda: reversed([], a=1)",
         "lambda: reversed({1})",
         "lambda: list(reversed(BadReverse()))",
+        "class BlockReverse:",
+        "__reversed__ = None",
+        "lambda: list(reversed(BlockReverse()))",
+        "class BlockOnly:",
+        "lambda: reversed(BlockOnly())",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9784,6 +9789,11 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
         "print('get', index)",
         "class BadReverse:",
         "print(reversed(BadReverse()))",
+        "class BlockReverse:",
+        "__reversed__ = None",
+        "list(reversed(BlockReverse()))",
+        "class BlockOnly:",
+        "reversed(BlockOnly())",
         "for key in reversed(d):",
         "values = reversed(d.values())",
         "for item in reversed(d.items()):",
@@ -9797,7 +9807,8 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
     assert!(
         CPYTHON_COVERAGE.contains("cpython_reversed_builtin_subset")
             && CPYTHON_COVERAGE.contains("first-pass reversed iteration")
-            && CPYTHON_COVERAGE.contains("supported sequence, dict, and dict-view values"),
+            && CPYTHON_COVERAGE.contains("supported sequence, dict, and dict-view values")
+            && CPYTHON_COVERAGE.contains("__reversed__ = None"),
         "coverage notes must describe reversed() runtime subset"
     );
     assert!(
@@ -9805,6 +9816,7 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("first-pass `reversed()` coverage")
             && CPYTHON_MIGRATION.contains("custom `__reversed__`")
             && CPYTHON_MIGRATION.contains("sequence-protocol fallback")
+            && CPYTHON_MIGRATION.contains("__reversed__ = None")
             && CPYTHON_MIGRATION.contains("dict `keys`/`values`/`items` views")
             && CPYTHON_MIGRATION.contains("same-size key-set mutation behavior"),
         "migration notes must document reversed() sequence, dict-view, custom protocol, and mutation behavior"

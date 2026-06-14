@@ -25061,6 +25061,13 @@ impl Vm {
             return self.reversed_value(target.as_ref().clone());
         }
 
+        if instance_special_method_is_none(&value, "__reversed__") {
+            return Err(format!(
+                "TypeError: '{}' object is not reversible",
+                type_name(&value)
+            ));
+        }
+
         if let Some(method) = instance_special_method(&value, "__reversed__") {
             return self.call_value(method, Vec::new());
         }

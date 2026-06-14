@@ -16593,7 +16593,22 @@ print(next(values), next(values), next(values, 'done'), next(values, 'done'))
 class BadReverse:
     def __reversed__(self):
         return 42
-print(reversed(BadReverse()))"#,
+print(reversed(BadReverse()))
+class BlockReverse:
+    __reversed__ = None
+    def __len__(self):
+        return 2
+    def __getitem__(self, index):
+        if index < 2:
+            return index
+        raise IndexError
+class BlockOnly:
+    __reversed__ = None
+for label, expr in [('fallback', lambda: list(reversed(BlockReverse()))), ('only', lambda: reversed(BlockOnly()))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error)"#,
         },
         DiffCase {
             origin: "Lib/test/test_dict.py reverse iterator mutation behavior",
