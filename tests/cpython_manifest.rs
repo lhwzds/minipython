@@ -12317,6 +12317,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.warnoptions")
             && LANGUAGE_TESTS.contains("sys.dont_write_bytecode")
             && LANGUAGE_TESTS.contains("sys.flags.dont_write_bytecode")
+            && LANGUAGE_TESTS.contains("sys.flags.dev_mode")
             && LANGUAGE_TESTS.contains("sys.flags.optimize")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
@@ -12359,6 +12360,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "all(type(option).__name__ == 'str' for option in sys.warnoptions)",
         "sys.dont_write_bytecode",
         "sys.flags.dont_write_bytecode",
+        "sys.flags.dev_mode",
         "sys.flags.optimize",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",

@@ -539,9 +539,9 @@ Recent runtime migration notes:
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, float-subclass NaN hash inheritance, public
   `sys.builtin_module_names`, `sys.byteorder`, `sys.dont_write_bytecode`,
-  `sys.flags.dont_write_bytecode`, `sys.flags.optimize`, `sys.hexversion`,
-  `sys.warnoptions`, `sys.getdefaultencoding()`, `sys.version_info`,
-  `sys.implementation`, and the sandbox runtime-state query
+  `sys.flags.dont_write_bytecode`, `sys.flags.dev_mode`, `sys.flags.optimize`,
+  `sys.hexversion`, `sys.warnoptions`, `sys.getdefaultencoding()`,
+  `sys.version_info`, `sys.implementation`, and the sandbox runtime-state query
   `sys.is_finalizing()`. The same evidence covers `sys.exc_info()` over the
   current MiniPython VM exception state, including empty and active-handler
   triples plus no-argument diagnostics.
