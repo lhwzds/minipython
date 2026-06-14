@@ -1393,6 +1393,12 @@ for allow_nan in [True, False]:
         print('key', allow_nan, json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan))
     except Exception as error:
         print('key', allow_nan, type(error).__name__, isinstance(error, ValueError))
+nested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]}
+for allow_nan in [True, False]:
+    try:
+        print('nested', allow_nan, json.dumps(nested, allow_nan=allow_nan, sort_keys=True))
+    except Exception as error:
+        print('nested', allow_nan, type(error).__name__, isinstance(error, ValueError))
 try:
     json.dumps([float('nan')], allow_nan=[])
 except Exception as error:

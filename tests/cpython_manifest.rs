@@ -4783,6 +4783,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "float('-inf')",
                 "allow_nan in [True, 1, False, 0]",
                 "json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan)",
+                "nested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]",
                 "json.dumps([float('nan')], allow_nan=[])",
             ][..],
         ),

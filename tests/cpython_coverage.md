@@ -829,8 +829,8 @@ Recent runtime migration notes:
   `items()` result TypeError text, CPython's
   empty-dict-subclass `{}` fast path, `Counter` mapping containers, and
   namedtuples, standard string escapes,
-  paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite
-  float values and keys, `check_circular` cycle-error behavior,
+  paired UTF-16 surrogate escapes, `allow_nan=False` rejection of nested
+  non-finite float values and keys, `check_circular` cycle-error behavior,
   `ensure_ascii=False` direct non-ASCII string/key rendering,
   `indent` pretty-print formatting for positive, zero, negative, string, and
   `__index__` indent values,

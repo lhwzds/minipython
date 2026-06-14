@@ -146,6 +146,11 @@ negative, string, and `None` values.
 covered for top-level and nested dictionaries while preserving the
 `skipkeys=False` TypeError boundary.
 
+`cpython_json_dumps_allow_nan_subset`, backed by
+`cpython_json_dumps_allow_nan_diff_subset`, keeps non-finite float rendering and
+`allow_nan=False` rejection covered for top-level values, nested values, and
+supported float keys.
+
 `cpython_json_dumps_sort_keys_subset`, backed by
 `cpython_json_dumps_sort_keys_diff_subset`, keeps recursive sorting of supported
 comparable keys covered for nested dictionaries, including compact non-ASCII
