@@ -6527,6 +6527,18 @@ for label, expr in checks:
         expr()
     except TypeError as error:
         print(label, str(error))
+checks = [
+    ("list-iter", lambda: list.__iter__([], bad=1)),
+    ("list-len", lambda: list.__len__([], bad=1)),
+    ("list-append", lambda: list.append([], object=1)),
+    ("list-clear", lambda: list.clear([], bad=1)),
+    ("list-copy", lambda: list.copy([], bad=1)),
+]
+for label, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:

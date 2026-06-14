@@ -97,7 +97,7 @@ Completed in the builtin method TypeError capture pass:
   method argument failures for `list.__iter__` and `dict.keys`, so those public
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
-  `TypeError` text for `dict.keys`, `set.add`, `frozenset.__hash__`,
+  `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, `set.add`, `frozenset.__hash__`,
   `int.bit_length`, and `float.hex`. Exact CPython message text for every
   builtin method remains a separate method-by-method migration task.
 

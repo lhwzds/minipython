@@ -24293,6 +24293,16 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "checks = [\n    ('list-iter', lambda: list.__iter__([], bad=1)),\n    ('list-len', lambda: list.__len__([], bad=1)),\n    ('list-append', lambda: list.append([], object=1)),\n    ('list-clear', lambda: list.clear([], bad=1)),\n    ('list-copy', lambda: list.copy([], bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "list-iter wrapper __iter__() takes no keyword arguments",
+            "list-len wrapper __len__() takes no keyword arguments",
+            "list-append list.append() takes no keyword arguments",
+            "list-clear list.clear() takes no keyword arguments",
+            "list-copy list.copy() takes no keyword arguments",
+        ],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );

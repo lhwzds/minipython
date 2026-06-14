@@ -9516,12 +9516,7 @@ impl Vm {
                 self.call_array_array_method(&name, args, keywords)
             }
             Value::Builtin(name) if is_iterator_protocol_method(&name) => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
+                reject_method_keywords(&name, &keywords)?;
 
                 self.call_iterator_protocol_method(&name, args)
             }
@@ -29940,8 +29935,8 @@ impl Vm {
 
         if !keywords.is_empty() {
             return Err(format!(
-                "{}() does not accept keyword arguments",
-                method_display_name(name)
+                "TypeError: {}() takes no keyword arguments",
+                method_keyword_error_name(name)
             ));
         }
 
