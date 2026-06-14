@@ -5724,6 +5724,21 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         pairwise_source.contains("itertools.pairwise"),
         "itertools pairwise CPython diff evidence must cover pairwise()"
     );
+    let pairwise_runtime_source =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_itertools_pairwise_subset");
+    for required in [
+        "pairwise expected 1 argument, got 0",
+        "pairwise expected 1 argument, got 2",
+    ] {
+        assert!(
+            pairwise_source.contains(required),
+            "itertools pairwise CPython diff evidence must assert exact arity diagnostic `{required}`"
+        );
+        assert!(
+            pairwise_runtime_source.contains(required),
+            "itertools pairwise runtime evidence must assert exact arity diagnostic `{required}`"
+        );
+    }
     assert!(
         pairwise_source.contains("hasattr(itertools, 'pairwise')")
             && pairwise_source.contains("skipping itertools.pairwise diff"),

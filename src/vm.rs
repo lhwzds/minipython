@@ -24965,7 +24965,7 @@ impl Vm {
         }
         let [iterable] = args.as_slice() else {
             return Err(format!(
-                "TypeError: pairwise() expected 1 argument, got {}",
+                "TypeError: pairwise expected 1 argument, got {}",
                 args.len()
             ));
         };

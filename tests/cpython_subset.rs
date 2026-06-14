@@ -38815,8 +38815,8 @@ fn cpython_itertools_pairwise_subset() {
             "[] []",
             "[(5, 6), (6, 7), (7, 8)]",
             "[(1, 2), (2, 3), (3, 4)]",
-            "TypeError pairwise() expected 1 argument, got 0",
-            "TypeError pairwise() expected 1 argument, got 2",
+            "TypeError pairwise expected 1 argument, got 0",
+            "TypeError pairwise expected 1 argument, got 2",
             "TypeError pairwise() takes no keyword arguments",
         ],
     );

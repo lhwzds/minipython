@@ -15816,6 +15816,8 @@ show('permutations-extra', lambda: itertools.permutations([1], 1, r=2))"#,
 
 #[test]
 fn cpython_itertools_pairwise_diff_subset() {
+    // CPython oracle text: pairwise expected 1 argument, got 0;
+    // pairwise expected 1 argument, got 2
     let probe = run_cpython("import itertools; print(hasattr(itertools, 'pairwise'))")
         .expect("failed to probe CPython itertools.pairwise support");
     if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
@@ -15841,7 +15843,7 @@ for expr in [
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 
