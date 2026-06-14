@@ -715,6 +715,15 @@ fn cpython_sequence_repeat_allocation_guard_diff_subset() {
 }
 
 #[test]
+fn cpython_sequence_repeat_count_overflow_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public sequence repeat count overflow behavior",
+        name: "sequence-repeat-count-overflow",
+        source: "huge = 2 ** 100\nfor label, sample in [('str', 'a'), ('list', [1]), ('tuple', (1,)), ('bytes', b'a'), ('bytearray', bytearray(b'a'))]:\n    for expr in [lambda sample=sample: sample * huge, lambda sample=sample: huge * sample]:\n        try:\n            expr()\n        except OverflowError as error:\n            print(label, type(error).__name__, str(error))",
+    });
+}
+
+#[test]
 fn cpython_json_dumps_sequence_subclass_iter_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps sequence subclass iteration subset",

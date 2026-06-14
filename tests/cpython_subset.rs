@@ -34061,6 +34061,25 @@ fn cpython_sequence_repeat_allocation_guard_subset() {
     );
 }
 
+#[test]
+fn cpython_sequence_repeat_count_overflow_subset() {
+    assert_output(
+        "huge = 2 ** 100\nfor label, sample in [('str', 'a'), ('list', [1]), ('tuple', (1,)), ('bytes', b'a'), ('bytearray', bytearray(b'a'))]:\n    for expr in [lambda sample=sample: sample * huge, lambda sample=sample: huge * sample]:\n        try:\n            expr()\n        except OverflowError as error:\n            print(label, type(error).__name__, str(error))",
+        &[
+            "str OverflowError cannot fit 'int' into an index-sized integer",
+            "str OverflowError cannot fit 'int' into an index-sized integer",
+            "list OverflowError cannot fit 'int' into an index-sized integer",
+            "list OverflowError cannot fit 'int' into an index-sized integer",
+            "tuple OverflowError cannot fit 'int' into an index-sized integer",
+            "tuple OverflowError cannot fit 'int' into an index-sized integer",
+            "bytes OverflowError cannot fit 'int' into an index-sized integer",
+            "bytes OverflowError cannot fit 'int' into an index-sized integer",
+            "bytearray OverflowError cannot fit 'int' into an index-sized integer",
+            "bytearray OverflowError cannot fit 'int' into an index-sized integer",
+        ],
+    );
+}
+
 // MiniPython exposes a sandbox-safe first-pass `json` module: pure in-memory
 // loads/dumps for the core JSON data model, without file APIs or custom hooks.
 #[test]

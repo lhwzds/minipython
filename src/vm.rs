@@ -77421,7 +77421,7 @@ fn bytes_repeat_values(left: &Value, right: &Value) -> Result<Option<Value>, Str
 fn big_int_repeat_count(count: &BigInt) -> Result<i64, String> {
     count
         .to_i64()
-        .ok_or_else(|| "sequence repeat count is too large".to_string())
+        .ok_or_else(|| "OverflowError: cannot fit 'int' into an index-sized integer".to_string())
 }
 
 fn repeat_count_from_integer_value(value: Value) -> Result<i64, String> {

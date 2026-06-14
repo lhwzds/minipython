@@ -2223,6 +2223,41 @@ fn cpython_sequence_repeat_allocation_guard_stays_cpython_diffed() {
 }
 
 #[test]
+fn cpython_sequence_repeat_count_overflow_stays_cpython_diffed() {
+    let diff_name = "cpython_sequence_repeat_count_overflow_diff_subset";
+    let subset_name = "cpython_sequence_repeat_count_overflow_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}("))
+            && CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "core sequence repeat count overflow must keep direct CPython diff and subset coverage"
+    );
+
+    for source in [CPYTHON_DIFF, CPYTHON_SUBSET] {
+        for required in ["2 ** 100", "OverflowError", "bytearray"] {
+            assert!(
+                source.contains(required),
+                "core sequence repeat count overflow coverage must contain `{required}`"
+            );
+        }
+    }
+
+    assert!(
+        CPYTHON_SUBSET.contains("cannot fit 'int' into an index-sized integer"),
+        "core sequence repeat count overflow subset must pin CPython's public message"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains(subset_name)
+                && document.contains("count overflow"),
+            "core sequence repeat count overflow must stay documented"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
     let diff_name = "cpython_bytes_basics_and_empty_index_diff_subset";
     let runtime_subsets = [

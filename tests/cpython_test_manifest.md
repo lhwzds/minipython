@@ -67,6 +67,12 @@ core sequence repeat allocation guard covered by
 `cpython_sequence_repeat_allocation_guard_subset`, including
 address-space-sized non-empty `str`, `list`, `tuple`, and `bytes` repeats plus
 empty-sequence repeat fast paths.
+Direct diff mapping note:
+`cpython_sequence_repeat_count_overflow_diff_subset` directly compares the
+core sequence repeat count overflow behavior covered by
+`cpython_sequence_repeat_count_overflow_subset`, including `str`, `list`,
+`tuple`, `bytes`, and `bytearray` repeats by an integer too large for an
+index-sized repeat count.
 Direct diff mapping note: `cpython_memoryview_methods_release_diff_subset`
 directly compares the public memoryview method/release/context-manager slice
 covered by `cpython_memoryview_basic_methods_and_release_subset`.

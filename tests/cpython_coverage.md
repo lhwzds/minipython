@@ -496,6 +496,12 @@ Recent runtime migration notes:
   repeat allocation guard: address-space-sized non-empty `str`, `list`,
   `tuple`, and `bytes` repeats raise catchable `MemoryError`, while empty
   sequence repeats return empty values without looping or allocating.
+- `STRING` / container runtime coverage also includes
+  `cpython_sequence_repeat_count_overflow_subset`, backed by
+  `cpython_sequence_repeat_count_overflow_diff_subset`, for core sequence
+  repeat count overflow: `str`, `list`, `tuple`, `bytes`, and `bytearray`
+  repeats by an integer too large for an index-sized count raise catchable
+  `OverflowError` with CPython's public message.
 - `NUMBER` also includes CPython `BuiltinTest::test_round_large`, covering
   integral float `round()` stability across the `5e15 +/- n` boundary.
 - `NUMBER` also includes CPython

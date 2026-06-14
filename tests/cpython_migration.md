@@ -129,6 +129,12 @@ non-empty `str`, `list`, `tuple`, and `bytes` repeats raise catchable
 `MemoryError`, while empty sequence repeats return empty values without looping
 or allocating.
 
+`cpython_sequence_repeat_count_overflow_subset`, backed by
+`cpython_sequence_repeat_count_overflow_diff_subset`, keeps core sequence repeat
+count overflow tied to CPython public behavior: `str`, `list`, `tuple`,
+`bytes`, and `bytearray` repeats by an integer too large for an index-sized
+count raise catchable `OverflowError` with CPython's public message.
+
 ## Sandbox Stdlib Manifest
 
 This table is the required sandbox stdlib surface. A module can be useful and
