@@ -175,6 +175,11 @@ non-callable hooks only error when used, hook exception propagation, returned-se
 `check_circular=False` default-hook recursion boundary, and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
+`cpython_json_dumps_float_spelling_subset`, backed by
+`cpython_json_dumps_float_spelling_diff_subset`, keeps `dumps()` finite float spelling for
+negative zero, ordinary integral-looking floats, decimal fractions, and small and large exponent notation,
+without adding Decimal, locale-sensitive formatting, or alternate float printers.
+
 `cpython_json_loads_parse_hooks_subset`, backed by
 `cpython_json_loads_parse_hooks_diff_subset`, keeps `loads()` numeric parse hooks for
 `parse_int`, `parse_float`, and `parse_constant` receiving original JSON number and non-finite constant text.

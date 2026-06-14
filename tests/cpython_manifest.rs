@@ -5571,6 +5571,72 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_float_spelling_docs_cover_numeric_boundaries() {
+    let diff_name = "cpython_json_dumps_float_spelling_diff_subset";
+    let subset_name = "cpython_json_dumps_float_spelling_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps float spelling CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps float spelling runtime subset evidence must exist"
+    );
+
+    for required in [
+        "-0.0",
+        "0.0",
+        "1.0",
+        "-1.0",
+        "1.2345",
+        "1e-06",
+        "1e+20",
+        "json.dumps(value)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps float spelling diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"-0.0 -0.0\"",
+        "\"0.0 0.0\"",
+        "\"1.0 1.0\"",
+        "\"-1.0 -1.0\"",
+        "\"1.2345 1.2345\"",
+        "\"1e-06 1e-06\"",
+        "\"1e+20 1e+20\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps float spelling subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`dumps()` finite float spelling",
+            "negative zero",
+            "ordinary integral-looking floats",
+            "decimal fractions",
+            "small and large exponent notation",
+            "without adding Decimal, locale-sensitive formatting, or alternate float printers",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe dumps float spelling boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parse_hooks_docs_cover_option_boundaries() {
     let diff_name = "cpython_json_loads_parse_hooks_diff_subset";
     let subset_name = "cpython_json_loads_parse_hooks_subset";
