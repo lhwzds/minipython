@@ -14100,6 +14100,7 @@ fn sandbox_policy_guard_names_reference_real_runtime_tests() {
         "sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims",
         "sandbox_policy_requires_explicit_allow_for_extra_stdlib_shims",
         "out_of_scope_host_io_network_and_process_surfaces_stay_unavailable",
+        "sandbox_required_stdlib_allow_list_keeps_stop_line_modules_blocked",
     ] {
         let test_signature = format!("fn {guard}()");
         assert!(

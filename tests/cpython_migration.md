@@ -86,7 +86,9 @@ The default stop line excludes:
 `out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards the
 host I/O, network, process, C ABI, CPython-internal, locale-sensitive, and
 default pdb/breakpoint stop line so these surfaces cannot appear in the default
-runtime accidentally.
+runtime accidentally. `sandbox_required_stdlib_allow_list_keeps_stop_line_modules_blocked`
+keeps the same stop-line modules blocked even when a host explicitly allows the
+required sandbox stdlib module set.
 
 ## Sandbox Stdlib Manifest
 

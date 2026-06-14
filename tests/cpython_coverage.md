@@ -4582,6 +4582,9 @@ without adding general custom encoder/decoder class support.
   specialization), locale-sensitive behavior, default `pdb` / `breakpoint`
   integration, and process/environment side effects stay outside the sandbox
   product surface unless the scope is explicitly promoted.
+  `sandbox_required_stdlib_allow_list_keeps_stop_line_modules_blocked` also
+  proves that allowing the required sandbox stdlib modules does not implicitly
+  allow those network, process, C ABI, locale, or pdb stop-line modules.
 
 ## Diagnostics Infrastructure
 

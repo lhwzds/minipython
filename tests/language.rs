@@ -1216,6 +1216,43 @@ fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
 }
 
 #[test]
+fn sandbox_required_stdlib_allow_list_keeps_stop_line_modules_blocked() {
+    let sandbox = TestSandboxDir::new("allow-required-stdlib-stop-lines");
+    let policy =
+        SandboxPolicy::allow_stdlib_modules(REQUIRED_SANDBOX_STDLIB_MODULES.to_vec()).unwrap();
+
+    for module in [
+        "asyncio",
+        "http",
+        "multiprocessing",
+        "ssl",
+        "socket",
+        "subprocess",
+        "signal",
+        "threading",
+        "pty",
+        "urllib",
+        "_ssl",
+        "_socket",
+        "_ctypes",
+        "_testcapi",
+        "locale",
+        "pdb",
+    ] {
+        assert_eq!(
+            run_source_with_sandbox_dir_and_policy(
+                &format!("import {module}"),
+                sandbox.path(),
+                policy.clone(),
+            ),
+            Err(format!(
+                "runtime error: ModuleNotFoundError: No module named '{module}'"
+            ))
+        );
+    }
+}
+
+#[test]
 fn sandbox_policy_propagates_into_virtual_modules() {
     assert_eq!(
         run_source_with_virtual_modules_and_policy(
