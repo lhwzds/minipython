@@ -314,6 +314,120 @@ fn cpython_test_manifest_compile_specifics_method_audit_matches_current_source()
 }
 
 #[test]
+fn cpython_test_manifest_compile_specifics_stop_lines_stay_sandbox_scoped() {
+    let methods = method_audit_methods("## `Lib/test/test_compile.py::TestSpecifics` Method Audit");
+
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "ported")
+            .count(),
+        74,
+        "ported TestSpecifics method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_runtime")
+            .count(),
+        3,
+        "blocked_by_runtime TestSpecifics method count drifted"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| method.status == "blocked_by_cpython_internal")
+            .count(),
+        21,
+        "blocked_by_cpython_internal TestSpecifics method count drifted"
+    );
+
+    for (method_name, required_remaining) in [
+        (
+            "test_particularly_evil_undecodable",
+            "temp files and child-process script execution",
+        ),
+        (
+            "test_yet_more_evil_still_undecodable",
+            "temp files and child-process script execution",
+        ),
+        (
+            "test_stack_overflow",
+            "future sandbox resource-limit policy",
+        ),
+    ] {
+        let method = methods
+            .iter()
+            .find(|method| method.method == method_name)
+            .unwrap_or_else(|| panic!("missing TestSpecifics method audit row `{method_name}`"));
+        assert_eq!(
+            method.status, "blocked_by_runtime",
+            "`{method_name}` must stay classified as host/runtime policy work"
+        );
+        assert!(
+            method.remaining.contains(required_remaining),
+            "`{method_name}` must document runtime stop-line `{required_remaining}`"
+        );
+    }
+
+    for method_name in [
+        "test_compile_redundant_jumps_and_nops_after_moving_cold_blocks",
+        "test_compile_redundant_jump_after_convert_pseudo_ops",
+        "test_same_filename_used",
+        "test_compiler_recursion_limit",
+        "test_merge_constants",
+        "test_merge_code_attrs",
+        "test_remove_unused_consts",
+        "test_remove_unused_consts_no_docstring",
+        "test_remove_unused_consts_extended_args",
+        "test_strip_unused_None",
+        "test_peephole_opt_unreachable_code_array_access_in_bounds",
+        "test_docstring_omitted",
+        "test_dead_blocks_do_not_generate_bytecode",
+        "test_false_while_loop",
+        "test_consts_in_conditionals",
+        "test_imported_load_method",
+        "test_folding_type_param",
+        "test_redundant_jump_in_if_else_break",
+        "test_no_wraparound_jump",
+        "test_uses_slice_instructions",
+        "test_compare_positions",
+    ] {
+        let method = methods
+            .iter()
+            .find(|method| method.method == method_name)
+            .unwrap_or_else(|| panic!("missing TestSpecifics method audit row `{method_name}`"));
+        assert_eq!(
+            method.status, "blocked_by_cpython_internal",
+            "`{method_name}` must stay classified as CPython-internal"
+        );
+        let rationale = format!("{} {}", method.evidence, method.remaining);
+        assert!(
+            rationale.contains("opcode")
+                || rationale.contains("dis")
+                || rationale.contains("CPython-only")
+                || rationale.contains("reference-leak")
+                || rationale.contains("co_linetable")
+                || rationale.contains("co_consts")
+                || rationale.contains("compiler-frame recursion")
+                || rationale.contains("identity sharing")
+                || rationale.contains("EXTENDED_ARG")
+                || rationale.contains("bytecode"),
+            "`{method_name}` must document the CPython-internal reason"
+        );
+    }
+
+    let row = manifest_groups()
+        .into_iter()
+        .find(|row| row.source == "Lib/test/test_compile.py" && row.group == "TestSpecifics")
+        .expect("manifest must include TestSpecifics row");
+    assert_eq!(
+        row.status, "partial",
+        "TestSpecifics must remain partial while runtime/internal stop-lines remain"
+    );
+}
+
+#[test]
 fn cpython_test_manifest_compile_source_positions_method_audit_matches_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_COMPILE_SOURCE);
     let expected = python_test_class_method_names(&source, "TestSourcePositions");
