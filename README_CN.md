@@ -19,7 +19,7 @@ differential 证据支撑时才算进入 scope。
 
 - 尽量兼容 CPython 的语法前端：tokenizer、parser、AST、compile 降级和用户可见的语法/错误分类。
 - 核心运行时语义：对象模型、descriptor、MRO、函数、闭包、generator、async、异常、容器、数字、字符串、bytes、bytearray、array 和 memoryview。
-- 安全纯内存标准库模块：`builtins`、`sys`、`types`、`collections`、`math`、`array`、`copy`、`io.BytesIO`、`operator`、`functools`、`itertools` 和 `json`。
+- 安全纯内存标准库模块：`builtins`、`sys`、`types`、`collections`、`collections.abc`、`math`、`math.integer`、`array`、`copy`、`io.BytesIO`、`operator`、`functools`、`itertools` 和 `json`。
   为了支持已迁移的 CPython 测试，runtime 可以存在额外的纯内存 compatibility shim；但除非写入 migration manifest 并明确支持面和排除面，否则它们不自动扩大默认产品 scope。
 - 通过可执行 differential tests 迁移 CPython 公共行为。每个 bundled stdlib 模块必须有对应的 `cpython_diff` case，支持面才算完成；如果只做 subset，必须在 migration 和 coverage 记录里写清支持 API 和排除 API。
 

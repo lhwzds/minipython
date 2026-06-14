@@ -26,8 +26,8 @@ In scope:
   closures, generators, async constructs, exceptions, containers, numbers,
   strings, bytes, bytearray, array, and memoryview behavior.
 - Safe pure-memory standard library modules: `builtins`, `sys`, `types`,
-  `collections`, `math`, `array`, `copy`, `io.BytesIO`, `operator`,
-  `functools`, `itertools`, and `json`.
+  `collections`, `collections.abc`, `math`, `math.integer`, `array`, `copy`,
+  `io.BytesIO`, `operator`, `functools`, `itertools`, and `json`.
   Additional pure-memory compatibility shims may exist to support migrated
   CPython tests, but they do not expand the default product scope unless they
   are added to the migration manifest with explicit supported and excluded
