@@ -5254,6 +5254,81 @@ fn json_dumps_skipkeys_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_allow_nan_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_allow_nan_diff_subset";
+    let subset_name = "cpython_json_dumps_allow_nan_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps allow_nan CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps allow_nan runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class F(float):",
+        "float('nan')",
+        "float('inf')",
+        "float('-inf')",
+        "F(float('nan'))",
+        "F(float('inf'))",
+        "allow_nan in [True, 1, False, 0]",
+        "json.dumps(value, allow_nan=allow_nan)",
+        "json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan)",
+        "nested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]",
+        "json.dumps(nested, allow_nan=allow_nan, sort_keys=True)",
+        "json.dumps([float('nan')], allow_nan=[])",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps allow_nan diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True NaN\"",
+        "\"True Infinity\"",
+        "\"True -Infinity\"",
+        "\"False ValueError True\"",
+        "\"0 ValueError True\"",
+        "\"key True {\\\"NaN\\\": \\\"nan\\\", \\\"Infinity\\\": \\\"inf\\\", \\\"1.0\\\": \\\"one\\\"}\"",
+        "\"key False ValueError True\"",
+        "\"nested True {\\\"outer\\\": [NaN, {\\\"x\\\": Infinity, \\\"y\\\": -Infinity}]}\"",
+        "\"nested False ValueError True\"",
+        "\"list ValueError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps allow_nan subset output must pin CPython rendered output `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`allow_nan` non-finite float rendering",
+            "NaN, Infinity, and -Infinity values",
+            "float subclass values",
+            "supported float keys",
+            "nested list/dict values",
+            "`allow_nan=False` and falsey-option `ValueError` rejection",
+            "truthy numeric `allow_nan` values",
+            "without adding Decimal, custom encoder, or locale-sensitive spelling support",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe allow_nan option boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (

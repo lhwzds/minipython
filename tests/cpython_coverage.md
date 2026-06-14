@@ -952,6 +952,12 @@ It covers `sort_keys=True` interaction, `ensure_ascii=False` and compact `separa
 the `skipkeys=False` TypeError boundary, and truthy non-bool `skipkeys` values,
 without adding arbitrary mapping-protocol support or encoder hooks.
 
+`cpython_json_dumps_allow_nan_subset`, backed by
+`cpython_json_dumps_allow_nan_diff_subset`, keeps `allow_nan` non-finite float rendering for
+NaN, Infinity, and -Infinity values, float subclass values, supported float keys, and nested list/dict values.
+It covers `allow_nan=False` and falsey-option `ValueError` rejection plus truthy numeric `allow_nan` values,
+without adding Decimal, custom encoder, or locale-sensitive spelling support.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

@@ -151,9 +151,10 @@ the `skipkeys=False` TypeError boundary, and truthy non-bool `skipkeys` values,
 without adding arbitrary mapping-protocol support or encoder hooks.
 
 `cpython_json_dumps_allow_nan_subset`, backed by
-`cpython_json_dumps_allow_nan_diff_subset`, keeps non-finite float rendering and
-`allow_nan=False` rejection covered for top-level values, nested values, and
-supported float keys.
+`cpython_json_dumps_allow_nan_diff_subset`, keeps `allow_nan` non-finite float rendering for
+NaN, Infinity, and -Infinity values, float subclass values, supported float keys, and nested list/dict values.
+It covers `allow_nan=False` and falsey-option `ValueError` rejection plus truthy numeric `allow_nan` values,
+without adding Decimal, custom encoder, or locale-sensitive spelling support.
 
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
