@@ -13607,6 +13607,51 @@ fn cpython_migration_documents_sandbox_stdlib_diff_and_runtime_subset_evidence()
 }
 
 #[test]
+fn cpython_migration_mentions_all_sandbox_stdlib_diff_evidence() {
+    let mut missing = Vec::new();
+
+    for row in sandbox_stdlib_rows() {
+        for evidence in backtick_tokens(row.diff_evidence) {
+            if evidence.ends_with("_diff_subset") && !CPYTHON_MIGRATION.contains(evidence) {
+                missing.push(format!("{}: `{evidence}`", row.module));
+            }
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "migration document must mention every direct sandbox stdlib cpython_diff evidence:\n{}",
+        missing.join("\n")
+    );
+}
+
+#[test]
+fn cpython_migration_mentions_all_sandbox_stdlib_runtime_evidence() {
+    let mut missing = Vec::new();
+
+    for row in sandbox_stdlib_rows() {
+        for evidence in backtick_tokens(row.diff_evidence) {
+            let candidates = sandbox_stdlib_runtime_subset_candidates(evidence);
+            if !candidates
+                .iter()
+                .any(|candidate| CPYTHON_MIGRATION.contains(candidate))
+            {
+                missing.push(format!(
+                    "{}: `{evidence}` expects one of {:?}",
+                    row.module, candidates
+                ));
+            }
+        }
+    }
+
+    assert!(
+        missing.is_empty(),
+        "migration document must mention runtime subset evidence for every sandbox stdlib evidence:\n{}",
+        missing.join("\n")
+    );
+}
+
+#[test]
 fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries() {
     for required in [
         "default CPython oracle used by `cpython_diff` in this workspace",

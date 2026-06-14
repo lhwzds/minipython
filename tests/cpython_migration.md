@@ -255,6 +255,13 @@ falsey strict values accepting raw controls, and unknown keyword `TypeError` cla
 `ensure_ascii`, `allow_nan`, `skipkeys`, `sort_keys`, `check_circular`, and `strict`,
 including propagated `__bool__` exceptions, without adding unsupported options or locale-sensitive truth behavior.
 
+`cpython_types_class_creation_get_original_bases_subset`,
+`cpython_types_class_creation_metaclass_new_error_subset`, and
+`cpython_types_class_creation_subclass_inherited_slot_update_subset` keep the
+types class-creation runtime evidence tied to their matching direct
+`cpython_diff` rows while leaving CPython object-layout internals outside the
+sandbox `types` surface.
+
 `cpython_json_dumps_string_escape_subset`, backed by
 `cpython_json_dumps_string_escape_diff_subset`, keeps `dumps()` default string escaping for
 NUL and unit-separator control characters, backspace, formfeed, newline, carriage return, and tab,
