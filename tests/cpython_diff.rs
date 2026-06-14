@@ -14640,6 +14640,23 @@ print(list(itertools.starmap(combine, [(5, 1), (8, 3)])), calls)"#,
 }
 
 #[test]
+fn cpython_itertools_zip_longest_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public zip_longest subset",
+        name: "itertools-zip-longest",
+        source: r#"import itertools
+zl = itertools.zip_longest([1, 2], 'ab')
+print(type(zl).__name__, iter(zl) is zl, list(zl), list(zl))
+print(list(itertools.zip_longest()))
+print(list(itertools.zip_longest([1], [2, 3], fillvalue='x')))
+print(list(itertools.zip_longest((value for value in [1, 2]), [3])))
+left = iter([1])
+right = iter([2, 3])
+print(list(itertools.zip_longest(left, right, fillvalue=None)), list(left), list(right))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

@@ -37917,6 +37917,32 @@ fn cpython_itertools_starmap_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public zip_longest behavior
+// over pure in-memory iterables.
+#[test]
+fn cpython_itertools_zip_longest_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "zl = itertools.zip_longest([1, 2], 'ab')\n",
+            "print(type(zl).__name__, iter(zl) is zl, list(zl), list(zl))\n",
+            "print(list(itertools.zip_longest()))\n",
+            "print(list(itertools.zip_longest([1], [2, 3], fillvalue='x')))\n",
+            "print(list(itertools.zip_longest((value for value in [1, 2]), [3])))\n",
+            "left = iter([1])\n",
+            "right = iter([2, 3])\n",
+            "print(list(itertools.zip_longest(left, right, fillvalue=None)), list(left), list(right))"
+        ),
+        &[
+            "zip_longest True [(1, 'a'), (2, 'b')] []",
+            "[]",
+            "[(1, 2), ('x', 3)]",
+            "[(1, 3), (2, None)]",
+            "[(1, 2), (None, 3)] [] []",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
