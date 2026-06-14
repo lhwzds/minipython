@@ -22390,6 +22390,12 @@ for expr in [
     lambda: memoryview(b'abc').__exit__(None, None, None, bad=True),
     lambda: memoryview(b'abc').__len__(1),
     lambda: memoryview(b'abc').__len__(bad=True),
+    lambda: memoryview(b'abc').__getitem__(),
+    lambda: memoryview(b'abc').__getitem__(0, 1),
+    lambda: memoryview(b'abc').__getitem__(key=0),
+    lambda: memoryview(b'abc').__delitem__(),
+    lambda: memoryview(b'abc').__delitem__(0, 1),
+    lambda: memoryview(b'abc').__delitem__(key=0),
 ]:
     try:
         expr()

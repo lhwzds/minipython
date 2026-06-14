@@ -19023,7 +19023,7 @@ impl Vm {
             "memoryview.__getitem__" => {
                 let [receiver @ Value::MemoryView(_), index] = args.as_slice() else {
                     return Err(format!(
-                        "__getitem__() expected 1 argument, got {}",
+                        "TypeError: expected 1 argument, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -19042,7 +19042,7 @@ impl Vm {
             "memoryview.__delitem__" => {
                 let [receiver @ Value::MemoryView(_), index] = args.as_slice() else {
                     return Err(format!(
-                        "__delitem__() expected 1 argument, got {}",
+                        "TypeError: expected 1 argument, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -71871,6 +71871,10 @@ fn reject_memoryview_method_keywords(
         Err("TypeError: __exit__() takes no keyword arguments".to_string())
     } else if name == "memoryview.__len__" {
         Err("TypeError: wrapper __len__() takes no keyword arguments".to_string())
+    } else if name == "memoryview.__getitem__" {
+        Err("TypeError: wrapper __getitem__() takes no keyword arguments".to_string())
+    } else if name == "memoryview.__delitem__" {
+        Err("TypeError: wrapper __delitem__() takes no keyword arguments".to_string())
     } else {
         reject_method_keywords(name, keywords)
     }

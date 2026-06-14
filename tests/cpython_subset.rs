@@ -20229,7 +20229,7 @@ fn cpython_memoryview_basic_methods_and_release_subset() {
     );
 
     assert_output(
-        "m = memoryview(b'abc')\nprint(m.tobytes('C'), m.tobytes('F'), m.tobytes('A'), m.tobytes(order='C'), m.tobytes(None))\nfor expr in [lambda: m.tobytes('bad'), lambda: m.tobytes(''), lambda: m.tobytes(b'C'), lambda: m.tobytes(order=b'C'), lambda: m.tobytes(bad='C'), lambda: m.tobytes('C', 'F'), lambda: m.tobytes(order='C', bad='F'), lambda: m.tolist(1), lambda: m.toreadonly(1), lambda: m.release(1), lambda: m.tolist(bad=True), lambda: m.toreadonly(bad=True), lambda: m.release(bad=True), lambda: m.__enter__(1), lambda: m.__enter__(bad=True), lambda: m.__exit__(None, None, None, bad=True), lambda: m.__len__(1), lambda: m.__len__(bad=True)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, str(error))\nfor args in [(), (None,), (None, None), (None, None, None), (None, None, None, None)]:\n    m = memoryview(b'abc')\n    print('exit-args', len(args), m.__exit__(*args), 'released memory' in repr(m))",
+        "m = memoryview(b'abc')\nprint(m.tobytes('C'), m.tobytes('F'), m.tobytes('A'), m.tobytes(order='C'), m.tobytes(None))\nfor expr in [lambda: m.tobytes('bad'), lambda: m.tobytes(''), lambda: m.tobytes(b'C'), lambda: m.tobytes(order=b'C'), lambda: m.tobytes(bad='C'), lambda: m.tobytes('C', 'F'), lambda: m.tobytes(order='C', bad='F'), lambda: m.tolist(1), lambda: m.toreadonly(1), lambda: m.release(1), lambda: m.tolist(bad=True), lambda: m.toreadonly(bad=True), lambda: m.release(bad=True), lambda: m.__enter__(1), lambda: m.__enter__(bad=True), lambda: m.__exit__(None, None, None, bad=True), lambda: m.__len__(1), lambda: m.__len__(bad=True), lambda: m.__getitem__(), lambda: m.__getitem__(0, 1), lambda: m.__getitem__(key=0), lambda: m.__delitem__(), lambda: m.__delitem__(0, 1), lambda: m.__delitem__(key=0)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, str(error))\nfor args in [(), (None,), (None, None), (None, None, None), (None, None, None, None)]:\n    m = memoryview(b'abc')\n    print('exit-args', len(args), m.__exit__(*args), 'released memory' in repr(m))",
         &[
             "b'abc' b'abc' b'abc' b'abc' b'abc'",
             "ValueError order must be 'C', 'F' or 'A'",
@@ -20250,6 +20250,12 @@ fn cpython_memoryview_basic_methods_and_release_subset() {
             "TypeError __exit__() takes no keyword arguments",
             "TypeError expected 0 arguments, got 1",
             "TypeError wrapper __len__() takes no keyword arguments",
+            "TypeError expected 1 argument, got 0",
+            "TypeError expected 1 argument, got 2",
+            "TypeError wrapper __getitem__() takes no keyword arguments",
+            "TypeError expected 1 argument, got 0",
+            "TypeError expected 1 argument, got 2",
+            "TypeError wrapper __delitem__() takes no keyword arguments",
             "exit-args 0 None True",
             "exit-args 1 None True",
             "exit-args 2 None True",
