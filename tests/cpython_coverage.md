@@ -823,7 +823,8 @@ Recent runtime migration notes:
   subclass and `IntEnum` values/keys,
   list/tuple containers including 200-level nested list encoding,
   list/tuple/namedtuple subclass containers through
-  public iteration, non-empty dict subclass containers through public
+  public iteration, CPython json encoder TypeError text for bad list/tuple
+  subclass `__iter__` returns, non-empty dict subclass containers through public
   `items()` with CPython's 2-tuple item requirement, CPython's
   empty-dict-subclass `{}` fast path, `Counter` mapping containers, and
   namedtuples, standard string escapes,

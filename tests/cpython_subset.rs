@@ -33853,6 +33853,12 @@ class EmptyList(list):
 class BadList(list):
     def __iter__(self):
         raise RuntimeError('boom')
+class BadListIter(list):
+    def __iter__(self):
+        return 42
+class BadTupleIter(tuple):
+    def __iter__(self):
+        return 42
 
 print(json.dumps(JsonList([1, 2])))
 print(json.dumps(JsonTuple((3, 4))))
@@ -33861,8 +33867,21 @@ print(json.dumps(EmptyList()))
 try:
     json.dumps(BadList([1]))
 except Exception as error:
-    print(type(error).__name__, str(error))"#,
-        &["[9, 8]", "[7]", "[6]", "[5]", "RuntimeError boom"],
+    print(type(error).__name__, str(error))
+for value in [BadListIter([1]), BadTupleIter((1,))]:
+    try:
+        json.dumps(value)
+    except TypeError as error:
+        print(type(error).__name__, str(error))"#,
+        &[
+            "[9, 8]",
+            "[7]",
+            "[6]",
+            "[5]",
+            "RuntimeError boom",
+            "TypeError _iterencode_list needs a sequence",
+            "TypeError _iterencode_list needs a sequence",
+        ],
     );
 }
 

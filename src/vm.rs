@@ -59182,7 +59182,15 @@ fn json_dumps_iterable_sequence(
     depth: usize,
     default_depth: usize,
 ) -> Result<String, String> {
-    let items = vm.collect_iterable_values_propagating(value.clone())?;
+    let items = vm
+        .collect_iterable_values_propagating(value.clone())
+        .map_err(|error| {
+            if error.starts_with("TypeError: iter() returned non-iterator") {
+                "TypeError: _iterencode_list needs a sequence".to_string()
+            } else {
+                error
+            }
+        })?;
     json_dumps_sequence(vm, &items, active, options, depth, default_depth)
 }
 
