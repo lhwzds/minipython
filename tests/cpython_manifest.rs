@@ -3550,6 +3550,64 @@ fn cpython_test_manifest_ast_tests_method_audit_matches_current_source() {
 }
 
 #[test]
+fn cpython_test_manifest_ast_garbage_collection_stays_runtime_blocked() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_ast/test_ast.py::AST_Tests` Method Audit");
+    let row = methods
+        .iter()
+        .find(|method| method.method == "test_AST_garbage_collection")
+        .expect("AST_Tests audit must include test_AST_garbage_collection");
+
+    assert_eq!(
+        row.status, "blocked_by_runtime",
+        "AST garbage-collection test must stay blocked until public weakref/cyclic-GC runtime support exists"
+    );
+    assert_eq!(
+        row.evidence, "None.",
+        "AST garbage-collection row must not claim runtime evidence before weakref/cyclic-GC support exists"
+    );
+    for required in ["weakref", "cyclic GC", "AST objects"] {
+        assert!(
+            row.remaining.contains(required),
+            "AST garbage-collection remaining-acceptance text must mention `{required}`"
+        );
+    }
+
+    let ast_group = manifest_groups()
+        .into_iter()
+        .find(|group| group.source == "Lib/test/test_ast/test_ast.py" && group.group == "AST_Tests")
+        .expect("AST_Tests manifest group must exist");
+    assert_eq!(
+        ast_group.status, "partial",
+        "AST_Tests group must remain partial while the garbage-collection method is runtime-blocked"
+    );
+    for required in [
+        "test_AST_garbage_collection",
+        "weakref/cyclic-GC runtime support",
+        "CPython-only methods",
+    ] {
+        assert!(
+            MANIFEST.contains(required),
+            "AST_Tests group summary must keep `{required}` visible"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "test_AST_garbage_collection",
+            "weakref",
+            "cyclic GC",
+            "public AST",
+        ] {
+            assert!(
+                document.contains(required),
+                "AST coverage/migration docs must keep `{required}` visible for the garbage-collection stop line"
+            );
+        }
+    }
+}
+
+#[test]
 fn cpython_test_manifest_lazy_import_test_method_audit_matches_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_AST_SOURCE);
     let expected = python_test_class_method_names(&source, "LazyImportTest");

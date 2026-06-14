@@ -3229,6 +3229,10 @@ without adding general custom encoder/decoder class support.
   docstring, long-list compressed AST node `repr()` output, and
   `ValueError` propagation when AST repr would convert an oversized integer
   to decimal text.
+  `AST_Tests.test_AST_garbage_collection` remains outside the current public AST
+  evidence because it requires public `weakref` plus cyclic GC behavior for AST
+  objects; the method stays `blocked_by_runtime` until that runtime surface is
+  explicitly promoted.
   `cpython_ast_get_docstring_first_pass_subset` adds first-pass
   `ast.get_docstring()` support for modules, classes, functions, async
   functions, `clean=False`, missing docstrings, and unsupported-node
