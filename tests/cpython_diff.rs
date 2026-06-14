@@ -6556,6 +6556,16 @@ checks = [
     ("bin", lambda: bin(number=1)),
     ("oct", lambda: oct(number=1)),
     ("hex", lambda: hex(number=1)),
+    ("object-init", lambda: object.__init__(object(), bad=1)),
+    ("object-hash", lambda: object.__hash__(object(), bad=1)),
+    ("object-eq", lambda: object.__eq__(object(), other=object())),
+    ("object-ne", lambda: object.__ne__(object(), other=object())),
+    ("object-lt", lambda: object.__lt__(object(), other=object())),
+    ("object-le", lambda: object.__le__(object(), other=object())),
+    ("object-gt", lambda: object.__gt__(object(), other=object())),
+    ("object-ge", lambda: object.__ge__(object(), other=object())),
+    ("isinstance", lambda: isinstance(object=1, classinfo=object)),
+    ("issubclass", lambda: issubclass(cls=object, classinfo=object)),
 ]
 for label, expr in checks:
     try:

@@ -9319,14 +9319,14 @@ impl Vm {
             }
             Value::Builtin(name) if name == "isinstance" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_isinstance(args)
             }
             Value::Builtin(name) if name == "issubclass" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_issubclass(args)
@@ -9344,14 +9344,19 @@ impl Vm {
             Value::Builtin(name) if name == "property" => call_property_constructor(args, keywords),
             Value::Builtin(name) if name == "object.__init__" => {
                 if !keywords.is_empty() {
-                    return Err("__init__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: object.__init__() takes exactly one argument (the instance to initialize)"
+                            .to_string(),
+                    );
                 }
 
                 self.call_object_init(args)
             }
             Value::Builtin(name) if name == "object.__hash__" => {
                 if !keywords.is_empty() {
-                    return Err("__hash__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __hash__() takes no keyword arguments".to_string()
+                    );
                 }
 
                 self.call_object_hash(args)
@@ -9369,7 +9374,7 @@ impl Vm {
             {
                 if !keywords.is_empty() {
                     return Err(format!(
-                        "TypeError: {}() does not accept keyword arguments",
+                        "TypeError: wrapper {}() takes no keyword arguments",
                         method_display_name(&name)
                     ));
                 }

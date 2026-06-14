@@ -47,8 +47,10 @@ Recent runtime migration notes:
   rejection; the same evidence now covers representative public builtin and
   descriptor entry points including `object.__repr__`, `object.__str__`,
   `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
-  `object.__format__`, `object.__dir__`, `slice.indices`, `dict.fromkeys`,
-  `str.maketrans`, `super()`, and common stdlib-backed builtins such as
+  `object.__format__`, `object.__dir__`, `object.__init__`, `object.__hash__`,
+  object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
+  `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, and common
+  stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.
 - The same runtime exception-capture evidence pins unexpected-keyword text for
