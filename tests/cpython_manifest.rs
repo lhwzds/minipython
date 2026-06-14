@@ -11087,6 +11087,43 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn bound_method_descriptor_subset_has_focused_error_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_bound_method_descriptor_and_repr_subset",
+    );
+    for required in [
+        "lambda: bound.__get__()",
+        "lambda: bound.__get__(b, B, A)",
+        "wrapper __get__() takes no keyword arguments",
+        "lambda: bound.__get__(None, None)",
+        "__get__(None, None) is invalid",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "bound-method descriptor subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_program_output_parity_smoke_diff_subset",
+    );
+    for required in [
+        "lambda: bound.__get__()",
+        "lambda: bound.__get__(b, B, A)",
+        "wrapper __get__() takes no keyword arguments",
+        "lambda: bound.__get__(None, None)",
+        "__get__(None, None) is invalid",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "bound-method descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn builtin_singleton_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_construct_singletons_subset(",

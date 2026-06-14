@@ -9436,13 +9436,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "super.__get__" => self.call_super_get(args, keywords),
             Value::Builtin(name) if name == "method.__get__" => {
-                if !keywords.is_empty() {
-                    return Err(
-                        "TypeError: __get__() does not accept keyword arguments".to_string()
-                    );
-                }
-
-                self.call_method_get(args)
+                self.call_method_get(args, keywords)
             }
             Value::Builtin(name) if name == "descriptor.__get__" => {
                 if !keywords.is_empty() {
@@ -9451,7 +9445,7 @@ impl Vm {
                     );
                 }
 
-                self.call_method_get(args)
+                self.call_method_get(args, Vec::new())
             }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
                 if !keywords.is_empty() {
@@ -16324,21 +16318,24 @@ impl Vm {
         self.super_descriptor_get(descriptor, object, owner)
     }
 
-    fn call_method_get(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_method_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("TypeError: __get__() expected a method receiver".to_string());
         };
         let descriptor @ Value::BoundMethod { .. } = descriptor.clone() else {
             return Err("TypeError: __get__() expected a method receiver".to_string());
         };
-        if rest.is_empty() {
-            return Err("TypeError: __get__() expected at least 1 argument, got 0".to_string());
-        }
-        if rest.len() > 2 {
-            return Err(format!(
-                "TypeError: __get__() expected at most 2 arguments, got {}",
-                rest.len()
-            ));
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+        if matches!(rest[0], Value::None)
+            && rest
+                .get(1)
+                .is_some_and(|owner| matches!(owner, Value::None))
+        {
+            return Err("TypeError: __get__(None, None) is invalid".to_string());
         }
 
         Ok(descriptor)

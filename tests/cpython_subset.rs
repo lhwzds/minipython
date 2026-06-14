@@ -25084,11 +25084,17 @@ class Foo:
 
 check(repr(Foo().method), 'Foo.method', '<class')
 check(repr(Foo.method), 'Foo.method', '<class')
-for expr in [lambda: bound.__get__(), lambda: bound.__get__(b, B, A)]:
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: bound.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: bound.__get__(b, B, A)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: bound.__get__(obj=b, type=B)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: bound.__get__(bad=1)),
+    ('none-none', '__get__(None, None) is invalid', lambda: bound.__get__(None, None)),
+]:
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(label, error.__class__.__name__, str(error), str(error) == expected)"#,
         &[
             "True",
             "True True",
@@ -25099,8 +25105,11 @@ for expr in [lambda: bound.__get__(), lambda: bound.__get__(b, B, A)]:
             "True True True",
             "True True True",
             "True True True",
-            "TypeError",
-            "TypeError",
+            "missing TypeError  expected at least 1 argument, got 0 True",
+            "too-many TypeError  expected at most 2 arguments, got 3 True",
+            "keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "bad-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "none-none TypeError __get__(None, None) is invalid True",
         ],
     );
 }

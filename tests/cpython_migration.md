@@ -6342,7 +6342,8 @@ Completed in the bound method descriptor/repr pass:
   method/receiver-name checks from `::test_bound_method_repr`.
 - Implemented bound method `__get__` so rebinding a bound method keeps calling
   the original receiver, matching CPython's method descriptor behavior for the
-  migrated case.
+  migrated case. The same subset now pins CPython method-wrapper error paths
+  for missing, too many, keyword, and invalid `None, None` owner arguments.
 - Changed bound method repr from MiniPython's short `<bound method name>` form to
   include the method qualname and receiver repr, and added a differential parity
   smoke case using address-independent CPython checks.
