@@ -23580,13 +23580,12 @@ impl Vm {
         let memo_value = values[1].take();
         let nil_value = values[2].take();
         let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref(), nil_value.as_ref())?;
-        if let Some(copied) = self.call_deepcopy_hook(&value, memo_value.as_ref(), &memo)? {
-            if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
-                copy_deepcopy_sync_memo(value, &memo)?;
-            }
-            return Ok(copied);
-        }
-        let copied = deep_copy_value(&value, &mut memo)?;
+        let hook_memo = if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
+            value.clone()
+        } else {
+            dict_value(Vec::new())
+        };
+        let copied = self.deep_copy_value(&value, &mut memo, &hook_memo)?;
         if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
             copy_deepcopy_sync_memo(value, &memo)?;
         }
@@ -23607,7 +23606,7 @@ impl Vm {
     fn call_deepcopy_hook(
         &mut self,
         value: &Value,
-        memo_value: Option<&Value>,
+        memo_value: &Value,
         memo: &HashMap<usize, Value>,
     ) -> Result<Option<Value>, String> {
         let method = match self.load_attribute_catching(value.clone(), "__deepcopy__")? {
@@ -23617,13 +23616,20 @@ impl Vm {
             }
             Err(exception) => return Err(format_exception_error(&exception)),
         };
-        let hook_memo = if let Some(value @ Value::Dict(_)) = memo_value {
-            value.clone()
-        } else {
-            dict_value(Vec::new())
+        copy_deepcopy_sync_memo(memo_value, memo)?;
+        self.call_value(method, vec![memo_value.clone()]).map(Some)
+    }
+
+    fn deep_copy_value(
+        &mut self,
+        value: &Value,
+        memo: &mut HashMap<usize, Value>,
+        hook_memo: &Value,
+    ) -> Result<Value, String> {
+        let mut hook = |value: &Value, memo: &mut HashMap<usize, Value>| {
+            self.call_deepcopy_hook(value, hook_memo, memo)
         };
-        copy_deepcopy_sync_memo(&hook_memo, memo)?;
-        self.call_value(method, vec![hook_memo]).map(Some)
+        deep_copy_value_with_hook(value, memo, &mut hook)
     }
 
     fn call_copy_replace(
@@ -33830,7 +33836,44 @@ fn copy_deepcopy_sync_memo(memo_value: &Value, memo: &HashMap<usize, Value>) -> 
     Ok(())
 }
 
-fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Value, String> {
+fn copy_deepcopy_identity_key(value: &Value) -> Option<usize> {
+    match value {
+        Value::AstNode { identity, .. } => Some(Rc::as_ptr(identity) as usize),
+        Value::List(items) => Some(Rc::as_ptr(items) as usize),
+        Value::UserList { data, .. } => Some(Rc::as_ptr(data) as usize),
+        Value::Tuple(items) => Some(Rc::as_ptr(items) as usize),
+        Value::Deque { data, .. } => Some(Rc::as_ptr(data) as usize),
+        Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize),
+        Value::BytesIO(bytes_io) => Some(Rc::as_ptr(bytes_io) as usize),
+        Value::Dict(entries) => Some(Rc::as_ptr(entries) as usize),
+        Value::UserDict { data, .. } => Some(Rc::as_ptr(data) as usize),
+        Value::SimpleNamespace { fields } => Some(Rc::as_ptr(fields) as usize),
+        Value::Instance { fields, .. } => Some(Rc::as_ptr(fields) as usize),
+        _ => None,
+    }
+}
+
+fn deep_copy_value_with_hook<F>(
+    value: &Value,
+    memo: &mut HashMap<usize, Value>,
+    hook: &mut F,
+) -> Result<Value, String>
+where
+    F: FnMut(&Value, &mut HashMap<usize, Value>) -> Result<Option<Value>, String>,
+{
+    let identity_key = copy_deepcopy_identity_key(value);
+    if let Some(key) = identity_key
+        && let Some(copied) = memo.get(&key)
+    {
+        return Ok(copied.clone());
+    }
+    if let Some(copied) = hook(value, memo)? {
+        if let Some(key) = identity_key {
+            memo.insert(key, copied.clone());
+        }
+        return Ok(copied);
+    }
+
     match value {
         Value::String(value) => Ok(Value::IdentityString {
             value: value.clone(),
@@ -33859,8 +33902,8 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let entries = attrs.borrow().entries.clone();
             let mut copied_entries = Vec::new();
             for (attr_name, attr_value) in entries {
-                let attr_name = deep_copy_value(&attr_name, memo)?;
-                let attr_value = deep_copy_value(&attr_value, memo)?;
+                let attr_name = deep_copy_value_with_hook(&attr_name, memo, hook)?;
+                let attr_value = deep_copy_value_with_hook(&attr_value, memo, hook)?;
                 insert_dict_entry(&mut copied_entries, attr_name, attr_value)?;
             }
             *copied_attrs.borrow_mut() = DictStorage::new(copied_entries);
@@ -33877,7 +33920,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let items = items.borrow().clone();
             let copied_values = items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             *copied_items.borrow_mut() = copied_values;
             Ok(copied)
@@ -33897,14 +33940,17 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let data = data.borrow().clone();
             let copied_values = data
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             *copied_data.borrow_mut() = copied_values;
             let attrs = attrs.borrow().entries.clone();
             let copied_attr_values = attrs
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             for (key, value) in copied_attr_values {
@@ -33919,7 +33965,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             }
             let copied_items = items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             let copied = if items
                 .iter()
@@ -33938,7 +33984,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             values: Rc::new(
                 values
                     .iter()
-                    .map(|item| deep_copy_value(item, memo))
+                    .map(|item| deep_copy_value_with_hook(item, memo, hook))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
         }),
@@ -33956,7 +34002,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let data = data.borrow().clone();
             let copied_values = data
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             *copied_data.borrow_mut() = copied_values;
             Ok(copied)
@@ -33965,13 +34011,13 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             items
                 .borrow()
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
         Value::FrozenSet(items) => Ok(frozen_set_value(
             items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
         )),
         Value::ByteArray(bytes) => {
@@ -34002,7 +34048,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
                 for (name, attr_value) in attrs {
                     copied_attrs
                         .borrow_mut()
-                        .insert(name, deep_copy_value(&attr_value, memo)?);
+                        .insert(name, deep_copy_value_with_hook(&attr_value, memo, hook)?);
                 }
             }
             Ok(copied)
@@ -34019,7 +34065,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let copied_values = entries
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             *copied_entries.borrow_mut() = DictStorage::new(Vec::new());
@@ -34033,7 +34082,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let copied_entries = entries
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             Ok(Value::Counter {
@@ -34056,7 +34108,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let copied_data_values = data
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             for (key, value) in copied_data_values {
@@ -34066,7 +34121,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let copied_attr_values = attrs
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             for (key, value) in copied_attr_values {
@@ -34077,7 +34135,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
         Value::ChainMap { maps } => Ok(Value::ChainMap {
             maps: maps
                 .iter()
-                .map(|map| deep_copy_value(map, memo))
+                .map(|map| deep_copy_value_with_hook(map, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
         }),
         Value::SimpleNamespace { fields } => {
@@ -34094,7 +34152,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             let copied_values = entries
                 .into_iter()
                 .map(|(key, value)| {
-                    Ok((deep_copy_value(&key, memo)?, deep_copy_value(&value, memo)?))
+                    Ok((
+                        deep_copy_value_with_hook(&key, memo, hook)?,
+                        deep_copy_value_with_hook(&value, memo, hook)?,
+                    ))
                 })
                 .collect::<Result<Vec<_>, String>>()?;
             for (key, value) in copied_values {
@@ -34104,7 +34165,9 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
         }
         Value::Iterator(state) => {
             let iterator = state.borrow().clone();
-            Ok(shared_iterator(deep_copy_iterator_state(&iterator, memo)?))
+            Ok(shared_iterator(deep_copy_iterator_state(
+                &iterator, memo, hook,
+            )?))
         }
         Value::Instance {
             class_name,
@@ -34125,9 +34188,10 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             };
             memo.insert(key, copied.clone());
             for (name, field_value) in fields.borrow().iter() {
-                copied_fields
-                    .borrow_mut()
-                    .insert(name.clone(), deep_copy_value(field_value, memo)?);
+                copied_fields.borrow_mut().insert(
+                    name.clone(),
+                    deep_copy_value_with_hook(field_value, memo, hook)?,
+                );
             }
             Ok(copied)
         }
@@ -34138,7 +34202,7 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
         Value::OperatorItemGetter { items, .. } => Ok(Value::OperatorItemGetter {
             items: items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             identity: Rc::new(()),
         }),
@@ -34151,11 +34215,13 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
             name: name.clone(),
             args: args
                 .iter()
-                .map(|arg| deep_copy_value(arg, memo))
+                .map(|arg| deep_copy_value_with_hook(arg, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             keywords: keywords
                 .iter()
-                .map(|(key, value)| Ok((key.clone(), deep_copy_value(value, memo)?)))
+                .map(|(key, value)| {
+                    Ok((key.clone(), deep_copy_value_with_hook(value, memo, hook)?))
+                })
                 .collect::<Result<Vec<_>, String>>()?,
             identity: Rc::new(()),
         }),
@@ -34164,10 +34230,19 @@ fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Va
     }
 }
 
-fn deep_copy_iterator_state(
+fn deep_copy_value(value: &Value, memo: &mut HashMap<usize, Value>) -> Result<Value, String> {
+    let mut hook = |_: &Value, _: &mut HashMap<usize, Value>| Ok(None);
+    deep_copy_value_with_hook(value, memo, &mut hook)
+}
+
+fn deep_copy_iterator_state<F>(
     iterator: &Value,
     memo: &mut HashMap<usize, Value>,
-) -> Result<Value, String> {
+    hook: &mut F,
+) -> Result<Value, String>
+where
+    F: FnMut(&Value, &mut HashMap<usize, Value>) -> Result<Option<Value>, String>,
+{
     match iterator {
         Value::RangeIterator {
             current,
@@ -34186,7 +34261,7 @@ fn deep_copy_iterator_state(
             let copied_items = items
                 .borrow()
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?;
             let Value::List(items) = list_value(copied_items) else {
                 unreachable!("list_value returns a list")
@@ -34200,14 +34275,14 @@ fn deep_copy_iterator_state(
         Value::TupleIterator { items, index } => Ok(Value::TupleIterator {
             items: items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
         }),
         Value::TemplateIterator { items, index } => Ok(Value::TemplateIterator {
             items: items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
         }),
@@ -34249,7 +34324,7 @@ fn deep_copy_iterator_state(
         } => Ok(Value::SetIterator {
             items: items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
             source: source.clone(),
@@ -34271,7 +34346,7 @@ fn deep_copy_iterator_state(
         Value::ReverseIterator { items, index } => Ok(Value::ReverseIterator {
             items: items
                 .iter()
-                .map(|item| deep_copy_value(item, memo))
+                .map(|item| deep_copy_value_with_hook(item, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
         }),
@@ -34287,20 +34362,20 @@ fn deep_copy_iterator_state(
             entries: entries.clone(),
             keys: keys
                 .iter()
-                .map(|key| deep_copy_value(key, memo))
+                .map(|key| deep_copy_value_with_hook(key, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
             expected_len: *expected_len,
             expected_version: *expected_version,
         }),
         Value::EnumerateIterator { iterator, index } => Ok(Value::EnumerateIterator {
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
             index: index.clone(),
         }),
         Value::ZipIterator { iterators, strict } => Ok(Value::ZipIterator {
             iterators: iterators
                 .iter()
-                .map(|iterator| deep_copy_value(iterator, memo))
+                .map(|iterator| deep_copy_value_with_hook(iterator, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             strict: *strict,
         }),
@@ -34309,16 +34384,16 @@ fn deep_copy_iterator_state(
             iterators,
             strict,
         } => Ok(Value::MapIterator {
-            function: Box::new(deep_copy_value(function, memo)?),
+            function: Box::new(deep_copy_value_with_hook(function, memo, hook)?),
             iterators: iterators
                 .iter()
-                .map(|iterator| deep_copy_value(iterator, memo))
+                .map(|iterator| deep_copy_value_with_hook(iterator, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             strict: *strict,
         }),
         Value::FilterIterator { function, iterator } => Ok(Value::FilterIterator {
-            function: Box::new(deep_copy_value(function, memo)?),
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            function: Box::new(deep_copy_value_with_hook(function, memo, hook)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
         }),
         Value::ItertoolsAccumulate {
             iterator,
@@ -34326,15 +34401,15 @@ fn deep_copy_iterator_state(
             total,
             initial,
         } => Ok(Value::ItertoolsAccumulate {
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
-            function: Box::new(deep_copy_value(function, memo)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
+            function: Box::new(deep_copy_value_with_hook(function, memo, hook)?),
             total: total
                 .as_ref()
-                .map(|value| deep_copy_value(value, memo).map(Box::new))
+                .map(|value| deep_copy_value_with_hook(value, memo, hook).map(Box::new))
                 .transpose()?,
             initial: initial
                 .as_ref()
-                .map(|value| deep_copy_value(value, memo).map(Box::new))
+                .map(|value| deep_copy_value_with_hook(value, memo, hook).map(Box::new))
                 .transpose()?,
         }),
         Value::ItertoolsCycle {
@@ -34343,10 +34418,10 @@ fn deep_copy_iterator_state(
             index,
             exhausted,
         } => Ok(Value::ItertoolsCycle {
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
             saved: saved
                 .iter()
-                .map(|value| deep_copy_value(value, memo))
+                .map(|value| deep_copy_value_with_hook(value, memo, hook))
                 .collect::<Result<Vec<_>, _>>()?,
             index: *index,
             exhausted: *exhausted,
@@ -34356,8 +34431,8 @@ fn deep_copy_iterator_state(
             iterator,
             done,
         } => Ok(Value::ItertoolsTakewhile {
-            predicate: Box::new(deep_copy_value(predicate, memo)?),
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            predicate: Box::new(deep_copy_value_with_hook(predicate, memo, hook)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
             done: *done,
         }),
         Value::ItertoolsDropwhile {
@@ -34365,13 +34440,13 @@ fn deep_copy_iterator_state(
             iterator,
             dropping,
         } => Ok(Value::ItertoolsDropwhile {
-            predicate: Box::new(deep_copy_value(predicate, memo)?),
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            predicate: Box::new(deep_copy_value_with_hook(predicate, memo, hook)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
             dropping: *dropping,
         }),
         Value::ItertoolsStarmap { function, iterator } => Ok(Value::ItertoolsStarmap {
-            function: Box::new(deep_copy_value(function, memo)?),
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            function: Box::new(deep_copy_value_with_hook(function, memo, hook)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
         }),
         Value::ItertoolsZipLongest {
             iterators,
@@ -34382,31 +34457,31 @@ fn deep_copy_iterator_state(
                 .map(|iterator| {
                     iterator
                         .as_ref()
-                        .map(|value| deep_copy_value(value, memo))
+                        .map(|value| deep_copy_value_with_hook(value, memo, hook))
                         .transpose()
                 })
                 .collect::<Result<Vec<_>, _>>()?,
-            fillvalue: Box::new(deep_copy_value(fillvalue, memo)?),
+            fillvalue: Box::new(deep_copy_value_with_hook(fillvalue, memo, hook)?),
         }),
         Value::ItertoolsFilterFalse { function, iterator } => Ok(Value::ItertoolsFilterFalse {
-            function: Box::new(deep_copy_value(function, memo)?),
-            iterator: Box::new(deep_copy_value(iterator, memo)?),
+            function: Box::new(deep_copy_value_with_hook(function, memo, hook)?),
+            iterator: Box::new(deep_copy_value_with_hook(iterator, memo, hook)?),
         }),
         Value::CallIterator {
             callable,
             sentinel,
             done,
         } => Ok(Value::CallIterator {
-            callable: Box::new(deep_copy_value(callable, memo)?),
-            sentinel: Box::new(deep_copy_value(sentinel, memo)?),
+            callable: Box::new(deep_copy_value_with_hook(callable, memo, hook)?),
+            sentinel: Box::new(deep_copy_value_with_hook(sentinel, memo, hook)?),
             done: *done,
         }),
         Value::SequenceIterator { object, index } => Ok(Value::SequenceIterator {
-            object: Box::new(deep_copy_value(object, memo)?),
+            object: Box::new(deep_copy_value_with_hook(object, memo, hook)?),
             index: *index,
         }),
         Value::SequenceReverseIterator { object, index } => Ok(Value::SequenceReverseIterator {
-            object: Box::new(deep_copy_value(object, memo)?),
+            object: Box::new(deep_copy_value_with_hook(object, memo, hook)?),
             index: *index,
         }),
         value => Ok(value.clone()),

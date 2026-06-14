@@ -12764,12 +12764,20 @@ class CustomDeep:
 class BadDeep:
     def __deepcopy__(self):
         return 'bad'
+class MemoDeep:
+    calls = 0
+    def __deepcopy__(self, memo):
+        type(self).calls += 1
+        return ['memo-copy', type(self).calls]
 print('custom-copy', copy.copy(CustomCopy()))
 print('custom-deep', copy.deepcopy(CustomDeep()))
 try:
     copy.deepcopy(BadDeep())
 except TypeError as error:
     print('bad-deep', type(error).__name__)
+memo_obj = MemoDeep()
+memo_cloned = copy.deepcopy([memo_obj, memo_obj])
+print('custom-deep-memo', MemoDeep.calls, memo_cloned[0] is memo_cloned[1], memo_cloned)
 nested = [1, [2], {'a': [3]}]
 shallow = copy.copy(nested)
 deep = copy.deepcopy(nested)

@@ -7569,6 +7569,8 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "__deepcopy__",
         "custom-deep",
         "bad-deep",
+        "class MemoDeep",
+        "custom-deep-memo",
         "copy.copy(nested)",
         "copy.deepcopy(nested)",
         "copy.copy(value) == value",

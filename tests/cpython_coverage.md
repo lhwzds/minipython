@@ -1580,8 +1580,8 @@ Recent runtime migration notes:
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
   and identity, pure Python `__copy__` / `__deepcopy__` hook dispatch with
-  TypeError propagation for bad hook signatures, nested list/dict
-  shallow-vs-deep copy behavior, `deepcopy()` memo preservation for
+  recursive memo reuse and TypeError propagation for bad hook signatures,
+  nested list/dict shallow-vs-deep copy behavior, `deepcopy()` memo preservation for
   shared list/dict/tuple members, explicit memo dict pre-seeding and population for
   supported identities, and self-referential lists, shared user-instance fields
   and user-instance self-cycles, and shared `UserList` / `UserDict` / `deque`
