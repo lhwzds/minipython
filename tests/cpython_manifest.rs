@@ -11172,6 +11172,8 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         "negative seek value -1",
         "invalid whence (3, should be 0, 1 or 2)",
         "negative size value -1",
+        "seek expected at least 1 argument, got 0",
+        "seek expected at most 2 arguments, got 3",
         "'int' object is not iterable",
     ] {
         assert!(

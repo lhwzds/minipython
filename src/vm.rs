@@ -19136,9 +19136,15 @@ impl Vm {
             ));
         };
         bytes_io_ensure_open(bytes_io)?;
-        if rest.is_empty() || rest.len() > 2 {
+        if rest.is_empty() {
             return Err(format!(
-                "TypeError: seek expected 1 or 2 arguments, got {}",
+                "TypeError: seek expected at least 1 argument, got {}",
+                rest.len()
+            ));
+        }
+        if rest.len() > 2 {
+            return Err(format!(
+                "TypeError: seek expected at most 2 arguments, got {}",
                 rest.len()
             ));
         }

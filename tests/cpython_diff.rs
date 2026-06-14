@@ -13834,6 +13834,12 @@ for label, expr in [('seek-neg-start-text', lambda: io.BytesIO(b'a').seek(-1)), 
         expr()
     except Exception as error:
         print(label, error.__class__.__name__, str(error))
+# CPython oracle text: seek expected at least 1 argument, got 0; seek expected at most 2 arguments, got 3
+for label, expr in [('seek-arity0-text', lambda: io.BytesIO(b'a').seek()), ('seek-arity3-text', lambda: io.BytesIO(b'a').seek(0, 0, 0))]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
 # CPython oracle text: 'int' object is not iterable
 try:
     io.BytesIO().writelines(1)
