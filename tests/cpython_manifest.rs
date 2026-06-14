@@ -15436,13 +15436,13 @@ fn cpython_migration_mentions_all_sandbox_stdlib_runtime_evidence() {
 #[test]
 fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries() {
     for required in [
-        "default CPython oracle used by `cpython_diff` in this workspace",
-        "does not expose `bytearray.take_bytes()`",
+        "older default CPython oracles",
+        "lack `bytearray.take_bytes()`",
+        "`cpython_bytearray_take_bytes_diff_subset`",
         "CPython-version-gated direct diff evidence",
         "`cpython_bytearray_resize_diff_subset`",
         "`cpython_bytearray_resize_forbidden_diff_subset`",
         "`cpython_bytearray_search_reentrancy_buffererror_diff_subset`",
-        "local subset evidence rather than direct `cpython_diff` evidence",
         "does not expose",
         "current public `__buffer__`",
         "protocol behavior",
@@ -15457,15 +15457,15 @@ fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries()
     }
 
     for required in [
-        "default CPython",
-        "oracle used by `cpython_diff` in this workspace",
+        "older default CPython oracles",
+        "lack `bytearray.take_bytes()`",
+        "`cpython_bytearray_take_bytes_diff_subset`",
         "CPython-version-gated",
         "`cpython_bytearray_resize_diff_subset`",
         "`cpython_bytearray_resize_forbidden_diff_subset`",
         "`cpython_bytearray_search_reentrancy_buffererror_diff_subset`",
-        "does not expose",
         "`bytearray.take_bytes()`",
-        "remains local subset evidence",
+        "continue to rely on local subset evidence",
         "current public `__buffer__`",
         "protocol behavior",
         "historical corrupted-bytearray",
@@ -15475,6 +15475,21 @@ fn cpython_migration_documents_default_oracle_only_bytearray_subset_boundaries()
         assert!(
             CPYTHON_COVERAGE.contains(required),
             "coverage document must mention default-oracle bytearray subset boundary `{required}`"
+        );
+    }
+
+    let take_bytes_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_bytearray_take_bytes_diff_subset");
+    for required in [
+        "hasattr(bytearray(b''), 'take_bytes')",
+        "skipping bytearray.take_bytes diff",
+        "ba.take_bytes(Indexable(2))",
+        "BufferError",
+        "'take_bytes' in dir(bytearray)",
+    ] {
+        assert!(
+            take_bytes_diff.contains(required),
+            "bytearray.take_bytes gated diff evidence must contain `{required}`"
         );
     }
 }

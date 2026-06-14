@@ -22138,6 +22138,55 @@ print('resize' in dir(bytearray), 'resize' in dir(bytearray()))"#,
 }
 
 #[test]
+fn cpython_bytearray_take_bytes_diff_subset() {
+    let probe = run_cpython("print(hasattr(bytearray(b''), 'take_bytes'))")
+        .expect("failed to probe CPython bytearray.take_bytes support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping bytearray.take_bytes diff: CPython oracle lacks bytearray.take_bytes");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::ByteArrayTest::test_take_bytes public subset",
+        name: "bytearray-take-bytes",
+        source: r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class BA(bytearray):
+    pass
+ba = bytearray(b'ab')
+print(ba.take_bytes(), ba, len(ba))
+ba = bytearray(b'abcdef')
+print(ba.take_bytes(1), ba, len(ba))
+print(ba.take_bytes(-5), ba, len(ba))
+print(ba.take_bytes(-3), ba, len(ba))
+print(ba.take_bytes(3), ba, len(ba))
+print(ba.take_bytes(0), ba)
+print(ba.take_bytes(), ba)
+print(ba.take_bytes(None), ba)
+ba = bytearray(b'abcdef')
+print(ba.take_bytes(Indexable(2)), ba)
+ba = BA(b'xyz')
+print(type(ba).__name__, ba.take_bytes(2), type(ba.take_bytes()).__name__, ba)
+for expr in [lambda: bytearray().take_bytes(-1), lambda: bytearray(b'abcdef').take_bytes(7), lambda: bytearray(b'abcdef').take_bytes(3.14), lambda: bytearray(b'abcdef').take_bytes(1, 2)]:
+    try:
+        expr()
+    except (TypeError, IndexError) as error:
+        print(error.__class__.__name__)
+ba = bytearray(b'abc')
+with memoryview(ba):
+    try:
+        ba.take_bytes()
+    except BufferError as error:
+        print(error.__class__.__name__, ba)
+print(ba.take_bytes(), ba)
+print('take_bytes' in dir(bytes), 'take_bytes' in dir(bytearray), 'take_bytes' in dir(bytearray()), 'take_bytes' in dir(BA), 'take_bytes' in dir(BA()))"#,
+    });
+}
+
+#[test]
 fn cpython_bytearray_resize_forbidden_diff_subset() {
     let probe = run_cpython("print(hasattr(bytearray(b''), 'resize'))")
         .expect("failed to probe CPython bytearray.resize support");

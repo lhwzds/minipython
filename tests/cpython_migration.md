@@ -3915,9 +3915,9 @@ Completed in the bytearray take-bytes pass:
   active memoryview exporter `BufferError`, `IndexError` / `TypeError` paths,
   inherited method dispatch for `bytearray` subclasses, and `dir(bytearray)`
   visibility without exposing the method on `bytes`.
-- This remains local subset evidence rather than direct `cpython_diff` evidence
-  because the default CPython oracle used by `cpython_diff` in this workspace
-  does not expose `bytearray.take_bytes()`.
+- Added capability-gated direct CPython evidence in
+  `cpython_bytearray_take_bytes_diff_subset`; older default CPython oracles
+  that lack `bytearray.take_bytes()` continue to rely on local subset evidence.
 - Left exact allocation-size accounting, `sys.getsizeof()`, and the CPython-only
   `test_take_bytes_optimization` as allocation/internal optimization work
   outside this public semantic slice.

@@ -2381,9 +2381,9 @@ without adding general custom encoder/decoder class support.
   `None` stop, `__index__` stop conversion, active memoryview exporter
   `BufferError`, public error classes, inherited `bytearray` subclass method
   dispatch, and `dir(bytearray)` visibility without exposing the method on
-  `bytes`. This remains local subset evidence because the default CPython
-  oracle used by `cpython_diff` in this workspace does not expose
-  `bytearray.take_bytes()`.
+  `bytes`. Direct CPython evidence is in the capability-gated
+  `cpython_bytearray_take_bytes_diff_subset`; older default CPython oracles
+  that lack `bytearray.take_bytes()` continue to rely on local subset evidence.
 - `STRING_RUNTIME` also includes
   `cpython_bytearray_iterator_length_hint_and_repeat_diff_subset`,
   `cpython_bytearray_exhausted_iterator_diff_subset`,
