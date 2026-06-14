@@ -1532,6 +1532,25 @@ try:
 except Exception as error:
     print('same-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))
 
+for label, hook in [
+    ('list-default-cycle', lambda obj: [obj]),
+    ('dict-default-cycle', lambda obj: {'x': obj}),
+    ('tuple-default-cycle', lambda obj: (obj,)),
+]:
+    try:
+        json.dumps(self_box, default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))
+for label, hook in [
+    ('same-default-unchecked', lambda obj: obj),
+    ('list-default-cycle-unchecked', lambda obj: [obj]),
+    ('dict-default-cycle-unchecked', lambda obj: {'x': obj}),
+]:
+    try:
+        json.dumps(self_box, default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))
+
 class FreshDefault:
     def __call__(self, obj):
         return object()

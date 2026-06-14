@@ -4827,6 +4827,8 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "'int' object is not callable",
                 "boom-default",
                 "same-default",
+                "list-default-cycle",
+                "same-default-unchecked",
                 "Circular reference detected",
             ][..],
         ),

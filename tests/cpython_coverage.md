@@ -839,8 +839,9 @@ Recent runtime migration notes:
   general iterables plus CPython-style unpack length `ValueError` text and
   item/key separator element `TypeError` text, `default` hook handling for
   otherwise unsupported objects including nested values, exception propagation,
-  CPython-style non-callable hook `TypeError` text, returned-self circular
-  detection, and fresh unsupported replacement recursion as a Python-level
+  CPython-style non-callable hook `TypeError` text, returned-self and
+  returned-container circular detection, `check_circular=False` recursion
+  classification, and fresh unsupported replacement recursion as a Python-level
   `RecursionError`,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
