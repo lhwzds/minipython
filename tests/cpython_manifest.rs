@@ -11209,6 +11209,15 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("hasattr(builtins, '__all__')"),
         "builtins host IO/debug stop-line test must guard absent module exports and __all__"
     );
+    assert!(
+        LANGUAGE_TESTS.contains("builtins_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("'abs', 'aiter', 'all', 'anext'")
+            && LANGUAGE_TESTS.contains("'BaseException', 'Exception', 'TypeError'")
+            && LANGUAGE_TESTS.contains("'open', 'input', 'help', 'license'")
+            && LANGUAGE_TESTS.contains("print('__import__', hasattr(builtins, '__import__'))")
+            && LANGUAGE_TESTS.contains("print(dir(builtins))"),
+        "builtins sandbox export test must guard public builtins, exceptions, and host IO stop lines"
+    );
 
     let globals_locals_start = CPYTHON_SUBSET
         .find("fn cpython_globals_locals_builtin_subset()")
