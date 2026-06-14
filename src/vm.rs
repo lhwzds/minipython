@@ -59139,8 +59139,22 @@ fn json_dumps_dict_subclass_items(
         Ok(items) => items,
         Err(exception) => return Err(format_exception_error(&exception)),
     };
+    let dict_type_name = type_name(value).to_string();
+    let items_type_name = type_name(&items).to_string();
+    let items = vm
+        .collect_iterable_values_propagating(items)
+        .map_err(|error| {
+            if error.starts_with("TypeError: iter() returned non-iterator") {
+                format!(
+                    "TypeError: {}.items() returned a non-iterable (type {})",
+                    dict_type_name, items_type_name
+                )
+            } else {
+                error
+            }
+        })?;
     let mut entries = Vec::new();
-    for item in vm.collect_iterable_values_propagating(items)? {
+    for item in items {
         entries.push(json_dumps_dict_subclass_item_pair(&item)?);
     }
     Ok(entries)

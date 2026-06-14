@@ -825,7 +825,8 @@ Recent runtime migration notes:
   list/tuple/namedtuple subclass containers through
   public iteration, CPython json encoder TypeError text for bad list/tuple
   subclass `__iter__` returns, non-empty dict subclass containers through public
-  `items()` with CPython's 2-tuple item requirement, CPython's
+  `items()` with CPython's 2-tuple item requirement and non-iterable
+  `items()` result TypeError text, CPython's
   empty-dict-subclass `{}` fast path, `Counter` mapping containers, and
   namedtuples, standard string escapes,
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite

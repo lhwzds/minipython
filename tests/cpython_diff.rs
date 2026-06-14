@@ -1221,6 +1221,12 @@ class Pair(tuple):
 class TupleSubclassItems(dict):
     def items(self):
         return [Pair(('pair', 5))]
+class BadIter:
+    def __iter__(self):
+        return 42
+class DictItemsBadIter(dict):
+    def items(self):
+        return BadIter()
 cases = [
     {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
     {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
@@ -1242,7 +1248,11 @@ for items in [[['a', 1]], ['ab'], [('a',)], [('a', 1, 2)]]:
     try:
         json.dumps(BadItems(x=1))
     except ValueError as error:
-        print(type(error).__name__, str(error))"#,
+        print(type(error).__name__, str(error))
+try:
+    json.dumps(DictItemsBadIter(x=1))
+except TypeError as error:
+    print(type(error).__name__, str(error))"#,
     });
 }
 
