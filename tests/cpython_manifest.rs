@@ -4768,6 +4768,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "class S(str):",
                 "class I(int):",
                 "skipkeys=skipkeys, sort_keys=sort_keys",
+                "'outer': {(1, 2): 'drop', 'keep': 1}",
                 "skipkeys=True, ensure_ascii=False, separators=(',', ':')",
                 "skipkeys in [[], {}, K()]",
             ][..],

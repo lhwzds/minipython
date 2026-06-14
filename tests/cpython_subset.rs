@@ -34124,12 +34124,14 @@ fn cpython_json_dumps_separators_subset() {
 #[test]
 fn cpython_json_dumps_skipkeys_subset() {
     assert_output(
-        "import json\nclass K:\n    pass\nclass S(str):\n    pass\nclass I(int):\n    pass\ncases = [\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, False, False),\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, True, False),\n    ({K(): 'custom', 'a': [1, 2]}, True, False),\n    ({(1, 2): 'tuple', S('s'): I(4)}, True, False),\n    ({(1, 2): 'tuple', 'b': 1, 'a': 2}, True, True),\n]\nfor value, skipkeys, sort_keys in cases:\n    try:\n        print(json.dumps(value, skipkeys=skipkeys, sort_keys=sort_keys))\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\nprint(json.dumps({(1, 2): 'tuple', 'é': '𝄠'}, skipkeys=True, ensure_ascii=False, separators=(',', ':')))\nfor skipkeys in [[], {}, K()]:\n    try:\n        json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=skipkeys)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\n    else:\n        print('ok')",
+        "import json\nclass K:\n    pass\nclass S(str):\n    pass\nclass I(int):\n    pass\ncases = [\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, False, False),\n    ({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, True, False),\n    ({K(): 'custom', 'a': [1, 2]}, True, False),\n    ({(1, 2): 'tuple', S('s'): I(4)}, True, False),\n    ({(1, 2): 'tuple', 'b': 1, 'a': 2}, True, True),\n]\nfor value, skipkeys, sort_keys in cases:\n    try:\n        print(json.dumps(value, skipkeys=skipkeys, sort_keys=sort_keys))\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\nprint(json.dumps({'outer': {(1, 2): 'drop', 'keep': 1}, 'list': [{(3, 4): 'drop2', 'ok': 2}]}, skipkeys=True))\ntry:\n    json.dumps({'outer': {(1, 2): 'drop', 'keep': 1}, 'list': [{(3, 4): 'drop2', 'ok': 2}]}, skipkeys=False)\nexcept Exception as error:\n    print(type(error).__name__, isinstance(error, TypeError))\nprint(json.dumps({(1, 2): 'tuple', 'é': '𝄠'}, skipkeys=True, ensure_ascii=False, separators=(',', ':')))\nfor skipkeys in [[], {}, K()]:\n    try:\n        json.dumps({(1, 2): 'tuple', 'a': 1}, skipkeys=skipkeys)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))\n    else:\n        print('ok')",
         &[
             "TypeError True",
             "{\"a\": 1, \"null\": 2, \"3\": \"three\"}",
             "{\"a\": [1, 2]}",
             "{\"s\": 4}",
+            "TypeError True",
+            "{\"outer\": {\"keep\": 1}, \"list\": [{\"ok\": 2}]}",
             "TypeError True",
             "{\"é\":\"𝄠\"}",
             "TypeError True",

@@ -834,7 +834,7 @@ Recent runtime migration notes:
   `ensure_ascii=False` direct non-ASCII string/key rendering,
   `indent` pretty-print formatting for positive, zero, negative, string, and
   `__index__` indent values,
-  `skipkeys` omission of unsupported dict keys,
+  `skipkeys` omission of unsupported dict keys including nested dictionaries,
   `sort_keys` ordering for supported comparable keys including nested
   dictionaries, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and

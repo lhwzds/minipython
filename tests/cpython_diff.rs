@@ -1357,6 +1357,11 @@ for value, skipkeys, sort_keys in cases:
         print(json.dumps(value, skipkeys=skipkeys, sort_keys=sort_keys))
     except Exception as error:
         print(type(error).__name__, isinstance(error, TypeError))
+print(json.dumps({'outer': {(1, 2): 'drop', 'keep': 1}, 'list': [{(3, 4): 'drop2', 'ok': 2}]}, skipkeys=True))
+try:
+    json.dumps({'outer': {(1, 2): 'drop', 'keep': 1}, 'list': [{(3, 4): 'drop2', 'ok': 2}]}, skipkeys=False)
+except Exception as error:
+    print(type(error).__name__, isinstance(error, TypeError))
 print(json.dumps({(1, 2): 'tuple', 'é': '𝄠'}, skipkeys=True, ensure_ascii=False, separators=(',', ':')))
 for skipkeys in [[], {}, K()]:
     try:
