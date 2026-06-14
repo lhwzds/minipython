@@ -42777,7 +42777,18 @@ fn cpython_functools_cache_wrapper_methods_subset() {
             "wrapped.cache_info = 'shadow'\n",
             "print(wrapped.cache_info)\n",
             "del wrapped.cache_info\n",
-            "print(tuple(wrapped.cache_info()))"
+            "print(tuple(wrapped.cache_info()))\n",
+            "checks = [\n",
+            "    ('info-arg', '_lru_cache_wrapper.cache_info() takes no arguments (1 given)', lambda: wrapped.cache_info(1)),\n",
+            "    ('info-kw', '_lru_cache_wrapper.cache_info() takes no keyword arguments', lambda: wrapped.cache_info(x=1)),\n",
+            "    ('clear-arg', '_lru_cache_wrapper.cache_clear() takes no arguments (1 given)', lambda: wrapped.cache_clear(1)),\n",
+            "    ('clear-kw', '_lru_cache_wrapper.cache_clear() takes no keyword arguments', lambda: wrapped.cache_clear(x=1)),\n",
+            "]\n",
+            "for label, expected, expr in checks:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error), str(error) == expected)"
         ),
         &[
             "source source doc __main__ source True",
@@ -42788,6 +42799,10 @@ fn cpython_functools_cache_wrapper_methods_subset() {
             "4 4 (1, 1, 4, 1)",
             "shadow",
             "(1, 1, 4, 1)",
+            "info-arg TypeError _lru_cache_wrapper.cache_info() takes no arguments (1 given) True",
+            "info-kw TypeError _lru_cache_wrapper.cache_info() takes no keyword arguments True",
+            "clear-arg TypeError _lru_cache_wrapper.cache_clear() takes no arguments (1 given) True",
+            "clear-kw TypeError _lru_cache_wrapper.cache_clear() takes no keyword arguments True",
         ],
     );
 }

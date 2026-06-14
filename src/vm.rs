@@ -3633,9 +3633,20 @@ fn lru_cache_method_state(
     keywords: Vec<(String, Value)>,
 ) -> Result<Rc<RefCell<LruCacheState>>, String> {
     if !keywords.is_empty() {
+        if matches!(method, "cache_info" | "cache_clear") {
+            return Err(format!(
+                "TypeError: _lru_cache_wrapper.{method}() takes no keyword arguments"
+            ));
+        }
         return Err(format!("{method}() does not accept keyword arguments"));
     }
     let [receiver] = args.as_slice() else {
+        if matches!(method, "cache_info" | "cache_clear") {
+            let count = args.len().saturating_sub(1);
+            return Err(format!(
+                "TypeError: _lru_cache_wrapper.{method}() takes no arguments ({count} given)"
+            ));
+        }
         return Err(format!("TypeError: {method}() takes no arguments"));
     };
     let Value::LruCacheWrapper { state, .. } = receiver else {

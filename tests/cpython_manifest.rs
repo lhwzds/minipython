@@ -4136,6 +4136,30 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let cache_wrapper_methods_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_cache_wrapper_methods_diff_subset",
+    );
+    let cache_wrapper_methods_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_cache_wrapper_methods_subset",
+    );
+    for required in [
+        "_lru_cache_wrapper.cache_info() takes no arguments (1 given)",
+        "_lru_cache_wrapper.cache_info() takes no keyword arguments",
+        "_lru_cache_wrapper.cache_clear() takes no arguments (1 given)",
+        "_lru_cache_wrapper.cache_clear() takes no keyword arguments",
+    ] {
+        assert!(
+            cache_wrapper_methods_diff.contains(required),
+            "functools cache wrapper methods CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            cache_wrapper_methods_subset.contains(required),
+            "functools cache wrapper methods runtime subset evidence must cover `{required}`"
+        );
+    }
+
     let reduce_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_reduce_diff_subset");
     for required in [
         "reduce(add, [0, 1], initial='')",

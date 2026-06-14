@@ -14296,7 +14296,18 @@ print(wrapped(3), wrapped(3), tuple(wrapped.cache_info()))
 wrapped.cache_info = 'shadow'
 print(wrapped.cache_info)
 del wrapped.cache_info
-print(tuple(wrapped.cache_info()))"#,
+print(tuple(wrapped.cache_info()))
+checks = [
+    ('info-arg', '_lru_cache_wrapper.cache_info() takes no arguments (1 given)', lambda: wrapped.cache_info(1)),
+    ('info-kw', '_lru_cache_wrapper.cache_info() takes no keyword arguments', lambda: wrapped.cache_info(x=1)),
+    ('clear-arg', '_lru_cache_wrapper.cache_clear() takes no arguments (1 given)', lambda: wrapped.cache_clear(1)),
+    ('clear-kw', '_lru_cache_wrapper.cache_clear() takes no keyword arguments', lambda: wrapped.cache_clear(x=1)),
+]
+for label, expected, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), str(error) == expected)"#,
     });
 }
 
