@@ -1938,7 +1938,17 @@ for expr in [
     try:
         expr()
     except Exception as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for expr in [
+    lambda: math.isclose(),
+    lambda: math.isclose(1),
+    lambda: math.isclose(1, 1, 1e-9),
+    lambda: math.isclose(1, 1, spam=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 
@@ -2203,7 +2213,18 @@ for expr in [
     try:
         expr()
     except Exception as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for expr in [
+    lambda: math.factorial(),
+    lambda: math.factorial(1, 2),
+    lambda: math.factorial(n=5),
+    lambda: math.comb(n=1, k=1),
+    lambda: math.perm(n=1, k=1),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__, str(error))"#,
     });
 }
 

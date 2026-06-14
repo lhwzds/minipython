@@ -9914,9 +9914,7 @@ impl Vm {
             }
             Value::Builtin(name) if matches!(name.as_str(), "math.comb" | "math.integer.comb") => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_comb(self, args)
@@ -9925,9 +9923,7 @@ impl Vm {
                 if matches!(name.as_str(), "math.factorial" | "math.integer.factorial") =>
             {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_factorial(self, args)
@@ -9952,9 +9948,7 @@ impl Vm {
                 if matches!(name.as_str(), "math.isqrt" | "math.integer.isqrt") =>
             {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_isqrt(self, args)
@@ -9968,9 +9962,7 @@ impl Vm {
             }
             Value::Builtin(name) if matches!(name.as_str(), "math.perm" | "math.integer.perm") => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_perm(self, args)
@@ -61447,14 +61439,16 @@ fn call_math_isclose(
             }
             _ => {
                 return Err(format!(
-                    "TypeError: isclose() got an unexpected keyword argument '{keyword}'"
+                    "TypeError: '{keyword}' is an invalid keyword argument for isclose()"
                 ));
             }
         }
     }
 
-    let a = a.ok_or_else(|| "TypeError: isclose() missing required argument 'a'".to_string())?;
-    let b = b.ok_or_else(|| "TypeError: isclose() missing required argument 'b'".to_string())?;
+    let a =
+        a.ok_or_else(|| "TypeError: isclose() missing required argument 'a' (pos 1)".to_string())?;
+    let b =
+        b.ok_or_else(|| "TypeError: isclose() missing required argument 'b' (pos 2)".to_string())?;
     let a = math_real_number_as_f64(vm, a)?;
     let b = math_real_number_as_f64(vm, b)?;
     let rel_tol = match rel_tol {
@@ -61541,7 +61535,7 @@ fn call_math_comb(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
 fn call_math_factorial(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
         return Err(format!(
-            "TypeError: factorial() takes exactly one argument ({} given)",
+            "TypeError: math.factorial() takes exactly one argument ({} given)",
             args.len()
         ));
     };

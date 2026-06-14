@@ -7624,6 +7624,23 @@ fn cpython_math_integer_subset() {
             "TypeError",
         ],
     );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.factorial(), lambda: math.factorial(1, 2), lambda: math.factorial(n=5), lambda: math.comb(n=1, k=1), lambda: math.perm(n=1, k=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__, str(error))"
+        ),
+        &[
+            "TypeError math.factorial() takes exactly one argument (0 given)",
+            "TypeError math.factorial() takes exactly one argument (2 given)",
+            "TypeError math.factorial() takes no keyword arguments",
+            "TypeError math.comb() takes no keyword arguments",
+            "TypeError math.perm() takes no keyword arguments",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_math.py::IsCloseTests.
@@ -7693,6 +7710,22 @@ fn cpython_math_isclose_subset() {
             "OverflowError",
             "TypeError",
             "ValueError",
+        ],
+    );
+    assert_output(
+        concat!(
+            "import math\n",
+            "for expr in [lambda: math.isclose(), lambda: math.isclose(1), lambda: math.isclose(1, 1, 1e-9), lambda: math.isclose(1, 1, spam=1)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(error.__class__.__name__, str(error))"
+        ),
+        &[
+            "TypeError isclose() missing required argument 'a' (pos 1)",
+            "TypeError isclose() missing required argument 'b' (pos 2)",
+            "TypeError isclose() takes exactly 2 positional arguments (3 given)",
+            "TypeError 'spam' is an invalid keyword argument for isclose()",
         ],
     );
 }

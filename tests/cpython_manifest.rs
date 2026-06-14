@@ -7948,6 +7948,68 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let integer_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_integer_diff_subset");
+    let integer_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_integer_subset");
+    for required in [
+        "lambda: math.factorial()",
+        "lambda: math.factorial(1, 2)",
+        "lambda: math.factorial(n=5)",
+        "lambda: math.comb(n=1, k=1)",
+        "lambda: math.perm(n=1, k=1)",
+        "print(error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            integer_diff.contains(required),
+            "math integer CPython diff evidence must cover exact diagnostic case `{required}`"
+        );
+        assert!(
+            integer_subset.contains(required),
+            "math integer runtime subset evidence must cover exact diagnostic case `{required}`"
+        );
+    }
+    for required in [
+        "math.factorial() takes exactly one argument (0 given)",
+        "math.factorial() takes exactly one argument (2 given)",
+        "math.factorial() takes no keyword arguments",
+        "math.comb() takes no keyword arguments",
+        "math.perm() takes no keyword arguments",
+    ] {
+        assert!(
+            integer_subset.contains(required),
+            "math integer runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
+    let isclose_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_isclose_diff_subset");
+    let isclose_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_isclose_subset");
+    for required in [
+        "lambda: math.isclose()",
+        "lambda: math.isclose(1)",
+        "lambda: math.isclose(1, 1, 1e-9)",
+        "lambda: math.isclose(1, 1, spam=1)",
+        "print(error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            isclose_diff.contains(required),
+            "math isclose CPython diff evidence must cover exact diagnostic case `{required}`"
+        );
+        assert!(
+            isclose_subset.contains(required),
+            "math isclose runtime subset evidence must cover exact diagnostic case `{required}`"
+        );
+    }
+    for required in [
+        "isclose() missing required argument 'a' (pos 1)",
+        "isclose() missing required argument 'b' (pos 2)",
+        "isclose() takes exactly 2 positional arguments (3 given)",
+        "'spam' is an invalid keyword argument for isclose()",
+    ] {
+        assert!(
+            isclose_subset.contains(required),
+            "math isclose runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
     for required in [
         "Platform/libm implementation quirks",
         "exact libm special-function precision",
