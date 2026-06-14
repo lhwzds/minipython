@@ -29223,11 +29223,19 @@ impl Vm {
         let (object, default) = match args.as_slice() {
             [object] => (object.clone(), Value::Number(0)),
             [object, default] => {
+                if matches!(default, Value::Float(_)) {
+                    return Err("TypeError: integer argument expected, got float".to_string());
+                }
                 let default = self.index_integer_value(default.clone())?;
                 let default = operator_length_hint_default_value(&default)?;
                 (object.clone(), default)
             }
             values => {
+                if values.is_empty() {
+                    return Err(
+                        "TypeError: length_hint expected at least 1 argument, got 0".to_string()
+                    );
+                }
                 return Err(format!(
                     "TypeError: length_hint expected at most 2 arguments, got {}",
                     values.len()

@@ -12956,8 +12956,10 @@ try:
 except TypeError as error:
     print('bad-index', type(error).__name__, str(error))
 for label, callback in [
+    ('missing', lambda: operator.length_hint()),
     ('kw', lambda: operator.length_hint(obj=[])),
     ('defaultkw', lambda: operator.length_hint([], default=2)),
+    ('default-float', lambda: operator.length_hint([], 1.5)),
     ('many', lambda: operator.length_hint([], 1, 2)),
 ]:
     try:

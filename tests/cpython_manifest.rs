@@ -8500,6 +8500,8 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "X(-2)",
         "X(LookupError)",
         "operator.length_hint(X(2), 'abc')",
+        "operator.length_hint()",
+        "operator.length_hint([], 1.5)",
         "operator.length_hint(obj=[])",
         "operator.length_hint([], default=2)",
         "operator.length_hint([], 1, 2)",
@@ -8518,6 +8520,15 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         assert!(
             CPYTHON_SUBSET.contains(required),
             "operator.length_hint subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"missing TypeError length_hint expected at least 1 argument, got 0\"",
+        "\"default-float TypeError integer argument expected, got float\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "operator.length_hint subset output must pin CPython diagnostic `{required}`"
         );
     }
 
@@ -8548,6 +8559,8 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "X(-2)",
         "X(LookupError)",
         "operator.length_hint(X(2), 'abc')",
+        "operator.length_hint()",
+        "operator.length_hint([], 1.5)",
         "operator.length_hint(obj=[])",
         "operator.length_hint([], default=2)",
         "operator.length_hint([], 1, 2)",
