@@ -24331,7 +24331,7 @@ impl Vm {
         let names = ["start", "step"];
         if args.len() > names.len() {
             return Err(format!(
-                "TypeError: count() expected at most 2 arguments, got {}",
+                "TypeError: count() takes at most 2 arguments ({} given)",
                 args.len()
             ));
         }

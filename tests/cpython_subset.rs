@@ -38672,17 +38672,21 @@ fn cpython_itertools_count_error_subset() {
     assert_output(
         concat!(
             "import itertools\n",
-            "for expr in [\n",
-            "    lambda: itertools.count(0, 1, 2),\n",
-            "    lambda: itertools.count('a'),\n",
-            "    lambda: itertools.count(1, 'x'),\n",
+            "for label, expr in [\n",
+            "    ('too-many', lambda: itertools.count(0, 1, 2)),\n",
+            "    ('bad-start', lambda: itertools.count('a')),\n",
+            "    ('bad-step', lambda: itertools.count(1, 'x')),\n",
             "]:\n",
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(type(error).__name__)"
+            "        print(label, type(error).__name__, str(error))"
         ),
-        &["TypeError", "TypeError", "TypeError"],
+        &[
+            "too-many TypeError count() takes at most 2 arguments (3 given)",
+            "bad-start TypeError a number is required",
+            "bad-step TypeError a number is required",
+        ],
     );
 }
 

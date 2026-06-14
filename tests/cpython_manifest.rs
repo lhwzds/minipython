@@ -5414,6 +5414,16 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    for required in [
+        "itertools.count(0, 1, 2)",
+        "count() takes at most 2 arguments (3 given)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) && CPYTHON_DIFF.contains(required),
+            "itertools count CPython parity must guard `{required}` in subset and diff evidence"
+        );
+    }
+
     for excluded in [
         "Full itertools module",
         "pickling exactness",

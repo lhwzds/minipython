@@ -15718,19 +15718,20 @@ print([next(single) for _ in range(4)])"#,
 
 #[test]
 fn cpython_itertools_count_error_diff_subset() {
+    // CPython oracle text: count() takes at most 2 arguments (3 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count error subset",
         name: "itertools-count-errors",
         source: r#"import itertools
-for expr in [
-    lambda: itertools.count(0, 1, 2),
-    lambda: itertools.count('a'),
-    lambda: itertools.count(1, 'x'),
+for label, expr in [
+    ('too-many', lambda: itertools.count(0, 1, 2)),
+    ('bad-start', lambda: itertools.count('a')),
+    ('bad-step', lambda: itertools.count(1, 'x')),
 ]:
     try:
         expr()
     except TypeError as error:
-        print(type(error).__name__)"#,
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 
