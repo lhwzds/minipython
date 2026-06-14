@@ -24315,8 +24315,9 @@ impl Vm {
         if n <= BigInt::from(0) {
             return Err("ValueError: n must be at least one".to_string());
         }
-        n.to_usize()
-            .ok_or_else(|| "OverflowError: n argument is too large".to_string())
+        n.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        })
     }
 
     fn call_itertools_compress(
@@ -24621,9 +24622,9 @@ impl Vm {
             repeat_seen = true;
         }
 
-        let repeat = repeat
-            .to_usize()
-            .ok_or_else(|| "OverflowError: repeat argument is too large".to_string())?;
+        let repeat = repeat.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        })?;
         let base_pools = args
             .into_iter()
             .map(|value| self.collect_iterable_values(value))
@@ -24659,9 +24660,9 @@ impl Vm {
         if r.is_negative() {
             return Err("ValueError: r must be non-negative".to_string());
         }
-        let r = r
-            .to_usize()
-            .ok_or_else(|| "OverflowError: r argument is too large".to_string())?;
+        let r = r.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        })?;
         let pool = self.collect_iterable_values(iterable)?;
         let done = r > pool.len();
         let indices = (0..r).collect();
@@ -24697,9 +24698,9 @@ impl Vm {
         if r.is_negative() {
             return Err("ValueError: r must be non-negative".to_string());
         }
-        let r = r
-            .to_usize()
-            .ok_or_else(|| "OverflowError: r argument is too large".to_string())?;
+        let r = r.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        })?;
         let pool = self.collect_iterable_values(iterable)?;
         let done = pool.is_empty() && r > 0;
         let indices = vec![0; r];
@@ -24754,9 +24755,9 @@ impl Vm {
         if integer.is_negative() {
             return Err("ValueError: r must be non-negative".to_string());
         }
-        integer
-            .to_usize()
-            .ok_or_else(|| "OverflowError: r argument is too large".to_string())
+        integer.to_usize().ok_or_else(|| {
+            "OverflowError: Python int too large to convert to C ssize_t".to_string()
+        })
     }
 
     fn call_itertools_tee(
@@ -24781,8 +24782,9 @@ impl Vm {
             if n.is_negative() {
                 return Err("ValueError: n must be >= 0".to_string());
             }
-            n.to_usize()
-                .ok_or_else(|| "OverflowError: n argument is too large".to_string())?
+            n.to_usize().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?
         } else {
             2
         };

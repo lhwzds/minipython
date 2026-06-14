@@ -10550,39 +10550,44 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_itertools_product_subset` and
   `cpython_itertools_product_diff_subset`, extending the pure in-memory
   `itertools` surface with `product()` over eager pools, generator inputs,
-  `repeat` including `__index__`, zero-repeat empty tuple behavior, empty-pool
-  exhaustion, and public TypeError/ValueError classes.
+  `repeat` including `__index__`, huge-repeat CPython overflow diagnostics,
+  zero-repeat empty tuple behavior, empty-pool exhaustion, and public
+  TypeError/ValueError classes.
 - Added `cpython_itertools_combinations_subset` and
   `cpython_itertools_combinations_diff_subset`, extending the pure in-memory
   `itertools` surface with `combinations()` over eager pools, generator
   inputs, keyword binding for `iterable` / `r`, `r` including `__index__`,
-  zero-length tuple behavior, oversize-r exhaustion, and public
+  huge-`r` CPython overflow diagnostics, zero-length tuple behavior,
+  oversize-r exhaustion, and public
   TypeError/ValueError classes.
 - Added `cpython_itertools_combinations_with_replacement_subset` and
   `cpython_itertools_combinations_with_replacement_diff_subset`, extending the
   pure in-memory `itertools` surface with `combinations_with_replacement()`
   over eager pools, generator inputs, keyword binding for `iterable` / `r`,
-  `r` including `__index__`, zero-length tuple behavior, empty-pool
-  exhaustion, and public TypeError/ValueError classes.
+  `r` including `__index__`, huge-`r` CPython overflow diagnostics,
+  zero-length tuple behavior, empty-pool exhaustion, and public
+  TypeError/ValueError classes.
 - Added `cpython_itertools_permutations_subset` and
   `cpython_itertools_permutations_diff_subset`, extending the pure in-memory
   `itertools` surface with `permutations()` over eager pools, generator
   inputs, default `r`, keyword binding for `iterable` / `r`, bool and int
   subclass `r`, CPython's rejection of arbitrary `__index__` r values,
-  zero-length tuple behavior, oversize-r exhaustion, and public
+  huge-int `r` CPython overflow diagnostics, zero-length tuple behavior,
+  oversize-r exhaustion, and public
   TypeError/ValueError classes.
 - Added `cpython_itertools_tee_subset` and `cpython_itertools_tee_diff_subset`,
   extending the pure in-memory `itertools` surface with `tee()` shared-buffer
   clone iterators, interleaved consumption, `n=0` / `n=1` / multi-clone
-  behavior, `n` via `__index__`, generator-backed inputs, and public
+  behavior, `n` via `__index__`, huge-`n` CPython overflow diagnostics,
+  generator-backed inputs, and public
   TypeError/ValueError classes. Cache compaction, pickle, and exact repr
   details remain outside the sandbox subset.
 - Added `cpython_itertools_batched_subset` and
   `cpython_itertools_batched_diff_subset`, extending the pure in-memory
   `itertools` surface with `batched()` fixed-size tuple batches, generator
   inputs, `n` via `__index__`, keyword binding for `iterable` / `n` /
-  `strict`, truth-tested `strict`, incomplete-batch `ValueError`, and public
-  TypeError/ValueError classes.
+  `strict`, huge-`n` CPython overflow diagnostics, truth-tested `strict`,
+  incomplete-batch `ValueError`, and public TypeError/ValueError classes.
 - Added `cpython_itertools_groupby_subset` and
   `cpython_itertools_groupby_diff_subset`, extending the pure in-memory
   `itertools` surface with `groupby()` consecutive-run grouping, optional

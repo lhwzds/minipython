@@ -14471,6 +14471,13 @@ class IndexLike:
     def __index__(self):
         return 2
 print(list(itertools.product([1, 2], repeat=IndexLike())))
+class HugeIndex:
+    def __index__(self):
+        return 10**100
+try:
+    itertools.product([1], repeat=HugeIndex())
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 for expr in [
     lambda: itertools.product([1], repeat=-1),
     lambda: itertools.product([1], repeat='x'),
@@ -14504,6 +14511,13 @@ class IndexLike:
         return 2
 print(list(itertools.combinations([1, 2, 3], IndexLike())))
 print(list(itertools.combinations(iterable='ABC', r=2)))
+class HugeIndex:
+    def __index__(self):
+        return 10**100
+try:
+    itertools.combinations('ABC', HugeIndex())
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 for expr in [
     lambda: itertools.combinations('ABC'),
     lambda: itertools.combinations('ABC', 2, 3),
@@ -14537,6 +14551,13 @@ class IndexLike:
         return 2
 print(list(itertools.combinations_with_replacement([1, 2, 3], IndexLike())))
 print(list(itertools.combinations_with_replacement(iterable='ABC', r=2)))
+class HugeIndex:
+    def __index__(self):
+        return 10**100
+try:
+    itertools.combinations_with_replacement('ABC', HugeIndex())
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 for expr in [
     lambda: itertools.combinations_with_replacement('ABC'),
     lambda: itertools.combinations_with_replacement('ABC', 2, 3),
@@ -14575,6 +14596,10 @@ print(list(itertools.permutations(iterable='ABC', r=2)))
 class IndexLike:
     def __index__(self):
         return 2
+try:
+    itertools.permutations('ABC', 10**100)
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 for expr in [
     lambda: itertools.permutations('ABC', 2, 3),
     lambda: itertools.permutations('ABC', 'x'),
@@ -14608,6 +14633,13 @@ class IndexLike:
     def __index__(self):
         return 2
 print([list(item) for item in itertools.tee([1, 2], IndexLike())])
+class HugeIndex:
+    def __index__(self):
+        return 10**100
+try:
+    itertools.tee([1], HugeIndex())
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 source = (value for value in [4, 5, 6])
 left, right = itertools.tee(source)
 print(next(left), list(right), list(left))
@@ -14655,6 +14687,13 @@ class IndexLike:
     def __index__(self):
         return 2
 print(list(itertools.batched([1, 2, 3], IndexLike())))
+class HugeIndex:
+    def __index__(self):
+        return 10**100
+try:
+    itertools.batched([1], HugeIndex())
+except OverflowError as error:
+    print(error.__class__.__name__, str(error))
 class Truthy:
     def __bool__(self):
         return True
