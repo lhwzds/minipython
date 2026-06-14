@@ -25149,7 +25149,18 @@ for expr in [lambda: super(1), lambda: super(C).__get__(12), lambda: super(C).__
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: s.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: s.__get__(c, C, A)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(obj=c, type=C)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(bad=1)),
+    ('none-none', '__get__(None, None) is invalid', lambda: s.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)"#,
         &[
             "C3A3",
             "True None None",
@@ -25159,6 +25170,11 @@ for expr in [lambda: super(1), lambda: super(C).__get__(12), lambda: super(C).__
             "TypeError",
             "TypeError",
             "TypeError",
+            "missing TypeError  expected at least 1 argument, got 0 True",
+            "too-many TypeError  expected at most 2 arguments, got 3 True",
+            "keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "bad-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "none-none TypeError __get__(None, None) is invalid True",
         ],
     );
 }

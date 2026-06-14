@@ -9434,13 +9434,7 @@ impl Vm {
             Value::Builtin(name) if name == "classmethod.__get__" => {
                 self.call_classmethod_get(args, keywords)
             }
-            Value::Builtin(name) if name == "super.__get__" => {
-                if !keywords.is_empty() {
-                    return Err("__get__() does not accept keyword arguments".to_string());
-                }
-
-                self.call_super_get(args)
-            }
+            Value::Builtin(name) if name == "super.__get__" => self.call_super_get(args, keywords),
             Value::Builtin(name) if name == "method.__get__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -16312,22 +16306,18 @@ impl Vm {
         })
     }
 
-    fn call_super_get(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_super_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("__get__() expected a super receiver".to_string());
         };
         let descriptor @ Value::Super { .. } = descriptor.clone() else {
             return Err("__get__() expected a super receiver".to_string());
         };
-        if rest.is_empty() {
-            return Err("__get__() expected at least 1 argument, got 0".to_string());
-        }
-        if rest.len() > 2 {
-            return Err(format!(
-                "__get__() expected at most 2 arguments, got {}",
-                rest.len()
-            ));
-        }
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
 
         let object = rest[0].clone();
         let owner = rest.get(1).cloned();
@@ -16378,10 +16368,13 @@ impl Vm {
             return Ok(descriptor);
         }
         if matches!(object, Value::None) {
-            if owner.is_some() {
+            if owner
+                .as_ref()
+                .is_some_and(|owner| !matches!(owner, Value::None))
+            {
                 return Ok(descriptor);
             }
-            return Err("__get__(None, None) is invalid".to_string());
+            return Err("TypeError: __get__(None, None) is invalid".to_string());
         }
 
         validate_super_args(&class, &object)?;

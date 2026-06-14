@@ -17211,7 +17211,18 @@ for expr in [lambda: super(1), lambda: super(C).__get__(12), lambda: super(C).__
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: s.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: s.__get__(c, C, A)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(obj=c, type=C)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(bad=1)),
+    ('none-none', '__get__(None, None) is invalid', lambda: s.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)"#,
         },
         DiffCase {
             origin: "Lib/test/test_descr.py::test_instance_method_get_behavior / ::test_bound_method_repr",
