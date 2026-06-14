@@ -12752,6 +12752,24 @@ try:
 except copy.Error as error:
     print(type(error).__name__, isinstance(error, Exception), str(error))
 print(type(copy.dispatch_table).__name__, copy.dispatch_table is copy.dispatch_table)
+class CustomCopy:
+    def __copy__(self):
+        print('copy-hook')
+        return 'copied'
+class CustomDeep:
+    def __deepcopy__(self, memo):
+        print('deep-hook', isinstance(memo, dict))
+        memo[id(self)] = 'seen'
+        return 'deeped'
+class BadDeep:
+    def __deepcopy__(self):
+        return 'bad'
+print('custom-copy', copy.copy(CustomCopy()))
+print('custom-deep', copy.deepcopy(CustomDeep()))
+try:
+    copy.deepcopy(BadDeep())
+except TypeError as error:
+    print('bad-deep', type(error).__name__)
 nested = [1, [2], {'a': [3]}]
 shallow = copy.copy(nested)
 deep = copy.deepcopy(nested)

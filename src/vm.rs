@@ -23538,6 +23538,9 @@ impl Vm {
         let value = value.ok_or_else(|| {
             "TypeError: copy() missing 1 required positional argument: 'x'".to_string()
         })?;
+        if let Some(copied) = self.call_copy_hook(&value)? {
+            return Ok(copied);
+        }
         shallow_copy_value(&value)
     }
 
@@ -23577,11 +23580,50 @@ impl Vm {
         let memo_value = values[1].take();
         let nil_value = values[2].take();
         let mut memo = copy_deepcopy_memo_from_value(memo_value.as_ref(), nil_value.as_ref())?;
+        if let Some(copied) = self.call_deepcopy_hook(&value, memo_value.as_ref(), &memo)? {
+            if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
+                copy_deepcopy_sync_memo(value, &memo)?;
+            }
+            return Ok(copied);
+        }
         let copied = deep_copy_value(&value, &mut memo)?;
         if let Some(value @ Value::Dict(_)) = memo_value.as_ref() {
             copy_deepcopy_sync_memo(value, &memo)?;
         }
         Ok(copied)
+    }
+
+    fn call_copy_hook(&mut self, value: &Value) -> Result<Option<Value>, String> {
+        let method = match self.load_attribute_catching(value.clone(), "__copy__")? {
+            Ok(method) => method,
+            Err(exception) if exception_matches_type_name(&exception, "AttributeError") => {
+                return Ok(None);
+            }
+            Err(exception) => return Err(format_exception_error(&exception)),
+        };
+        self.call_value(method, Vec::new()).map(Some)
+    }
+
+    fn call_deepcopy_hook(
+        &mut self,
+        value: &Value,
+        memo_value: Option<&Value>,
+        memo: &HashMap<usize, Value>,
+    ) -> Result<Option<Value>, String> {
+        let method = match self.load_attribute_catching(value.clone(), "__deepcopy__")? {
+            Ok(method) => method,
+            Err(exception) if exception_matches_type_name(&exception, "AttributeError") => {
+                return Ok(None);
+            }
+            Err(exception) => return Err(format_exception_error(&exception)),
+        };
+        let hook_memo = if let Some(value @ Value::Dict(_)) = memo_value {
+            value.clone()
+        } else {
+            dict_value(Vec::new())
+        };
+        copy_deepcopy_sync_memo(&hook_memo, memo)?;
+        self.call_value(method, vec![hook_memo]).map(Some)
     }
 
     fn call_copy_replace(

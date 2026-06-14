@@ -1579,17 +1579,19 @@ Recent runtime migration notes:
   covering CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
-  and identity, nested list/dict shallow-vs-deep copy behavior, `deepcopy()`
-  memo preservation for shared list/dict/tuple members, explicit memo dict
-  pre-seeding and population for supported identities, and self-referential
-  lists, shared user-instance fields and user-instance self-cycles, and shared
-  `UserList` / `UserDict` / `deque` members plus `UserList` self-cycles,
-  `io.BytesIO` shallow/deep copy behavior for open in-memory buffers with
-  position and custom attributes, independent bytearray copy buffers,
-  dictionary copy independence, and representative arity/memo TypeError
-  classification. Full pickle dispatch-table contents, pickle protocol byte compatibility,
-  arbitrary extension-object copy hooks, and arbitrary mapping-protocol memo
-  hooks remain outside the sandbox `copy` subset.
+  and identity, pure Python `__copy__` / `__deepcopy__` hook dispatch with
+  TypeError propagation for bad hook signatures, nested list/dict
+  shallow-vs-deep copy behavior, `deepcopy()` memo preservation for
+  shared list/dict/tuple members, explicit memo dict pre-seeding and population for
+  supported identities, and self-referential lists, shared user-instance fields
+  and user-instance self-cycles, and shared `UserList` / `UserDict` / `deque`
+  members plus `UserList` self-cycles, `io.BytesIO` shallow/deep copy behavior
+  for open in-memory buffers with position and custom attributes, independent
+  bytearray copy buffers, dictionary copy independence, and representative
+  arity/memo TypeError classification. Full pickle dispatch-table contents,
+  pickle protocol byte compatibility, arbitrary extension-object copy hooks
+  outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
+  remain outside the sandbox `copy` subset.
 - The bundled `io.BytesIO` subset includes
   `cpython_io_bytesio_public_diff_subset` and
   `cpython_io_bytesio_public_subset`, covering CPython public in-memory
