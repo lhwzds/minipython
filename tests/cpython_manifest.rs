@@ -5075,12 +5075,13 @@ fn json_stdlib_registry_stays_loads_dumps_only() {
     }
 
     assert!(
-        LANGUAGE_TESTS.contains("json_sandbox_subset_excludes_file_apis_and_extension_hooks")
+        LANGUAGE_TESTS
+            .contains("json_sandbox_subset_excludes_file_apis_and_encoder_decoder_classes")
             && LANGUAGE_TESTS.contains("JSONDecodeError")
             && LANGUAGE_TESTS.contains("JSONDecoder")
             && LANGUAGE_TESTS.contains("JSONEncoder")
             && LANGUAGE_TESTS.contains("'load', 'dump'"),
-        "language tests must keep json file APIs and extension hooks unavailable at runtime"
+        "language tests must keep json file APIs and encoder/decoder classes unavailable at runtime"
     );
 }
 
