@@ -1426,6 +1426,64 @@ fn operator_sandbox_subset_keeps_export_surface_explicit() {
 }
 
 #[test]
+fn sys_sandbox_subset_keeps_export_surface_explicit() {
+    assert_eq!(
+        run_source(
+            "import sys\nfor name in ['argv', 'breakpointhook', '__breakpointhook__', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'hash_info', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version', '_getframe']:\n    print(name, hasattr(sys, name))\nfor name in ['builtin_module_names', 'implementation', 'platform', 'version_info', 'getrefcount', 'getallocatedblocks', 'settrace', 'gettrace', 'setswitchinterval', 'getfilesystemencoding', 'executable', 'prefix', 'base_prefix', '_base_executable', '__all__', '__file__']:\n    print(name, hasattr(sys, name))\nprint(dir(sys))\nprint(type(sys.argv).__name__, sys.argv)\nprint(type(sys.path).__name__, sys.path)\nprint(type(sys.modules).__name__, 'sys' in sys.modules, sys.modules['sys'] is sys)\nprint(type(sys.flags).__name__, sys.flags.bytes_warning)\nprint(type(sys.float_info).__name__, sys.float_info.max_exp, sys.float_info.radix)\nprint(type(sys.hash_info).__name__, sys.hash_info.width, sys.hash_info.algorithm)\nprint(sys.maxsize)\nprint(sys.version)\nprint(sys.float_repr_style)\nprint(sys.get_int_max_str_digits())\nfor name in ['stdin', 'stdout', 'stderr']:\n    value = getattr(sys, name)\n    print(name, type(value).__name__, sorted(vars(value).items()))"
+        ),
+        Ok(output_lines(&[
+            "argv True",
+            "breakpointhook True",
+            "__breakpointhook__ True",
+            "flags True",
+            "float_info True",
+            "float_repr_style True",
+            "get_int_max_str_digits True",
+            "hash_info True",
+            "maxsize True",
+            "modules True",
+            "path True",
+            "set_int_max_str_digits True",
+            "stderr True",
+            "stdin True",
+            "stdout True",
+            "version True",
+            "_getframe True",
+            "builtin_module_names False",
+            "implementation False",
+            "platform False",
+            "version_info False",
+            "getrefcount False",
+            "getallocatedblocks False",
+            "settrace False",
+            "gettrace False",
+            "setswitchinterval False",
+            "getfilesystemencoding False",
+            "executable False",
+            "prefix False",
+            "base_prefix False",
+            "_base_executable False",
+            "__all__ False",
+            "__file__ False",
+            "['__breakpointhook__', '__name__', '_getframe', 'argv', 'breakpointhook', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'hash_info', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version']",
+            "list []",
+            "list ['']",
+            "dict True True",
+            "SimpleNamespace 0",
+            "SimpleNamespace 1024 2",
+            "SimpleNamespace 64 siphash13",
+            "9223372036854775807",
+            "minipython",
+            "short",
+            "4300",
+            "stdin SimpleNamespace [('name', '<stdin>')]",
+            "stdout SimpleNamespace [('name', '<stdout>')]",
+            "stderr SimpleNamespace [('name', '<stderr>')]",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =

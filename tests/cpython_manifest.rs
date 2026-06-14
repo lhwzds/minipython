@@ -10933,6 +10933,16 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("sys_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("'getrefcount', 'getallocatedblocks'")
+            && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
+            && LANGUAGE_TESTS.contains("print(dir(sys))")
+            && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
+            && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
+        "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
+    );
+
     let int_digits_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_int_max_str_digits_runtime_diff_subset",
