@@ -72857,9 +72857,9 @@ fn operator_ternary_args(
 
 fn operator_call_object_arg(function: &str, args: Vec<Value>) -> Result<Value, String> {
     let count = args.len();
-    let [object]: [Value; 1] = args.try_into().map_err(|_| {
-        format!("TypeError: {function}() expected 1 positional argument, got {count}")
-    })?;
+    let [object]: [Value; 1] = args
+        .try_into()
+        .map_err(|_| format!("TypeError: {function} expected 1 argument, got {count}"))?;
     Ok(object)
 }
 

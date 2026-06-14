@@ -13255,6 +13255,10 @@ for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexO
 #[test]
 fn cpython_operator_callable_helper_diff_subset() {
     // CPython oracle text: attribute name must be a string;
+    // itemgetter expected 1 argument, got 0;
+    // itemgetter expected 1 argument, got 2;
+    // methodcaller expected 1 argument, got 0;
+    // methodcaller expected 1 argument, got 2;
     // method name must be a string
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase callable helper public subset stable on CPython 3.9",
@@ -13344,10 +13348,14 @@ diagnostic_checks = [
     ('attr-nonstring', lambda: operator.attrgetter(2)),
     ('attr-call-kw', lambda: operator.attrgetter('name')(a, surname='dent')),
     ('item-ctor-kw', lambda: operator.itemgetter(item=0)),
+    ('item-call-noargs', lambda: operator.itemgetter(2)()),
+    ('item-call-extra', lambda: operator.itemgetter(2)(data, 3)),
     ('item-call-kw', lambda: operator.itemgetter(2)(data, size=3)),
     ('method-noargs', lambda: operator.methodcaller()),
     ('method-kw', lambda: operator.methodcaller(name='foo')),
     ('method-nonstring', lambda: operator.methodcaller(12)),
+    ('method-call-noargs', lambda: operator.methodcaller('foo')()),
+    ('method-call-extra', lambda: operator.methodcaller('foo', 1, 2)(m, 3)),
     ('method-call-kw', lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)),
 ]
 for label, expr in diagnostic_checks:
