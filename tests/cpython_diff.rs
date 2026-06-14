@@ -13814,6 +13814,11 @@ for label, expr in [('seek-neg-start-text', lambda: io.BytesIO(b'a').seek(-1)), 
         expr()
     except Exception as error:
         print(label, error.__class__.__name__, str(error))
+# CPython oracle text: 'int' object is not iterable
+try:
+    io.BytesIO().writelines(1)
+except Exception as error:
+    print('writelines-noniter-text', error.__class__.__name__, str(error))
 for label, expr in [
     ('ctor-kw-unknown', lambda: io.BytesIO(foo=b'a')),
     ('read-kw', lambda: io.BytesIO(b'a').read(size=1)),

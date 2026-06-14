@@ -18911,7 +18911,16 @@ impl Vm {
         };
         bytes_io_ensure_open(bytes_io)?;
         let bytes_io = bytes_io.clone();
-        for line in self.collect_iterable_values_propagating(lines.clone())? {
+        let lines_values = self
+            .collect_iterable_values_propagating(lines.clone())
+            .map_err(|error| {
+                if error.ends_with(" is not iterable") {
+                    format!("TypeError: '{}' object is not iterable", type_name(lines))
+                } else {
+                    error
+                }
+            })?;
+        for line in lines_values {
             let Some(bytes) = bytes_io_write_buffer_bytes(&line)? else {
                 return Err(format!(
                     "TypeError: a bytes-like object is required, not '{}'",

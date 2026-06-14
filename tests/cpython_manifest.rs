@@ -11098,6 +11098,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         "negative seek value -1",
         "invalid whence (3, should be 0, 1 or 2)",
         "negative size value -1",
+        "'int' object is not iterable",
     ] {
         assert!(
             diff_body.contains(required),
