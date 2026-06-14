@@ -8691,7 +8691,7 @@ impl Vm {
                 self.call_functools_total_ordering_method(&name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("partialmethod.") => {
-                self.call_partialmethod_method(&name, args)
+                self.call_partialmethod_method(&name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("cached_property.") => {
                 self.call_cached_property_method(&name, args, keywords)
@@ -15772,7 +15772,12 @@ impl Vm {
         })
     }
 
-    fn call_partialmethod_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
+    fn call_partialmethod_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
                 "{}() expected a partialmethod receiver",
@@ -15788,14 +15793,49 @@ impl Vm {
 
         match name {
             "partialmethod.__get__" => {
-                if rest.is_empty() || rest.len() > 2 {
+                if rest.len() > 2 {
                     return Err(format!(
-                        "__get__() expected 1 or 2 arguments, got {}",
-                        rest.len()
+                        "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                        rest.len() + 1
                     ));
                 }
-                let owner = rest.get(1).cloned().unwrap_or(Value::None);
-                self.partialmethod_get(descriptor, rest[0].clone(), owner)
+                let mut object = rest.first().cloned();
+                let mut owner = rest.get(1).cloned();
+                for (keyword, value) in keywords {
+                    match keyword.as_str() {
+                        "obj" => {
+                            if object.is_some() {
+                                return Err(
+                                    "TypeError: __get__() got multiple values for argument 'obj'"
+                                        .to_string(),
+                                );
+                            }
+                            object = Some(value);
+                        }
+                        "cls" => {
+                            if owner.is_some() {
+                                return Err(
+                                    "TypeError: __get__() got multiple values for argument 'cls'"
+                                        .to_string(),
+                                );
+                            }
+                            owner = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(object) = object else {
+                    return Err(
+                        "TypeError: __get__() missing 1 required positional argument: 'obj'"
+                            .to_string(),
+                    );
+                };
+                let owner = owner.unwrap_or(Value::None);
+                self.partialmethod_get(descriptor, object, owner)
             }
             _ => Err(format!("unknown partialmethod method: {name}")),
         }

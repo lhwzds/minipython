@@ -13877,6 +13877,18 @@ print(hasattr(a.both, '__self__'), a.both.__self__ is a)
 print(hasattr(a.keywords, '__self__'), a.keywords.__self__ is a)
 print(hasattr(A.keywords, '__self__'), hasattr(a.static, '__self__'), hasattr(A.static, '__self__'))
 print(A.__dict__['both'].__module__)
+descriptor = A.__dict__['both']
+print(descriptor.__get__(obj=a, cls=A)())
+for label, expected, expr in [
+    ('get-missing', "__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
+    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(a, A, 1)),
+    ('get-duplicate', "__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(a, obj=a)),
+    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), str(error) == expected)
 descriptor_state = partialmethod(capture, 3, b=4)
 state = descriptor_state.__dict__
 print(all(name in state for name in ['func', 'args', 'keywords']))
