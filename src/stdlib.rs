@@ -1767,7 +1767,7 @@ pub(crate) fn call_chr<C: StdlibContext + ?Sized>(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     reject_stdlib_keywords("chr", &keywords)
-        .map_err(|_| "TypeError: chr() does not accept keyword arguments".to_string())?;
+        .map_err(|_| "TypeError: chr() takes no keyword arguments".to_string())?;
     let [value] = args.as_slice() else {
         return Err(format!(
             "TypeError: chr() expected 1 argument, got {}",
@@ -1810,7 +1810,7 @@ pub(crate) fn call_staticmethod_constructor(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err("staticmethod() does not accept keyword arguments".to_string());
+        return Err("staticmethod() takes no keyword arguments".to_string());
     }
     let [function] = args.as_slice() else {
         return Err(format!(
@@ -1829,7 +1829,7 @@ pub(crate) fn call_classmethod_constructor(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err("classmethod() does not accept keyword arguments".to_string());
+        return Err("classmethod() takes no keyword arguments".to_string());
     }
     let [function] = args.as_slice() else {
         return Err(format!(
@@ -1915,7 +1915,7 @@ fn optional_property_part(value: Option<Value>) -> Option<Box<Value>> {
 
 pub(crate) fn call_ord(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
     reject_stdlib_keywords("ord", &keywords)
-        .map_err(|_| "TypeError: ord() does not accept keyword arguments".to_string())?;
+        .map_err(|_| "TypeError: ord() takes no keyword arguments".to_string())?;
     let [value] = args.as_slice() else {
         return Err(format!(
             "TypeError: ord() expected 1 argument, got {}",

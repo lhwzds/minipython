@@ -24361,8 +24361,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
-        "class DescriptorExample:\n    pass\n\ndef descriptor_function(*args):\n    return args\n\nfor descriptor_name, descriptor in [\n    ('staticmethod', staticmethod(descriptor_function)),\n    ('classmethod', classmethod(descriptor_function)),\n]:\n    for label, expected, expr in [\n        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),\n        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(DescriptorExample(), DescriptorExample, 1)),\n        ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=DescriptorExample(), type=DescriptorExample)),\n        ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),\n        ('get-none-none', '__get__(None, None) is invalid', lambda descriptor=descriptor: descriptor.__get__(None, None)),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)",
+        "class DescriptorExample:\n    pass\n\ndef descriptor_function(*args):\n    return args\n\nfor label, expr in [\n    ('staticmethod-constructor-keyword', lambda: staticmethod(function=descriptor_function)),\n    ('classmethod-constructor-keyword', lambda: classmethod(function=descriptor_function)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))\n\nfor descriptor_name, descriptor in [\n    ('staticmethod', staticmethod(descriptor_function)),\n    ('classmethod', classmethod(descriptor_function)),\n]:\n    for label, expected, expr in [\n        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),\n        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(DescriptorExample(), DescriptorExample, 1)),\n        ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=DescriptorExample(), type=DescriptorExample)),\n        ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),\n        ('get-none-none', '__get__(None, None) is invalid', lambda descriptor=descriptor: descriptor.__get__(None, None)),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)",
         &[
+            "staticmethod-constructor-keyword staticmethod() takes no keyword arguments",
+            "classmethod-constructor-keyword classmethod() takes no keyword arguments",
             "staticmethod get-missing TypeError  expected at least 1 argument, got 0 True",
             "staticmethod get-too-many TypeError  expected at most 2 arguments, got 3 True",
             "staticmethod get-keyword TypeError wrapper __get__() takes no keyword arguments True",
@@ -35961,7 +35963,7 @@ fn cpython_chr_ord_builtin_subset() {
         &["[65535, 65536, 65537, 1048574, 1048575, 1048576, 1048577, 1114110, 1114111]"],
     );
     assert_output(
-        "for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x110000), lambda: chr(1 << 24), lambda: chr(2**32 - 1), lambda: chr(-(2**32)), lambda: chr(2**1000), lambda: chr(-(2**1000)), lambda: ord(), lambda: ord(42), lambda: ord('ab'), lambda: ord(b'ab')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x110000), lambda: chr(1 << 24), lambda: chr(2**32 - 1), lambda: chr(-(2**32)), lambda: chr(2**1000), lambda: chr(-(2**1000)), lambda: ord(), lambda: ord(42), lambda: ord('ab'), lambda: ord(b'ab')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\nfor label, expr in [\n    ('chr-keyword', lambda: chr(i=65)),\n    ('ord-keyword', lambda: ord(c='A')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "TypeError",
             "TypeError",
@@ -35976,6 +35978,8 @@ fn cpython_chr_ord_builtin_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "chr-keyword chr() takes no keyword arguments",
+            "ord-keyword ord() takes no keyword arguments",
         ],
     );
 }

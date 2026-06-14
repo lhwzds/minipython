@@ -5789,7 +5789,15 @@ for expr in [lambda: chr(), lambda: chr(65.0), lambda: chr(-1), lambda: chr(0x11
     try:
         expr()
     except (TypeError, ValueError) as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for label, expr in [
+    ("chr-keyword", lambda: chr(i=65)),
+    ("ord-keyword", lambda: ord(c="A")),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
     });
 }
 
@@ -6631,6 +6639,15 @@ for label, expected, expr in [
 
 def descriptor_function(*args):
     return args
+
+for label, expr in [
+    ('staticmethod-constructor-keyword', lambda: staticmethod(function=descriptor_function)),
+    ('classmethod-constructor-keyword', lambda: classmethod(function=descriptor_function)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 
 for descriptor_name, descriptor in [
     ('staticmethod', staticmethod(descriptor_function)),

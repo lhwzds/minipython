@@ -98,8 +98,9 @@ Completed in the builtin method TypeError capture pass:
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
-  `int.bit_length`, and `float.hex`. Exact CPython message text for every
-  builtin method remains a separate method-by-method migration task.
+  `int.bit_length`, and `float.hex`, plus `staticmethod()` and `classmethod()`
+  constructor keyword rejection. Exact CPython message text for every builtin
+  method remains a separate method-by-method migration task.
 - Extended the same runtime exception-capture evidence to public
   generator/coroutine/async-generator keyword rejection for `send`, `throw`,
   `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping
@@ -1984,7 +1985,8 @@ Completed in the differential parity harness pass:
   builtins for ordinary integer code points, the CPython Unicode scalar boundary
   matrix through `0x10ffff`, one-character strings, and one-byte bytes/bytearray
   inputs. It also checks CPython-style `ValueError` paths for negative,
-  out-of-range, and very large integer `chr()` arguments. CPython's
+  out-of-range, and very large integer `chr()` arguments, plus exact no-keyword
+  `TypeError` text for `chr()` and `ord()`. CPython's
   surrogate-code-point string model remains future Unicode-runtime work because
   MiniPython currently stores strings as UTF-8.
 - Added `cpython_builtin_cmp_absent_subset`, adapted from
