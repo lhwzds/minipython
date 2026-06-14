@@ -23258,6 +23258,10 @@ cases = [
     ('@h', b'\x01\x00\xff\xff'),
     ('@I', b'\x01\x00\x00\x00\xff\x00\x00\x00'),
     ('@d', b'\x00\x00\x00\x00\x00\x00\xf0?'),
+    ('@q', bytes(range(16))),
+    ('@Q', bytes(range(16))),
+    ('@l', bytes(range(16))),
+    ('@L', bytes(range(16))),
     ('@B', b'ab'),
     ('@c', b'ab'),
 ]
@@ -23283,6 +23287,11 @@ base = bytearray(8)
 m = memoryview(base).cast('@d')
 m[0] = 2.5
 print('assign-@d', base, m.tolist())
+for fmt, value in [('@q', -2), ('@Q', 255), ('@l', -3), ('@L', 255)]:
+    base = bytearray(16)
+    m = memoryview(base).cast(fmt)
+    m[0] = value
+    print('assign-long', fmt, value, base[:m.itemsize], m.tolist()[0])
 base = bytearray(b'ab')
 m = memoryview(base).cast('@c')
 m[0] = b'Z'

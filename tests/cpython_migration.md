@@ -1390,13 +1390,15 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 - Added `cpython_memoryview_cast_native_formats_subset`, backed by
   `cpython_memoryview_cast_native_formats_diff_subset`, extending the supported
   one-dimensional `memoryview.cast()` surface to native numeric destination
-  formats `h`, `H`, `i`, `I`, `f`, and `d` from byte-format sources, including
-  CPython's optional native `@` prefix for representative numeric and byte
-  formats (`@h`, `@I`, `@d`, `@B`, and `@c`), itemsize-aware `shape`
+  formats `h`, `H`, `i`, `I`, `l`, `L`, `q`, `Q`, `f`, and `d` from
+  byte-format sources, including CPython's optional native `@` prefix for
+  representative numeric and byte formats (`@h`, `@I`, `@d`, `@q`, `@Q`,
+  `@l`, `@L`, `@B`, and `@c`), itemsize-aware `shape`
   validation, zero-dimensional single numeric items, non-byte source views
   casting back to `B`, `@`-prefixed item read/list/bytes behavior, direct item
-  writeback for representative integer, unsigned-integer, float, and `c`
-  formats (`@h`, `@I`, `@d`, and `@c`), CPython invalid assignment type
+  writeback for representative integer, unsigned-integer, long, long-long,
+  float, and `c` formats (`@h`, `@I`, `@q`, `@Q`, `@l`, `@L`, `@d`, and
+  `@c`), CPython invalid assignment type
   diagnostics, same-format slice assignment compatibility between `@`-prefixed
   native formats and their unprefixed equivalents, direct `array.array` RHS and
   array-backed `memoryview` RHS compatibility for representative native

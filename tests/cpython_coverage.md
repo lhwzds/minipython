@@ -4473,13 +4473,15 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_cast_native_formats_subset`, covering the supported
   one-dimensional native numeric `memoryview.cast()` surface for `h`, `H`,
-  `i`, `I`, `f`, and `d` byte-backed casts, plus CPython's optional native
-  `@` prefix for representative numeric and byte formats (`@h`, `@I`, `@d`,
-  `@B`, and `@c`). The slice covers `shape` product/itemsize validation,
+  `i`, `I`, `l`, `L`, `q`, `Q`, `f`, and `d` byte-backed casts, plus
+  CPython's optional native `@` prefix for representative numeric and byte
+  formats (`@h`, `@I`, `@d`, `@q`, `@Q`, `@l`, `@L`, `@B`, and `@c`). The
+  slice covers `shape` product/itemsize validation,
   zero-dimensional single-item numeric casts, non-byte views casting back to
   `B`, `@`-prefixed item read/list/bytes behavior, direct item writeback for
-  representative integer, unsigned-integer, float, and `c` formats (`@h`,
-  `@I`, `@d`, and `@c`), CPython invalid assignment type diagnostics,
+  representative integer, unsigned-integer, long, long-long, float, and `c`
+  formats (`@h`, `@I`, `@q`, `@Q`, `@l`, `@L`, `@d`, and `@c`), CPython
+  invalid assignment type diagnostics,
   same-format slice assignment compatibility between `@`-prefixed native
   formats and their unprefixed equivalents, direct `array.array` RHS and
   array-backed `memoryview` RHS compatibility for representative native
