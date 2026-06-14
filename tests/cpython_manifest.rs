@@ -5181,6 +5181,11 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_operator_index_normalization_diff_subset"),
+        "operator sandbox manifest must cite gated CPython operator.index normalization diff evidence"
+    );
+    assert!(
+        row.diff_evidence
             .contains("cpython_operator_length_hint_diff_subset"),
         "operator sandbox manifest must cite CPython length_hint diff evidence"
     );
