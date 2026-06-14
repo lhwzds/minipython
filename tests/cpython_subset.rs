@@ -37815,6 +37815,32 @@ fn cpython_itertools_compress_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public filterfalse behavior
+// over pure in-memory iterables.
+#[test]
+fn cpython_itertools_filterfalse_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "ff = itertools.filterfalse(None, [0, 1, '', 'x', [], [1], False, True])\n",
+            "print(type(ff).__name__, iter(ff) is ff, list(ff), list(ff))\n",
+            "print(list(itertools.filterfalse(lambda value: value % 2, range(6))))\n",
+            "print(list(itertools.filterfalse(lambda value: value, (value for value in [0, 1, 2, 0]))))\n",
+            "calls = []\n",
+            "def keep_even(value):\n",
+            "    calls.append(value)\n",
+            "    return value % 2\n",
+            "print(list(itertools.filterfalse(keep_even, [1, 2, 3, 4])), calls)"
+        ),
+        &[
+            "filterfalse True [0, '', [], False] []",
+            "[0, 2, 4]",
+            "[0, 0]",
+            "[2, 4] [1, 2, 3, 4]",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

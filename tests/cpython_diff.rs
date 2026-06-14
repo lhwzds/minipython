@@ -14569,6 +14569,24 @@ print(list(itertools.compress('xy', [Flag(False), Flag(True)])))"#,
 }
 
 #[test]
+fn cpython_itertools_filterfalse_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public filterfalse subset",
+        name: "itertools-filterfalse",
+        source: r#"import itertools
+ff = itertools.filterfalse(None, [0, 1, '', 'x', [], [1], False, True])
+print(type(ff).__name__, iter(ff) is ff, list(ff), list(ff))
+print(list(itertools.filterfalse(lambda value: value % 2, range(6))))
+print(list(itertools.filterfalse(lambda value: value, (value for value in [0, 1, 2, 0]))))
+calls = []
+def keep_even(value):
+    calls.append(value)
+    return value % 2
+print(list(itertools.filterfalse(keep_even, [1, 2, 3, 4])), calls)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",
