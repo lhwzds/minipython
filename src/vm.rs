@@ -8050,7 +8050,25 @@ impl Vm {
             }
         };
 
-        let mut iterator = self.get_iter(iterable)?;
+        let has_iter_method = instance_special_method(&iterable, "__iter__").is_some();
+        let mut iterator = match self.get_iter_capturing(iterable) {
+            Ok(Ok(iterator)) => iterator,
+            Ok(Err(exception))
+                if !has_iter_method
+                    && exception.type_name == "TypeError"
+                    && exception
+                        .message
+                        .as_ref()
+                        .is_some_and(|message| message.ends_with(" is not iterable")) =>
+            {
+                return Err("TypeError: reduce() arg 2 must support iteration".to_string());
+            }
+            Ok(Err(exception)) => return Err(format_exception_error(&exception)),
+            Err(error) if error.ends_with(" is not iterable") => {
+                return Err("TypeError: reduce() arg 2 must support iteration".to_string());
+            }
+            Err(error) => return Err(error),
+        };
         let mut accumulator = match initial {
             Some(value) => value,
             None => match self.advance_owned_iterator_capturing(&mut iterator)? {

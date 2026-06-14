@@ -3755,6 +3755,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce(function=lambda x, y: (x or 1) + y, sequence=[1, 2, 3])",
         "reduce(lambda x, y: x + y, sequence=[1, 2, 3], initial=1)",
         "reduce(add, [1], 2, initial=3)",
+        "reduce(add, None)",
     ] {
         assert!(
             reduce_diff.contains(required),

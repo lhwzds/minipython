@@ -13327,6 +13327,14 @@ checks = [
     lambda: reduce(add, [1], 2, 3),
     lambda: reduce(add, [1], 2, initial=3),
 ]
+exact_checks = [
+    ('non-iterable-none', lambda: reduce(add, None)),
+]
+for label, check in exact_checks:
+    try:
+        check()
+    except TypeError as error:
+        print(label, str(error))
 for check in checks:
     try:
         check()

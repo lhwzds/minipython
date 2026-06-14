@@ -1240,8 +1240,8 @@ Recent runtime migration notes:
   `test_functools.py::TestReduce` public reduction behavior over built-in
   iterables, sequence-protocol iterables, dictionaries, positional and keyword initializer
   values, positional-only `function` / `sequence` keyword error text,
-  empty-input errors, non-callable edge cases, and propagated iterator/function
-  exceptions.
+  non-iterable second-argument error text, empty-input errors, non-callable edge
+  cases, and propagated iterator/function exceptions.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatch_diff_subset` and
   `cpython_functools_singledispatch_subset`, covering CPython
