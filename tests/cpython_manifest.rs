@@ -2814,6 +2814,78 @@ fn cpython_bytearray_inplace_concat_repeat_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytearray_nonmutating_copy_diff_covers_runtime_subsets() {
+    let cases = [
+        (
+            "cpython_bytearray_nonmutating_copy_buffers_diff_subset",
+            "cpython_bytearray_nonmutating_methods_copy_buffers_subset",
+            &[
+                "b.replace(b'abc', b'cde', 0)",
+                "x.translate(t)",
+                "bytearray(b'x').partition(b'y')",
+                "bytearray(b'x').rpartition(b'y')",
+                "b += b'!'",
+            ][..],
+        ),
+        (
+            "cpython_bytearray_pep3137_returns_new_copy_diff_subset",
+            "cpython_bytearray_pep3137_returns_new_copy_subset",
+            &[
+                "for methname in ['zfill', 'rjust', 'ljust', 'center']",
+                "val.split()[0]",
+                "val.rsplit()[0]",
+                "val.partition(b'.')[0]",
+                "val.rpartition(b'.')[2]",
+                "val.splitlines()[0]",
+                "val.replace(b'', b'')",
+                "sep.join([val])",
+                "val is newval",
+            ][..],
+        ),
+    ];
+
+    for (diff_name, subset_name, required_snippets) in cases {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "bytearray non-mutating copy direct CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "bytearray non-mutating copy runtime subset evidence `{subset_name}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "bytearray non-mutating copy docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+
+        let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+        let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+        for required in required_snippets {
+            assert!(
+                diff_body.contains(required) && subset_body.contains(required),
+                "bytearray non-mutating copy evidence `{diff_name}` / `{subset_name}` must cover `{required}`"
+            );
+        }
+    }
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "ByteArrayTest::test_copied",
+            "test_partition_bytearray_doesnt_share_nullstring",
+            "BytearrayPEP3137Test::test_returns_new_copy",
+            "AssortedBytesTest::test_return_self",
+        ] {
+            assert!(
+                document.contains(required),
+                "bytearray non-mutating copy docs must cite CPython source method `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn cpython_bytearray_current_regression_diffs_cover_runtime_subsets() {
     let cases = [
         (

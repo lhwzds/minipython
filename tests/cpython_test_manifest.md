@@ -1224,13 +1224,17 @@ in-place mutation surface against CPython.
 behavior of `ByteArrayTest::test_copied` and
 `test_partition_bytearray_doesnt_share_nullstring`, covering independent
 bytearray objects returned by non-mutating operations and absent-separator
-partition/rpartition empty results.
+partition/rpartition empty results. Direct
+`cpython_bytearray_nonmutating_copy_buffers_diff_subset` evidence compares
+this copy-buffer surface against CPython.
 `cpython_bytearray_pep3137_returns_new_copy_subset` ports
 `BytearrayPEP3137Test::test_returns_new_copy` and the public behavior of
 `AssortedBytesTest::test_return_self`, covering value-equal but distinct
 bytearray results for no-op `zfill()`, `rjust()`, `ljust()`, `center()`,
 `split()`, `rsplit()`, absent-separator `partition()` / `rpartition()`,
-`splitlines()`, `replace(b'', b'')`, and one-item `join()`.
+`splitlines()`, `replace(b'', b'')`, and one-item `join()`. Direct
+`cpython_bytearray_pep3137_returns_new_copy_diff_subset` evidence compares
+this return-copy surface against CPython.
 `cpython_bytes_pickle_roundtrip_subset` with direct
 `cpython_bytes_pickle_roundtrip_diff_subset` evidence ports the public
 value/type round-trip assertions from `BaseBytesTest::test_pickling` for
