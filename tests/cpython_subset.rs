@@ -42611,6 +42611,43 @@ fn cpython_functools_lru_cache_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestLRU public wrapper
+// metadata and helper methods.
+#[test]
+fn cpython_functools_cache_wrapper_methods_subset() {
+    assert_output(
+        concat!(
+            "from functools import lru_cache\n",
+            "def source(value: 'annotation'):\n",
+            "    \"\"\"source doc\"\"\"\n",
+            "    return value + 1\n",
+            "wrapped = lru_cache(maxsize=4, typed=True)(source)\n",
+            "print(wrapped.__name__, wrapped.__doc__, wrapped.__module__, wrapped.__qualname__, wrapped.__wrapped__ is source)\n",
+            "print(sorted(wrapped.cache_parameters().items()))\n",
+            "params = wrapped.cache_parameters()\n",
+            "params['maxsize'] = 99\n",
+            "print(sorted(params.items()), sorted(wrapped.cache_parameters().items()))\n",
+            "for method in [wrapped.cache_info, wrapped.cache_clear]:\n",
+            "    print(method.__name__, method.__qualname__, method.__module__, method.__doc__, method.__self__ is wrapped)\n",
+            "print(wrapped(3), wrapped(3), tuple(wrapped.cache_info()))\n",
+            "wrapped.cache_info = 'shadow'\n",
+            "print(wrapped.cache_info)\n",
+            "del wrapped.cache_info\n",
+            "print(tuple(wrapped.cache_info()))"
+        ),
+        &[
+            "source source doc __main__ source True",
+            "[('maxsize', 4), ('typed', True)]",
+            "[('maxsize', 99), ('typed', True)] [('maxsize', 4), ('typed', True)]",
+            "cache_info _lru_cache_wrapper.cache_info None None True",
+            "cache_clear _lru_cache_wrapper.cache_clear None None True",
+            "4 4 (1, 1, 4, 1)",
+            "shadow",
+            "(1, 1, 4, 1)",
+        ],
+    );
+}
+
 // Adapted from newer CPython functools cache-wrapper module metadata. This
 // stays split from the stable cache diff because older CPython oracles lack the
 // deletion fallback for _lru_cache_wrapper.__module__.

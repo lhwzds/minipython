@@ -14132,6 +14132,31 @@ print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(
 }
 
 #[test]
+fn cpython_functools_cache_wrapper_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py cache wrapper public method subset",
+        name: "functools-cache-wrapper-methods",
+        source: r#"from functools import lru_cache
+def source(value: 'annotation'):
+    """source doc"""
+    return value + 1
+wrapped = lru_cache(maxsize=4, typed=True)(source)
+print(wrapped.__name__, wrapped.__doc__, wrapped.__module__, wrapped.__qualname__, wrapped.__wrapped__ is source)
+print(sorted(wrapped.cache_parameters().items()))
+params = wrapped.cache_parameters()
+params['maxsize'] = 99
+print(sorted(params.items()), sorted(wrapped.cache_parameters().items()))
+for method in [wrapped.cache_info, wrapped.cache_clear]:
+    print(method.__name__, method.__qualname__, method.__module__, method.__doc__, method.__self__ is wrapped)
+print(wrapped(3), wrapped(3), tuple(wrapped.cache_info()))
+wrapped.cache_info = 'shadow'
+print(wrapped.cache_info)
+del wrapped.cache_info
+print(tuple(wrapped.cache_info()))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cache_wrapper_module_metadata_diff_subset() {
     let probe = run_cpython(
         "from functools import lru_cache\n\ndef f():\n    pass\nw = lru_cache()(f)\ndel w.__module__\nprint(w.__module__)",

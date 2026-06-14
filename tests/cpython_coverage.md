@@ -379,6 +379,7 @@ Recent runtime migration notes:
   `cpython_functools_cached_property_module_metadata_diff_subset`,
   `cpython_functools_cache_diff_subset`,
   `cpython_functools_lru_cache_diff_subset`,
+  `cpython_functools_cache_wrapper_methods_diff_subset`,
   `cpython_functools_cache_wrapper_module_metadata_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
   `cpython_functools_singledispatchmethod_diff_subset`,
@@ -1261,7 +1262,9 @@ Recent runtime migration notes:
   `cpython_functools_cache_diff_subset` and
   `cpython_functools_cache_subset`,
   `cpython_functools_lru_cache_diff_subset` and
-  `cpython_functools_lru_cache_subset`, plus gated
+  `cpython_functools_lru_cache_subset`,
+  `cpython_functools_cache_wrapper_methods_diff_subset` and
+  `cpython_functools_cache_wrapper_methods_subset`, plus gated
   `cpython_functools_cache_wrapper_module_metadata_diff_subset` and
   `cpython_functools_cache_wrapper_module_metadata_subset`, covering CPython
   `test_functools.py::TestCache` and public `TestLRU` cache-wrapper behavior
