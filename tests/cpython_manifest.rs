@@ -1402,6 +1402,89 @@ fn cpython_test_manifest_memoryview_direct_methods_are_tracked() {
 }
 
 #[test]
+fn cpython_memoryview_constructor_and_weakref_edges_stay_focused() {
+    let getbuf_diff_name = "cpython_memoryview_getbuf_fail_diff_subset";
+    let getbuf_subset_name = "cpython_memoryview_getbuf_fail_subset";
+    let weakref_diff_name = "cpython_memoryview_weakref_live_diff_subset";
+    let weakref_subset_name = "cpython_memoryview_weakref_live_subset";
+
+    for (diff_name, subset_name) in [
+        (getbuf_diff_name, getbuf_subset_name),
+        (weakref_diff_name, weakref_subset_name),
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "memoryview CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "memoryview runtime subset evidence `{subset_name}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "memoryview docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    let getbuf_diff = extract_rust_test_body(CPYTHON_DIFF, getbuf_diff_name);
+    let getbuf_subset = extract_rust_test_body(CPYTHON_SUBSET, getbuf_subset_name);
+    for required in [
+        "for value in [{}, [], object(), 42, 'abc']",
+        "memoryview(value)",
+        "error.__class__.__name__",
+    ] {
+        assert!(
+            getbuf_diff.contains(required) && getbuf_subset.contains(required),
+            "memoryview getbuf-fail evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        getbuf_subset.contains("dict TypeError")
+            && getbuf_subset.contains("list TypeError")
+            && getbuf_subset.contains("object TypeError")
+            && getbuf_subset.contains("int TypeError")
+            && getbuf_subset.contains("str TypeError"),
+        "memoryview getbuf-fail subset evidence must assert TypeError for non-buffer objects"
+    );
+
+    let weakref_diff = extract_rust_test_body(CPYTHON_DIFF, weakref_diff_name);
+    let weakref_subset = extract_rust_test_body(CPYTHON_SUBSET, weakref_subset_name);
+    for required in [
+        "import weakref",
+        "weakref.ref(m)",
+        "weakref.ref(m, callback)",
+        "weakref.ref(m, None)",
+        "weakref.ReferenceType",
+        "len(seen)",
+    ] {
+        assert!(
+            weakref_diff.contains(required) && weakref_subset.contains(required),
+            "memoryview weakref-live evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
+        let lower_document = document.to_ascii_lowercase();
+        assert!(
+            document.contains("live-reference"),
+            "memoryview docs must keep the live weakref subset visible"
+        );
+        assert!(
+            lower_document.contains("callback invocation")
+                && lower_document.contains("weakref")
+                && lower_document.contains("clearing"),
+            "memoryview docs must keep weakref clearing/callback collection behavior out of the live subset"
+        );
+        assert!(
+            document.contains("full buffer protocol"),
+            "memoryview docs must keep full buffer protocol outside the supported subset"
+        );
+    }
+}
+
+#[test]
 fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset() {
     let diff_name = "cpython_memoryview_methods_release_diff_subset";
     let subset_name = "cpython_memoryview_basic_methods_and_release_subset";

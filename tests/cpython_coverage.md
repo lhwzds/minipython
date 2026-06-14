@@ -4513,6 +4513,9 @@ without adding general custom encoder/decoder class support.
   callback arguments are accepted, and `callback=None` is valid at
   construction time. `cpython_memoryview_weakref_live_diff_subset` directly
   compares this live-reference construction surface against CPython.
+  Collection-time weakref clearing and callback invocation remain tied to the
+  broader GC weakref model, and full buffer protocol behavior remains outside
+  this live-reference subset.
 - `RUNTIME_BUILTINS` also includes
   `cpython_weakref_ref_supported_target_matrix_subset`, covering first-pass
   CPython public `weakref.ref()` construction behavior: unsupported built-in

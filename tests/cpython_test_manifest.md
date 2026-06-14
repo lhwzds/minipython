@@ -741,7 +741,9 @@ re-entrant BufferError path for CPython oracles with the current fix.
 `cpython_memoryview_weakref_live_subset` ports the live-reference portion of
 `AbstractMemoryTests::test_weakref`, covering `weakref.ref(memoryview(...))`
 construction, callback argument acceptance, `callback=None`, direct ref calls,
-and `weakref.ReferenceType` classification.
+and `weakref.ReferenceType` classification. Direct
+`cpython_memoryview_weakref_live_diff_subset` evidence compares this
+live-reference construction surface against CPython.
 `cpython_memoryview_bytesio_readinto_subset` ports the in-memory portion of
 `AbstractMemoryTests::test_writable_readonly`, covering
 `io.BytesIO.readinto()` writes to `bytearray` and bytearray-backed
