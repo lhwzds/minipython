@@ -24284,12 +24284,18 @@ fn cpython_runtime_exception_capture_subset() {
         &["dict.keys() takes no keyword arguments"],
     );
     assert_output(
-        "checks = [\n    ('set-add', lambda: set.add(set(), object=1)),\n    ('frozenset-hash', lambda: frozenset.__hash__(frozenset(), bad=1)),\n    ('int-bit-length', lambda: int.bit_length(1, bad=1)),\n    ('float-hex', lambda: float.hex(1.0, bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        "checks = [\n    ('set-add', lambda: set.add(set(), object=1)),\n    ('frozenset-hash', lambda: frozenset.__hash__(frozenset(), bad=1)),\n    ('int-bit-length', lambda: int.bit_length(1, bad=1)),\n    ('float-hex', lambda: float.hex(1.0, bad=1)),\n    ('object-repr', lambda: object.__repr__(object(), object=object())),\n    ('object-str', lambda: object.__str__(object(), object=object())),\n    ('slice-indices', lambda: slice(None).indices(length=1)),\n    ('dict-fromkeys', lambda: dict.fromkeys(iterable=[1])),\n    ('str-maketrans', lambda: str.maketrans(x='a')),\n    ('super', lambda: super(bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "set-add set.add() takes no keyword arguments",
             "frozenset-hash wrapper __hash__() takes no keyword arguments",
             "int-bit-length int.bit_length() takes no keyword arguments",
             "float-hex float.hex() takes no keyword arguments",
+            "object-repr wrapper __repr__() takes no keyword arguments",
+            "object-str wrapper __str__() takes no keyword arguments",
+            "slice-indices slice.indices() takes no keyword arguments",
+            "dict-fromkeys dict.fromkeys() takes no keyword arguments",
+            "str-maketrans str.maketrans() takes no keyword arguments",
+            "super super() takes no keyword arguments",
         ],
     );
     assert_output(

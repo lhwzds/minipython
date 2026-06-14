@@ -9251,7 +9251,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "slice.indices" => {
                 if !keywords.is_empty() {
-                    return Err("indices() does not accept keyword arguments".to_string());
+                    return Err("TypeError: slice.indices() takes no keyword arguments".to_string());
                 }
 
                 self.call_slice_indices(args)
@@ -9378,14 +9378,18 @@ impl Vm {
             }
             Value::Builtin(name) if name == "object.__repr__" => {
                 if !keywords.is_empty() {
-                    return Err("__repr__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __repr__() takes no keyword arguments".to_string()
+                    );
                 }
 
                 self.call_object_repr(args)
             }
             Value::Builtin(name) if name == "object.__str__" => {
                 if !keywords.is_empty() {
-                    return Err("__str__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __str__() takes no keyword arguments".to_string()
+                    );
                 }
 
                 self.call_object_str(args)
@@ -9449,7 +9453,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "dict.fromkeys" => {
                 if !keywords.is_empty() {
-                    return Err("fromkeys() does not accept keyword arguments".to_string());
+                    return Err("TypeError: dict.fromkeys() takes no keyword arguments".to_string());
                 }
 
                 self.call_dict_fromkeys(args)
@@ -9503,7 +9507,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "str.maketrans" => {
                 if !keywords.is_empty() {
-                    return Err("maketrans() does not accept keyword arguments".to_string());
+                    return Err("TypeError: str.maketrans() takes no keyword arguments".to_string());
                 }
 
                 call_str_maketrans(args)
@@ -13448,7 +13452,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("super() does not accept keyword arguments".to_string());
+            return Err("TypeError: super() takes no keyword arguments".to_string());
         }
 
         match args.as_slice() {

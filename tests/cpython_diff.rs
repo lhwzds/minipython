@@ -6529,6 +6529,12 @@ checks = [
     ("frozenset-hash", lambda: frozenset.__hash__(frozenset(), bad=1)),
     ("int-bit-length", lambda: int.bit_length(1, bad=1)),
     ("float-hex", lambda: float.hex(1.0, bad=1)),
+    ("object-repr", lambda: object.__repr__(object(), object=object())),
+    ("object-str", lambda: object.__str__(object(), object=object())),
+    ("slice-indices", lambda: slice(None).indices(length=1)),
+    ("dict-fromkeys", lambda: dict.fromkeys(iterable=[1])),
+    ("str-maketrans", lambda: str.maketrans(x="a")),
+    ("super", lambda: super(bad=1)),
 ]
 for label, expr in checks:
     try:

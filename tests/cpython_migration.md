@@ -98,9 +98,11 @@ Completed in the builtin method TypeError capture pass:
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
-  `int.bit_length`, and `float.hex`, plus `staticmethod()` and `classmethod()`
-  constructor keyword rejection. Exact CPython message text for every builtin
-  method remains a separate method-by-method migration task.
+  `int.bit_length`, and `float.hex`, plus `staticmethod()` / `classmethod()`
+  constructor keyword rejection, `object.__repr__`, `object.__str__`,
+  `slice.indices`, `dict.fromkeys`, `str.maketrans`, and `super()`. Exact
+  CPython message text for every builtin method remains a separate
+  method-by-method migration task.
 - Extended the same runtime exception-capture evidence to public
   generator/coroutine/async-generator keyword rejection for `send`, `throw`,
   `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping
