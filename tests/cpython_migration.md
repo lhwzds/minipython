@@ -6425,7 +6425,9 @@ Completed in the container constructor/reversed pass:
 - Added `cpython_set_iterator_mutation_subset`, adapted from CPython
   `Lib/test/test_set.py::TestBasicOps.test_changingSizeWhileIterating` and
   `TestWeirdBugs.test_iter_and_mutate`, covering set iterator size-change
-  invalidation plus the non-crashing clear/refill-to-original-size regression.
+  invalidation plus the clear/refill-to-original-size no-crash regression. The
+  matching `set-iterator-mutation` CPython output diff keeps both public
+  behaviors tied to the oracle.
 - Added `cpython_set_reentrant_mutation_subset`, adapted from CPython
   `Lib/test/test_set.py::TestWeirdBugs.test_merge_and_mutate` and
   `::test_hash_collision_concurrent_add`, covering set updates whose rich
