@@ -105,8 +105,9 @@ Completed in the builtin method TypeError capture pass:
   object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
   `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
   `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
-  `reversed()`, and common stdlib-backed builtins such as `id()`, `any()`,
-  `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`, `len()`,
+  `reversed()`, `dict.__class_getitem__`, `str.format_map`, `sys._getframe`,
+  `math.gcd()`, `math.lcm()`, and common stdlib-backed builtins such as `id()`,
+  `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`, `len()`,
   `callable()`, `bin()`, `oct()`, and `hex()`. Exact CPython message text for
   every builtin method remains a separate method-by-method migration task.
 - Extended the same runtime exception-capture evidence to public

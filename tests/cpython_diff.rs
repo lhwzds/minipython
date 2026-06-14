@@ -6524,6 +6524,7 @@ try:
     dict.keys({}, bad=1)
 except TypeError as error:
     print(str(error))
+import math, sys
 checks = [
     ("set-add", lambda: set.add(set(), object=1)),
     ("frozenset-hash", lambda: frozenset.__hash__(frozenset(), bad=1)),
@@ -6574,6 +6575,11 @@ checks = [
     ("next", lambda: next(iterator=iter([]))),
     ("filter", lambda: filter(function=None, iterable=[])),
     ("reversed", lambda: reversed(sequence=[])),
+    ("dict-class-getitem", lambda: dict.__class_getitem__(item=int)),
+    ("str-format-map", lambda: "x".format_map(mapping={})),
+    ("sys-getframe", lambda: sys._getframe(depth=0)),
+    ("math-gcd", lambda: math.gcd(x=1)),
+    ("math-lcm", lambda: math.lcm(x=1)),
 ]
 for label, expr in checks:
     try:

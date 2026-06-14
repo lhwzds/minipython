@@ -8145,7 +8145,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("_getframe() does not accept keyword arguments".to_string());
+            return Err("TypeError: sys._getframe() takes no keyword arguments".to_string());
         }
         if args.len() > 1 {
             return Err(format!(
@@ -9483,7 +9483,10 @@ impl Vm {
             }
             Value::Builtin(name) if name == "dict.__class_getitem__" => {
                 if !keywords.is_empty() {
-                    return Err("__class_getitem__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: dict.__class_getitem__() takes no keyword arguments"
+                            .to_string(),
+                    );
                 }
                 let [item] = args.as_slice() else {
                     return Err(format!(
@@ -9963,7 +9966,7 @@ impl Vm {
             }
             Value::Builtin(name) if matches!(name.as_str(), "math.gcd" | "math.integer.gcd") => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_gcd(self, args)
@@ -9988,7 +9991,7 @@ impl Vm {
             }
             Value::Builtin(name) if matches!(name.as_str(), "math.lcm" | "math.integer.lcm") => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_math_lcm(self, args)
@@ -17958,7 +17961,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("format_map() does not accept keyword arguments".to_string());
+            return Err("TypeError: str.format_map() takes no keyword arguments".to_string());
         }
         let [Value::String(template), mapping] = args.as_slice() else {
             return Err(format!(

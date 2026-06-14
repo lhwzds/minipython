@@ -51,7 +51,8 @@ Recent runtime migration notes:
   object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
   `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
   `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
-  `reversed()`, and common
+  `reversed()`, `dict.__class_getitem__`, `str.format_map`, `sys._getframe`,
+  `math.gcd()`, `math.lcm()`, and common
   stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.
