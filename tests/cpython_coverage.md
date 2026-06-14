@@ -1004,6 +1004,12 @@ It covers arbitrary returned values including `None`, lists, and derived key lis
 non-callable hook `TypeError` text when the hook is used, and hook exception propagation,
 without adding unsupported decoder hooks or `JSONDecoder` subclassing.
 
+`cpython_json_loads_number_and_whitespace_subset`, backed by
+`cpython_json_loads_number_and_whitespace_diff_subset`, keeps `loads()` number grammar and whitespace behavior for
+leading and trailing JSON whitespace, negative zero as `int` for `-0` and `float` for `-0.0`,
+positive exponent notation, and uppercase exponent notation,
+without adding Decimal parsing or locale-sensitive number formats.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

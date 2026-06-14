@@ -5888,6 +5888,73 @@ fn json_loads_object_pairs_hook_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
+    let diff_name = "cpython_json_loads_number_and_whitespace_diff_subset";
+    let subset_name = "cpython_json_loads_number_and_whitespace_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads number/whitespace CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads number/whitespace runtime subset evidence must exist"
+    );
+
+    for required in [
+        "[1, 2, 3]",
+        "negzero",
+        "-0",
+        "negfloat",
+        "-0.0",
+        "exp",
+        "6.02e+23",
+        "small",
+        "1E-2",
+        "type(value['negzero']).__name__",
+        "type(value['negfloat']).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads number/whitespace diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"[1, 2, 3]\"",
+        "\"0 int\"",
+        "\"-0.0 float\"",
+        "\"6.02e+23\"",
+        "\"0.01\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads number/whitespace subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` number grammar and whitespace",
+            "leading and trailing JSON whitespace",
+            "negative zero as `int` for `-0` and `float` for `-0.0`",
+            "positive exponent notation",
+            "uppercase exponent notation",
+            "without adding Decimal parsing or locale-sensitive number formats",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads number/whitespace boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
