@@ -4885,6 +4885,120 @@ fn json_error_boundary_diff_covers_subset_surface() {
 }
 
 #[test]
+fn json_error_boundary_docs_cover_subset_limits() {
+    let boundary_pairs = [
+        (
+            "cpython_json_loads_dumps_error_boundary_diff_subset",
+            "cpython_json_loads_dumps_error_boundary_subset",
+        ),
+        (
+            "cpython_json_loads_string_error_boundary_diff_subset",
+            "cpython_json_loads_string_error_boundary_subset",
+        ),
+    ];
+
+    for (diff_name, subset_name) in boundary_pairs {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json error-boundary CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json error-boundary runtime subset evidence `{subset_name}` must exist"
+        );
+    }
+
+    for required in [
+        "loads-no-args",
+        "loads-extra-arg",
+        "loads-unknown-keyword",
+        "loads-memoryview",
+        "loads-invalid-utf8",
+        "loads-invalid-utf8-unicode",
+        "loads-string-bom",
+        "loads-trailing-data",
+        "loads-array-trailing-comma",
+        "loads-object-trailing-comma",
+        "loads-leading-zero-extra",
+        "dumps-no-args",
+        "dumps-extra-arg",
+        "dumps-unknown-keyword",
+        "dumps-object",
+        "dumps-bytes",
+        "dumps-bytearray",
+        "dumps-memoryview",
+        "dumps-list-cycle",
+        "dumps-dict-cycle",
+        "dumps-tuple-cycle",
+        "dumps-namedtuple-cycle",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads/dumps error-boundary diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "bad-escape",
+        "short-unicode-escape",
+        "nonhex-unicode-escape",
+        "raw-newline",
+        "raw-tab",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json string error-boundary diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"loads-invalid-utf8 False True\"",
+        "\"loads-invalid-utf8-unicode True\"",
+        "\"loads-string-bom True True\"",
+        "\"loads-leading-zero-extra True\"",
+        "\"dumps-bytearray True False\"",
+        "\"dumps-memoryview True False\"",
+        "\"dumps-namedtuple-cycle False True\"",
+        "\"bad-escape True\"",
+        "\"short-unicode-escape True\"",
+        "\"nonhex-unicode-escape True\"",
+        "\"raw-newline True\"",
+        "\"raw-tab True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json error-boundary subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for (diff_name, subset_name) in boundary_pairs {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+        for required in [
+            "`loads()` / `dumps()` first-pass error boundary",
+            "argument count and unknown keyword `TypeError` classification",
+            "unsupported `loads()` input types such as `memoryview`",
+            "invalid UTF-8 byte input and string-input UTF-8 BOM rejection",
+            "structural JSON parse failures including trailing data and trailing commas",
+            "unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview",
+            "circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers",
+            "`loads()` string escape/control-character error boundary",
+            "bad escapes, short Unicode escapes, non-hex Unicode escapes, raw newline, and raw tab",
+            "without adding full `JSONDecodeError` compatibility or host-backed serialization",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe error-boundary limit `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_dumps_options_diff_covers_subset_surface() {
     let option_pairs = [
         (
