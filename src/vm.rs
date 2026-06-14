@@ -26800,8 +26800,8 @@ impl Vm {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "elements() expected 0 arguments, got {}",
-                        method_arg_count(&args)
+                        "TypeError: elements() takes 1 positional argument but {} were given",
+                        args.len()
                     ));
                 };
                 let mut values = Vec::new();

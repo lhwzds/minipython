@@ -10488,6 +10488,22 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "deque public surface subset output must pin CPython behavior `{required}`"
         );
     }
+    let counter_public_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_public_diff_subset",
+    );
+    let counter_public_subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_collections_counter_public_subset");
+    for required in [
+        "Counter.elements(Counter(a=2), 1)",
+        "elements() takes 1 positional argument but 2 were given",
+    ] {
+        assert!(
+            counter_public_diff_body.contains(required)
+                && counter_public_subset_body.contains(required),
+            "Counter public diff and subset evidence must cover `{required}`"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),

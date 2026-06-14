@@ -11487,6 +11487,7 @@ for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: t
 
 #[test]
 fn cpython_collections_counter_public_diff_subset() {
+    // CPython oracle text: elements() takes 1 positional argument but 2 were given
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
         name: "collections-counter-public",
@@ -11504,6 +11505,10 @@ print(sorted((c - Counter('aaa')).items()))
 print(sorted((+Counter({'a': 2, 'b': 0, 'c': -1})).items()))
 print(sorted((-Counter({'a': 2, 'b': 0, 'c': -1})).items()))
 print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
+try:
+    Counter.elements(Counter(a=2), 1)
+except TypeError as error:
+    print('elements-extra', type(error).__name__, str(error))
 c.update('zz')
 c.subtract({'a': 1, 'z': 3})
 print(sorted(c.items()))
