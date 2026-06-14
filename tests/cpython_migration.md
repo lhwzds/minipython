@@ -6430,9 +6430,10 @@ Completed in the container constructor/reversed pass:
   behaviors tied to the oracle.
 - Added `cpython_set_reentrant_mutation_subset`, adapted from CPython
   `Lib/test/test_set.py::TestWeirdBugs.test_merge_and_mutate` and
-  `::test_hash_collision_concurrent_add`, covering set updates whose rich
-  equality clears the source set plus hash-collision `set.add()` re-entering the
-  same set from Python-level `__eq__`.
+  `::test_hash_collision_concurrent_add`, covering rich equality clears the source set
+  during set updates plus hash-collision `set.add()` re-entering the same set
+  from Python-level `__eq__`. The matching `set-reentrant-mutation` CPython
+  output diff keeps both public behaviors tied to the oracle.
 - Added `cpython_set_operations_mutating_subset`, adapted from CPython
   `Lib/test/test_set.py::TestOperationsMutating`, covering a deterministic
   stable subset of set equality, ordering, algebra, relation methods, and

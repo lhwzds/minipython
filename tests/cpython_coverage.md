@@ -4492,6 +4492,11 @@ names like `from ._threading_handler import ...`.
 direct CPython diff case, keeping set iterator size-change invalidation and the
 clear/refill-to-original-size no-crash regression tied to the oracle.
 
+`cpython_set_reentrant_mutation_subset` is backed by the
+`set-reentrant-mutation` direct CPython diff case, keeping set updates whose
+rich equality clears the source set and hash-collision `set.add()` re-entering
+the same set from Python-level `__eq__` tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.
