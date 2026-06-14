@@ -6352,6 +6352,19 @@ except AttributeError:
     print('descriptor missing')
 Point.x.__set__(p, 7)
 print(p.x, Point.x.__get__(p, Point))
+print(Point.x.__get__(p, None))
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=p, type=Point)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
+    ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
+    ('none-none', '__get__(None, None) is invalid', lambda: Point.x.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)
 Point.x.__delete__(p)
 try:
     Point.x.__get__(p, Point)
@@ -6443,6 +6456,13 @@ print(d.x)"#
             "x None True".to_string(),
             "<member 'x' of 'Point' objects>".to_string(),
             "7 7".to_string(),
+            "7".to_string(),
+            "missing TypeError  expected at least 1 argument, got 0 True".to_string(),
+            "too-many TypeError  expected at most 2 arguments, got 3 True".to_string(),
+            "keyword TypeError wrapper __get__() takes no keyword arguments True".to_string(),
+            "bad-keyword TypeError wrapper __get__() takes no keyword arguments True".to_string(),
+            "none-only TypeError __get__(None, None) is invalid True".to_string(),
+            "none-none TypeError __get__(None, None) is invalid True".to_string(),
             "descriptor deleted".to_string(),
             "descriptor type checked".to_string(),
             "mini".to_string(),

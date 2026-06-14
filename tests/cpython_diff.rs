@@ -11997,7 +11997,21 @@ Vector.x.__doc__ = 'docstring for Vector.x'
 print(Vector.x.__doc__)
 print(Point.x.__doc__)
 print(Point.x.__get__(None, Point) is Point.x)
-print(Point.x.__get__(Point(11, 22), Point))"#,
+point = Point(11, 22)
+print(Point.x.__get__(point, Point))
+print(Point.x.__get__(point, None))
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(point, Point, 1)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=point, type=Point)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
+    ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
+    ('none-none', '__get__(None, None) is invalid', lambda: Point.x.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)"#,
     });
 }
 
@@ -17359,6 +17373,19 @@ except AttributeError:
     print('descriptor missing')
 Point.x.__set__(p, 7)
 print(p.x, Point.x.__get__(p, Point))
+print(Point.x.__get__(p, None))
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=p, type=Point)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
+    ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
+    ('none-none', '__get__(None, None) is invalid', lambda: Point.x.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)
 Point.x.__delete__(p)
 try:
     Point.x.__get__(p, Point)

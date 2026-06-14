@@ -11124,6 +11124,53 @@ fn bound_method_descriptor_subset_has_focused_error_evidence() {
 }
 
 #[test]
+fn slot_and_namedtuple_descriptor_get_errors_have_diff_evidence() {
+    for required in [
+        "Point.x.__get__()",
+        "Point.x.__get__(p, Point, 1)",
+        "wrapper __get__() takes no keyword arguments",
+        "Point.x.__get__(None)",
+        "Point.x.__get__(None, None)",
+        "__get__(None, None) is invalid",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(required),
+            "slot member descriptor runtime evidence must cover `{required}`"
+        );
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "slot member descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let namedtuple_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_namedtuple_field_doc_subset",
+    );
+    let namedtuple_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_namedtuple_field_doc_diff_subset",
+    );
+    for required in [
+        "Point.x.__get__()",
+        "Point.x.__get__(point, Point, 1)",
+        "wrapper __get__() takes no keyword arguments",
+        "Point.x.__get__(None)",
+        "Point.x.__get__(None, None)",
+        "__get__(None, None) is invalid",
+    ] {
+        assert!(
+            namedtuple_subset.contains(required),
+            "namedtuple field descriptor subset evidence must cover `{required}`"
+        );
+        assert!(
+            namedtuple_diff.contains(required),
+            "namedtuple field descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn builtin_singleton_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_builtin_construct_singletons_subset(",

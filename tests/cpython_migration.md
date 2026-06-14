@@ -5970,6 +5970,10 @@ Completed in the type builtin pass:
   public error classes for bytes specs, invalid identifiers, class-variable
   conflicts, duplicate `__dict__` / `__weakref__`, inherited `__dict__` /
   `__weakref__`, and non-special slots on supported `int` subtypes.
+- Extended the slot runtime coverage to pin CPython member descriptor `__get__`
+  behavior for class access, object access with a `None` owner, missing and
+  extra positional arguments, keyword rejection, and invalid `None, None`
+  owner paths.
 - Added `cpython_type_nokwargs_subset`, adapted from
   `TestType::test_type_nokwargs`, covering keyword rejection for the
   three-argument `type()` constructor.
@@ -9933,7 +9937,8 @@ Completed in the CPython collections manifest expansion pass:
   methods are migrated or explicitly classified.
 - Added `cpython_collections_namedtuple_field_doc_subset`, porting CPython
   `TestNamedTuple::test_field_doc` for generated field descriptor default docs
-  and per-field `__doc__` mutation.
+  and per-field `__doc__` mutation, plus field descriptor `__get__`
+  method-wrapper error paths.
 - Added `cpython_collections_namedtuple_name_conflicts_subset`, porting CPython
   `TestNamedTuple::test_name_conflicts` for conflict-prone public field names,
   the full broader `words` set, positional and keyword construction, `_make()`,
@@ -10010,7 +10015,8 @@ Completed in the CPython collections manifest expansion pass:
 - Completed the public namedtuple field descriptor surface needed by the
   migrated field-doc slice, including default field docstrings, per-field
   doc mutation, hashing/truthiness/type-name handling, and descriptor identity
-  participation in VM comparisons.
+  participation in VM comparisons. Field descriptor `__get__` also follows
+  CPython method-wrapper arity, keyword, and invalid `None, None` owner errors.
 - Remaining `TestNamedTuple` work is limited to CPython-internal descriptor
   reuse/repr details that should remain classified rather than copied.
 - Added `cpython_compile_specifics_dont_merge_constants_public_subset`, porting

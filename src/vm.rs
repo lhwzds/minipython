@@ -9442,24 +9442,10 @@ impl Vm {
                 self.call_method_get(args, keywords)
             }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
-
-                self.call_namedtuple_field_descriptor_method(&name, args)
+                self.call_namedtuple_field_descriptor_method(&name, args, keywords)
             }
             Value::Builtin(name) if name.starts_with("member_descriptor.") => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
-
-                self.call_member_descriptor_method(&name, args)
+                self.call_member_descriptor_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "dict.fromkeys" => {
                 if !keywords.is_empty() {
@@ -15660,6 +15646,7 @@ impl Vm {
         &mut self,
         name: &str,
         args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
@@ -15676,15 +15663,17 @@ impl Vm {
 
         match name {
             "member_descriptor.__get__" => {
-                if rest.is_empty() || rest.len() > 2 {
-                    return Err(format!(
-                        "__get__() expected 1 or 2 arguments, got {}",
-                        rest.len()
-                    ));
-                }
-                self.member_descriptor_get(descriptor, rest[0].clone())
+                descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+                let owner = rest.get(1).cloned();
+                self.member_descriptor_get(descriptor, rest[0].clone(), owner)
             }
             "member_descriptor.__set__" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "{}() does not accept keyword arguments",
+                        method_display_name(name)
+                    ));
+                }
                 let [object, value] = rest else {
                     return Err(format!(
                         "__set__() expected 2 arguments, got {}",
@@ -15695,6 +15684,12 @@ impl Vm {
                 Ok(Value::None)
             }
             "member_descriptor.__delete__" => {
+                if !keywords.is_empty() {
+                    return Err(format!(
+                        "{}() does not accept keyword arguments",
+                        method_display_name(name)
+                    ));
+                }
                 let [object] = rest else {
                     return Err(format!(
                         "__delete__() expected 1 argument, got {}",
@@ -15712,6 +15707,7 @@ impl Vm {
         &mut self,
         name: &str,
         args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
@@ -15728,13 +15724,9 @@ impl Vm {
 
         match name {
             "namedtuple_field_descriptor.__get__" => {
-                if rest.is_empty() || rest.len() > 2 {
-                    return Err(format!(
-                        "__get__() expected 1 or 2 arguments, got {}",
-                        rest.len()
-                    ));
-                }
-                self.namedtuple_field_descriptor_get(descriptor, rest[0].clone())
+                descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+                let owner = rest.get(1).cloned();
+                self.namedtuple_field_descriptor_get(descriptor, rest[0].clone(), owner)
             }
             _ => Err(format!(
                 "unknown namedtuple field descriptor method: {name}"
@@ -16118,12 +16110,23 @@ impl Vm {
         }
     }
 
-    fn member_descriptor_get(&mut self, descriptor: Value, object: Value) -> Result<Value, String> {
+    fn member_descriptor_get(
+        &mut self,
+        descriptor: Value,
+        object: Value,
+        owner: Option<Value>,
+    ) -> Result<Value, String> {
         let Value::MemberDescriptor { name, owner_name } = descriptor.clone() else {
             unreachable!("member_descriptor_get is only called with member descriptor values");
         };
         if matches!(object, Value::None) {
-            return Ok(descriptor);
+            if owner
+                .as_ref()
+                .is_some_and(|owner| !matches!(owner, Value::None))
+            {
+                return Ok(descriptor);
+            }
+            return Err("TypeError: __get__(None, None) is invalid".to_string());
         }
 
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
@@ -16164,6 +16167,7 @@ impl Vm {
         &mut self,
         descriptor: Value,
         object: Value,
+        owner: Option<Value>,
     ) -> Result<Value, String> {
         let Value::NamedTupleFieldDescriptor { typ, index } = descriptor.clone() else {
             unreachable!(
@@ -16171,7 +16175,13 @@ impl Vm {
             );
         };
         if matches!(object, Value::None) {
-            return Ok(descriptor);
+            if owner
+                .as_ref()
+                .is_some_and(|owner| !matches!(owner, Value::None))
+            {
+                return Ok(descriptor);
+            }
+            return Err("TypeError: __get__(None, None) is invalid".to_string());
         }
 
         let Value::NamedTuple {
@@ -16186,7 +16196,6 @@ impl Vm {
                 type_name(&object)
             ));
         };
-
         if !Rc::ptr_eq(&typ, &object_typ) {
             let field = typ.fields.get(index).cloned().unwrap_or_default();
             return Err(format!(
@@ -16194,7 +16203,6 @@ impl Vm {
                 typ.name, object_typ.name
             ));
         }
-
         values
             .get(index)
             .cloned()
@@ -16248,7 +16256,9 @@ impl Vm {
                     return self.property_get(descriptor, object).map(Some);
                 }
                 if matches!(descriptor, Value::MemberDescriptor { .. }) {
-                    return self.member_descriptor_get(descriptor, object).map(Some);
+                    return self
+                        .member_descriptor_get(descriptor, object, Some(owner))
+                        .map(Some);
                 }
                 let Some(get) = instance_special_method(&descriptor, "__get__") else {
                     return Ok(None);
