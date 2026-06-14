@@ -9690,12 +9690,7 @@ impl Vm {
                     || name.starts_with("bytes.")
                     || name.starts_with("range.") =>
             {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
+                reject_method_keywords(&name, &keywords)?;
 
                 call_immutable_sequence_method(self, &name, args)
             }
@@ -63948,10 +63943,7 @@ fn call_str_method(
     }
 
     if !keywords.is_empty() {
-        return Err(format!(
-            "{}() does not accept keyword arguments",
-            method_display_name(name)
-        ));
+        reject_method_keywords(name, &keywords)?;
     }
 
     call_immutable_sequence_method(vm, name, args)

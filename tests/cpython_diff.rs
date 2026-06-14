@@ -6539,6 +6539,19 @@ for label, expr in checks:
         expr()
     except TypeError as error:
         print(label, str(error))
+checks = [
+    ("tuple-len", lambda: tuple.__len__((), bad=1)),
+    ("tuple-count", lambda: tuple.count((), value=1)),
+    ("str-len", lambda: str.__len__("x", bad=1)),
+    ("str-upper", lambda: str.upper("x", bad=1)),
+    ("bytes-len", lambda: bytes.__len__(b"x", bad=1)),
+    ("bytes-upper", lambda: bytes.upper(b"x", bad=1)),
+]
+for label, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:

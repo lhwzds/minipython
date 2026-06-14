@@ -24303,6 +24303,17 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "checks = [\n    ('tuple-len', lambda: tuple.__len__((), bad=1)),\n    ('tuple-count', lambda: tuple.count((), value=1)),\n    ('str-len', lambda: str.__len__('x', bad=1)),\n    ('str-upper', lambda: str.upper('x', bad=1)),\n    ('bytes-len', lambda: bytes.__len__(b'x', bad=1)),\n    ('bytes-upper', lambda: bytes.upper(b'x', bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "tuple-len wrapper __len__() takes no keyword arguments",
+            "tuple-count tuple.count() takes no keyword arguments",
+            "str-len wrapper __len__() takes no keyword arguments",
+            "str-upper str.upper() takes no keyword arguments",
+            "bytes-len wrapper __len__() takes no keyword arguments",
+            "bytes-upper bytes.upper() takes no keyword arguments",
+        ],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );
