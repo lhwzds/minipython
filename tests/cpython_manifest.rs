@@ -14361,6 +14361,21 @@ fn stdlib_create_module_registry_is_classified_by_scope() {
 }
 
 #[test]
+fn compatibility_stdlib_runtime_guard_matches_registry() {
+    let guard_modules = compatibility_stdlib_runtime_guard_modules();
+    let registry_modules = compatibility_module_registry_names();
+
+    assert_eq!(
+        guard_modules, registry_modules,
+        "compatibility stdlib runtime guard drifted from migration registry"
+    );
+    assert!(
+        guard_modules.is_disjoint(&sandbox_stdlib_module_names()),
+        "compatibility stdlib guard must not include required sandbox stdlib modules"
+    );
+}
+
+#[test]
 fn pickle_stays_compatibility_only_not_required_sandbox_stdlib() {
     let actual = stdlib_create_module_names();
     let sandbox_modules = sandbox_stdlib_module_names();
@@ -16573,6 +16588,21 @@ fn required_stdlib_runtime_guard_modules() -> BTreeSet<String> {
         .find("];")
         .map(|offset| list_start + offset)
         .expect("REQUIRED_SANDBOX_STDLIB_MODULES must close with ];");
+    quoted_strings(&LANGUAGE_TESTS[list_start..list_end])
+        .into_iter()
+        .collect()
+}
+
+fn compatibility_stdlib_runtime_guard_modules() -> BTreeSet<String> {
+    let constant = "const COMPATIBILITY_STDLIB_MODULES: &[&str] = &[";
+    let list_start = LANGUAGE_TESTS
+        .find(constant)
+        .map(|start| start + constant.len())
+        .expect("language.rs must define COMPATIBILITY_STDLIB_MODULES");
+    let list_end = LANGUAGE_TESTS[list_start..]
+        .find("];")
+        .map(|offset| list_start + offset)
+        .expect("COMPATIBILITY_STDLIB_MODULES must close with ];");
     quoted_strings(&LANGUAGE_TESTS[list_start..list_end])
         .into_iter()
         .collect()

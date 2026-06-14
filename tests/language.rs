@@ -26,6 +26,35 @@ const REQUIRED_SANDBOX_STDLIB_MODULES: &[&str] = &[
     "json",
 ];
 
+const COMPATIBILITY_STDLIB_MODULES: &[&str] = &[
+    "_types",
+    "_weakref",
+    "annotationlib",
+    "ast",
+    "decimal",
+    "dis",
+    "enum",
+    "fractions",
+    "inspect",
+    "os",
+    "os.path",
+    "pickle",
+    "re",
+    "string",
+    "string.templatelib",
+    "test",
+    "test.typinganndata",
+    "test.typinganndata.ann_module",
+    "test.typinganndata.ann_module2",
+    "test.typinganndata.ann_module3",
+    "time",
+    "typing",
+    "unittest",
+    "unittest.mock",
+    "warnings",
+    "weakref",
+];
+
 struct TestSandboxDir {
     path: PathBuf,
 }
@@ -1122,7 +1151,7 @@ fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let policy =
         SandboxPolicy::allow_stdlib_modules(REQUIRED_SANDBOX_STDLIB_MODULES.to_vec()).unwrap();
 
-    for module in ["weakref", "time", "os", "typing"] {
+    for module in COMPATIBILITY_STDLIB_MODULES {
         let error = run_source_with_sandbox_dir_and_policy(
             &format!("import {module}"),
             sandbox.path(),
