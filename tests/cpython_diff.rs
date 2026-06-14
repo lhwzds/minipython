@@ -23273,12 +23273,26 @@ print('h-to-B', cast.format, cast.itemsize, cast.shape, cast.nbytes, cast.tobyte
 base = bytearray(b'\x01\x00\x02\x00')
 m = memoryview(base).cast('@h')
 print('assign-@h-before', m.format, m.tolist())
-m.__setitem__(0, 3)
+m[0] = 3
 print('assign-@h-after', base, m.tolist())
+base = bytearray(b'\x00\x00\x00\x00')
+m = memoryview(base).cast('@I')
+m[0] = 255
+print('assign-@I', base, m.tolist())
+base = bytearray(8)
+m = memoryview(base).cast('@d')
+m[0] = 2.5
+print('assign-@d', base, m.tolist())
 base = bytearray(b'ab')
 m = memoryview(base).cast('@c')
 m[0] = b'Z'
 print('assign-@c', base, m.tolist())
+def assign_h_float():
+    m = memoryview(bytearray(2)).cast('@h')
+    m[0] = 1.5
+def assign_d_object():
+    m = memoryview(bytearray(8)).cast('@d')
+    m[0] = object()
 for label, expr in [
     ('bad-size-h', lambda: memoryview(b'a').cast('h')),
     ('shape-h-bad', lambda: memoryview(b'\x01\x00\x02\x00').cast('h', shape=[4])),
@@ -23288,6 +23302,8 @@ for label, expr in [
     ('w-format', lambda: memoryview(b'\x00\x00\x00\x00').cast('w')),
     ('bad-at-at', lambda: memoryview(b'\x00\x00').cast('@@h')),
     ('bad-little-h', lambda: memoryview(b'\x00\x00').cast('<h')),
+    ('assign-@h-float', assign_h_float),
+    ('assign-@d-object', assign_d_object),
 ]:
     try:
         expr()

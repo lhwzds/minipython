@@ -918,6 +918,137 @@ fn memoryview_assignment_signed_byte(value: Value) -> Result<u8, String> {
         .map_err(|_| "ValueError: memoryview: invalid value for format 'b'".to_string())
 }
 
+fn memoryview_assignment_integer_value(value: Value, format: &str) -> Result<Value, String> {
+    if let Some(value) = int_subclass_integer(&value) {
+        return Ok(value);
+    }
+    match numeric_bool_value(value) {
+        value @ (Value::Number(_) | Value::BigInt(_)) => Ok(value),
+        _ => Err(format!(
+            "TypeError: memoryview: invalid type for format '{format}'"
+        )),
+    }
+}
+
+fn memoryview_signed_integer_bytes(
+    value: Value,
+    format: &str,
+    min: i64,
+    max: i64,
+    to_bytes: fn(i64) -> Vec<u8>,
+) -> Result<Vec<u8>, String> {
+    match memoryview_assignment_integer_value(value, format)? {
+        Value::Number(value) if value < min || value > max => Err(format!(
+            "ValueError: memoryview: invalid value for format '{format}'"
+        )),
+        Value::Number(value) => Ok(to_bytes(value)),
+        Value::BigInt(value) if value < BigInt::from(min) || value > BigInt::from(max) => Err(
+            format!("ValueError: memoryview: invalid value for format '{format}'"),
+        ),
+        Value::BigInt(value) => Ok(to_bytes(value.to_i64().expect("range checked i64 value"))),
+        _ => unreachable!("memoryview_assignment_integer_value returns an integer"),
+    }
+}
+
+fn memoryview_unsigned_integer_bytes(
+    value: Value,
+    format: &str,
+    max: u64,
+    to_bytes: fn(u64) -> Vec<u8>,
+) -> Result<Vec<u8>, String> {
+    match memoryview_assignment_integer_value(value, format)? {
+        Value::Number(value) if value < 0 || u64::try_from(value).map_or(true, |v| v > max) => Err(
+            format!("ValueError: memoryview: invalid value for format '{format}'"),
+        ),
+        Value::Number(value) => Ok(to_bytes(value as u64)),
+        Value::BigInt(value) if value.is_negative() || value.to_u64().map_or(true, |v| v > max) => {
+            Err(format!(
+                "ValueError: memoryview: invalid value for format '{format}'"
+            ))
+        }
+        Value::BigInt(value) => Ok(to_bytes(value.to_u64().expect("range checked u64 value"))),
+        _ => unreachable!("memoryview_assignment_integer_value returns an integer"),
+    }
+}
+
+fn memoryview_float_assignment_value(value: Value, format: &str) -> Result<f64, String> {
+    match numeric_bool_value(value) {
+        Value::Number(value) => Ok(value as f64),
+        Value::BigInt(value) => big_int_to_float(&value)
+            .map_err(|_| format!("ValueError: memoryview: invalid value for format '{format}'")),
+        Value::Float(value) => Ok(*value),
+        _ => Err(format!(
+            "TypeError: memoryview: invalid type for format '{format}'"
+        )),
+    }
+}
+
+fn memoryview_item_assignment_bytes(format: &str, value: Value) -> Result<Vec<u8>, String> {
+    let format_code = memoryview_format_code(format).unwrap_or(format);
+    match format_code {
+        "c" => memoryview_c_assignment_byte(value).map(|byte| vec![byte]),
+        "b" => memoryview_assignment_signed_byte(value).map(|byte| vec![byte]),
+        "B" => memoryview_assignment_byte(value).map(|byte| vec![byte]),
+        "h" => memoryview_signed_integer_bytes(
+            value,
+            "h",
+            i64::from(i16::MIN),
+            i64::from(i16::MAX),
+            |value| (value as i16).to_ne_bytes().to_vec(),
+        ),
+        "H" => memoryview_unsigned_integer_bytes(value, "H", u64::from(u16::MAX), |value| {
+            (value as u16).to_ne_bytes().to_vec()
+        }),
+        "i" => memoryview_signed_integer_bytes(
+            value,
+            "i",
+            i64::from(i32::MIN),
+            i64::from(i32::MAX),
+            |value| (value as i32).to_ne_bytes().to_vec(),
+        ),
+        "I" => memoryview_unsigned_integer_bytes(value, "I", u64::from(u32::MAX), |value| {
+            (value as u32).to_ne_bytes().to_vec()
+        }),
+        "l" => match array_array_c_long_itemsize() {
+            4 => memoryview_signed_integer_bytes(
+                value,
+                "l",
+                i64::from(i32::MIN),
+                i64::from(i32::MAX),
+                |value| (value as i32).to_ne_bytes().to_vec(),
+            ),
+            8 => memoryview_signed_integer_bytes(value, "l", i64::MIN, i64::MAX, |value| {
+                value.to_ne_bytes().to_vec()
+            }),
+            _ => Err("TypeError: unsupported C long size".to_string()),
+        },
+        "L" => match array_array_c_long_itemsize() {
+            4 => memoryview_unsigned_integer_bytes(value, "L", u64::from(u32::MAX), |value| {
+                (value as u32).to_ne_bytes().to_vec()
+            }),
+            8 => memoryview_unsigned_integer_bytes(value, "L", u64::MAX, |value| {
+                value.to_ne_bytes().to_vec()
+            }),
+            _ => Err("TypeError: unsupported C unsigned long size".to_string()),
+        },
+        "q" => memoryview_signed_integer_bytes(value, "q", i64::MIN, i64::MAX, |value| {
+            value.to_ne_bytes().to_vec()
+        }),
+        "Q" => memoryview_unsigned_integer_bytes(value, "Q", u64::MAX, |value| {
+            value.to_ne_bytes().to_vec()
+        }),
+        "f" => Ok((memoryview_float_assignment_value(value, "f")? as f32)
+            .to_ne_bytes()
+            .to_vec()),
+        "d" => Ok(memoryview_float_assignment_value(value, "d")?
+            .to_ne_bytes()
+            .to_vec()),
+        _ => Err(format!(
+            "NotImplementedError: memoryview item assignment for format '{format}' is not supported"
+        )),
+    }
+}
+
 fn memoryview_c_assignment_byte(value: Value) -> Result<u8, String> {
     match value {
         Value::Bytes(bytes) if bytes.len() == 1 => Ok(bytes[0]),
@@ -19809,9 +19940,26 @@ impl Vm {
             Some("c" | "b" | "B") => self
                 .memoryview_assignment_byte_value(view, value)
                 .map(|byte| vec![byte]),
-            Some(format_code) => self.array_array_item_bytes(format_code, value),
+            Some(format_code) => self.memoryview_native_item_bytes(format_code, value),
             None => self.array_array_item_bytes(&format, value),
         }
+    }
+
+    fn memoryview_native_item_bytes(
+        &mut self,
+        format_code: &str,
+        value: Value,
+    ) -> Result<Vec<u8>, String> {
+        self.array_array_item_bytes(format_code, value)
+            .map_err(|error| {
+                if error.starts_with("TypeError:") {
+                    format!("TypeError: memoryview: invalid type for format '{format_code}'")
+                } else if error.starts_with("OverflowError:") {
+                    format!("ValueError: memoryview: invalid value for format '{format_code}'")
+                } else {
+                    error
+                }
+            })
     }
 
     fn store_memoryview_item_value(
@@ -76237,18 +76385,16 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
                     let physical_index = memoryview_physical_index(&state, logical_index)?;
                     (state.bytes.clone(), physical_index)
                 };
-                let format = memoryview_format(&view)?;
-                let byte = match memoryview_format_code(&format) {
-                    Some("c") => memoryview_c_assignment_byte(value)?,
-                    Some("b") => memoryview_assignment_signed_byte(value)?,
-                    Some("B") => memoryview_assignment_byte(value)?,
-                    _ => {
-                        return Err(format!(
-                            "NotImplementedError: memoryview item assignment for format '{format}' is not supported"
-                        ));
-                    }
-                };
-                bytes.borrow_mut()[physical_index] = byte;
+                let replacement =
+                    memoryview_item_assignment_bytes(&memoryview_format(&view)?, value)?;
+                let end = physical_index
+                    .checked_add(replacement.len())
+                    .ok_or_else(|| "memoryview index out of range".to_string())?;
+                bytes
+                    .borrow_mut()
+                    .get_mut(physical_index..end)
+                    .ok_or_else(|| "memoryview index out of range".to_string())?
+                    .copy_from_slice(&replacement);
                 Ok(Value::MemoryView(view))
             }
         },

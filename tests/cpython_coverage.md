@@ -4477,10 +4477,12 @@ without adding general custom encoder/decoder class support.
   `@` prefix for representative numeric and byte formats (`@h`, `@I`, `@d`,
   `@B`, and `@c`). The slice covers `shape` product/itemsize validation,
   zero-dimensional single-item numeric casts, non-byte views casting back to
-  `B`, `@`-prefixed item read/list/bytes behavior, `@h.__setitem__()` and
-  direct `@c` item writeback, CPython rejection of non-byte-to-non-byte casts,
-  and rejection of unsupported `u` / `w`, doubled-`@`, and non-native-prefixed
-  destination formats. Direct CPython output evidence is in
+  `B`, `@`-prefixed item read/list/bytes behavior, direct item writeback for
+  representative integer, unsigned-integer, float, and `c` formats (`@h`,
+  `@I`, `@d`, and `@c`), CPython invalid assignment type diagnostics,
+  CPython rejection of non-byte-to-non-byte casts, and rejection of unsupported
+  `u` / `w`, doubled-`@`, and non-native-prefixed destination formats. Direct
+  CPython output evidence is in
   `cpython_memoryview_cast_native_formats_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_getitem_index_count_compare_subset`, covering CPython

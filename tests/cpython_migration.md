@@ -1394,11 +1394,13 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   CPython's optional native `@` prefix for representative numeric and byte
   formats (`@h`, `@I`, `@d`, `@B`, and `@c`), itemsize-aware `shape`
   validation, zero-dimensional single numeric items, non-byte source views
-  casting back to `B`, `@`-prefixed item read/list/bytes behavior,
-  `@h.__setitem__()` and direct `@c` item writeback, CPython-style
-  non-byte-to-non-byte cast rejection, and `u` / `w`, doubled-`@`, and
-  non-native-prefixed destination-format rejection. Multidimensional casts and
-  broader struct-format support remain outside this slice.
+  casting back to `B`, `@`-prefixed item read/list/bytes behavior, direct item
+  writeback for representative integer, unsigned-integer, float, and `c`
+  formats (`@h`, `@I`, `@d`, and `@c`), CPython invalid assignment type
+  diagnostics, CPython-style non-byte-to-non-byte cast rejection, and `u` /
+  `w`, doubled-`@`, and non-native-prefixed destination-format rejection.
+  Multidimensional casts and broader struct-format support remain outside this
+  slice.
 - `TestSpecifics` now avoids treating direct assertions about deeper CPython
   code-object internals such as constant merging, bytecode shape, line tables,
   and platform traceback metadata as MiniPython public behavior.
