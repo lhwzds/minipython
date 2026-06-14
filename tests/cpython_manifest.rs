@@ -12297,6 +12297,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'getrefcount', 'getallocatedblocks'")
             && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
             && LANGUAGE_TESTS.contains("'builtin_module_names'")
+            && LANGUAGE_TESTS.contains("'byteorder'")
             && LANGUAGE_TESTS.contains("'exc_info'")
             && LANGUAGE_TESTS.contains("'getdefaultencoding'")
             && LANGUAGE_TESTS.contains("'is_finalizing'")
@@ -12306,6 +12307,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sys.getdefaultencoding()")
+            && LANGUAGE_TESTS.contains("sys.byteorder")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
@@ -12314,6 +12316,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         STDLIB_SOURCE.contains("\"builtin_module_names\"")
+            && STDLIB_SOURCE.contains("\"byteorder\"")
             && STDLIB_SOURCE.contains("\"exc_info\"")
             && STDLIB_SOURCE.contains("\"getdefaultencoding\"")
             && STDLIB_SOURCE.contains("\"is_finalizing\"")
@@ -12340,6 +12343,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "'sys' in sys.builtin_module_names",
         "'time' in sys.builtin_module_names",
         "all(type(name).__name__ == 'str' for name in sys.builtin_module_names)",
+        "sys.byteorder",
+        "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",
         "sys.getdefaultencoding(1)",
         "sys.getdefaultencoding(x=1)",
@@ -12380,6 +12385,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("builtin_module_names")
+                && document.contains("byteorder")
                 && document.contains("exc_info")
                 && document.contains("getdefaultencoding")
                 && document.contains("is_finalizing")

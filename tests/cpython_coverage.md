@@ -538,8 +538,8 @@ Recent runtime migration notes:
   and `sys.hash_info` attributes used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, float-subclass NaN hash inheritance, public
-  `sys.builtin_module_names`, `sys.getdefaultencoding()`, `sys.version_info`,
-  `sys.implementation`, and the sandbox runtime-state query
+  `sys.builtin_module_names`, `sys.byteorder`, `sys.getdefaultencoding()`,
+  `sys.version_info`, `sys.implementation`, and the sandbox runtime-state query
   `sys.is_finalizing()`. The same evidence covers `sys.exc_info()` over the
   current MiniPython VM exception state, including empty and active-handler
   triples plus no-argument diagnostics.
