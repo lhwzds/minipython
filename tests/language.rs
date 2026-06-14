@@ -1287,6 +1287,60 @@ fn functools_sandbox_subset_keeps_export_surface_explicit() {
 }
 
 #[test]
+fn collections_sandbox_subset_keeps_export_surface_explicit() {
+    assert_eq!(
+        run_source(
+            "import collections\nfor name in ['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '_count_elements', 'abc', 'deque', 'namedtuple']:\n    print(name, hasattr(collections, name))\nfor name in ['defaultdict', '__all__', '_tuplegetter', '_Link']:\n    print(name, hasattr(collections, name))\nprint(dir(collections))\nimport collections.abc as abc\nfor name in ['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView']:\n    print('abc', name, hasattr(abc, name))\nprint('abc __all__', hasattr(abc, '__all__'))\nprint(dir(abc))"
+        ),
+        Ok(output_lines(&[
+            "ChainMap True",
+            "Counter True",
+            "OrderedDict True",
+            "UserDict True",
+            "UserList True",
+            "UserString True",
+            "_count_elements True",
+            "abc True",
+            "deque True",
+            "namedtuple True",
+            "defaultdict False",
+            "__all__ False",
+            "_tuplegetter False",
+            "_Link False",
+            "['ChainMap', 'Counter', 'OrderedDict', 'UserDict', 'UserList', 'UserString', '__name__', '_count_elements', 'abc', 'deque', 'namedtuple']",
+            "abc AsyncGenerator True",
+            "abc AsyncIterable True",
+            "abc AsyncIterator True",
+            "abc Awaitable True",
+            "abc Buffer True",
+            "abc ByteString True",
+            "abc Callable True",
+            "abc Collection True",
+            "abc Container True",
+            "abc Coroutine True",
+            "abc Generator True",
+            "abc Hashable True",
+            "abc ItemsView True",
+            "abc Iterable True",
+            "abc Iterator True",
+            "abc KeysView True",
+            "abc Mapping True",
+            "abc MappingView True",
+            "abc MutableMapping True",
+            "abc MutableSequence True",
+            "abc MutableSet True",
+            "abc Reversible True",
+            "abc Sequence True",
+            "abc Set True",
+            "abc Sized True",
+            "abc ValuesView True",
+            "abc __all__ False",
+            "['AsyncGenerator', 'AsyncIterable', 'AsyncIterator', 'Awaitable', 'Buffer', 'ByteString', 'Callable', 'Collection', 'Container', 'Coroutine', 'Generator', 'Hashable', 'ItemsView', 'Iterable', 'Iterator', 'KeysView', 'Mapping', 'MappingView', 'MutableMapping', 'MutableSequence', 'MutableSet', 'Reversible', 'Sequence', 'Set', 'Sized', 'ValuesView', '__name__']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =

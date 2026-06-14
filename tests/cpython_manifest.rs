@@ -9393,6 +9393,16 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_copy_subclass_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subclass copying"
     );
+
+    assert!(
+        LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("'defaultdict', '__all__', '_tuplegetter', '_Link'")
+            && LANGUAGE_TESTS.contains("import collections.abc as abc")
+            && LANGUAGE_TESTS.contains("print('abc __all__', hasattr(abc, '__all__'))")
+            && LANGUAGE_TESTS.contains("dir(collections)")
+            && LANGUAGE_TESTS.contains("dir(abc)"),
+        "collections sandbox export test must guard collections and collections.abc module surfaces"
+    );
     assert!(
         row.diff_evidence
             .contains("cpython_collections_counter_copying_diff_subset"),
