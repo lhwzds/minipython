@@ -24543,11 +24543,32 @@ impl Vm {
     }
 
     fn itertools_islice_index(&mut self, value: Value, name: &str) -> Result<i64, String> {
-        let index = self.index_i64(value, name)?;
+        let index = self.index_i64(value, name).map_err(|error| {
+            if error.contains("__index__ returned non-int") {
+                if name == "Step" {
+                    "ValueError: Step for islice() must be a positive integer or None.".to_string()
+                } else if name == "Start" {
+                    "ValueError: Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.".to_string()
+                } else {
+                    format!(
+                        "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+                    )
+                }
+            } else {
+                error
+            }
+        })?;
         if index < 0 {
-            Err(format!(
-                "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
-            ))
+            if name == "Start" {
+                Err(
+                    "ValueError: Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+                        .to_string(),
+                )
+            } else {
+                Err(format!(
+                    "ValueError: {name} argument for islice() must be None or an integer: 0 <= x <= sys.maxsize."
+                ))
+            }
         } else {
             Ok(index)
         }

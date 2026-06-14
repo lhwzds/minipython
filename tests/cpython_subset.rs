@@ -37592,6 +37592,28 @@ fn cpython_itertools_core_iterator_subset() {
         "import itertools\nprint(list(itertools.islice(range(3), None)))",
         &["[0, 1, 2]"],
     );
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "class BadIndex:\n",
+            "    def __index__(self):\n",
+            "        return 'x'\n",
+            "for label, expr in [\n",
+            "    ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),\n",
+            "    ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),\n",
+            "    ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ValueError as error:\n",
+            "        print(label, type(error).__name__, str(error))",
+        ),
+        &[
+            "stop ValueError Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
+            "start ValueError Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
+            "step ValueError Step for islice() must be a positive integer or None.",
+        ],
+    );
 }
 
 #[test]

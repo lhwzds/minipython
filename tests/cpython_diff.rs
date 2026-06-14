@@ -14238,6 +14238,18 @@ it = iter(range(10))
 print(list(itertools.islice(it, 2, 5)), next(it))
 s = itertools.islice(range(3), 1)
 print(type(s).__name__, iter(s) is s)
+class BadIndex:
+    def __index__(self):
+        return 'x'
+for label, expr in [
+    ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),
+    ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),
+    ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(label, type(error).__name__, str(error))
 try:
     itertools.chain(iterable=[1])
 except TypeError as error:

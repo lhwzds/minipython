@@ -4128,6 +4128,13 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         core_source.contains("itertools.islice(range(3), None)"),
         "itertools core runtime evidence must assert islice(stop=None) two-argument behavior"
     );
+    assert!(
+        core_source.contains("class BadIndex:")
+            && core_source.contains("itertools.islice(range(5), BadIndex())")
+            && core_source.contains("Indices for islice() must be None or an integer")
+            && core_source.contains("Step for islice() must be a positive integer or None."),
+        "itertools core runtime evidence must assert islice bad __index__ error classification"
+    );
     for required in [
         "(True, False) [True, 1, 1, 1, 1]",
         "(True, True) [1, 2, 3, 4, 5]",
@@ -4269,6 +4276,14 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     assert!(
         core_helper_source.contains("itertools.islice(range(3), None)"),
         "itertools core CPython diff helper evidence must cover islice(stop=None) two-argument behavior"
+    );
+    assert!(
+        core_helper_source.contains("class BadIndex:")
+            && core_helper_source.contains("itertools.islice(range(5), BadIndex())")
+            && core_helper_source.contains("itertools.islice(range(5), BadIndex(), 3)")
+            && core_helper_source.contains("itertools.islice(range(5), 1, 4, BadIndex())")
+            && core_helper_source.contains("str(error)"),
+        "itertools core CPython diff helper evidence must cover islice bad __index__ error classification"
     );
     for required in [
         "(True, False)",
