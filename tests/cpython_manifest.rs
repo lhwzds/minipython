@@ -9046,6 +9046,13 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("array_sandbox_subset_excludes_pickle_module_internals")
+            && LANGUAGE_TESTS.contains("'ArrayType', '_array_reconstructor', '__all__'")
+            && LANGUAGE_TESTS.contains("dir(array)"),
+        "array sandbox export test must guard pickle module internals and module __all__"
+    );
+
     let constructor_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_array_module_and_constructor_public_surface_diff_subset",

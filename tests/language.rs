@@ -1171,6 +1171,23 @@ fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
 }
 
 #[test]
+fn array_sandbox_subset_excludes_pickle_module_internals() {
+    assert_eq!(
+        run_source(
+            "import array\nfor name in ['array', 'typecodes']:\n    print(name, hasattr(array, name))\nfor name in ['ArrayType', '_array_reconstructor', '__all__']:\n    print(name, hasattr(array, name))\nprint(dir(array))"
+        ),
+        Ok(output_lines(&[
+            "array True",
+            "typecodes True",
+            "ArrayType False",
+            "_array_reconstructor False",
+            "__all__ False",
+            "['__name__', 'array', 'typecodes']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =
