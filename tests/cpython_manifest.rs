@@ -3771,6 +3771,10 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce(add, [], initial=42)",
         "CPython oracle lacks reduce(initial=...)",
         "reduce(add, [1], 2, initial=3)",
+        "kw-function-sequence",
+        "kw-sequence-with-function",
+        "kw-initial-duplicate",
+        "kw-four-initial",
     ] {
         assert!(
             reduce_initial_diff.contains(required),

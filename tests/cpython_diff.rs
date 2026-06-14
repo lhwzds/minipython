@@ -13360,6 +13360,21 @@ from operator import add
 
 print(reduce(add, [1, 2], initial=10))
 print(reduce(add, [], initial=42))
+exact_checks = [
+    ('kw-function-sequence', lambda: reduce(function=lambda a, b: a + b, sequence=[1, 2])),
+    ('kw-sequence-with-function', lambda: reduce(add, sequence=[1, 2])),
+    ('kw-foo-empty', lambda: reduce(foo=1)),
+    ('kw-foo-with-pos', lambda: reduce(add, [1], foo=1)),
+    ('kw-function-with-pos', lambda: reduce(add, [1], function=add)),
+    ('kw-sequence-with-pos', lambda: reduce(add, [1], sequence=[1])),
+    ('kw-initial-duplicate', lambda: reduce(add, [1], 2, initial=3)),
+    ('kw-four-initial', lambda: reduce(add, [1], 2, 3, initial=4)),
+]
+for label, check in exact_checks:
+    try:
+        check()
+    except TypeError as error:
+        print(label, str(error))
 try:
     reduce(add, [1], 2, initial=3)
 except TypeError as error:

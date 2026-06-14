@@ -1237,8 +1237,9 @@ Recent runtime migration notes:
   `cpython_functools_reduce_initial_keyword_diff_subset`, covering CPython
   `test_functools.py::TestReduce` public reduction behavior over built-in
   iterables, sequence-protocol iterables, dictionaries, positional and keyword initializer
-  values, empty-input errors, non-callable edge cases, and propagated
-  iterator/function exceptions.
+  values, positional-only `function` / `sequence` keyword error text,
+  empty-input errors, non-callable edge cases, and propagated iterator/function
+  exceptions.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatch_diff_subset` and
   `cpython_functools_singledispatch_subset`, covering CPython

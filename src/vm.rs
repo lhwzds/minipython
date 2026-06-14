@@ -8007,9 +8007,22 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if args.len() < 2 {
+            return Err(format!(
+                "TypeError: reduce() takes at least 2 positional arguments ({} given)",
+                args.len()
+            ));
+        }
+
         let mut initial_keyword = None;
         for (keyword, value) in keywords {
             if keyword == "initial" {
+                if args.len() >= 3 {
+                    return Err(format!(
+                        "TypeError: reduce() takes at most 3 arguments ({} given)",
+                        args.len() + 1
+                    ));
+                }
                 if initial_keyword.is_some() {
                     return Err(
                         "TypeError: reduce() got multiple values for argument 'initial'"
@@ -8027,23 +8040,11 @@ impl Vm {
         let (function, iterable, initial) = match args.as_slice() {
             [function, iterable] => (function.clone(), iterable.clone(), initial_keyword),
             [function, iterable, initial] => {
-                if initial_keyword.is_some() {
-                    return Err(
-                        "TypeError: reduce() got multiple values for argument 'initial'"
-                            .to_string(),
-                    );
-                }
                 (function.clone(), iterable.clone(), Some(initial.clone()))
-            }
-            values if values.len() < 2 => {
-                return Err(format!(
-                    "TypeError: reduce expected at least 2 arguments, got {}",
-                    values.len()
-                ));
             }
             values => {
                 return Err(format!(
-                    "TypeError: reduce expected at most 3 arguments, got {}",
+                    "TypeError: reduce() takes at most 3 arguments ({} given)",
                     values.len()
                 ));
             }
