@@ -6286,6 +6286,9 @@ Completed in the iter/next builtin pass:
 - Extended direct iterator evidence for CPython's `__iter__ = None` blocking:
   `iter()`, `list()`, and star-unpacking now reject the object instead of
   falling back to `__getitem__` or attempting to call `None`.
+- Extended direct iterator evidence for CPython's bad `__iter__` return
+  diagnostics: direct `iter()`, `list()`, and `itertools.chain.from_iterable()`
+  now preserve the non-iterator return type in the public `TypeError` text.
 
 Completed in the enumerate/zip/map/filter/sorted builtin pass:
 

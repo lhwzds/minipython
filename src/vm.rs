@@ -8067,7 +8067,7 @@ impl Vm {
             Err(error) if error.ends_with(" is not iterable") => {
                 return Err("TypeError: reduce() arg 2 must support iteration".to_string());
             }
-            Err(error) if error == "TypeError: iter() returned non-iterator" => {
+            Err(error) if error.starts_with("TypeError: iter() returned non-iterator") => {
                 return Err("TypeError: reduce() arg 2 must support iteration".to_string());
             }
             Err(error) => return Err(error),
@@ -21000,7 +21000,10 @@ impl Vm {
             if is_iterator_value(&iterator) {
                 return Ok(Ok(iterator));
             }
-            return Err("TypeError: iter() returned non-iterator".to_string());
+            return Err(format!(
+                "TypeError: iter() returned non-iterator of type '{}'",
+                type_name(&iterator)
+            ));
         }
 
         if let Some(items) = set_subclass_items(&value) {
@@ -24222,7 +24225,7 @@ impl Vm {
             ));
         };
         Ok(shared_iterator(Value::ItertoolsChainFromIterable {
-            iterator: Box::new(get_iter(iterable.clone())?),
+            iterator: Box::new(self.get_iter(iterable.clone())?),
             current: None,
         }))
     }
@@ -30677,7 +30680,10 @@ impl Vm {
             if is_iterator_value(&iterator) {
                 return Ok(Some(iterator));
             }
-            return self.runtime_result_or_raise(Err("iter() returned non-iterator".to_string()));
+            return self.runtime_result_or_raise(Err(format!(
+                "iter() returned non-iterator of type '{}'",
+                type_name(&iterator)
+            )));
         }
 
         if instance_special_method(&value, "__getitem__").is_some() {

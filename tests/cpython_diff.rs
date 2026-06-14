@@ -7410,7 +7410,8 @@ fn cpython_iter_next_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_iter / ::test_next",
         name: "iter-next-builtins-direct",
-        source: r#"for value in [('1', '2'), ['1', '2'], '12']:
+        source: r#"import itertools
+for value in [('1', '2'), ['1', '2'], '12']:
     iterator = iter(value)
     print(next(iterator), next(iterator))
     try:
@@ -7486,6 +7487,18 @@ for label, action in [
     ('iter', lambda: iter(BlockedIterable())),
     ('list', lambda: list(BlockedIterable())),
     ('unpack', lambda: (lambda first, second: (first, second))(*BlockedIterable())),
+]:
+    try:
+        action()
+    except TypeError as error:
+        print(label, error)
+class BadIterReturn:
+    def __iter__(self):
+        return 42
+for label, action in [
+    ('iter-bad', lambda: iter(BadIterReturn())),
+    ('list-bad', lambda: list(BadIterReturn())),
+    ('chain-bad', lambda: list(itertools.chain.from_iterable(BadIterReturn()))),
 ]:
     try:
         action()

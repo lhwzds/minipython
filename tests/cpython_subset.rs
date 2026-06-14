@@ -37252,6 +37252,7 @@ fn cpython_iter_next_builtin_subset() {
     );
     assert_output_with_stack(
         concat!(
+            "import itertools\n",
             "class BlockedIterable:\n",
             "    __iter__ = None\n",
             "    def __getitem__(self, index):\n",
@@ -37266,12 +37267,27 @@ fn cpython_iter_next_builtin_subset() {
             "    try:\n",
             "        action()\n",
             "    except TypeError as error:\n",
+            "        print(label, error)\n",
+            "class BadIterReturn:\n",
+            "    def __iter__(self):\n",
+            "        return 42\n",
+            "for label, action in [\n",
+            "    ('iter-bad', lambda: iter(BadIterReturn())),\n",
+            "    ('list-bad', lambda: list(BadIterReturn())),\n",
+            "    ('chain-bad', lambda: list(itertools.chain.from_iterable(BadIterReturn()))),\n",
+            "]:\n",
+            "    try:\n",
+            "        action()\n",
+            "    except TypeError as error:\n",
             "        print(label, error)",
         ),
         &[
             "iter 'BlockedIterable' object is not iterable",
             "list 'BlockedIterable' object is not iterable",
             "unpack 'BlockedIterable' object is not iterable",
+            "iter-bad iter() returned non-iterator of type 'int'",
+            "list-bad iter() returned non-iterator of type 'int'",
+            "chain-bad iter() returned non-iterator of type 'int'",
         ],
         8 * 1024 * 1024,
     );

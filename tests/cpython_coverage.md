@@ -38,6 +38,8 @@ Recent runtime migration notes:
 - The same iterator evidence covers CPython's `__iter__ = None` blocking for
   direct `iter()`, list construction, and star-unpacking over objects that also
   define `__getitem__`.
+- The same iterator evidence covers CPython's bad `__iter__` return TypeError
+  text for direct `iter()`, list construction, and `itertools.chain.from_iterable()`.
 - `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
   blocking over otherwise sequence-like objects, keeping the public reverse
   protocol distinct from sequence fallback.
