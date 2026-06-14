@@ -21964,7 +21964,12 @@ fn cpython_io_bytesio_public_subset() {
             "    try:\n",
             "        expr()\n",
             "    except Exception as error:\n",
-            "        print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))"
+            "        print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))\n",
+            "for label, expr in [('ctor-kw-unknown', lambda: io.BytesIO(foo=b'a')), ('read-kw', lambda: io.BytesIO(b'a').read(size=1)), ('read1-kw', lambda: io.BytesIO(b'a').read1(size=1)), ('readline-kw', lambda: io.BytesIO(b'a').readline(size=1)), ('readlines-kw', lambda: io.BytesIO(b'a').readlines(hint=1)), ('write-kw', lambda: io.BytesIO().write(b=b'a')), ('seek-kw', lambda: io.BytesIO(b'a').seek(pos=0)), ('truncate-kw', lambda: io.BytesIO(b'a').truncate(size=0))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except Exception as error:\n",
+            "        print(label, error.__class__.__name__, str(error))"
         ),
         &[
             "BytesIO b'a' b'bc' b''",
@@ -22118,6 +22123,14 @@ fn cpython_io_bytesio_public_subset() {
             "seek-bad-whence ValueError True",
             "seek-nonstr TypeError True",
             "truncate-neg ValueError True",
+            "ctor-kw-unknown TypeError 'foo' is an invalid keyword argument for BytesIO()",
+            "read-kw TypeError BytesIO.read() takes no keyword arguments",
+            "read1-kw TypeError BytesIO.read1() takes no keyword arguments",
+            "readline-kw TypeError BytesIO.readline() takes no keyword arguments",
+            "readlines-kw TypeError BytesIO.readlines() takes no keyword arguments",
+            "write-kw TypeError BytesIO.write() takes no keyword arguments",
+            "seek-kw TypeError BytesIO.seek() takes no keyword arguments",
+            "truncate-kw TypeError BytesIO.truncate() takes no keyword arguments",
         ],
     );
 }

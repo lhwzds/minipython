@@ -12953,7 +12953,21 @@ for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda
     try:
         expr()
     except Exception as error:
-        print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))"#,
+        print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))
+for label, expr in [
+    ('ctor-kw-unknown', lambda: io.BytesIO(foo=b'a')),
+    ('read-kw', lambda: io.BytesIO(b'a').read(size=1)),
+    ('read1-kw', lambda: io.BytesIO(b'a').read1(size=1)),
+    ('readline-kw', lambda: io.BytesIO(b'a').readline(size=1)),
+    ('readlines-kw', lambda: io.BytesIO(b'a').readlines(hint=1)),
+    ('write-kw', lambda: io.BytesIO().write(b=b'a')),
+    ('seek-kw', lambda: io.BytesIO(b'a').seek(pos=0)),
+    ('truncate-kw', lambda: io.BytesIO(b'a').truncate(size=0)),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))"#,
     });
 }
 

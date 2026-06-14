@@ -18346,7 +18346,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.readinto", &keywords)?;
+        reject_bytesio_method_keywords("readinto", &keywords)?;
         self.call_io_bytesio_readinto_impl(args, "readinto")
     }
 
@@ -18355,7 +18355,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.readinto1", &keywords)?;
+        reject_bytesio_method_keywords("readinto1", &keywords)?;
         self.call_io_bytesio_readinto_impl(args, "readinto1")
     }
 
@@ -18384,7 +18384,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.read", &keywords)?;
+        reject_bytesio_method_keywords("read", &keywords)?;
         self.call_io_bytesio_read_impl(args, "read")
     }
 
@@ -18393,7 +18393,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.read1", &keywords)?;
+        reject_bytesio_method_keywords("read1", &keywords)?;
         self.call_io_bytesio_read_impl(args, "read1")
     }
 
@@ -18437,7 +18437,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.readline", &keywords)?;
+        reject_bytesio_method_keywords("readline", &keywords)?;
         let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
             return Err(format!(
                 "TypeError: readline expected at most 1 argument, got {}",
@@ -18473,7 +18473,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.readlines", &keywords)?;
+        reject_bytesio_method_keywords("readlines", &keywords)?;
         let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
             return Err(format!(
                 "TypeError: readlines expected at most 1 argument, got {}",
@@ -18522,7 +18522,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.write", &keywords)?;
+        reject_bytesio_method_keywords("write", &keywords)?;
         let [Value::BytesIO(bytes_io), data] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.write() takes exactly one argument ({} given)",
@@ -18546,7 +18546,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.writelines", &keywords)?;
+        reject_bytesio_method_keywords("writelines", &keywords)?;
         let [Value::BytesIO(bytes_io), lines] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.writelines() takes exactly one argument ({} given)",
@@ -18574,7 +18574,7 @@ impl Vm {
         method: &str,
         result: bool,
     ) -> Result<Value, String> {
-        reject_method_keywords(&format!("io.BytesIO.{method}"), &keywords)?;
+        reject_bytesio_method_keywords(method, &keywords)?;
         let [Value::BytesIO(_)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.{method}() takes no arguments ({} given)",
@@ -18593,7 +18593,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.flush", &keywords)?;
+        reject_bytesio_method_keywords("flush", &keywords)?;
         let [Value::BytesIO(_)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.flush() takes no arguments ({} given)",
@@ -18613,7 +18613,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
         method: &str,
     ) -> Result<Value, String> {
-        reject_method_keywords(&format!("io.BytesIO.{method}"), &keywords)?;
+        reject_bytesio_method_keywords(method, &keywords)?;
         let [Value::BytesIO(_)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.{method}() takes no arguments ({} given)",
@@ -18628,7 +18628,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.close", &keywords)?;
+        reject_bytesio_method_keywords("close", &keywords)?;
         let [Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.close() takes no arguments ({} given)",
@@ -18645,7 +18645,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.__enter__", &keywords)?;
+        reject_bytesio_method_keywords("__enter__", &keywords)?;
         let [receiver @ Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: _IOBase.__enter__() takes no arguments ({} given)",
@@ -18661,7 +18661,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.__exit__", &keywords)?;
+        reject_bytesio_method_keywords("__exit__", &keywords)?;
         let [Value::BytesIO(bytes_io), ..] = args.as_slice() else {
             return Err(format!(
                 "TypeError: _IOBase.__exit__() missing required receiver ({} given)",
@@ -18678,7 +18678,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.__iter__", &keywords)?;
+        reject_bytesio_method_keywords("__iter__", &keywords)?;
         let [receiver @ Value::BytesIO(_)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: expected 0 arguments, got {}",
@@ -18693,7 +18693,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.__next__", &keywords)?;
+        reject_bytesio_method_keywords("__next__", &keywords)?;
         let [Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: expected 0 arguments, got {}",
@@ -18714,7 +18714,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.getvalue", &keywords)?;
+        reject_bytesio_method_keywords("getvalue", &keywords)?;
         let [Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.getvalue() takes no arguments ({} given)",
@@ -18730,7 +18730,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.getbuffer", &keywords)?;
+        reject_bytesio_method_keywords("getbuffer", &keywords)?;
         let [Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.getbuffer() takes no arguments ({} given)",
@@ -18745,7 +18745,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.tell", &keywords)?;
+        reject_bytesio_method_keywords("tell", &keywords)?;
         let [Value::BytesIO(bytes_io)] = args.as_slice() else {
             return Err(format!(
                 "TypeError: BytesIO.tell() takes no arguments ({} given)",
@@ -18763,7 +18763,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.seek", &keywords)?;
+        reject_bytesio_method_keywords("seek", &keywords)?;
         let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
             return Err(format!(
                 "TypeError: seek expected at least 1 argument, got {}",
@@ -18794,7 +18794,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords("io.BytesIO.truncate", &keywords)?;
+        reject_bytesio_method_keywords("truncate", &keywords)?;
         let [Value::BytesIO(bytes_io), rest @ ..] = args.as_slice() else {
             return Err(format!(
                 "TypeError: truncate expected at most 1 argument, got {}",
@@ -71469,6 +71469,19 @@ fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
         Err(format!(
             "{}() does not accept keyword arguments",
             method_display_name(name)
+        ))
+    }
+}
+
+fn reject_bytesio_method_keywords(
+    method: &str,
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if keywords.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "TypeError: BytesIO.{method}() takes no keyword arguments"
         ))
     }
 }

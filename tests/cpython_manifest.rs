@@ -7653,6 +7653,42 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    for required in [
+        "io.BytesIO(foo=b'a')",
+        "io.BytesIO(b'a').read(size=1)",
+        "io.BytesIO(b'a').read1(size=1)",
+        "io.BytesIO(b'a').readline(size=1)",
+        "io.BytesIO(b'a').readlines(hint=1)",
+        "io.BytesIO().write(b=b'a')",
+        "io.BytesIO(b'a').seek(pos=0)",
+        "io.BytesIO(b'a').truncate(size=0)",
+        "print(label, error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "io.BytesIO CPython diff evidence must cover exact keyword diagnostic `{required}`"
+        );
+        assert!(
+            subset_body.contains(required),
+            "io.BytesIO runtime subset evidence must cover exact keyword diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "'foo' is an invalid keyword argument for BytesIO()",
+        "BytesIO.read() takes no keyword arguments",
+        "BytesIO.read1() takes no keyword arguments",
+        "BytesIO.readline() takes no keyword arguments",
+        "BytesIO.readlines() takes no keyword arguments",
+        "BytesIO.write() takes no keyword arguments",
+        "BytesIO.seek() takes no keyword arguments",
+        "BytesIO.truncate() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "io.BytesIO runtime subset evidence must assert exact keyword diagnostic `{required}`"
+        );
+    }
+
     let readinto_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_memoryview_bytesio_readinto_diff_subset",
