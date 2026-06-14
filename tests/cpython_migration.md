@@ -182,6 +182,13 @@ It covers arbitrary returned values including `None`, lists, tuples, and dicts,
 non-callable hook `TypeError` text when the hook is used, hook exception propagation, and no-op behavior when a hook is unused,
 without adding unsupported decoder hooks or `JSONDecoder` subclassing.
 
+`cpython_json_loads_object_hook_subset`, backed by
+`cpython_json_loads_object_hook_diff_subset`, keeps `loads()` `object_hook` post-processing for
+decoded dict objects including nested object post-order traversal while arrays and scalar values bypassing `object_hook`.
+It covers arbitrary returned values including `None`, lists, and derived key lists,
+non-callable hook `TypeError` text when the hook is used, and hook exception propagation,
+without adding unsupported decoder hooks or `JSONDecoder` subclassing.
+
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
 tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.

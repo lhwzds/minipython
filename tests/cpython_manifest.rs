@@ -5666,6 +5666,84 @@ fn json_loads_parse_hooks_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_loads_object_hook_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_loads_object_hook_diff_subset";
+    let subset_name = "cpython_json_loads_object_hook_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads object_hook CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads object_hook runtime subset evidence must exist"
+    );
+
+    for required in [
+        "events = []",
+        "def hook(value):",
+        "events.append(sorted(value.items()))",
+        "json.loads('{}', object_hook=hook)",
+        "outer",
+        "inner",
+        "list",
+        "x",
+        "object_hook=lambda value: None",
+        "object_hook=lambda value: [value]",
+        "object_hook=lambda value: list(sorted(value))",
+        "json.loads('[1, 2]', object_hook=1)",
+        "object-hook-noncallable",
+        "object-hook-boom",
+        "boom-object",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads object_hook diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"hook []\"",
+        "\"{'seen': 1, 'value': {}}\"",
+        "\"hook [('inner', 1)]\"",
+        "\"hook [('x', 2)]\"",
+        "\"hook [('list', [{'seen': 3, 'value': {'x': 2}}]), ('outer', {'seen': 2, 'value': {'inner': 1}})]\"",
+        "\"None\"",
+        "\"[{'a': 1}]\"",
+        "\"['outer']\"",
+        "\"[1, 2]\"",
+        "\"object-hook-noncallable TypeError 'int' object is not callable\"",
+        "\"object-hook-boom ValueError boom-object\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads object_hook subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` `object_hook` post-processing",
+            "decoded dict objects including nested object post-order traversal",
+            "arrays and scalar values bypassing `object_hook`",
+            "arbitrary returned values including `None`, lists, and derived key lists",
+            "non-callable hook `TypeError` text when the hook is used",
+            "hook exception propagation",
+            "without adding unsupported decoder hooks or `JSONDecoder` subclassing",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads object_hook boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
