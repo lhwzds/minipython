@@ -1219,6 +1219,43 @@ fn math_sandbox_subset_keeps_integer_submodule_narrow() {
 }
 
 #[test]
+fn itertools_sandbox_subset_keeps_export_surface_explicit() {
+    assert_eq!(
+        run_source(
+            "import itertools\nfor name in ['accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']:\n    print(name, hasattr(itertools, name))\nfor name in ['__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse']:\n    print(name, hasattr(itertools, name))\nprint(dir(itertools))"
+        ),
+        Ok(output_lines(&[
+            "accumulate True",
+            "batched True",
+            "chain True",
+            "combinations True",
+            "combinations_with_replacement True",
+            "compress True",
+            "count True",
+            "cycle True",
+            "dropwhile True",
+            "filterfalse True",
+            "groupby True",
+            "islice True",
+            "pairwise True",
+            "permutations True",
+            "product True",
+            "repeat True",
+            "starmap True",
+            "takewhile True",
+            "tee True",
+            "zip_longest True",
+            "__all__ False",
+            "imap False",
+            "izip False",
+            "ifilter False",
+            "ifilterfalse False",
+            "['__name__', 'accumulate', 'batched', 'chain', 'combinations', 'combinations_with_replacement', 'compress', 'count', 'cycle', 'dropwhile', 'filterfalse', 'groupby', 'islice', 'pairwise', 'permutations', 'product', 'repeat', 'starmap', 'takewhile', 'tee', 'zip_longest']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =

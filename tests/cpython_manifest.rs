@@ -4514,6 +4514,13 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("itertools_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("'__all__', 'imap', 'izip', 'ifilter', 'ifilterfalse'")
+            && LANGUAGE_TESTS.contains("dir(itertools)"),
+        "itertools sandbox export test must guard module __all__ and non-subset aliases"
+    );
+
     for excluded in [
         "Full itertools module",
         "pickling exactness",
