@@ -537,7 +537,10 @@ Recent runtime migration notes:
   `cpython_float_hash_and_sys_info_subset`, covering public `sys.float_info`
   and `sys.hash_info` attributes used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
-  NaN identity hashing, and float-subclass NaN hash inheritance.
+  NaN identity hashing, float-subclass NaN hash inheritance, public
+  `sys.builtin_module_names`, `sys.getdefaultencoding()`, `sys.version_info`,
+  `sys.implementation`, and the sandbox runtime-state query
+  `sys.is_finalizing()`.
 - `NUMBER` also includes `cpython_int_max_str_digits_runtime_subset`, covering
   `sys.set_int_max_str_digits()` / `sys.get_int_max_str_digits()` enforcement
   for decimal integer parsing and rendering. Direct CPython output parity is in

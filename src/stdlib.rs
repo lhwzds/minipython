@@ -471,6 +471,10 @@ pub(crate) fn create_module(
                     Value::Builtin("sys.getdefaultencoding".to_string()),
                 ),
                 (
+                    "is_finalizing",
+                    Value::Builtin("sys.is_finalizing".to_string()),
+                ),
+                (
                     "set_int_max_str_digits",
                     Value::Builtin("sys.set_int_max_str_digits".to_string()),
                 ),
@@ -998,6 +1002,23 @@ pub(crate) fn call_sys_getdefaultencoding(
     }
 
     Ok(Value::String("utf-8".to_string()))
+}
+
+pub(crate) fn call_sys_is_finalizing(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: sys.is_finalizing() takes no keyword arguments".to_string());
+    }
+    if !args.is_empty() {
+        return Err(format!(
+            "TypeError: sys.is_finalizing() takes no arguments ({} given)",
+            args.len()
+        ));
+    }
+
+    Ok(Value::Bool(false))
 }
 
 pub(crate) fn call_sys_set_int_max_str_digits(

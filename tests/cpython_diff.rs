@@ -25034,6 +25034,8 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
 fn cpython_float_hash_and_sys_info_diff_subset() {
     // CPython oracle text: sys.getdefaultencoding() takes no arguments (1 given);
     // sys.getdefaultencoding() takes no keyword arguments
+    // CPython oracle text: sys.is_finalizing() takes no arguments (1 given);
+    // sys.is_finalizing() takes no keyword arguments
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_float.py::GeneralFloatCases::test_hash and ::test_hash_nan",
         name: "float-hash-and-sys-info",
@@ -25063,7 +25065,13 @@ print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__)
 print('sys-implementation', type(sys.implementation).__name__, type(sys.implementation.name).__name__, type(sys.implementation.version).__name__, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-implementation-version-shape', len(sys.implementation.version), sys.implementation.version == sys.version_info)
+print('sys-is-finalizing', type(sys.is_finalizing()).__name__, sys.is_finalizing())
 for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, call in [('finalizing-extra', lambda: sys.is_finalizing(1)), ('finalizing-keyword', lambda: sys.is_finalizing(x=1))]:
     try:
         call()
     except TypeError as error:
