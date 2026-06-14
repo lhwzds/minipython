@@ -1991,16 +1991,30 @@ pub(crate) fn call_types_coroutine<C: StdlibContext + ?Sized>(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("coroutine() does not accept keyword arguments".to_string());
-    }
-    let [function] = args.as_slice() else {
+    if args.len() > 1 {
         return Err(format!(
             "TypeError: coroutine() expected 1 argument, got {}",
             args.len()
         ));
-    };
-    if !context.stdlib_is_callable(function) {
+    }
+    let mut function = args.first().cloned();
+    for (keyword, value) in keywords {
+        if keyword != "func" {
+            return Err(format!(
+                "TypeError: coroutine() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        if function.is_some() {
+            return Err(
+                "TypeError: coroutine() got multiple values for argument 'func'".to_string(),
+            );
+        }
+        function = Some(value);
+    }
+    let function = function.ok_or_else(|| {
+        "TypeError: coroutine() missing 1 required positional argument: 'func'".to_string()
+    })?;
+    if !context.stdlib_is_callable(&function) {
         return Err("TypeError: types.coroutine() expects a callable".to_string());
     }
 
@@ -2009,19 +2023,19 @@ pub(crate) fn call_types_coroutine<C: StdlibContext + ?Sized>(
         is_async,
         identity,
         ..
-    } = function
+    } = &function
     {
         if *is_generator && !*is_async {
             context.stdlib_mark_iterable_coroutine_function(identity);
-            return Ok(function.clone());
+            return Ok(function);
         }
         if *is_async {
-            return Ok(function.clone());
+            return Ok(function);
         }
     }
 
     Ok(Value::TypesCoroutineFunction {
-        function: Box::new(function.clone()),
+        function: Box::new(function),
         identity: Rc::new(()),
     })
 }

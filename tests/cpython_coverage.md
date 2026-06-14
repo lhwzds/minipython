@@ -1678,7 +1678,7 @@ without adding general custom encoder/decoder class support.
   for wrong arguments, non-generator return values, native coroutine
   pass-through, coroutine-like and coroutine-generator-like object pass-through,
   returning already iterable-coroutine generators, generator-function decorator
-  identity, and iterable-coroutine flags. Direct output parity is guarded by
+  identity, `func=` keyword binding and errors, and iterable-coroutine flags. Direct output parity is guarded by
   `cpython_types_coroutine_public_diff_subset`.
   `cpython_types_coroutine_async_def_subset`
   covers stable function `__code__` identity and native coroutine `cr_code`

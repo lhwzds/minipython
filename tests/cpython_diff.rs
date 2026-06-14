@@ -9802,7 +9802,20 @@ print('gen-run', next(g), type(g).__name__)
 try:
     next(g)
 except StopIteration:
-    print('gen-stop')"#,
+    print('gen-stop')
+def keyword_gen():
+    yield 'kw'
+keyword_decorated = types.coroutine(func=keyword_gen)
+print('keyword-func', keyword_decorated is keyword_gen, next(keyword_decorated()))
+for label, expr in [
+    ('keyword-bad', lambda: types.coroutine(bad=keyword_gen)),
+    ('keyword-dup', lambda: types.coroutine(keyword_gen, func=keyword_gen)),
+    ('keyword-missing', lambda: types.coroutine()),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
     });
 }
 

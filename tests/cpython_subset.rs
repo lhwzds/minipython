@@ -56561,7 +56561,20 @@ fn cpython_types_coroutine_public_subset() {
             "try:\n",
             "    next(g)\n",
             "except StopIteration:\n",
-            "    print('gen-stop')"
+            "    print('gen-stop')\n",
+            "def keyword_gen():\n",
+            "    yield 'kw'\n",
+            "keyword_decorated = types.coroutine(func=keyword_gen)\n",
+            "print('keyword-func', keyword_decorated is keyword_gen, next(keyword_decorated()))\n",
+            "for label, expr in [\n",
+            "    ('keyword-bad', lambda: types.coroutine(bad=keyword_gen)),\n",
+            "    ('keyword-dup', lambda: types.coroutine(keyword_gen, func=keyword_gen)),\n",
+            "    ('keyword-missing', lambda: types.coroutine()),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, str(error))"
         ),
         &[
             "wrong TypeError True",
@@ -56582,6 +56595,10 @@ fn cpython_types_coroutine_public_subset() {
             "gen-code-flags True False",
             "gen-run x generator",
             "gen-stop",
+            "keyword-func True kw",
+            "keyword-bad coroutine() got an unexpected keyword argument 'bad'",
+            "keyword-dup coroutine() got multiple values for argument 'func'",
+            "keyword-missing coroutine() missing 1 required positional argument: 'func'",
         ],
     );
 }

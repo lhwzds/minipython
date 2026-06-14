@@ -7564,6 +7564,9 @@ Completed in the collections ABC `types.coroutine()` pass:
   `::test_Coroutine`.
 - Added a first-pass `types.coroutine()` builtin that marks generator functions
   as iterable coroutines while preserving function identity.
+- Follow-up `cpython_types_coroutine_public_subset` evidence now covers
+  CPython's `func=` keyword binding, duplicate `func`, unknown keyword, and
+  missing-argument diagnostics.
 - Added await execution for those iterable-coroutine generators, while
   preserving CPython's ABC distinction that they are neither `Awaitable` nor
   `Coroutine` instances.
