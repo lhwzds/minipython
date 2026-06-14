@@ -37786,6 +37786,35 @@ fn cpython_itertools_cycle_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public compress behavior over
+// pure in-memory data and selector iterables.
+#[test]
+fn cpython_itertools_compress_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "comp = itertools.compress('abcdef', [1, 0, True, False, [], [1]])\n",
+            "print(type(comp).__name__, iter(comp) is comp, list(comp), list(comp))\n",
+            "print(list(itertools.compress([1, 2, 3], [0, 1])))\n",
+            "print(list(itertools.compress(data='abc', selectors=[1, 0, 1])))\n",
+            "print(list(itertools.compress((x for x in range(5)), (x % 2 for x in range(5)))))\n",
+            "class Flag:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __bool__(self):\n",
+            "        return self.value\n",
+            "print(list(itertools.compress('xy', [Flag(False), Flag(True)])))"
+        ),
+        &[
+            "compress True ['a', 'c', 'f'] []",
+            "[2]",
+            "['a', 'c']",
+            "[1, 3]",
+            "['y']",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

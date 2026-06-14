@@ -14549,6 +14549,26 @@ for expr in [lambda: itertools.cycle(), lambda: itertools.cycle(iterable=[1])]:
 }
 
 #[test]
+fn cpython_itertools_compress_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public compress subset",
+        name: "itertools-compress",
+        source: r#"import itertools
+comp = itertools.compress('abcdef', [1, 0, True, False, [], [1]])
+print(type(comp).__name__, iter(comp) is comp, list(comp), list(comp))
+print(list(itertools.compress([1, 2, 3], [0, 1])))
+print(list(itertools.compress(data='abc', selectors=[1, 0, 1])))
+print(list(itertools.compress((x for x in range(5)), (x % 2 for x in range(5)))))
+class Flag:
+    def __init__(self, value):
+        self.value = value
+    def __bool__(self):
+        return self.value
+print(list(itertools.compress('xy', [Flag(False), Flag(True)])))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",
