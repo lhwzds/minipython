@@ -19032,7 +19032,7 @@ impl Vm {
             "memoryview.__setitem__" => {
                 let [receiver @ Value::MemoryView(_), index, value] = args.as_slice() else {
                     return Err(format!(
-                        "__setitem__() expected 2 arguments, got {}",
+                        "TypeError:  expected 2 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -71873,6 +71873,8 @@ fn reject_memoryview_method_keywords(
         Err("TypeError: wrapper __len__() takes no keyword arguments".to_string())
     } else if name == "memoryview.__getitem__" {
         Err("TypeError: wrapper __getitem__() takes no keyword arguments".to_string())
+    } else if name == "memoryview.__setitem__" {
+        Err("TypeError: wrapper __setitem__() takes no keyword arguments".to_string())
     } else if name == "memoryview.__delitem__" {
         Err("TypeError: wrapper __delitem__() takes no keyword arguments".to_string())
     } else {

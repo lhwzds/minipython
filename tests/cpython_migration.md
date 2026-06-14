@@ -936,8 +936,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `toreadonly()`, and `release()`, `hex()`, `count()`, `index()`, and
   `toreadonly()`. The slice now also covers CPython's public
   `memoryview.release()` lifecycle, direct `__enter__()`, `__len__()`,
-  `__getitem__()`, and `__delitem__()` diagnostics, direct variadic
-  `__exit__()` release behavior and keyword rejection, context-manager
+  `__getitem__()`, `__setitem__()`, and `__delitem__()` diagnostics, direct
+  variadic `__exit__()` release behavior and keyword rejection, context-manager
   `__enter__` / `__exit__`, released-state
   `ValueError` behavior for supported operations,
   released `str()` / `repr()` shape, same-object identity through `with ... as`,

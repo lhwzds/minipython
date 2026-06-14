@@ -22396,6 +22396,10 @@ for expr in [
     lambda: memoryview(b'abc').__delitem__(),
     lambda: memoryview(b'abc').__delitem__(0, 1),
     lambda: memoryview(b'abc').__delitem__(key=0),
+    lambda: memoryview(bytearray(b'abc')).__setitem__(),
+    lambda: memoryview(bytearray(b'abc')).__setitem__(0),
+    lambda: memoryview(bytearray(b'abc')).__setitem__(0, 97, 98),
+    lambda: memoryview(bytearray(b'abc')).__setitem__(key=0, value=97),
 ]:
     try:
         expr()

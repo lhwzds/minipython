@@ -1455,6 +1455,10 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "memoryview(b'abc').__delitem__()",
         "memoryview(b'abc').__delitem__(0, 1)",
         "memoryview(b'abc').__delitem__(key=0)",
+        "memoryview(bytearray(b'abc')).__setitem__()",
+        "memoryview(bytearray(b'abc')).__setitem__(0)",
+        "memoryview(bytearray(b'abc')).__setitem__(0, 97, 98)",
+        "memoryview(bytearray(b'abc')).__setitem__(key=0, value=97)",
         "list(reversed(m))",
     ] {
         assert!(
@@ -1483,6 +1487,10 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "expected 1 argument, got 2",
         "wrapper __getitem__() takes no keyword arguments",
         "wrapper __delitem__() takes no keyword arguments",
+        " expected 2 arguments, got 0",
+        " expected 2 arguments, got 1",
+        " expected 2 arguments, got 3",
+        "wrapper __setitem__() takes no keyword arguments",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
