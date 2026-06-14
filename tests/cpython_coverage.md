@@ -977,6 +977,13 @@ non-callable hooks only error when used, hook exception propagation, returned-se
 `check_circular=False` default-hook recursion boundary, and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
+`cpython_json_loads_parse_hooks_subset`, backed by
+`cpython_json_loads_parse_hooks_diff_subset`, keeps `loads()` numeric parse hooks for
+`parse_int`, `parse_float`, and `parse_constant` receiving original JSON number and non-finite constant text.
+It covers arbitrary returned values including `None`, lists, tuples, and dicts,
+non-callable hook `TypeError` text when the hook is used, hook exception propagation, and no-op behavior when a hook is unused,
+without adding unsupported decoder hooks or `JSONDecoder` subclassing.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

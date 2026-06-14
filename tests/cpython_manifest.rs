@@ -5571,6 +5571,101 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_loads_parse_hooks_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_loads_parse_hooks_diff_subset";
+    let subset_name = "cpython_json_loads_parse_hooks_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads parse hooks CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads parse hooks runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def pint(s):",
+        "def pfloat(s):",
+        "def pconst(s):",
+        "[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]",
+        "parse_int=pint",
+        "parse_float=pfloat",
+        "parse_constant=pconst",
+        "parse_int=lambda s: ('int', s)",
+        "parse_float=lambda s: ('float', s)",
+        "parse_int=1",
+        "parse_int=lambda s: None",
+        "parse_int=lambda s: [s]",
+        "parse_float=lambda s: None",
+        "parse_constant=lambda s: [s]",
+        "parse_int=lambda s: {'n': s}",
+        "int-noncallable",
+        "float-noncallable",
+        "constant-noncallable",
+        "boom-int",
+        "boom-float",
+        "boom-constant",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads parse hooks diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"parse_int 1\"",
+        "\"parse_int -2\"",
+        "\"parse_float 3.5\"",
+        "\"parse_float -0.0\"",
+        "\"parse_float 6.02e+23\"",
+        "\"parse_constant NaN\"",
+        "\"parse_constant Infinity\"",
+        "\"parse_constant -Infinity\"",
+        "\"['I:1', 'I:-2', 'F:3.5', 'F:-0.0', 'F:6.02e+23', 'C:NaN', 'C:Infinity', 'C:-Infinity']\"",
+        "\"{'a': ('int', '123'), 'b': ('float', '4.5')}\"",
+        "\"x\"",
+        "\"None\"",
+        "\"['1']\"",
+        "\"['NaN']\"",
+        "\"[{'n': '1'}, {'n': '2'}]\"",
+        "\"int-noncallable TypeError 'int' object is not callable\"",
+        "\"float-noncallable TypeError 'int' object is not callable\"",
+        "\"constant-noncallable TypeError 'int' object is not callable\"",
+        "\"int-boom ValueError boom-int\"",
+        "\"float-boom ValueError boom-float\"",
+        "\"constant-boom ValueError boom-constant\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads parse hooks subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` numeric parse hooks",
+            "`parse_int`, `parse_float`, and `parse_constant`",
+            "original JSON number and non-finite constant text",
+            "arbitrary returned values including `None`, lists, tuples, and dicts",
+            "non-callable hook `TypeError` text when the hook is used",
+            "hook exception propagation",
+            "no-op behavior when a hook is unused",
+            "without adding unsupported decoder hooks or `JSONDecoder` subclassing",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads parse hook boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
