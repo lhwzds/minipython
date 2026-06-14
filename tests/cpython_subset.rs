@@ -20509,6 +20509,21 @@ show('bad-none', lambda: array.array(None))
 show('bad-arity0', lambda: array.array())
 show('bad-arity3', lambda: array.array('B', [], 3))
 show('bad-keyword', lambda: array.array(spam=42))
+for label, expr in [
+    ('ctor-kw', lambda: array.array(typecode='B')),
+    ('append-kw', lambda: array.array('B').append(x=1)),
+    ('extend-kw', lambda: array.array('B').extend(iterable=[1])),
+    ('frombytes-kw', lambda: array.array('B').frombytes(buffer=b'a')),
+    ('fromlist-kw', lambda: array.array('B').fromlist(list=[1])),
+    ('tolist-kw', lambda: array.array('B').tolist(spam=1)),
+    ('tobytes-kw', lambda: array.array('B').tobytes(spam=1)),
+    ('byteswap-kw', lambda: array.array('H', [1]).byteswap(spam=1)),
+    ('buffer-info-kw', lambda: array.array('B').buffer_info(spam=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 a = array.array('B')
 a[:] = a
 print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
@@ -20524,6 +20539,15 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
             "bad-arity0 TypeError array() takes at least 1 argument (0 given)",
             "bad-arity3 TypeError array() takes at most 2 arguments (3 given)",
             "bad-keyword TypeError array.array() takes no keyword arguments",
+            "ctor-kw TypeError array.array() takes no keyword arguments",
+            "append-kw TypeError array.append() takes no keyword arguments",
+            "extend-kw TypeError array.extend() takes no keyword arguments",
+            "frombytes-kw TypeError array.frombytes() takes no keyword arguments",
+            "fromlist-kw TypeError array.fromlist() takes no keyword arguments",
+            "tolist-kw TypeError array.tolist() takes no keyword arguments",
+            "tobytes-kw TypeError array.tobytes() takes no keyword arguments",
+            "byteswap-kw TypeError array.byteswap() takes no keyword arguments",
+            "buffer-info-kw TypeError array.buffer_info() takes no keyword arguments",
             "empty 0 0 0 0",
         ],
     );

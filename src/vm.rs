@@ -22878,7 +22878,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        reject_method_keywords(name, &keywords)?;
+        reject_array_method_keywords(name, &keywords)?;
 
         match name {
             "array.array.tobytes" => {
@@ -71483,6 +71483,22 @@ fn reject_bytesio_method_keywords(
         Err(format!(
             "TypeError: BytesIO.{method}() takes no keyword arguments"
         ))
+    }
+}
+
+fn reject_array_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<(), String> {
+    if keywords.is_empty() {
+        return Ok(());
+    }
+
+    let method = name.strip_prefix("array.array.").unwrap_or(name);
+    match method {
+        "append" | "extend" | "frombytes" | "fromlist" | "tolist" | "tobytes" | "byteswap"
+        | "buffer_info" | "insert" | "tofile" | "fromfile" | "fromunicode" | "tounicode"
+        | "pop" | "remove" | "reverse" | "clear" | "count" | "index" => Err(format!(
+            "TypeError: array.{method}() takes no keyword arguments"
+        )),
+        _ => reject_method_keywords(name, keywords),
     }
 }
 

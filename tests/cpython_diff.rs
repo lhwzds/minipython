@@ -22232,6 +22232,21 @@ show_class('bad-none', lambda: array.array(None))
 show('bad-arity0', lambda: array.array())
 show('bad-arity3', lambda: array.array('B', [], 3))
 show('bad-keyword', lambda: array.array(spam=42))
+for label, expr in [
+    ('ctor-kw', lambda: array.array(typecode='B')),
+    ('append-kw', lambda: array.array('B').append(x=1)),
+    ('extend-kw', lambda: array.array('B').extend(iterable=[1])),
+    ('frombytes-kw', lambda: array.array('B').frombytes(buffer=b'a')),
+    ('fromlist-kw', lambda: array.array('B').fromlist(list=[1])),
+    ('tolist-kw', lambda: array.array('B').tolist(spam=1)),
+    ('tobytes-kw', lambda: array.array('B').tobytes(spam=1)),
+    ('byteswap-kw', lambda: array.array('H', [1]).byteswap(spam=1)),
+    ('buffer-info-kw', lambda: array.array('B').buffer_info(spam=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 a = array.array('B')
 a[:] = a
 print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,

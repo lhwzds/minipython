@@ -6576,6 +6576,52 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let constructor_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_array_module_and_constructor_public_surface_diff_subset",
+    );
+    let constructor_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_array_module_and_constructor_public_surface_subset",
+    );
+    for required in [
+        "array.array(typecode='B')",
+        "array.array('B').append(x=1)",
+        "array.array('B').extend(iterable=[1])",
+        "array.array('B').frombytes(buffer=b'a')",
+        "array.array('B').fromlist(list=[1])",
+        "array.array('B').tolist(spam=1)",
+        "array.array('B').tobytes(spam=1)",
+        "array.array('H', [1]).byteswap(spam=1)",
+        "array.array('B').buffer_info(spam=1)",
+        "print(label, error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            constructor_diff.contains(required),
+            "array CPython diff evidence must cover exact keyword diagnostic `{required}`"
+        );
+        assert!(
+            constructor_subset.contains(required),
+            "array runtime subset evidence must cover exact keyword diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "array.array() takes no keyword arguments",
+        "array.append() takes no keyword arguments",
+        "array.extend() takes no keyword arguments",
+        "array.frombytes() takes no keyword arguments",
+        "array.fromlist() takes no keyword arguments",
+        "array.tolist() takes no keyword arguments",
+        "array.tobytes() takes no keyword arguments",
+        "array.byteswap() takes no keyword arguments",
+        "array.buffer_info() takes no keyword arguments",
+    ] {
+        assert!(
+            constructor_subset.contains(required),
+            "array runtime subset evidence must assert exact keyword diagnostic `{required}`"
+        );
+    }
+
     for required in ["Real file descriptors", "C buffer/allocator internals"] {
         assert!(
             CPYTHON_MIGRATION.contains(required),
