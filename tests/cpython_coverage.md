@@ -52,7 +52,9 @@ Recent runtime migration notes:
   `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
   `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
   `reversed()`, `dict.__class_getitem__`, `str.format_map`, `sys._getframe`,
-  `math.gcd()`, `math.lcm()`, and common
+  `math.gcd()`, `math.lcm()`, `BaseException.with_traceback()`, inherited
+  exception type `with_traceback()` descriptors, concrete exception
+  `with_traceback()` bound methods, and common
   stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.

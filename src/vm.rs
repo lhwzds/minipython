@@ -9735,9 +9735,9 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("MutableSet.") => {
                 self.call_mutable_set_abc_method(&name, args, keywords)
             }
-            Value::Builtin(name) if name == "BaseException.with_traceback" => {
+            Value::Builtin(name) if name.ends_with(".with_traceback") => {
                 if !keywords.is_empty() {
-                    return Err("with_traceback() does not accept keyword arguments".to_string());
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_exception_with_traceback(args)
@@ -54643,6 +54643,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(tuple_value(bases))
         }
         Value::Builtin(function_name)
+            if is_exception_type_name(&function_name) && name == "with_traceback" =>
+        {
+            Ok(Value::Builtin("BaseException.with_traceback".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__mro__" && is_class_like_builtin(&function_name) =>
         {
             class_mro(&Value::Builtin(function_name)).map(tuple_value)
@@ -55378,7 +55383,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "message" => Ok(message.map(Value::String).unwrap_or(Value::None)),
             "exceptions" => Ok(exceptions.map(tuple_value).unwrap_or(Value::None)),
             "with_traceback" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin("BaseException.with_traceback".to_string())),
+                function: Box::new(Value::Builtin(format!("{type_name}.with_traceback"))),
                 receiver: Box::new(Value::Exception {
                     type_name,
                     type_hierarchy,

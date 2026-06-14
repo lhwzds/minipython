@@ -6525,6 +6525,8 @@ try:
 except TypeError as error:
     print(str(error))
 import math, sys
+class KeywordTracebackError(Exception):
+    pass
 checks = [
     ("set-add", lambda: set.add(set(), object=1)),
     ("frozenset-hash", lambda: frozenset.__hash__(frozenset(), bad=1)),
@@ -6580,6 +6582,11 @@ checks = [
     ("sys-getframe", lambda: sys._getframe(depth=0)),
     ("math-gcd", lambda: math.gcd(x=1)),
     ("math-lcm", lambda: math.lcm(x=1)),
+    ("baseexception-with-traceback", lambda: BaseException().with_traceback(tb=None)),
+    ("exception-with-traceback", lambda: Exception().with_traceback(tb=None)),
+    ("indexerror-with-traceback", lambda: IndexError().with_traceback(tb=None)),
+    ("custom-with-traceback", lambda: KeywordTracebackError().with_traceback(tb=None)),
+    ("type-with-traceback", lambda: Exception.with_traceback(Exception(), tb=None)),
 ]
 for label, expr in checks:
     try:
