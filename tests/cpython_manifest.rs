@@ -5481,6 +5481,96 @@ fn json_dumps_indent_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_default_hook_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_default_hook_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def default(obj):",
+        "return {'box': obj.value}",
+        "dict(default=default, sort_keys=True)",
+        "dict(default=lambda o: o.value)",
+        "dict(default=lambda o: None)",
+        "dict(default=lambda o: [o.value])",
+        "dict(default=lambda o: {'v': [o.value]}, sort_keys=True)",
+        "dict(default=1, sort_keys=True)",
+        "dict(default=1)",
+        "raise ValueError('boom-default')",
+        "json.dumps(self_box, default=lambda obj: obj)",
+        "('list-default-cycle', lambda obj: [obj])",
+        "('dict-default-cycle', lambda obj: {'x': obj})",
+        "('tuple-default-cycle', lambda obj: (obj,))",
+        "json.dumps(self_box, default=hook, check_circular=False)",
+        "class FreshDefault:",
+        "json.dumps(object(), default=FreshDefault())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"default Box 1\"",
+        "\"top {\\\"box\\\": 1}\"",
+        "\"nested {\\\"x\\\": [{\\\"box\\\": 2}]}\"",
+        "\"scalar-ok \\\"s\\\"\"",
+        "\"none-ok null\"",
+        "\"list-ok [7]\"",
+        "\"dict-list-ok {\\\"v\\\": [8]}\"",
+        "\"noncallable-unused {\\\"x\\\": 1}\"",
+        "\"noncallable-used TypeError 'int' object is not callable\"",
+        "\"typeerror TypeError nope True\"",
+        "\"boom ValueError boom-default\"",
+        "\"same-default ValueError True True\"",
+        "\"list-default-cycle ValueError True True\"",
+        "\"dict-default-cycle ValueError True True\"",
+        "\"tuple-default-cycle ValueError True True\"",
+        "\"same-default-unchecked RecursionError True\"",
+        "\"list-default-cycle-unchecked RecursionError True\"",
+        "\"dict-default-cycle-unchecked RecursionError True\"",
+        "\"fresh-default RecursionError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`default` hook fallback",
+            "top-level and nested unsupported objects",
+            "scalar, `None`, list, and dict replacement values",
+            "non-callable hooks only error when used",
+            "hook exception propagation",
+            "returned-self and returned-container circular detection",
+            "`check_circular=False` default-hook recursion boundary",
+            "fresh unsupported replacement recursion as `RecursionError`",
+            "without adding `JSONEncoder` subclassing or non-`default` encoder hooks",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe default hook boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (

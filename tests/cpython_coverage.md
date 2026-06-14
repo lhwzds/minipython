@@ -970,6 +970,13 @@ None, zero, positive integer, empty-string, and string indent values, negative i
 `separators=None` default item-separator behavior, custom separator interaction, `__index__` indent conversion,
 bool indent values, and the bad non-index indent TypeError boundary, without adding writer streams, file output, or locale-sensitive formatting.
 
+`cpython_json_dumps_default_hook_subset`, backed by
+`cpython_json_dumps_default_hook_diff_subset`, keeps the supported `default` hook fallback for
+top-level and nested unsupported objects, scalar, `None`, list, and dict replacement values,
+non-callable hooks only error when used, hook exception propagation, returned-self and returned-container circular detection,
+`check_circular=False` default-hook recursion boundary, and fresh unsupported replacement recursion as `RecursionError`,
+without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
