@@ -4518,6 +4518,11 @@ oracle.
 raised by user-defined `__hash__` during set membership, `add`, and `discard`
 tied to the oracle.
 
+`cpython_set_bad_comparison_errors_subset` is backed by the
+`set-bad-comparison-errors` direct CPython diff case, keeping hash-collision
+rich equality and propagated `__eq__` exceptions during set construction,
+membership, `add`, `discard`, and `remove` tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.

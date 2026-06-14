@@ -10405,6 +10405,76 @@ fn set_hash_exception_propagation_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_bad_comparison_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_bad_comparison_errors_subset(",
+        "Lib/test/test_set.py::TestJointOps.test_badcmp",
+        "class BadCmp:",
+        "def __hash__(self):",
+        "return 1",
+        "def __eq__(self, other):",
+        "raise RuntimeError",
+        "result(lambda: set([BadCmp(), BadCmp()]))",
+        "result(lambda: s.__contains__(BadCmp()))",
+        "result(lambda: s.add(BadCmp()))",
+        "result(lambda: s.discard(BadCmp()))",
+        "result(lambda: s.remove(BadCmp()))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set bad-comparison subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "set-bad-comparison-errors",
+        "Lib/test/test_set.py::TestJointOps.test_badcmp",
+        "class BadCmp:",
+        "def __hash__(self):",
+        "return 1",
+        "def __eq__(self, other):",
+        "raise RuntimeError",
+        "result(lambda: set([BadCmp(), BadCmp()]))",
+        "result(lambda: s.__contains__(BadCmp()))",
+        "result(lambda: s.add(BadCmp()))",
+        "result(lambda: s.discard(BadCmp()))",
+        "result(lambda: s.remove(BadCmp()))",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "focused set bad-comparison CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_set_bad_comparison_errors_subset")
+            && CPYTHON_COVERAGE.contains("set-bad-comparison-errors")
+            && CPYTHON_COVERAGE.contains("hash-collision rich equality")
+            && CPYTHON_COVERAGE
+                .contains("set construction, membership, `add`, `discard`, and `remove`"),
+        "coverage notes must describe set bad-comparison subset and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_set_bad_comparison_errors_subset")
+            && CPYTHON_MIGRATION.contains("set-bad-comparison-errors")
+            && CPYTHON_MIGRATION.contains("hash-collision rich equality")
+            && CPYTHON_MIGRATION
+                .contains("set construction, membership, `add`, `discard`, and `remove`"),
+        "migration notes must document set bad-comparison public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",

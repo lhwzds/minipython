@@ -6415,9 +6415,10 @@ Completed in the container constructor/reversed pass:
   The matching `set-hash-exception-propagation` CPython output diff keeps this
   public behavior tied to the oracle.
 - Added `cpython_set_bad_comparison_errors_subset`, adapted from CPython
-  `Lib/test/test_set.py::TestJointOps.test_badcmp`, covering hash-collision
-  rich equality and `RuntimeError` propagation during set construction,
-  `__contains__`, `add`, `discard`, and `remove`.
+  `Lib/test/test_set.py::TestJointOps.test_badcmp`, covering hash-collision rich equality
+  and `RuntimeError` propagation during set construction, membership, `add`, `discard`, and `remove`.
+  The matching `set-bad-comparison-errors` CPython output diff keeps this public
+  behavior tied to the oracle.
 - Added `cpython_set_bad_comparison_algebra_errors_subset`, extending CPython
   bad-comparison coverage across set/frozenset equality and ordering checks,
   relation methods, algebra methods, and `&`, `|`, `-`, and `^` operators so
