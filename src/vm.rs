@@ -9439,13 +9439,7 @@ impl Vm {
                 self.call_method_get(args, keywords)
             }
             Value::Builtin(name) if name == "descriptor.__get__" => {
-                if !keywords.is_empty() {
-                    return Err(
-                        "TypeError: __get__() does not accept keyword arguments".to_string()
-                    );
-                }
-
-                self.call_method_get(args, Vec::new())
+                self.call_method_get(args, keywords)
             }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
                 if !keywords.is_empty() {

@@ -50305,7 +50305,18 @@ fn cpython_types_method_descriptor_types_subset() {
             "print(int.__new__(int, '10'))\n",
             "items = []\n",
             "list.append(items, 3)\n",
-            "print(items)"
+            "print(items)\n",
+            "for label, expected, expr in [\n",
+            "    ('missing', ' expected at least 1 argument, got 0', lambda: str.join.__get__()),\n",
+            "    ('too-many', ' expected at most 2 arguments, got 3', lambda: str.join.__get__('', str, 1)),\n",
+            "    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(obj='', cls=str)),\n",
+            "    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(bad=1)),\n",
+            "    ('none-none', '__get__(None, None) is invalid', lambda: str.join.__get__(None, None)),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, error.__class__.__name__, str(error), str(error) == expected)"
         ),
         &[
             "True",
@@ -50320,6 +50331,11 @@ fn cpython_types_method_descriptor_types_subset() {
             "1",
             "10",
             "[3]",
+            "missing TypeError  expected at least 1 argument, got 0 True",
+            "too-many TypeError  expected at most 2 arguments, got 3 True",
+            "keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "bad-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "none-none TypeError __get__(None, None) is invalid True",
         ],
     );
 }

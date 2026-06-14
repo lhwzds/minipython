@@ -13900,6 +13900,34 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn types_method_descriptor_get_errors_have_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_method_descriptor_types_subset",
+    );
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_method_descriptor_types_diff_subset",
+    );
+    for required in [
+        "str.join.__get__()",
+        "str.join.__get__('', str, 1)",
+        "wrapper __get__() takes no keyword arguments",
+        "str.join.__get__(None, None)",
+        "__get__(None, None) is invalid",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types method-descriptor subset evidence must cover `{required}`"
+        );
+        assert!(
+            diff_body.contains(required),
+            "types method-descriptor CPython diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
 fn types_coroutine_diff_covers_generator_async_runtime_subsets() {
     for (subset, diff) in [
         (

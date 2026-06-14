@@ -10424,7 +10424,9 @@ Completed in the CPython collections manifest expansion pass:
   unbound list method descriptors on `list`, supports `int.__new__`, implements
   `int.from_bytes` / `bool.from_bytes`, and classifies these descriptor objects
   through `type()` / `isinstance()` instead of only exporting placeholder
-  aliases.
+  aliases. The same slice now pins CPython method-wrapper `__get__` error
+  paths for missing, too many, keyword, and invalid `None, None` owner
+  arguments on a public method descriptor.
 - Added public `types` runtime aliases for `LambdaType`, `GeneratorType`,
   `CoroutineType`, `AsyncGeneratorType`, `BuiltinFunctionType`,
   `BuiltinMethodType`, and `MethodType`, plus exported-name `types.__all__`

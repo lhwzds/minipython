@@ -10310,7 +10310,18 @@ print(int.__dict__['from_bytes'](int, b'\x01', 'big'))
 print(int.__new__(int, '10'))
 items = []
 list.append(items, 3)
-print(items)"#,
+print(items)
+for label, expected, expr in [
+    ('missing', ' expected at least 1 argument, got 0', lambda: str.join.__get__()),
+    ('too-many', ' expected at most 2 arguments, got 3', lambda: str.join.__get__('', str, 1)),
+    ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(obj='', cls=str)),
+    ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(bad=1)),
+    ('none-none', '__get__(None, None) is invalid', lambda: str.join.__get__(None, None)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)"#,
     });
 }
 

@@ -1767,7 +1767,8 @@ without adding general custom encoder/decoder class support.
   as method descriptors, bound string/list methods as builtin methods,
   `int.__dict__['from_bytes']` as a classmethod descriptor, `int.from_bytes`
   and `int.__new__` as builtin methods, and executable unbound descriptor calls
-  for the covered list and int methods.
+  for the covered list and int methods. It also pins CPython method-wrapper
+  `__get__` error paths for a public method descriptor.
 - The bundled `types` module also includes
   `cpython_types_dunder_get_signature_subset`, covering CPython
   `TypesTests::test_dunder_get_signature` for public `__get__`
