@@ -90,6 +90,15 @@ runtime accidentally. `sandbox_required_stdlib_allow_list_keeps_stop_line_module
 keeps the same stop-line modules blocked even when a host explicitly allows the
 required sandbox stdlib module set.
 
+Completed in the builtin method TypeError capture pass:
+
+- Extended `cpython_runtime_exception_capture_subset` and
+  `cpython_runtime_exception_capture_diff_subset` with representative builtin
+  method argument failures for `list.__iter__` and `dict.keys`, so those public
+  argument errors become catchable `TypeError` objects instead of uncaught
+  runtime error strings. Exact CPython message text for every builtin method
+  remains a separate method-by-method migration task.
+
 ## Sandbox Stdlib Manifest
 
 This table is the required sandbox stdlib surface. A module can be useful and

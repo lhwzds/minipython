@@ -6503,6 +6503,15 @@ try:
     1(2)
 except TypeError as error:
     print(error.__class__.__name__, isinstance(error, TypeError))
+for label, expr in [
+    ("list-iter-extra", lambda: list.__iter__([], 1)),
+    ("dict-keys-extra", lambda: dict.keys({}, 1)),
+    ("dict-keys-keyword", lambda: dict.keys({}, bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, isinstance(error, TypeError))
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:
