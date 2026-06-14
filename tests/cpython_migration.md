@@ -4195,6 +4195,10 @@ Completed in the string-prefix matrix pass:
   prefix families such as `fu''`, `ufr''`, `rfu''`, `fb''`, and `bf''`.
   MiniPython now rejects those forms in the lexer with `prefixes are
   incompatible` before parser or VM execution.
+- Added direct CPython rejection parity evidence
+  `cpython_invalid_string_literal_rejection_diff_subset` for representative
+  incompatible-prefix forms while keeping exact MiniPython lexer wording in the
+  local subset test.
 
 Completed in the async function definition pass:
 
@@ -4353,6 +4357,10 @@ Completed in the invalid string literal pass:
   unterminated strings.
 - Extended the same structured diagnostics to non-ASCII bytes literals, covering
   the whole offending bytes literal as CPython's doctest examples do.
+- Added direct CPython rejection parity evidence
+  `cpython_invalid_string_literal_rejection_diff_subset` for representative
+  unterminated ordinary/triple/bytes string literals and non-ASCII bytes
+  literals, without binding the test to version-specific SyntaxError text.
 - Adjusted string and bytes hex escape reading so the closing quote is treated
   as the end of the literal, not as part of the malformed escape text.
 - Kept `STRING` and `ERRORTOKEN` as `partial` because they still cover broader

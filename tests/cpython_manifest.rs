@@ -125,6 +125,35 @@ fn mixed_bytes_nonbytes_literal_rejection_has_direct_diff_evidence() {
 }
 
 #[test]
+fn invalid_string_literal_rejection_has_direct_diff_evidence() {
+    for subset in [
+        "fn cpython_invalid_string_prefix_matrix_subset(",
+        "fn cpython_invalid_string_literal_subset(",
+        "prefixes are incompatible",
+        "bytes can only contain ASCII literal characters",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(subset),
+            "invalid string literal local subset evidence must contain `{subset}`"
+        );
+    }
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_invalid_string_literal_rejection_diff_subset("),
+        "invalid string literal rejection must have direct CPython diff evidence"
+    );
+    for required in [
+        "cpython_invalid_string_literal_rejection_diff_subset",
+        "incompatible-prefix",
+        "unterminated ordinary/triple/bytes string literals",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "invalid string literal docs must mention `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_summary_matches_source_groups() {
     let groups = manifest_groups();
     let summary = summary_rows();

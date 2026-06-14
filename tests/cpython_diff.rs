@@ -20403,6 +20403,27 @@ fn cpython_mixed_bytes_nonbytes_literal_rejection_diff_subset() {
 }
 
 #[test]
+fn cpython_invalid_string_literal_rejection_diff_subset() {
+    for (name, source) in [
+        ("invalid-fu-prefix", "fu''"),
+        ("invalid-bf-prefix", "bf''"),
+        ("invalid-upper-fur-prefix", "FUR''"),
+        ("unterminated-single-quoted-string", "'blech"),
+        ("unterminated-escaped-end-quote-string", "\"blech\\\""),
+        ("unterminated-triple-quoted-string", "'''blech"),
+        ("unterminated-bytes-string", "b\"bytes"),
+        ("unterminated-bytes-triple-quoted-string", "b'''blech"),
+        ("non-ascii-bytes-literal", "print(b'café')"),
+    ] {
+        assert_cpython_rejection_parity(&DiffCase {
+            origin: "Lib/test/test_fstring.py::test_invalid_string_prefixes and Lib/test/test_syntax.py string literal SyntaxError coverage",
+            name,
+            source,
+        });
+    }
+}
+
+#[test]
 fn cpython_bytes_search_compare_slice_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest search, compare, reversed, and slice public subset",
