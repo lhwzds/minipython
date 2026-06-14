@@ -29555,11 +29555,8 @@ impl Vm {
                             .expect("str subclass storage exists after guard"),
                     );
                 }
-                value => {
-                    return Err(format!(
-                        "TypeError: attribute name must be a string, not '{}'",
-                        type_name(&value)
-                    ));
+                _ => {
+                    return Err("TypeError: attribute name must be a string".to_string());
                 }
             }
         }
