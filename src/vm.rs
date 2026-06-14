@@ -18914,7 +18914,7 @@ impl Vm {
             "memoryview.toreadonly" => {
                 let [Value::MemoryView(view)] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: toreadonly() expected 0 arguments, got {}",
+                        "TypeError: memoryview.toreadonly() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -18936,7 +18936,7 @@ impl Vm {
             "memoryview.release" => {
                 let [Value::MemoryView(view)] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: release() expected 0 arguments, got {}",
+                        "TypeError: memoryview.release() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };

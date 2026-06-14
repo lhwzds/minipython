@@ -22380,6 +22380,8 @@ for expr in [
     lambda: memoryview(b'abc').tobytes(order=b'C'),
     lambda: memoryview(b'abc').tobytes(bad='C'),
     lambda: memoryview(b'abc').tolist(1),
+    lambda: memoryview(b'abc').toreadonly(1),
+    lambda: memoryview(b'abc').release(1),
 ]:
     try:
         expr()
