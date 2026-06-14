@@ -1492,7 +1492,9 @@ Completed in the differential parity harness pass:
   equality-triggered reentrant exhaustion, are covered. Sequence-protocol
   fallback now treats `IndexError`, `IndexError` subclasses, and
   `StopIteration` from `__getitem__` as exhaustion for forward and reverse
-  iterators while preserving unrelated exception propagation. Broader custom
+  iterators while preserving unrelated exception propagation. Instances with
+  `__iter__ = None` now match CPython's explicit non-iterable error and block
+  `__getitem__` fallback across `iter()`, `list()`, and star-unpacking. Broader custom
   sequence fallback remains future work. The callable-sentinel iterator now also treats callable-raised
   `StopIteration` as exhaustion and preserves CPython's reentrant-exhaustion
   behavior from `test_iter_function_concealing_reentrant_exhaustion`: if the
@@ -6276,6 +6278,9 @@ Completed in the iter/next builtin pass:
   subclasses and `StopIteration` raised by `__getitem__` exhaust forward and
   reverse iterators, while unrelated exceptions such as `ValueError` continue
   to propagate.
+- Extended direct iterator evidence for CPython's `__iter__ = None` blocking:
+  `iter()`, `list()`, and star-unpacking now reject the object instead of
+  falling back to `__getitem__` or attempting to call `None`.
 
 Completed in the enumerate/zip/map/filter/sorted builtin pass:
 

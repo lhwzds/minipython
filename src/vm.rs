@@ -20930,6 +20930,13 @@ impl Vm {
             return self.get_iter_capturing(target.as_ref().clone());
         }
 
+        if instance_special_method_is_none(&value, "__iter__") {
+            return Err(format!(
+                "TypeError: '{}' object is not iterable",
+                type_name(&value)
+            ));
+        }
+
         if let Some(method) = instance_special_method(&value, "__iter__") {
             let iterator = match self.call_value_catching(method, Vec::new())? {
                 Ok(iterator) => iterator,
@@ -30519,6 +30526,13 @@ impl Vm {
     }
 
     fn get_iter_for_unpack(&mut self, value: Value) -> Result<Option<Value>, String> {
+        if instance_special_method_is_none(&value, "__iter__") {
+            return self.runtime_result_or_raise(Err(format!(
+                "'{}' object is not iterable",
+                type_name(&value)
+            )));
+        }
+
         if let Some(method) = instance_special_method(&value, "__iter__") {
             let iterator = match self.call_value_catching(method, Vec::new())? {
                 Ok(iterator) => iterator,

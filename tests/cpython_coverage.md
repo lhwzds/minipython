@@ -35,6 +35,9 @@ Recent runtime migration notes:
 - Sequence-protocol fallback iterators in `cpython_iter_next_builtin_subset`
   now match CPython exhaustion behavior for `IndexError` subclasses and
   `StopIteration` raised by `__getitem__`, including reverse iteration.
+- The same iterator evidence covers CPython's `__iter__ = None` blocking for
+  direct `iter()`, list construction, and star-unpacking over objects that also
+  define `__getitem__`.
 - `collections.deque` is currently a documented pure-memory sandbox surface:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory

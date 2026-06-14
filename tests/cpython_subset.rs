@@ -37184,6 +37184,31 @@ fn cpython_iter_next_builtin_subset() {
     );
     assert_output_with_stack(
         concat!(
+            "class BlockedIterable:\n",
+            "    __iter__ = None\n",
+            "    def __getitem__(self, index):\n",
+            "        if index < 2:\n",
+            "            return index\n",
+            "        raise IndexError\n",
+            "for label, action in [\n",
+            "    ('iter', lambda: iter(BlockedIterable())),\n",
+            "    ('list', lambda: list(BlockedIterable())),\n",
+            "    ('unpack', lambda: (lambda first, second: (first, second))(*BlockedIterable())),\n",
+            "]:\n",
+            "    try:\n",
+            "        action()\n",
+            "    except TypeError as error:\n",
+            "        print(label, error)",
+        ),
+        &[
+            "iter 'BlockedIterable' object is not iterable",
+            "list 'BlockedIterable' object is not iterable",
+            "unpack 'BlockedIterable' object is not iterable",
+        ],
+        8 * 1024 * 1024,
+    );
+    assert_output_with_stack(
+        concat!(
             "class EqSentinel:\n",
             "    def __init__(self, value):\n",
             "        self.value = value\n",

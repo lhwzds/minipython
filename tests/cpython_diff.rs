@@ -7452,6 +7452,21 @@ try:
 except ValueError as error:
     print('value', error)
 print('reverse-stop', list(reversed(ReverseStopSeq())))
+class BlockedIterable:
+    __iter__ = None
+    def __getitem__(self, index):
+        if index < 2:
+            return index
+        raise IndexError
+for label, action in [
+    ('iter', lambda: iter(BlockedIterable())),
+    ('list', lambda: list(BlockedIterable())),
+    ('unpack', lambda: (lambda first, second: (first, second))(*BlockedIterable())),
+]:
+    try:
+        action()
+    except TypeError as error:
+        print(label, error)
 class EqSentinel:
     def __init__(self, value):
         self.value = value
