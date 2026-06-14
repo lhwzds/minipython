@@ -23993,7 +23993,21 @@ for label, callback in [
         target = bytearray(3)
         print(label, 'ok', obj.readinto(target), target)
     except TypeError as error:
-        print(label, error.__class__.__name__)"#,
+        print(label, error.__class__.__name__, str(error))
+# CPython oracle text: BytesIO.readinto() takes exactly one argument (0 given);
+# BytesIO.readinto() takes exactly one argument (2 given);
+# _BufferedIOBase.readinto1() takes exactly one argument (0 given);
+# _BufferedIOBase.readinto1() takes exactly one argument (2 given)
+for label, callback in [
+    ('readinto0', lambda: io.BytesIO(b'a').readinto()),
+    ('readinto2', lambda: io.BytesIO(b'a').readinto(bytearray(1), bytearray(1))),
+    ('readinto1-0', lambda: io.BytesIO(b'a').readinto1()),
+    ('readinto1-2', lambda: io.BytesIO(b'a').readinto1(bytearray(1), bytearray(1))),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
     });
 }
 

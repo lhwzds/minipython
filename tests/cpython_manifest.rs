@@ -11242,6 +11242,10 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         "TypeError",
         "initial_bytes=None",
         "initial_bytes=b'ab'",
+        "BytesIO.readinto() takes exactly one argument (0 given)",
+        "BytesIO.readinto() takes exactly one argument (2 given)",
+        "_BufferedIOBase.readinto1() takes exactly one argument (0 given)",
+        "_BufferedIOBase.readinto1() takes exactly one argument (2 given)",
     ] {
         assert!(
             readinto_diff.contains(required),

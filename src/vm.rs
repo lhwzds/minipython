@@ -18721,8 +18721,13 @@ impl Vm {
         method: &str,
     ) -> Result<Value, String> {
         let [Value::BytesIO(bytes_io), target] = args.as_slice() else {
+            let display = if method == "readinto1" {
+                "_BufferedIOBase.readinto1"
+            } else {
+                "BytesIO.readinto"
+            };
             return Err(format!(
-                "TypeError: {method}() expected 1 argument, got {}",
+                "TypeError: {display}() takes exactly one argument ({} given)",
                 method_arg_count(&args)
             ));
         };
