@@ -42563,6 +42563,54 @@ fn cpython_functools_cache_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestLRU public cache
+// behavior. This focused subset keeps lru_cache behavior directly tracked
+// apart from the broader cache-wrapper surface above.
+#[test]
+fn cpython_functools_lru_cache_subset() {
+    assert_output_with_stack(
+        concat!(
+            "from functools import lru_cache\n",
+            "@lru_cache(maxsize=None)\n",
+            "def fib(n):\n",
+            "    if n < 2:\n",
+            "        return n\n",
+            "    return fib(n=n - 1) + fib(n=n - 2)\n",
+            "print([fib(n) for n in range(8)], tuple(fib.cache_info()))\n",
+            "print(sorted(fib.cache_parameters().items()))\n",
+            "fib.cache_clear()\n",
+            "print(tuple(fib.cache_info()))\n",
+            "calls = []\n",
+            "@lru_cache(maxsize=2)\n",
+            "def identity(value):\n",
+            "    calls.append(value)\n",
+            "    return value\n",
+            "print(identity(1), identity(2), identity(1), identity(3), tuple(identity.cache_info()), calls)\n",
+            "print(identity(2), tuple(identity.cache_info()), calls)\n",
+            "zero_calls = []\n",
+            "@lru_cache(maxsize=0)\n",
+            "def never():\n",
+            "    zero_calls.append(1)\n",
+            "    return 20\n",
+            "print([never() for _ in range(3)], len(zero_calls), tuple(never.cache_info()))\n",
+            "@lru_cache(maxsize=None, typed=True)\n",
+            "def identify(value):\n",
+            "    return type(value).__name__, value\n",
+            "print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(identify.cache_info()))"
+        ),
+        &[
+            "[0, 1, 1, 2, 3, 5, 8, 13] (15, 15, None, 15)",
+            "[('maxsize', None), ('typed', False)]",
+            "(0, 0, None, 0)",
+            "1 2 1 3 (1, 3, 2, 2) [1, 2, 3]",
+            "2 (1, 4, 2, 2) [1, 2, 3, 2]",
+            "[20, 20, 20] 3 (0, 3, 0, 0)",
+            "('int', 3) ('float', 3.0) ('int', 3) ('float', 3.0) (0, 4, None, 4)",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from newer CPython functools cache-wrapper module metadata. This
 // stays split from the stable cache diff because older CPython oracles lack the
 // deletion fallback for _lru_cache_wrapper.__module__.

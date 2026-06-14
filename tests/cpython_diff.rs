@@ -14097,6 +14097,41 @@ for method in [decorated_wrapper.cache_info, decorated_wrapper.cache_clear]:
 }
 
 #[test]
+fn cpython_functools_lru_cache_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestLRU public stable subset",
+        name: "functools-lru-cache",
+        source: r#"from functools import lru_cache
+@lru_cache(maxsize=None)
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n=n - 1) + fib(n=n - 2)
+print([fib(n) for n in range(8)], tuple(fib.cache_info()))
+print(sorted(fib.cache_parameters().items()))
+fib.cache_clear()
+print(tuple(fib.cache_info()))
+calls = []
+@lru_cache(maxsize=2)
+def identity(value):
+    calls.append(value)
+    return value
+print(identity(1), identity(2), identity(1), identity(3), tuple(identity.cache_info()), calls)
+print(identity(2), tuple(identity.cache_info()), calls)
+zero_calls = []
+@lru_cache(maxsize=0)
+def never():
+    zero_calls.append(1)
+    return 20
+print([never() for _ in range(3)], len(zero_calls), tuple(never.cache_info()))
+@lru_cache(maxsize=None, typed=True)
+def identify(value):
+    return type(value).__name__, value
+print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(identify.cache_info()))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cache_wrapper_module_metadata_diff_subset() {
     let probe = run_cpython(
         "from functools import lru_cache\n\ndef f():\n    pass\nw = lru_cache()(f)\ndel w.__module__\nprint(w.__module__)",
