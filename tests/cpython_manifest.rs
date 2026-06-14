@@ -8628,6 +8628,9 @@ fn operator_newer_helpers_and_pickle_stop_line_stay_classified() {
         "operator.call(func, 0, 1, a=2, obj=3)",
         "operator.__call__ is operator.call",
         "operator.call(func, unknown=1, **{'unknown': 2})",
+        "call expected at least 1 argument, got 0",
+        "'int' object is not callable",
+        "_operator.call() got multiple values for keyword argument 'unknown'",
     ] {
         assert!(
             call_diff.contains(required),

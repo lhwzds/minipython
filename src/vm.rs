@@ -28923,8 +28923,22 @@ impl Vm {
         }
         if function == "call" {
             let Some((callee, rest)) = args.split_first() else {
-                return Err("TypeError: call() expected at least 1 argument, got 0".to_string());
+                return Err("TypeError: call expected at least 1 argument, got 0".to_string());
             };
+            let mut seen_keywords = HashSet::new();
+            for (keyword, _) in &keywords {
+                if !seen_keywords.insert(keyword.as_str()) {
+                    return Err(format!(
+                        "TypeError: _operator.call() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+            }
+            if !is_callable_value(callee) {
+                return Err(format!(
+                    "TypeError: '{}' object is not callable",
+                    type_name(callee)
+                ));
+            }
             return self.call_value_with_keywords(callee.clone(), rest.to_vec(), keywords);
         }
         if function == "methodcaller" {

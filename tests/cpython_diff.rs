@@ -12786,11 +12786,15 @@ for name in ['call']:
     print(name, value.__name__, value.__qualname__, value.__module__ in ('operator', '_operator'))
     print(type(value.__doc__).__name__, bool(value.__doc__), name in operator.__all__)
 print(operator.__call__ is operator.call)
-for expr in [lambda: operator.call(), lambda: operator.call(42), lambda: operator.call(func, unknown=1, **{'unknown': 2})]:
+for label, expected, expr in [
+    ('missing', 'call expected at least 1 argument, got 0', lambda: operator.call()),
+    ('noncallable', "'int' object is not callable", lambda: operator.call(42)),
+    ('duplicate', "_operator.call() got multiple values for keyword argument 'unknown'", lambda: operator.call(func, unknown=1, **{'unknown': 2})),
+]:
     try:
         expr()
     except TypeError as error:
-        print(type(error).__name__)"#,
+        print(label, type(error).__name__, str(error), str(error) == expected)"#,
     });
 }
 
