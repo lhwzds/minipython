@@ -780,6 +780,10 @@ Started in the `test_compile.py` source-positions direct-method pass:
   remaining exact `co_code` length / `dis.Bytecode(...).positions` assertions
   as CPython bytecode/debug-position internals rather than MiniPython register
   VM requirements.
+- `TestSpecifics` is now class-level `ported_public`: all public-compatible
+  methods have direct Rust evidence, while temp-file / child-process /
+  resource-limit rows stay sandbox runtime stop-lines and CPython
+  bytecode/optimizer/instruction-position rows stay implementation-internal.
 - `TestSourcePositions` remains class-level `partial`, but its method audit no
   longer treats CPython opcode/debug-range assertions as partially migrated
   public behavior; the portable public `co_positions()` and AST rewrite methods
@@ -838,10 +842,9 @@ Started in the `test_compile.py` TestSpecifics newline/indent pass:
   `compile()` now emit finally-control-flow SyntaxWarnings for `return`,
   `break`, and `continue` escaping a `finally` block, while nested definitions
   and nested loops inside `finally` stay warning-free.
-- `TestSpecifics` remains `partial`; many remaining methods assert CPython
-  code-object metadata, optimization behavior, warnings, filename handling,
-  constants, and traceback/line-number details outside this input-boundary
-  slice.
+- `TestSpecifics` is no longer `partial`; the remaining rows are classified as
+  sandbox runtime stop-lines or CPython implementation internals outside the
+  default compile contract.
 
 Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
 
@@ -1366,10 +1369,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `cpython_memoryview_cast_one_byte_format_diff_subset` case directly compares
   this slice with CPython. Non-byte formats, ctypes exporters, and
   multidimensional casts remain outside this slice.
-- `TestSpecifics` remains `partial`; the next useful slice is still the subset
-  that avoids direct assertions about deeper CPython code-object internals such
-  as constant merging, bytecode shape, line tables, and platform traceback
-  metadata.
+- `TestSpecifics` now avoids treating direct assertions about deeper CPython
+  code-object internals such as constant merging, bytecode shape, line tables,
+  and platform traceback metadata as MiniPython public behavior.
 
 Completed in the AST snippets public-`to_tuple()` PEP 695 pass:
 

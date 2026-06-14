@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 6, 347),
+        ("partial", 5, 249),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -419,9 +419,20 @@ fn cpython_test_manifest_compile_specifics_stop_lines_stay_sandbox_scoped() {
         .find(|row| row.source == "Lib/test/test_compile.py" && row.group == "TestSpecifics")
         .expect("manifest must include TestSpecifics row");
     assert_eq!(
-        row.status, "partial",
-        "TestSpecifics must remain partial while runtime/internal stop-lines remain"
+        row.status, "ported_public",
+        "TestSpecifics must be ported_public once only sandbox runtime stop-lines and CPython internals remain"
     );
+    for required in [
+        "future host-runtime policy",
+        "temp-file/child-process/resource-limit cases",
+        "CPython bytecode/optimizer/instruction-position methods",
+        "default sandbox compile contract",
+    ] {
+        assert!(
+            MANIFEST.contains(required),
+            "TestSpecifics manifest row must keep sandbox stop-line `{required}` visible"
+        );
+    }
 }
 
 #[test]
@@ -4097,6 +4108,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
     let groups = manifest_groups();
 
     for (source, group) in [
+        ("Lib/test/test_compile.py", "TestSpecifics"),
         ("Lib/test/test_compile.py", "TestSourcePositions"),
         ("Lib/test/test_builtin.py", "TestBreakpoint"),
         ("Lib/test/test_float.py", "GeneralFloatCases"),

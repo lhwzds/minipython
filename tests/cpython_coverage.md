@@ -4179,6 +4179,11 @@ without adding general custom encoder/decoder class support.
   long-expression/loop `test_extended_arg` source behavior, large annotated
   signatures, conditional expressions, dead blocks, and try/except/finally
   control flow.
+  `TestSpecifics` is classified as `ported_public` for the default sandbox
+  compile contract: the remaining CPython rows require temp-file /
+  child-process / resource-limit host runtime policy or CPython
+  bytecode/optimizer/instruction-position internals rather than MiniPython
+  public compile behavior.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_specifics_invalid_public_ast_subset`, covering public
   compile-from-AST diagnostics for invalid `NamedExpr.target` and
