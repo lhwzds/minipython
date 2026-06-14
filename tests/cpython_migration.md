@@ -8103,6 +8103,10 @@ Completed in the bytes-source differential encoding pass:
 - Kept the non-UTF-8 shebang plus second-line coding-cookie case out of the
   default differential harness because the default system `python3` rejects it
   before reaching the newer CPython source-test behavior.
+- Added `cpython_source_encoding_evidence_stays_documented` to the manifest so
+  the `ENCODING` partial row keeps its detection, byte-tokenization,
+  byte-execution, and rejection-parity evidence plus the manual-decoder /
+  `encoding_rs` / full-codecs-registry stop line documented.
 
 Completed in the SyntaxError parenthesis/string diagnostics pass:
 

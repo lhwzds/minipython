@@ -16248,6 +16248,51 @@ fn cpython_tokenizer_operator_diff_evidence_matches_runtime_subsets() {
 }
 
 #[test]
+fn cpython_source_encoding_evidence_stays_documented() {
+    for subset in [
+        "cpython_source_encoding_detection_subset",
+        "cpython_tokenize_bytes_encoding_token_subset",
+        "cpython_source_encoding_execution_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "source-encoding subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_MIGRATION.contains(subset),
+            "source-encoding subset evidence `{subset}` must stay documented"
+        );
+    }
+
+    for diff in [
+        "cpython_bytes_source_output_parity_diff_subset",
+        "cpython_bytes_exec_source_output_parity_diff_subset",
+        "cpython_bytes_source_rejection_parity_diff_subset",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "source-encoding CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(diff) && CPYTHON_MIGRATION.contains(diff),
+            "source-encoding CPython diff evidence `{diff}` must stay documented"
+        );
+    }
+
+    for boundary in [
+        "ENCODING",
+        "manual decoders",
+        "full codecs registry",
+        "encoding_rs",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(boundary) || CPYTHON_MIGRATION.contains(boundary),
+            "source-encoding docs must keep partial boundary `{boundary}` visible"
+        );
+    }
+}
+
+#[test]
 fn tokenizer_interpolated_string_split_subsets_stay_documented_as_partial() {
     for subset in [
         "cpython_tokenize_f_string_span_subset",
