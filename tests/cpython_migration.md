@@ -103,11 +103,12 @@ Completed in the builtin method TypeError capture pass:
   `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
   `object.__format__`, `object.__dir__`, `object.__init__`, `object.__hash__`,
   object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
-  `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, and common
-  stdlib-backed builtins such as `id()`, `any()`, `all()`, `abs()`, `hash()`,
-  `repr()`, `ascii()`, `bool()`, `len()`, `callable()`, `bin()`, `oct()`, and
-  `hex()`. Exact CPython message text for every builtin method remains a
-  separate method-by-method migration task.
+  `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
+  `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
+  `reversed()`, and common stdlib-backed builtins such as `id()`, `any()`,
+  `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`, `len()`,
+  `callable()`, `bin()`, `oct()`, and `hex()`. Exact CPython message text for
+  every builtin method remains a separate method-by-method migration task.
 - Extended the same runtime exception-capture evidence to public
   generator/coroutine/async-generator keyword rejection for `send`, `throw`,
   `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping

@@ -49,7 +49,9 @@ Recent runtime migration notes:
   `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
   `object.__format__`, `object.__dir__`, `object.__init__`, `object.__hash__`,
   object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
-  `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, and common
+  `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
+  `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
+  `reversed()`, and common
   stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.

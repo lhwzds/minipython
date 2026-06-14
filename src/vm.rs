@@ -8816,21 +8816,21 @@ impl Vm {
             }
             Value::Builtin(name) if name == "range" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_range(args)
             }
             Value::Builtin(name) if name == "next" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_next(args)
             }
             Value::Builtin(name) if name == "iter" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_iter(args)
@@ -8905,14 +8905,14 @@ impl Vm {
             Value::Builtin(name) if name == "map" => self.call_map(args, keywords),
             Value::Builtin(name) if name == "filter" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_filter(args)
             }
             Value::Builtin(name) if name == "reversed" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_reversed(args)
@@ -9291,21 +9291,21 @@ impl Vm {
             Value::Builtin(name) if name == "callable" => call_callable(self, args, keywords),
             Value::Builtin(name) if name == "vars" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_vars(args)
             }
             Value::Builtin(name) if name == "globals" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_globals(args)
             }
             Value::Builtin(name) if name == "locals" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_locals(args)

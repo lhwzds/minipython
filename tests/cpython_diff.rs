@@ -6566,6 +6566,14 @@ checks = [
     ("object-ge", lambda: object.__ge__(object(), other=object())),
     ("isinstance", lambda: isinstance(object=1, classinfo=object)),
     ("issubclass", lambda: issubclass(cls=object, classinfo=object)),
+    ("vars", lambda: vars(object=object())),
+    ("globals", lambda: globals(bad=1)),
+    ("locals", lambda: locals(bad=1)),
+    ("range", lambda: range(start=1)),
+    ("iter", lambda: iter(object=[])),
+    ("next", lambda: next(iterator=iter([]))),
+    ("filter", lambda: filter(function=None, iterable=[])),
+    ("reversed", lambda: reversed(sequence=[])),
 ]
 for label, expr in checks:
     try:
