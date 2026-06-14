@@ -10445,6 +10445,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         "math / math.integer",
         &[
             "cpython_math_core_subset",
+            "cpython_math_keyword_error_messages_subset",
             "cpython_math_constants_and_classification_subset",
             "cpython_math_integer_subset",
             "cpython_math_isclose_subset",
@@ -10486,6 +10487,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include math / math.integer");
     for evidence in [
         "cpython_math_core_diff_subset",
+        "cpython_math_keyword_error_messages_diff_subset",
         "cpython_math_constants_and_classification_diff_subset",
         "cpython_math_isclose_diff_subset",
         "cpython_math_hypot_dist_diff_subset",
@@ -10521,6 +10523,45 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "math sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+
+    let keyword_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_math_keyword_error_messages_diff_subset",
+    );
+    let keyword_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_keyword_error_messages_subset");
+    for required in [
+        "lambda: math.isfinite(x=1)",
+        "lambda: math.hypot(x=1)",
+        "lambda: math.dist(p=(1,), q=(2,))",
+        "lambda: math.pow(x=1, y=2)",
+        "lambda: math.fsum(iterable=[])",
+        "lambda: math.copysign(x=1, y=2)",
+        "lambda: math.sin(x=1)",
+    ] {
+        assert!(
+            keyword_diff.contains(required),
+            "math keyword CPython diff evidence must cover exact diagnostic case `{required}`"
+        );
+        assert!(
+            keyword_subset.contains(required),
+            "math keyword runtime subset evidence must cover exact diagnostic case `{required}`"
+        );
+    }
+    for required in [
+        "math.isfinite() takes no keyword arguments",
+        "math.hypot() takes no keyword arguments",
+        "math.dist() takes no keyword arguments",
+        "math.pow() takes no keyword arguments",
+        "math.fsum() takes no keyword arguments",
+        "math.copysign() takes no keyword arguments",
+        "math.sin() takes no keyword arguments",
+    ] {
+        assert!(
+            keyword_subset.contains(required),
+            "math keyword runtime subset evidence must assert exact diagnostic `{required}`"
         );
     }
 

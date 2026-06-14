@@ -7472,6 +7472,23 @@ fn cpython_math_core_subset() {
     );
 }
 
+#[test]
+fn cpython_math_keyword_error_messages_subset() {
+    assert_output(
+        "import math\nchecks = [\n    ('isfinite', lambda: math.isfinite(x=1)),\n    ('isnan', lambda: math.isnan(x=1)),\n    ('hypot', lambda: math.hypot(x=1)),\n    ('dist', lambda: math.dist(p=(1,), q=(2,))),\n    ('pow', lambda: math.pow(x=1, y=2)),\n    ('fsum', lambda: math.fsum(iterable=[])),\n    ('copysign', lambda: math.copysign(x=1, y=2)),\n    ('sin', lambda: math.sin(x=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "isfinite math.isfinite() takes no keyword arguments",
+            "isnan math.isnan() takes no keyword arguments",
+            "hypot math.hypot() takes no keyword arguments",
+            "dist math.dist() takes no keyword arguments",
+            "pow math.pow() takes no keyword arguments",
+            "fsum math.fsum() takes no keyword arguments",
+            "copysign math.copysign() takes no keyword arguments",
+            "sin math.sin() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_math.py::MathTests::testConstants,
 // ::testIsfinite, ::testIsnormal, ::testIssubnormal, ::testIsnan,
 // ::testIsinf, ::test_nan_constant, and ::test_inf_constant.

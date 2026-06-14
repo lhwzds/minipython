@@ -9903,7 +9903,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.isfinite" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_isfinite(args)
@@ -9920,7 +9920,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.isnan" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_isnan(args)
@@ -9941,9 +9941,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.dist" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_dist(self, args)
@@ -9973,9 +9971,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.hypot" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_hypot(self, args)
@@ -10005,9 +10001,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.pow" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_pow(self, args)
@@ -10076,9 +10070,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.fsum" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_fsum(self, args)
@@ -10115,9 +10107,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.copysign" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_copysign(args)
@@ -10376,9 +10366,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.sin" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_sin(self, args)
@@ -55433,6 +55421,10 @@ fn operator_builtin_doc(name: &str) -> &'static str {
 
 fn is_math_builtin(name: &str) -> bool {
     name == "sqrt" || (name.starts_with("math.") && !name.starts_with("math.integer."))
+}
+
+fn math_no_keyword_type_error(name: &str) -> String {
+    format!("TypeError: {name}() takes no keyword arguments")
 }
 
 fn math_builtin_doc(name: &str) -> &'static str {

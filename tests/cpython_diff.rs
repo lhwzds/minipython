@@ -1958,6 +1958,30 @@ for expr in [lambda: math.sqrt(-1), lambda: math.factorial(-1), lambda: math.gcd
 }
 
 #[test]
+fn cpython_math_keyword_error_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math.py public no-keyword TypeError subset",
+        name: "math-keyword-errors",
+        source: r#"import math
+checks = [
+    ("isfinite", lambda: math.isfinite(x=1)),
+    ("isnan", lambda: math.isnan(x=1)),
+    ("hypot", lambda: math.hypot(x=1)),
+    ("dist", lambda: math.dist(p=(1,), q=(2,))),
+    ("pow", lambda: math.pow(x=1, y=2)),
+    ("fsum", lambda: math.fsum(iterable=[])),
+    ("copysign", lambda: math.copysign(x=1, y=2)),
+    ("sin", lambda: math.sin(x=1)),
+]
+for label, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_math_constants_and_classification_diff_subset() {
     let probe =
         run_cpython("import math; print(hasattr(math, 'isnormal'), hasattr(math, 'issubnormal'))")

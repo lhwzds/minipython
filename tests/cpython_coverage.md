@@ -658,13 +658,16 @@ Recent runtime migration notes:
   user-defined `__new__` / `__init__`.
 - The runtime stdlib surface includes `cpython_math_core_diff_subset`,
   `cpython_math_core_subset`,
+  `cpython_math_keyword_error_messages_diff_subset`,
+  `cpython_math_keyword_error_messages_subset`,
   `cpython_math_constants_and_classification_diff_subset` gated for newer
   CPython oracles, and `cpython_math_constants_and_classification_subset`,
   covering CPython public function `__qualname__` / `__doc__` metadata,
   `pi` / `e` / `tau` / `inf` / `nan` constants plus
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
-  zero, infinities, NaNs, argument errors, and huge integer overflow.
+  zero, infinities, NaNs, representative no-keyword `TypeError` messages,
+  argument errors, and huge integer overflow.
 - The bundled `collections` module includes
   `cpython_collections_counter_basics_diff_subset` /
   `cpython_collections_counter_basics_subset` and
