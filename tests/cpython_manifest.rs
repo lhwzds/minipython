@@ -140,7 +140,7 @@ fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
         ("partial", 11, 492),
-        ("blocked_by_runtime", 5, 15),
+        ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
     ];
@@ -684,6 +684,57 @@ fn cpython_test_manifest_type_params_dunder_method_audit_is_complete() {
         actual, expected,
         "TypeParamsTypeParamsDunder method audit drifted"
     );
+}
+
+#[test]
+fn cpython_test_manifest_type_params_dynamic_class_method_audit_is_complete() {
+    let source = cpython_source_or_skip!(CPYTHON_TEST_TYPE_PARAMS_SOURCE);
+    let expected = python_test_class_method_names(&source, "DynamicClassTest");
+    let methods =
+        method_audit_methods("## `Lib/test/test_type_params.py::DynamicClassTest` Method Audit");
+
+    assert_eq!(
+        methods.len(),
+        expected.len(),
+        "DynamicClassTest method audit row count drifted"
+    );
+    assert!(
+        methods.iter().all(|method| method.status == "ported"),
+        "DynamicClassTest methods should all be ported"
+    );
+
+    let actual = methods
+        .iter()
+        .map(|method| method.method)
+        .collect::<BTreeSet<_>>();
+    let expected = expected.iter().map(String::as_str).collect::<BTreeSet<_>>();
+    assert_eq!(actual, expected, "DynamicClassTest method audit drifted");
+}
+
+#[test]
+fn cpython_type_params_dynamic_new_class_evidence_is_documented() {
+    let subset_name = "cpython_type_params_dynamic_new_class_subset";
+    let diff_name = "cpython_type_params_dynamic_new_class_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dynamic type-parameter new_class runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dynamic type-parameter new_class CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("skipping type-parameter dynamic new_class diff"),
+        "dynamic type-parameter new_class diff must remain gated for older CPython oracles"
+    );
+
+    for document in [MANIFEST, CPYTHON_MIGRATION, CPYTHON_COVERAGE] {
+        assert!(
+            document.contains(subset_name) && document.contains(diff_name),
+            "type-parameter dynamic new_class docs must link `{subset_name}` to `{diff_name}`"
+        );
+    }
 }
 
 #[test]

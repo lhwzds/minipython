@@ -2296,9 +2296,8 @@ Completed in the type-parameter grammar promotion pass:
   manifest. `TypeParamsNonlocalTest` is tracked as `ported` with direct
   method-level audit rows for all 4 current CPython methods; broader
   type-parameter groups are classified as `partial` or `blocked_by_runtime`
-  where they need broader `typing`, full dynamic `types.new_class()` generic
-  class construction, pickle, or exact runtime-evaluation APIs that MiniPython
-  has not fully implemented.
+  where they need broader `typing`, pickle, or exact runtime-evaluation APIs
+  that MiniPython has not fully implemented.
 - Promoted `test_type_params.py::TypeParamsInvalidTest` from `partial` to
   `ported` in the strict manifest. Added method-level Rust evidence for all 13
   current CPython methods, including the duplicate-name matrix, ordinary
@@ -2311,6 +2310,14 @@ Completed in the type-parameter grammar promotion pass:
   type-parameter closure identity, `__parameters__`, empty non-generic
   `__type_params__`, and class/function `__type_params__` assignment override
   behavior.
+- Promoted `test_type_params.py::DynamicClassTest` to `ported`.
+  `cpython_type_params_dynamic_new_class_subset` and gated direct
+  `cpython_type_params_dynamic_new_class_diff_subset` evidence cover dynamic
+  generic class construction through `types.new_class()` over `Generic[T]`,
+  both with a callback-provided `__type_params__` namespace entry and without
+  one. Dynamic classes now derive `__parameters__` from `__orig_bases__` when
+  no explicit type-parameter list is set, while preserving explicit
+  `__type_params__` when the callback provides it.
 
 Completed in the invalid dict display promotion pass:
 

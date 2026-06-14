@@ -49,10 +49,10 @@ Rust coverage.
 
 | Status | Groups | Test methods |
 | --- | ---: | ---: |
-| `ported` | 55 | 656 |
+| `ported` | 56 | 658 |
 | `ported_public` | 4 | 110 |
 | `partial` | 11 | 492 |
-| `blocked_by_runtime` | 5 | 15 |
+| `blocked_by_runtime` | 4 | 13 |
 | `blocked_by_ast_module` | 2 | 16 |
 | `blocked_by_cpython_internal` | 5 | 10 |
 | `not_started` | 0 | 0 |
@@ -176,7 +176,7 @@ rejection covered by `cpython_bytes_bytearray_index_error_and_hash_subset`.
 | `Lib/test/test_type_params.py` | `GlobalGenericClass` | 0 | `source_data` | Helper class used by runtime type-parameter tests; it has no direct `test_*` methods. |
 | `Lib/test/test_type_params.py` | `TypeParamsLazyEvaluationTest` | 3 | `ported` | `cpython_type_params_lazy_evaluation_qualname_subset` and `cpython_type_params_lazy_evaluation_bounds_subset` cover all current methods, including generic class/function `__qualname__`, recursive class bound/constraints lookup, deferred missing-name errors with later re-evaluation, tuple-constraint behavior, and CPython-style `typing.NoDefault` for missing defaults. |
 | `Lib/test/test_type_params.py` | `TypeParamsClassScopeTest` | 10 | `ported` | `cpython_type_params_class_scope_first_pass_subset` and `cpython_type_params_class_scope_lazy_subset` cover all current public class-scope methods: aliases and generic method bounds can read prior class locals, names without a class binding use enclosing nonlocals, future class bindings force global lookup, explicit `global` and `nonlocal` class-body assignments are honored by lazy alias reads, later class-attribute mutation is visible to lazy bounds/aliases, and nested free-variable lookup keeps class bases and class-body names distinct. |
-| `Lib/test/test_type_params.py` | `DynamicClassTest` | 2 | `blocked_by_runtime` | Requires fuller dynamic generic class construction through `types.new_class()` callbacks than MiniPython's current first-pass class-creation helper surface exposes. |
+| `Lib/test/test_type_params.py` | `DynamicClassTest` | 2 | `ported` | `cpython_type_params_dynamic_new_class_subset` and gated direct `cpython_type_params_dynamic_new_class_diff_subset` evidence cover dynamic generic class construction through `types.new_class()` with and without an explicit callback-provided `__type_params__` namespace entry, including `__bases__`, `__orig_bases__`, `__type_params__`, and `__parameters__`. |
 | `Lib/test/test_type_params.py` | `TypeParamsManglingTest` | 7 | `ported` | `cpython_type_params_mangling_subset` ports all current methods, covering public type-parameter names, class-private references inside class bodies, methods, aliases, bases, nested lambdas/comprehensions, and non-leaky mangling across module/function/class boundaries. |
 | `Lib/test/test_type_params.py` | `TypeParamsComplexCallsTest` | 3 | `ported` | `cpython_type_params_complex_calls_subset` ports all current methods, covering generic functions with both positional defaults and keyword-only defaults, annotations preserving exact type-parameter identity, class-header `**kwargs` propagation through `__init_subclass__`, implicit `Generic` bases after positional and unpacked bases, and starargs base forms including empty unpacking. |
 | `Lib/test/test_type_params.py` | `TypeParamsTraditionalTypeVarsTest` | 3 | `ported` | `cpython_type_params_traditional_typevars_subset` ports all current methods, covering explicit `Generic[T]` rejection in PEP 695 class headers, traditional `typing.TypeVar` rejection when undeclared in generic bases, and ordinary annotations that combine PEP 695 type parameters with traditional TypeVars. |
@@ -547,6 +547,13 @@ rejection covered by `cpython_bytes_bytearray_index_error_and_hash_subset`.
 | `test_no_mangling_in_bases` | `ported` | `cpython_type_params_mangling_subset` proves class-header bases and keyword names are evaluated without class-private mangling while still adding the implicit `Generic` base. | None for this method. |
 | `test_no_mangling_in_nested_scopes` | `ported` | `cpython_type_params_mangling_subset` proves non-type-parameter private-looking globals used in bounds, lambdas, list comprehensions, and generator expressions in class headers are not class-mangled. | None for this method. |
 | `test_type_params_are_mangled` | `ported` | `cpython_type_params_mangling_subset` proves private-looking type parameters are available through class-private references in bounds, class-header base expressions, header lambdas, and class-body assignments. | None for this method. |
+
+## `Lib/test/test_type_params.py::DynamicClassTest` Method Audit
+
+| CPython method | Status | Rust evidence | Remaining acceptance |
+| --- | --- | --- | --- |
+| `test_types_new_class_with_callback` | `ported` | `cpython_type_params_dynamic_new_class_subset` and `cpython_type_params_dynamic_new_class_diff_subset` prove `types.new_class()` over `Generic[T]` preserves `__bases__ == (Generic,)`, `__orig_bases__ == (Generic[T],)`, callback-provided `__type_params__ == (T,)`, and `__parameters__ == (T,)`. | None for this method. |
+| `test_types_new_class_no_callback` | `ported` | `cpython_type_params_dynamic_new_class_subset` and `cpython_type_params_dynamic_new_class_diff_subset` prove `types.new_class()` over `Generic[T]` without a callback still preserves `__bases__ == (Generic,)`, `__orig_bases__ == (Generic[T],)`, explicit empty `__type_params__`, and `__parameters__` derived from the original generic base. | None for this method. |
 
 ## `Lib/test/test_type_params.py::TypeParamsTypeParamsDunder` Method Audit
 

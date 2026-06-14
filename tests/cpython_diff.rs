@@ -9059,6 +9059,40 @@ print(res[0], res[1][0] is int, res[1][1] is object, res[2] == {}, res[3] == {'x
 }
 
 #[test]
+fn cpython_type_params_dynamic_new_class_diff_subset() {
+    let probe = run_cpython(
+        "import types\nfrom typing import Generic, TypeVar\nT = TypeVar('T')\nC = types.new_class('C', (Generic[T],), {})\nprint(hasattr(C, '__type_params__'), C.__parameters__ == (T,))",
+    )
+    .expect("CPython probe should run");
+    if !probe.status.success() || !String::from_utf8_lossy(&probe.stdout).contains("True True") {
+        eprintln!(
+            "skipping type-parameter dynamic new_class diff: CPython oracle lacks class __type_params__ support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_type_params.py::DynamicClassTest public types.new_class generic subset",
+        name: "type-params-dynamic-new-class",
+        source: r#"import types
+from typing import Generic, TypeVar
+T = TypeVar('T')
+def set_params(ns):
+    ns['__type_params__'] = (T,)
+WithCallback = types.new_class('WithCallback', (Generic[T],), {}, set_params)
+print(WithCallback.__bases__ == (Generic,))
+print(WithCallback.__orig_bases__ == (Generic[T],))
+print(WithCallback.__type_params__ == (T,))
+print(WithCallback.__parameters__ == (T,))
+NoCallback = types.new_class('NoCallback', (Generic[T],), {})
+print(NoCallback.__bases__ == (Generic,))
+print(NoCallback.__orig_bases__ == (Generic[T],))
+print(NoCallback.__type_params__ == ())
+print(NoCallback.__parameters__ == (T,))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_one_argument_type_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_one_argument_type",

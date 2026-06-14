@@ -57677,6 +57677,35 @@ fn cpython_type_params_class_scope_lazy_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_type_params.py::DynamicClassTest. This
+// covers dynamic generic class creation through `types.new_class()` with and
+// without an explicit callback-provided `__type_params__` namespace entry.
+#[test]
+fn cpython_type_params_dynamic_new_class_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "from typing import Generic, TypeVar\n",
+            "T = TypeVar('T', infer_variance=True)\n",
+            "def set_params(ns):\n",
+            "    ns['__type_params__'] = (T,)\n",
+            "WithCallback = types.new_class('WithCallback', (Generic[T],), {}, set_params)\n",
+            "print(WithCallback.__bases__ == (Generic,))\n",
+            "print(WithCallback.__orig_bases__ == (Generic[T],))\n",
+            "print(WithCallback.__type_params__ == (T,))\n",
+            "print(WithCallback.__parameters__ == (T,))\n",
+            "NoCallback = types.new_class('NoCallback', (Generic[T],), {})\n",
+            "print(NoCallback.__bases__ == (Generic,))\n",
+            "print(NoCallback.__orig_bases__ == (Generic[T],))\n",
+            "print(NoCallback.__type_params__ == ())\n",
+            "print(NoCallback.__parameters__ == (T,))"
+        ),
+        &[
+            "True", "True", "True", "True", "True", "True", "True", "True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_type_params.py::TypeParamsNonlocalTest.
 // Type parameters themselves are not valid `nonlocal` bindings, but an ordinary
 // local assignment that shadows the type parameter can still be captured.

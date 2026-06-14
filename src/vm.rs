@@ -50748,6 +50748,16 @@ fn parameters_attr_value(attrs: &Scope, type_params: Vec<Value>) -> Value {
     if let Some(value) = attrs.borrow().get("__parameters__").cloned() {
         return value;
     }
+    if type_params.is_empty()
+        && !attrs.borrow().contains_key("__type_params__")
+        && let Some(original_bases) = attrs.borrow().get("__orig_bases__").cloned()
+    {
+        let mut params = Vec::new();
+        collect_type_params(&original_bases, &mut params);
+        if !params.is_empty() {
+            return tuple_value(params);
+        }
+    }
     type_params_attr_value(attrs, type_params)
 }
 
