@@ -4963,6 +4963,9 @@ Completed in the invalid-Python token stream pass:
   the empty non-logical newline marker before EOF for a final comment-only
   physical line, matching CPython's token-boundary behavior for the covered
   shape.
+- Added `cpython_tokenize_trailing_space_without_newline_diff_subset` as direct
+  CPython output parity evidence that these no-final-newline whitespace and
+  comment-only tails preserve the same public execution behavior.
 - Kept compile execution strict for the same source strings, so this pass moves
   MiniPython closer to CPython's tokenizer/compile split without weakening
   normal `run_source()` rejection behavior.

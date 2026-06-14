@@ -932,6 +932,24 @@ print(sum(items))
 }
 
 #[test]
+fn cpython_tokenize_trailing_space_without_newline_diff_subset() {
+    for case in [
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py::test_newline_and_space_at_the_end_of_the_source_without_newline public execution subset",
+            name: "tokenize-final-whitespace-line-without-newline",
+            source: "print('space')\n ",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py final comment-only line without newline public execution subset",
+            name: "tokenize-final-comment-line-without-newline",
+            source: "print('comment')\n\n#test",
+        },
+    ] {
+        assert_cpython_output_parity(&case);
+    }
+}
+
+#[test]
 fn cpython_tokenize_indentation_blank_line_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py INDENT/DEDENT blank-line public execution subset",
