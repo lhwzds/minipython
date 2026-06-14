@@ -9179,7 +9179,7 @@ impl Vm {
             Value::Builtin(name) if name == "ord" => call_ord(args, keywords),
             Value::Builtin(name) if name == "getattr" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err("TypeError: getattr() takes no keyword arguments".to_string());
                 }
 
                 self.call_getattr(args)
@@ -9200,7 +9200,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "hasattr" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err("TypeError: hasattr() takes no keyword arguments".to_string());
                 }
 
                 self.call_hasattr(args)

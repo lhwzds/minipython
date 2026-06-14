@@ -24340,7 +24340,7 @@ fn cpython_builtin_getattr_public_subset() {
             "    getattr(sys, name)\n",
             "except AttributeError as error:\n",
             "    print(error.__class__.__name__)\n",
-            "for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3)]:\n",
+            "for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3), lambda: getattr(object=sys, name='missing'), lambda: getattr(sys, 'missing', default='fallback')]:\n",
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
@@ -24358,6 +24358,8 @@ fn cpython_builtin_getattr_public_subset() {
             "TypeError getattr(): attribute name must be string",
             "TypeError getattr(): attribute name must be string",
             "TypeError getattr expected at most 3 arguments, got 4",
+            "TypeError getattr() takes no keyword arguments",
+            "TypeError getattr() takes no keyword arguments",
         ],
     );
 }
@@ -24442,7 +24444,7 @@ fn cpython_builtin_hasattr_public_subset() {
             "        hasattr(obj, 'x')\n",
             "    except BaseException as error:\n",
             "        print(error.__class__.__name__, str(error))\n",
-            "for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:\n",
+            "for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2), lambda: hasattr(object=sys, name='missing'), lambda: hasattr(sys, name='missing')]:\n",
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
@@ -24459,6 +24461,8 @@ fn cpython_builtin_hasattr_public_subset() {
             "TypeError hasattr expected 2 arguments, got 0",
             "TypeError hasattr expected 2 arguments, got 1",
             "TypeError hasattr(): attribute name must be string",
+            "TypeError hasattr() takes no keyword arguments",
+            "TypeError hasattr() takes no keyword arguments",
         ],
     );
 }

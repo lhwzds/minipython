@@ -5492,7 +5492,7 @@ try:
     getattr(sys, name)
 except AttributeError as error:
     print(error.__class__.__name__)
-for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3)]:
+for expr in [lambda: getattr(), lambda: getattr(1), lambda: getattr(1, 2), lambda: getattr(1, 2, 'fallback'), lambda: getattr(1, 'x', 2, 3), lambda: getattr(object=sys, name='missing'), lambda: getattr(sys, 'missing', default='fallback')]:
     try:
         expr()
     except TypeError as error:
@@ -5563,7 +5563,7 @@ for obj in [Exit(), Bad()]:
         hasattr(obj, 'x')
     except BaseException as error:
         print(error.__class__.__name__, str(error))
-for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2)]:
+for expr in [lambda: hasattr(), lambda: hasattr(1), lambda: hasattr(1, 2), lambda: hasattr(object=sys, name='missing'), lambda: hasattr(sys, name='missing')]:
     try:
         expr()
     except TypeError as error:

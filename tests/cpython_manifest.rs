@@ -10049,6 +10049,8 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         "chr(0x10ffff)",
         "lambda: getattr(1, 2)",
         "lambda: getattr(1, 2, 'fallback')",
+        "lambda: getattr(object=sys, name='missing')",
+        "lambda: getattr(sys, 'missing', default='fallback')",
         "str(error)",
     ] {
         assert!(
@@ -10057,7 +10059,8 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         );
     }
     assert!(
-        CPYTHON_SUBSET.contains("getattr(): attribute name must be string"),
+        CPYTHON_SUBSET.contains("getattr(): attribute name must be string")
+            && CPYTHON_SUBSET.contains("getattr() takes no keyword arguments"),
         "focused getattr subset evidence must cover non-string attribute-name text"
     );
 
@@ -10073,6 +10076,8 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         "chr(0x10ffff)",
         "lambda: getattr(1, 2)",
         "lambda: getattr(1, 2, 'fallback')",
+        "lambda: getattr(object=sys, name='missing')",
+        "lambda: getattr(sys, 'missing', default='fallback')",
         "str(error)",
     ] {
         assert!(
@@ -10288,6 +10293,8 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         "raise SystemExit('exit')",
         "raise ValueError('bad')",
         "lambda: hasattr(1, 2)",
+        "lambda: hasattr(object=sys, name='missing')",
+        "lambda: hasattr(sys, name='missing')",
         "str(error)",
     ] {
         assert!(
@@ -10296,7 +10303,8 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         );
     }
     assert!(
-        CPYTHON_SUBSET.contains("hasattr(): attribute name must be string"),
+        CPYTHON_SUBSET.contains("hasattr(): attribute name must be string")
+            && CPYTHON_SUBSET.contains("hasattr() takes no keyword arguments"),
         "focused hasattr subset evidence must cover non-string attribute-name text"
     );
 
@@ -10313,6 +10321,8 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         "raise SystemExit('exit')",
         "raise ValueError('bad')",
         "lambda: hasattr(1, 2)",
+        "lambda: hasattr(object=sys, name='missing')",
+        "lambda: hasattr(sys, name='missing')",
         "str(error)",
     ] {
         assert!(
