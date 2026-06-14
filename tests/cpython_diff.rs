@@ -24594,7 +24594,11 @@ for tc in {typecodes}:
 fn cpython_array_one_byte_public_mutation_methods_diff_subset() {
     // CPython oracle text: array.index() takes exactly one argument (0 given);
     // array.index() takes exactly one argument (2 given);
-    // array.index() takes exactly one argument (3 given)
+    // array.index() takes exactly one argument (3 given);
+    // insert expected 2 arguments, got 0;
+    // insert expected 2 arguments, got 1;
+    // insert expected 2 arguments, got 3;
+    // pop expected at most 1 argument, got 2
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py public one-byte array mutable sequence methods",
         name: "array-one-byte-public-mutation-methods",
@@ -24609,6 +24613,9 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
     a = array.array(tc, vals)
     print('methods', tc, 'copy' in dir(a), 'insert' in dir(a))
     print('append-insert', tc, a.append(vals[-1]), a.insert(1, vals[0]), repr(a), a.tolist(), bytes(a))
+    show('insert-arity0-' + tc, lambda a=a: a.insert())
+    show('insert-arity1-' + tc, lambda a=a: a.insert(0))
+    show('insert-arity3-' + tc, lambda a=a, vals=vals: a.insert(0, vals[0], vals[-1]))
     print('extend', tc, a.extend(vals), repr(a), a.tolist(), bytes(a))
     print('pop-reverse', tc, a.pop(), a.reverse(), repr(a), a.tolist())
     print('count-index-contains', tc, a.count(vals[0]), a.index(vals[0]), vals[0] in a, float(vals[0]) in a)
@@ -24625,6 +24632,7 @@ for tc, bad in [('B', -1), ('B', 256), ('b', -129), ('b', 128)]:
 for tc in ['B', 'b']:
     a = array.array(tc)
     show('pop-empty-' + tc, lambda a=a: a.pop())
+    show('pop-arity2-' + tc, lambda a=a: a.pop(0, 1))
     a = array.array(tc, [0])
     other = array.array('b' if tc == 'B' else 'B', [-1, 2] if tc == 'B' else [1, 2])
     show('extend-other-' + tc, lambda a=a, other=other: a.extend(other))

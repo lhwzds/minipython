@@ -23473,7 +23473,7 @@ impl Vm {
             "array.array.insert" => {
                 let [receiver, index, item] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: insert() expected 2 arguments, got {}",
+                        "TypeError: insert expected 2 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -23602,13 +23602,13 @@ impl Vm {
             "array.array.pop" => {
                 let [receiver, rest @ ..] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: pop() expected at most 1 argument, got {}",
+                        "TypeError: pop expected at most 1 argument, got {}",
                         method_arg_count(&args)
                     ));
                 };
                 if rest.len() > 1 {
                     return Err(format!(
-                        "TypeError: pop() expected at most 1 argument, got {}",
+                        "TypeError: pop expected at most 1 argument, got {}",
                         rest.len()
                     ));
                 }

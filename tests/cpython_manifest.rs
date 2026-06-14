@@ -10152,9 +10152,17 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "a.index()",
         "a.index(vals[0], 1)",
         "a.index(vals[0], 0, 1)",
+        "a.insert()",
+        "a.insert(0)",
+        "a.insert(0, vals[0], vals[-1])",
+        "a.pop(0, 1)",
         "array.index() takes exactly one argument (0 given)",
         "array.index() takes exactly one argument (2 given)",
         "array.index() takes exactly one argument (3 given)",
+        "insert expected 2 arguments, got 0",
+        "insert expected 2 arguments, got 1",
+        "insert expected 2 arguments, got 3",
+        "pop expected at most 1 argument, got 2",
     ] {
         assert!(
             mutation_subset.contains(required),
