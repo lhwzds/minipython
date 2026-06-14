@@ -104,6 +104,11 @@ Completed in the builtin method TypeError capture pass:
   generator/coroutine/async-generator keyword rejection for `send`, `throw`,
   `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping
   those core runtime method errors catchable and aligned with CPython text.
+- Extended the catchable TypeError text evidence for already exposed
+  type/introspection helpers: `typing.get_args()`, `typing.get_origin()`,
+  `typing.get_type_hints()`, and `inspect.signature()` now report
+  CPython-style unexpected keyword messages for unsupported keyword names
+  without expanding the default sandbox module allow-list.
 
 ## Sandbox Stdlib Manifest
 

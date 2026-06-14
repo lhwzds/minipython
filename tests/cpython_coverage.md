@@ -44,6 +44,9 @@ Recent runtime migration notes:
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
   no-keyword TypeError text for public generator, coroutine, and async
   generator methods.
+- The same runtime exception-capture evidence pins unexpected-keyword text for
+  the exposed type/introspection helpers `typing.get_args()`,
+  `typing.get_origin()`, `typing.get_type_hints()`, and `inspect.signature()`.
 - `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
   blocking over otherwise sequence-like objects, keeping the public reverse
   protocol distinct from sequence fallback.

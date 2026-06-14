@@ -51984,8 +51984,10 @@ fn call_types_get_original_bases(
 }
 
 fn call_typing_get_args(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("get_args() does not accept keyword arguments".to_string());
+    if let Some((keyword, _)) = keywords.first() {
+        return Err(format!(
+            "TypeError: get_args() got an unexpected keyword argument '{keyword}'"
+        ));
     }
     let [value] = args.as_slice() else {
         return Err(format!(
@@ -52012,8 +52014,10 @@ fn call_typing_get_origin(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("get_origin() does not accept keyword arguments".to_string());
+    if let Some((keyword, _)) = keywords.first() {
+        return Err(format!(
+            "TypeError: get_origin() got an unexpected keyword argument '{keyword}'"
+        ));
     }
     let [value] = args.as_slice() else {
         return Err(format!(
@@ -52040,8 +52044,10 @@ fn call_typing_get_type_hints(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("get_type_hints() does not accept keyword arguments".to_string());
+    if let Some((keyword, _)) = keywords.first() {
+        return Err(format!(
+            "TypeError: get_type_hints() got an unexpected keyword argument '{keyword}'"
+        ));
     }
     let [object] = args.as_slice() else {
         return Err(format!(
@@ -60236,8 +60242,10 @@ fn call_inspect_signature(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("TypeError: signature() does not accept keyword arguments".to_string());
+    if let Some((keyword, _)) = keywords.first() {
+        return Err(format!(
+            "TypeError: signature() got an unexpected keyword argument '{keyword}'"
+        ));
     }
 
     let [target] = args.as_slice() else {

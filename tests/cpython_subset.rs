@@ -24330,6 +24330,15 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "import inspect, typing\ndef type_hint_keyword_sample(x: 'int'):\n    return x\nchecks = [\n    ('get-args', lambda: typing.get_args(list[int], bad=1)),\n    ('get-origin', lambda: typing.get_origin(list[int], bad=1)),\n    ('get-type-hints', lambda: typing.get_type_hints(type_hint_keyword_sample, bad=1)),\n    ('inspect-signature', lambda: inspect.signature(type_hint_keyword_sample, bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "get-args get_args() got an unexpected keyword argument 'bad'",
+            "get-origin get_origin() got an unexpected keyword argument 'bad'",
+            "get-type-hints get_type_hints() got an unexpected keyword argument 'bad'",
+            "inspect-signature signature() got an unexpected keyword argument 'bad'",
+        ],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );
