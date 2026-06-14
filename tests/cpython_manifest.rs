@@ -8088,13 +8088,33 @@ fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
     for required in [
         "target = io.BytesIO()",
         "a.tofile(target)",
+        "a.tofile(file=io.BytesIO())",
         "array.array(tc).fromfile(io.BytesIO(), 1, 2)",
+        "array.array(tc).fromfile(f=io.BytesIO(b'a'), n=1)",
+        "array.array(tc).fromfile(io.BytesIO(b'a'), n=1)",
         "TextRead",
         "ByteArrayRead",
     ] {
         assert!(
             array_file_diff.contains(required),
             "array BytesIO file-method diff evidence must cover `{required}`"
+        );
+    }
+    let array_file_subset = CPYTHON_SUBSET
+        .split("fn cpython_array_one_byte_public_file_methods_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_memoryview_cast_one_byte_format_subset()")
+                .next()
+        })
+        .expect("array BytesIO file-method subset evidence must be extractable");
+    for required in [
+        "array.tofile() takes no keyword arguments",
+        "array.fromfile() takes no keyword arguments",
+    ] {
+        assert!(
+            array_file_subset.contains(required),
+            "array BytesIO file-method subset evidence must assert exact keyword diagnostic `{required}`"
         );
     }
 

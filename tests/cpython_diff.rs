@@ -23701,7 +23701,10 @@ for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
     show_class('fromfile-neg-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), -1))
     show_class('fromfile-nonint-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 'x'))
     show_class('fromfile-textread-' + tc, lambda tc=tc: array.array(tc).fromfile(TextRead(), 2))
-    show_class('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))"#,
+    show_class('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))
+    show_class('tofile-keyword-' + tc, lambda a=a: a.tofile(file=io.BytesIO()))
+    show_class('fromfile-keyword-' + tc, lambda tc=tc: array.array(tc).fromfile(f=io.BytesIO(b'a'), n=1))
+    show_class('fromfile-mixed-keyword-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(b'a'), n=1))"#,
     });
 }
 

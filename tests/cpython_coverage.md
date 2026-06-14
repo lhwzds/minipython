@@ -4197,8 +4197,9 @@ Recent runtime migration notes:
   surface through in-memory `io.BytesIO`: method visibility, writing raw bytes
   through `write()`, reading exact and short byte counts through `read()`,
   partial append before `EOFError`, zero-count reads, negative and non-integer
-  count rejection, non-bytes `read()` result rejection, and the `BytesIO`
-  `read()` / `write()` / `getvalue()` methods needed for this public protocol.
+  count rejection, exact keyword-argument rejection, non-bytes `read()` result
+  rejection, and the `BytesIO` `read()` / `write()` / `getvalue()` methods
+  needed for this public protocol.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_cast_one_byte_format_subset`, covering the supported
   public one-byte `memoryview.cast()` surface from CPython

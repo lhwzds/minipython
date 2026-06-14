@@ -22246,7 +22246,10 @@ for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
     show('fromfile-neg-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), -1))
     show('fromfile-nonint-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(), 'x'))
     show('fromfile-textread-' + tc, lambda tc=tc: array.array(tc).fromfile(TextRead(), 2))
-    show('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))"#,
+    show('fromfile-bytearrayread-' + tc, lambda tc=tc: array.array(tc).fromfile(ByteArrayRead(), 2))
+    show('tofile-keyword-' + tc, lambda a=a: a.tofile(file=io.BytesIO()))
+    show('fromfile-keyword-' + tc, lambda tc=tc: array.array(tc).fromfile(f=io.BytesIO(b'a'), n=1))
+    show('fromfile-mixed-keyword-' + tc, lambda tc=tc: array.array(tc).fromfile(io.BytesIO(b'a'), n=1))"#,
         &[
             "bytesio-methods True True True",
             "bytesio-read b'a' b'bc' b''",
@@ -22270,6 +22273,9 @@ for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
             "fromfile-nonint-B TypeError 'str' object cannot be interpreted as an integer",
             "fromfile-textread-B TypeError read() didn't return bytes",
             "fromfile-bytearrayread-B TypeError read() didn't return bytes",
+            "tofile-keyword-B TypeError array.tofile() takes no keyword arguments",
+            "fromfile-keyword-B TypeError array.fromfile() takes no keyword arguments",
+            "fromfile-mixed-keyword-B TypeError array.fromfile() takes no keyword arguments",
             "methods b True True",
             "tofile b None b'A\\xff\\x00' [65, -1, 0]",
             "append-write b 1 b'A\\xff\\x00!'",
@@ -22286,6 +22292,9 @@ for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
             "fromfile-nonint-b TypeError 'str' object cannot be interpreted as an integer",
             "fromfile-textread-b TypeError read() didn't return bytes",
             "fromfile-bytearrayread-b TypeError read() didn't return bytes",
+            "tofile-keyword-b TypeError array.tofile() takes no keyword arguments",
+            "fromfile-keyword-b TypeError array.fromfile() takes no keyword arguments",
+            "fromfile-mixed-keyword-b TypeError array.fromfile() takes no keyword arguments",
         ],
         32 * 1024 * 1024,
     );

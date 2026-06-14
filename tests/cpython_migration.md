@@ -1025,7 +1025,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   The tests also expand `io.BytesIO` with `read()`, `write()`, and
   `getvalue()` so the file-method contract can be exercised entirely in
   memory, covering exact reads, partial append before `EOFError`, zero-count
-  reads, invalid counts, and non-bytes `read()` results.
+  reads, invalid counts, exact keyword-argument rejection, and non-bytes
+  `read()` results.
 - Added `cpython_memoryview_getitem_index_count_compare_subset`, migrating the
   supported one-dimensional public behavior from CPython
   `Lib/test/test_memoryview.py::AbstractMemoryTests::test_getitem`,
