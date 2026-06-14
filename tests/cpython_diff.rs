@@ -22686,6 +22686,8 @@ fn cpython_memoryview_cast_one_byte_format_diff_subset() {
         source: r#"print('cast' in dir(memoryview(b'')))
 class Format(str):
     pass
+class FormatBytes(bytes):
+    pass
 class Shape(tuple):
     pass
 class Index:
@@ -22700,6 +22702,8 @@ print(memoryview(b'abc').cast('B', [3]).tolist())
 print(memoryview(b'abc').cast('B', shape=(3,)).tolist())
 print(memoryview(b'abc').cast('B', Shape((3,))).tolist())
 for expr in [
+    lambda: memoryview(b'abc').cast(7),
+    lambda: memoryview(b'abc').cast(FormatBytes(b'B')),
     lambda: memoryview(b'abc').cast('B', shape=[0]),
     lambda: memoryview(b'abc').cast('B', shape=[2]),
     lambda: memoryview(b'abc').cast('B', shape=[]),

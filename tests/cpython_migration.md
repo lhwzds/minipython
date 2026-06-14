@@ -1312,8 +1312,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `Lib/test/test_memoryview.py::OtherTest::test_ctypes_cast`: MiniPython now
   supports `memoryview.cast()` for one-byte `B`, `b`, and `c` formats, including
   positional and keyword `format` / one-dimensional `shape` arguments,
-  `str` subclass format and tuple subclass shape arguments, invalid `shape`
-  boundary errors including rejection of non-`int` objects with `__index__`,
+  `str` subclass format and tuple subclass shape arguments, CPython invalid
+  format type error text, invalid `shape` boundary errors including rejection of
+  non-`int` objects with `__index__`,
   format-aware `tolist()`, scalar indexing,
   iteration, reversed iteration, membership, writable `c`-format item and slice
   assignment, format preservation through `memoryview(m)`, slicing, and

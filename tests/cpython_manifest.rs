@@ -1528,10 +1528,13 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
 
     for required in [
         "class Format(str)",
+        "class FormatBytes(bytes)",
         "class Shape(tuple)",
         "class Index",
         "memoryview(b'abc').cast(format='B')",
         "memoryview(b'abc').cast(Format('B'))",
+        "memoryview(b'abc').cast(7)",
+        "memoryview(b'abc').cast(FormatBytes(b'B'))",
         "memoryview(b'abc').cast('B', [3])",
         "memoryview(b'abc').cast('B', shape=(3,))",
         "memoryview(b'abc').cast('B', Shape((3,)))",
@@ -1548,8 +1551,9 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
 
     assert!(
         CPYTHON_SUBSET.contains("shape must be a list or a tuple")
+            && CPYTHON_SUBSET.contains("memoryview: format argument must be a string")
             && CPYTHON_SUBSET.contains("memoryview.cast(): elements of shape must be integers > 0"),
-        "memoryview cast subset must contain invalid shape error text"
+        "memoryview cast subset must contain invalid format and shape error text"
     );
 }
 

@@ -19184,11 +19184,8 @@ impl Vm {
             value if str_subclass_string(&value).is_some() => {
                 str_subclass_string(&value).expect("str subclass storage exists after guard")
             }
-            value => {
-                return Err(format!(
-                    "TypeError: memoryview: format must be str, not {}",
-                    type_name(&value)
-                ));
+            _ => {
+                return Err("TypeError: memoryview: format argument must be a string".to_string());
             }
         };
         if !matches!(format.as_str(), "B" | "b" | "c") {
