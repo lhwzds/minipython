@@ -38188,7 +38188,12 @@ fn cpython_itertools_chain_from_iterable_subset() {
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(type(error).__name__)"
+            "        print(type(error).__name__)\n",
+            "for label, expr in [('missing', lambda: itertools.chain.from_iterable()), ('too-many', lambda: itertools.chain.from_iterable([], []))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
         ),
         &[
             "True chain True [1, 2, 'a', 'b', 9, 9] []",
@@ -38197,6 +38202,8 @@ fn cpython_itertools_chain_from_iterable_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "missing TypeError chain.from_iterable() takes exactly one argument (0 given)",
+            "too-many TypeError chain.from_iterable() takes exactly one argument (2 given)",
         ],
     );
 }

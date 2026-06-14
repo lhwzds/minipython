@@ -15372,6 +15372,8 @@ except TypeError as error:
 
 #[test]
 fn cpython_itertools_chain_from_iterable_diff_subset() {
+    // CPython oracle text: chain.from_iterable() takes exactly one argument (0 given);
+    // chain.from_iterable() takes exactly one argument (2 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public chain.from_iterable subset",
         name: "itertools-chain-from-iterable",
@@ -15390,7 +15392,12 @@ for expr in [lambda: itertools.chain.from_iterable(), lambda: itertools.chain.fr
     try:
         expr()
     except TypeError as error:
-        print(type(error).__name__)"#,
+        print(type(error).__name__)
+for label, expr in [('missing', lambda: itertools.chain.from_iterable()), ('too-many', lambda: itertools.chain.from_iterable([], []))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 

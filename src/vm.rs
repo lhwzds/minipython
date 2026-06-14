@@ -24587,7 +24587,7 @@ impl Vm {
         }
         let [iterable] = args.as_slice() else {
             return Err(format!(
-                "TypeError: chain.from_iterable() expected 1 argument, got {}",
+                "TypeError: chain.from_iterable() takes exactly one argument ({} given)",
                 args.len()
             ));
         };

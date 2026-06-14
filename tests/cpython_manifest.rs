@@ -5395,6 +5395,16 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     }
 
     for required in [
+        "chain.from_iterable() takes exactly one argument (0 given)",
+        "chain.from_iterable() takes exactly one argument (2 given)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) && CPYTHON_DIFF.contains(required),
+            "itertools chain.from_iterable CPython parity must guard `{required}` in subset and diff evidence"
+        );
+    }
+
+    for required in [
         "islice expected at least 2 arguments, got 1",
         "islice expected at most 4 arguments, got 5",
     ] {
