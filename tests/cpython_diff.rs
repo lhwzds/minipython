@@ -958,6 +958,35 @@ print("done")"#,
 }
 
 #[test]
+fn cpython_tokenize_max_indent_diff_subset() {
+    fn nested_source(indents: usize) -> String {
+        let mut source = String::new();
+        for level in 0..indents {
+            source.push_str(&"  ".repeat(level));
+            source.push_str("if True:\n");
+        }
+        source.push_str(&"  ".repeat(indents));
+        source.push_str("print('ok')\n");
+        source
+    }
+
+    let accepted = Box::leak(nested_source(99).into_boxed_str());
+    assert_cpython_output_parity_source(
+        "Lib/test/test_tokenize.py::test_max_indent public execution subset",
+        "tokenize-max-indent-accepted",
+        accepted,
+    );
+
+    let rejected = Box::leak(nested_source(100).into_boxed_str());
+    assert_cpython_error_message_parity(&ErrorMessageCase {
+        origin: "Lib/test/test_tokenize.py::test_max_indent public rejection subset",
+        name: "tokenize-max-indent-rejected",
+        source: rejected,
+        expected_message: "too many levels of indentation",
+    });
+}
+
+#[test]
 fn cpython_tokenize_formfeed_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Parser/lexer formfeed whitespace public execution subset",

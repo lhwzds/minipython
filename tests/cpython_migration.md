@@ -4731,7 +4731,9 @@ Completed in the tokenizer max-indent pass:
 
 - Added CPython's `MAXINDENT` behavior from
   `Lib/test/test_tokenize.py::test_max_indent`: 99 nested indentation levels are
-  accepted, while the 100th nested level is rejected during lexing.
+  accepted, while the 100th nested level is rejected during lexing. Added
+  `cpython_tokenize_max_indent_diff_subset` as direct CPython output/error
+  parity evidence for both boundaries.
 - Implemented a lexer indentation-stack limit matching CPython's effective
   maximum stack size, including the base indentation level.
 - Added structured lexer spans for unmatched dedent and tab-indentation
