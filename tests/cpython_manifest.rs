@@ -12080,6 +12080,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_system_exit_oserror_attributes_diff_subset",
         "cpython_syntax_error_attributes_diff_subset",
         "cpython_unicode_error_attributes_diff_subset",
+        "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
@@ -14127,24 +14128,39 @@ fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
         );
     }
 
-    assert!(
-        !CPYTHON_DIFF.contains("fn cpython_attribute_error_keyword_attributes_diff_subset("),
-        "AttributeError keyword-attribute subset must not claim default CPython diff parity while the local oracle rejects name=/obj="
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_attribute_error_keyword_attributes_diff_subset",
     );
+    for required in [
+        "AttributeError('foo', name='name', obj='obj')",
+        "skipping AttributeError keyword attribute diff",
+        "AttributeError(name='name')",
+        "AttributeError(obj='obj')",
+        "AttributeError('foo', invalid='value')",
+        "AttributeError('foo', name='name', invalid='value')",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "AttributeError keyword-attribute gated diff evidence must cover `{required}`"
+        );
+    }
 
     for required in [
         "cpython_attribute_error_keyword_attributes_subset",
-        "local `python3` oracle predates this CPython behavior",
+        "cpython_attribute_error_keyword_attributes_diff_subset",
+        "capability-gated direct CPython evidence",
     ] {
         assert!(
             CPYTHON_MIGRATION.contains(required),
-            "AttributeError keyword-attribute subset-only classification must document `{required}`"
+            "AttributeError keyword-attribute classification must document `{required}`"
         );
     }
 
     assert!(
-        CPYTHON_COVERAGE.contains("cpython_attribute_error_keyword_attributes_subset"),
-        "AttributeError keyword-attribute subset must remain in coverage notes"
+        CPYTHON_COVERAGE.contains("cpython_attribute_error_keyword_attributes_subset")
+            && CPYTHON_COVERAGE.contains("cpython_attribute_error_keyword_attributes_diff_subset"),
+        "AttributeError keyword-attribute subset and gated diff must remain in coverage notes"
     );
 }
 

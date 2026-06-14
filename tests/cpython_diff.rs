@@ -7040,6 +7040,40 @@ print(error.object, error.start, error.end, error.reason)"#,
 }
 
 #[test]
+fn cpython_attribute_error_keyword_attributes_diff_subset() {
+    let probe = run_cpython(
+        "try:\n    error = AttributeError('foo', name='name', obj='obj')\nexcept TypeError:\n    print('missing')\nelse:\n    print('supported', error.args, error.name, error.obj, str(error))",
+    )
+    .expect("failed to run CPython AttributeError keyword feature probe");
+    if !String::from_utf8_lossy(&probe.stdout).starts_with("supported ") {
+        eprintln!(
+            "skipping AttributeError keyword attribute diff: CPython oracle rejects name=/obj="
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_exceptions.py::testAttributes AttributeError keyword attribute subset",
+        name: "attribute-error-keyword-attributes",
+        source: r#"for error in [
+    AttributeError('foo', name='name', obj='obj'),
+    AttributeError(name='name'),
+    AttributeError(obj='obj'),
+    AttributeError(),
+]:
+    print(error.args, getattr(error, 'name', None), getattr(error, 'obj', None), str(error))
+for expr in [
+    lambda: AttributeError('foo', invalid='value'),
+    lambda: AttributeError('foo', name='name', invalid='value'),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_none_ne_direct_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test___ne__",
