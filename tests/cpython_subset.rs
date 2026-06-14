@@ -22427,7 +22427,7 @@ fn cpython_memoryview_cast_one_byte_format_subset() {
 #[test]
 fn cpython_memoryview_cast_native_formats_subset() {
     assert_output(
-        "import array\ncases = [\n    ('h', b'\\x01\\x00\\xff\\xff'),\n    ('H', b'\\x01\\x00\\xff\\x00'),\n    ('i', b'\\x01\\x00\\x00\\x00\\xff\\xff\\xff\\xff'),\n    ('I', b'\\x01\\x00\\x00\\x00\\xff\\x00\\x00\\x00'),\n    ('f', b'\\x00\\x00\\x80?\\x00\\x00\\x00@'),\n    ('d', b'\\x00\\x00\\x00\\x00\\x00\\x00\\xf0?'),\n]\nfor fmt, data in cases:\n    m = memoryview(data).cast(fmt)\n    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__, m.tobytes() == data)\nprint('shape-h', memoryview(b'\\x01\\x00\\x02\\x00').cast('h', shape=[2]).tolist())\nzero = memoryview(b'\\x01\\x00').cast('h', shape=[])\nprint('zero-h', zero.format, zero.itemsize, zero.ndim, zero.shape, zero.strides, zero.tolist(), zero[()])\narr = array.array('h', [1, 2])\ncast = memoryview(arr).cast('B')\nprint('h-to-B', cast.format, cast.itemsize, cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())\nfor label, expr in [\n    ('bad-size-h', lambda: memoryview(b'a').cast('h')),\n    ('shape-h-bad', lambda: memoryview(b'\\x01\\x00\\x02\\x00').cast('h', shape=[4])),\n    ('h-to-i', lambda: memoryview(array.array('h', [1, 2])).cast('i')),\n    ('h-to-h', lambda: memoryview(array.array('h', [1, 2])).cast('h')),\n    ('u-format', lambda: memoryview(b'\\x00\\x00\\x00\\x00').cast('u')),\n    ('w-format', lambda: memoryview(b'\\x00\\x00\\x00\\x00').cast('w')),\n]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(label, error.__class__.__name__, str(error))",
+        "import array\ncases = [\n    ('h', b'\\x01\\x00\\xff\\xff'),\n    ('H', b'\\x01\\x00\\xff\\x00'),\n    ('i', b'\\x01\\x00\\x00\\x00\\xff\\xff\\xff\\xff'),\n    ('I', b'\\x01\\x00\\x00\\x00\\xff\\x00\\x00\\x00'),\n    ('f', b'\\x00\\x00\\x80?\\x00\\x00\\x00@'),\n    ('d', b'\\x00\\x00\\x00\\x00\\x00\\x00\\xf0?'),\n    ('@h', b'\\x01\\x00\\xff\\xff'),\n    ('@I', b'\\x01\\x00\\x00\\x00\\xff\\x00\\x00\\x00'),\n    ('@d', b'\\x00\\x00\\x00\\x00\\x00\\x00\\xf0?'),\n    ('@B', b'ab'),\n    ('@c', b'ab'),\n]\nfor fmt, data in cases:\n    m = memoryview(data).cast(fmt)\n    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__, m.tobytes() == data)\nprint('shape-h', memoryview(b'\\x01\\x00\\x02\\x00').cast('h', shape=[2]).tolist())\nzero = memoryview(b'\\x01\\x00').cast('h', shape=[])\nprint('zero-h', zero.format, zero.itemsize, zero.ndim, zero.shape, zero.strides, zero.tolist(), zero[()])\narr = array.array('h', [1, 2])\ncast = memoryview(arr).cast('B')\nprint('h-to-B', cast.format, cast.itemsize, cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())\nbase = bytearray(b'\\x01\\x00\\x02\\x00')\nm = memoryview(base).cast('@h')\nprint('assign-@h-before', m.format, m.tolist())\nm.__setitem__(0, 3)\nprint('assign-@h-after', base, m.tolist())\nbase = bytearray(b'ab')\nm = memoryview(base).cast('@c')\nm[0] = b'Z'\nprint('assign-@c', base, m.tolist())\nfor label, expr in [\n    ('bad-size-h', lambda: memoryview(b'a').cast('h')),\n    ('shape-h-bad', lambda: memoryview(b'\\x01\\x00\\x02\\x00').cast('h', shape=[4])),\n    ('h-to-i', lambda: memoryview(array.array('h', [1, 2])).cast('i')),\n    ('h-to-h', lambda: memoryview(array.array('h', [1, 2])).cast('h')),\n    ('u-format', lambda: memoryview(b'\\x00\\x00\\x00\\x00').cast('u')),\n    ('w-format', lambda: memoryview(b'\\x00\\x00\\x00\\x00').cast('w')),\n    ('bad-at-at', lambda: memoryview(b'\\x00\\x00').cast('@@h')),\n    ('bad-little-h', lambda: memoryview(b'\\x00\\x00').cast('<h')),\n]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(label, error.__class__.__name__, str(error))",
         &[
             "h h 2 1 (2,) (2,) [1, -1] 1 int True",
             "H H 2 1 (2,) (2,) [1, 255] 1 int True",
@@ -22435,15 +22435,25 @@ fn cpython_memoryview_cast_native_formats_subset() {
             "I I 4 1 (2,) (4,) [1, 255] 1 int True",
             "f f 4 1 (2,) (4,) [1.0, 2.0] 1.0 float True",
             "d d 8 1 (1,) (8,) [1.0] 1.0 float True",
+            "@h @h 2 1 (2,) (2,) [1, -1] 1 int True",
+            "@I @I 4 1 (2,) (4,) [1, 255] 1 int True",
+            "@d @d 8 1 (1,) (8,) [1.0] 1.0 float True",
+            "@B @B 1 1 (2,) (1,) [97, 98] 97 int True",
+            "@c @c 1 1 (2,) (1,) [b'a', b'b'] b'a' bytes True",
             "shape-h [1, 2]",
             "zero-h h 2 0 () () 1 1",
             "h-to-B B 1 (4,) 4 True",
+            "assign-@h-before @h [1, 2]",
+            "assign-@h-after bytearray(b'\\x03\\x00\\x02\\x00') [3, 2]",
+            "assign-@c bytearray(b'Zb') [b'Z', b'b']",
             "bad-size-h TypeError memoryview: length is not a multiple of itemsize",
             "shape-h-bad TypeError memoryview: product(shape) * itemsize != buffer size",
             "h-to-i TypeError memoryview: cannot cast between two non-byte formats",
             "h-to-h TypeError memoryview: cannot cast between two non-byte formats",
             "u-format ValueError memoryview: destination format must be a native single character format prefixed with an optional '@'",
             "w-format ValueError memoryview: destination format must be a native single character format prefixed with an optional '@'",
+            "bad-at-at ValueError memoryview: destination format must be a native single character format prefixed with an optional '@'",
+            "bad-little-h ValueError memoryview: destination format must be a native single character format prefixed with an optional '@'",
         ],
     );
 }

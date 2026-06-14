@@ -1391,10 +1391,14 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `cpython_memoryview_cast_native_formats_diff_subset`, extending the supported
   one-dimensional `memoryview.cast()` surface to native numeric destination
   formats `h`, `H`, `i`, `I`, `f`, and `d` from byte-format sources, including
-  itemsize-aware `shape` validation, zero-dimensional single numeric items,
-  non-byte source views casting back to `B`, CPython-style non-byte-to-non-byte
-  cast rejection, and `u` / `w` destination-format rejection. Multidimensional
-  casts and broader struct-format support remain outside this slice.
+  CPython's optional native `@` prefix for representative numeric and byte
+  formats (`@h`, `@I`, `@d`, `@B`, and `@c`), itemsize-aware `shape`
+  validation, zero-dimensional single numeric items, non-byte source views
+  casting back to `B`, `@`-prefixed item read/list/bytes behavior,
+  `@h.__setitem__()` and direct `@c` item writeback, CPython-style
+  non-byte-to-non-byte cast rejection, and `u` / `w`, doubled-`@`, and
+  non-native-prefixed destination-format rejection. Multidimensional casts and
+  broader struct-format support remain outside this slice.
 - `TestSpecifics` now avoids treating direct assertions about deeper CPython
   code-object internals such as constant merging, bytecode shape, line tables,
   and platform traceback metadata as MiniPython public behavior.

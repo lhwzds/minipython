@@ -767,26 +767,39 @@ fn memoryview_itemsize(view: &MemoryViewRef) -> Result<usize, String> {
 }
 
 fn memoryview_itemsize_for_format(format: &str) -> Result<usize, String> {
-    if format == "c" {
+    let format_code = memoryview_format_code(format).unwrap_or(format);
+    if format_code == "c" {
         return Ok(1);
     }
-    array_array_itemsize_for_typecode(format).ok_or_else(|| {
+    array_array_itemsize_for_typecode(format_code).ok_or_else(|| {
         format!("NotImplementedError: memoryview format '{format}' is not supported")
     })
 }
 
+fn memoryview_format_code(format: &str) -> Option<&str> {
+    if format.len() == 2 && format.starts_with('@') {
+        format.get(1..)
+    } else if format.len() == 1 {
+        Some(format)
+    } else {
+        None
+    }
+}
+
 fn memoryview_is_byte_format(format: &str) -> bool {
-    matches!(format, "B" | "b" | "c")
+    matches!(memoryview_format_code(format), Some("B" | "b" | "c"))
 }
 
 fn memoryview_cast_target_itemsize(format: &str) -> Result<usize, String> {
-    if memoryview_is_byte_format(format)
-        || matches!(
-            format,
-            "h" | "H" | "i" | "I" | "l" | "L" | "q" | "Q" | "f" | "d"
-        )
-    {
-        return memoryview_itemsize_for_format(format);
+    if let Some(format_code) = memoryview_format_code(format) {
+        if memoryview_is_byte_format(format)
+            || matches!(
+                format_code,
+                "h" | "H" | "i" | "I" | "l" | "L" | "q" | "Q" | "f" | "d"
+            )
+        {
+            return memoryview_itemsize_for_format(format);
+        }
     }
     Err("ValueError: memoryview: destination format must be a native single character format prefixed with an optional '@'".to_string())
 }
@@ -917,9 +930,11 @@ fn memoryview_slice_assignment_value(
     value: Value,
 ) -> Result<Vec<u8>, String> {
     let format = memoryview_format(view)?;
-    if format == "c" {
+    if memoryview_format_code(&format) == Some("c") {
         return match value {
-            Value::MemoryView(value) if memoryview_format(&value)? == "c" => {
+            Value::MemoryView(value)
+                if memoryview_format_code(&memoryview_format(&value)?) == Some("c") =>
+            {
                 memoryview_bytes(&value)
             }
             Value::Bytes(_) | Value::ByteArray(_) | Value::MemoryView(_) => Err(
@@ -936,9 +951,10 @@ fn memoryview_slice_assignment_value(
 }
 
 fn memoryview_typed_slice_assignment_value(format: &str, value: Value) -> Result<Vec<u8>, String> {
+    let format_code = memoryview_format_code(format).unwrap_or(format);
     match value {
-        Value::Bytes(value) if format == "B" => Ok(value.as_ref().clone()),
-        Value::ByteArray(value) if format == "B" => Ok(bytearray_bytes(&value)),
+        Value::Bytes(value) if format_code == "B" => Ok(value.as_ref().clone()),
+        Value::ByteArray(value) if format_code == "B" => Ok(bytearray_bytes(&value)),
         Value::Bytes(_) | Value::ByteArray(_) => Err(
             "ValueError: memoryview assignment: lvalue and rvalue have different structures"
                 .to_string(),
@@ -954,7 +970,7 @@ fn memoryview_typed_slice_assignment_value(format: &str, value: Value) -> Result
             }
         }
         value if array_array_bytes(&value).is_some() => {
-            if array_array_typecode(&value).as_deref() == Some(format) {
+            if array_array_typecode(&value).as_deref() == Some(format_code) {
                 Ok(array_array_bytes(&value).expect("array storage exists after guard"))
             } else {
                 Err(
@@ -971,10 +987,11 @@ fn memoryview_typed_slice_assignment_value(format: &str, value: Value) -> Result
 }
 
 fn memoryview_item_from_bytes(format: &str, bytes: &[u8]) -> Value {
-    if format == "c" {
+    let format_code = memoryview_format_code(format).unwrap_or(format);
+    if format_code == "c" {
         return bytes_value(bytes.to_vec());
     }
-    array_array_decode_item(format, bytes)
+    array_array_decode_item(format_code, bytes)
 }
 
 fn memoryview_values(view: &MemoryViewRef) -> Result<Vec<Value>, String> {
@@ -19765,13 +19782,13 @@ impl Vm {
         value: Value,
     ) -> Result<u8, String> {
         let format = memoryview_format(view)?;
-        match format.as_str() {
-            "c" => return memoryview_c_assignment_byte(value),
-            "b" => {
+        match memoryview_format_code(&format) {
+            Some("c") => return memoryview_c_assignment_byte(value),
+            Some("b") => {
                 let value = self.maybe_index_integer_value(value)?;
                 return memoryview_assignment_signed_byte(value);
             }
-            "B" => {}
+            Some("B") => {}
             _ => {
                 return Err(format!(
                     "NotImplementedError: memoryview item assignment for format '{format}' is not supported"
@@ -19788,11 +19805,12 @@ impl Vm {
         value: Value,
     ) -> Result<Vec<u8>, String> {
         let format = memoryview_format(view)?;
-        match format.as_str() {
-            "c" | "b" | "B" => self
+        match memoryview_format_code(&format) {
+            Some("c" | "b" | "B") => self
                 .memoryview_assignment_byte_value(view, value)
                 .map(|byte| vec![byte]),
-            _ => self.array_array_item_bytes(&format, value),
+            Some(format_code) => self.array_array_item_bytes(format_code, value),
+            None => self.array_array_item_bytes(&format, value),
         }
     }
 
@@ -19814,24 +19832,19 @@ impl Vm {
             let physical_index = memoryview_physical_index(&state, logical_index)?;
             (state.bytes.clone(), physical_index)
         };
-        let item = self.memoryview_assignment_bytes_value(&view, value)?;
-        {
-            let state = view.borrow();
-            if state.released {
-                return Err(released_memoryview_error());
-            }
-            if state.readonly {
-                return Err("TypeError: cannot modify read-only memory".to_string());
-            }
+        let replacement = self.memoryview_assignment_bytes_value(&view, value)?;
+        let itemsize = memoryview_itemsize_for_format(&memoryview_format(&view)?)?;
+        if replacement.len() != itemsize {
+            return Err(
+                "ValueError: memoryview assignment: lvalue and rvalue have different structures"
+                    .to_string(),
+            );
         }
-        let mut borrowed = bytes.borrow_mut();
-        let end = physical_index
-            .checked_add(item.len())
-            .ok_or_else(|| "memoryview index out of range".to_string())?;
-        let Some(slot) = borrowed.get_mut(physical_index..end) else {
-            return Err("memoryview index out of range".to_string());
-        };
-        slot.copy_from_slice(&item);
+        bytes
+            .borrow_mut()
+            .get_mut(physical_index..physical_index + itemsize)
+            .ok_or_else(|| "memoryview index out of range".to_string())?
+            .copy_from_slice(&replacement);
         Ok(Value::MemoryView(view))
     }
 
@@ -76225,10 +76238,10 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
                     (state.bytes.clone(), physical_index)
                 };
                 let format = memoryview_format(&view)?;
-                let byte = match format.as_str() {
-                    "c" => memoryview_c_assignment_byte(value)?,
-                    "b" => memoryview_assignment_signed_byte(value)?,
-                    "B" => memoryview_assignment_byte(value)?,
+                let byte = match memoryview_format_code(&format) {
+                    Some("c") => memoryview_c_assignment_byte(value)?,
+                    Some("b") => memoryview_assignment_signed_byte(value)?,
+                    Some("B") => memoryview_assignment_byte(value)?,
                     _ => {
                         return Err(format!(
                             "NotImplementedError: memoryview item assignment for format '{format}' is not supported"

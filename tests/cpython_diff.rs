@@ -23255,6 +23255,11 @@ cases = [
     ('I', b'\x01\x00\x00\x00\xff\x00\x00\x00'),
     ('f', b'\x00\x00\x80?\x00\x00\x00@'),
     ('d', b'\x00\x00\x00\x00\x00\x00\xf0?'),
+    ('@h', b'\x01\x00\xff\xff'),
+    ('@I', b'\x01\x00\x00\x00\xff\x00\x00\x00'),
+    ('@d', b'\x00\x00\x00\x00\x00\x00\xf0?'),
+    ('@B', b'ab'),
+    ('@c', b'ab'),
 ]
 for fmt, data in cases:
     m = memoryview(data).cast(fmt)
@@ -23265,6 +23270,15 @@ print('zero-h', zero.format, zero.itemsize, zero.ndim, zero.shape, zero.strides,
 arr = array.array('h', [1, 2])
 cast = memoryview(arr).cast('B')
 print('h-to-B', cast.format, cast.itemsize, cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())
+base = bytearray(b'\x01\x00\x02\x00')
+m = memoryview(base).cast('@h')
+print('assign-@h-before', m.format, m.tolist())
+m.__setitem__(0, 3)
+print('assign-@h-after', base, m.tolist())
+base = bytearray(b'ab')
+m = memoryview(base).cast('@c')
+m[0] = b'Z'
+print('assign-@c', base, m.tolist())
 for label, expr in [
     ('bad-size-h', lambda: memoryview(b'a').cast('h')),
     ('shape-h-bad', lambda: memoryview(b'\x01\x00\x02\x00').cast('h', shape=[4])),
@@ -23272,6 +23286,8 @@ for label, expr in [
     ('h-to-h', lambda: memoryview(array.array('h', [1, 2])).cast('h')),
     ('u-format', lambda: memoryview(b'\x00\x00\x00\x00').cast('u')),
     ('w-format', lambda: memoryview(b'\x00\x00\x00\x00').cast('w')),
+    ('bad-at-at', lambda: memoryview(b'\x00\x00').cast('@@h')),
+    ('bad-little-h', lambda: memoryview(b'\x00\x00').cast('<h')),
 ]:
     try:
         expr()

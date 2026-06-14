@@ -85,7 +85,8 @@ directly compares the public one-byte memoryview cast surface covered by
 `cpython_memoryview_cast_one_byte_format_subset`.
 Direct diff mapping note: `cpython_memoryview_cast_native_formats_diff_subset`
 directly compares the public native numeric one-dimensional memoryview cast
-surface covered by `cpython_memoryview_cast_native_formats_subset`.
+surface covered by `cpython_memoryview_cast_native_formats_subset`, including
+the optional native `@` format prefix slice.
 Direct diff mapping note: `cpython_memoryview_count_index_diff_subset`
 directly compares the public memoryview count/index slice covered by
 `cpython_memoryview_getitem_index_count_compare_subset`.
