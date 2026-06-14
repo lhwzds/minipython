@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 5, 249),
+        ("partial", 4, 219),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -4117,6 +4117,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
         ("Lib/test/test_ast/test_ast.py", "AST_Tests"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),
+        ("Lib/test/test_types.py", "TypesTests"),
         ("Lib/test/test_types.py", "UnionTests"),
     ] {
         assert_manifest_group_status(&groups, source, group, "ported_public");

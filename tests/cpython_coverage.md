@@ -1836,6 +1836,10 @@ without adding general custom encoder/decoder class support.
   `AsyncGeneratorType`, `BuiltinFunctionType`, `BuiltinMethodType`, and
   `MethodType`, plus `types.__all__` membership for the exported names and
   the public `types.MethodType(function, instance)` constructor shape.
+  `Lib/test/test_types.py::TypesTests` is classified as `ported_public` for
+  the default sandbox `types` contract because the remaining locale,
+  C-extension descriptor-crash, object-layout, capsule, and specialization
+  crash rows are explicit stop-lines rather than portable public requirements.
 - `RUNTIME_BUILTINS` also includes CPython `BuiltinTest::test_zip_bad_iterable`,
   preserving the exact exception object raised by a failing `__iter__` through
   `zip()` and the sibling iterator constructors `iter()`, `enumerate()`,
