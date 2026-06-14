@@ -11129,6 +11129,17 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS
+            .contains("out_of_scope_host_io_network_and_process_surfaces_stay_unavailable")
+            && LANGUAGE_TESTS.contains("import builtins")
+            && LANGUAGE_TESTS
+                .contains("'open', 'input', 'help', 'license', 'credits', 'exit', 'quit'")
+            && LANGUAGE_TESTS.contains("hasattr(builtins, name)")
+            && LANGUAGE_TESTS.contains("hasattr(builtins, '__all__')"),
+        "builtins host IO/debug stop-line test must guard absent module exports and __all__"
+    );
+
     let globals_locals_start = CPYTHON_SUBSET
         .find("fn cpython_globals_locals_builtin_subset()")
         .expect("globals/locals builtin subset evidence must be extractable");

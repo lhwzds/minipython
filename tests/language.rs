@@ -1199,6 +1199,23 @@ fn out_of_scope_host_io_network_and_process_surfaces_stay_unavailable() {
         Ok(output_lines(&["open NameError", "input NameError"]))
     );
 
+    assert_eq!(
+        run_source(
+            "import builtins\nfor name in ['open', 'input', 'help', 'license', 'credits', 'exit', 'quit']:\n    print(name, hasattr(builtins, name))\nprint('breakpoint', hasattr(builtins, 'breakpoint'))\nprint('__all__', hasattr(builtins, '__all__'))"
+        ),
+        Ok(output_lines(&[
+            "open False",
+            "input False",
+            "help False",
+            "license False",
+            "credits False",
+            "exit False",
+            "quit False",
+            "breakpoint True",
+            "__all__ False",
+        ]))
+    );
+
     for module in [
         "asyncio",
         "http",
