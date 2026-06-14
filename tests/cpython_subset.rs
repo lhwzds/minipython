@@ -37720,6 +37720,40 @@ fn cpython_itertools_chain_from_iterable_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public repeat behavior over
+// pure in-memory values.
+#[test]
+fn cpython_itertools_repeat_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "r = itertools.repeat('x', 3)\n",
+            "print(type(r).__name__, iter(r) is r, list(r), list(r))\n",
+            "print(list(itertools.repeat(object='y', times=2)))\n",
+            "print(list(itertools.repeat('z', -1)))\n",
+            "print(list(itertools.islice(itertools.repeat('q'), 4)))\n",
+            "marker = []\n",
+            "items = list(itertools.repeat(marker, 2))\n",
+            "print(items[0] is marker, items[0] is items[1])\n",
+            "for expr in [lambda: itertools.repeat(), lambda: itertools.repeat('x', 1, 2), lambda: itertools.repeat(object='x', times=1, extra=2)]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)"
+        ),
+        &[
+            "repeat True ['x', 'x', 'x'] []",
+            "['y', 'y']",
+            "[]",
+            "['q', 'q', 'q', 'q']",
+            "True True",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

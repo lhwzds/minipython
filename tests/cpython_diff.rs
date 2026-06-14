@@ -14506,6 +14506,28 @@ for expr in [lambda: itertools.chain.from_iterable(), lambda: itertools.chain.fr
 }
 
 #[test]
+fn cpython_itertools_repeat_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public repeat subset",
+        name: "itertools-repeat",
+        source: r#"import itertools
+r = itertools.repeat('x', 3)
+print(type(r).__name__, iter(r) is r, list(r), list(r))
+print(list(itertools.repeat(object='y', times=2)))
+print(list(itertools.repeat('z', -1)))
+print(list(itertools.islice(itertools.repeat('q'), 4)))
+marker = []
+items = list(itertools.repeat(marker, 2))
+print(items[0] is marker, items[0] is items[1])
+for expr in [lambda: itertools.repeat(), lambda: itertools.repeat('x', 1, 2), lambda: itertools.repeat(object='x', times=1, extra=2)]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

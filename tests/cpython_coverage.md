@@ -385,6 +385,8 @@ Recent runtime migration notes:
   `cpython_itertools_core_iterator_diff_subset`,
   `cpython_itertools_chain_from_iterable_diff_subset` and
   `cpython_itertools_chain_from_iterable_subset`,
+  `cpython_itertools_repeat_diff_subset` and
+  `cpython_itertools_repeat_subset`,
   `cpython_itertools_count_bool_arithmetic_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -900,6 +902,7 @@ Recent runtime migration notes:
   `cpython_itertools_pairwise_diff_subset`, and
   `cpython_itertools_product_diff_subset`, and
   `cpython_itertools_chain_from_iterable_diff_subset`,
+  `cpython_itertools_repeat_diff_subset`,
   `cpython_itertools_combinations_diff_subset`, and
   `cpython_itertools_combinations_with_replacement_diff_subset`, and
   `cpython_itertools_permutations_diff_subset`, and
