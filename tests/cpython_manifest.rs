@@ -10559,6 +10559,26 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_most_common_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter most_common behavior"
     );
+    let most_common_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_most_common_diff_subset",
+    );
+    let most_common_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_most_common_subset",
+    );
+    for required in [
+        "c.most_common(n=1)",
+        "c.most_common(n=None)",
+        "c.most_common(1, n=2)",
+        "most_common() got multiple values for argument 'n'",
+        "most_common() got an unexpected keyword argument 'x'",
+    ] {
+        assert!(
+            most_common_diff_body.contains(required) && most_common_subset_body.contains(required),
+            "Counter most_common diff and subset evidence must cover `{required}`"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_counter_mapping_mutation_diff_subset"),

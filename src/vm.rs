@@ -26856,7 +26856,6 @@ impl Vm {
                 ))
             }
             "most_common" => {
-                reject_method_keywords(name, &keywords)?;
                 let [receiver, rest @ ..] = args.as_slice() else {
                     return Err("most_common() expected a Counter receiver".to_string());
                 };
@@ -26866,8 +26865,24 @@ impl Vm {
                         rest.len()
                     ));
                 }
+                let mut keyword_limit = None;
+                for (keyword, value) in keywords {
+                    if keyword != "n" {
+                        return Err(format!(
+                            "TypeError: most_common() got an unexpected keyword argument '{keyword}'"
+                        ));
+                    }
+                    if !rest.is_empty() || keyword_limit.is_some() {
+                        return Err(
+                            "TypeError: most_common() got multiple values for argument 'n'"
+                                .to_string(),
+                        );
+                    }
+                    keyword_limit = Some(value);
+                }
                 let mut entries = counter_entries_sorted(&counter_receiver_entries(receiver)?);
-                if let Some(limit) = rest.first().filter(|value| !matches!(value, Value::None)) {
+                let limit = rest.first().cloned().or(keyword_limit);
+                if let Some(limit) = limit.filter(|value| !matches!(value, Value::None)) {
                     let limit = self.index_i64(limit.clone(), "most_common")?;
                     if limit < 0 {
                         entries.clear();

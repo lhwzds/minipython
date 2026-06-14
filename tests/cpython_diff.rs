@@ -11586,6 +11586,8 @@ for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]
 
 #[test]
 fn cpython_collections_counter_most_common_diff_subset() {
+    // CPython oracle text: most_common() got multiple values for argument 'n';
+    // most_common() got an unexpected keyword argument 'x'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter most_common subset",
         name: "collections-counter-most-common",
@@ -11594,6 +11596,12 @@ c = Counter('abracadabra')
 print(c.most_common())
 print(c.most_common(0))
 print(c.most_common(2))
+print(c.most_common(n=1), c.most_common(n=None))
+for label, expr in [('dup-n', lambda: c.most_common(1, n=2)), ('bad-keyword', lambda: c.most_common(x=1))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 print(c.most_common(None))
 print([c.most_common(i) for i in range(5)])"#,
     });
