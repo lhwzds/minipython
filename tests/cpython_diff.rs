@@ -14759,6 +14759,24 @@ print([next(single) for _ in range(4)])"#,
 }
 
 #[test]
+fn cpython_itertools_count_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public count error subset",
+        name: "itertools-count-errors",
+        source: r#"import itertools
+for expr in [
+    lambda: itertools.count(0, 1, 2),
+    lambda: itertools.count('a'),
+    lambda: itertools.count(1, 'x'),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

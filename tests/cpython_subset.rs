@@ -38094,6 +38094,27 @@ fn cpython_itertools_count_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public count constructor
+// error behavior.
+#[test]
+fn cpython_itertools_count_error_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "for expr in [\n",
+            "    lambda: itertools.count(0, 1, 2),\n",
+            "    lambda: itertools.count('a'),\n",
+            "    lambda: itertools.count(1, 'x'),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)"
+        ),
+        &["TypeError", "TypeError", "TypeError"],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

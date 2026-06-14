@@ -411,6 +411,8 @@ Recent runtime migration notes:
   `cpython_itertools_islice_error_subset`,
   `cpython_itertools_count_diff_subset` and
   `cpython_itertools_count_subset`,
+  `cpython_itertools_count_error_diff_subset` and
+  `cpython_itertools_count_error_subset`,
   `cpython_itertools_count_bool_arithmetic_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
@@ -939,6 +941,7 @@ Recent runtime migration notes:
   `cpython_itertools_islice_diff_subset`,
   `cpython_itertools_islice_error_diff_subset`,
   `cpython_itertools_count_diff_subset`,
+  `cpython_itertools_count_error_diff_subset`,
   `cpython_itertools_combinations_diff_subset`, and
   `cpython_itertools_combinations_with_replacement_diff_subset`, and
   `cpython_itertools_permutations_diff_subset`, and
