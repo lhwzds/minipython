@@ -19061,7 +19061,7 @@ impl Vm {
             "memoryview.__len__" => {
                 let [Value::MemoryView(view)] = args.as_slice() else {
                     return Err(format!(
-                        "__len__() expected 0 arguments, got {}",
+                        "TypeError: expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -71869,6 +71869,8 @@ fn reject_memoryview_method_keywords(
         Err(format!("TypeError: {name}() takes no keyword arguments"))
     } else if name == "memoryview.__exit__" {
         Err("TypeError: __exit__() takes no keyword arguments".to_string())
+    } else if name == "memoryview.__len__" {
+        Err("TypeError: wrapper __len__() takes no keyword arguments".to_string())
     } else {
         reject_method_keywords(name, keywords)
     }

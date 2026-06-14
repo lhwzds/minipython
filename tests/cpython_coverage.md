@@ -4178,9 +4178,9 @@ without adding general custom encoder/decoder class support.
   `tolist()`, `toreadonly()`, and `release()`, `test_attributes_readonly`,
   `test_attributes_writable`, `test_contextmanager`, `test_release`, and
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the
-  public `release()` lifecycle, direct `__enter__()` diagnostics, direct
-  variadic `__exit__()` release behavior and keyword rejection,
-  context-manager entry/exit behavior,
+  public `release()` lifecycle, direct `__enter__()` and `__len__()`
+  diagnostics, direct variadic `__exit__()` release behavior and keyword
+  rejection, context-manager entry/exit behavior,
   released-object `ValueError` checks for supported operations, released
   `str()` / `repr()`, same-object identity through `with ... as`,
   expression-temporary exported-view release after `Pop`, module-level

@@ -22388,6 +22388,8 @@ for expr in [
     lambda: memoryview(b'abc').__enter__(1),
     lambda: memoryview(b'abc').__enter__(bad=True),
     lambda: memoryview(b'abc').__exit__(None, None, None, bad=True),
+    lambda: memoryview(b'abc').__len__(1),
+    lambda: memoryview(b'abc').__len__(bad=True),
 ]:
     try:
         expr()
