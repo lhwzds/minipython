@@ -1965,12 +1965,25 @@ fn cpython_math_keyword_error_messages_diff_subset() {
         source: r#"import math
 checks = [
     ("isfinite", lambda: math.isfinite(x=1)),
+    ("isinf", lambda: math.isinf(x=1)),
     ("isnan", lambda: math.isnan(x=1)),
     ("hypot", lambda: math.hypot(x=1)),
     ("dist", lambda: math.dist(p=(1,), q=(2,))),
     ("pow", lambda: math.pow(x=1, y=2)),
+    ("fabs", lambda: math.fabs(value=1)),
+    ("fmod", lambda: math.fmod(x=1, y=2)),
+    ("frexp", lambda: math.frexp(x=1)),
     ("fsum", lambda: math.fsum(iterable=[])),
+    ("ldexp", lambda: math.ldexp(x=1.0, i=1)),
+    ("modf", lambda: math.modf(x=1)),
+    ("remainder", lambda: math.remainder(x=1, y=2)),
     ("copysign", lambda: math.copysign(x=1, y=2)),
+    ("trunc", lambda: math.trunc(x=1)),
+    ("ulp", lambda: math.ulp(x=1)),
+    ("ceil", lambda: math.ceil(x=1)),
+    ("floor", lambda: math.floor(x=1)),
+    ("degrees", lambda: math.degrees(x=1)),
+    ("radians", lambda: math.radians(x=1)),
     ("sin", lambda: math.sin(x=1)),
 ]
 for label, expr in checks:

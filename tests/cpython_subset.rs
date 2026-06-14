@@ -7475,15 +7475,28 @@ fn cpython_math_core_subset() {
 #[test]
 fn cpython_math_keyword_error_messages_subset() {
     assert_output(
-        "import math\nchecks = [\n    ('isfinite', lambda: math.isfinite(x=1)),\n    ('isnan', lambda: math.isnan(x=1)),\n    ('hypot', lambda: math.hypot(x=1)),\n    ('dist', lambda: math.dist(p=(1,), q=(2,))),\n    ('pow', lambda: math.pow(x=1, y=2)),\n    ('fsum', lambda: math.fsum(iterable=[])),\n    ('copysign', lambda: math.copysign(x=1, y=2)),\n    ('sin', lambda: math.sin(x=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        "import math\nchecks = [\n    ('isfinite', lambda: math.isfinite(x=1)),\n    ('isinf', lambda: math.isinf(x=1)),\n    ('isnan', lambda: math.isnan(x=1)),\n    ('hypot', lambda: math.hypot(x=1)),\n    ('dist', lambda: math.dist(p=(1,), q=(2,))),\n    ('pow', lambda: math.pow(x=1, y=2)),\n    ('fabs', lambda: math.fabs(value=1)),\n    ('fmod', lambda: math.fmod(x=1, y=2)),\n    ('frexp', lambda: math.frexp(x=1)),\n    ('fsum', lambda: math.fsum(iterable=[])),\n    ('ldexp', lambda: math.ldexp(x=1.0, i=1)),\n    ('modf', lambda: math.modf(x=1)),\n    ('remainder', lambda: math.remainder(x=1, y=2)),\n    ('copysign', lambda: math.copysign(x=1, y=2)),\n    ('trunc', lambda: math.trunc(x=1)),\n    ('ulp', lambda: math.ulp(x=1)),\n    ('ceil', lambda: math.ceil(x=1)),\n    ('floor', lambda: math.floor(x=1)),\n    ('degrees', lambda: math.degrees(x=1)),\n    ('radians', lambda: math.radians(x=1)),\n    ('sin', lambda: math.sin(x=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "isfinite math.isfinite() takes no keyword arguments",
+            "isinf math.isinf() takes no keyword arguments",
             "isnan math.isnan() takes no keyword arguments",
             "hypot math.hypot() takes no keyword arguments",
             "dist math.dist() takes no keyword arguments",
             "pow math.pow() takes no keyword arguments",
+            "fabs math.fabs() takes no keyword arguments",
+            "fmod math.fmod() takes no keyword arguments",
+            "frexp math.frexp() takes no keyword arguments",
             "fsum math.fsum() takes no keyword arguments",
+            "ldexp math.ldexp() takes no keyword arguments",
+            "modf math.modf() takes no keyword arguments",
+            "remainder math.remainder() takes no keyword arguments",
             "copysign math.copysign() takes no keyword arguments",
+            "trunc math.trunc() takes no keyword arguments",
+            "ulp math.ulp() takes no keyword arguments",
+            "ceil math.ceil() takes no keyword arguments",
+            "floor math.floor() takes no keyword arguments",
+            "degrees math.degrees() takes no keyword arguments",
+            "radians math.radians() takes no keyword arguments",
             "sin math.sin() takes no keyword arguments",
         ],
     );

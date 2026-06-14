@@ -10534,11 +10534,24 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_keyword_error_messages_subset");
     for required in [
         "lambda: math.isfinite(x=1)",
+        "lambda: math.isinf(x=1)",
         "lambda: math.hypot(x=1)",
         "lambda: math.dist(p=(1,), q=(2,))",
         "lambda: math.pow(x=1, y=2)",
+        "lambda: math.fabs(value=1)",
+        "lambda: math.fmod(x=1, y=2)",
+        "lambda: math.frexp(x=1)",
         "lambda: math.fsum(iterable=[])",
+        "lambda: math.ldexp(x=1.0, i=1)",
+        "lambda: math.modf(x=1)",
+        "lambda: math.remainder(x=1, y=2)",
         "lambda: math.copysign(x=1, y=2)",
+        "lambda: math.trunc(x=1)",
+        "lambda: math.ulp(x=1)",
+        "lambda: math.ceil(x=1)",
+        "lambda: math.floor(x=1)",
+        "lambda: math.degrees(x=1)",
+        "lambda: math.radians(x=1)",
         "lambda: math.sin(x=1)",
     ] {
         assert!(
@@ -10552,11 +10565,24 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "math.isfinite() takes no keyword arguments",
+        "math.isinf() takes no keyword arguments",
         "math.hypot() takes no keyword arguments",
         "math.dist() takes no keyword arguments",
         "math.pow() takes no keyword arguments",
+        "math.fabs() takes no keyword arguments",
+        "math.fmod() takes no keyword arguments",
+        "math.frexp() takes no keyword arguments",
         "math.fsum() takes no keyword arguments",
+        "math.ldexp() takes no keyword arguments",
+        "math.modf() takes no keyword arguments",
+        "math.remainder() takes no keyword arguments",
         "math.copysign() takes no keyword arguments",
+        "math.trunc() takes no keyword arguments",
+        "math.ulp() takes no keyword arguments",
+        "math.ceil() takes no keyword arguments",
+        "math.floor() takes no keyword arguments",
+        "math.degrees() takes no keyword arguments",
+        "math.radians() takes no keyword arguments",
         "math.sin() takes no keyword arguments",
     ] {
         assert!(
