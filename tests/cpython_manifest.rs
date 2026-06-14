@@ -2757,6 +2757,63 @@ fn cpython_bytearray_iterator_pickle_shared_exporter_diff_covers_runtime_subset(
 }
 
 #[test]
+fn cpython_bytearray_inplace_concat_repeat_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytearray_inplace_concat_repeat_diff_subset";
+    let subset_name = "cpython_bytearray_inplace_concat_repeat_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytearray inplace concat/repeat direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytearray inplace concat/repeat runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytearray inplace concat/repeat docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+
+    for required in [
+        "b += b'def'",
+        "b += bytearray(b'xyz')",
+        "b += memoryview(b'!')",
+        "b *= 3",
+        "b *= 100",
+        "b.__iadd__(value)",
+        "b.__imul__(3)",
+        "b.__imul__(I())",
+        "__iadd__",
+        "__imul__",
+    ] {
+        assert!(
+            diff_body.contains(required) && subset_body.contains(required),
+            "bytearray inplace concat/repeat evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "b == b1, b is b1",
+        "b is alias",
+        "result is b",
+        "memoryview(b'b')",
+        "__index__",
+        "TypeError",
+    ] {
+        assert!(
+            diff_body.contains(required) || subset_body.contains(required),
+            "bytearray inplace concat/repeat evidence must keep `{required}` visible"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytearray_current_regression_diffs_cover_runtime_subsets() {
     let cases = [
         (

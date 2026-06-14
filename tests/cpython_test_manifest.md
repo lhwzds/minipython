@@ -1217,7 +1217,9 @@ explicitly skipped by the direct diff.
 covering bytearray `+=`, `*=`, `__iadd__`, and `__imul__`
 alias-preserving in-place mutation, bytes-like concat operands, repeat counts,
 representative catchable `TypeError` paths, and same-object return behavior for
-bytearray subclasses through inherited `__iadd__` / `__imul__`.
+bytearray subclasses through inherited `__iadd__` / `__imul__`. Direct
+`cpython_bytearray_inplace_concat_repeat_diff_subset` evidence compares this
+in-place mutation surface against CPython.
 `cpython_bytearray_nonmutating_methods_copy_buffers_subset` ports the public
 behavior of `ByteArrayTest::test_copied` and
 `test_partition_bytearray_doesnt_share_nullstring`, covering independent
