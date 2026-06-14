@@ -156,6 +156,12 @@ NaN, Infinity, and -Infinity values, float subclass values, supported float keys
 It covers `allow_nan=False` and falsey-option `ValueError` rejection plus truthy numeric `allow_nan` values,
 without adding Decimal, custom encoder, or locale-sensitive spelling support.
 
+`cpython_json_dumps_check_circular_subset`, backed by
+`cpython_json_dumps_check_circular_diff_subset`, keeps `check_circular` cycle detection for
+list, dict, tuple, and namedtuple container cycles. It covers truthy `check_circular` values raising `ValueError`,
+falsey `check_circular` values surfacing `RecursionError`, non-cyclic list/dict/tuple rendering with `check_circular=False`,
+and truthy arbitrary-object `check_circular` values, without adding GC tracking, object finalization, or host recursion controls.
+
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
 tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.

@@ -5329,6 +5329,79 @@ fn json_dumps_allow_nan_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_check_circular_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_check_circular_diff_subset";
+    let subset_name = "cpython_json_dumps_check_circular_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps check_circular CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps check_circular runtime subset evidence must exist"
+    );
+
+    for required in [
+        "from collections import namedtuple",
+        "cycle_list.append(cycle_list)",
+        "cycle_dict['self'] = cycle_dict",
+        "cycle_tuple = (inner,)",
+        "cycle_namedtuple = Point(items)",
+        "check_circular in [True, 1, False, 0, []]",
+        "json.dumps(value, check_circular=check_circular)",
+        "json.dumps(value, check_circular=False)",
+        "json.dumps([1], check_circular=object())",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps check_circular diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True list ValueError True\"",
+        "\"True dict ValueError True\"",
+        "\"True tuple ValueError True\"",
+        "\"True namedtuple ValueError True\"",
+        "\"False list RecursionError True\"",
+        "\"False dict RecursionError True\"",
+        "\"False tuple RecursionError True\"",
+        "\"False namedtuple RecursionError True\"",
+        "\"[] list RecursionError True\"",
+        "\"[1, 2]\"",
+        "\"{\\\"a\\\": [1]}\"",
+        "\"object ok\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps check_circular subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`check_circular` cycle detection",
+            "list, dict, tuple, and namedtuple container cycles",
+            "truthy `check_circular` values raising `ValueError`",
+            "falsey `check_circular` values surfacing `RecursionError`",
+            "non-cyclic list/dict/tuple rendering with `check_circular=False`",
+            "truthy arbitrary-object `check_circular` values",
+            "without adding GC tracking, object finalization, or host recursion controls",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe check_circular option boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
