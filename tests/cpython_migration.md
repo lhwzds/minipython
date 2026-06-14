@@ -152,10 +152,15 @@ covered for top-level and nested dictionaries while preserving the
 `allow_nan=False` rejection covered for top-level values, nested values, and
 supported float keys.
 
+`cpython_json_dumps_ensure_ascii_subset`, backed by
+`cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
+tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.
+
 `cpython_json_dumps_sort_keys_subset`, backed by
-`cpython_json_dumps_sort_keys_diff_subset`, keeps recursive sorting of supported
-comparable keys covered for nested dictionaries, including compact non-ASCII
-rendering combined with `ensure_ascii=False` and custom separators.
+`cpython_json_dumps_sort_keys_diff_subset`, keeps `sort_keys` recursive ordering
+for supported comparable string and numeric keys, the mixed string/integer key TypeError boundary,
+and compact non-ASCII rendering with `ensure_ascii=False` and custom separators,
+without adding locale-sensitive collation or arbitrary incomparable-key support.
 
 `cpython_json_option_truthiness_subset`, backed by
 `cpython_json_option_truthiness_diff_subset`, now covers CPython public

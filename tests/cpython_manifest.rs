@@ -5070,6 +5070,52 @@ fn json_dumps_options_diff_covers_subset_surface() {
 }
 
 #[test]
+fn json_dumps_ensure_ascii_sort_keys_docs_cover_option_boundaries() {
+    for (diff_name, subset_name) in [
+        (
+            "cpython_json_dumps_ensure_ascii_diff_subset",
+            "cpython_json_dumps_ensure_ascii_subset",
+        ),
+        (
+            "cpython_json_dumps_sort_keys_diff_subset",
+            "cpython_json_dumps_sort_keys_subset",
+        ),
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json dumps option CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json dumps option runtime subset evidence `{subset_name}` must exist"
+        );
+        for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "`ensure_ascii` string and key rendering",
+            "escaped and unescaped non-ASCII scalar and surrogate-pair output",
+            "`sort_keys` recursive ordering",
+            "supported comparable string and numeric keys",
+            "mixed string/integer key TypeError boundary",
+            "compact non-ASCII rendering with `ensure_ascii=False` and custom separators",
+            "without adding locale-sensitive collation or arbitrary incomparable-key support",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe ensure_ascii/sort_keys boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (

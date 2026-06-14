@@ -928,6 +928,15 @@ without expanding into custom encoder hooks.
 and CPython TypeError/ValueError text for malformed `items()` results,
 without expanding into arbitrary encoder or mapping-protocol support.
 
+`cpython_json_dumps_ensure_ascii_subset`, backed by
+`cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
+tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.
+`cpython_json_dumps_sort_keys_subset`, backed by
+`cpython_json_dumps_sort_keys_diff_subset`, keeps `sort_keys` recursive ordering
+for supported comparable string and numeric keys, the mixed string/integer key TypeError boundary,
+and compact non-ASCII rendering with `ensure_ascii=False` and custom separators,
+without adding locale-sensitive collation or arbitrary incomparable-key support.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
