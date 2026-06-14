@@ -1631,7 +1631,7 @@ for indent in [True, False, 1.5, [], object()]:
     try:
         print('BAD', repr(json.dumps([1, 2], indent=indent)))
     except Exception as error:
-        print('BAD', type(error).__name__, isinstance(error, TypeError))"#,
+        print('BAD', type(error).__name__, str(error))"#,
     });
 }
 

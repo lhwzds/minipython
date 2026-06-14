@@ -59346,18 +59346,33 @@ fn json_dumps_indent_string(vm: &mut Vm, value: &Value) -> Result<Option<String>
         value if str_subclass_string(value).is_some() => Ok(Some(
             str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
-        value => match vm.index_integer_value(value.clone())? {
-            Value::Number(value) => Ok(Some(" ".repeat(value.max(0) as usize))),
-            Value::BigInt(value) => {
-                let Some(value) = value.to_i64() else {
-                    return Err(
-                        "TypeError: json.dumps() indent must be str, int or None".to_string()
-                    );
-                };
-                Ok(Some(" ".repeat(value.max(0) as usize)))
+        value => {
+            let indent = vm.index_integer_value(value.clone()).map_err(|error| {
+                match error.strip_prefix("TypeError: '") {
+                    Some(rest)
+                        if rest.ends_with("' object cannot be interpreted as an integer") =>
+                    {
+                        format!(
+                            "TypeError: can't multiply sequence by non-int of type '{}'",
+                            type_name(value)
+                        )
+                    }
+                    _ => error,
+                }
+            })?;
+            match indent {
+                Value::Number(value) => Ok(Some(" ".repeat(value.max(0) as usize))),
+                Value::BigInt(value) => {
+                    let Some(value) = value.to_i64() else {
+                        return Err(
+                            "TypeError: json.dumps() indent must be str, int or None".to_string()
+                        );
+                    };
+                    Ok(Some(" ".repeat(value.max(0) as usize)))
+                }
+                _ => unreachable!("index_integer_value returns an integer"),
             }
-            _ => unreachable!("index_integer_value returns an integer"),
-        },
+        }
     }
 }
 

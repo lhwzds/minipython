@@ -7432,7 +7432,9 @@ fn json_dumps_indent_docs_cover_option_boundaries() {
         "r#\"INDEX IndexIndent",
         "r#\"INDEX BoolIndexIndent",
         "\"INDEX-ERROR RuntimeError boom-index\"",
-        "\"BAD TypeError True\"",
+        "\"BAD TypeError can't multiply sequence by non-int of type 'float'\"",
+        "\"BAD TypeError can't multiply sequence by non-int of type 'list'\"",
+        "\"BAD TypeError can't multiply sequence by non-int of type 'object'\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
