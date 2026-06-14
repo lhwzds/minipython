@@ -12298,6 +12298,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
             && LANGUAGE_TESTS.contains("'builtin_module_names'")
             && LANGUAGE_TESTS.contains("'byteorder'")
+            && LANGUAGE_TESTS.contains("'dont_write_bytecode'")
             && LANGUAGE_TESTS.contains("'exc_info'")
             && LANGUAGE_TESTS.contains("'getdefaultencoding'")
             && LANGUAGE_TESTS.contains("'is_finalizing'")
@@ -12314,6 +12315,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
             && LANGUAGE_TESTS.contains("sys.warnoptions")
+            && LANGUAGE_TESTS.contains("sys.dont_write_bytecode")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
@@ -12321,6 +12323,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert!(
         STDLIB_SOURCE.contains("\"builtin_module_names\"")
             && STDLIB_SOURCE.contains("\"byteorder\"")
+            && STDLIB_SOURCE.contains("\"dont_write_bytecode\"")
             && STDLIB_SOURCE.contains("\"exc_info\"")
             && STDLIB_SOURCE.contains("\"getdefaultencoding\"")
             && STDLIB_SOURCE.contains("\"is_finalizing\"")
@@ -12351,6 +12354,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "all(type(name).__name__ == 'str' for name in sys.builtin_module_names)",
         "sys.warnoptions",
         "all(type(option).__name__ == 'str' for option in sys.warnoptions)",
+        "sys.dont_write_bytecode",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",
@@ -12396,6 +12400,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             document.contains("builtin_module_names")
                 && document.contains("byteorder")
+                && document.contains("dont_write_bytecode")
                 && document.contains("exc_info")
                 && document.contains("getdefaultencoding")
                 && document.contains("hexversion")

@@ -538,9 +538,9 @@ Recent runtime migration notes:
   and `sys.hash_info` attributes used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, float-subclass NaN hash inheritance, public
-  `sys.builtin_module_names`, `sys.byteorder`, `sys.hexversion`,
-  `sys.warnoptions`, `sys.getdefaultencoding()`, `sys.version_info`,
-  `sys.implementation`, and the sandbox runtime-state query
+  `sys.builtin_module_names`, `sys.byteorder`, `sys.dont_write_bytecode`,
+  `sys.hexversion`, `sys.warnoptions`, `sys.getdefaultencoding()`,
+  `sys.version_info`, `sys.implementation`, and the sandbox runtime-state query
   `sys.is_finalizing()`. The same evidence covers `sys.exc_info()` over the
   current MiniPython VM exception state, including empty and active-handler
   triples plus no-argument diagnostics.
@@ -4703,10 +4703,11 @@ without adding general custom encoder/decoder class support.
   applies before returning non-virtual `sys.modules` cache entries.
   The `sys` sandbox surface remains limited to in-memory metadata, `modules`,
   `builtin_module_names`, `implementation`, `version_info`,
-  `getdefaultencoding()`, placeholder stdio objects, numeric/runtime limits,
-  frame inspection, and breakpoint hook metadata; Real argv/process state, real
-  stdin/stdout/stderr streams, host filesystem encoding policy, and
-  implementation refcount/GC/debug APIs stay outside the product surface.
+  `dont_write_bytecode`, `getdefaultencoding()`, placeholder stdio objects,
+  numeric/runtime limits, frame inspection, and breakpoint hook metadata; Real
+  argv/process state, real stdin/stdout/stderr streams, host filesystem encoding
+  policy, bytecode cache writes, and implementation refcount/GC/debug APIs stay
+  outside the product surface.
   `out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards
   the default blocked runtime surface so host I/O (`open()`, `input()` and
   host TTY behavior plus non-`None` `print(file=...)` targets), network and

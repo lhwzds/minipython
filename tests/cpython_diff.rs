@@ -25064,6 +25064,7 @@ print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.b
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
 print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name__ == 'str' for option in sys.warnoptions))
+print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.dont_write_bytecode in (False, True))
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__)
