@@ -9886,6 +9886,57 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn io_stdlib_registry_stays_bytesio_only() {
+    let io_start = STDLIB_SOURCE
+        .find("\"io\" => Ok(module_value(")
+        .expect("stdlib registry must expose an io module arm");
+    let io_end = STDLIB_SOURCE[io_start..]
+        .find("        )),")
+        .map(|offset| io_start + offset)
+        .expect("io module registry arm must be extractable");
+    let io_registry = &STDLIB_SOURCE[io_start..io_end];
+
+    for required in [
+        "\"io\"",
+        "(\"BytesIO\", Value::Builtin(\"io.BytesIO\".to_string()))",
+        "\"UnsupportedOperation\"",
+        "Value::Builtin(\"io.UnsupportedOperation\".to_string())",
+        "(\"SEEK_SET\", Value::Number(0))",
+        "(\"SEEK_CUR\", Value::Number(1))",
+        "(\"SEEK_END\", Value::Number(2))",
+    ] {
+        assert!(
+            io_registry.contains(required),
+            "io registry must expose required pure-memory surface `{required}`"
+        );
+    }
+
+    for forbidden in [
+        "\"open\"",
+        "\"FileIO\"",
+        "\"TextIOWrapper\"",
+        "\"StringIO\"",
+        "\"BufferedReader\"",
+        "\"BufferedWriter\"",
+        "\"RawIOBase\"",
+        "\"IOBase\"",
+    ] {
+        assert!(
+            !io_registry.contains(forbidden),
+            "io registry must not expose host I/O API `{forbidden}`"
+        );
+    }
+
+    assert!(
+        LANGUAGE_TESTS.contains("io_bytesio_sandbox_subset_excludes_host_io_apis")
+            && LANGUAGE_TESTS.contains("'open', 'FileIO', 'TextIOWrapper'")
+            && LANGUAGE_TESTS.contains("'StringIO', 'BufferedReader', 'BufferedWriter'")
+            && LANGUAGE_TESTS.contains("'RawIOBase', 'IOBase'"),
+        "language tests must keep host io APIs unavailable at runtime"
+    );
+}
+
+#[test]
 fn io_bytesio_cross_module_diff_stays_pure_memory_only() {
     for (subset, diff) in [
         (

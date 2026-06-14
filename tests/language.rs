@@ -1093,6 +1093,30 @@ fn sandbox_policy_allows_required_sandbox_stdlib_surface() {
 }
 
 #[test]
+fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
+    assert_eq!(
+        run_source(
+            "import io\nfor name in ['BytesIO', 'UnsupportedOperation', 'SEEK_SET', 'SEEK_CUR', 'SEEK_END']:\n    print(name, hasattr(io, name))\nfor name in ['open', 'FileIO', 'TextIOWrapper', 'StringIO', 'BufferedReader', 'BufferedWriter', 'RawIOBase', 'IOBase']:\n    print(name, hasattr(io, name))"
+        ),
+        Ok(output_lines(&[
+            "BytesIO True",
+            "UnsupportedOperation True",
+            "SEEK_SET True",
+            "SEEK_CUR True",
+            "SEEK_END True",
+            "open False",
+            "FileIO False",
+            "TextIOWrapper False",
+            "StringIO False",
+            "BufferedReader False",
+            "BufferedWriter False",
+            "RawIOBase False",
+            "IOBase False",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =
@@ -5043,16 +5067,17 @@ fn json_sandbox_subset_excludes_file_apis_and_extension_hooks() {
 
     assert_eq!(
         run_source(
-            "import json\nchecks = [\n    lambda: json.loads('{}', object_hook=lambda value: value),\n    lambda: json.loads('{}', object_pairs_hook=lambda value: value),\n    lambda: json.loads('{}', parse_float=float),\n    lambda: json.loads('{}', parse_int=int),\n    lambda: json.loads('NaN', parse_constant=lambda value: value),\n    lambda: json.dumps({'a': 1}, default=lambda value: None),\n    lambda: json.dumps({'a': 1}, cls=object),\n]\nfor check in checks:\n    try:\n        check()\n    except TypeError as error:\n        print(error.__class__.__name__)"
+            "import json\nchecks = [\n    ('object_hook', lambda: json.loads('{}', object_hook=lambda value: value)),\n    ('object_pairs_hook', lambda: json.loads('{}', object_pairs_hook=lambda value: value)),\n    ('parse_float', lambda: json.loads('1.5', parse_float=float)),\n    ('parse_int', lambda: json.loads('1', parse_int=int)),\n    ('parse_constant', lambda: json.loads('NaN', parse_constant=lambda value: value)),\n    ('default', lambda: json.dumps(object(), default=lambda value: None)),\n    ('loads_cls', lambda: json.loads('{}', cls=object)),\n    ('dumps_cls', lambda: json.dumps({'a': 1}, cls=object)),\n]\nfor label, check in checks:\n    try:\n        check()\n    except TypeError as error:\n        print(label, error.__class__.__name__)\n    else:\n        print(label, 'OK')"
         ),
         Ok(output_lines(&[
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
-            "TypeError",
+            "object_hook OK",
+            "object_pairs_hook OK",
+            "parse_float OK",
+            "parse_int OK",
+            "parse_constant OK",
+            "default OK",
+            "loads_cls TypeError",
+            "dumps_cls TypeError",
         ]))
     );
 }
