@@ -22382,6 +22382,9 @@ for expr in [
     lambda: memoryview(b'abc').tolist(1),
     lambda: memoryview(b'abc').toreadonly(1),
     lambda: memoryview(b'abc').release(1),
+    lambda: memoryview(b'abc').tolist(bad=True),
+    lambda: memoryview(b'abc').toreadonly(bad=True),
+    lambda: memoryview(b'abc').release(bad=True),
 ]:
     try:
         expr()

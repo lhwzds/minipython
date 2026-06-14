@@ -1435,11 +1435,14 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "memoryview(b'abc').tobytes('bad')",
         "m.tolist()",
         "memoryview(b'abc').tolist(1)",
+        "memoryview(b'abc').tolist(bad=True)",
         "m.toreadonly()",
         "memoryview(b'abc').toreadonly(1)",
+        "memoryview(b'abc').toreadonly(bad=True)",
         "with m as cm",
         "m.release()",
         "memoryview(b'abc').release(1)",
+        "memoryview(b'abc').release(bad=True)",
         "list(reversed(m))",
     ] {
         assert!(
@@ -1455,6 +1458,9 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "memoryview.tolist() takes no arguments",
         "memoryview.toreadonly() takes no arguments",
         "memoryview.release() takes no arguments",
+        "memoryview.tolist() takes no keyword arguments",
+        "memoryview.toreadonly() takes no keyword arguments",
+        "memoryview.release() takes no keyword arguments",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),

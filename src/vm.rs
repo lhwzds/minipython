@@ -18899,7 +18899,7 @@ impl Vm {
         if name == "memoryview.tobytes" {
             return self.call_memoryview_tobytes(args, keywords);
         }
-        reject_method_keywords(name, &keywords)?;
+        reject_memoryview_method_keywords(name, &keywords)?;
 
         match name {
             "memoryview.tolist" => {
@@ -71853,6 +71853,22 @@ fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
             "{}() does not accept keyword arguments",
             method_display_name(name)
         ))
+    }
+}
+
+fn reject_memoryview_method_keywords(
+    name: &str,
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if keywords.is_empty() {
+        Ok(())
+    } else if matches!(
+        name,
+        "memoryview.tolist" | "memoryview.toreadonly" | "memoryview.release"
+    ) {
+        Err(format!("TypeError: {name}() takes no keyword arguments"))
+    } else {
+        reject_method_keywords(name, keywords)
     }
 }
 
