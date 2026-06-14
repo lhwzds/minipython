@@ -14655,7 +14655,7 @@ fn readmes_document_full_sandbox_scope_contract() {
         "`co_stacksize`",
         "Default `pdb` integration",
         "full `breakpoint()` environment-variable",
-        "Locale-sensitive behavior",
+        "locale-sensitive behavior",
     ] {
         assert!(
             README.contains(required),
