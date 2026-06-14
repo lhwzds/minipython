@@ -10164,45 +10164,35 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.erf" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_erf(self, args)
             }
             Value::Builtin(name) if name == "math.erfc" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_erfc(self, args)
             }
             Value::Builtin(name) if name == "math.gamma" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_gamma(self, args)
             }
             Value::Builtin(name) if name == "math.lgamma" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_lgamma(self, args)
             }
             Value::Builtin(name) if name == "math.exp" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_exp(self, args)
@@ -10218,126 +10208,98 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.expm1" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_expm1(self, args)
             }
             Value::Builtin(name) if name == "math.log" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_log(self, args)
             }
             Value::Builtin(name) if name == "math.log1p" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_log1p(self, args)
             }
             Value::Builtin(name) if name == "math.log2" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_log2(self, args)
             }
             Value::Builtin(name) if name == "math.log10" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_log10(self, args)
             }
             Value::Builtin(name) if name == "math.acos" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_acos(self, args)
             }
             Value::Builtin(name) if name == "math.acosh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_acosh(self, args)
             }
             Value::Builtin(name) if name == "math.asin" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_asin(self, args)
             }
             Value::Builtin(name) if name == "math.asinh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_asinh(self, args)
             }
             Value::Builtin(name) if name == "math.atan" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_atan(self, args)
             }
             Value::Builtin(name) if name == "math.atan2" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_atan2(self, args)
             }
             Value::Builtin(name) if name == "math.atanh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_atanh(self, args)
             }
             Value::Builtin(name) if name == "math.cos" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_cos(self, args)
             }
             Value::Builtin(name) if name == "math.cosh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_cosh(self, args)
@@ -10351,27 +10313,21 @@ impl Vm {
             }
             Value::Builtin(name) if name == "math.sinh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_sinh(self, args)
             }
             Value::Builtin(name) if name == "math.tan" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_tan(self, args)
             }
             Value::Builtin(name) if name == "math.tanh" => {
                 if !keywords.is_empty() {
-                    return Err(format!(
-                        "TypeError: {name}() does not accept keyword arguments"
-                    ));
+                    return Err(math_no_keyword_type_error(&name));
                 }
 
                 call_math_tanh(self, args)
@@ -55402,6 +55358,9 @@ fn is_math_builtin(name: &str) -> bool {
 }
 
 fn math_no_keyword_type_error(name: &str) -> String {
+    if name == "math.log" {
+        return "TypeError: log() takes no keyword arguments".to_string();
+    }
     format!("TypeError: {name}() takes no keyword arguments")
 }
 

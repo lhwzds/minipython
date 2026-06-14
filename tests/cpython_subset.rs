@@ -7475,7 +7475,7 @@ fn cpython_math_core_subset() {
 #[test]
 fn cpython_math_keyword_error_messages_subset() {
     assert_output(
-        "import math\nchecks = [\n    ('isfinite', lambda: math.isfinite(x=1)),\n    ('isinf', lambda: math.isinf(x=1)),\n    ('isnan', lambda: math.isnan(x=1)),\n    ('hypot', lambda: math.hypot(x=1)),\n    ('dist', lambda: math.dist(p=(1,), q=(2,))),\n    ('pow', lambda: math.pow(x=1, y=2)),\n    ('fabs', lambda: math.fabs(value=1)),\n    ('fmod', lambda: math.fmod(x=1, y=2)),\n    ('frexp', lambda: math.frexp(x=1)),\n    ('fsum', lambda: math.fsum(iterable=[])),\n    ('ldexp', lambda: math.ldexp(x=1.0, i=1)),\n    ('modf', lambda: math.modf(x=1)),\n    ('remainder', lambda: math.remainder(x=1, y=2)),\n    ('copysign', lambda: math.copysign(x=1, y=2)),\n    ('trunc', lambda: math.trunc(x=1)),\n    ('ulp', lambda: math.ulp(x=1)),\n    ('ceil', lambda: math.ceil(x=1)),\n    ('floor', lambda: math.floor(x=1)),\n    ('degrees', lambda: math.degrees(x=1)),\n    ('radians', lambda: math.radians(x=1)),\n    ('sin', lambda: math.sin(x=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        "import math\nchecks = [\n    ('isfinite', lambda: math.isfinite(x=1)),\n    ('isinf', lambda: math.isinf(x=1)),\n    ('isnan', lambda: math.isnan(x=1)),\n    ('hypot', lambda: math.hypot(x=1)),\n    ('dist', lambda: math.dist(p=(1,), q=(2,))),\n    ('pow', lambda: math.pow(x=1, y=2)),\n    ('fabs', lambda: math.fabs(value=1)),\n    ('fmod', lambda: math.fmod(x=1, y=2)),\n    ('frexp', lambda: math.frexp(x=1)),\n    ('fsum', lambda: math.fsum(iterable=[])),\n    ('ldexp', lambda: math.ldexp(x=1.0, i=1)),\n    ('modf', lambda: math.modf(x=1)),\n    ('remainder', lambda: math.remainder(x=1, y=2)),\n    ('copysign', lambda: math.copysign(x=1, y=2)),\n    ('trunc', lambda: math.trunc(x=1)),\n    ('ulp', lambda: math.ulp(x=1)),\n    ('ceil', lambda: math.ceil(x=1)),\n    ('floor', lambda: math.floor(x=1)),\n    ('degrees', lambda: math.degrees(x=1)),\n    ('radians', lambda: math.radians(x=1)),\n    ('exp', lambda: math.exp(x=1)),\n    ('expm1', lambda: math.expm1(x=1)),\n    ('log', lambda: math.log(x=1)),\n    ('log1p', lambda: math.log1p(x=1)),\n    ('log2', lambda: math.log2(x=1)),\n    ('log10', lambda: math.log10(x=1)),\n    ('acos', lambda: math.acos(x=1)),\n    ('asin', lambda: math.asin(x=1)),\n    ('atan', lambda: math.atan(x=1)),\n    ('atan2', lambda: math.atan2(x=1, y=1)),\n    ('cos', lambda: math.cos(x=1)),\n    ('sin', lambda: math.sin(x=1)),\n    ('tan', lambda: math.tan(x=1)),\n    ('acosh', lambda: math.acosh(x=1)),\n    ('asinh', lambda: math.asinh(x=1)),\n    ('atanh', lambda: math.atanh(x=1)),\n    ('cosh', lambda: math.cosh(x=1)),\n    ('sinh', lambda: math.sinh(x=1)),\n    ('tanh', lambda: math.tanh(x=1)),\n    ('erf', lambda: math.erf(x=1)),\n    ('erfc', lambda: math.erfc(x=1)),\n    ('gamma', lambda: math.gamma(x=1)),\n    ('lgamma', lambda: math.lgamma(x=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "isfinite math.isfinite() takes no keyword arguments",
             "isinf math.isinf() takes no keyword arguments",
@@ -7497,7 +7497,29 @@ fn cpython_math_keyword_error_messages_subset() {
             "floor math.floor() takes no keyword arguments",
             "degrees math.degrees() takes no keyword arguments",
             "radians math.radians() takes no keyword arguments",
+            "exp math.exp() takes no keyword arguments",
+            "expm1 math.expm1() takes no keyword arguments",
+            "log log() takes no keyword arguments",
+            "log1p math.log1p() takes no keyword arguments",
+            "log2 math.log2() takes no keyword arguments",
+            "log10 math.log10() takes no keyword arguments",
+            "acos math.acos() takes no keyword arguments",
+            "asin math.asin() takes no keyword arguments",
+            "atan math.atan() takes no keyword arguments",
+            "atan2 math.atan2() takes no keyword arguments",
+            "cos math.cos() takes no keyword arguments",
             "sin math.sin() takes no keyword arguments",
+            "tan math.tan() takes no keyword arguments",
+            "acosh math.acosh() takes no keyword arguments",
+            "asinh math.asinh() takes no keyword arguments",
+            "atanh math.atanh() takes no keyword arguments",
+            "cosh math.cosh() takes no keyword arguments",
+            "sinh math.sinh() takes no keyword arguments",
+            "tanh math.tanh() takes no keyword arguments",
+            "erf math.erf() takes no keyword arguments",
+            "erfc math.erfc() takes no keyword arguments",
+            "gamma math.gamma() takes no keyword arguments",
+            "lgamma math.lgamma() takes no keyword arguments",
         ],
     );
 }
