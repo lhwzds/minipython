@@ -62595,10 +62595,14 @@ fn call_math_prod(
     }
 
     let [iterable] = args.as_slice() else {
-        return Err(format!(
-            "TypeError: prod() takes exactly 1 positional argument ({} given)",
-            args.len()
-        ));
+        return Err(if args.is_empty() {
+            "TypeError: prod() takes exactly 1 positional argument (0 given)".to_string()
+        } else {
+            format!(
+                "TypeError: prod() takes at most 2 arguments ({} given)",
+                args.len()
+            )
+        });
     };
 
     let mut total = start.unwrap_or(Value::Number(1));

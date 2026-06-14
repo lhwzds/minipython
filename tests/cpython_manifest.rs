@@ -11860,6 +11860,26 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
             "math integer runtime subset evidence must assert exact diagnostic `{required}`"
         );
     }
+
+    let prod_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_prod_diff_subset");
+    let prod_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_prod_subset");
+    for required in [
+        "lambda: prod()",
+        "lambda: prod([10, 20], 1)",
+        "lambda: prod([1], 2, 3)",
+        "prod() takes exactly 1 positional argument (0 given)",
+        "prod() takes at most 2 arguments (2 given)",
+        "prod() takes at most 2 arguments (3 given)",
+    ] {
+        assert!(
+            prod_diff.contains(required),
+            "math prod CPython diff evidence must cover exact diagnostic `{required}`"
+        );
+        assert!(
+            prod_subset.contains(required),
+            "math prod runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
     let integer_alias_diff =
         extract_rust_test_body(CPYTHON_DIFF, "cpython_math_integer_alias_diff_subset");
     for required in [

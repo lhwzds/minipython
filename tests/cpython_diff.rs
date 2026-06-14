@@ -2429,6 +2429,9 @@ for expr in [
 
 #[test]
 fn cpython_math_prod_diff_subset() {
+    // CPython oracle text: prod() takes exactly 1 positional argument (0 given);
+    // prod() takes at most 2 arguments (2 given);
+    // prod() takes at most 2 arguments (3 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::test_prod public stable subset",
         name: "math-prod",
@@ -2457,6 +2460,7 @@ for expr in [
     lambda: prod([[1], [2], [3]]),
     lambda: prod([{2: 3}]),
     lambda: prod([10, 20], 1),
+    lambda: prod([1], 2, 3),
     lambda: prod([1], missing=2),
 ]:
     try:
