@@ -1016,6 +1016,12 @@ without adding Decimal parsing or locale-sensitive number formats.
 object members containing empty list and empty object. It pins CPython public Python value types
 without adding custom decoder classes or host-backed containers.
 
+`cpython_json_loads_nonfinite_constants_subset`, backed by
+`cpython_json_loads_nonfinite_constants_diff_subset`, keeps `loads()` default non-finite constants for
+`NaN`, `Infinity`, and `-Infinity` across top-level values, arrays, and objects, including
+`dumps()` / `loads()` round trips and CPython float sign and classification behavior,
+without adding `parse_constant` customization beyond the documented hook subset.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

@@ -6023,6 +6023,74 @@ fn json_loads_top_level_scalar_docs_cover_value_boundaries() {
 }
 
 #[test]
+fn json_loads_nonfinite_constants_docs_cover_value_boundaries() {
+    let diff_name = "cpython_json_loads_nonfinite_constants_diff_subset";
+    let subset_name = "cpython_json_loads_nonfinite_constants_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads non-finite constants CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads non-finite constants runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'NaN'",
+        "'Infinity'",
+        "'-Infinity'",
+        "'[NaN, Infinity, -Infinity]'",
+        "json.dumps(value)",
+        "json.loads(encoded)",
+        "math.isnan",
+        "math.isinf",
+        "reparsed[2] < 0",
+        "reparsed['x']",
+        "reparsed['y']",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads non-finite constants diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"NaN float nan\"",
+        "\"Infinity float inf\"",
+        "\"-Infinity float -inf\"",
+        "\"[NaN, Infinity, -Infinity] list [nan, inf, -inf]\"",
+        "\"{\\\"x\\\": NaN, \\\"y\\\": Infinity} dict {'x': nan, 'y': inf}\"",
+        "\"True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads non-finite constants subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` default non-finite constants",
+            "`NaN`, `Infinity`, and `-Infinity`",
+            "top-level values, arrays, and objects",
+            "`dumps()` / `loads()` round trips",
+            "CPython float sign and classification behavior",
+            "without adding `parse_constant` customization beyond the documented hook subset",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads non-finite constants boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
