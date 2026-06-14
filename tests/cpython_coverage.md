@@ -835,7 +835,8 @@ Recent runtime migration notes:
   `indent` pretty-print formatting for positive, zero, negative, string, and
   `__index__` indent values,
   `skipkeys` omission of unsupported dict keys,
-  `sort_keys` ordering for supported comparable keys, `separators`
+  `sort_keys` ordering for supported comparable keys including nested
+  dictionaries, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and
   general iterables plus CPython-style unpack length `ValueError` text and
   item/key separator element `TypeError` text, `default` hook handling for

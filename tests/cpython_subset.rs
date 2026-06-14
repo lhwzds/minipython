@@ -34069,7 +34069,7 @@ fn cpython_json_dumps_ensure_ascii_subset() {
 #[test]
 fn cpython_json_dumps_sort_keys_subset() {
     assert_output(
-        "import json\nfor sort_keys in [False, 0, True, 1]:\n    print(json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys))\n    print(json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys))\n    print(json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys))\nfor value in [True, 1]:\n    try:\n        json.dumps({'2': 's', 1: 'i'}, sort_keys=value)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))",
+        "import json\nfor sort_keys in [False, 0, True, 1]:\n    print(json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys))\n    print(json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys))\n    print(json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys))\nprint(json.dumps({'z': {'b': 1, 'a': 2}, 'a': [{'d': 4, 'c': 3}]}, sort_keys=True, ensure_ascii=False, separators=(',', ':')))\nprint(json.dumps({'é': {'b': '𝄠', 'a': 'x'}}, sort_keys=True, ensure_ascii=False, separators=(',', ':')))\nfor value in [True, 1]:\n    try:\n        json.dumps({'2': 's', 1: 'i'}, sort_keys=value)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, TypeError))",
         &[
             "{\"b\": 1, \"a\": 2}",
             "{\"outer\": {\"b\": 1, \"a\": 2}}",
@@ -34083,6 +34083,8 @@ fn cpython_json_dumps_sort_keys_subset() {
             "{\"a\": 2, \"b\": 1}",
             "{\"outer\": {\"a\": 2, \"b\": 1}}",
             "{\"1\": \"one\", \"2\": \"two\"}",
+            "{\"a\":[{\"c\":3,\"d\":4}],\"z\":{\"a\":2,\"b\":1}}",
+            "{\"é\":{\"a\":\"x\",\"b\":\"𝄠\"}}",
             "TypeError True",
             "TypeError True",
         ],

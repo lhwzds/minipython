@@ -1289,6 +1289,8 @@ for sort_keys in [False, 0, True, 1]:
     print(json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys))
     print(json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys))
     print(json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys))
+print(json.dumps({'z': {'b': 1, 'a': 2}, 'a': [{'d': 4, 'c': 3}]}, sort_keys=True, ensure_ascii=False, separators=(',', ':')))
+print(json.dumps({'é': {'b': '𝄠', 'a': 'x'}}, sort_keys=True, ensure_ascii=False, separators=(',', ':')))
 for value in [True, 1]:
     try:
         json.dumps({'2': 's', 1: 'i'}, sort_keys=value)

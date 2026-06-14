@@ -141,6 +141,11 @@ separator element `TypeError` text.
 conversion through `__index__` objects in addition to direct positive, zero,
 negative, string, and `None` values.
 
+`cpython_json_dumps_sort_keys_subset`, backed by
+`cpython_json_dumps_sort_keys_diff_subset`, keeps recursive sorting of supported
+comparable keys covered for nested dictionaries, including compact non-ASCII
+rendering combined with `ensure_ascii=False` and custom separators.
+
 `cpython_json_option_truthiness_subset`, backed by
 `cpython_json_option_truthiness_diff_subset`, now covers CPython public
 truthiness dispatch for `loads(strict=...)` and the supported `dumps()`

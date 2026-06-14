@@ -4736,6 +4736,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "json.dumps({'b': 1, 'a': 2}, sort_keys=sort_keys)",
                 "json.dumps({'outer': {'b': 1, 'a': 2}}, sort_keys=sort_keys)",
                 "json.dumps({2: 'two', 1: 'one'}, sort_keys=sort_keys)",
+                "sort_keys=True, ensure_ascii=False, separators=(',', ':')",
                 "json.dumps({'2': 's', 1: 'i'}, sort_keys=value)",
             ][..],
         ),
