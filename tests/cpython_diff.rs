@@ -1227,6 +1227,12 @@ class BadIter:
 class DictItemsBadIter(dict):
     def items(self):
         return BadIter()
+class ItemsNone(dict):
+    def items(self):
+        return None
+class ItemsInt(dict):
+    def items(self):
+        return 7
 cases = [
     {'s': 1, 2: 'two', 4.5: 'float', False: 'no', None: 'nil'},
     {S('sub'): S('value'), I(7): I(8), F(1.5): F(2.5)},
@@ -1252,7 +1258,12 @@ for items in [[['a', 1]], ['ab'], [('a',)], [('a', 1, 2)]]:
 try:
     json.dumps(DictItemsBadIter(x=1))
 except TypeError as error:
-    print(type(error).__name__, str(error))"#,
+    print(type(error).__name__, str(error))
+for value in [ItemsNone(x=1), ItemsInt(x=1)]:
+    try:
+        json.dumps(value)
+    except TypeError as error:
+        print(type(error).__name__, str(error))"#,
     });
 }
 

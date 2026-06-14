@@ -59144,7 +59144,9 @@ fn json_dumps_dict_subclass_items(
     let items = vm
         .collect_iterable_values_propagating(items)
         .map_err(|error| {
-            if error.starts_with("TypeError: iter() returned non-iterator") {
+            if error.starts_with("TypeError: iter() returned non-iterator")
+                || error.ends_with(" is not iterable")
+            {
                 format!(
                     "TypeError: {}.items() returned a non-iterable (type {})",
                     dict_type_name, items_type_name

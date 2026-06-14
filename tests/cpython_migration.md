@@ -118,8 +118,9 @@ custom encoder hooks.
 
 `cpython_json_dumps_key_coercion_subset`, backed by
 `cpython_json_dumps_key_coercion_diff_subset`, now includes CPython json encoder
-TypeError text for dict subclass `items()` results that are not iterable,
-without expanding into arbitrary encoder or mapping-protocol support.
+TypeError text for dict subclass `items()` results that either return a bad
+iterator from `__iter__` or are non-iterable scalar/`None` values, without
+expanding into arbitrary encoder or mapping-protocol support.
 
 `cpython_json_dumps_separators_subset`, backed by
 `cpython_json_dumps_separators_diff_subset`, now covers CPython public
