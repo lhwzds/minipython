@@ -23287,6 +23287,22 @@ base = bytearray(b'ab')
 m = memoryview(base).cast('@c')
 m[0] = b'Z'
 print('assign-@c', base, m.tolist())
+for lhs_fmt, rhs_fmt, rhs_data in [
+    ('@B', 'B', b'\x03'),
+    ('@B', 'b', b'\x03'),
+    ('@h', 'h', b'\x03\x00'),
+    ('@h', 'H', b'\x03\x00'),
+    ('@d', 'd', b'\x00\x00\x00\x00\x00\x00\x04@'),
+    ('@d', 'f', b'\x00\x00\x20@'),
+]:
+    b = bytearray(8)
+    lhs = memoryview(b).cast(lhs_fmt)
+    rhs = memoryview(bytearray(rhs_data)).cast(rhs_fmt)
+    try:
+        lhs[0:1] = rhs
+        print('slice-compat', lhs_fmt, rhs_fmt, 'OK', b[:lhs.itemsize], lhs.tolist()[0])
+    except ValueError as error:
+        print('slice-compat', lhs_fmt, rhs_fmt, error.__class__.__name__, str(error))
 def assign_h_float():
     m = memoryview(bytearray(2)).cast('@h')
     m[0] = 1.5

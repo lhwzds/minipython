@@ -4480,9 +4480,12 @@ without adding general custom encoder/decoder class support.
   `B`, `@`-prefixed item read/list/bytes behavior, direct item writeback for
   representative integer, unsigned-integer, float, and `c` formats (`@h`,
   `@I`, `@d`, and `@c`), CPython invalid assignment type diagnostics,
-  CPython rejection of non-byte-to-non-byte casts, and rejection of unsupported
-  `u` / `w`, doubled-`@`, and non-native-prefixed destination formats. Direct
-  CPython output evidence is in
+  same-format slice assignment compatibility between `@`-prefixed native
+  formats and their unprefixed equivalents, CPython structure mismatch
+  rejection for signed/unsigned or float-size mismatches, CPython rejection of
+  non-byte-to-non-byte casts, and rejection of unsupported `u` / `w`,
+  doubled-`@`, and non-native-prefixed destination formats. Direct CPython
+  output evidence is in
   `cpython_memoryview_cast_native_formats_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_getitem_index_count_compare_subset`, covering CPython

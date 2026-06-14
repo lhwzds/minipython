@@ -1091,7 +1091,8 @@ fn memoryview_typed_slice_assignment_value(format: &str, value: Value) -> Result
                 .to_string(),
         ),
         Value::MemoryView(value) => {
-            if memoryview_format(&value)? == format {
+            if memoryview_format_code(&memoryview_format(&value)?) == memoryview_format_code(format)
+            {
                 memoryview_bytes(&value)
             } else {
                 Err(
