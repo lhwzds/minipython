@@ -919,7 +919,8 @@ Recent runtime migration notes:
   generator inputs, and eager combinations-with-replacement pools with `r`,
   keyword binding, `__index__` r conversion, zero-length tuple behavior,
   empty-pool exhaustion, generator inputs, and eager permutations pools with
-  default `r`, keyword binding, bool/int-subclass `r`, CPython's rejection of
+  default `r`, explicit `r=None` default-length behavior, keyword binding,
+  bool/int-subclass `r`, CPython's rejection of
   arbitrary `__index__` r values, zero-length tuple behavior, oversize-r
   exhaustion, generator inputs, and shared-buffer `tee()` clones with
   interleaved consumption, `n=0` / `n=1` / multi-clone behavior, `n=0`

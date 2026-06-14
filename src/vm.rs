@@ -24689,6 +24689,7 @@ impl Vm {
         let pool = self.collect_iterable_values(iterable)?;
         let n = pool.len();
         let r = match values[1].take() {
+            Some(Value::None) => n,
             Some(value) => self.itertools_permutations_r(value)?,
             None => n,
         };

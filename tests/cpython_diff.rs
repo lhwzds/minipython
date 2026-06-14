@@ -14528,6 +14528,7 @@ print(list(itertools.permutations('ABC', 0)))
 print(list(itertools.permutations('ABC', 4)))
 print(list(itertools.permutations('', 0)))
 print(list(itertools.permutations('', 1)))
+print(list(itertools.permutations([1, 2], None)))
 it = itertools.permutations((value for value in [1, 2, 3]), 2)
 print(next(it), list(it))
 class IntSubclass(int):

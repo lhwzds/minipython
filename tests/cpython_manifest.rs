@@ -4178,8 +4178,9 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         "itertools combinations_with_replacement runtime evidence must cover combinations_with_replacement()"
     );
     assert!(
-        permutations_source.contains("itertools.permutations"),
-        "itertools permutations runtime evidence must cover permutations()"
+        permutations_source.contains("itertools.permutations")
+            && permutations_source.contains("itertools.permutations([1, 2], None)"),
+        "itertools permutations runtime evidence must cover permutations() including r=None"
     );
     assert!(
         tee_source.contains("itertools.tee"),
@@ -4306,8 +4307,9 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         "itertools combinations_with_replacement CPython diff evidence must cover combinations_with_replacement()"
     );
     assert!(
-        permutations_source.contains("itertools.permutations"),
-        "itertools permutations CPython diff evidence must cover permutations()"
+        permutations_source.contains("itertools.permutations")
+            && permutations_source.contains("itertools.permutations([1, 2], None)"),
+        "itertools permutations CPython diff evidence must cover permutations() including r=None"
     );
     assert!(
         tee_source.contains("itertools.tee"),
