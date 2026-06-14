@@ -17386,6 +17386,21 @@ for label, expected, expr in [
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error), str(error) == expected)
+for label, expected, expr in [
+    ('set-missing', ' expected 2 arguments, got 0', lambda: Point.x.__set__()),
+    ('set-one', ' expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
+    ('set-too-many', ' expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
+    ('set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(obj=p, value=1)),
+    ('set-bad-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(bad=1)),
+    ('delete-missing', 'expected 1 argument, got 0', lambda: Point.x.__delete__()),
+    ('delete-too-many', 'expected 1 argument, got 2', lambda: Point.x.__delete__(p, 1)),
+    ('delete-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: Point.x.__delete__(obj=p)),
+    ('delete-bad-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: Point.x.__delete__(bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)
 Point.x.__delete__(p)
 try:
     Point.x.__get__(p, Point)
@@ -17395,6 +17410,10 @@ try:
     Point.x.__set__(object(), 1)
 except TypeError:
     print('descriptor type checked')
+try:
+    Point.x.__delete__(object())
+except TypeError:
+    print('descriptor delete type checked')
 
 class Label:
     __slots__ = 'name'

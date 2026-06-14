@@ -6365,6 +6365,21 @@ for label, expected, expr in [
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error), str(error) == expected)
+for label, expected, expr in [
+    ('set-missing', ' expected 2 arguments, got 0', lambda: Point.x.__set__()),
+    ('set-one', ' expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
+    ('set-too-many', ' expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
+    ('set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(obj=p, value=1)),
+    ('set-bad-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(bad=1)),
+    ('delete-missing', 'expected 1 argument, got 0', lambda: Point.x.__delete__()),
+    ('delete-too-many', 'expected 1 argument, got 2', lambda: Point.x.__delete__(p, 1)),
+    ('delete-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: Point.x.__delete__(obj=p)),
+    ('delete-bad-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: Point.x.__delete__(bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)
 Point.x.__delete__(p)
 try:
     Point.x.__get__(p, Point)
@@ -6374,6 +6389,10 @@ try:
     Point.x.__set__(object(), 1)
 except TypeError:
     print('descriptor type checked')
+try:
+    Point.x.__delete__(object())
+except TypeError:
+    print('descriptor delete type checked')
 
 class Label:
     __slots__ = 'name'
@@ -6463,8 +6482,21 @@ print(d.x)"#
             "bad-keyword TypeError wrapper __get__() takes no keyword arguments True".to_string(),
             "none-only TypeError __get__(None, None) is invalid True".to_string(),
             "none-none TypeError __get__(None, None) is invalid True".to_string(),
+            "set-missing TypeError  expected 2 arguments, got 0 True".to_string(),
+            "set-one TypeError  expected 2 arguments, got 1 True".to_string(),
+            "set-too-many TypeError  expected 2 arguments, got 3 True".to_string(),
+            "set-keyword TypeError wrapper __set__() takes no keyword arguments True".to_string(),
+            "set-bad-keyword TypeError wrapper __set__() takes no keyword arguments True"
+                .to_string(),
+            "delete-missing TypeError expected 1 argument, got 0 True".to_string(),
+            "delete-too-many TypeError expected 1 argument, got 2 True".to_string(),
+            "delete-keyword TypeError wrapper __delete__() takes no keyword arguments True"
+                .to_string(),
+            "delete-bad-keyword TypeError wrapper __delete__() takes no keyword arguments True"
+                .to_string(),
             "descriptor deleted".to_string(),
             "descriptor type checked".to_string(),
+            "descriptor delete type checked".to_string(),
             "mini".to_string(),
             "string slot blocked".to_string(),
             "1 2".to_string(),

@@ -5973,7 +5973,9 @@ Completed in the type builtin pass:
 - Extended the slot runtime coverage to pin CPython member descriptor `__get__`
   behavior for class access, object access with a `None` owner, missing and
   extra positional arguments, keyword rejection, and invalid `None, None`
-  owner paths.
+  owner paths. The same evidence now covers member descriptor `__set__` and
+  `__delete__` method-wrapper arity, keyword, and wrong-object `TypeError`
+  paths.
 - Added `cpython_type_nokwargs_subset`, adapted from
   `TestType::test_type_nokwargs`, covering keyword rejection for the
   three-argument `type()` constructor.

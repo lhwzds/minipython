@@ -11132,6 +11132,12 @@ fn slot_and_namedtuple_descriptor_get_errors_have_diff_evidence() {
         "Point.x.__get__(None)",
         "Point.x.__get__(None, None)",
         "__get__(None, None) is invalid",
+        "Point.x.__set__()",
+        "Point.x.__set__(p, 1, 2)",
+        "wrapper __set__() takes no keyword arguments",
+        "Point.x.__delete__()",
+        "Point.x.__delete__(p, 1)",
+        "wrapper __delete__() takes no keyword arguments",
     ] {
         assert!(
             LANGUAGE_TESTS.contains(required),

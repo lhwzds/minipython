@@ -15668,33 +15668,17 @@ impl Vm {
                 self.member_descriptor_get(descriptor, rest[0].clone(), owner)
             }
             "member_descriptor.__set__" => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(name)
-                    ));
-                }
+                descriptor_set_reject_method_wrapper_args("__set__", rest, &keywords)?;
                 let [object, value] = rest else {
-                    return Err(format!(
-                        "__set__() expected 2 arguments, got {}",
-                        rest.len()
-                    ));
+                    unreachable!("descriptor_set_reject_method_wrapper_args checked arity");
                 };
                 self.member_descriptor_set(descriptor, object.clone(), value.clone())?;
                 Ok(Value::None)
             }
             "member_descriptor.__delete__" => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(name)
-                    ));
-                }
+                descriptor_delete_reject_method_wrapper_args("__delete__", rest, &keywords)?;
                 let [object] = rest else {
-                    return Err(format!(
-                        "__delete__() expected 1 argument, got {}",
-                        rest.len()
-                    ));
+                    unreachable!("descriptor_delete_reject_method_wrapper_args checked arity");
                 };
                 self.member_descriptor_delete(descriptor, object.clone())?;
                 Ok(Value::None)
@@ -47753,6 +47737,44 @@ fn descriptor_get_reject_method_wrapper_args(
     if args.len() > 2 {
         return Err(format!(
             "TypeError:  expected at most 2 arguments, got {}",
+            args.len()
+        ));
+    }
+    Ok(())
+}
+
+fn descriptor_set_reject_method_wrapper_args(
+    method: &str,
+    args: &[Value],
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if !keywords.is_empty() {
+        return Err(format!(
+            "TypeError: wrapper {method}() takes no keyword arguments"
+        ));
+    }
+    if args.len() != 2 {
+        return Err(format!(
+            "TypeError:  expected 2 arguments, got {}",
+            args.len()
+        ));
+    }
+    Ok(())
+}
+
+fn descriptor_delete_reject_method_wrapper_args(
+    method: &str,
+    args: &[Value],
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if !keywords.is_empty() {
+        return Err(format!(
+            "TypeError: wrapper {method}() takes no keyword arguments"
+        ));
+    }
+    if args.len() != 1 {
+        return Err(format!(
+            "TypeError: expected 1 argument, got {}",
             args.len()
         ));
     }
