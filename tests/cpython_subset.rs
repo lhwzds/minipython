@@ -42678,6 +42678,34 @@ fn cpython_functools_lru_cache_keyword_order_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestLRU public argument
+// shape behavior: empty **{} is equivalent to no keywords, while *args shape
+// remains distinct.
+#[test]
+fn cpython_functools_lru_cache_argument_shape_subset() {
+    assert_output(
+        concat!(
+            "from functools import lru_cache\n",
+            "@lru_cache()\n",
+            "def empty_kwargs(value):\n",
+            "    return value\n",
+            "empty_kwargs(0)\n",
+            "empty_kwargs(0, **{})\n",
+            "print(tuple(empty_kwargs.cache_info()))\n",
+            "@lru_cache()\n",
+            "def star_args(*args):\n",
+            "    return args\n",
+            "print(star_args(1, 2), star_args((1, 2)), tuple(star_args.cache_info()))\n",
+            "print(star_args(1, 2), tuple(star_args.cache_info()))"
+        ),
+        &[
+            "(1, 1, 128, 1)",
+            "(1, 2) ((1, 2),) (0, 2, 128, 2)",
+            "(1, 2) (1, 2, 128, 2)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_functools.py::TestLRU public wrapper
 // metadata and helper methods.
 #[test]

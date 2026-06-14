@@ -14179,6 +14179,26 @@ print(kwargs_order(a=1, b=2), tuple(kwargs_order.cache_info()), calls)"#,
 }
 
 #[test]
+fn cpython_functools_lru_cache_argument_shape_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestLRU argument-shape subset",
+        name: "functools-lru-cache-argument-shape",
+        source: r#"from functools import lru_cache
+@lru_cache()
+def empty_kwargs(value):
+    return value
+empty_kwargs(0)
+empty_kwargs(0, **{})
+print(tuple(empty_kwargs.cache_info()))
+@lru_cache()
+def star_args(*args):
+    return args
+print(star_args(1, 2), star_args((1, 2)), tuple(star_args.cache_info()))
+print(star_args(1, 2), tuple(star_args.cache_info()))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cache_wrapper_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cache wrapper public method subset",

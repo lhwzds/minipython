@@ -381,6 +381,7 @@ Recent runtime migration notes:
   `cpython_functools_lru_cache_diff_subset`,
   `cpython_functools_lru_cache_exception_diff_subset`,
   `cpython_functools_lru_cache_keyword_order_diff_subset`,
+  `cpython_functools_lru_cache_argument_shape_diff_subset`,
   `cpython_functools_cache_wrapper_methods_diff_subset`,
   `cpython_functools_cache_wrapper_module_metadata_diff_subset`,
   `cpython_functools_singledispatch_diff_subset`,
@@ -1269,6 +1270,8 @@ Recent runtime migration notes:
   `cpython_functools_lru_cache_exception_subset`,
   `cpython_functools_lru_cache_keyword_order_diff_subset` and
   `cpython_functools_lru_cache_keyword_order_subset`,
+  `cpython_functools_lru_cache_argument_shape_diff_subset` and
+  `cpython_functools_lru_cache_argument_shape_subset`,
   `cpython_functools_cache_wrapper_methods_diff_subset` and
   `cpython_functools_cache_wrapper_methods_subset`, plus gated
   `cpython_functools_cache_wrapper_module_metadata_diff_subset` and
