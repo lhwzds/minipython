@@ -37943,6 +37943,37 @@ fn cpython_itertools_zip_longest_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public islice behavior over
+// pure in-memory iterables.
+#[test]
+fn cpython_itertools_islice_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "print(list(itertools.islice((value for value in range(5)), 1, 5, 2)))\n",
+            "print(list(itertools.islice(range(10), 4)))\n",
+            "print(list(itertools.islice(range(3), None)))\n",
+            "print(list(itertools.islice(range(10), 2, None)))\n",
+            "print(list(itertools.islice(range(10), 1, 8, 3)))\n",
+            "print(list(itertools.islice(itertools.count(10), 2, 8, 2)))\n",
+            "it = iter(range(10))\n",
+            "print(list(itertools.islice(it, 2, 5)), next(it))\n",
+            "s = itertools.islice(range(3), 1)\n",
+            "print(type(s).__name__, iter(s) is s, list(s), list(s))"
+        ),
+        &[
+            "[1, 3]",
+            "[0, 1, 2, 3]",
+            "[0, 1, 2]",
+            "[2, 3, 4, 5, 6, 7, 8, 9]",
+            "[1, 4, 7]",
+            "[12, 14, 16]",
+            "[2, 3, 4] 5",
+            "islice True [0] []",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

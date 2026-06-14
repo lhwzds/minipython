@@ -14657,6 +14657,25 @@ print(list(itertools.zip_longest(left, right, fillvalue=None)), list(left), list
 }
 
 #[test]
+fn cpython_itertools_islice_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public islice subset",
+        name: "itertools-islice",
+        source: r#"import itertools
+print(list(itertools.islice((value for value in range(5)), 1, 5, 2)))
+print(list(itertools.islice(range(10), 4)))
+print(list(itertools.islice(range(3), None)))
+print(list(itertools.islice(range(10), 2, None)))
+print(list(itertools.islice(range(10), 1, 8, 3)))
+print(list(itertools.islice(itertools.count(10), 2, 8, 2)))
+it = iter(range(10))
+print(list(itertools.islice(it, 2, 5)), next(it))
+s = itertools.islice(range(3), 1)
+print(type(s).__name__, iter(s) is s, list(s), list(s))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",
