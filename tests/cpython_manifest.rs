@@ -4292,6 +4292,11 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         "CachedCostItem.__dict__['cost'].__dict__",
         "Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})",
         "def __set_name__(self, owner, name):",
+        "descriptor.__get__(instance=CachedCostItem())",
+        "__get__() missing 1 required positional argument: 'instance'",
+        "__get__() got multiple values for argument 'instance'",
+        "__set_name__() missing 2 required positional arguments: 'owner' and 'name'",
+        "__set_name__() got multiple values for argument 'owner'",
     ] {
         assert!(
             cached_property_diff.contains(required),

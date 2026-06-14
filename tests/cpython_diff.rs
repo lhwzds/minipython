@@ -14035,7 +14035,26 @@ class DynamicDescriptor:
     def __set_name__(self, owner, name):
         calls.append((owner.__name__, name))
 Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})
-print(calls)"#,
+print(calls)
+
+descriptor = CachedCostItem.__dict__['cost']
+print(descriptor.__get__(None, CachedCostItem) is descriptor, descriptor.__get__(None) is descriptor)
+print(descriptor.__get__(instance=CachedCostItem()))
+for label, expected, expr in [
+    ('get-missing', "__get__() missing 1 required positional argument: 'instance'", lambda: descriptor.__get__()),
+    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(CachedCostItem(), CachedCostItem, 1)),
+    ('get-duplicate', "__get__() got multiple values for argument 'instance'", lambda: descriptor.__get__(CachedCostItem(), instance=CachedCostItem())),
+    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+    ('set-missing', "__set_name__() missing 2 required positional arguments: 'owner' and 'name'", lambda: descriptor.__set_name__()),
+    ('set-missing-name', "__set_name__() missing 1 required positional argument: 'name'", lambda: descriptor.__set_name__(CachedCostItem)),
+    ('set-too-many', '__set_name__() takes 3 positional arguments but 4 were given', lambda: descriptor.__set_name__(CachedCostItem, 'other', 1)),
+    ('set-duplicate', "__set_name__() got multiple values for argument 'owner'", lambda: descriptor.__set_name__(CachedCostItem, 'cost', owner=CachedCostItem)),
+    ('set-unknown', "__set_name__() got an unexpected keyword argument 'bad'", lambda: descriptor.__set_name__(bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), str(error) == expected)"#,
     });
 }
 

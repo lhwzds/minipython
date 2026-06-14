@@ -8694,7 +8694,7 @@ impl Vm {
                 self.call_partialmethod_method(&name, args)
             }
             Value::Builtin(name) if name.starts_with("cached_property.") => {
-                self.call_cached_property_method(&name, args)
+                self.call_cached_property_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "code.co_lines" => call_code_lines(args, keywords),
             Value::Builtin(name) if name == "code.co_positions" => {
@@ -15914,6 +15914,7 @@ impl Vm {
         &mut self,
         name: &str,
         args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err(format!(
@@ -15930,22 +15931,103 @@ impl Vm {
 
         match name {
             "cached_property.__get__" => {
-                if rest.is_empty() || rest.len() > 2 {
+                if rest.len() > 2 {
                     return Err(format!(
-                        "__get__() expected 1 or 2 arguments, got {}",
-                        rest.len()
+                        "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                        rest.len() + 1
                     ));
                 }
-                self.cached_property_get(descriptor, rest[0].clone())
+                let mut instance = rest.first().cloned();
+                let mut owner = rest.get(1).cloned();
+                for (keyword, value) in keywords {
+                    match keyword.as_str() {
+                        "instance" => {
+                            if instance.is_some() {
+                                return Err(
+                                    "TypeError: __get__() got multiple values for argument 'instance'"
+                                        .to_string(),
+                                );
+                            }
+                            instance = Some(value);
+                        }
+                        "owner" => {
+                            if owner.is_some() {
+                                return Err(
+                                    "TypeError: __get__() got multiple values for argument 'owner'"
+                                        .to_string(),
+                                );
+                            }
+                            owner = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                            ));
+                        }
+                    }
+                }
+                let Some(instance) = instance else {
+                    return Err(
+                        "TypeError: __get__() missing 1 required positional argument: 'instance'"
+                            .to_string(),
+                    );
+                };
+                let _ = owner;
+                self.cached_property_get(descriptor, instance)
             }
             "cached_property.__set_name__" => {
-                let [owner, attrname] = rest else {
+                if rest.len() > 2 {
                     return Err(format!(
-                        "__set_name__() expected 2 arguments, got {}",
-                        rest.len()
+                        "TypeError: __set_name__() takes 3 positional arguments but {} were given",
+                        rest.len() + 1
                     ));
-                };
-                self.cached_property_set_name(descriptor, owner.clone(), attrname.clone())
+                }
+                let mut owner = rest.first().cloned();
+                let mut attrname = rest.get(1).cloned();
+                for (keyword, value) in keywords {
+                    match keyword.as_str() {
+                        "owner" => {
+                            if owner.is_some() {
+                                return Err(
+                                    "TypeError: __set_name__() got multiple values for argument 'owner'"
+                                        .to_string(),
+                                );
+                            }
+                            owner = Some(value);
+                        }
+                        "name" => {
+                            if attrname.is_some() {
+                                return Err(
+                                    "TypeError: __set_name__() got multiple values for argument 'name'"
+                                        .to_string(),
+                                );
+                            }
+                            attrname = Some(value);
+                        }
+                        _ => {
+                            return Err(format!(
+                                "TypeError: __set_name__() got an unexpected keyword argument '{keyword}'"
+                            ));
+                        }
+                    }
+                }
+                match (owner, attrname) {
+                    (Some(owner), Some(attrname)) => {
+                        self.cached_property_set_name(descriptor, owner, attrname)
+                    }
+                    (None, None) => Err(
+                        "TypeError: __set_name__() missing 2 required positional arguments: 'owner' and 'name'"
+                            .to_string(),
+                    ),
+                    (Some(_), None) => Err(
+                        "TypeError: __set_name__() missing 1 required positional argument: 'name'"
+                            .to_string(),
+                    ),
+                    (None, Some(_)) => Err(
+                        "TypeError: __set_name__() missing 1 required positional argument: 'owner'"
+                            .to_string(),
+                    ),
+                }
             }
             _ => Err(format!("unknown cached_property method: {name}")),
         }
