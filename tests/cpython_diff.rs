@@ -12321,6 +12321,7 @@ class BadIndex:
     def __index__(self):
         return 'x'
 print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))
+print(operator.length_hint(X(NotImplemented)))
 print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))
 for default in [True, False, I(5), -1]:
     print('default', type(default).__name__, repr(operator.length_hint(Y(), default)), repr(operator.length_hint(X(NotImplemented), default)))

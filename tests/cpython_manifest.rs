@@ -5252,6 +5252,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "def __length_hint__(self):",
         "operator.length_hint([], 2)",
         "operator.length_hint(iter([1, 2, 3]))",
+        "operator.length_hint(X(NotImplemented))",
         "operator.length_hint(X(2))",
         "operator.length_hint(X(NotImplemented), 4)",
         "operator.length_hint(X(TypeError), 12)",
@@ -5299,6 +5300,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "def __length_hint__(self):",
         "operator.length_hint([], 2)",
         "operator.length_hint(iter([1, 2, 3]))",
+        "operator.length_hint(X(NotImplemented))",
         "operator.length_hint(X(2))",
         "operator.length_hint(X(NotImplemented), 4)",
         "operator.length_hint(X(TypeError), 12)",
@@ -5355,7 +5357,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("minimal `operator.length_hint()` module API")
             && CPYTHON_MIGRATION.contains("prefers exact `len()` results")
             && CPYTHON_MIGRATION.contains("falls back to custom `__length_hint__`")
-            && CPYTHON_MIGRATION.contains("returns the caller default")
+            && CPYTHON_MIGRATION.contains("returns zero or the caller default")
             && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass/`__index__` defaults")
             && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass hint results")
             && CPYTHON_MIGRATION.contains("rejects non-integer and")

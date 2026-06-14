@@ -39979,6 +39979,7 @@ fn cpython_operator_length_hint_subset() {
             "    def __index__(self):\n",
             "        return 'x'\n",
             "print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))\n",
+            "print(operator.length_hint(X(NotImplemented)))\n",
             "print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))\n",
             "for default in [True, False, I(5), -1]:\n",
             "    print('default', type(default).__name__, repr(operator.length_hint(Y(), default)), repr(operator.length_hint(X(NotImplemented), default)))\n",
@@ -40055,6 +40056,7 @@ fn cpython_operator_length_hint_subset() {
         ),
         &[
             "0 3",
+            "0",
             "2 4 12 10",
             "default bool 1 1",
             "default bool 0 0",

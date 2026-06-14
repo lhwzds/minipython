@@ -1601,7 +1601,7 @@ Completed in the differential parity harness pass:
   from CPython `test_operator.py::OperatorTestCase::test_length_hint` and
   `test_enumerate.py::TestReversed::test_len`. MiniPython now exposes the
   minimal `operator.length_hint()` module API, prefers exact `len()` results,
-  falls back to custom `__length_hint__`, returns the caller default for
+  falls back to custom `__length_hint__`, returns zero or the caller default for
   missing hints, `NotImplemented`, and TypeError hints, normalizes bool/int-subclass/`__index__` defaults,
   normalizes bool/int-subclass hint results to CPython integer results, rejects oversized
   defaults, rejects non-integer and negative hint results while preserving
