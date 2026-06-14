@@ -2327,6 +2327,7 @@ without adding general custom encoder/decoder class support.
   exporter growth while sibling iterators can observe appended bytes, and
   repetition after resizing slice assignment.
 - `STRING_RUNTIME` also includes
+  `cpython_bytearray_mutating_index_safety_subset`, backed by
   `cpython_bytearray_mutating_index_conversion_diff_subset` and
   `cpython_bytearray_mutating_index_safety_diff_subset`, covering current
   CPython `ByteArrayTest::test_mutating_index` and

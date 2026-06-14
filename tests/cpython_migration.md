@@ -3848,7 +3848,8 @@ Completed in the bytearray iterator/repeat regression pass:
 - Added `cpython_bytearray_iterator_length_hint_and_repeat_regressions_subset`,
   adapted from CPython `Lib/test/test_bytes.py::ByteArrayTest::
   test_iterator_length_hint` and `::test_repeat_after_setslice`.
-- Added `cpython_bytearray_exhausted_iterator_subset`, adapted from CPython
+- Added `cpython_bytearray_exhausted_iterator_subset`, backed by
+  `cpython_bytearray_exhausted_iterator_diff_subset` and adapted from CPython
   `Lib/test/test_bytes.py::ByteArrayTest::test_exhausted_iterator`.
 - Covered bytearray iterator remaining-length behavior after the original
   bytearray is cleared, ensuring `list(it)` exhausts cleanly instead of seeing a
@@ -3865,7 +3866,9 @@ Completed in the bytearray iterator/repeat regression pass:
 
 Completed in the bytearray mutating-index safety pass:
 
-- Added `cpython_bytearray_mutating_index_safety_subset`, adapted from current
+- Added `cpython_bytearray_mutating_index_safety_subset`, backed by
+  `cpython_bytearray_mutating_index_conversion_diff_subset` and
+  `cpython_bytearray_mutating_index_safety_diff_subset`, adapted from current
   CPython `Lib/test/test_bytes.py::ByteArrayTest::test_mutating_index` and
   `::test_mutating_index_inbounds`.
 - Extended bytearray single-byte conversion to honor `__index__` for

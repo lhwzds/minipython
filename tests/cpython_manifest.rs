@@ -2496,6 +2496,97 @@ fn cpython_bytearray_iterator_pickle_shared_exporter_diff_covers_runtime_subset(
 }
 
 #[test]
+fn cpython_bytearray_current_regression_diffs_cover_runtime_subsets() {
+    let cases = [
+        (
+            "cpython_bytearray_exhausted_iterator_diff_subset",
+            "cpython_bytearray_exhausted_iterator_subset",
+            &[
+                "a.append(9)",
+                "print(list(exhit), list(empit), a)",
+                "seen.append(next(exhit, 1))",
+            ][..],
+        ),
+        (
+            "cpython_bytearray_mutating_index_conversion_diff_subset",
+            "cpython_bytearray_mutating_index_safety_subset",
+            &[
+                "def __index__(self):",
+                "b.append(Indexable(ord('A')))",
+                "b.insert(1, Indexable(ord('A')))",
+            ][..],
+        ),
+        (
+            "cpython_bytearray_mutating_index_safety_diff_subset",
+            "cpython_bytearray_mutating_index_safety_subset",
+            &[
+                "b[0] = Boom()",
+                "instance.ba[instance] = ord('?')",
+                "instance.ba[instance:1] = [ord('?')]",
+            ][..],
+        ),
+        (
+            "cpython_bytearray_search_reentrancy_buffererror_diff_subset",
+            "cpython_bytearray_search_reentrancy_buffererror_subset",
+            &[
+                "def __buffer__(self, flags):",
+                "self.ba.clear()",
+                "for name in ('find', 'count', 'index', 'rindex', 'rfind')",
+                "for name in ('contains', 'split', 'rsplit')",
+            ][..],
+        ),
+        (
+            "cpython_bytearray_extend_empty_buffer_overflow_diff_subset",
+            "cpython_bytearray_extend_empty_buffer_overflow_subset",
+            &[
+                "def __length_hint__(self):",
+                "ba.extend(EvilIter())",
+                "float(bytearray())",
+            ][..],
+        ),
+    ];
+
+    for (diff_name, subset_name, required_snippets) in cases {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "bytearray current-regression direct CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "bytearray current-regression runtime subset evidence `{subset_name}` must exist"
+        );
+        for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "bytearray docs must link current-regression diff `{diff_name}` to runtime subset `{subset_name}`"
+            );
+        }
+
+        let body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+        for required in required_snippets {
+            assert!(
+                body.contains(required),
+                "bytearray current-regression diff `{diff_name}` must contain `{required}`"
+            );
+        }
+    }
+
+    for required in [
+        "ByteArrayTest::test_mutating_index",
+        "current public `__buffer__` protocol",
+        "historical corrupted-bytearray behavior",
+        "CPython oracle has legacy behavior",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required)
+                || CPYTHON_MIGRATION.contains(required)
+                || CPYTHON_DIFF.contains(required),
+            "bytearray current-regression guard must keep boundary `{required}` visible"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_pickle_roundtrip_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_pickle_roundtrip_diff_subset";
     let subset_name = "cpython_bytes_pickle_roundtrip_subset";
