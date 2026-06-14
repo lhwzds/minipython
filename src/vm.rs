@@ -44,8 +44,8 @@ use crate::value::{
     frame_locals_proxy_value, frozen_set_value, generic_alias_subclass_alias,
     identity_string_value, list_value, mapping_proxy_value, mapping_view_value,
     memory_view_from_byte_array, memory_view_from_parts_with_exported_bytearray,
-    memory_view_from_parts_with_format, memory_view_value, ordered_dict_view_value, set_value,
-    tuple_value,
+    memory_view_from_parts_with_exported_bytearray_and_ndim, memory_view_from_parts_with_format,
+    memory_view_value, ordered_dict_view_value, set_value, tuple_value,
 };
 use encoding_rs::Encoding;
 use num_bigint::{BigInt, BigUint};
@@ -737,7 +737,25 @@ fn memoryview_len(view: &MemoryViewRef) -> Result<usize, String> {
     if view.released {
         return Err(released_memoryview_error());
     }
+    if view.ndim == 0 {
+        return Err("TypeError: 0-dim memory has no length".to_string());
+    }
     Ok(view.len)
+}
+
+fn memoryview_check_released(view: &MemoryViewRef) -> Result<(), String> {
+    if view.borrow().released {
+        return Err(released_memoryview_error());
+    }
+    Ok(())
+}
+
+fn memoryview_ndim(view: &MemoryViewRef) -> Result<usize, String> {
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    Ok(view.ndim)
 }
 
 fn memoryview_itemsize(view: &MemoryViewRef) -> Result<usize, String> {
@@ -758,9 +776,13 @@ fn memoryview_itemsize_for_format(format: &str) -> Result<usize, String> {
 }
 
 fn memoryview_nbytes(view: &MemoryViewRef) -> Result<usize, String> {
-    let len = memoryview_len(view)?;
-    let itemsize = memoryview_itemsize(view)?;
-    len.checked_mul(itemsize)
+    let view = view.borrow();
+    if view.released {
+        return Err(released_memoryview_error());
+    }
+    let itemsize = memoryview_itemsize_for_format(&view.format)?;
+    view.len
+        .checked_mul(itemsize)
         .ok_or_else(|| "memoryview byte length is too large".to_string())
 }
 
@@ -950,6 +972,9 @@ fn memoryview_values(view: &MemoryViewRef) -> Result<Vec<Value>, String> {
 }
 
 fn memoryview_list_value(view: &MemoryViewRef) -> Result<Value, String> {
+    if memoryview_ndim(view)? == 0 {
+        return memoryview_item_value(view, Value::Number(0));
+    }
     Ok(list_value(memoryview_values(view)?))
 }
 
@@ -16601,7 +16626,7 @@ impl Vm {
                     self.load_memoryview_slice_subscript(view.clone(), start, stop, step)
                 }
                 index => {
-                    let index = self.memoryview_tuple_subscript_index(index, false)?;
+                    let index = self.memoryview_tuple_subscript_index(view, index, false)?;
                     load_subscript(object, index)
                 }
             };
@@ -16700,7 +16725,7 @@ impl Vm {
                     store_subscript(object, index, value)
                 }
                 index => {
-                    let index = self.memoryview_tuple_subscript_index(index, true)?;
+                    let index = self.memoryview_tuple_subscript_index(view, index, true)?;
                     self.store_memoryview_item_value(view.clone(), index, value)
                 }
             };
@@ -16799,14 +16824,21 @@ impl Vm {
 
     fn memoryview_tuple_subscript_index(
         &mut self,
+        view: &MemoryViewRef,
         index: Value,
         assignment: bool,
     ) -> Result<Value, String> {
         let Value::Tuple(items) = index else {
+            if memoryview_ndim(view)? == 0 {
+                return Err("TypeError: invalid indexing of 0-dim memory".to_string());
+            }
             return self.maybe_index_integer_value(index);
         };
 
         if items.is_empty() {
+            if memoryview_ndim(view)? == 0 {
+                return Ok(Value::Number(0));
+            }
             return Err("NotImplementedError: sub-views are not implemented".to_string());
         }
 
@@ -18448,7 +18480,7 @@ impl Vm {
                 if view.released {
                     return Err(released_memoryview_error());
                 }
-                Ok(memory_view_from_parts_with_exported_bytearray(
+                Ok(memory_view_from_parts_with_exported_bytearray_and_ndim(
                     view.bytes.clone(),
                     view.obj.clone(),
                     view.exported_bytearray.clone(),
@@ -18457,6 +18489,7 @@ impl Vm {
                     view.stride,
                     view.readonly,
                     view.format.clone(),
+                    view.ndim,
                 ))
             }
             value => Err(format!(
@@ -19019,7 +19052,7 @@ impl Vm {
                 if view.released {
                     return Err(released_memoryview_error());
                 }
-                Ok(memory_view_from_parts_with_exported_bytearray(
+                Ok(memory_view_from_parts_with_exported_bytearray_and_ndim(
                     view.bytes.clone(),
                     view.obj.clone(),
                     view.exported_bytearray.clone(),
@@ -19028,6 +19061,7 @@ impl Vm {
                     view.stride,
                     true,
                     view.format.clone(),
+                    view.ndim,
                 ))
             }
             "memoryview.release" => {
@@ -19047,7 +19081,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                memoryview_len(view)?;
+                memoryview_check_released(view)?;
                 Ok(receiver.clone())
             }
             "memoryview.__exit__" => {
@@ -19064,6 +19098,9 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if memoryview_ndim(view)? == 0 {
+                    return Err("TypeError: invalid indexing of 0-dim memory".to_string());
+                }
                 let bytes = memoryview_bytes(view)?;
                 let needle = self.memoryview_element_byte(view, needle.clone())?;
                 let count = if let Some(needle) = needle {
@@ -19089,6 +19126,9 @@ impl Vm {
                     ));
                 }
 
+                if memoryview_ndim(view)? == 0 {
+                    return Err("TypeError: invalid indexing of 0-dim memory".to_string());
+                }
                 let bytes = memoryview_bytes(view)?;
                 let needle = self.memoryview_element_byte(view, needle.clone())?;
                 let Some(needle) = needle else {
@@ -19111,6 +19151,12 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
+                if memoryview_ndim(view)? == 0 {
+                    return Err(
+                        "TypeError: argument of type 'memoryview' is not a container or iterable"
+                            .to_string(),
+                    );
+                }
                 let bytes = memoryview_bytes(view)?;
                 let needle = self.memoryview_element_byte(view, needle.clone())?;
                 Ok(Value::Bool(
@@ -19301,8 +19347,8 @@ impl Vm {
         let byte_len = len
             .checked_mul(memoryview_itemsize_for_format(&view_state.format)?)
             .ok_or_else(|| "memoryview byte length is too large".to_string())?;
-        let cast_len = self.memoryview_cast_shape_len(shape, byte_len)?;
-        Ok(memory_view_from_parts_with_exported_bytearray(
+        let (cast_len, ndim) = self.memoryview_cast_shape_len(shape, byte_len)?;
+        Ok(memory_view_from_parts_with_exported_bytearray_and_ndim(
             view_state.bytes.clone(),
             view_state.obj.clone(),
             view_state.exported_bytearray.clone(),
@@ -19311,6 +19357,7 @@ impl Vm {
             1,
             view_state.readonly,
             format,
+            ndim,
         ))
     }
 
@@ -19318,9 +19365,9 @@ impl Vm {
         &mut self,
         shape: Option<Value>,
         expected_len: usize,
-    ) -> Result<usize, String> {
+    ) -> Result<(usize, usize), String> {
         let Some(shape) = shape else {
-            return Ok(expected_len);
+            return Ok((expected_len, 1));
         };
         let values = match shape {
             Value::List(items) => items.borrow().clone(),
@@ -19339,10 +19386,7 @@ impl Vm {
         };
         if values.is_empty() {
             if expected_len == 1 {
-                return Err(
-                    "NotImplementedError: zero-dimensional memoryview casts are not supported"
-                        .to_string(),
-                );
+                return Ok((1, 0));
             }
             return Err(
                 "TypeError: memoryview: product(shape) * itemsize != buffer size".to_string(),
@@ -19387,7 +19431,7 @@ impl Vm {
                 "TypeError: memoryview: product(shape) * itemsize != buffer size".to_string(),
             );
         }
-        Ok(len)
+        Ok((len, 1))
     }
 
     fn memoryview_byte_argument(&mut self, value: Value) -> Result<Option<u8>, String> {
@@ -53348,20 +53392,28 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "itemsize" => Ok(Value::Number(
                 i64::try_from(memoryview_itemsize(&view)?).unwrap_or(i64::MAX),
             )),
-            "ndim" => {
-                memoryview_len(&view)?;
-                Ok(Value::Number(1))
+            "ndim" => Ok(Value::Number(
+                i64::try_from(memoryview_ndim(&view)?).unwrap_or(i64::MAX),
+            )),
+            "shape" => {
+                if memoryview_ndim(&view)? == 0 {
+                    Ok(tuple_value(Vec::new()))
+                } else {
+                    Ok(tuple_value(vec![Value::Number(
+                        i64::try_from(memoryview_len(&view)?).unwrap_or(i64::MAX),
+                    )]))
+                }
             }
-            "shape" => Ok(tuple_value(vec![Value::Number(
-                i64::try_from(memoryview_len(&view)?).unwrap_or(i64::MAX),
-            )])),
             "strides" => {
+                if memoryview_ndim(&view)? == 0 {
+                    return Ok(tuple_value(Vec::new()));
+                }
                 let stride = i64::try_from(memoryview_stride(&view)?)
                     .map_err(|_| "memoryview stride is too large".to_string())?;
                 Ok(tuple_value(vec![Value::Number(stride)]))
             }
             "suboffsets" => {
-                memoryview_len(&view)?;
+                memoryview_check_released(&view)?;
                 Ok(tuple_value(Vec::new()))
             }
             "readonly" => Ok(Value::Bool(memoryview_readonly(&view)?)),
@@ -74580,7 +74632,12 @@ fn get_iter(value: Value) -> Result<Value, String> {
         value if array_array_values(&value).is_some() => Ok(list_iterator_from_values(
             array_array_values(&value).expect("array storage exists after guard"),
         )),
-        Value::MemoryView(view) => Ok(list_iterator_from_values(memoryview_values(&view)?)),
+        Value::MemoryView(view) => {
+            if memoryview_ndim(&view)? == 0 {
+                return Err("TypeError: invalid indexing of 0-dim memory".to_string());
+            }
+            Ok(list_iterator_from_values(memoryview_values(&view)?))
+        }
         Value::GenericAlias {
             origin,
             args,

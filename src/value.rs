@@ -87,6 +87,7 @@ pub struct MemoryViewState {
     pub exported_bytearray: Option<ByteArrayRef>,
     pub hash_cache: Option<Vec<u8>>,
     pub format: String,
+    pub ndim: usize,
     pub offset: usize,
     pub len: usize,
     pub stride: isize,
@@ -345,6 +346,30 @@ pub fn memory_view_from_parts_with_exported_bytearray(
     readonly: bool,
     format: String,
 ) -> Value {
+    memory_view_from_parts_with_exported_bytearray_and_ndim(
+        bytes,
+        obj,
+        exported_bytearray,
+        offset,
+        len,
+        stride,
+        readonly,
+        format,
+        1,
+    )
+}
+
+pub fn memory_view_from_parts_with_exported_bytearray_and_ndim(
+    bytes: ByteArrayRef,
+    obj: Value,
+    exported_bytearray: Option<ByteArrayRef>,
+    offset: usize,
+    len: usize,
+    stride: isize,
+    readonly: bool,
+    format: String,
+    ndim: usize,
+) -> Value {
     if let Some(bytearray) = &exported_bytearray {
         bytearray.borrow_mut().retain_export();
     }
@@ -354,6 +379,7 @@ pub fn memory_view_from_parts_with_exported_bytearray(
         exported_bytearray,
         hash_cache: None,
         format,
+        ndim,
         offset,
         len,
         stride,

@@ -1376,7 +1376,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `str` subclass format and tuple subclass shape arguments, CPython invalid
   format type error text, invalid `shape` boundary errors including explicit
   `None` rejection and rejection of non-`int` objects with `__index__`,
-  format-aware `tolist()`, scalar indexing,
+  zero-dimensional single-element casts with CPython-compatible `ndim`,
+  `shape`, `strides`, `suboffsets`, `nbytes`, `tolist()`, `tobytes()`,
+  `m[()]`, invalid numeric indexing errors, and dimension
+  preservation through `toreadonly()` / `memoryview(m)`, format-aware
+  `tolist()`, scalar indexing,
   iteration, reversed iteration, membership, writable `c`-format item and slice
   assignment, format preservation through `memoryview(m)`, slicing, and
   `toreadonly()`, plus CPython-style rejection of non-contiguous casts. The

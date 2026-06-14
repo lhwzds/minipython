@@ -23194,6 +23194,19 @@ print(memoryview(b'abc').cast(Format('B')).tolist())
 print(memoryview(b'abc').cast('B', [3]).tolist())
 print(memoryview(b'abc').cast('B', shape=(3,)).tolist())
 print(memoryview(b'abc').cast('B', Shape((3,))).tolist())
+zero = memoryview(b'a').cast('B', shape=[])
+print(zero.format, zero.itemsize, zero.ndim, zero.shape, zero.strides, zero.suboffsets, zero.nbytes, zero.readonly)
+print(zero.tolist(), zero.tobytes(), zero[()])
+readonly_zero = zero.toreadonly()
+copy_zero = memoryview(zero)
+print(readonly_zero.ndim, readonly_zero.shape, readonly_zero.tolist(), copy_zero.ndim, copy_zero.tolist())
+for label, expr in [
+    ('index', lambda: zero[0]),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(label, error.__class__.__name__, str(error))
 for expr in [
     lambda: memoryview(b'abc').cast(7),
     lambda: memoryview(b'abc').cast(FormatBytes(b'B')),
