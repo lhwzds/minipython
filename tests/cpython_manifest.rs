@@ -7,6 +7,7 @@ const CPYTHON_MIGRATION: &str = include_str!("cpython_migration.md");
 const CPYTHON_DIFF: &str = include_str!("cpython_diff.rs");
 const CPYTHON_SUBSET: &str = include_str!("cpython_subset.rs");
 const LANGUAGE_TESTS: &str = include_str!("language.rs");
+const AGENTS: &str = include_str!("../AGENTS.md");
 const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
@@ -3887,6 +3888,48 @@ fn cpython_docs_mention_all_sandbox_stdlib_excluded_surfaces() {
                     "{document_name} document must mention {module} excluded surface `{term}`"
                 );
             }
+        }
+    }
+}
+
+#[test]
+fn agent_and_readme_scope_docs_keep_sandbox_stop_lines() {
+    for (document_name, document) in [
+        ("AGENTS.md", AGENTS),
+        ("README.md", README),
+        ("README_CN.md", README_CN),
+    ] {
+        for required in [
+            "sandbox",
+            "CPython",
+            "cpython_diff",
+            "builtins",
+            "sys",
+            "types",
+            "collections",
+            "math",
+            "array",
+            "copy",
+            "io.BytesIO",
+            "operator",
+            "functools",
+            "itertools",
+            "json",
+            "open()",
+            "input()",
+            "socket",
+            "subprocess",
+            "signal",
+            "_ctypes",
+            "_testcapi",
+            "pdb",
+            "breakpoint",
+            "locale",
+        ] {
+            assert!(
+                document.contains(required),
+                "{document_name} must keep sandbox scope term `{required}` documented"
+            );
         }
     }
 }

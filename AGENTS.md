@@ -30,7 +30,7 @@ Do not implement by default:
   specialization, and exact `co_stacksize`.
 - Default `pdb` integration or full `breakpoint()` environment-variable
   behavior.
-- Locale-sensitive behavior unless it is explicitly promoted into scope.
+- locale-sensitive behavior unless it is explicitly promoted into scope.
 
 ## Evidence Rules
 

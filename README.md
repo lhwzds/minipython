@@ -51,7 +51,7 @@ Out of scope by default:
   `co_stacksize`.
 - Default `pdb` integration and full `breakpoint()` environment-variable
   behavior.
-- Locale-sensitive behavior unless it is explicitly promoted into the sandbox
+- locale-sensitive behavior unless it is explicitly promoted into the sandbox
   runtime requirements.
 
 ## Install
