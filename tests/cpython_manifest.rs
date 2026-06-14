@@ -5100,6 +5100,112 @@ fn json_loads_escape_unicode_docs_cover_parsing_boundaries() {
 }
 
 #[test]
+fn json_strict_and_option_truthiness_docs_cover_boundaries() {
+    let boundary_pairs = [
+        (
+            "cpython_json_loads_strict_diff_subset",
+            "cpython_json_loads_strict_subset",
+        ),
+        (
+            "cpython_json_option_truthiness_diff_subset",
+            "cpython_json_option_truthiness_subset",
+        ),
+    ];
+
+    for (diff_name, subset_name) in boundary_pairs {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+            "json strict/truthiness CPython diff evidence `{diff_name}` must exist"
+        );
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+            "json strict/truthiness runtime subset evidence `{subset_name}` must exist"
+        );
+    }
+
+    for required in [
+        "chr(10)",
+        "chr(9)",
+        "chr(0)",
+        "strict in [True, 1, False, 0, []]",
+        "json.loads(source, strict=strict)",
+        "json.loads('{}', strict=False, unknown=1)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json strict diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "class Truth:",
+        "class Falsey:",
+        "class Boom:",
+        "ensure_ascii=Truth()",
+        "allow_nan=Falsey()",
+        "skipkeys=Truth()",
+        "sort_keys=Truth()",
+        "check_circular=Falsey()",
+        "strict=Truth()",
+        "strict=Falsey()",
+        "strict=Boom()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json option truthiness diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"True True\"",
+        "\"False 'a\\\\nb'\"",
+        "\"False 'a\\\\tb'\"",
+        "\"False 'a\\\\x00b'\"",
+        "\"False {'x': 'a\\\\nb'}\"",
+        "\"[] 'a\\\\nb'\"",
+        "\"unknown TypeError True\"",
+        "\"ensure-boom ValueError True\"",
+        "\"allow-false ValueError True\"",
+        "\"skip-true {\\\"a\\\":1}\"",
+        "\"sort-true {\\\"a\\\": 2, \\\"b\\\": 1}\"",
+        "\"circular-false RecursionError False\"",
+        "\"strict-true True\"",
+        "\"strict-false 'a\\\\nb'\"",
+        "\"strict-boom ValueError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json strict/truthiness subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for (diff_name, subset_name) in boundary_pairs {
+            assert!(
+                document.contains(diff_name) && document.contains(subset_name),
+                "json docs must link `{diff_name}` to `{subset_name}`"
+            );
+        }
+        for required in [
+            "`loads(strict=...)` raw control-character handling",
+            "newline, tab, and NUL characters in strings and object values",
+            "truthy strict values rejecting raw controls",
+            "falsey strict values accepting raw controls",
+            "unknown keyword `TypeError` classification still taking precedence",
+            "JSON option truthiness through public `__bool__` dispatch",
+            "`ensure_ascii`, `allow_nan`, `skipkeys`, `sort_keys`, `check_circular`, and `strict`",
+            "propagated `__bool__` exceptions",
+            "without adding unsupported options or locale-sensitive truth behavior",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe strict/truthiness boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_dumps_options_diff_covers_subset_surface() {
     let option_pairs = [
         (

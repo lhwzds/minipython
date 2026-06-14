@@ -1048,6 +1048,15 @@ BMP escapes and valid surrogate-pair non-BMP escapes, object keys and values dec
 and `dumps(..., ensure_ascii=True)` and `ensure_ascii=False` round trips,
 without adding unpaired surrogate storage or full decoder customization.
 
+`cpython_json_loads_strict_subset`, backed by
+`cpython_json_loads_strict_diff_subset`, keeps `loads(strict=...)` raw control-character handling for
+newline, tab, and NUL characters in strings and object values, truthy strict values rejecting raw controls,
+falsey strict values accepting raw controls, and unknown keyword `TypeError` classification still taking precedence.
+`cpython_json_option_truthiness_subset`, backed by
+`cpython_json_option_truthiness_diff_subset`, keeps JSON option truthiness through public `__bool__` dispatch for
+`ensure_ascii`, `allow_nan`, `skipkeys`, `sort_keys`, `check_circular`, and `strict`,
+including propagated `__bool__` exceptions, without adding unsupported options or locale-sensitive truth behavior.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
