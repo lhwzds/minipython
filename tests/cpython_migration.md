@@ -127,7 +127,8 @@ expanding into arbitrary encoder or mapping-protocol support.
 `separators` unpacking from two-string list/tuple values, subclasses, and
 general iterables such as tuple iterators, custom iterables, and generators,
 plus CPython's unpack length `ValueError` text for 0-, 1-, and 3-item
-separator sequences and item/key separator element `TypeError` text.
+separator sequences, non-iterable separator `TypeError` text, and item/key
+separator element `TypeError` text.
 
 `cpython_json_dumps_indent_subset`, backed by
 `cpython_json_dumps_indent_diff_subset`, now covers CPython public `indent`

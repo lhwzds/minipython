@@ -58880,7 +58880,18 @@ fn json_dumps_apply_separators(
             .expect("list subclass storage exists after guard")
             .borrow()
             .clone(),
-        value => vm.collect_iterable_values_propagating(value.clone())?,
+        value => vm
+            .collect_iterable_values_propagating(value.clone())
+            .map_err(|error| {
+                if error.ends_with(" is not iterable") {
+                    format!(
+                        "TypeError: cannot unpack non-iterable {} object",
+                        type_name(value)
+                    )
+                } else {
+                    error
+                }
+            })?,
     };
     let [item_separator, key_separator] = values.as_slice() else {
         let got = values.len();

@@ -34092,7 +34092,7 @@ fn cpython_json_dumps_sort_keys_subset() {
 #[test]
 fn cpython_json_dumps_separators_subset() {
     assert_output(
-        "import json\nclass Sep(str):\n    pass\nclass SepList(list):\n    pass\nclass SepTuple(tuple):\n    pass\nclass SepIter:\n    def __iter__(self):\n        return iter((',', ':'))\nclass SepGen:\n    def __iter__(self):\n        yield ','\n        yield ':'\nvalue = {'b': [1, 2], 'a': {'é': '𝄠'}}\nfor separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), SepList([',', ':']), SepTuple((Sep(' / '), Sep(' -> ')))]:\n    print(json.dumps(value, separators=separators))\nfor separators in [iter((',', ':')), SepIter(), SepGen()]:\n    print(json.dumps({'b': [1, 2], 'a': 3}, separators=separators, sort_keys=True))\nprint(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\n# CPython oracle text: not enough values to unpack (expected 2, got 0); too many values to unpack (expected 2); make_encoder() argument 6 must be str, not int; make_encoder() argument 5 must be str, not int\nfor separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', (1, ':'), (',', 1)]:\n    try:\n        json.dumps(value, separators=separators)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, (TypeError, ValueError)), str(error))",
+        "import json\nclass Sep(str):\n    pass\nclass SepList(list):\n    pass\nclass SepTuple(tuple):\n    pass\nclass SepIter:\n    def __iter__(self):\n        return iter((',', ':'))\nclass SepGen:\n    def __iter__(self):\n        yield ','\n        yield ':'\nvalue = {'b': [1, 2], 'a': {'é': '𝄠'}}\nfor separators in [None, (',', ':'), [',', ': '], (Sep(' | '), Sep(' => ')), SepList([',', ':']), SepTuple((Sep(' / '), Sep(' -> ')))]:\n    print(json.dumps(value, separators=separators))\nfor separators in [iter((',', ':')), SepIter(), SepGen()]:\n    print(json.dumps({'b': [1, 2], 'a': 3}, separators=separators, sort_keys=True))\nprint(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\n# CPython oracle text: not enough values to unpack (expected 2, got 0); too many values to unpack (expected 2); cannot unpack non-iterable int object; make_encoder() argument 6 must be str, not int; make_encoder() argument 5 must be str, not int\nfor separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', 7, object(), (1, ':'), (',', 1)]:\n    try:\n        json.dumps(value, separators=separators)\n    except Exception as error:\n        print(type(error).__name__, isinstance(error, (TypeError, ValueError)), str(error))",
         &[
             "{\"b\": [1, 2], \"a\": {\"\\u00e9\": \"\\ud834\\udd20\"}}",
             "{\"b\":[1,2],\"a\":{\"\\u00e9\":\"\\ud834\\udd20\"}}",
@@ -34111,6 +34111,8 @@ fn cpython_json_dumps_separators_subset() {
             "ValueError True too many values to unpack (expected 2)",
             "ValueError True too many values to unpack (expected 2)",
             "ValueError True too many values to unpack (expected 2)",
+            "TypeError True cannot unpack non-iterable int object",
+            "TypeError True cannot unpack non-iterable object object",
             "TypeError True make_encoder() argument 6 must be str, not int",
             "TypeError True make_encoder() argument 5 must be str, not int",
         ],
