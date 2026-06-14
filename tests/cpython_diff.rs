@@ -23303,6 +23303,24 @@ for lhs_fmt, rhs_fmt, rhs_data in [
         print('slice-compat', lhs_fmt, rhs_fmt, 'OK', b[:lhs.itemsize], lhs.tolist()[0])
     except ValueError as error:
         print('slice-compat', lhs_fmt, rhs_fmt, error.__class__.__name__, str(error))
+for lhs_fmt, rhs in [
+    ('@h', array.array('h', [3])),
+    ('@I', array.array('I', [255])),
+    ('@d', array.array('d', [2.5])),
+]:
+    b = bytearray(8)
+    lhs = memoryview(b).cast(lhs_fmt)
+    lhs[0:1] = rhs
+    print('array-direct-rhs', lhs_fmt, rhs.typecode, 'OK', b[:lhs.itemsize], lhs.tolist()[0])
+for lhs_fmt, rhs in [
+    ('@h', memoryview(array.array('h', [3]))),
+    ('@I', memoryview(array.array('I', [255]))),
+    ('@d', memoryview(array.array('d', [2.5]))),
+]:
+    b = bytearray(8)
+    lhs = memoryview(b).cast(lhs_fmt)
+    lhs[0:1] = rhs
+    print('array-view-rhs', lhs_fmt, rhs.format, 'OK', b[:lhs.itemsize], lhs.tolist()[0])
 def assign_h_float():
     m = memoryview(bytearray(2)).cast('@h')
     m[0] = 1.5

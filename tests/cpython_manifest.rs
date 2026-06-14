@@ -1871,6 +1871,8 @@ fn cpython_memoryview_cast_native_formats_diff_covers_runtime_subset() {
         "memoryview(base).cast('@c')",
         "lhs[0:1] = rhs",
         "slice-compat",
+        "array-direct-rhs",
+        "array-view-rhs",
         "def assign_h_float():",
         "def assign_d_object():",
         "memoryview(b'a').cast('h')",
