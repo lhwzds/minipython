@@ -367,6 +367,7 @@ Recent runtime migration notes:
   `cpython_functools_partial_diff_subset`,
   `cpython_functools_partial_instance_module_metadata_diff_subset`,
   `cpython_functools_reduce_diff_subset`,
+  `cpython_functools_reduce_initial_keyword_diff_subset`,
   `cpython_functools_cmp_to_key_diff_subset`,
   `cpython_functools_update_wrapper_wraps_diff_subset`,
   `cpython_functools_total_ordering_diff_subset`,
@@ -1231,13 +1232,13 @@ Recent runtime migration notes:
   fallback.
 - The bundled `functools` module also includes
   `cpython_functools_reduce_diff_subset` and
-  `cpython_functools_reduce_subset`, covering CPython
+  `cpython_functools_reduce_subset`, plus
+  `cpython_functools_reduce_initial_keyword_subset` and newer-oracle-gated
+  `cpython_functools_reduce_initial_keyword_diff_subset`, covering CPython
   `test_functools.py::TestReduce` public reduction behavior over built-in
-  iterables, sequence-protocol iterables, dictionaries, positional initializer
+  iterables, sequence-protocol iterables, dictionaries, positional and keyword initializer
   values, empty-input errors, non-callable edge cases, and propagated
-  iterator/function exceptions. The local subset also covers current CPython
-  keyword `initial` binding, which stays out of the default diff because older
-  system CPython oracles do not expose that keyword.
+  iterator/function exceptions.
 - The bundled `functools` module also includes
   `cpython_functools_singledispatch_diff_subset` and
   `cpython_functools_singledispatch_subset`, covering CPython

@@ -42147,6 +42147,7 @@ fn cpython_functools_reduce_subset() {
             "print(reduce(add, Squares(10)), reduce(add, Squares(10), 0), reduce(add, Squares(0), 0))\n",
             "print(reduce(42, '1'), reduce(42, '', '1'))\n",
             "print(reduce(add, [], None), reduce(add, [], 42))\n",
+            "print(reduce(add, [1, 2], initial=10), reduce(add, [], initial=42))\n",
             "class SequenceClass:\n",
             "    def __init__(self, n):\n",
             "        self.n = n\n",
@@ -42167,6 +42168,7 @@ fn cpython_functools_reduce_subset() {
             "285 285 0",
             "1 1",
             "None 42",
+            "13 42",
             "10 52",
             "42 0 42",
             "onetwothree onetwothree",
@@ -42236,6 +42238,14 @@ fn cpython_functools_reduce_subset() {
             "RuntimeError",
             "ValueError",
         ],
+    );
+}
+
+#[test]
+fn cpython_functools_reduce_initial_keyword_subset() {
+    assert_output(
+        "from functools import reduce\nfrom operator import add\nprint(reduce(add, [1, 2], initial=10))\nprint(reduce(add, [], initial=42))\ntry:\n    reduce(add, [1], 2, initial=3)\nexcept TypeError as error:\n    print(type(error).__name__)",
+        &["13", "42", "TypeError"],
     );
 }
 

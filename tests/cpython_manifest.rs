@@ -3666,6 +3666,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_functools_cached_property_subset",
             "cpython_functools_cached_property_module_metadata_subset",
             "cpython_functools_reduce_subset",
+            "cpython_functools_reduce_initial_keyword_subset",
             "cpython_functools_singledispatch_subset",
             "cpython_functools_singledispatchmethod_subset",
         ],
@@ -3689,6 +3690,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_functools_cached_property_diff_subset",
         "cpython_functools_cached_property_module_metadata_diff_subset",
         "cpython_functools_reduce_diff_subset",
+        "cpython_functools_reduce_initial_keyword_diff_subset",
         "cpython_functools_singledispatch_diff_subset",
         "cpython_functools_singledispatchmethod_diff_subset",
     ] {
@@ -3757,6 +3759,22 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             reduce_diff.contains(required),
             "functools reduce CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let reduce_initial_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_reduce_initial_keyword_diff_subset",
+    );
+    for required in [
+        "reduce(add, [1, 2], initial=10)",
+        "reduce(add, [], initial=42)",
+        "CPython oracle lacks reduce(initial=...)",
+        "reduce(add, [1], 2, initial=3)",
+    ] {
+        assert!(
+            reduce_initial_diff.contains(required),
+            "functools reduce initial-keyword gated diff evidence must cover `{required}`"
         );
     }
 

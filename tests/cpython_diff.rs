@@ -13315,6 +13315,33 @@ for check in [lambda: reduce(add, TestFailingIter()), lambda: reduce(42, BadSeq(
 }
 
 #[test]
+fn cpython_functools_reduce_initial_keyword_diff_subset() {
+    let probe = run_cpython(
+        "from functools import reduce\nfrom operator import add\nprint(reduce(add, [1, 2], initial=10))",
+    )
+    .expect("failed to probe CPython functools.reduce initial keyword support");
+    if !probe.status.success() {
+        eprintln!(
+            "skipping functools.reduce initial keyword diff: CPython oracle lacks reduce(initial=...)"
+        );
+        return;
+    }
+    assert_cpython_output_parity(&DiffCase {
+        origin: "newer CPython functools.reduce initial keyword public subset",
+        name: "functools-reduce-initial-keyword",
+        source: r#"from functools import reduce
+from operator import add
+
+print(reduce(add, [1, 2], initial=10))
+print(reduce(add, [], initial=42))
+try:
+    reduce(add, [1], 2, initial=3)
+except TypeError as error:
+    print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cmp_to_key_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestCmpToKey public subset",
