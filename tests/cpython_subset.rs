@@ -24403,7 +24403,7 @@ fn cpython_runtime_exception_capture_subset() {
     );
     assert_output(
         "try:\n    1(2)\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
-        &["TypeError 1 is not callable"],
+        &["TypeError 'int' object is not callable"],
     );
     assert_output(
         "for label, expr in [\n    ('list-iter-extra', lambda: list.__iter__([], 1)),\n    ('dict-keys-extra', lambda: dict.keys({}, 1)),\n    ('dict-keys-keyword', lambda: dict.keys({}, bad=1)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, isinstance(error, TypeError))",

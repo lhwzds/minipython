@@ -10690,10 +10690,10 @@ impl Vm {
                 if let Some(method) = instance_special_method(&value, "__call__") {
                     self.call_value_with_keywords(method, args, keywords)
                 } else {
-                    Err(format!("{value} is not callable"))
+                    Err(format!("'{}' object is not callable", type_name(&value)))
                 }
             }
-            value => Err(format!("{value} is not callable")),
+            value => Err(format!("'{}' object is not callable", type_name(&value))),
         }
     }
 
