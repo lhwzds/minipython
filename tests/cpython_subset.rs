@@ -16053,7 +16053,7 @@ except TypeError as error:
 // CPython's stack-limit support helpers.
 #[test]
 fn cpython_ast_deepcopy_parent_links_first_pass_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import ast
 import copy
 
@@ -16120,6 +16120,7 @@ print(checked > 0, same_parent == checked, structural_parent == checked)
 print(any(hasattr(node, "parent") for node in ast.walk(tree)))
 print(isinstance(ast.Add(), ast.operator), isinstance(ast.And(), ast.boolop), isinstance(ast.Not(), ast.unaryop), isinstance(ast.Eq(), ast.cmpop))"#,
         &["False", "True True True", "False", "True True True True"],
+        16 * 1024 * 1024,
     );
 }
 
@@ -16285,7 +16286,7 @@ print(checked, len(codes) * (pickle.HIGHEST_PROTOCOL + 1))"#,
 
 #[test]
 fn cpython_ast_copy_with_parents_exact_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import ast
 import copy
 
@@ -16342,6 +16343,7 @@ for node in ast.walk(tree2):
                 matched += 1
 print(checked > 0, matched == checked, any(hasattr(node, "parent") for node in ast.walk(tree)))"#,
         &["True True False"],
+        16 * 1024 * 1024,
     );
 }
 
@@ -16673,7 +16675,7 @@ print(ast.TypeVar._fields, ast.TypeVarTuple._fields, ast.ParamSpec._fields)"#,
 // direct abstract-class edge, `_fields`, and ASDL-backed `_attributes` tuple.
 #[test]
 fn cpython_ast_asdl_inventory_exact_subset() {
-    assert_output(
+    assert_output_with_stack(
         r#"import ast
 
 location_attrs = ("lineno", "col_offset", "end_lineno", "end_col_offset")
@@ -16729,6 +16731,7 @@ print(actual_fields == expected_fields)
 print(actual_attrs == expected_attrs)
 print(len(expected_fields), sum(len(fields) for fields in expected_fields.values()), sum(len(children) for children in expected_children.values()))"#,
         &["True", "True", "True", "True", "126 198 125"],
+        16 * 1024 * 1024,
     );
 }
 
@@ -26416,19 +26419,20 @@ fn cpython_star_expressions_helper_rules_subset() {
 // `send(None)` for this executable subset.
 #[test]
 fn cpython_grammar_async_await_subset() {
-    assert_output(
-        "async def inline(): return 1\ncoro = inline()\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
-        &["1"],
-    );
-    assert_output(
-        "async def generic[T = int](value: T) -> T: return value\ncoro = generic(5)\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done, generic.__type_params__[0].__default__.__name__, generic.__annotations__[\"value\"].__name__, generic.__annotations__[\"return\"].__name__)",
-        &["5 int T T"],
-    );
-    assert_output(
-        "async def value():\n    return 3\nasync def main():\n    result = await value()\n    print(result)\n    return 5\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
-        &["3", "5"],
-    );
-    let comprehension_source = r#"async def value(x):
+    run_test_with_stack(16 * 1024 * 1024, || {
+        assert_output(
+            "async def inline(): return 1\ncoro = inline()\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
+            &["1"],
+        );
+        assert_output(
+            "async def generic[T = int](value: T) -> T: return value\ncoro = generic(5)\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done, generic.__type_params__[0].__default__.__name__, generic.__annotations__[\"value\"].__name__, generic.__annotations__[\"return\"].__name__)",
+            &["5 int T T"],
+        );
+        assert_output(
+            "async def value():\n    return 3\nasync def main():\n    result = await value()\n    print(result)\n    return 5\ncoro = main()\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
+            &["3", "5"],
+        );
+        let comprehension_source = r#"async def value(x):
     return x + 10
 async def pred(x):
     return x % 2
@@ -26449,120 +26453,121 @@ try:
     coro.send(None)
 except StopIteration:
     print("done")"#;
-    assert_output(
-        comprehension_source,
-        &[
-            "[11, 12]",
-            "[1]",
-            "[3, 4]",
-            "{11, 12}",
-            "{1: 11, 2: 12}",
-            "[7]",
-            "done",
-        ],
-    );
-    assert_output(
-        "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\nprint(\"after call\")\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
-        &["after call", "body", "1"],
-    );
-    assert_output(
-        "async def main():\n    await 1\ntry:\n    main().send(None)\nexcept TypeError as error:\n    print(error)",
-        &["object int can't be used in 'await' expression"],
-    );
-    assert_output(
-        "async def raises_stop_iteration():\n    raise StopIteration(42)\nasync def raises_stop_async_iteration():\n    raise StopAsyncIteration(99)\nfor coro in [raises_stop_iteration(), raises_stop_async_iteration()]:\n    try:\n        coro.send(None)\n    except Exception as error:\n        print(error.__class__.__name__, error)\n        if error.__cause__ is None:\n            print(\"cause\", None)\n        else:\n            print(\"cause\", error.__cause__.__class__.__name__, error.__cause__)",
-        &[
-            "RuntimeError coroutine raised StopIteration",
-            "cause StopIteration 42",
-            "StopAsyncIteration 99",
-            "cause None",
-        ],
-    );
-    assert_output(
-        "async def f():\n    return \"spam\"\naw = f().__await__()\nprint(aw is iter(aw))\ntry:\n    next(aw)\nexcept StopIteration as done:\n    print(done)\ntry:\n    next(aw)\nexcept RuntimeError as error:\n    print(error)\nprint(aw.close())",
-        &[
-            "True",
-            "spam",
-            "cannot reuse already awaited coroutine",
-            "None",
-        ],
-    );
-    assert_output(
-        "async def f():\n    pass\ncoro = f()\ntry:\n    coro.send(\"spam\")\nexcept TypeError as error:\n    print(error)\nprint(coro.close())",
-        &[
-            "can't send non-None value to a just-started coroutine",
-            "None",
-        ],
-    );
-    assert_output(
-        "async def f():\n    return StopIteration(10)\ntry:\n    f().send(None)\nexcept StopIteration as done:\n    print(done.__class__.__name__, done)",
-        &["StopIteration 10"],
-    );
-    assert_output(
-        "class AsyncYieldFrom:\n    def __init__(self, obj):\n        self.obj = obj\n    def __await__(self):\n        yield from self.obj\nasync def f():\n    await AsyncYieldFrom([1, 2, 3])\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration:\n    print(items)\n    print(\"done\")",
-        &["[1, 2, 3]", "done"],
-    );
-    assert_output(
-        "class Awaitable:\n    def __await__(self):\n        return iter([52])\nasync def f():\n    await Awaitable()\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration:\n    print(items)\n    print(\"done\")",
-        &["[52]", "done"],
-    );
-    assert_output(
-        "class Awaitable:\n    def __await__(self):\n        yield 42\n        return 100\nasync def f():\n    return await Awaitable()\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration as done:\n    print(items)\n    print(done)",
-        &["[42]", "100"],
-    );
-    assert_output(
-        "class Awaitable:\n    def __await__(self):\n        return\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
-        &["__await__() returned non-iterator of type 'NoneType'"],
-    );
-    assert_output(
-        "async def inner():\n    return \"spam\"\ncoro = inner()\nclass Awaitable:\n    def __await__(self):\n        return coro\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)\nprint(coro.close())",
-        &["__await__() returned a coroutine", "None"],
-    );
-    assert_output(
-        "class Awaitable:\n    def __await__(self):\n        return self\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
-        &["__await__() returned non-iterator of type 'Awaitable'"],
-    );
-    assert_output(
-        "class Awaitable:\n    pass\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
-        &["object Awaitable can't be used in 'await' expression"],
-    );
-    assert_output(
-        "def wrap():\n    return bar\nasync def bar():\n    return 42\nasync def f():\n    db = {'b': lambda: wrap}\n    class DB:\n        b = wrap\n    return await bar() + await wrap()() + await db[\"b\"]()()() + await bar() * 1000 + await DB.b()()\nasync def g():\n    return -await bar()\nfor coro in [f(), g()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
-        &["42168", "-42"],
-    );
-    assert_output(
-        "async def baz():\n    return 42\nasync def bar():\n    return baz()\nasync def f():\n    return await (await bar())\ntry:\n    f().send(None)\nexcept StopIteration as done:\n    print(done)",
-        &["42"],
-    );
-    assert_output(
-        "def ident(val):\n    return val\nasync def bar():\n    return \"spam\"\nasync def f():\n    return ident(val=await bar())\nasync def g():\n    return await bar(), \"ham\"\nfor coro in [f(), g()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
-        &["spam", "('spam', 'ham')"],
-    );
-    assert_output(
-        "class Wrapper:\n    def __init__(self, coro):\n        self.coro = coro\n    def __await__(self):\n        return self.coro.__await__()\nclass FutureLike:\n    def __await__(self):\n        return (yield)\nclass Marker(Exception):\n    pass\nasync def coro1():\n    try:\n        return await FutureLike()\n    except ZeroDivisionError:\n        raise Marker\nasync def coro2():\n    return await Wrapper(coro1())\nc = coro2()\nprint(c.send(None))\ntry:\n    c.send(\"spam\")\nexcept StopIteration as done:\n    print(done)\nc = coro2()\nprint(c.send(None))\ntry:\n    c.throw(ZeroDivisionError)\nexcept Marker as error:\n    print(error.__class__.__name__, error)",
-        &["None", "spam", "None", "Marker "],
-    );
-    assert_output(
-        "class Awaitable:\n    def __await__(self):\n        yield\nasync def coroutine():\n    await Awaitable()\nasync def waiter(coro):\n    await coro\ncoro = coroutine()\nprint(coro.send(None))\ntry:\n    waiter(coro).send(None)\nexcept RuntimeError as error:\n    print(error)\nprint(coro.close())",
-        &["None", "coroutine is being awaited already", "None"],
-    );
-    assert_output(
-        "async def f():\n    return ValueError()\nasync def g():\n    try:\n        raise KeyError\n    except KeyError:\n        result = await f()\n        print(result.__context__)\n        return result\ntry:\n    g().send(None)\nexcept StopIteration as done:\n    print(done.__class__.__name__)",
-        &["None", "StopIteration"],
-    );
-    assert_output(
-        "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\ntry:\n    coro.throw(ValueError(\"bad\"))\nexcept ValueError as error:\n    print(error)\ntry:\n    coro.send(None)\nexcept RuntimeError as error:\n    print(error)",
-        &["bad", "cannot reuse already awaited coroutine"],
-    );
-    assert_output(
-        "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\nprint(coro.close())\ntry:\n    coro.send(None)\nexcept RuntimeError as error:\n    print(error)",
-        &["None", "cannot reuse already awaited coroutine"],
-    );
-    assert_error("await 1", "compile error: 'await' outside async function");
-    assert_error(
-        "def f():\n    await 1",
-        "compile error: 'await' outside async function",
-    );
+        assert_output(
+            comprehension_source,
+            &[
+                "[11, 12]",
+                "[1]",
+                "[3, 4]",
+                "{11, 12}",
+                "{1: 11, 2: 12}",
+                "[7]",
+                "done",
+            ],
+        );
+        assert_output(
+            "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\nprint(\"after call\")\ntry:\n    coro.send(None)\nexcept StopIteration as done:\n    print(done)",
+            &["after call", "body", "1"],
+        );
+        assert_output(
+            "async def main():\n    await 1\ntry:\n    main().send(None)\nexcept TypeError as error:\n    print(error)",
+            &["object int can't be used in 'await' expression"],
+        );
+        assert_output(
+            "async def raises_stop_iteration():\n    raise StopIteration(42)\nasync def raises_stop_async_iteration():\n    raise StopAsyncIteration(99)\nfor coro in [raises_stop_iteration(), raises_stop_async_iteration()]:\n    try:\n        coro.send(None)\n    except Exception as error:\n        print(error.__class__.__name__, error)\n        if error.__cause__ is None:\n            print(\"cause\", None)\n        else:\n            print(\"cause\", error.__cause__.__class__.__name__, error.__cause__)",
+            &[
+                "RuntimeError coroutine raised StopIteration",
+                "cause StopIteration 42",
+                "StopAsyncIteration 99",
+                "cause None",
+            ],
+        );
+        assert_output(
+            "async def f():\n    return \"spam\"\naw = f().__await__()\nprint(aw is iter(aw))\ntry:\n    next(aw)\nexcept StopIteration as done:\n    print(done)\ntry:\n    next(aw)\nexcept RuntimeError as error:\n    print(error)\nprint(aw.close())",
+            &[
+                "True",
+                "spam",
+                "cannot reuse already awaited coroutine",
+                "None",
+            ],
+        );
+        assert_output(
+            "async def f():\n    pass\ncoro = f()\ntry:\n    coro.send(\"spam\")\nexcept TypeError as error:\n    print(error)\nprint(coro.close())",
+            &[
+                "can't send non-None value to a just-started coroutine",
+                "None",
+            ],
+        );
+        assert_output(
+            "async def f():\n    return StopIteration(10)\ntry:\n    f().send(None)\nexcept StopIteration as done:\n    print(done.__class__.__name__, done)",
+            &["StopIteration 10"],
+        );
+        assert_output(
+            "class AsyncYieldFrom:\n    def __init__(self, obj):\n        self.obj = obj\n    def __await__(self):\n        yield from self.obj\nasync def f():\n    await AsyncYieldFrom([1, 2, 3])\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration:\n    print(items)\n    print(\"done\")",
+            &["[1, 2, 3]", "done"],
+        );
+        assert_output(
+            "class Awaitable:\n    def __await__(self):\n        return iter([52])\nasync def f():\n    await Awaitable()\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration:\n    print(items)\n    print(\"done\")",
+            &["[52]", "done"],
+        );
+        assert_output(
+            "class Awaitable:\n    def __await__(self):\n        yield 42\n        return 100\nasync def f():\n    return await Awaitable()\ncoro = f()\nitems = []\ntry:\n    while True:\n        items.append(coro.send(None))\nexcept StopIteration as done:\n    print(items)\n    print(done)",
+            &["[42]", "100"],
+        );
+        assert_output(
+            "class Awaitable:\n    def __await__(self):\n        return\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
+            &["__await__() returned non-iterator of type 'NoneType'"],
+        );
+        assert_output(
+            "async def inner():\n    return \"spam\"\ncoro = inner()\nclass Awaitable:\n    def __await__(self):\n        return coro\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)\nprint(coro.close())",
+            &["__await__() returned a coroutine", "None"],
+        );
+        assert_output(
+            "class Awaitable:\n    def __await__(self):\n        return self\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
+            &["__await__() returned non-iterator of type 'Awaitable'"],
+        );
+        assert_output(
+            "class Awaitable:\n    pass\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
+            &["object Awaitable can't be used in 'await' expression"],
+        );
+        assert_output(
+            "def wrap():\n    return bar\nasync def bar():\n    return 42\nasync def f():\n    db = {'b': lambda: wrap}\n    class DB:\n        b = wrap\n    return await bar() + await wrap()() + await db[\"b\"]()()() + await bar() * 1000 + await DB.b()()\nasync def g():\n    return -await bar()\nfor coro in [f(), g()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
+            &["42168", "-42"],
+        );
+        assert_output(
+            "async def baz():\n    return 42\nasync def bar():\n    return baz()\nasync def f():\n    return await (await bar())\ntry:\n    f().send(None)\nexcept StopIteration as done:\n    print(done)",
+            &["42"],
+        );
+        assert_output(
+            "def ident(val):\n    return val\nasync def bar():\n    return \"spam\"\nasync def f():\n    return ident(val=await bar())\nasync def g():\n    return await bar(), \"ham\"\nfor coro in [f(), g()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
+            &["spam", "('spam', 'ham')"],
+        );
+        assert_output(
+            "class Wrapper:\n    def __init__(self, coro):\n        self.coro = coro\n    def __await__(self):\n        return self.coro.__await__()\nclass FutureLike:\n    def __await__(self):\n        return (yield)\nclass Marker(Exception):\n    pass\nasync def coro1():\n    try:\n        return await FutureLike()\n    except ZeroDivisionError:\n        raise Marker\nasync def coro2():\n    return await Wrapper(coro1())\nc = coro2()\nprint(c.send(None))\ntry:\n    c.send(\"spam\")\nexcept StopIteration as done:\n    print(done)\nc = coro2()\nprint(c.send(None))\ntry:\n    c.throw(ZeroDivisionError)\nexcept Marker as error:\n    print(error.__class__.__name__, error)",
+            &["None", "spam", "None", "Marker "],
+        );
+        assert_output(
+            "class Awaitable:\n    def __await__(self):\n        yield\nasync def coroutine():\n    await Awaitable()\nasync def waiter(coro):\n    await coro\ncoro = coroutine()\nprint(coro.send(None))\ntry:\n    waiter(coro).send(None)\nexcept RuntimeError as error:\n    print(error)\nprint(coro.close())",
+            &["None", "coroutine is being awaited already", "None"],
+        );
+        assert_output(
+            "async def f():\n    return ValueError()\nasync def g():\n    try:\n        raise KeyError\n    except KeyError:\n        result = await f()\n        print(result.__context__)\n        return result\ntry:\n    g().send(None)\nexcept StopIteration as done:\n    print(done.__class__.__name__)",
+            &["None", "StopIteration"],
+        );
+        assert_output(
+            "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\ntry:\n    coro.throw(ValueError(\"bad\"))\nexcept ValueError as error:\n    print(error)\ntry:\n    coro.send(None)\nexcept RuntimeError as error:\n    print(error)",
+            &["bad", "cannot reuse already awaited coroutine"],
+        );
+        assert_output(
+            "async def f():\n    print(\"body\")\n    return 1\ncoro = f()\nprint(coro.close())\ntry:\n    coro.send(None)\nexcept RuntimeError as error:\n    print(error)",
+            &["None", "cannot reuse already awaited coroutine"],
+        );
+        assert_error("await 1", "compile error: 'await' outside async function");
+        assert_error(
+            "def f():\n    await 1",
+            "compile error: 'await' outside async function",
+        );
+    });
 }
 
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_async_await.
@@ -34475,7 +34480,7 @@ fn cpython_bytes_bytearray_subclass_fromhex_subset() {
 // constructor arguments instead of having them pre-consumed by bytearray().
 #[test]
 fn cpython_bytearray_subclass_init_override_subset() {
-    assert_output(
+    assert_output_with_stack(
         "class Sub(bytearray):\n    def __init__(self, newarg=1, *args, **kwargs):\n        print('init', newarg, args, kwargs.get('source', None))\n        bytearray.__init__(self, *args, **kwargs)\nfor factory in [lambda: Sub(4, b'abcd'), lambda: Sub(4, source=b'abcd'), lambda: Sub(newarg=4, source=b'abcd')]:\n    value = factory()\n    print(type(value).__name__, value == b'abcd', bytes(value), isinstance(value, bytearray))\nclass Empty(bytearray):\n    def __init__(self, value):\n        print('empty init', value)\nempty = Empty(b'abc')\nprint(type(empty).__name__, len(empty), bytes(empty))",
         &[
             "init 4 (b'abcd',) None",
@@ -34487,6 +34492,7 @@ fn cpython_bytearray_subclass_init_override_subset() {
             "empty init b'abc'",
             "Empty 0 b''",
         ],
+        16 * 1024 * 1024,
     );
 }
 
@@ -34525,7 +34531,7 @@ fn cpython_bytes_bytearray_subclass_pickle_subset() {
 // fallback conversion for otherwise convertible objects.
 #[test]
 fn cpython_bytes_dunder_bytes_and_blocking_subset() {
-    assert_output(
+    assert_output_with_stack(
         "class B(bytes):\n    pass\nclass WithBytes:\n    def __init__(self, value):\n        self.value = value\n    def __bytes__(self):\n        return self.value\nclass IndexWithBytes:\n    def __bytes__(self):\n        return b'a'\n    def __index__(self):\n        return 42\nclass Iterable:\n    def __iter__(self):\n        return iter([0, 1, 2])\nclass IterableBlocked:\n    __bytes__ = None\n    def __iter__(self):\n        return iter([0, 1, 2])\nclass IntBlocked(int):\n    __bytes__ = None\nclass BytesSubclassBlocked(bytes):\n    __bytes__ = None\nclass BufferBlocked(bytearray):\n    __bytes__ = None\nprint(bytes(WithBytes(b'abc')))\nresult = bytes(WithBytes(B(b'abc')))\nprint(type(result).__name__, result == b'abc')\nprint(bytes(IndexWithBytes()))\nprint(bytes(Iterable()))\nprint(bytes(3), bytes(b'ab'), bytes(bytearray(b'ab')))\nfor expr in [\n    lambda: bytes(WithBytes(bytearray(b'abc'))),\n    lambda: bytes(WithBytes('abc')),\n    lambda: bytes(WithBytes(None)),\n    lambda: bytes(IterableBlocked()),\n    lambda: bytes(IntBlocked(3)),\n    lambda: bytes(BytesSubclassBlocked(b'ab')),\n    lambda: bytes(BufferBlocked(b'ab')),\n    lambda: bytearray(WithBytes(b'abc')),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "b'abc'",
@@ -34542,8 +34548,9 @@ fn cpython_bytes_dunder_bytes_and_blocking_subset() {
             "TypeError",
             "TypeError",
         ],
+        16 * 1024 * 1024,
     );
-    assert_output(
+    assert_output_with_stack(
         "class BytesSubclass(bytes):\n    pass\nclass OtherBytesSubclass(bytes):\n    pass\nclass StrWithBytes(str):\n    def __new__(cls, value):\n        self = str.__new__(cls, '\\u20ac')\n        self.value = value\n        return self\n    def __bytes__(self):\n        return self.value\nclass BytesWithBytes(bytes):\n    def __new__(cls, value):\n        self = bytes.__new__(cls, b'\\xa4')\n        self.value = value\n        return self\n    def __bytes__(self):\n        return self.value\nsamples = [\n    ('str-bytes', lambda: bytes(StrWithBytes(b'abc')), b'abc'),\n    ('str-encoding', lambda: bytes(StrWithBytes(b'abc'), 'iso8859-15'), b'\\xa4'),\n    ('str-subbytes', lambda: bytes(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-str-bytes', lambda: BytesSubclass(StrWithBytes(b'abc')), b'abc'),\n    ('sub-str-encoding', lambda: BytesSubclass(StrWithBytes(b'abc'), 'iso8859-15'), b'\\xa4'),\n    ('sub-str-subbytes', lambda: BytesSubclass(StrWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-str-other', lambda: BytesSubclass(StrWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),\n    ('byteswithbytes', lambda: bytes(BytesWithBytes(b'abc')), b'abc'),\n    ('sub-byteswithbytes', lambda: BytesSubclass(BytesWithBytes(b'abc')), b'abc'),\n    ('byteswithbytes-sub', lambda: bytes(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-byteswithbytes-sub', lambda: BytesSubclass(BytesWithBytes(BytesSubclass(b'abc'))), b'abc'),\n    ('sub-byteswithbytes-other', lambda: BytesSubclass(BytesWithBytes(OtherBytesSubclass(b'abc'))), b'abc'),\n]\nfor label, callback, expected in samples:\n    result = callback()\n    print(label, type(result).__name__, result == expected, result)\nplain = str.__new__(str, 'plain')\ncustom = str.__new__(StrWithBytes, 'stored')\nprint(type(plain).__name__, plain)\nprint(type(custom).__name__, str(custom), hasattr(custom, 'value'))",
         &[
             "str-bytes bytes True b'abc'",
@@ -34561,6 +34568,7 @@ fn cpython_bytes_dunder_bytes_and_blocking_subset() {
             "str plain",
             "StrWithBytes stored False",
         ],
+        16 * 1024 * 1024,
     );
 }
 
@@ -54825,7 +54833,7 @@ fn cpython_types_union_newtype_subset() {
 // Adapted from CPython Lib/test/test_types.py::UnionTests typing.IO behavior.
 #[test]
 fn cpython_types_union_io_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import typing\n",
             "print('meta', repr(typing.IO), str(typing.IO), typing.IO.__name__, typing.IO.__module__, type(typing.IO).__name__)\n",
@@ -54854,6 +54862,7 @@ fn cpython_types_union_io_subset() {
             "named BinaryIO <class 'typing.BinaryIO'> BinaryIO typing True typing.BinaryIO | str ('BinaryIO', 'str')",
             "named-subscript-error BinaryIO",
         ],
+        16 * 1024 * 1024,
     );
 }
 
@@ -55200,7 +55209,7 @@ fn cpython_types_coroutine_async_def_subset() {
 
 #[test]
 fn cpython_types_coroutine_generator_wrapper_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import types, inspect, collections.abc\n",
             "def wrapper_gen():\n",
@@ -55250,6 +55259,7 @@ fn cpython_types_coroutine_generator_wrapper_subset() {
             "wrapper-repr True True",
             "wrapper-dir True",
         ],
+        16 * 1024 * 1024,
     );
 }
 
