@@ -37588,6 +37588,10 @@ fn cpython_itertools_core_iterator_subset() {
         ],
         64 * 1024 * 1024,
     );
+    assert_output(
+        "import itertools\nprint(list(itertools.islice(range(3), None)))",
+        &["[0, 1, 2]"],
+    );
 }
 
 #[test]

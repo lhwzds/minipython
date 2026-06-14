@@ -24497,11 +24497,7 @@ impl Vm {
         }
         let iterator = get_iter(args[0].clone())?;
         let (start, stop, step) = match args.len() {
-            2 => (
-                0,
-                Some(self.itertools_islice_index(args[1].clone(), "Stop")?),
-                1,
-            ),
+            2 => (0, self.itertools_islice_stop(args[1].clone())?, 1),
             3 => (
                 self.itertools_islice_index(args[1].clone(), "Start")?,
                 self.itertools_islice_stop(args[2].clone())?,

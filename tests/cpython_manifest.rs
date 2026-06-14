@@ -4123,6 +4123,10 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
             && core_source.contains("\"[1, 3]\""),
         "itertools core runtime evidence must assert accumulate(initial=None) omission"
     );
+    assert!(
+        core_source.contains("itertools.islice(range(3), None)"),
+        "itertools core runtime evidence must assert islice(stop=None) two-argument behavior"
+    );
     for required in [
         "(True, False) [True, 1, 1, 1, 1]",
         "(True, True) [1, 2, 3, 4, 5]",
@@ -4199,6 +4203,9 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
 
 #[test]
 fn itertools_core_and_pairwise_diff_evidence_stay_split() {
+    let core_helper_start = CPYTHON_DIFF
+        .find("fn assert_cpython_itertools_core_iterator_diff")
+        .expect("itertools core iterator diff helper evidence must exist");
     let core_start = CPYTHON_DIFF
         .find("fn cpython_itertools_core_diff_subset()")
         .expect("itertools core diff evidence must exist");
@@ -4240,6 +4247,7 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         .map(|offset| repr_start + offset)
         .expect("itertools repr diff subset must end before smoke tests");
 
+    let core_helper_source = &CPYTHON_DIFF[core_helper_start..core_start];
     let core_source = &CPYTHON_DIFF[core_start..count_bool_start];
     let count_bool_source = &CPYTHON_DIFF[count_bool_start..keyword_start];
     let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
@@ -4256,6 +4264,10 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     assert!(
         !core_source.contains("pairwise"),
         "itertools core CPython diff evidence must not cover pairwise()"
+    );
+    assert!(
+        core_helper_source.contains("itertools.islice(range(3), None)"),
+        "itertools core CPython diff helper evidence must cover islice(stop=None) two-argument behavior"
     );
     for required in [
         "(True, False)",

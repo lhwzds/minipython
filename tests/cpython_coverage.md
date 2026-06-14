@@ -909,8 +909,8 @@ Recent runtime migration notes:
   predicate-prefix `takewhile()` / `dropwhile()` termination behavior over
   finite and generator inputs, star-argument mapping over iterable argument
   rows, longest-zip padding with `fillvalue`, and
-  non-negative integer `islice()` windows over finite, infinite, and
-  generator-backed iterators,
+  non-negative integer `islice()` windows plus two-argument `stop=None`
+  behavior over finite, infinite, and generator-backed iterators,
   adjacent-pair iteration over finite, infinite, and generator-backed
   sources, and eager cartesian-product pools with `repeat`, `__index__`
   repeat conversion, zero-repeat empty tuple behavior, empty-pool exhaustion,
