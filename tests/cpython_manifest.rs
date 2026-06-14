@@ -1850,6 +1850,71 @@ fn cpython_test_manifest_bytes_base_methods_are_tracked() {
 }
 
 #[test]
+fn cpython_bytes_percent_format_and_rmod_evidence_tracks_base_bytes_methods() {
+    for subset in [
+        "cpython_bytes_percent_format_subset",
+        "cpython_bytes_percent_format_dunder_bytes_errors_subset",
+        "cpython_bytes_percent_dunder_and_reentrant_bytearray_subset",
+        "cpython_bytes_rmod_subset",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {subset}(")),
+            "bytes percent-format runtime subset evidence `{subset}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(subset) && CPYTHON_MIGRATION.contains(subset),
+            "bytes percent-format docs must mention runtime subset evidence `{subset}`"
+        );
+    }
+    for diff in [
+        "cpython_bytes_percent_format_and_rmod_diff_subset",
+        "cpython_bytes_percent_dunder_bytes_diff_subset",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {diff}(")),
+            "bytes percent-format direct CPython diff evidence `{diff}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(diff) && CPYTHON_MIGRATION.contains(diff),
+            "bytes percent-format docs must mention direct CPython diff evidence `{diff}`"
+        );
+    }
+    for required in [
+        "BaseBytesTest::test_mod",
+        "test_imod",
+        "BaseBytesTest::test_rmod",
+        "ByteArrayTest::test_mod_concurrent_mutation",
+        "%b",
+        "dynamic `*` width/precision",
+        "__bytes__",
+        "KeyError.args",
+        "NotImplemented",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "bytes percent-format docs must keep public behavior term `{required}` documented"
+        );
+    }
+
+    let method_manifest = MANIFEST;
+    for required in [
+        "BaseBytesTest::test_mod",
+        "test_imod",
+        "BaseBytesTest::test_rmod",
+        "ByteArrayTest::test_mod_concurrent_mutation",
+        "cpython_bytes_percent_format_subset",
+        "cpython_bytes_percent_format_dunder_bytes_errors_subset",
+        "cpython_bytes_percent_dunder_and_reentrant_bytearray_subset",
+        "cpython_bytes_rmod_subset",
+    ] {
+        assert!(
+            method_manifest.contains(required),
+            "BaseBytesTest method manifest must keep bytes percent-format evidence `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_search_compare_slice_diff_covers_compare_slice_reversed_runtime_subset() {
     let diff_name = "cpython_bytes_search_compare_slice_diff_subset";
     let subset_name = "cpython_bytes_compare_slice_reversed_subset";
