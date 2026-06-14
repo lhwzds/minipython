@@ -22307,7 +22307,7 @@ for tc, vals in [('B', [65, 66, 67]), ('b', [65, -1, 0])]:
 #[test]
 fn cpython_memoryview_cast_one_byte_format_subset() {
     assert_output(
-        "print('cast' in dir(memoryview(b'')))\nfor fmt in ['B', 'b', 'c']:\n    m = memoryview(b'abc').cast(fmt)\n    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__)\nprint(memoryview(b'abc').cast(format='B').tolist())\nprint(memoryview(b'abc').cast('B', [3]).tolist())\nprint(memoryview(b'abc').cast('B', shape=(3,)).tolist())\nfor expr in [lambda: memoryview(b'abc').cast('B', shape=[0]), lambda: memoryview(b'abc').cast('B', shape=[2]), lambda: memoryview(b'abc').cast('B', shape=[]), lambda: memoryview(b'abc').cast('B', shape='3'), lambda: memoryview(b'abc').cast('B', shape=[1.0])]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, str(error))\nbase = bytearray(b'abc')\nm = memoryview(base).cast('c')\nm[0] = b'X'\nm[1:2] = memoryview(b'Y').cast('c')\nprint(base, m.tolist(), list(m), list(reversed(m)))\nprint(b'Y' in m, ord('Y') in m, bytearray(b'Y') in m, memoryview(b'Y') in m, b'YZ' in m)\nfor expr in [lambda: m.__setitem__(0, 88), lambda: m.__setitem__(slice(0, 1), b'Z')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\nprint(memoryview(m).format, m[:].format, m.toreadonly().format)\ntry:\n    memoryview(b'abcd')[::2].cast('B')\nexcept TypeError as error:\n    print(error.__class__.__name__, 'contiguous' in str(error))",
+        "print('cast' in dir(memoryview(b'')))\nclass Format(str):\n    pass\nclass Shape(tuple):\n    pass\nclass Index:\n    def __index__(self):\n        return 3\nfor fmt in ['B', 'b', 'c']:\n    m = memoryview(b'abc').cast(fmt)\n    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__)\nprint(memoryview(b'abc').cast(format='B').tolist())\nprint(memoryview(b'abc').cast(Format('B')).tolist())\nprint(memoryview(b'abc').cast('B', [3]).tolist())\nprint(memoryview(b'abc').cast('B', shape=(3,)).tolist())\nprint(memoryview(b'abc').cast('B', Shape((3,))).tolist())\nfor expr in [lambda: memoryview(b'abc').cast('B', shape=[0]), lambda: memoryview(b'abc').cast('B', shape=[2]), lambda: memoryview(b'abc').cast('B', shape=[]), lambda: memoryview(b'abc').cast('B', shape='3'), lambda: memoryview(b'abc').cast('B', shape=[1.0]), lambda: memoryview(b'abc').cast('B', shape=[Index()])]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, str(error))\nbase = bytearray(b'abc')\nm = memoryview(base).cast('c')\nm[0] = b'X'\nm[1:2] = memoryview(b'Y').cast('c')\nprint(base, m.tolist(), list(m), list(reversed(m)))\nprint(b'Y' in m, ord('Y') in m, bytearray(b'Y') in m, memoryview(b'Y') in m, b'YZ' in m)\nfor expr in [lambda: m.__setitem__(0, 88), lambda: m.__setitem__(slice(0, 1), b'Z')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\nprint(memoryview(m).format, m[:].format, m.toreadonly().format)\ntry:\n    memoryview(b'abcd')[::2].cast('B')\nexcept TypeError as error:\n    print(error.__class__.__name__, 'contiguous' in str(error))",
         &[
             "True",
             "B B 1 1 (3,) (1,) [97, 98, 99] 97 int",
@@ -22316,10 +22316,13 @@ fn cpython_memoryview_cast_one_byte_format_subset() {
             "[97, 98, 99]",
             "[97, 98, 99]",
             "[97, 98, 99]",
+            "[97, 98, 99]",
+            "[97, 98, 99]",
             "ValueError memoryview.cast(): elements of shape must be integers > 0",
             "TypeError memoryview: product(shape) * itemsize != buffer size",
             "TypeError memoryview: product(shape) * itemsize != buffer size",
             "TypeError shape must be a list or a tuple",
+            "TypeError memoryview.cast(): elements of shape must be integers",
             "TypeError memoryview.cast(): elements of shape must be integers",
             "bytearray(b'XYc') [b'X', b'Y', b'c'] [b'X', b'Y', b'c'] [b'c', b'Y', b'X']",
             "True False True True False",

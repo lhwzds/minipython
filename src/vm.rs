@@ -19181,6 +19181,9 @@ impl Vm {
         };
         let format = match format {
             Value::String(format) => format,
+            value if str_subclass_string(&value).is_some() => {
+                str_subclass_string(&value).expect("str subclass storage exists after guard")
+            }
             value => {
                 return Err(format!(
                     "TypeError: memoryview: format must be str, not {}",
@@ -19231,6 +19234,14 @@ impl Vm {
         let values = match shape {
             Value::List(items) => items.borrow().clone(),
             Value::Tuple(items) => items.as_ref().clone(),
+            value if list_subclass_storage(&value).is_some() => list_subclass_storage(&value)
+                .expect("list subclass storage exists after guard")
+                .borrow()
+                .clone(),
+            value if tuple_subclass_items(&value).is_some() => tuple_subclass_items(&value)
+                .expect("tuple subclass items exist after guard")
+                .as_ref()
+                .clone(),
             Value::None => return Ok(expected_len),
             _ => {
                 return Err("TypeError: shape must be a list or a tuple".to_string());
@@ -19255,24 +19266,23 @@ impl Vm {
         }
         let len = match values[0].clone() {
             Value::Number(value) => value,
+            Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+                "OverflowError: Python int too large to convert to C ssize_t".to_string()
+            })?,
             Value::Bool(value) => i64::from(value),
-            value => {
-                let indexed = self.index_integer_value(value).map_err(|error| {
-                    if error.contains("object cannot be interpreted as an integer") {
-                        "TypeError: memoryview.cast(): elements of shape must be integers"
-                            .to_string()
-                    } else {
-                        error
-                    }
-                })?;
-                match indexed {
+            value if int_subclass_integer(&value).is_some() => {
+                match int_subclass_integer(&value).expect("int subclass value exists after guard") {
                     Value::Number(value) => value,
-                    Value::Bool(value) => i64::from(value),
-                    _ => {
-                        return Err("TypeError: __index__ returned non-int (type not supported)"
-                            .to_string());
-                    }
+                    Value::BigInt(value) => value.to_i64().ok_or_else(|| {
+                        "OverflowError: Python int too large to convert to C ssize_t".to_string()
+                    })?,
+                    _ => unreachable!("int_subclass_integer returns an integer"),
                 }
+            }
+            _ => {
+                return Err(
+                    "TypeError: memoryview.cast(): elements of shape must be integers".to_string(),
+                );
             }
         };
         if len <= 0 {

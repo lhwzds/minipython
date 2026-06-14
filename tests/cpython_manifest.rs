@@ -1527,11 +1527,17 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
     let body = &body[..end];
 
     for required in [
+        "class Format(str)",
+        "class Shape(tuple)",
+        "class Index",
         "memoryview(b'abc').cast(format='B')",
+        "memoryview(b'abc').cast(Format('B'))",
         "memoryview(b'abc').cast('B', [3])",
         "memoryview(b'abc').cast('B', shape=(3,))",
+        "memoryview(b'abc').cast('B', Shape((3,)))",
         "memoryview(b'abc').cast('B', shape=[0])",
         "memoryview(b'abc').cast('B', shape='3')",
+        "memoryview(b'abc').cast('B', shape=[Index()])",
         "memoryview(b'abcd')[::2].cast('B')",
     ] {
         assert!(

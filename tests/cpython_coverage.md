@@ -4387,7 +4387,9 @@ without adding general custom encoder/decoder class support.
   `cpython_memoryview_cast_one_byte_format_subset`, covering the supported
   public one-byte `memoryview.cast()` surface from CPython
   `test_memoryview.py`: `B` / `b` / `c` formats, positional and keyword
-  `format` / one-dimensional `shape` binding, invalid `shape` boundary errors,
+  `format` / one-dimensional `shape` binding, `str` subclass format and tuple
+  subclass shape inputs, invalid `shape` boundary errors including rejection of
+  non-`int` objects with `__index__`,
   format preservation through `memoryview(m)`, slicing, and `toreadonly()`,
   `c`-format scalar/list/reversed values, `c`-format item and slice assignment,
   bytes-like membership, and non-contiguous cast rejection.

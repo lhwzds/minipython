@@ -22684,18 +22684,28 @@ fn cpython_memoryview_cast_one_byte_format_diff_subset() {
         origin: "Lib/test/test_memoryview.py one-byte cast public format subset",
         name: "memoryview-cast-one-byte-format",
         source: r#"print('cast' in dir(memoryview(b'')))
+class Format(str):
+    pass
+class Shape(tuple):
+    pass
+class Index:
+    def __index__(self):
+        return 3
 for fmt in ['B', 'b', 'c']:
     m = memoryview(b'abc').cast(fmt)
     print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__)
 print(memoryview(b'abc').cast(format='B').tolist())
+print(memoryview(b'abc').cast(Format('B')).tolist())
 print(memoryview(b'abc').cast('B', [3]).tolist())
 print(memoryview(b'abc').cast('B', shape=(3,)).tolist())
+print(memoryview(b'abc').cast('B', Shape((3,))).tolist())
 for expr in [
     lambda: memoryview(b'abc').cast('B', shape=[0]),
     lambda: memoryview(b'abc').cast('B', shape=[2]),
     lambda: memoryview(b'abc').cast('B', shape=[]),
     lambda: memoryview(b'abc').cast('B', shape='3'),
     lambda: memoryview(b'abc').cast('B', shape=[1.0]),
+    lambda: memoryview(b'abc').cast('B', shape=[Index()]),
 ]:
     try:
         expr()
