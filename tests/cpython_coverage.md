@@ -1625,9 +1625,9 @@ Recent runtime migration notes:
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,
   covering CPython `test_operator.py::test_length_hint` fallback semantics and
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,
-  including TypeError default fallback, default-value normalization for bool
-  and int-subclass inputs, hint-result normalization for bool and int-subclass
-  returns, default and hint-result overflow rejection, non-TypeError
+  including TypeError default fallback, default-value normalization for bool,
+  int-subclass, and `__index__` inputs, hint-result normalization for bool and
+  int-subclass returns, default and hint-result overflow rejection, non-TypeError
   propagation, finite `itertools.repeat()` remaining-length hints, and
   infinite-repeat direct `__length_hint__()` TypeError behavior. Direct CPython
   diff evidence is in `cpython_operator_length_hint_diff_subset`.

@@ -5223,6 +5223,11 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "operator.length_hint(Y(), 10)",
         "class I(int):",
         "for default in [True, False, I(5), -1]:",
+        "class IndexLike:",
+        "operator.length_hint(Y(), IndexLike())",
+        "class BadIndex:",
+        "operator.length_hint(Y(), BadIndex())",
+        "__index__ returned non-int (type str)",
         "default-overflow",
         "for hint in [True, False, I(6)]:",
         "hint-overflow",
@@ -5265,6 +5270,11 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
         "operator.length_hint(Y(), 10)",
         "class I(int):",
         "for default in [True, False, I(5), -1]:",
+        "class IndexLike:",
+        "operator.length_hint(Y(), IndexLike())",
+        "class BadIndex:",
+        "operator.length_hint(Y(), BadIndex())",
+        "str(error)",
         "default-overflow",
         "for hint in [True, False, I(6)]:",
         "hint-overflow",
@@ -5311,7 +5321,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("prefers exact `len()` results")
             && CPYTHON_MIGRATION.contains("falls back to custom `__length_hint__`")
             && CPYTHON_MIGRATION.contains("returns the caller default")
-            && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass defaults")
+            && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass/`__index__` defaults")
             && CPYTHON_MIGRATION.contains("normalizes bool/int-subclass hint results")
             && CPYTHON_MIGRATION.contains("rejects non-integer and")
             && CPYTHON_MIGRATION.contains("re-reads sequence lengths"),

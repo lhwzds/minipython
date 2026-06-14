@@ -12208,10 +12208,17 @@ class Y:
     pass
 class I(int):
     pass
+class IndexLike:
+    def __index__(self):
+        return 2
+class BadIndex:
+    def __index__(self):
+        return 'x'
 print(operator.length_hint([], 2), operator.length_hint(iter([1, 2, 3])))
 print(operator.length_hint(X(2)), operator.length_hint(X(NotImplemented), 4), operator.length_hint(X(TypeError), 12), operator.length_hint(Y(), 10))
 for default in [True, False, I(5), -1]:
     print('default', type(default).__name__, repr(operator.length_hint(Y(), default)), repr(operator.length_hint(X(NotImplemented), default)))
+print('index-default', operator.length_hint(Y(), IndexLike()), operator.length_hint(X(NotImplemented), IndexLike()))
 for default in [2**63, -(2**100)]:
     try:
         operator.length_hint(Y(), default)
@@ -12233,6 +12240,10 @@ try:
     operator.length_hint(X(2), 'abc')
 except TypeError as error:
     print(type(error).__name__)
+try:
+    operator.length_hint(Y(), BadIndex())
+except TypeError as error:
+    print('bad-index', type(error).__name__, str(error))
 for label, callback in [
     ('kw', lambda: operator.length_hint(obj=[])),
     ('defaultkw', lambda: operator.length_hint([], default=2)),

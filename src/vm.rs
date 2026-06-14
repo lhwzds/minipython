@@ -28829,7 +28829,8 @@ impl Vm {
         let (object, default) = match args.as_slice() {
             [object] => (object.clone(), Value::Number(0)),
             [object, default] => {
-                let default = operator_length_hint_default_value(default)?;
+                let default = self.index_integer_value(default.clone())?;
+                let default = operator_length_hint_default_value(&default)?;
                 (object.clone(), default)
             }
             values => {
