@@ -38186,7 +38186,12 @@ fn cpython_itertools_repeat_subset() {
             "    try:\n",
             "        expr()\n",
             "    except TypeError as error:\n",
-            "        print(type(error).__name__)"
+            "        print(type(error).__name__)\n",
+            "for label, expr in [('missing', lambda: itertools.repeat()), ('too-many', lambda: itertools.repeat('x', 1, 2))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, error.__class__.__name__, str(error))"
         ),
         &[
             "repeat True ['x', 'x', 'x'] []",
@@ -38197,6 +38202,8 @@ fn cpython_itertools_repeat_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "missing TypeError repeat() missing required argument 'object' (pos 1)",
+            "too-many TypeError repeat() takes at most 2 arguments (3 given)",
         ],
     );
 }

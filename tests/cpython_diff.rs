@@ -15385,6 +15385,8 @@ for expr in [lambda: itertools.chain.from_iterable(), lambda: itertools.chain.fr
 
 #[test]
 fn cpython_itertools_repeat_diff_subset() {
+    // CPython oracle text: repeat() missing required argument 'object' (pos 1);
+    // repeat() takes at most 2 arguments (3 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public repeat subset",
         name: "itertools-repeat",
@@ -15401,7 +15403,12 @@ for expr in [lambda: itertools.repeat(), lambda: itertools.repeat('x', 1, 2), la
     try:
         expr()
     except TypeError as error:
-        print(type(error).__name__)"#,
+        print(type(error).__name__)
+for label, expr in [('missing', lambda: itertools.repeat()), ('too-many', lambda: itertools.repeat('x', 1, 2))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
     });
 }
 

@@ -5381,6 +5381,16 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "itertools sandbox export test must guard module __all__ and non-subset aliases"
     );
 
+    for required in [
+        "repeat() missing required argument 'object' (pos 1)",
+        "repeat() takes at most 2 arguments (3 given)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) && CPYTHON_DIFF.contains(required),
+            "itertools repeat CPython parity must guard `{required}` in subset and diff evidence"
+        );
+    }
+
     for excluded in [
         "Full itertools module",
         "pickling exactness",

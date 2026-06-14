@@ -24391,7 +24391,7 @@ impl Vm {
         let names = ["object", "times"];
         if args.len() > names.len() {
             return Err(format!(
-                "TypeError: repeat() expected 1 or 2 arguments, got {}",
+                "TypeError: repeat() takes at most 2 arguments ({} given)",
                 args.len()
             ));
         }
@@ -24424,9 +24424,9 @@ impl Vm {
             }
             values[index] = Some(value);
         }
-        let value = values[0]
-            .take()
-            .ok_or_else(|| "TypeError: repeat() missing required argument 'object'".to_string())?;
+        let value = values[0].take().ok_or_else(|| {
+            "TypeError: repeat() missing required argument 'object' (pos 1)".to_string()
+        })?;
         let remaining = match values[1].take() {
             Some(times) => {
                 let value = self.index_big_int(times)?;
