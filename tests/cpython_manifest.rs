@@ -12110,6 +12110,44 @@ fn tokenizer_interpolated_string_split_subsets_stay_documented_as_partial() {
 }
 
 #[test]
+fn f_string_basic_runtime_diff_covers_portable_subset() {
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "f-string-basic-runtime",
+        "Lib/test/test_fstring.py basic literal/conversion/format subset",
+        "FR'{2}'",
+        "f'{{{10}'",
+        "f'{3!s}'",
+        "f'{x!r:^10}'",
+        "f'{3:{width}}'",
+        "f'{d[\\\"#\\\"]}'",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "f-string basic runtime diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_f_string_basic_subset("),
+        "f-string basic subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("f-string-basic-runtime")
+            && CPYTHON_MIGRATION.contains("f-string-basic-runtime"),
+        "f-string basic runtime diff evidence must stay documented"
+    );
+}
+
+#[test]
 fn cpython_operator_precedence_smoke_diff_covers_grammar_operator_subsets() {
     let diff_name = "cpython_program_output_parity_smoke_diff_subset";
     let diff_start = CPYTHON_DIFF

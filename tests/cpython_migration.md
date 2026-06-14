@@ -4524,6 +4524,16 @@ Completed in the f-string comment migration pass:
   uses a collapsed `Token::FString` representation and does not expose CPython's
   token trio or source-location metadata for all f-string parts.
 
+- Added `f-string-basic-runtime` direct CPython output parity evidence for the
+  portable `cpython_f_string_basic_subset` surface: literal f-strings,
+  case-insensitive formatted/raw prefixes, adjacent string/f-string
+  concatenation, escaped braces, `!s` / `!r` / `!a` conversions, literal and
+  dynamic format specs, hexadecimal formatting, and expression lookup inside
+  f-strings. The subset-only whitespace-permissive conversion spelling remains
+  outside this direct diff because older CPython oracles reject it. This keeps
+  the executable public behavior tied to CPython while leaving tokenizer
+  split-token parity tracked separately.
+
 Completed in the f-string many-expressions pass:
 
 - Added `cpython_f_string_many_expressions_subset` from

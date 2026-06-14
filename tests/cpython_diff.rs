@@ -16257,6 +16257,11 @@ except SyntaxError as error:
             source: "x = bytearray(b'abc')\nfor expr in [lambda: x.translate(b'1', 1), lambda: x.translate(b'1' * 256, 1)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)\narray = bytearray()\nbad_iter = map(int, 'X')\ntry:\n    array.extend(bad_iter)\nexcept ValueError as error:\n    print(error.__class__.__name__, array)",
         },
         DiffCase {
+            origin: "Lib/test/test_fstring.py basic literal/conversion/format subset",
+            name: "f-string-basic-runtime",
+            source: "print(f'', f'a', F'{1}', FR'{2}', fR'{3}')\nx = 'def'\nprint('abc' f'{x}' 'ghi')\nprint(f'{{', f'}}', f'{{{10}', f'{10}}}')\nprint(f'{0==1}', f'{3!=4}', f'{3!s}')\nprint(f'{\"a\"}', f'{\"a\"!r}', f'{\"a\"!a}')\nx = 'test'\nprint(f'{x:}', f'{x!r:^10}', f'{x!s:.2}')\nprint(f'{3:4}', f'{1.25:.2f}', f'{3.14:!<10.10}')\nwidth = 4\nprint(f'{3:{width}}', f'{10:x}', f'{10:X}')\nd = {'#': 'hash'}\nprint(f'{\"#\"}', f'{d[\"#\"]}')",
+        },
+        DiffCase {
             origin: "Lib/test/test_fstring.py::test_yield / ::test_yield_send",
             name: "f-string-yield-expressions",
             source: "def fn(y):\n    f'y:{yield y * 2}'\n    f'{yield}'\ng = fn(4)\nprint(next(g))\nprint(next(g))\ndef send_fn(x):\n    yield f'x:{yield (lambda i: x * i)}'\nsent = send_fn(10)\nthe_lambda = next(sent)\nprint(the_lambda(4))\nprint(sent.send('string'))",
