@@ -6516,6 +6516,17 @@ try:
     dict.keys({}, bad=1)
 except TypeError as error:
     print(str(error))
+checks = [
+    ("set-add", lambda: set.add(set(), object=1)),
+    ("frozenset-hash", lambda: frozenset.__hash__(frozenset(), bad=1)),
+    ("int-bit-length", lambda: int.bit_length(1, bad=1)),
+    ("float-hex", lambda: float.hex(1.0, bad=1)),
+]
+for label, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:

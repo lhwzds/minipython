@@ -9550,8 +9550,8 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("set.") => {
                 if !keywords.is_empty() {
                     return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
+                        "TypeError: {}() takes no keyword arguments",
+                        method_keyword_error_name(&name)
                     ));
                 }
 
@@ -9560,8 +9560,8 @@ impl Vm {
             Value::Builtin(name) if name.starts_with("frozenset.") => {
                 if !keywords.is_empty() {
                     return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
+                        "TypeError: {}() takes no keyword arguments",
+                        method_keyword_error_name(&name)
                     ));
                 }
 
@@ -9580,8 +9580,8 @@ impl Vm {
                 ) && !keywords.is_empty()
                 {
                     return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
+                        "TypeError: {}() takes no keyword arguments",
+                        method_keyword_error_name(&name)
                     ));
                 }
 
@@ -25487,9 +25487,7 @@ impl Vm {
     ) -> Result<Value, String> {
         match method_display_name(name) {
             "__iter__" => {
-                if !keywords.is_empty() {
-                    return Err("__iter__() does not accept keyword arguments".to_string());
-                }
+                reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
                         "__iter__() expected 0 arguments, got {}",
@@ -66921,8 +66919,8 @@ fn reject_int_method_keywords(name: &str, keywords: &[(String, Value)]) -> Resul
         return Ok(());
     }
     Err(format!(
-        "{}() does not accept keyword arguments",
-        method_display_name(name)
+        "TypeError: {}() takes no keyword arguments",
+        method_keyword_error_name(name)
     ))
 }
 

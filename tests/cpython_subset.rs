@@ -24284,6 +24284,15 @@ fn cpython_runtime_exception_capture_subset() {
         &["dict.keys() takes no keyword arguments"],
     );
     assert_output(
+        "checks = [\n    ('set-add', lambda: set.add(set(), object=1)),\n    ('frozenset-hash', lambda: frozenset.__hash__(frozenset(), bad=1)),\n    ('int-bit-length', lambda: int.bit_length(1, bad=1)),\n    ('float-hex', lambda: float.hex(1.0, bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "set-add set.add() takes no keyword arguments",
+            "frozenset-hash wrapper __hash__() takes no keyword arguments",
+            "int-bit-length int.bit_length() takes no keyword arguments",
+            "float-hex float.hex() takes no keyword arguments",
+        ],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );
