@@ -775,6 +775,22 @@ fn memoryview_itemsize_for_format(format: &str) -> Result<usize, String> {
     })
 }
 
+fn memoryview_is_byte_format(format: &str) -> bool {
+    matches!(format, "B" | "b" | "c")
+}
+
+fn memoryview_cast_target_itemsize(format: &str) -> Result<usize, String> {
+    if memoryview_is_byte_format(format)
+        || matches!(
+            format,
+            "h" | "H" | "i" | "I" | "l" | "L" | "q" | "Q" | "f" | "d"
+        )
+    {
+        return memoryview_itemsize_for_format(format);
+    }
+    Err("ValueError: memoryview: destination format must be a native single character format prefixed with an optional '@'".to_string())
+}
+
 fn memoryview_nbytes(view: &MemoryViewRef) -> Result<usize, String> {
     let view = view.borrow();
     if view.released {
@@ -19328,15 +19344,16 @@ impl Vm {
                 return Err("TypeError: memoryview: format argument must be a string".to_string());
             }
         };
-        if !matches!(format.as_str(), "B" | "b" | "c") {
-            return Err(format!(
-                "NotImplementedError: memoryview format '{format}' is not supported"
-            ));
-        }
+        let target_itemsize = memoryview_cast_target_itemsize(&format)?;
 
         let view_state = view.borrow();
         if view_state.released {
             return Err(released_memoryview_error());
+        }
+        if !memoryview_is_byte_format(&view_state.format) && !memoryview_is_byte_format(&format) {
+            return Err(
+                "TypeError: memoryview: cannot cast between two non-byte formats".to_string(),
+            );
         }
         if !memoryview_is_contiguous(view)? {
             return Err(
@@ -19347,14 +19364,15 @@ impl Vm {
         let byte_len = len
             .checked_mul(memoryview_itemsize_for_format(&view_state.format)?)
             .ok_or_else(|| "memoryview byte length is too large".to_string())?;
-        let (cast_len, ndim) = self.memoryview_cast_shape_len(shape, byte_len)?;
+        let (cast_len, ndim) = self.memoryview_cast_shape_len(shape, byte_len, target_itemsize)?;
         Ok(memory_view_from_parts_with_exported_bytearray_and_ndim(
             view_state.bytes.clone(),
             view_state.obj.clone(),
             view_state.exported_bytearray.clone(),
             view_state.offset,
             cast_len,
-            1,
+            isize::try_from(target_itemsize)
+                .map_err(|_| "memoryview stride is too large".to_string())?,
             view_state.readonly,
             format,
             ndim,
@@ -19364,10 +19382,16 @@ impl Vm {
     fn memoryview_cast_shape_len(
         &mut self,
         shape: Option<Value>,
-        expected_len: usize,
+        byte_len: usize,
+        itemsize: usize,
     ) -> Result<(usize, usize), String> {
         let Some(shape) = shape else {
-            return Ok((expected_len, 1));
+            if byte_len % itemsize != 0 {
+                return Err(
+                    "TypeError: memoryview: length is not a multiple of itemsize".to_string(),
+                );
+            }
+            return Ok((byte_len / itemsize, 1));
         };
         let values = match shape {
             Value::List(items) => items.borrow().clone(),
@@ -19385,7 +19409,7 @@ impl Vm {
             }
         };
         if values.is_empty() {
-            if expected_len == 1 {
+            if byte_len == itemsize {
                 return Ok((1, 0));
             }
             return Err(
@@ -19426,7 +19450,10 @@ impl Vm {
         }
         let len = usize::try_from(len)
             .map_err(|_| "ValueError: memoryview.cast(): shape is too large".to_string())?;
-        if len != expected_len {
+        let product = len
+            .checked_mul(itemsize)
+            .ok_or_else(|| "ValueError: memoryview.cast(): shape is too large".to_string())?;
+        if product != byte_len {
             return Err(
                 "TypeError: memoryview: product(shape) * itemsize != buffer size".to_string(),
             );

@@ -1820,6 +1820,57 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
 }
 
 #[test]
+fn cpython_memoryview_cast_native_formats_diff_covers_runtime_subset() {
+    let diff_name = "cpython_memoryview_cast_native_formats_diff_subset";
+    let subset_name = "cpython_memoryview_cast_native_formats_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "memoryview native cast direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "memoryview native cast runtime subset evidence must exist"
+    );
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "memoryview native cast docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("memoryview native cast diff evidence must exist");
+    let body = &CPYTHON_DIFF[start..];
+    let end = body.find("\n#[test]").unwrap_or(body.len());
+    let body = &body[..end];
+
+    for required in [
+        "('h', b'\\x01\\x00\\xff\\xff')",
+        "('H', b'\\x01\\x00\\xff\\x00')",
+        "('i', b'\\x01\\x00\\x00\\x00\\xff\\xff\\xff\\xff')",
+        "('I', b'\\x01\\x00\\x00\\x00\\xff\\x00\\x00\\x00')",
+        "('f', b'\\x00\\x00\\x80?\\x00\\x00\\x00@')",
+        "('d', b'\\x00\\x00\\x00\\x00\\x00\\x00\\xf0?')",
+        "memoryview(b'\\x01\\x00\\x02\\x00').cast('h', shape=[2])",
+        "memoryview(b'\\x01\\x00').cast('h', shape=[])",
+        "memoryview(arr).cast('B')",
+        "memoryview(b'a').cast('h')",
+        "memoryview(array.array('h', [1, 2])).cast('i')",
+        "memoryview(array.array('h', [1, 2])).cast('h')",
+        "memoryview(b'\\x00\\x00\\x00\\x00').cast('u')",
+        "memoryview(b'\\x00\\x00\\x00\\x00').cast('w')",
+    ] {
+        assert!(
+            body.contains(required),
+            "memoryview native cast diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_memoryview_count_index_diff_covers_runtime_subset() {
     let diff_name = "cpython_memoryview_count_index_diff_subset";
     let subset_name = "cpython_memoryview_getitem_index_count_compare_subset";
@@ -1960,6 +2011,7 @@ fn cpython_memoryview_evidence_is_documented_in_coverage_and_migration() {
         "cpython_memoryview_tuple_key_setitem_diff_subset",
         "cpython_memoryview_slice_and_attributes_diff_subset",
         "cpython_memoryview_cast_one_byte_format_diff_subset",
+        "cpython_memoryview_cast_native_formats_diff_subset",
         "cpython_memoryview_hex_separator_diff_subset",
         "cpython_memoryview_rejection_and_hash_diff_subset",
         "cpython_memoryview_hex_released_view_diff_subset",
@@ -1984,6 +2036,7 @@ fn cpython_memoryview_evidence_is_documented_in_coverage_and_migration() {
         "cpython_memoryview_array_non_byte_public_read_subset",
         "cpython_memoryview_array_non_byte_writeback_subset",
         "cpython_memoryview_cast_one_byte_format_subset",
+        "cpython_memoryview_cast_native_formats_subset",
         "cpython_memoryview_getitem_index_count_compare_subset",
         "cpython_memoryview_hex_separator_subset",
         "cpython_memoryview_hex_reentrant_release_subset",

@@ -4471,6 +4471,14 @@ without adding general custom encoder/decoder class support.
   `cpython_memoryview_cast_one_byte_format_diff_subset` directly compares this
   one-byte format surface against CPython.
 - `RUNTIME_BUILTINS` also includes
+  `cpython_memoryview_cast_native_formats_subset`, covering the supported
+  one-dimensional native numeric `memoryview.cast()` surface for `h`, `H`,
+  `i`, `I`, `f`, and `d` byte-backed casts, `shape` product/itemsize
+  validation, zero-dimensional single-item numeric casts, non-byte views
+  casting back to `B`, CPython rejection of non-byte-to-non-byte casts, and
+  rejection of unsupported `u` / `w` destination formats. Direct CPython
+  output evidence is in `cpython_memoryview_cast_native_formats_diff_subset`.
+- `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_getitem_index_count_compare_subset`, covering CPython
   `test_memoryview.py` getitem/index/count/compare behavior for the supported
   one-dimensional bytes-like surface: integer and negative indexing, invalid

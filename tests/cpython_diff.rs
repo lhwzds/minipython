@@ -23243,6 +23243,44 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_memoryview_cast_native_formats_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_memoryview.py native numeric cast public format subset",
+        name: "memoryview-cast-native-formats",
+        source: r#"import array
+cases = [
+    ('h', b'\x01\x00\xff\xff'),
+    ('H', b'\x01\x00\xff\x00'),
+    ('i', b'\x01\x00\x00\x00\xff\xff\xff\xff'),
+    ('I', b'\x01\x00\x00\x00\xff\x00\x00\x00'),
+    ('f', b'\x00\x00\x80?\x00\x00\x00@'),
+    ('d', b'\x00\x00\x00\x00\x00\x00\xf0?'),
+]
+for fmt, data in cases:
+    m = memoryview(data).cast(fmt)
+    print(fmt, m.format, m.itemsize, m.ndim, m.shape, m.strides, m.tolist(), m[0], type(m[0]).__name__, m.tobytes() == data)
+print('shape-h', memoryview(b'\x01\x00\x02\x00').cast('h', shape=[2]).tolist())
+zero = memoryview(b'\x01\x00').cast('h', shape=[])
+print('zero-h', zero.format, zero.itemsize, zero.ndim, zero.shape, zero.strides, zero.tolist(), zero[()])
+arr = array.array('h', [1, 2])
+cast = memoryview(arr).cast('B')
+print('h-to-B', cast.format, cast.itemsize, cast.shape, cast.nbytes, cast.tobytes() == arr.tobytes())
+for label, expr in [
+    ('bad-size-h', lambda: memoryview(b'a').cast('h')),
+    ('shape-h-bad', lambda: memoryview(b'\x01\x00\x02\x00').cast('h', shape=[4])),
+    ('h-to-i', lambda: memoryview(array.array('h', [1, 2])).cast('i')),
+    ('h-to-h', lambda: memoryview(array.array('h', [1, 2])).cast('h')),
+    ('u-format', lambda: memoryview(b'\x00\x00\x00\x00').cast('u')),
+    ('w-format', lambda: memoryview(b'\x00\x00\x00\x00').cast('w')),
+]:
+    try:
+        expr()
+    except (TypeError, ValueError) as error:
+        print(label, error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_memoryview_hex_separator_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_memoryview.py memoryview hex separator public subset",
