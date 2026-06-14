@@ -6506,7 +6506,36 @@ except TypeError as error:
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:
-    print(error.__class__.__name__, error)"#,
+    print(error.__class__.__name__, error)
+
+class PropertyExample:
+    @property
+    def value(self):
+        return 1
+
+descriptor = PropertyExample.__dict__['value']
+def replacement(self):
+    return 2
+
+for label, expected, expr in [
+    ('property-get-missing', ' expected at least 1 argument, got 0', lambda: descriptor.__get__()),
+    ('property-get-too-many', ' expected at most 2 arguments, got 3', lambda: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
+    ('property-get-keyword', 'wrapper __get__() takes no keyword arguments', lambda: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),
+    ('property-set-missing', ' expected 2 arguments, got 0', lambda: descriptor.__set__()),
+    ('property-set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: descriptor.__set__(obj=PropertyExample(), value=2)),
+    ('property-delete-missing', 'expected 1 argument, got 0', lambda: descriptor.__delete__()),
+    ('property-delete-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: descriptor.__delete__(obj=PropertyExample())),
+    ('property-getter-missing', 'property.getter() takes exactly one argument (0 given)', lambda: descriptor.getter()),
+    ('property-getter-keyword', 'property.getter() takes no keyword arguments', lambda: descriptor.getter(fget=replacement)),
+    ('property-setter-missing', 'property.setter() takes exactly one argument (0 given)', lambda: descriptor.setter()),
+    ('property-setter-keyword', 'property.setter() takes no keyword arguments', lambda: descriptor.setter(fset=replacement)),
+    ('property-deleter-missing', 'property.deleter() takes exactly one argument (0 given)', lambda: descriptor.deleter()),
+    ('property-deleter-keyword', 'property.deleter() takes no keyword arguments', lambda: descriptor.deleter(fdel=replacement)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), str(error) == expected)"#,
     });
 }
 

@@ -24275,6 +24275,24 @@ fn cpython_runtime_exception_capture_subset() {
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );
+    assert_output(
+        "class PropertyExample:\n    @property\n    def value(self):\n        return 1\n\ndescriptor = PropertyExample.__dict__['value']\ndef replacement(self):\n    return 2\n\nfor label, expected, expr in [\n    ('property-get-missing', ' expected at least 1 argument, got 0', lambda: descriptor.__get__()),\n    ('property-get-too-many', ' expected at most 2 arguments, got 3', lambda: descriptor.__get__(PropertyExample(), PropertyExample, 1)),\n    ('property-get-keyword', 'wrapper __get__() takes no keyword arguments', lambda: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),\n    ('property-set-missing', ' expected 2 arguments, got 0', lambda: descriptor.__set__()),\n    ('property-set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: descriptor.__set__(obj=PropertyExample(), value=2)),\n    ('property-delete-missing', 'expected 1 argument, got 0', lambda: descriptor.__delete__()),\n    ('property-delete-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: descriptor.__delete__(obj=PropertyExample())),\n    ('property-getter-missing', 'property.getter() takes exactly one argument (0 given)', lambda: descriptor.getter()),\n    ('property-getter-keyword', 'property.getter() takes no keyword arguments', lambda: descriptor.getter(fget=replacement)),\n    ('property-setter-missing', 'property.setter() takes exactly one argument (0 given)', lambda: descriptor.setter()),\n    ('property-setter-keyword', 'property.setter() takes no keyword arguments', lambda: descriptor.setter(fset=replacement)),\n    ('property-deleter-missing', 'property.deleter() takes exactly one argument (0 given)', lambda: descriptor.deleter()),\n    ('property-deleter-keyword', 'property.deleter() takes no keyword arguments', lambda: descriptor.deleter(fdel=replacement)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error), str(error) == expected)",
+        &[
+            "property-get-missing TypeError  expected at least 1 argument, got 0 True",
+            "property-get-too-many TypeError  expected at most 2 arguments, got 3 True",
+            "property-get-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "property-set-missing TypeError  expected 2 arguments, got 0 True",
+            "property-set-keyword TypeError wrapper __set__() takes no keyword arguments True",
+            "property-delete-missing TypeError expected 1 argument, got 0 True",
+            "property-delete-keyword TypeError wrapper __delete__() takes no keyword arguments True",
+            "property-getter-missing TypeError property.getter() takes exactly one argument (0 given) True",
+            "property-getter-keyword TypeError property.getter() takes no keyword arguments True",
+            "property-setter-missing TypeError property.setter() takes exactly one argument (0 given) True",
+            "property-setter-keyword TypeError property.setter() takes no keyword arguments True",
+            "property-deleter-missing TypeError property.deleter() takes exactly one argument (0 given) True",
+            "property-deleter-keyword TypeError property.deleter() takes no keyword arguments True",
+        ],
+    );
 }
 
 // Adapted from CPython's builtin exception hierarchy in

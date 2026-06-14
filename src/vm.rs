@@ -9395,14 +9395,7 @@ impl Vm {
                 self.call_object_dir(args)
             }
             Value::Builtin(name) if name.starts_with("property.") => {
-                if !keywords.is_empty() {
-                    return Err(format!(
-                        "{}() does not accept keyword arguments",
-                        method_display_name(&name)
-                    ));
-                }
-
-                self.call_property_method(&name, args)
+                self.call_property_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "staticmethod.__get__" => {
                 if !keywords.is_empty() {
@@ -15499,7 +15492,12 @@ impl Vm {
         Ok(Value::None)
     }
 
-    fn call_property_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
+    fn call_property_method(
+        &mut self,
+        name: &str,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((property, rest)) = args.split_first() else {
             return Err(format!(
                 "{}() expected a property receiver",
@@ -15521,8 +15519,16 @@ impl Vm {
 
         match name {
             "property.getter" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: property.getter() takes no keyword arguments".to_string()
+                    );
+                }
                 let [getter] = rest else {
-                    return Err(format!("getter() expected 1 argument, got {}", rest.len()));
+                    return Err(format!(
+                        "TypeError: property.getter() takes exactly one argument ({} given)",
+                        rest.len()
+                    ));
                 };
                 Ok(Value::Property {
                     fget: Some(Box::new(getter.clone())),
@@ -15532,8 +15538,16 @@ impl Vm {
                 })
             }
             "property.setter" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: property.setter() takes no keyword arguments".to_string()
+                    );
+                }
                 let [setter] = rest else {
-                    return Err(format!("setter() expected 1 argument, got {}", rest.len()));
+                    return Err(format!(
+                        "TypeError: property.setter() takes exactly one argument ({} given)",
+                        rest.len()
+                    ));
                 };
                 Ok(Value::Property {
                     fget,
@@ -15543,8 +15557,16 @@ impl Vm {
                 })
             }
             "property.deleter" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: property.deleter() takes no keyword arguments".to_string()
+                    );
+                }
                 let [deleter] = rest else {
-                    return Err(format!("deleter() expected 1 argument, got {}", rest.len()));
+                    return Err(format!(
+                        "TypeError: property.deleter() takes exactly one argument ({} given)",
+                        rest.len()
+                    ));
                 };
                 Ok(Value::Property {
                     fget,
@@ -15554,9 +15576,17 @@ impl Vm {
                 })
             }
             "property.__get__" => {
-                if rest.is_empty() || rest.len() > 2 {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: wrapper __get__() takes no keyword arguments".to_string()
+                    );
+                }
+                if rest.is_empty() {
+                    return Err("TypeError:  expected at least 1 argument, got 0".to_string());
+                }
+                if rest.len() > 2 {
                     return Err(format!(
-                        "__get__() expected 1 or 2 arguments, got {}",
+                        "TypeError:  expected at most 2 arguments, got {}",
                         rest.len()
                     ));
                 }
@@ -15571,9 +15601,14 @@ impl Vm {
                 )
             }
             "property.__set__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: wrapper __set__() takes no keyword arguments".to_string()
+                    );
+                }
                 let [object, value] = rest else {
                     return Err(format!(
-                        "__set__() expected 2 arguments, got {}",
+                        "TypeError:  expected 2 arguments, got {}",
                         rest.len()
                     ));
                 };
@@ -15590,9 +15625,14 @@ impl Vm {
                 Ok(Value::None)
             }
             "property.__delete__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: wrapper __delete__() takes no keyword arguments".to_string()
+                    );
+                }
                 let [object] = rest else {
                     return Err(format!(
-                        "__delete__() expected 1 argument, got {}",
+                        "TypeError: expected 1 argument, got {}",
                         rest.len()
                     ));
                 };

@@ -11029,6 +11029,12 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "raise NotImplementedError(\\\"todo\\\")",
+        "descriptor.__get__()",
+        "descriptor.__set__()",
+        "descriptor.__delete__()",
+        "descriptor.getter()",
+        "descriptor.setter()",
+        "descriptor.deleter()",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -11049,6 +11055,11 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "raise NotImplementedError(\"todo\")",
+        "PropertyExample.__dict__['value']",
+        "wrapper __get__() takes no keyword arguments",
+        "property.getter() takes exactly one argument (0 given)",
+        "property.setter() takes no keyword arguments",
+        "property.deleter() takes no keyword arguments",
     ] {
         assert!(
             body.contains(required),
