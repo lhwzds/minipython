@@ -9989,6 +9989,20 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "array coverage notes must document sandbox boundary `{required}`"
         );
     }
+
+    assert!(
+        CPYTHON_MIGRATION.contains("raw invalid Unicode code point imports")
+            && !CPYTHON_MIGRATION
+                .contains("Unicode array helpers remain future `array` module work"),
+        "array migration notes must keep implemented unicode-array storage distinct from remaining invalid-code-point exclusions"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_array_unicode_public_sequence_and_mutation_subset(")
+            && CPYTHON_SUBSET
+                .contains("fn cpython_array_one_byte_public_unicode_method_rejection_subset(")
+            && !CPYTHON_SUBSET.contains("MiniPython does not yet support unicode array storage"),
+        "array subset comments must not describe implemented unicode-array storage as missing"
+    );
 }
 
 #[test]

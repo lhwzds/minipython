@@ -21660,8 +21660,9 @@ for tc, vals in [('B', [1, 2, 3]), ('b', [-1, 0, 127])]:
 }
 
 // Adapted from CPython Lib/test/test_array.py public Unicode helper methods.
-// MiniPython does not yet support unicode array storage, but B/b arrays should
-// still expose the methods and reject calls with CPython's public error order.
+// This B/b-specific slice stays focused on non-unicode arrays: unicode
+// typecodes are covered separately, while one-byte arrays still expose the
+// helper methods and reject calls with CPython's public error order.
 #[test]
 fn cpython_array_one_byte_public_unicode_method_rejection_subset() {
     assert_output(

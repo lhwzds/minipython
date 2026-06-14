@@ -1185,8 +1185,10 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   errors, same-kind-only array `extend()`, `fromlist()` list-only validation,
   bytes-like `frombytes()` validation, and empty-array `repr()`. The clear
   differential is gated because older local `python3` oracles do not expose
-  `array.clear()`. Non-byte typecodes, file I/O, and Unicode array helpers
-  remain future `array` module work.
+  `array.clear()`. The later short, int, long, float, and unicode-array
+  slices supersede the original one-byte-only scope; real file descriptors,
+  C buffer internals, and raw invalid Unicode code point imports remain outside
+  the sandbox subset.
 - Added `cpython_array_one_byte_public_subscript_mutation_subset` and
   `cpython_array_one_byte_public_subscript_mutation_diff_subset`, extending the
   same one-byte `array.array('B')` / `array.array('b')` storage to public
