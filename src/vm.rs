@@ -72387,7 +72387,7 @@ fn reject_array_method_keywords(name: &str, keywords: &[(String, Value)]) -> Res
     match method {
         "append" | "extend" | "frombytes" | "fromlist" | "tolist" | "tobytes" | "byteswap"
         | "buffer_info" | "insert" | "tofile" | "fromfile" | "fromunicode" | "tounicode"
-        | "pop" | "remove" | "reverse" | "clear" | "count" | "index" => Err(format!(
+        | "pop" | "remove" | "reverse" | "clear" | "count" | "index" | "__copy__" => Err(format!(
             "TypeError: array.{method}() takes no keyword arguments"
         )),
         _ => reject_method_keywords(name, keywords),

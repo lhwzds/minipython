@@ -24180,6 +24180,7 @@ fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     // array.fromlist() takes exactly one argument (2 given);
     // array.frombytes() takes exactly one argument (0 given);
     // array.buffer_info() takes no arguments (1 given);
+    // array.__copy__() takes no keyword arguments;
     // array.__copy__() takes no arguments (1 given);
     // array.remove() takes exactly one argument (0 given);
     // array.reverse() takes no arguments (1 given);
@@ -24227,6 +24228,7 @@ for label, expr in [
     ('tobytes-kw', lambda: array.array('B').tobytes(spam=1)),
     ('byteswap-kw', lambda: array.array('H', [1]).byteswap(spam=1)),
     ('buffer-info-kw', lambda: array.array('B').buffer_info(spam=1)),
+    ('copy-kw', lambda: array.array('B').__copy__(spam=1)),
 ]:
     try:
         expr()

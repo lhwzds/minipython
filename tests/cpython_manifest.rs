@@ -10059,6 +10059,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array.array('B').tobytes(spam=1)",
         "array.array('H', [1]).byteswap(spam=1)",
         "array.array('B').buffer_info(spam=1)",
+        "array.array('B').__copy__(spam=1)",
         "array.array('B').append()",
         "array.array('B').append(1, 2)",
         "array.array('B').extend()",
@@ -10097,6 +10098,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array.tobytes() takes no keyword arguments",
         "array.byteswap() takes no keyword arguments",
         "array.buffer_info() takes no keyword arguments",
+        "array.__copy__() takes no keyword arguments",
     ] {
         assert!(
             constructor_subset.contains(required),

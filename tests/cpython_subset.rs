@@ -20603,6 +20603,7 @@ for label, expr in [
     ('tobytes-kw', lambda: array.array('B').tobytes(spam=1)),
     ('byteswap-kw', lambda: array.array('H', [1]).byteswap(spam=1)),
     ('buffer-info-kw', lambda: array.array('B').buffer_info(spam=1)),
+    ('copy-kw', lambda: array.array('B').__copy__(spam=1)),
 ]:
     try:
         expr()
@@ -20654,6 +20655,7 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
             "tobytes-kw TypeError array.tobytes() takes no keyword arguments",
             "byteswap-kw TypeError array.byteswap() takes no keyword arguments",
             "buffer-info-kw TypeError array.buffer_info() takes no keyword arguments",
+            "copy-kw TypeError array.__copy__() takes no keyword arguments",
             "append0 TypeError array.append() takes exactly one argument (0 given)",
             "append2 TypeError array.append() takes exactly one argument (2 given)",
             "extend0 TypeError array.extend() takes exactly one argument (0 given)",
