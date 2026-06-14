@@ -208,6 +208,12 @@ leading and trailing JSON whitespace, negative zero as `int` for `-0` and `float
 positive exponent notation, and uppercase exponent notation,
 without adding Decimal parsing or locale-sensitive number formats.
 
+`cpython_json_loads_int_digit_limit_subset`, backed by
+`cpython_json_loads_int_digit_limit_diff_subset`, keeps `loads()` integer digit-limit enforcement through
+`sys.get_int_max_str_digits()` / `sys.set_int_max_str_digits()` for positive and negative integers at the active limit,
+top-level, array, and object integer overflows, CPython `ValueError` text classification, and disabling the limit with `0`,
+without adding arbitrary precision parsing policy beyond the sandbox `sys` digit-limit API.
+
 `cpython_json_loads_top_level_scalar_and_empty_container_subset`, backed by
 `cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, keeps `loads()` top-level scalar values for
 `null`, booleans, empty string, empty list, and empty object, plus nested empty list/object containers and

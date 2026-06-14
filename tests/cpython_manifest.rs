@@ -5955,6 +5955,77 @@ fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
 }
 
 #[test]
+fn json_loads_int_digit_limit_docs_cover_numeric_boundaries() {
+    let diff_name = "cpython_json_loads_int_digit_limit_diff_subset";
+    let subset_name = "cpython_json_loads_int_digit_limit_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads int digit-limit CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads int digit-limit runtime subset evidence must exist"
+    );
+
+    for required in [
+        "sys.get_int_max_str_digits",
+        "sys.set_int_max_str_digits",
+        "old_limit",
+        "maxdigits",
+        "json.loads('1' * maxdigits)",
+        "json.loads('-' + '1' * maxdigits)",
+        "'top'",
+        "'negative'",
+        "'array'",
+        "'object'",
+        "Exceeds the limit",
+        "conversion",
+        "sys.set_int_max_str_digits(0)",
+        "sys.set_int_max_str_digits(old_limit)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads int digit-limit diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"int\"",
+        "\"top True True\"",
+        "\"negative True True\"",
+        "\"array True True\"",
+        "\"object True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads int digit-limit subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` integer digit-limit enforcement",
+            "`sys.get_int_max_str_digits()` / `sys.set_int_max_str_digits()`",
+            "positive and negative integers at the active limit",
+            "top-level, array, and object integer overflows",
+            "CPython `ValueError` text classification",
+            "disabling the limit with `0`",
+            "without adding arbitrary precision parsing policy beyond the sandbox `sys` digit-limit API",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads int digit-limit boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_top_level_scalar_docs_cover_value_boundaries() {
     let diff_name = "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset";
     let subset_name = "cpython_json_loads_top_level_scalar_and_empty_container_subset";
