@@ -5287,13 +5287,14 @@ methods classified as `blocked_by_cpython_internal` because they require
 CPython's `_testinternalcapi` instruction-sequence object and opcode metadata.
 
 Builtin manifest note: `TestBreakpoint`, `PtyTests`, `ShutdownTest`, and
-`ImmortalTests` now have method-level audits that keep all 23 current CPython
-methods classified as runtime or CPython-internal coverage, with drift guards
-against the local `Lib/test/test_builtin.py` source. `TestType` has a separate
-method-level audit that maps all 10 current CPython methods to Rust evidence or
-explicit partial gaps. Eight methods are `ported`; `test_type_name` and
-`test_type_doc` remain `partial` for surrogate-code-point `UnicodeEncodeError`
-branches.
+`ImmortalTests` now have method-level audits with drift guards against the local
+`Lib/test/test_builtin.py` source. `TestBreakpoint` is `ported_public` for the
+sandbox-safe hook surface while its environment/default-debugger rows remain
+`blocked_by_runtime`; `PtyTests` stay runtime-blocked, and `ShutdownTest` /
+`ImmortalTests` stay CPython-internal. `TestType` has a separate method-level
+audit that maps all 10 current CPython methods to Rust evidence or explicit
+partial gaps. Eight methods are `ported`; `test_type_name` and `test_type_doc`
+remain `partial` for surrogate-code-point `UnicodeEncodeError` branches.
 
 Builtin runtime note: `cpython_builtin_bool_notimplemented_subset` now ports
 `BuiltinTest::test_bool_notimplemented`, rejecting `NotImplemented` in

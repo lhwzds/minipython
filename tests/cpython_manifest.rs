@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 10, 470),
+        ("partial", 9, 458),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -197,8 +197,6 @@ fn cpython_test_manifest_partial_methods_have_explicit_stop_line_reason() {
     let expected = [
         "test_ascii",
         "test_getattr",
-        "test_breakpoint",
-        "test_breakpoint_with_breakpointhook_reset",
         "test_type_name",
         "test_type_doc",
     ]
@@ -3454,9 +3452,9 @@ fn cpython_test_manifest_builtin_test_breakpoint_method_audit_is_classified() {
     );
 
     let expected_statuses = BTreeMap::from([
-        ("test_breakpoint", "partial"),
+        ("test_breakpoint", "ported_public"),
         ("test_breakpoint_with_breakpointhook_set", "ported_public"),
-        ("test_breakpoint_with_breakpointhook_reset", "partial"),
+        ("test_breakpoint_with_breakpointhook_reset", "ported_public"),
         ("test_breakpoint_with_args_and_keywords", "ported_public"),
         ("test_breakpoint_with_passthru_error", "ported_public"),
         ("test_envar_good_path_builtin", "blocked_by_runtime"),
@@ -4027,6 +4025,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
 
     for (source, group) in [
         ("Lib/test/test_compile.py", "TestSourcePositions"),
+        ("Lib/test/test_builtin.py", "TestBreakpoint"),
         ("Lib/test/test_float.py", "GeneralFloatCases"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),

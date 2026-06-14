@@ -6051,10 +6051,12 @@ Completed in the `test_builtin.py` runtime/internal manifest audit pass:
   `ImmortalTests` against the local
   `/Volumes/samsung/GitHub/cpython/Lib/test/test_builtin.py` source.
 - Added method-level audit tables for all 23 current methods in those classes.
-  `TestBreakpoint` and `PtyTests` stay `blocked_by_runtime` because they depend
-  on debugger hooks, `PYTHONBREAKPOINT`, environment-variable policy, real
-  PTYs, signals, file descriptors, stdio encodings, and child-process
-  orchestration.
+  `TestBreakpoint` is `ported_public` for the sandbox-safe custom hook,
+  default-stub, passthrough-error, reset, and lost-hook behavior; its
+  `PYTHONBREAKPOINT`, environment-variable policy, warning, import, and
+  default debugger rows remain `blocked_by_runtime`. `PtyTests` stay
+  `blocked_by_runtime` because they depend on real PTYs, signals, file
+  descriptors, stdio encodings, and child-process orchestration.
 - `ShutdownTest` and `ImmortalTests` stay `blocked_by_cpython_internal`
   because they validate CPython interpreter teardown/module lifetime and
   immortal-object refcount invariants rather than MiniPython's public language
@@ -6127,6 +6129,9 @@ Completed in the `test_builtin.py` breakpoint custom-hook pass:
 - The default pdb-backed hook, `PYTHONBREAKPOINT` environment behavior, import
   warnings, and interactive debugger integration remain classified as
   `blocked_by_runtime`.
+- The `TestBreakpoint` source group is now classified as `ported_public`
+  instead of `partial` because the only missing CPython behavior is explicitly
+  outside the default sandbox scope.
 
 Completed in the `test_builtin.py` dynamic-builtin lookup pass:
 
