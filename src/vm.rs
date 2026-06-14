@@ -72833,7 +72833,7 @@ fn operator_length_hint_result(value: Value, default: Value) -> Result<Value, St
 fn operator_unary_arg(function: &str, args: Vec<Value>) -> Result<Value, String> {
     let count = args.len();
     let [value]: [Value; 1] = args.try_into().map_err(|_| {
-        format!("TypeError: {function}() expected 1 positional argument, got {count}")
+        format!("TypeError: _operator.{function}() takes exactly one argument ({count} given)")
     })?;
     Ok(value)
 }

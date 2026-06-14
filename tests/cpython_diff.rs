@@ -13003,6 +13003,9 @@ except TypeError as error:
 
 #[test]
 fn cpython_operator_comparison_predicate_diff_subset() {
+    // CPython oracle text: _operator.truth() takes exactly one argument (0 given);
+    // _operator.truth() takes exactly one argument (2 given);
+    // _operator.not_() takes exactly one argument (0 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase comparison and predicate helpers public subset",
         name: "operator-comparison-predicate",
@@ -13037,7 +13040,12 @@ for expr in [lambda: operator.lt(), lambda: operator.truth(), lambda: operator.i
     try:
         expr()
     except TypeError as error:
-        print(type(error).__name__)"#,
+        print(type(error).__name__)
+for label, callback in [('truth0', lambda: operator.truth()), ('truth2', lambda: operator.truth(1, 2)), ('not0', lambda: operator.not_())]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 
@@ -13079,6 +13087,10 @@ for expr in [lambda: operator.is_none(), lambda: operator.is_none(None, None), l
 fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // CPython oracle text: add expected 2 arguments, got 0;
     // add expected 2 arguments, got 1; add expected 2 arguments, got 3
+    // CPython oracle text: _operator.abs() takes exactly one argument (0 given);
+    // _operator.abs() takes exactly one argument (2 given);
+    // _operator.neg() takes exactly one argument (0 given);
+    // _operator.neg() takes exactly one argument (2 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -13113,6 +13125,11 @@ for label, callback in [('index-noargs', lambda: operator.index()), ('index-many
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lambda: operator.add(1)), ('add-many', lambda: operator.add(1, 2, 3))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, callback in [('abs0', lambda: operator.abs()), ('abs2', lambda: operator.abs(1, 2)), ('neg0', lambda: operator.neg()), ('neg2', lambda: operator.neg(1, 2))]:
     try:
         callback()
     except TypeError as error:
