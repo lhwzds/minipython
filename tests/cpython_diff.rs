@@ -4107,7 +4107,10 @@ for label, callback in [
     try:
         callback()
     except Exception as error:
-        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"#,
+        if label in ['bad-keyword', 'duplicate-iterable']:
+            print(label, type(error).__name__, str(error))
+        else:
+            print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"#,
     });
 }
 

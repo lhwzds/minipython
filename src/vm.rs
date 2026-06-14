@@ -22359,7 +22359,7 @@ impl Vm {
                 "iterable" => {
                     if iterable.is_some() {
                         return Err(
-                            "TypeError: deque() got multiple values for argument 'iterable'"
+                            "TypeError: argument for deque() given by name ('iterable') and position (1)"
                                 .to_string(),
                         );
                     }
@@ -22376,7 +22376,7 @@ impl Vm {
                 }
                 _ => {
                     return Err(format!(
-                        "TypeError: deque() got an unexpected keyword argument '{name}'"
+                        "TypeError: '{name}' is an invalid keyword argument for deque()"
                     ));
                 }
             }

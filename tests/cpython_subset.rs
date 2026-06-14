@@ -48548,7 +48548,10 @@ fn cpython_collections_deque_public_surface_subset() {
             "    try:\n",
             "        callback()\n",
             "    except Exception as error:\n",
-            "        print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"
+            "        if label in ['bad-keyword', 'duplicate-iterable']:\n",
+            "            print(label, type(error).__name__, str(error))\n",
+            "        else:\n",
+            "            print(label, type(error).__name__, isinstance(error, (TypeError, ValueError, IndexError)))"
         ),
         &[
             "deque",
@@ -48622,8 +48625,8 @@ fn cpython_collections_deque_public_surface_subset() {
             "set-oob IndexError True",
             "del-oob IndexError True",
             "bad-maxlen ValueError True",
-            "bad-keyword TypeError True",
-            "duplicate-iterable TypeError True",
+            "bad-keyword TypeError 'bad' is an invalid keyword argument for deque()",
+            "duplicate-iterable TypeError argument for deque() given by name ('iterable') and position (1)",
         ],
     );
 }

@@ -10439,6 +10439,32 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_deque_public_surface_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for deque public surface"
     );
+    let deque_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_deque_public_surface_diff_subset",
+    );
+    let deque_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_deque_public_surface_subset",
+    );
+    for required in [
+        "('bad-keyword', lambda: deque([], bad=1))",
+        "('duplicate-iterable', lambda: deque([], iterable=[]))",
+    ] {
+        assert!(
+            deque_diff_body.contains(required) && deque_subset_body.contains(required),
+            "deque public surface diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "'bad' is an invalid keyword argument for deque()",
+        "argument for deque() given by name ('iterable') and position (1)",
+    ] {
+        assert!(
+            deque_subset_body.contains(required),
+            "deque public surface subset output must pin CPython behavior `{required}`"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),
