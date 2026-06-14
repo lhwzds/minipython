@@ -19239,7 +19239,6 @@ impl Vm {
                 .expect("tuple subclass items exist after guard")
                 .as_ref()
                 .clone(),
-            Value::None => return Ok(expected_len),
             _ => {
                 return Err("TypeError: shape must be a list or a tuple".to_string());
             }

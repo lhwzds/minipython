@@ -22704,6 +22704,8 @@ print(memoryview(b'abc').cast('B', Shape((3,))).tolist())
 for expr in [
     lambda: memoryview(b'abc').cast(7),
     lambda: memoryview(b'abc').cast(FormatBytes(b'B')),
+    lambda: memoryview(b'abc').cast('B', None),
+    lambda: memoryview(b'abc').cast('B', shape=None),
     lambda: memoryview(b'abc').cast('B', shape=[0]),
     lambda: memoryview(b'abc').cast('B', shape=[2]),
     lambda: memoryview(b'abc').cast('B', shape=[]),

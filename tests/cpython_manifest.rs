@@ -1535,6 +1535,8 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
         "memoryview(b'abc').cast(Format('B'))",
         "memoryview(b'abc').cast(7)",
         "memoryview(b'abc').cast(FormatBytes(b'B'))",
+        "memoryview(b'abc').cast('B', None)",
+        "memoryview(b'abc').cast('B', shape=None)",
         "memoryview(b'abc').cast('B', [3])",
         "memoryview(b'abc').cast('B', shape=(3,))",
         "memoryview(b'abc').cast('B', Shape((3,)))",
