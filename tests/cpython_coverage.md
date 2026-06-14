@@ -849,8 +849,9 @@ Recent runtime migration notes:
   `parse_int`, `parse_float`, and `parse_constant`
   hooks including arbitrary returned values and CPython-style non-callable hook
   `TypeError` text,
-  `object_hook` post-processing for decoded objects including nested
-  objects, exception propagation, and non-callable hook `TypeError` text,
+  `object_hook` post-processing for decoded objects including nested objects,
+  arbitrary returned values, exception propagation, and non-callable hook
+  `TypeError` text,
   `object_pairs_hook` pair-list
   post-processing with duplicate-key preservation and `object_hook`
   precedence plus non-callable hook `TypeError` text,

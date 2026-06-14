@@ -34382,7 +34382,7 @@ fn cpython_json_loads_parse_hooks_subset() {
 #[test]
 fn cpython_json_loads_object_hook_subset() {
     assert_output(
-        "import json\n\nevents = []\ndef hook(value):\n    print('hook', sorted(value.items()))\n    events.append(sorted(value.items()))\n    return {'seen': len(events), 'value': value}\n\nprint(json.loads('{}', object_hook=hook))\nprint(json.loads('{\"outer\": {\"inner\": 1}, \"list\": [{\"x\": 2}]}', object_hook=hook))\nprint(json.loads('[1, 2]', object_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-object')\n\nfor label, source, kwargs in [\n    ('object-hook-noncallable', '{}', dict(object_hook=1)),\n    ('object-hook-boom', '{}', dict(object_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'object-hook-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
+        "import json\n\nevents = []\ndef hook(value):\n    print('hook', sorted(value.items()))\n    events.append(sorted(value.items()))\n    return {'seen': len(events), 'value': value}\n\nprint(json.loads('{}', object_hook=hook))\nprint(json.loads('{\"outer\": {\"inner\": 1}, \"list\": [{\"x\": 2}]}', object_hook=hook))\nprint(json.loads('{\"a\": 1}', object_hook=lambda value: None))\nprint(json.loads('{\"a\": 1}', object_hook=lambda value: [value]))\nprint(json.loads('{\"outer\": {\"inner\": 1}}', object_hook=lambda value: list(sorted(value))))\nprint(json.loads('[1, 2]', object_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-object')\n\nfor label, source, kwargs in [\n    ('object-hook-noncallable', '{}', dict(object_hook=1)),\n    ('object-hook-boom', '{}', dict(object_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'object-hook-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
         &[
             "hook []",
             "{'seen': 1, 'value': {}}",
@@ -34390,6 +34390,9 @@ fn cpython_json_loads_object_hook_subset() {
             "hook [('x', 2)]",
             "hook [('list', [{'seen': 3, 'value': {'x': 2}}]), ('outer', {'seen': 2, 'value': {'inner': 1}})]",
             "{'seen': 4, 'value': {'outer': {'seen': 2, 'value': {'inner': 1}}, 'list': [{'seen': 3, 'value': {'x': 2}}]}}",
+            "None",
+            "[{'a': 1}]",
+            "['outer']",
             "[1, 2]",
             "object-hook-noncallable TypeError 'int' object is not callable",
             "object-hook-boom ValueError boom-object",

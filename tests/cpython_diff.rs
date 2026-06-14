@@ -1727,6 +1727,9 @@ def hook(value):
 
 print(json.loads('{}', object_hook=hook))
 print(json.loads('{"outer": {"inner": 1}, "list": [{"x": 2}]}', object_hook=hook))
+print(json.loads('{"a": 1}', object_hook=lambda value: None))
+print(json.loads('{"a": 1}', object_hook=lambda value: [value]))
+print(json.loads('{"outer": {"inner": 1}}', object_hook=lambda value: list(sorted(value))))
 print(json.loads('[1, 2]', object_hook=1))
 
 def boom(value):
