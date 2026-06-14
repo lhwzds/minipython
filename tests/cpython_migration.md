@@ -1489,8 +1489,11 @@ Completed in the differential parity harness pass:
   `iter(callable, sentinel)` now produces a shared callable iterator that stops
   before yielding the sentinel and supports direct iterator dunders. Rich
   callable equality hooks, including non-symmetric sentinel comparison and
-  equality-triggered reentrant exhaustion, are covered; broader custom sequence
-  fallback remains future work. The callable-sentinel iterator now also treats callable-raised
+  equality-triggered reentrant exhaustion, are covered. Sequence-protocol
+  fallback now treats `IndexError`, `IndexError` subclasses, and
+  `StopIteration` from `__getitem__` as exhaustion for forward and reverse
+  iterators while preserving unrelated exception propagation. Broader custom
+  sequence fallback remains future work. The callable-sentinel iterator now also treats callable-raised
   `StopIteration` as exhaustion and preserves CPython's reentrant-exhaustion
   behavior from `test_iter_function_concealing_reentrant_exhaustion`: if the
   callable exhausts its own iterator before returning a non-sentinel value, the
@@ -6269,6 +6272,10 @@ Completed in the iter/next builtin pass:
 - Extended the same test with CPython `Lib/test/test_iter.py` sink-state
   semantics: supported iterators remain exhausted after completion, including
   sequence-protocol fallback iterators whose backing object later grows.
+- Extended sequence-protocol fallback iterator evidence so `IndexError`
+  subclasses and `StopIteration` raised by `__getitem__` exhaust forward and
+  reverse iterators, while unrelated exceptions such as `ValueError` continue
+  to propagate.
 
 Completed in the enumerate/zip/map/filter/sorted builtin pass:
 

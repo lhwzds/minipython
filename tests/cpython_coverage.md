@@ -32,6 +32,9 @@ Recent runtime migration notes:
 - Callable-sentinel iterators in `cpython_iter_next_builtin_subset` now include
   CPython's sentinel-first equality dispatch (`sentinel == value`) for
   non-symmetric `__eq__` implementations.
+- Sequence-protocol fallback iterators in `cpython_iter_next_builtin_subset`
+  now match CPython exhaustion behavior for `IndexError` subclasses and
+  `StopIteration` raised by `__getitem__`, including reverse iteration.
 - `collections.deque` is currently a documented pure-memory sandbox surface:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory

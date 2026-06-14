@@ -7421,6 +7421,37 @@ try:
 except StopIteration:
     print('stopped')
 print(next(iterator, 42))
+class MyIndexError(IndexError):
+    pass
+class StopSeq:
+    def __getitem__(self, index):
+        if index < 2:
+            return index
+        raise StopIteration('done')
+class ValueSeq:
+    def __getitem__(self, index):
+        if index < 2:
+            return index
+        raise ValueError('bad')
+class SubIndexSeq:
+    def __getitem__(self, index):
+        if index < 2:
+            return index
+        raise MyIndexError('done')
+class ReverseStopSeq:
+    def __len__(self):
+        return 3
+    def __getitem__(self, index):
+        if index == 2:
+            return index
+        raise StopIteration('done')
+for label, value in [('stop', StopSeq()), ('subindex', SubIndexSeq())]:
+    print(label, list(iter(value)))
+try:
+    list(iter(ValueSeq()))
+except ValueError as error:
+    print('value', error)
+print('reverse-stop', list(reversed(ReverseStopSeq())))
 class EqSentinel:
     def __init__(self, value):
         self.value = value

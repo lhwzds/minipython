@@ -31203,7 +31203,7 @@ impl Vm {
                 let result = self.call_iterator_method_catching(
                     callable.as_ref().clone(),
                     Vec::new(),
-                    "StopIteration",
+                    &["StopIteration"],
                 )?;
                 match result {
                     IteratorAdvance::Yield(value) => {
@@ -31232,7 +31232,7 @@ impl Vm {
                     instance_special_method(object, "__getitem__")
                         .ok_or_else(|| format!("{} is not an iterator", object))?,
                     vec![Value::Number(*index)],
-                    "IndexError",
+                    &["IndexError", "StopIteration"],
                 )?;
                 return match item {
                     IteratorAdvance::Yield(value) => {
@@ -31257,7 +31257,7 @@ impl Vm {
                     instance_special_method(object, "__getitem__")
                         .ok_or_else(|| format!("{} is not an iterator", object))?,
                     vec![Value::Number(*index)],
-                    "IndexError",
+                    &["IndexError", "StopIteration"],
                 )?;
                 return match item {
                     IteratorAdvance::Yield(value) => {
@@ -31275,7 +31275,11 @@ impl Vm {
             }
             Value::Instance { .. } => {
                 if let Some(method) = instance_special_method(iterator, "__next__") {
-                    return self.call_iterator_method_catching(method, Vec::new(), "StopIteration");
+                    return self.call_iterator_method_catching(
+                        method,
+                        Vec::new(),
+                        &["StopIteration"],
+                    );
                 }
             }
             _ => {}
@@ -31305,7 +31309,8 @@ impl Vm {
             return self.advance_owned_iterator(&mut state.borrow_mut());
         };
 
-        let result = self.call_iterator_method_catching(callable, Vec::new(), "StopIteration")?;
+        let result =
+            self.call_iterator_method_catching(callable, Vec::new(), &["StopIteration"])?;
         match result {
             IteratorAdvance::Yield(value) => {
                 let sentinel = {
@@ -31428,7 +31433,7 @@ impl Vm {
         &mut self,
         method: Value,
         args: Vec<Value>,
-        stop_type: &str,
+        stop_types: &[&str],
     ) -> Result<IteratorAdvance, String> {
         let saved_handlers = std::mem::take(&mut self.exception_handlers);
         let previous_exception = self.current_exception.clone();
@@ -31443,7 +31448,7 @@ impl Vm {
             Ok(value) => Ok(IteratorAdvance::Yield(value)),
             Err(message) => {
                 if let Some(exception) = raised_exception {
-                    if exception.type_name == stop_type {
+                    if Self::iterator_exception_matches_stop_type(&exception, stop_types) {
                         return Ok(IteratorAdvance::Complete(
                             exception.args.first().cloned().unwrap_or(Value::None),
                         ));
@@ -31454,6 +31459,19 @@ impl Vm {
                 Err(message)
             }
         }
+    }
+
+    fn iterator_exception_matches_stop_type(
+        exception: &MiniException,
+        stop_types: &[&str],
+    ) -> bool {
+        stop_types.iter().any(|stop_type| {
+            exception.type_name == *stop_type
+                || exception
+                    .type_hierarchy
+                    .iter()
+                    .any(|type_name| type_name == stop_type)
+        })
     }
 
     fn advance_itertools_groupby(&mut self, state: GroupByRef) -> Result<IteratorAdvance, String> {
@@ -32504,7 +32522,7 @@ impl Vm {
             receiver
         };
         let method = self.load_attribute_without_custom_getattribute(target, name)?;
-        self.call_iterator_method_catching(method, args, "StopIteration")
+        self.call_iterator_method_catching(method, args, &["StopIteration"])
     }
 
     fn call_iterable_iterator_abc_method(
