@@ -8243,6 +8243,9 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if keywords.iter().any(|(keyword, _)| keyword != "initial") {
+            return Err("TypeError: reduce() takes no keyword arguments".to_string());
+        }
         if args.len() < 2 {
             return Err(format!(
                 "TypeError: reduce expected at least 2 arguments, got {}",

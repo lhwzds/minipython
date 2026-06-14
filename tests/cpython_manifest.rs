@@ -5055,6 +5055,7 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce expected at least 2 arguments, got 0",
         "reduce expected at least 2 arguments, got 1",
         "reduce expected at most 3 arguments, got 4",
+        "reduce() takes no keyword arguments",
     ] {
         assert!(
             reduce_diff.contains(required),
