@@ -937,6 +937,14 @@ for supported comparable string and numeric keys, the mixed string/integer key T
 and compact non-ASCII rendering with `ensure_ascii=False` and custom separators,
 without adding locale-sensitive collation or arbitrary incomparable-key support.
 
+`cpython_json_dumps_separators_subset`, backed by
+`cpython_json_dumps_separators_diff_subset`, keeps `separators` unpacking for
+two-string list/tuple values, subclasses, and general iterables such as
+tuple iterators, custom iterables, and generators, plus compact non-ASCII rendering with `ensure_ascii=False` and `sort_keys=True`.
+It pins CPython's unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences,
+non-iterable separator `TypeError` text, and item/key separator element `TypeError` text,
+without adding JSONEncoder subclass support or arbitrary encoder hooks.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

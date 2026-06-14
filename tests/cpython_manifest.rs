@@ -5116,6 +5116,73 @@ fn json_dumps_ensure_ascii_sort_keys_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_separators_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_separators_diff_subset";
+    let subset_name = "cpython_json_dumps_separators_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps separators CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps separators runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class Sep(str):",
+        "class SepList(list):",
+        "class SepTuple(tuple):",
+        "class SepIter:",
+        "class SepGen:",
+        "separators in [None, (',', ':'), [',', ': ']",
+        "separators in [iter((',', ':')), SepIter(), SepGen()]",
+        "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
+        "not enough values to unpack (expected 2, got 0)",
+        "too many values to unpack (expected 2)",
+        "cannot unpack non-iterable int object",
+        "make_encoder() argument 6 must be str, not int",
+        "make_encoder() argument 5 must be str, not int",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps separators diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "not enough values to unpack (expected 2, got 1)",
+        "cannot unpack non-iterable object object",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps separators subset output must pin CPython error text `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`separators` unpacking",
+            "two-string list/tuple values, subclasses, and general iterables",
+            "tuple iterators, custom iterables, and generators",
+            "compact non-ASCII rendering with `ensure_ascii=False` and `sort_keys=True`",
+            "unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences",
+            "non-iterable separator `TypeError` text",
+            "item/key separator element `TypeError` text",
+            "without adding JSONEncoder subclass support or arbitrary encoder hooks",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe separators option boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
