@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 9, 458),
+        ("partial", 8, 451),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -3180,7 +3180,7 @@ fn cpython_test_manifest_bytes_group_counts_match_current_source() {
 
     for (group, status) in [
         ("BaseBytesTest", "partial"),
-        ("BytesTest", "partial"),
+        ("BytesTest", "ported_public"),
         ("ByteArrayTest", "partial"),
         ("AssortedBytesTest", "ported"),
         ("BytearrayPEP3137Test", "ported"),
@@ -3194,6 +3194,40 @@ fn cpython_test_manifest_bytes_group_counts_match_current_source() {
             .unwrap_or_else(|| panic!("missing class `{group}` in {CPYTHON_TEST_BYTES_SOURCE}"));
         assert_manifest_group_count(&groups, "Lib/test/test_bytes.py", group, expected);
         assert_manifest_group_status(&groups, "Lib/test/test_bytes.py", group, status);
+    }
+}
+
+#[test]
+fn cpython_test_manifest_bytes_test_stop_lines_stay_sandbox_scoped() {
+    let groups = manifest_groups();
+    assert_manifest_group_status(
+        &groups,
+        "Lib/test/test_bytes.py",
+        "BytesTest",
+        "ported_public",
+    );
+
+    let row = groups
+        .iter()
+        .find(|group| group.source == "Lib/test/test_bytes.py" && group.group == "BytesTest")
+        .expect("manifest must include BytesTest row");
+    assert_eq!(row.methods, 7, "BytesTest method count drifted");
+
+    for required in [
+        "cpython_memoryview_bytesio_readinto_subset",
+        "test_buffer_is_readonly",
+        "host raw-file fixture",
+        "sandbox host-I/O policy",
+        "test_from_format",
+        "CPython C API",
+        "ctypes",
+        "_testcapi",
+        "neither is part of the default sandbox public contract",
+    ] {
+        assert!(
+            MANIFEST.contains(required),
+            "BytesTest manifest row must keep sandbox stop-line `{required}` visible"
+        );
     }
 }
 
@@ -4027,6 +4061,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
         ("Lib/test/test_compile.py", "TestSourcePositions"),
         ("Lib/test/test_builtin.py", "TestBreakpoint"),
         ("Lib/test/test_float.py", "GeneralFloatCases"),
+        ("Lib/test/test_bytes.py", "BytesTest"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),
         ("Lib/test/test_types.py", "UnionTests"),

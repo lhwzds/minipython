@@ -410,6 +410,10 @@ non-contiguous memoryview buffer target rejections are covered by
 `cpython_memoryview_bytesio_readinto_subset`, while the exact CPython fixture
 remains blocked only by host raw file I/O (`open(fd, "rb", buffering=0)`) and
 filesystem policy.
+`Lib/test/test_bytes.py::BytesTest` is now classified as `ported_public`
+because the remaining uncovered rows are outside the default sandbox contract:
+the raw-file `test_buffer_is_readonly` fixture needs host I/O, and
+`test_from_format` validates CPython's C API through `ctypes` / `_testcapi`.
 
 Completed in the `test_bytes.py` bytes percent-format pass:
 

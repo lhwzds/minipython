@@ -2523,7 +2523,9 @@ without adding general custom encoder/decoder class support.
   `cpython_memoryview_bytesio_readinto_subset` covers the public read-only
   target rejection from CPython `BytesTest::test_buffer_is_readonly` through
   in-memory `io.BytesIO.readinto()`; the exact host raw-file fixture remains a
-  runtime/filesystem-policy gap.
+  runtime/filesystem-policy gap. `BytesTest` is classified as `ported_public`
+  for the sandbox contract; `test_from_format` remains outside that contract
+  because it validates CPython's C API through `ctypes` / `_testcapi`.
   `cpython_bytes_bytearray_index_error_and_hash_subset` covers CPython
   `BytesTest::test_getitem_error` and `ByteArrayTest::test_getitem_error`,
   `test_setitem_error`, and `test_nohash` public error paths for invalid
