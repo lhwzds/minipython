@@ -9269,14 +9269,14 @@ impl Vm {
             }
             Value::Builtin(name) if name == "setattr" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_setattr(args)
             }
             Value::Builtin(name) if name == "delattr" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_delattr(args)
@@ -9312,7 +9312,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "dir" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_dir(args)
@@ -9396,35 +9396,46 @@ impl Vm {
             }
             Value::Builtin(name) if name == "object.__getattribute__" => {
                 if !keywords.is_empty() {
-                    return Err("__getattribute__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __getattribute__() takes no keyword arguments"
+                            .to_string(),
+                    );
                 }
 
                 self.call_object_getattribute(args)
             }
             Value::Builtin(name) if name == "object.__setattr__" => {
                 if !keywords.is_empty() {
-                    return Err("__setattr__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __setattr__() takes no keyword arguments".to_string(),
+                    );
                 }
 
                 self.call_object_setattr(args)
             }
             Value::Builtin(name) if name == "object.__delattr__" => {
                 if !keywords.is_empty() {
-                    return Err("__delattr__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: wrapper __delattr__() takes no keyword arguments".to_string(),
+                    );
                 }
 
                 self.call_object_delattr(args)
             }
             Value::Builtin(name) if name == "object.__format__" => {
                 if !keywords.is_empty() {
-                    return Err("__format__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: object.__format__() takes no keyword arguments".to_string()
+                    );
                 }
 
                 self.call_object_format(args).map(Value::String)
             }
             Value::Builtin(name) if name == "object.__dir__" => {
                 if !keywords.is_empty() {
-                    return Err("__dir__() does not accept keyword arguments".to_string());
+                    return Err(
+                        "TypeError: object.__dir__() takes no keyword arguments".to_string()
+                    );
                 }
 
                 self.call_object_dir(args)

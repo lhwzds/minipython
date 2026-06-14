@@ -46,7 +46,11 @@ Recent runtime migration notes:
   generator methods plus `staticmethod()` / `classmethod()` constructor keyword
   rejection; the same evidence now covers representative public builtin and
   descriptor entry points including `object.__repr__`, `object.__str__`,
-  `slice.indices`, `dict.fromkeys`, `str.maketrans`, and `super()`.
+  `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
+  `object.__format__`, `object.__dir__`, `slice.indices`, `dict.fromkeys`,
+  `str.maketrans`, `super()`, and common stdlib-backed builtins such as
+  `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
+  `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.
 - The same runtime exception-capture evidence pins unexpected-keyword text for
   the exposed type/introspection helpers `typing.get_args()`,
   `typing.get_origin()`, `typing.get_type_hints()`, and `inspect.signature()`.

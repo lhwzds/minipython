@@ -1718,7 +1718,7 @@ pub(crate) fn call_int_base_builtin<C: StdlibContext + ?Sized>(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err(format!("{name}() does not accept keyword arguments"));
+        return Err(format!("TypeError: {name}() takes no keyword arguments"));
     }
     let [value] = args.as_slice() else {
         return Err(format!(
@@ -2367,7 +2367,7 @@ fn reject_stdlib_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
     if keywords.is_empty() {
         Ok(())
     } else {
-        Err(format!("{name}() does not accept keyword arguments"))
+        Err(format!("TypeError: {name}() takes no keyword arguments"))
     }
 }
 

@@ -24284,7 +24284,7 @@ fn cpython_runtime_exception_capture_subset() {
         &["dict.keys() takes no keyword arguments"],
     );
     assert_output(
-        "checks = [\n    ('set-add', lambda: set.add(set(), object=1)),\n    ('frozenset-hash', lambda: frozenset.__hash__(frozenset(), bad=1)),\n    ('int-bit-length', lambda: int.bit_length(1, bad=1)),\n    ('float-hex', lambda: float.hex(1.0, bad=1)),\n    ('object-repr', lambda: object.__repr__(object(), object=object())),\n    ('object-str', lambda: object.__str__(object(), object=object())),\n    ('slice-indices', lambda: slice(None).indices(length=1)),\n    ('dict-fromkeys', lambda: dict.fromkeys(iterable=[1])),\n    ('str-maketrans', lambda: str.maketrans(x='a')),\n    ('super', lambda: super(bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        "checks = [\n    ('set-add', lambda: set.add(set(), object=1)),\n    ('frozenset-hash', lambda: frozenset.__hash__(frozenset(), bad=1)),\n    ('int-bit-length', lambda: int.bit_length(1, bad=1)),\n    ('float-hex', lambda: float.hex(1.0, bad=1)),\n    ('object-repr', lambda: object.__repr__(object(), object=object())),\n    ('object-str', lambda: object.__str__(object(), object=object())),\n    ('slice-indices', lambda: slice(None).indices(length=1)),\n    ('dict-fromkeys', lambda: dict.fromkeys(iterable=[1])),\n    ('str-maketrans', lambda: str.maketrans(x='a')),\n    ('super', lambda: super(bad=1)),\n    ('object-getattribute', lambda: object.__getattribute__(object(), name='x')),\n    ('object-setattr', lambda: object.__setattr__(object(), name='x', value=1)),\n    ('object-delattr', lambda: object.__delattr__(object(), name='x')),\n    ('object-format', lambda: object.__format__(object(), format_spec='')),\n    ('object-dir', lambda: object.__dir__(object(), bad=1)),\n    ('setattr', lambda: setattr(object=object(), name='x', value=1)),\n    ('delattr', lambda: delattr(object=object(), name='x')),\n    ('dir', lambda: dir(object=object())),\n    ('id', lambda: id(object=object())),\n    ('any', lambda: any(iterable=[])),\n    ('all', lambda: all(iterable=[])),\n    ('abs', lambda: abs(x=-1)),\n    ('hash', lambda: hash(object=1)),\n    ('repr', lambda: repr(obj=1)),\n    ('ascii', lambda: ascii(obj=1)),\n    ('bool', lambda: bool(x=1)),\n    ('len', lambda: len(obj=[])),\n    ('callable', lambda: callable(obj=object())),\n    ('bin', lambda: bin(number=1)),\n    ('oct', lambda: oct(number=1)),\n    ('hex', lambda: hex(number=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "set-add set.add() takes no keyword arguments",
             "frozenset-hash wrapper __hash__() takes no keyword arguments",
@@ -24296,6 +24296,27 @@ fn cpython_runtime_exception_capture_subset() {
             "dict-fromkeys dict.fromkeys() takes no keyword arguments",
             "str-maketrans str.maketrans() takes no keyword arguments",
             "super super() takes no keyword arguments",
+            "object-getattribute wrapper __getattribute__() takes no keyword arguments",
+            "object-setattr wrapper __setattr__() takes no keyword arguments",
+            "object-delattr wrapper __delattr__() takes no keyword arguments",
+            "object-format object.__format__() takes no keyword arguments",
+            "object-dir object.__dir__() takes no keyword arguments",
+            "setattr setattr() takes no keyword arguments",
+            "delattr delattr() takes no keyword arguments",
+            "dir dir() takes no keyword arguments",
+            "id id() takes no keyword arguments",
+            "any any() takes no keyword arguments",
+            "all all() takes no keyword arguments",
+            "abs abs() takes no keyword arguments",
+            "hash hash() takes no keyword arguments",
+            "repr repr() takes no keyword arguments",
+            "ascii ascii() takes no keyword arguments",
+            "bool bool() takes no keyword arguments",
+            "len len() takes no keyword arguments",
+            "callable callable() takes no keyword arguments",
+            "bin bin() takes no keyword arguments",
+            "oct oct() takes no keyword arguments",
+            "hex hex() takes no keyword arguments",
         ],
     );
     assert_output(

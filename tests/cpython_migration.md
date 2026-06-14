@@ -100,9 +100,12 @@ Completed in the builtin method TypeError capture pass:
   `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
   `int.bit_length`, and `float.hex`, plus `staticmethod()` / `classmethod()`
   constructor keyword rejection, `object.__repr__`, `object.__str__`,
-  `slice.indices`, `dict.fromkeys`, `str.maketrans`, and `super()`. Exact
-  CPython message text for every builtin method remains a separate
-  method-by-method migration task.
+  `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
+  `object.__format__`, `object.__dir__`, `slice.indices`, `dict.fromkeys`,
+  `str.maketrans`, `super()`, and common stdlib-backed builtins such as `id()`,
+  `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`, `len()`,
+  `callable()`, `bin()`, `oct()`, and `hex()`. Exact CPython message text for
+  every builtin method remains a separate method-by-method migration task.
 - Extended the same runtime exception-capture evidence to public
   generator/coroutine/async-generator keyword rejection for `send`, `throw`,
   `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping
