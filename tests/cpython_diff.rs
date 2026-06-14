@@ -13808,6 +13808,12 @@ for label, expr in [('bad-source', lambda: io.BytesIO(123)), ('too-many', lambda
         expr()
     except Exception as error:
         print(label, error.__class__.__name__, isinstance(error, (TypeError, ValueError, OSError)))
+# CPython oracle text: negative seek value -1; invalid whence (3, should be 0, 1 or 2); negative size value -1
+for label, expr in [('seek-neg-start-text', lambda: io.BytesIO(b'a').seek(-1)), ('seek-bad-whence-text', lambda: io.BytesIO(b'a').seek(0, 3)), ('truncate-neg-text', lambda: io.BytesIO(b'a').truncate(-1))]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, error.__class__.__name__, str(error))
 for label, expr in [
     ('ctor-kw-unknown', lambda: io.BytesIO(foo=b'a')),
     ('read-kw', lambda: io.BytesIO(b'a').read(size=1)),

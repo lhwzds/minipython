@@ -1286,11 +1286,15 @@ fn bytes_io_seek(bytes_io: &BytesIORef, offset: i64, whence: i64) -> Result<usiz
         0 => 0_i128,
         1 => state.position as i128,
         2 => state.buffer.borrow().len() as i128,
-        _ => return Err("ValueError: invalid whence".to_string()),
+        _ => {
+            return Err(format!(
+                "ValueError: invalid whence ({whence}, should be 0, 1 or 2)"
+            ));
+        }
     };
     let position = base + i128::from(offset);
     if position < 0 {
-        return Err("ValueError: negative seek position".to_string());
+        return Err(format!("ValueError: negative seek value {offset}"));
     }
     let position = usize::try_from(position)
         .map_err(|_| "OverflowError: new position does not fit in an index".to_string())?;
@@ -19165,7 +19169,7 @@ impl Vm {
             [value] => {
                 let size = self.index_i64(value.clone(), "argument")?;
                 if size < 0 {
-                    return Err("ValueError: negative size value".to_string());
+                    return Err(format!("ValueError: negative size value {size}"));
                 }
                 usize::try_from(size).map_err(|_| {
                     "OverflowError: cannot fit 'int' into an index-sized integer".to_string()
