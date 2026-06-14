@@ -10059,6 +10059,13 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array.array('B').tobytes(spam=1)",
         "array.array('H', [1]).byteswap(spam=1)",
         "array.array('B').buffer_info(spam=1)",
+        "array.array('B').append()",
+        "array.array('B').append(1, 2)",
+        "array.array('B').extend()",
+        "array.array('B').frombytes()",
+        "array.array('B').tobytes(1)",
+        "array.array('B').tolist(1)",
+        "array.array('H', [1]).byteswap(1)",
         "print(label, error.__class__.__name__, str(error))",
     ] {
         assert!(
@@ -10084,6 +10091,24 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             constructor_subset.contains(required),
             "array runtime subset evidence must assert exact keyword diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "array.append() takes exactly one argument (0 given)",
+        "array.append() takes exactly one argument (2 given)",
+        "array.extend() takes exactly one argument (0 given)",
+        "array.frombytes() takes exactly one argument (0 given)",
+        "array.tobytes() takes no arguments (1 given)",
+        "array.tolist() takes no arguments (1 given)",
+        "array.byteswap() takes no arguments (1 given)",
+    ] {
+        assert!(
+            constructor_subset.contains(required),
+            "array runtime subset evidence must assert exact arity diagnostic `{required}`"
+        );
+        assert!(
+            constructor_diff.contains(required),
+            "array CPython diff evidence must assert exact arity diagnostic `{required}`"
         );
     }
 

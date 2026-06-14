@@ -24171,6 +24171,13 @@ print('index-object', arr.tolist(), view.tolist())"#,
 
 #[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
+    // CPython oracle text: array.append() takes exactly one argument (0 given);
+    // array.append() takes exactly one argument (2 given);
+    // array.extend() takes exactly one argument (0 given);
+    // array.frombytes() takes exactly one argument (0 given);
+    // array.tobytes() takes no arguments (1 given);
+    // array.tolist() takes no arguments (1 given);
+    // array.byteswap() takes no arguments (1 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py::MiscTest public constructor/module behavior",
         name: "array-module-and-constructor-public-surface",
@@ -24209,6 +24216,19 @@ for label, expr in [
     ('tobytes-kw', lambda: array.array('B').tobytes(spam=1)),
     ('byteswap-kw', lambda: array.array('H', [1]).byteswap(spam=1)),
     ('buffer-info-kw', lambda: array.array('B').buffer_info(spam=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+for label, expr in [
+    ('append0', lambda: array.array('B').append()),
+    ('append2', lambda: array.array('B').append(1, 2)),
+    ('extend0', lambda: array.array('B').extend()),
+    ('frombytes0', lambda: array.array('B').frombytes()),
+    ('tobytes1', lambda: array.array('B').tobytes(1)),
+    ('tolist1', lambda: array.array('B').tolist(1)),
+    ('byteswap1', lambda: array.array('H', [1]).byteswap(1)),
 ]:
     try:
         expr()

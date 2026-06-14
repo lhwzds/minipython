@@ -20605,6 +20605,19 @@ for label, expr in [
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error))
+for label, expr in [
+    ('append0', lambda: array.array('B').append()),
+    ('append2', lambda: array.array('B').append(1, 2)),
+    ('extend0', lambda: array.array('B').extend()),
+    ('frombytes0', lambda: array.array('B').frombytes()),
+    ('tobytes1', lambda: array.array('B').tobytes(1)),
+    ('tolist1', lambda: array.array('B').tolist(1)),
+    ('byteswap1', lambda: array.array('H', [1]).byteswap(1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 a = array.array('B')
 a[:] = a
 print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
@@ -20629,6 +20642,13 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
             "tobytes-kw TypeError array.tobytes() takes no keyword arguments",
             "byteswap-kw TypeError array.byteswap() takes no keyword arguments",
             "buffer-info-kw TypeError array.buffer_info() takes no keyword arguments",
+            "append0 TypeError array.append() takes exactly one argument (0 given)",
+            "append2 TypeError array.append() takes exactly one argument (2 given)",
+            "extend0 TypeError array.extend() takes exactly one argument (0 given)",
+            "frombytes0 TypeError array.frombytes() takes exactly one argument (0 given)",
+            "tobytes1 TypeError array.tobytes() takes no arguments (1 given)",
+            "tolist1 TypeError array.tolist() takes no arguments (1 given)",
+            "byteswap1 TypeError array.byteswap() takes no arguments (1 given)",
             "empty 0 0 0 0",
         ],
     );

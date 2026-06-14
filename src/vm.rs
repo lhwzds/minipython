@@ -23321,7 +23321,7 @@ impl Vm {
             "array.array.tobytes" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: tobytes() expected 0 arguments, got {}",
+                        "TypeError: array.tobytes() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23332,7 +23332,7 @@ impl Vm {
             "array.array.tolist" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: tolist() expected 0 arguments, got {}",
+                        "TypeError: array.tolist() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23417,7 +23417,7 @@ impl Vm {
             "array.array.byteswap" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: byteswap() expected 0 arguments, got {}",
+                        "TypeError: array.byteswap() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23446,7 +23446,7 @@ impl Vm {
             "array.array.append" => {
                 let [receiver, item] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: append() expected 1 argument, got {}",
+                        "TypeError: array.append() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23462,7 +23462,7 @@ impl Vm {
             "array.array.extend" => {
                 let [receiver, source] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: extend() expected 1 argument, got {}",
+                        "TypeError: array.extend() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23504,7 +23504,7 @@ impl Vm {
             "array.array.frombytes" => {
                 let [receiver, source] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: frombytes() expected 1 argument, got {}",
+                        "TypeError: array.frombytes() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
