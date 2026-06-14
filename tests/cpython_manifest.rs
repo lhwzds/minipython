@@ -5397,6 +5397,7 @@ fn json_stdlib_registry_stays_loads_dumps_only() {
     for forbidden in [
         "\"load\"",
         "\"dump\"",
+        "__all__",
         "JSONDecodeError",
         "JSONDecoder",
         "JSONEncoder",
@@ -5413,8 +5414,10 @@ fn json_stdlib_registry_stays_loads_dumps_only() {
             && LANGUAGE_TESTS.contains("JSONDecodeError")
             && LANGUAGE_TESTS.contains("JSONDecoder")
             && LANGUAGE_TESTS.contains("JSONEncoder")
+            && LANGUAGE_TESTS.contains("__all__")
+            && LANGUAGE_TESTS.contains("dir(json)")
             && LANGUAGE_TESTS.contains("'load', 'dump'"),
-        "language tests must keep json file APIs and encoder/decoder classes unavailable at runtime"
+        "language tests must keep json file APIs, encoder/decoder classes, and module export metadata unavailable at runtime"
     );
 }
 

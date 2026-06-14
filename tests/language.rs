@@ -5120,7 +5120,7 @@ print(frame.f_lineno - frame.f_code.co_firstlineno)"#
 fn json_sandbox_subset_excludes_file_apis_and_encoder_decoder_classes() {
     assert_eq!(
         run_source(
-            "import json\nfor name in ['load', 'dump', 'JSONDecodeError', 'JSONDecoder', 'JSONEncoder']:\n    print(name, hasattr(json, name))"
+            "import json\nfor name in ['load', 'dump', 'JSONDecodeError', 'JSONDecoder', 'JSONEncoder', '__all__']:\n    print(name, hasattr(json, name))\nprint(dir(json))"
         ),
         Ok(output_lines(&[
             "load False",
@@ -5128,6 +5128,8 @@ fn json_sandbox_subset_excludes_file_apis_and_encoder_decoder_classes() {
             "JSONDecodeError False",
             "JSONDecoder False",
             "JSONEncoder False",
+            "__all__ False",
+            "['__name__', 'dumps', 'loads']",
         ]))
     );
 
