@@ -140,7 +140,7 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 fn cpython_test_manifest_keeps_unfinished_scope_visible() {
     let summary = summary_rows();
     let unfinished_statuses = [
-        ("partial", 11, 492),
+        ("partial", 10, 470),
         ("blocked_by_runtime", 4, 13),
         ("blocked_by_ast_module", 2, 16),
         ("blocked_by_cpython_internal", 5, 10),
@@ -201,7 +201,6 @@ fn cpython_test_manifest_partial_methods_have_explicit_stop_line_reason() {
         "test_breakpoint_with_breakpointhook_reset",
         "test_type_name",
         "test_type_doc",
-        "test_float_with_comma",
     ]
     .into_iter()
     .map(String::from)
@@ -1071,10 +1070,10 @@ fn cpython_test_manifest_float_general_cases_method_audit_is_tracked() {
     assert_eq!(
         methods
             .iter()
-            .filter(|method| method.status == "partial")
+            .filter(|method| method.status == "blocked_by_runtime")
             .count(),
         1,
-        "partial GeneralFloatCases method count drifted"
+        "blocked_by_runtime GeneralFloatCases method count drifted"
     );
 
     let expected_statuses = BTreeMap::from([
@@ -1084,7 +1083,7 @@ fn cpython_test_manifest_float_general_cases_method_audit_is_tracked() {
         ("test_non_numeric_input_types", "ported"),
         ("test_float_memoryview", "ported"),
         ("test_error_message", "ported"),
-        ("test_float_with_comma", "partial"),
+        ("test_float_with_comma", "blocked_by_runtime"),
         ("test_floatconversion", "ported"),
         ("test_keyword_args", "ported"),
         ("test_keywords_in_subclass", "ported"),
@@ -4028,6 +4027,7 @@ fn cpython_test_manifest_ported_public_groups_are_explicitly_classified() {
 
     for (source, group) in [
         ("Lib/test/test_compile.py", "TestSourcePositions"),
+        ("Lib/test/test_float.py", "GeneralFloatCases"),
         ("Lib/test/test_collections.py", "TestNamedTuple"),
         ("Lib/test/test_collections.py", "TestCollectionABCs"),
         ("Lib/test/test_types.py", "UnionTests"),
@@ -4339,6 +4339,34 @@ fn cpython_docs_mention_all_sandbox_stdlib_excluded_surfaces() {
             }
         }
     }
+}
+
+#[test]
+fn cpython_float_locale_comma_stays_runtime_blocked() {
+    let methods =
+        method_audit_methods("## `Lib/test/test_float.py::GeneralFloatCases` Method Audit");
+    let method = methods
+        .iter()
+        .find(|method| method.method == "test_float_with_comma")
+        .expect("GeneralFloatCases must track test_float_with_comma");
+
+    assert_eq!(
+        method.status, "blocked_by_runtime",
+        "locale-controlled comma decimal parsing must stay outside default sandbox scope"
+    );
+    assert!(
+        method
+            .evidence
+            .contains("cpython_float_constructor_core_subset")
+            && method
+                .evidence
+                .contains("comma-containing strings staying invalid")
+            && method.remaining.contains("locale-controlled `LC_NUMERIC`")
+            && method
+                .remaining
+                .contains("outside the default sandbox scope"),
+        "test_float_with_comma must document both the non-locale evidence and locale stop-line"
+    );
 }
 
 #[test]
