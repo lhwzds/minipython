@@ -920,6 +920,14 @@ Recent runtime migration notes:
 including CPython's json encoder TypeError text for bad list/tuple subclass `__iter__` returns,
 without expanding into custom encoder hooks.
 
+`cpython_json_dumps_key_coercion_subset`, backed by
+`cpython_json_dumps_key_coercion_diff_subset`, keeps the supported
+`dumps()` dict-key coercion tied to CPython public behavior for
+`str` / `int` / `float` / `bool` / `None` keys, subclass and `IntEnum` keys,
+`Counter` mappings, dict subclass `items()` handling, tuple-subclass item pairs,
+and CPython TypeError/ValueError text for malformed `items()` results,
+without expanding into arbitrary encoder or mapping-protocol support.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

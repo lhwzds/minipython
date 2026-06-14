@@ -122,10 +122,12 @@ and dict replacement values, exception propagation, non-callable hooks, circular
 replacement detection, and the documented recursion boundary.
 
 `cpython_json_dumps_key_coercion_subset`, backed by
-`cpython_json_dumps_key_coercion_diff_subset`, now includes CPython json encoder
-TypeError text for dict subclass `items()` results that either return a bad
-iterator from `__iter__` or are non-iterable scalar/`None` values, without
-expanding into arbitrary encoder or mapping-protocol support.
+`cpython_json_dumps_key_coercion_diff_subset`, keeps the supported
+`dumps()` dict-key coercion tied to CPython public behavior for
+`str` / `int` / `float` / `bool` / `None` keys, subclass and `IntEnum` keys,
+`Counter` mappings, dict subclass `items()` handling, tuple-subclass item pairs,
+and CPython TypeError/ValueError text for malformed `items()` results,
+without expanding into arbitrary encoder or mapping-protocol support.
 
 `cpython_json_dumps_separators_subset`, backed by
 `cpython_json_dumps_separators_diff_subset`, now covers CPython public

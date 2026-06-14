@@ -4661,6 +4661,78 @@ fn json_dumps_sequence_subclass_iter_diff_covers_subset_surface() {
 }
 
 #[test]
+fn json_dumps_key_coercion_diff_covers_subset_surface() {
+    let diff_name = "cpython_json_dumps_key_coercion_diff_subset";
+    let subset_name = "cpython_json_dumps_key_coercion_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dict-key coercion dumps CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dict-key coercion dumps subset evidence must exist"
+    );
+
+    for required in [
+        "class S(str):",
+        "class I(int):",
+        "class F(float):",
+        "class Code(IntEnum):",
+        "Counter({'a': 2, 'b': 0})",
+        "Counter({2: 3, False: 1})",
+        "class DictSubclass(dict):",
+        "class EmptyDictSubclass(dict):",
+        "class TupleSubclassItems(dict):",
+        "class DictItemsBadIter(dict):",
+        "class ItemsNone(dict):",
+        "class ItemsInt(dict):",
+        "json.dumps(value, ensure_ascii=False, separators=(',', ':'))",
+        "except ValueError as error:",
+        "except TypeError as error:",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dict-key coercion diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "items must return 2-tuples",
+        "returned a non-iterable (type BadIter)",
+        "returned a non-iterable (type NoneType)",
+        "returned a non-iterable (type int)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dict-key coercion subset output must pin CPython error text `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`dumps()` dict-key coercion",
+            "`str` / `int` / `float` / `bool` / `None` keys",
+            "subclass and `IntEnum` keys",
+            "`Counter` mappings",
+            "dict subclass `items()` handling",
+            "tuple-subclass item pairs",
+            "TypeError/ValueError text for malformed `items()` results",
+            "without expanding into arbitrary encoder or mapping-protocol support",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe dict-key coercion dumps boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_hook_boundaries_stay_sandbox_classified() {
     let diff_name = "cpython_json_keyword_argument_binding_diff_subset";
     let subset_name = "cpython_json_keyword_argument_binding_subset";
