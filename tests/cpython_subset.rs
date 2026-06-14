@@ -7569,6 +7569,17 @@ fn cpython_math_constants_and_classification_subset() {
             "OverflowError",
         ],
     );
+    assert_output(
+        "import math\nfor label, expr in [('isfinite0', lambda: math.isfinite()), ('isfinite2', lambda: math.isfinite(1, 2)), ('isinf0', lambda: math.isinf()), ('isinf2', lambda: math.isinf(1, 2)), ('isnan0', lambda: math.isnan()), ('isnan2', lambda: math.isnan(1, 2))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "isfinite0 math.isfinite() takes exactly one argument (0 given)",
+            "isfinite2 math.isfinite() takes exactly one argument (2 given)",
+            "isinf0 math.isinf() takes exactly one argument (0 given)",
+            "isinf2 math.isinf() takes exactly one argument (2 given)",
+            "isnan0 math.isnan() takes exactly one argument (0 given)",
+            "isnan2 math.isnan() takes exactly one argument (2 given)",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_math_integer.py::IntMathTests and
@@ -9591,6 +9602,13 @@ fn cpython_math_sqrt_subset() {
             "True",
             "True",
             "float",
+        ],
+    );
+    assert_output(
+        "import math\nfor label, expr in [('sqrt0', lambda: math.sqrt()), ('sqrt2', lambda: math.sqrt(1, 2))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "sqrt0 math.sqrt() takes exactly one argument (0 given)",
+            "sqrt2 math.sqrt() takes exactly one argument (2 given)",
         ],
     );
     assert_output(

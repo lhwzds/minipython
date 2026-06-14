@@ -2148,6 +2148,12 @@ for label, expr in checks:
 
 #[test]
 fn cpython_math_constants_and_classification_diff_subset() {
+    // CPython oracle text: math.isfinite() takes exactly one argument (0 given);
+    // math.isfinite() takes exactly one argument (2 given);
+    // math.isinf() takes exactly one argument (0 given);
+    // math.isinf() takes exactly one argument (2 given);
+    // math.isnan() takes exactly one argument (0 given);
+    // math.isnan() takes exactly one argument (2 given)
     let probe =
         run_cpython("import math; print(hasattr(math, 'isnormal'), hasattr(math, 'issubnormal'))")
             .expect("failed to probe CPython math classification support");
@@ -2180,6 +2186,18 @@ print(math.isinf(float('inf')), math.isinf(float('-inf')), math.isinf(1e400), ma
 print(math.isinf(float('nan')), math.isinf(0.0), math.isinf(1.0))
 print(math.isnan(math.nan), math.copysign(1.0, math.nan))
 print(math.isinf(math.inf), math.inf > 0.0, math.inf == float('inf'), -math.inf == float('-inf'))
+for label, expr in [
+    ('isfinite0', lambda: math.isfinite()),
+    ('isfinite2', lambda: math.isfinite(1, 2)),
+    ('isinf0', lambda: math.isinf()),
+    ('isinf2', lambda: math.isinf(1, 2)),
+    ('isnan0', lambda: math.isnan()),
+    ('isnan2', lambda: math.isnan(1, 2)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 for expr in [
     lambda: math.isfinite(),
     lambda: math.isnan(),
@@ -2591,6 +2609,8 @@ print(True.bit_length(), False.bit_length(), True.bit_count(), False.bit_count()
 
 #[test]
 fn cpython_math_sqrt_diff_subset() {
+    // CPython oracle text: math.sqrt() takes exactly one argument (0 given);
+    // math.sqrt() takes exactly one argument (2 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::testSqrt public stable subset",
         name: "math-sqrt",
@@ -2602,6 +2622,11 @@ print(math.sqrt(1), math.sqrt(4))
 print(math.sqrt(math.inf) == math.inf)
 print(math.isnan(math.sqrt(math.nan)))
 print(type(math.sqrt(4)).__name__)
+for label, expr in [('sqrt0', lambda: math.sqrt()), ('sqrt2', lambda: math.sqrt(1, 2))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
 for expr in [
     lambda: math.sqrt(),
     lambda: math.sqrt(1, 2),

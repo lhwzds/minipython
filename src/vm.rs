@@ -62154,7 +62154,7 @@ fn round_big_int_to_ndigits(value: BigInt, ndigits: i64) -> Value {
 fn call_sqrt(args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
         return Err(format!(
-            "TypeError: sqrt() expected 1 argument, got {}",
+            "TypeError: math.sqrt() takes exactly one argument ({} given)",
             args.len()
         ));
     };
@@ -62173,7 +62173,7 @@ fn call_sqrt(args: Vec<Value>) -> Result<Value, String> {
 fn call_math_isinf(args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
         return Err(format!(
-            "TypeError: isinf() expected 1 argument, got {}",
+            "TypeError: math.isinf() takes exactly one argument ({} given)",
             args.len()
         ));
     };
@@ -62185,7 +62185,7 @@ fn call_math_isinf(args: Vec<Value>) -> Result<Value, String> {
 fn call_math_isfinite(args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
         return Err(format!(
-            "TypeError: isfinite() expected 1 argument, got {}",
+            "TypeError: math.isfinite() takes exactly one argument ({} given)",
             args.len()
         ));
     };
@@ -62197,7 +62197,7 @@ fn call_math_isfinite(args: Vec<Value>) -> Result<Value, String> {
 fn call_math_isnan(args: Vec<Value>) -> Result<Value, String> {
     let [value] = args.as_slice() else {
         return Err(format!(
-            "TypeError: isnan() expected 1 argument, got {}",
+            "TypeError: math.isnan() takes exactly one argument ({} given)",
             args.len()
         ));
     };

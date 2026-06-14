@@ -11915,6 +11915,56 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let classification_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_math_constants_and_classification_diff_subset",
+    );
+    let classification_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_math_constants_and_classification_subset",
+    );
+    for required in [
+        "math.isfinite()",
+        "math.isfinite(1, 2)",
+        "math.isinf()",
+        "math.isinf(1, 2)",
+        "math.isnan()",
+        "math.isnan(1, 2)",
+        "math.isfinite() takes exactly one argument (0 given)",
+        "math.isfinite() takes exactly one argument (2 given)",
+        "math.isinf() takes exactly one argument (0 given)",
+        "math.isinf() takes exactly one argument (2 given)",
+        "math.isnan() takes exactly one argument (0 given)",
+        "math.isnan() takes exactly one argument (2 given)",
+    ] {
+        assert!(
+            classification_diff.contains(required),
+            "math classification CPython diff evidence must cover exact diagnostic `{required}`"
+        );
+        assert!(
+            classification_subset.contains(required),
+            "math classification runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
+    let sqrt_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_sqrt_diff_subset");
+    let sqrt_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_sqrt_subset");
+    for required in [
+        "math.sqrt()",
+        "math.sqrt(1, 2)",
+        "math.sqrt() takes exactly one argument (0 given)",
+        "math.sqrt() takes exactly one argument (2 given)",
+    ] {
+        assert!(
+            sqrt_diff.contains(required),
+            "math sqrt CPython diff evidence must cover exact diagnostic `{required}`"
+        );
+        assert!(
+            sqrt_subset.contains(required),
+            "math sqrt runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+
     for required in [
         "Platform/libm implementation quirks",
         "exact libm special-function precision",
