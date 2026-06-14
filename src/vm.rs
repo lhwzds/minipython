@@ -7263,7 +7263,19 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let values = bind_keyword_call("cached_property", &["func"], 1, args, keywords)?;
+        let values = bind_keyword_call("cached_property", &["func"], 1, args, keywords).map_err(
+            |message| {
+                if message
+                    == "TypeError: cached_property() missing required argument 'func' (pos 1)"
+                    || message == "TypeError: cached_property() missing required argument 'func'"
+                {
+                    "TypeError: __init__() missing 1 required positional argument: 'func'"
+                        .to_string()
+                } else {
+                    message
+                }
+            },
+        )?;
         let function = values[0]
             .clone()
             .expect("required func is validated by bind_keyword_call");

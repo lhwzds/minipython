@@ -5178,11 +5178,15 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
                 .next()
         })
         .expect("functools cached_property diff evidence must be extractable");
+    let cached_property_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_functools_cached_property_subset");
     for required in [
         "CachedCostItem.cost.__doc__",
         "CachedCostItem.__dict__['cost'].__dict__",
         "Dynamic = type('Dynamic', (), {'field': DynamicDescriptor()})",
         "def __set_name__(self, owner, name):",
+        "cached_property()",
+        "__init__() missing 1 required positional argument: 'func'",
         "descriptor.__get__(instance=CachedCostItem())",
         "__get__() missing 1 required positional argument: 'instance'",
         "__get__() got multiple values for argument 'instance'",
@@ -5192,6 +5196,10 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         assert!(
             cached_property_diff.contains(required),
             "cached_property diff evidence must cover descriptor detail `{required}`"
+        );
+        assert!(
+            cached_property_subset.contains(required),
+            "cached_property runtime subset evidence must cover descriptor detail `{required}`"
         );
     }
 

@@ -14590,6 +14590,7 @@ print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)"#
 
 #[test]
 fn cpython_functools_cached_property_diff_subset() {
+    // CPython oracle text: __init__() missing 1 required positional argument: 'func'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cached_property public subset",
         name: "functools-cached-property",
@@ -14708,6 +14709,10 @@ print(calls)
 descriptor = CachedCostItem.__dict__['cost']
 print(descriptor.__get__(None, CachedCostItem) is descriptor, descriptor.__get__(None) is descriptor)
 print(descriptor.__get__(instance=CachedCostItem()))
+try:
+    cached_property()
+except TypeError as error:
+    print('missing-func', type(error).__name__, str(error))
 for label, expected, expr in [
     ('get-missing', "__get__() missing 1 required positional argument: 'instance'", lambda: descriptor.__get__()),
     ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(CachedCostItem(), CachedCostItem, 1)),
