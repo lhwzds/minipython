@@ -72115,8 +72115,8 @@ fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
         Ok(())
     } else {
         Err(format!(
-            "{}() does not accept keyword arguments",
-            method_display_name(name)
+            "TypeError: {}() takes no keyword arguments",
+            method_keyword_error_name(name)
         ))
     }
 }
@@ -72475,6 +72475,17 @@ fn method_display_name(name: &str) -> &str {
         return "from_bytes";
     }
     name.rsplit('.').next().unwrap_or(name)
+}
+
+fn method_keyword_error_name(name: &str) -> String {
+    let method = method_display_name(name);
+    if method.starts_with("__") && method.ends_with("__") {
+        format!("wrapper {method}")
+    } else if name.contains('.') {
+        name.to_string()
+    } else {
+        method.to_string()
+    }
 }
 
 fn value_len(value: &Value) -> Result<usize, String> {

@@ -24280,6 +24280,10 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "try:\n    dict.keys({}, bad=1)\nexcept TypeError as error:\n    print(str(error))",
+        &["dict.keys() takes no keyword arguments"],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );

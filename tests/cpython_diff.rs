@@ -6513,6 +6513,10 @@ for label, expr in [
     except TypeError as error:
         print(label, error.__class__.__name__, isinstance(error, TypeError))
 try:
+    dict.keys({}, bad=1)
+except TypeError as error:
+    print(str(error))
+try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:
     print(error.__class__.__name__, error)
