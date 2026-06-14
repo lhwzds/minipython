@@ -6441,9 +6441,10 @@ Completed in the container constructor/reversed pass:
   `set-operations-mutating` CPython output diff keeps those public behaviors
   tied to the oracle.
 - Added `cpython_set_rich_compare_reflection_subset`, adapted from CPython
-  `Lib/test/test_set.py::TestSet.test_rich_compare`, covering set ordering
-  returning `NotImplemented` for unrelated operands and dispatching the right
-  operand's reflected rich-comparison method.
+  `Lib/test/test_set.py::TestSet.test_rich_compare`, covering set ordering fallback through `NotImplemented`
+  into the right operand's reflected rich-comparison method. The matching
+  `set-rich-compare-reflection` CPython output diff keeps this public behavior
+  tied to the oracle.
 - Added `cpython_set_inplace_algebra_methods_subset`, adapted from CPython
   `Lib/test/test_set.py::TestSet` update and in-place set algebra cases for
   iterable operands, multi-operand `update` / `intersection_update` /

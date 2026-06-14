@@ -4502,6 +4502,11 @@ the same set from Python-level `__eq__` tied to the oracle.
 set equality, ordering, algebra, relation methods, and update methods whose
 element equality clears both participating sets tied to the oracle.
 
+`cpython_set_rich_compare_reflection_subset` is backed by the
+`set-rich-compare-reflection` direct CPython diff case, keeping set ordering
+fallback through `NotImplemented` into the right operand's reflected
+rich-comparison method tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.
