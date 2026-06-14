@@ -270,6 +270,13 @@ without adding alternate encoders or unpaired surrogate storage.
 standard bool/null/list/dict/scalar round trips, 200-level nested list encoding, and default non-finite float spelling,
 without adding file APIs, custom encoder classes, or CPython internals.
 
+`cpython_json_keyword_argument_binding_subset`, backed by
+`cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
+duplicate positional/keyword argument `TypeError` classification, missing required `s` / `obj` argument text,
+no-op `None` binding for supported hook keywords, and `parse_int`, `object_hook`, `object_pairs_hook`, and `default` callable keyword paths,
+while keeping non-`None` `cls` remaining outside the sandbox subset,
+without adding general custom encoder/decoder class support.
+
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
 tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.

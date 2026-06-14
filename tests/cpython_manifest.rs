@@ -4918,6 +4918,84 @@ fn json_hook_boundaries_stay_sandbox_classified() {
 }
 
 #[test]
+fn json_keyword_argument_binding_docs_cover_call_surface() {
+    let diff_name = "cpython_json_keyword_argument_binding_diff_subset";
+    let subset_name = "cpython_json_keyword_argument_binding_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json keyword binding CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json keyword binding runtime subset evidence must exist"
+    );
+
+    for required in [
+        "json.loads(s=",
+        "json.dumps(obj=",
+        "cls=None",
+        "object_hook=None",
+        "parse_float=None",
+        "parse_int=None",
+        "parse_constant=None",
+        "object_pairs_hook=None",
+        "default=None",
+        "parse_int=lambda",
+        "object_hook=lambda",
+        "object_pairs_hook=lambda",
+        "default=lambda",
+        "loads-duplicate-s",
+        "dumps-duplicate-obj",
+        "loads-missing-s",
+        "dumps-missing-obj",
+        "loads-missing-text",
+        "dumps-missing-text",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json keyword binding diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"loads-duplicate-s TypeError True\"",
+        "\"dumps-duplicate-obj TypeError True\"",
+        "\"loads-missing-s TypeError True\"",
+        "\"dumps-missing-obj TypeError True\"",
+        "\"dumps-cls TypeError True\"",
+        "\"loads-missing-text TypeError loads() missing 1 required positional argument: 's'\"",
+        "\"dumps-missing-text TypeError dumps() missing 1 required positional argument: 'obj'\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json keyword binding subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads(s=...)` and `dumps(obj=...)` keyword binding",
+            "duplicate positional/keyword argument `TypeError` classification",
+            "missing required `s` / `obj` argument text",
+            "no-op `None` binding for supported hook keywords",
+            "`parse_int`, `object_hook`, `object_pairs_hook`, and `default` callable keyword paths",
+            "non-`None` `cls` remaining outside the sandbox subset",
+            "without adding general custom encoder/decoder class support",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe keyword binding boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_error_boundary_diff_covers_subset_surface() {
     for (diff_name, subset_name) in [
         (
