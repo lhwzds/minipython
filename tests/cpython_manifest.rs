@@ -10475,6 +10475,83 @@ fn set_bad_comparison_errors_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_bad_comparison_algebra_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_bad_comparison_algebra_errors_subset(",
+        "class BadCmp:",
+        "def __hash__(self):",
+        "return 1",
+        "def __eq__(self, other):",
+        "raise RuntimeError",
+        "for typ in (set, frozenset):",
+        "lambda: s == t",
+        "lambda: s.issubset(t)",
+        "lambda: s.isdisjoint(t)",
+        "lambda: s.symmetric_difference(t)",
+        "lambda: s & t",
+        "lambda: s - t",
+        "lambda: s ^ t",
+        "lambda: s | t",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set bad-comparison algebra subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "set-bad-comparison-algebra-errors",
+        "Lib/test/test_set.py bad comparison set algebra behavior",
+        "class BadCmp:",
+        "def __hash__(self):",
+        "return 1",
+        "def __eq__(self, other):",
+        "raise RuntimeError",
+        "for typ in (set, frozenset):",
+        "lambda: s == t",
+        "lambda: s.issubset(t)",
+        "lambda: s.isdisjoint(t)",
+        "lambda: s.symmetric_difference(t)",
+        "lambda: s & t",
+        "lambda: s - t",
+        "lambda: s ^ t",
+        "lambda: s | t",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "focused set bad-comparison algebra CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_set_bad_comparison_algebra_errors_subset")
+            && CPYTHON_COVERAGE.contains("set-bad-comparison-algebra-errors")
+            && CPYTHON_COVERAGE.contains("set/frozenset equality and ordering checks")
+            && CPYTHON_COVERAGE
+                .contains("relation methods, algebra methods, and `&`, `|`, `-`, and `^`"),
+        "coverage notes must describe set bad-comparison algebra subset and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_set_bad_comparison_algebra_errors_subset")
+            && CPYTHON_MIGRATION.contains("set-bad-comparison-algebra-errors")
+            && CPYTHON_MIGRATION.contains("set/frozenset equality and ordering checks")
+            && CPYTHON_MIGRATION
+                .contains("relation methods, algebra methods, and `&`, `|`, `-`, and `^`"),
+        "migration notes must document set bad-comparison algebra public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",

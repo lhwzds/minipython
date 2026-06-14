@@ -4523,6 +4523,12 @@ tied to the oracle.
 rich equality and propagated `__eq__` exceptions during set construction,
 membership, `add`, `discard`, and `remove` tied to the oracle.
 
+`cpython_set_bad_comparison_algebra_errors_subset` is backed by the
+`set-bad-comparison-algebra-errors` direct CPython diff case, keeping
+hash-collision rich-equality exception propagation across set/frozenset
+equality and ordering checks, relation methods, algebra methods, and `&`, `|`,
+`-`, and `^` tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.

@@ -6423,7 +6423,8 @@ Completed in the container constructor/reversed pass:
   bad-comparison coverage across set/frozenset equality and ordering checks,
   relation methods, algebra methods, and `&`, `|`, `-`, and `^` operators so
   every hash-collision path uses Python rich equality instead of Rust structural
-  equality.
+  equality. The matching `set-bad-comparison-algebra-errors` CPython output diff
+  keeps these public behaviors tied to the oracle.
 - Added `cpython_set_iterator_mutation_subset`, adapted from CPython
   `Lib/test/test_set.py::TestBasicOps.test_changingSizeWhileIterating` and
   `TestWeirdBugs.test_iter_and_mutate`, covering set iterator size-change
