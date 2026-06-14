@@ -38508,9 +38508,13 @@ fn cpython_itertools_islice_error_subset() {
             "    ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),\n",
             "    ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),\n",
             "    ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),\n",
+            "    ('missing-stop', lambda: itertools.islice(range(3))),\n",
+            "    ('too-many', lambda: itertools.islice(range(3), 1, 2, 3, 4)),\n",
             "]:\n",
             "    try:\n",
             "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
             "    except ValueError as error:\n",
             "        print(label, type(error).__name__, str(error))"
         ),
@@ -38518,6 +38522,8 @@ fn cpython_itertools_islice_error_subset() {
             "stop ValueError Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
             "start ValueError Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
             "step ValueError Step for islice() must be a positive integer or None.",
+            "missing-stop TypeError islice expected at least 2 arguments, got 1",
+            "too-many TypeError islice expected at most 4 arguments, got 5",
         ],
     );
 }

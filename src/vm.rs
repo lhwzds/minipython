@@ -24863,9 +24863,15 @@ impl Vm {
         if !keywords.is_empty() {
             return Err("TypeError: islice() takes no keyword arguments".to_string());
         }
-        if !(2..=4).contains(&args.len()) {
+        if args.len() < 2 {
             return Err(format!(
-                "TypeError: islice() expected 2 to 4 arguments, got {}",
+                "TypeError: islice expected at least 2 arguments, got {}",
+                args.len()
+            ));
+        }
+        if args.len() > 4 {
+            return Err(format!(
+                "TypeError: islice expected at most 4 arguments, got {}",
                 args.len()
             ));
         }

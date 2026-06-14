@@ -15594,6 +15594,8 @@ print(type(s).__name__, iter(s) is s, list(s), list(s))"#,
 
 #[test]
 fn cpython_itertools_islice_error_diff_subset() {
+    // CPython oracle text: islice expected at least 2 arguments, got 1;
+    // islice expected at most 4 arguments, got 5
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public islice error subset",
         name: "itertools-islice-errors",
@@ -15605,9 +15607,13 @@ for label, expr in [
     ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),
     ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),
     ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),
+    ('missing-stop', lambda: itertools.islice(range(3))),
+    ('too-many', lambda: itertools.islice(range(3), 1, 2, 3, 4)),
 ]:
     try:
         expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
     except ValueError as error:
         print(label, type(error).__name__, str(error))"#,
     });
