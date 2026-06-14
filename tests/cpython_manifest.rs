@@ -8209,6 +8209,46 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             "sys sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    let int_digits_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_int_max_str_digits_runtime_diff_subset",
+    );
+    let int_digits_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_int_max_str_digits_runtime_subset");
+    for required in [
+        "sys.get_int_max_str_digits(1)",
+        "sys.get_int_max_str_digits(x=1)",
+        "sys.set_int_max_str_digits()",
+        "sys.set_int_max_str_digits(640, 1)",
+        "sys.set_int_max_str_digits(maxdigits=640)",
+        "sys.set_int_max_str_digits('640')",
+        "sys.set_int_max_str_digits(1)",
+        "sys.set_int_max_str_digits(-1)",
+        "print(label, error.__class__.__name__, str(error))",
+    ] {
+        assert!(
+            int_digits_diff.contains(required),
+            "sys int max digits CPython diff evidence must cover exact diagnostic `{required}`"
+        );
+        assert!(
+            int_digits_subset.contains(required),
+            "sys int max digits runtime subset evidence must cover exact diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "sys.get_int_max_str_digits() takes no arguments (1 given)",
+        "sys.get_int_max_str_digits() takes no keyword arguments",
+        "set_int_max_str_digits() missing required argument 'maxdigits' (pos 1)",
+        "set_int_max_str_digits() takes at most 1 argument (2 given)",
+        "'str' object cannot be interpreted as an integer",
+        "maxdigits must be >= 640 or 0 for unlimited",
+    ] {
+        assert!(
+            int_digits_subset.contains(required),
+            "sys int max digits runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
 }
 
 #[test]

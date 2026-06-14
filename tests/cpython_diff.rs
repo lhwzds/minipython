@@ -23007,6 +23007,21 @@ try:
     except ValueError as error:
         message = str(error)
         print('underscore', 'Exceeds the limit' in message, 'conversion' in message)
+    for label, expr in [
+        ('get-arg', lambda: sys.get_int_max_str_digits(1)),
+        ('get-kw', lambda: sys.get_int_max_str_digits(x=1)),
+        ('set-noargs', lambda: sys.set_int_max_str_digits()),
+        ('set-extra', lambda: sys.set_int_max_str_digits(640, 1)),
+        ('set-kw', lambda: sys.set_int_max_str_digits(maxdigits=640)),
+        ('set-str', lambda: sys.set_int_max_str_digits('640')),
+        ('set-small', lambda: sys.set_int_max_str_digits(1)),
+        ('set-neg', lambda: sys.set_int_max_str_digits(-1)),
+    ]:
+        try:
+            result = expr()
+            print(label, 'OK', result)
+        except Exception as error:
+            print(label, error.__class__.__name__, str(error))
 finally:
     sys.set_int_max_str_digits(old_limit)"#,
     });

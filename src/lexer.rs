@@ -351,7 +351,7 @@ pub fn get_int_max_str_digits() -> usize {
 pub fn set_int_max_str_digits(maxdigits: usize) -> Result<(), String> {
     if maxdigits != 0 && maxdigits < MIN_MAX_INT_STR_DIGITS {
         return Err(format!(
-            "ValueError: maxdigits must be 0 or larger than {MIN_MAX_INT_STR_DIGITS}"
+            "ValueError: maxdigits must be >= {MIN_MAX_INT_STR_DIGITS} or 0 for unlimited"
         ));
     }
 

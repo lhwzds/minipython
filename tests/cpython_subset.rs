@@ -36908,7 +36908,56 @@ check("bytes-nonutf8-base10", b"123\xbd", 10)"#,
 #[test]
 fn cpython_int_max_str_digits_runtime_subset() {
     assert_output(
-        "import sys\nold_limit = sys.get_int_max_str_digits()\nsys.set_int_max_str_digits(640)\ntry:\n    maxdigits = sys.get_int_max_str_digits()\n    int('1' * maxdigits)\n    int(' ' + '1' * maxdigits)\n    int('1' * maxdigits + ' ')\n    int('+' + '1' * maxdigits)\n    int('-' + '1' * maxdigits)\n    print(len(str(10 ** (maxdigits - 1))))\n    for text in ['1' * (maxdigits + 1), ' ' + '1' * (maxdigits + 1), '1' * (maxdigits + 1) + ' ', '+' + '1' * (maxdigits + 1), '-' + '1' * (maxdigits + 1)]:\n        try:\n            int(text)\n        except ValueError as error:\n            message = str(error)\n            print('int', 'Exceeds the limit' in message, 'conversion' in message)\n    too_big = 10 ** maxdigits\n    for expr in [lambda: str(too_big), lambda: repr(too_big), lambda: repr([too_big])]:\n        try:\n            expr()\n        except ValueError as error:\n            message = str(error)\n            print('render', 'Exceeds the limit' in message, 'conversion' in message)\n    for base in [2, 4, 8, 16, 32]:\n        int('1' * (maxdigits + 1), base)\n    print('power-bases')\n    int('1_1' * (maxdigits // 2))\n    try:\n        int('1_1' * (maxdigits // 2) + '_1')\n    except ValueError as error:\n        message = str(error)\n        print('underscore', 'Exceeds the limit' in message, 'conversion' in message)\nfinally:\n    sys.set_int_max_str_digits(old_limit)",
+        r#"import sys
+old_limit = sys.get_int_max_str_digits()
+sys.set_int_max_str_digits(640)
+try:
+    maxdigits = sys.get_int_max_str_digits()
+    int('1' * maxdigits)
+    int(' ' + '1' * maxdigits)
+    int('1' * maxdigits + ' ')
+    int('+' + '1' * maxdigits)
+    int('-' + '1' * maxdigits)
+    print(len(str(10 ** (maxdigits - 1))))
+    for text in ['1' * (maxdigits + 1), ' ' + '1' * (maxdigits + 1), '1' * (maxdigits + 1) + ' ', '+' + '1' * (maxdigits + 1), '-' + '1' * (maxdigits + 1)]:
+        try:
+            int(text)
+        except ValueError as error:
+            message = str(error)
+            print('int', 'Exceeds the limit' in message, 'conversion' in message)
+    too_big = 10 ** maxdigits
+    for expr in [lambda: str(too_big), lambda: repr(too_big), lambda: repr([too_big])]:
+        try:
+            expr()
+        except ValueError as error:
+            message = str(error)
+            print('render', 'Exceeds the limit' in message, 'conversion' in message)
+    for base in [2, 4, 8, 16, 32]:
+        int('1' * (maxdigits + 1), base)
+    print('power-bases')
+    int('1_1' * (maxdigits // 2))
+    try:
+        int('1_1' * (maxdigits // 2) + '_1')
+    except ValueError as error:
+        message = str(error)
+        print('underscore', 'Exceeds the limit' in message, 'conversion' in message)
+    for label, expr in [
+        ('get-arg', lambda: sys.get_int_max_str_digits(1)),
+        ('get-kw', lambda: sys.get_int_max_str_digits(x=1)),
+        ('set-noargs', lambda: sys.set_int_max_str_digits()),
+        ('set-extra', lambda: sys.set_int_max_str_digits(640, 1)),
+        ('set-kw', lambda: sys.set_int_max_str_digits(maxdigits=640)),
+        ('set-str', lambda: sys.set_int_max_str_digits('640')),
+        ('set-small', lambda: sys.set_int_max_str_digits(1)),
+        ('set-neg', lambda: sys.set_int_max_str_digits(-1)),
+    ]:
+        try:
+            result = expr()
+            print(label, 'OK', result)
+        except Exception as error:
+            print(label, error.__class__.__name__, str(error))
+finally:
+    sys.set_int_max_str_digits(old_limit)"#,
         &[
             "640",
             "int True True",
@@ -36921,6 +36970,14 @@ fn cpython_int_max_str_digits_runtime_subset() {
             "render True True",
             "power-bases",
             "underscore True True",
+            "get-arg TypeError sys.get_int_max_str_digits() takes no arguments (1 given)",
+            "get-kw TypeError sys.get_int_max_str_digits() takes no keyword arguments",
+            "set-noargs TypeError set_int_max_str_digits() missing required argument 'maxdigits' (pos 1)",
+            "set-extra TypeError set_int_max_str_digits() takes at most 1 argument (2 given)",
+            "set-kw OK None",
+            "set-str TypeError 'str' object cannot be interpreted as an integer",
+            "set-small ValueError maxdigits must be >= 640 or 0 for unlimited",
+            "set-neg ValueError maxdigits must be >= 640 or 0 for unlimited",
         ],
     );
 }

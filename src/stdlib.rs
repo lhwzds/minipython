@@ -952,11 +952,13 @@ pub(crate) fn call_sys_get_int_max_str_digits(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err("get_int_max_str_digits() does not accept keyword arguments".to_string());
+        return Err(
+            "TypeError: sys.get_int_max_str_digits() takes no keyword arguments".to_string(),
+        );
     }
     if !args.is_empty() {
         return Err(format!(
-            "get_int_max_str_digits() takes no arguments ({} given)",
+            "TypeError: sys.get_int_max_str_digits() takes no arguments ({} given)",
             args.len()
         ));
     }
@@ -965,17 +967,27 @@ pub(crate) fn call_sys_get_int_max_str_digits(
 }
 
 pub(crate) fn call_sys_set_int_max_str_digits(
-    args: Vec<Value>,
+    mut args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
-    if !keywords.is_empty() {
-        return Err("set_int_max_str_digits() does not accept keyword arguments".to_string());
+    for (keyword, value) in keywords {
+        if keyword != "maxdigits" {
+            return Err(format!(
+                "TypeError: set_int_max_str_digits() got an unexpected keyword argument '{keyword}'"
+            ));
+        }
+        args.push(value);
     }
     if args.len() != 1 {
-        return Err(format!(
-            "set_int_max_str_digits() takes exactly one argument ({} given)",
-            args.len()
-        ));
+        return Err(if args.is_empty() {
+            "TypeError: set_int_max_str_digits() missing required argument 'maxdigits' (pos 1)"
+                .to_string()
+        } else {
+            format!(
+                "TypeError: set_int_max_str_digits() takes at most 1 argument ({} given)",
+                args.len()
+            )
+        });
     }
 
     let maxdigits = match args.into_iter().next().expect("length checked") {
@@ -985,11 +997,11 @@ pub(crate) fn call_sys_set_int_max_str_digits(
             .to_usize()
             .ok_or_else(|| "ValueError: maxdigits is too large".to_string())?,
         Value::Number(_) | Value::BigInt(_) => {
-            return Err("ValueError: maxdigits must be non-negative".to_string());
+            return Err("ValueError: maxdigits must be >= 640 or 0 for unlimited".to_string());
         }
         value => {
             return Err(format!(
-                "TypeError: 'maxdigits' must be an integer, not {}",
+                "TypeError: '{}' object cannot be interpreted as an integer",
                 stdlib_sys_type_name(&value)
             ));
         }
