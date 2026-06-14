@@ -5402,6 +5402,85 @@ fn json_dumps_check_circular_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_indent_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_indent_diff_subset";
+    let subset_name = "cpython_json_dumps_indent_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps indent CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps indent runtime subset evidence must exist"
+    );
+
+    for required in [
+        "indent in [None, 0, 2, '', '--']",
+        "indent=indent, sort_keys=True, ensure_ascii=False",
+        "dict(indent=2, separators=None)",
+        "dict(indent=2, separators=(',', ':'))",
+        "dict(indent=2, separators=(', ', ': '))",
+        "dict(indent=0, separators=(',', ':'))",
+        "for indent in [-1, -2]",
+        "class IndexIndent:",
+        "class BoolIndexIndent:",
+        "json.dumps([1, 2], indent=indent)",
+        "indent in [True, False, 1.5, [], object()]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps indent diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"CASE None\"",
+        "\"CASE 0\"",
+        "\"CASE 2\"",
+        "\"CASE ''\"",
+        "\"CASE '--'\"",
+        "\"SEP 2 None\"",
+        "\"SEP 2 (',', ':')\"",
+        "\"SEP 2 (', ', ': ')\"",
+        "\"SEP 0 (',', ':')\"",
+        "r#\"NEG -1",
+        "r#\"NEG -2",
+        "r#\"INDEX IndexIndent",
+        "r#\"INDEX BoolIndexIndent",
+        "\"BAD TypeError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps indent subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`indent` pretty-print formatting",
+            "None, zero, positive integer, empty-string, and string indent values",
+            "negative integer indent values",
+            "`separators=None` default item-separator behavior",
+            "custom separator interaction",
+            "`__index__` indent conversion",
+            "bool indent values",
+            "bad non-index indent TypeError boundary",
+            "without adding writer streams, file output, or locale-sensitive formatting",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe indent option boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (

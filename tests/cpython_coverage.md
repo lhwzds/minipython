@@ -964,6 +964,12 @@ list, dict, tuple, and namedtuple container cycles. It covers truthy `check_circ
 falsey `check_circular` values surfacing `RecursionError`, non-cyclic list/dict/tuple rendering with `check_circular=False`,
 and truthy arbitrary-object `check_circular` values, without adding GC tracking, object finalization, or host recursion controls.
 
+`cpython_json_dumps_indent_subset`, backed by
+`cpython_json_dumps_indent_diff_subset`, keeps `indent` pretty-print formatting for
+None, zero, positive integer, empty-string, and string indent values, negative integer indent values,
+`separators=None` default item-separator behavior, custom separator interaction, `__index__` indent conversion,
+bool indent values, and the bad non-index indent TypeError boundary, without adding writer streams, file output, or locale-sensitive formatting.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,
