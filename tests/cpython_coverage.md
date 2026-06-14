@@ -1521,8 +1521,9 @@ without adding general custom encoder/decoder class support.
   including instance and class access, descriptor `func` / `dispatcher` /
   `register` attributes, descriptor and bound callable `repr()` / `str()`
   shapes, descriptor `__module__` metadata override and deletion fallback to
-  `functools`, explicit and decorator registration through raw, class-bound,
-  and instance-bound access, `staticmethod` and `classmethod` implementations,
+  `functools`, manual descriptor `__get__(obj=..., cls=...)` binding plus
+  arity and keyword `TypeError` paths, explicit and decorator registration
+  through raw, class-bound, and instance-bound access, `staticmethod` and `classmethod` implementations,
   annotation-inferred registration, PEP 604 and
   `typing.Union` registration, and public TypeError paths. The default diff
   covers stable explicit-registration and descriptor-composition behavior;

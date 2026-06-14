@@ -7643,23 +7643,54 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        if !keywords.is_empty() {
-            return Err("__get__() does not accept keyword arguments".to_string());
-        }
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("__get__() expected a singledispatchmethod receiver".to_string());
         };
         let descriptor @ Value::SingleDispatchMethod { .. } = descriptor.clone() else {
             return Err("__get__() expected a singledispatchmethod receiver".to_string());
         };
-        if rest.is_empty() || rest.len() > 2 {
+        if rest.len() > 2 {
             return Err(format!(
-                "__get__() expected 1 or 2 arguments, got {}",
-                rest.len()
+                "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                rest.len() + 1
             ));
         }
-        let owner = rest.get(1).cloned().unwrap_or(Value::None);
-        self.singledispatchmethod_get(descriptor, rest[0].clone(), owner)
+        let mut object = rest.first().cloned();
+        let mut owner = rest.get(1).cloned();
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "obj" => {
+                    if object.is_some() {
+                        return Err(
+                            "TypeError: __get__() got multiple values for argument 'obj'"
+                                .to_string(),
+                        );
+                    }
+                    object = Some(value);
+                }
+                "cls" => {
+                    if owner.is_some() {
+                        return Err(
+                            "TypeError: __get__() got multiple values for argument 'cls'"
+                                .to_string(),
+                        );
+                    }
+                    owner = Some(value);
+                }
+                _ => {
+                    return Err(format!(
+                        "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+        let Some(object) = object else {
+            return Err(
+                "TypeError: __get__() missing 1 required positional argument: 'obj'".to_string(),
+            );
+        };
+        let owner = owner.unwrap_or(Value::None);
+        self.singledispatchmethod_get(descriptor, object, owner)
     }
 
     fn singledispatch_register(

@@ -14538,6 +14538,17 @@ print(c.m((1, 2)), c.m(b'abc'))
 print(C.m.__name__, c.m.__name__)
 rendered = repr(c.m)
 print(rendered.startswith('<function C.m at 0x'), rendered.endswith('>'), str(c.m).startswith('<function C.m at 0x'))
+print(descriptor.__get__(obj=c, cls=C)(1))
+for label, expected, expr in [
+    ('get-missing', "__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
+    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(c, C, 1)),
+    ('get-duplicate', "__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(c, obj=c)),
+    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error), str(error) == expected)
 try:
     singledispatchmethod()
 except TypeError as error:
