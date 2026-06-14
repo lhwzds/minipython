@@ -26,8 +26,8 @@ use crate::stdlib::{
     call_hash_builtin, call_hashable_hash, call_id, call_import_builtin, call_int_base_builtin,
     call_len_builtin, call_max_builtin, call_min_builtin, call_ord, call_property_constructor,
     call_repr_builtin, call_staticmethod_constructor, call_sum_builtin,
-    call_sys_get_int_max_str_digits, call_sys_set_int_max_str_digits, call_types_coroutine,
-    create_module, import_from,
+    call_sys_get_int_max_str_digits, call_sys_getdefaultencoding, call_sys_set_int_max_str_digits,
+    call_types_coroutine, create_module, import_from,
 };
 use crate::value::{
     ByteArrayRef, BytesIORef, COMPLEX_SUBCLASS_STORAGE_FIELD, CodeLineSpan, CodeMode,
@@ -8942,6 +8942,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "sys.get_int_max_str_digits" => {
                 call_sys_get_int_max_str_digits(args, keywords)
+            }
+            Value::Builtin(name) if name == "sys.getdefaultencoding" => {
+                call_sys_getdefaultencoding(args, keywords)
             }
             Value::Builtin(name) if name == "sys.set_int_max_str_digits" => {
                 call_sys_set_int_max_str_digits(args, keywords)

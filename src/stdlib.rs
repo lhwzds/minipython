@@ -459,6 +459,10 @@ pub(crate) fn create_module(
                     Value::Builtin("sys.get_int_max_str_digits".to_string()),
                 ),
                 (
+                    "getdefaultencoding",
+                    Value::Builtin("sys.getdefaultencoding".to_string()),
+                ),
+                (
                     "set_int_max_str_digits",
                     Value::Builtin("sys.set_int_max_str_digits".to_string()),
                 ),
@@ -969,6 +973,23 @@ pub(crate) fn call_sys_get_int_max_str_digits(
     }
 
     Ok(Value::Number(get_int_max_str_digits() as i64))
+}
+
+pub(crate) fn call_sys_getdefaultencoding(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: sys.getdefaultencoding() takes no keyword arguments".to_string());
+    }
+    if !args.is_empty() {
+        return Err(format!(
+            "TypeError: sys.getdefaultencoding() takes no arguments ({} given)",
+            args.len()
+        ));
+    }
+
+    Ok(Value::String("utf-8".to_string()))
 }
 
 pub(crate) fn call_sys_set_int_max_str_digits(

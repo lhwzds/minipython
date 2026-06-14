@@ -25032,6 +25032,8 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
 
 #[test]
 fn cpython_float_hash_and_sys_info_diff_subset() {
+    // CPython oracle text: sys.getdefaultencoding() takes no arguments (1 given);
+    // sys.getdefaultencoding() takes no keyword arguments
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_float.py::GeneralFloatCases::test_hash and ::test_hash_nan",
         name: "float-hash-and-sys-info",
@@ -25056,7 +25058,13 @@ print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float
 print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
-print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)"#,
+print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
+print('sys-getdefaultencoding', sys.getdefaultencoding())
+for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 
