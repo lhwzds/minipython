@@ -23344,7 +23344,7 @@ impl Vm {
             "array.array.buffer_info" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: buffer_info() expected 0 arguments, got {}",
+                        "TypeError: array.buffer_info() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23360,7 +23360,7 @@ impl Vm {
             "array.array.__copy__" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: __copy__() expected 0 arguments, got {}",
+                        "TypeError: array.__copy__() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23495,7 +23495,7 @@ impl Vm {
             "array.array.fromlist" => {
                 let [receiver, source] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: fromlist() expected 1 argument, got {}",
+                        "TypeError: array.fromlist() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23641,7 +23641,7 @@ impl Vm {
             "array.array.remove" => {
                 let [receiver, needle] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: remove() expected 1 argument, got {}",
+                        "TypeError: array.remove() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -23676,7 +23676,7 @@ impl Vm {
             "array.array.reverse" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: reverse() expected 0 arguments, got {}",
+                        "TypeError: array.reverse() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };

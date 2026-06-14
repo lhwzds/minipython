@@ -24176,7 +24176,13 @@ fn cpython_array_module_and_constructor_public_surface_diff_subset() {
     // CPython oracle text: array.append() takes exactly one argument (0 given);
     // array.append() takes exactly one argument (2 given);
     // array.extend() takes exactly one argument (0 given);
+    // array.fromlist() takes exactly one argument (0 given);
+    // array.fromlist() takes exactly one argument (2 given);
     // array.frombytes() takes exactly one argument (0 given);
+    // array.buffer_info() takes no arguments (1 given);
+    // array.__copy__() takes no arguments (1 given);
+    // array.remove() takes exactly one argument (0 given);
+    // array.reverse() takes no arguments (1 given);
     // array.tobytes() takes no arguments (1 given);
     // array.tolist() takes no arguments (1 given);
     // array.byteswap() takes no arguments (1 given)
@@ -24230,7 +24236,13 @@ for label, expr in [
     ('append0', lambda: array.array('B').append()),
     ('append2', lambda: array.array('B').append(1, 2)),
     ('extend0', lambda: array.array('B').extend()),
+    ('fromlist0', lambda: array.array('B').fromlist()),
+    ('fromlist2', lambda: array.array('B').fromlist([], [])),
     ('frombytes0', lambda: array.array('B').frombytes()),
+    ('buffer-info1', lambda: array.array('B').buffer_info(1)),
+    ('copy1', lambda: array.array('B').__copy__(1)),
+    ('remove0', lambda: array.array('B').remove()),
+    ('reverse1', lambda: array.array('B').reverse(1)),
     ('tobytes1', lambda: array.array('B').tobytes(1)),
     ('tolist1', lambda: array.array('B').tolist(1)),
     ('byteswap1', lambda: array.array('H', [1]).byteswap(1)),
