@@ -1530,6 +1530,83 @@ fn cpython_memoryview_hex_reentrant_release_diff_is_capability_gated() {
 }
 
 #[test]
+fn cpython_memoryview_evidence_is_documented_in_coverage_and_migration() {
+    let diff_evidence = [
+        "cpython_memoryview_minimal_runtime_diff_subset",
+        "cpython_memoryview_getbuf_fail_diff_subset",
+        "cpython_memoryview_methods_release_diff_subset",
+        "cpython_memoryview_count_index_diff_subset",
+        "cpython_memoryview_writable_setitem_diff_subset",
+        "cpython_memoryview_tuple_key_setitem_diff_subset",
+        "cpython_memoryview_slice_and_attributes_diff_subset",
+        "cpython_memoryview_cast_one_byte_format_diff_subset",
+        "cpython_memoryview_hex_separator_diff_subset",
+        "cpython_memoryview_rejection_and_hash_diff_subset",
+        "cpython_memoryview_hex_released_view_diff_subset",
+        "cpython_memoryview_hex_reentrant_release_diff_subset",
+        "cpython_memoryview_release_during_index_read_diff_subset",
+        "cpython_memoryview_bytesio_readinto_diff_subset",
+        "cpython_memoryview_weakref_live_diff_subset",
+        "cpython_memoryview_array_b_buffer_diff_subset",
+        "cpython_memoryview_array_signed_byte_buffer_diff_subset",
+        "cpython_memoryview_array_non_byte_public_read_diff_subset",
+        "cpython_memoryview_array_non_byte_writeback_diff_subset",
+    ];
+    let runtime_evidence = [
+        "cpython_memoryview_minimal_runtime_subset",
+        "cpython_memoryview_basic_methods_and_release_subset",
+        "cpython_memoryview_getbuf_fail_subset",
+        "cpython_memoryview_writable_setitem_subset",
+        "cpython_memoryview_slice_reference_subset",
+        "cpython_memoryview_public_buffer_attributes_subset",
+        "cpython_memoryview_array_b_buffer_subset",
+        "cpython_memoryview_array_signed_byte_buffer_subset",
+        "cpython_memoryview_array_non_byte_public_read_subset",
+        "cpython_memoryview_array_non_byte_writeback_subset",
+        "cpython_memoryview_cast_one_byte_format_subset",
+        "cpython_memoryview_getitem_index_count_compare_subset",
+        "cpython_memoryview_hex_separator_subset",
+        "cpython_memoryview_hex_reentrant_release_subset",
+        "cpython_memoryview_copy_rejection_subset",
+        "cpython_memoryview_pickle_rejection_subset",
+        "cpython_memoryview_hash_release_cache_subset",
+        "cpython_memoryview_release_during_index_subset",
+        "cpython_memoryview_bytesio_readinto_subset",
+        "cpython_memoryview_weakref_live_subset",
+    ];
+
+    for evidence in diff_evidence {
+        assert!(
+            CPYTHON_DIFF.contains(&format!("fn {evidence}(")),
+            "memoryview CPython diff evidence `{evidence}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(evidence),
+            "coverage document must mention memoryview CPython diff evidence `{evidence}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(evidence),
+            "migration document must mention memoryview CPython diff evidence `{evidence}`"
+        );
+    }
+
+    for evidence in runtime_evidence {
+        assert!(
+            CPYTHON_SUBSET.contains(&format!("fn {evidence}(")),
+            "memoryview runtime subset evidence `{evidence}` must exist"
+        );
+        assert!(
+            CPYTHON_COVERAGE.contains(evidence),
+            "coverage document must mention memoryview runtime subset evidence `{evidence}`"
+        );
+        assert!(
+            CPYTHON_MIGRATION.contains(evidence),
+            "migration document must mention memoryview runtime subset evidence `{evidence}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_bytes_base_methods_are_tracked() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_BYTES_SOURCE);
     let expected_count = python_test_class_method_counts(&source)

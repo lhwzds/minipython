@@ -4211,28 +4211,32 @@ without adding general custom encoder/decoder class support.
   one-byte `array.array('B')` exporter surface for `memoryview()`: writable
   `B`-format attributes, `obj` identity, `tolist()` / `tobytes()`, scalar and
   same-size slice writeback into the original array, subview stride
-  preservation, and `toreadonly()` retaining the array exporter.
+  preservation, and `toreadonly()` retaining the array exporter. Direct CPython
+  diff evidence is in `cpython_memoryview_array_b_buffer_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_signed_byte_buffer_subset`, covering the CPython
   public signed-byte `array.array('b')` exporter surface for `memoryview()`:
   raw bytes/bytearray initialization, signed iterable initialization and
   iteration, `b`-format attributes, signed `tolist()` / scalar getitem,
   scalar write range/type errors, same-format memoryview slice assignment, and
-  structure mismatch errors for bytes and unsigned-byte views.
+  structure mismatch errors for bytes and unsigned-byte views. Direct CPython
+  diff evidence is in `cpython_memoryview_array_signed_byte_buffer_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_non_byte_public_read_subset`, covering the CPython
   public one-dimensional non-byte numeric `array.array` exporter read surface
   for `memoryview()`: element-sized `len()` / `itemsize` / `shape` /
   `strides` / `nbytes` attributes, scalar getitem, `tolist()`, logical
   `tobytes()`, slicing, `c_contiguous`, and byte casts for `h`, `H`, `i`,
-  `I`, `f`, and `d` formats.
+  `I`, `f`, and `d` formats. Direct CPython diff evidence is in
+  `cpython_memoryview_array_non_byte_public_read_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_non_byte_writeback_subset`, covering the CPython
   public one-dimensional same-format writeback surface for non-byte numeric
   `array.array` exporters through `memoryview()`: scalar item assignment,
   contiguous and extended slice assignment, backing-array visibility,
   `__index__` scalar conversion, and structure-mismatch rejection for bytes
-  and differently formatted memoryviews.
+  and differently formatted memoryviews. Direct CPython diff evidence is in
+  `cpython_memoryview_array_non_byte_writeback_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_module_and_constructor_public_surface_subset`, covering the
   CPython public `array` module constructor surface: `array.typecodes`,
