@@ -55,6 +55,8 @@ struct ManifestGroup<'a> {
 struct ManifestMethod<'a> {
     method: &'a str,
     status: &'a str,
+    evidence: &'a str,
+    remaining: &'a str,
 }
 
 #[derive(Debug)]
@@ -177,6 +179,53 @@ fn cpython_test_manifest_keeps_unfinished_scope_visible() {
         assert!(
             CPYTHON_MIGRATION.contains(required),
             "migration notes must keep unfinished scope term `{required}` visible"
+        );
+    }
+}
+
+#[test]
+fn cpython_test_manifest_partial_methods_have_explicit_stop_line_reason() {
+    let partials = all_method_audit_methods()
+        .into_iter()
+        .filter(|method| method.status == "partial")
+        .collect::<Vec<_>>();
+    let actual = partials
+        .iter()
+        .map(|method| method.method.to_string())
+        .collect::<BTreeSet<_>>();
+    let expected = [
+        "test_ascii",
+        "test_getattr",
+        "test_breakpoint",
+        "test_breakpoint_with_breakpointhook_reset",
+        "test_type_name",
+        "test_type_doc",
+        "test_float_with_comma",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect::<BTreeSet<_>>();
+    assert_eq!(
+        actual, expected,
+        "method-level partial rows must stay limited to explicit stop-line gaps"
+    );
+
+    for method in partials {
+        let context = format!("{} {}", method.evidence, method.remaining);
+        assert!(
+            context.contains("surrogate")
+                || context.contains("pdb")
+                || context.contains("breakpoint")
+                || context.contains("locale"),
+            "partial method `{}` must document a concrete stop-line reason, got `{context}`",
+            method.method
+        );
+    }
+
+    for required in ["lone-surrogate", "pdb", "breakpoint", "locale-sensitive"] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "coverage or migration notes must keep partial stop-line term `{required}` visible"
         );
     }
 }
@@ -16795,7 +16844,40 @@ fn method_audit_methods(section_heading: &str) -> Vec<ManifestMethod<'static>> {
         let Some(status) = strip_backticks(cells[1]) else {
             continue;
         };
-        methods.push(ManifestMethod { method, status });
+        methods.push(ManifestMethod {
+            method,
+            status,
+            evidence: cells[2],
+            remaining: cells[3],
+        });
+    }
+
+    methods
+}
+
+fn all_method_audit_methods() -> Vec<ManifestMethod<'static>> {
+    let mut methods = Vec::new();
+
+    for line in MANIFEST.lines() {
+        let cells = table_cells(line);
+        if cells.len() != 4 {
+            continue;
+        }
+        let Some(method) = strip_backticks(cells[0]) else {
+            continue;
+        };
+        if !method.starts_with("test_") {
+            continue;
+        }
+        let Some(status) = strip_backticks(cells[1]) else {
+            continue;
+        };
+        methods.push(ManifestMethod {
+            method,
+            status,
+            evidence: cells[2],
+            remaining: cells[3],
+        });
     }
 
     methods
