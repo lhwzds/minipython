@@ -1188,6 +1188,37 @@ fn array_sandbox_subset_excludes_pickle_module_internals() {
 }
 
 #[test]
+fn math_sandbox_subset_keeps_integer_submodule_narrow() {
+    assert_eq!(
+        run_source(
+            "import math\nimport math.integer as mi\nfor name in ['sqrt', 'gcd', 'prod', 'sumprod', 'nextafter', 'ulp']:\n    print('math', name, hasattr(math, name))\nprint('math __all__', hasattr(math, '__all__'))\nfor name in ['comb', 'factorial', 'gcd', 'isqrt', 'lcm', 'perm']:\n    print('integer', name, hasattr(mi, name))\nfor name in ['sqrt', 'prod', 'sumprod', 'nextafter', 'ulp', '__all__']:\n    print('integer', name, hasattr(mi, name))\nprint(dir(mi))"
+        ),
+        Ok(output_lines(&[
+            "math sqrt True",
+            "math gcd True",
+            "math prod True",
+            "math sumprod True",
+            "math nextafter True",
+            "math ulp True",
+            "math __all__ False",
+            "integer comb True",
+            "integer factorial True",
+            "integer gcd True",
+            "integer isqrt True",
+            "integer lcm True",
+            "integer perm True",
+            "integer sqrt False",
+            "integer prod False",
+            "integer sumprod False",
+            "integer nextafter False",
+            "integer ulp False",
+            "integer __all__ False",
+            "['__name__', 'comb', 'factorial', 'gcd', 'isqrt', 'lcm', 'perm']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =

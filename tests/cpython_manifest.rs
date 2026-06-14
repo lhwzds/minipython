@@ -10600,6 +10600,14 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("math_sandbox_subset_keeps_integer_submodule_narrow")
+            && LANGUAGE_TESTS.contains("import math.integer as mi")
+            && LANGUAGE_TESTS.contains("'sqrt', 'prod', 'sumprod', 'nextafter', 'ulp', '__all__'")
+            && LANGUAGE_TESTS.contains("dir(mi)"),
+        "math sandbox export test must guard module __all__ and narrow math.integer exports"
+    );
+
     let keyword_diff = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_math_keyword_error_messages_diff_subset",
