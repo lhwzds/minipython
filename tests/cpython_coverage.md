@@ -945,6 +945,13 @@ It pins CPython's unpack length `ValueError` text for 0-, 1-, and 3-item separat
 non-iterable separator `TypeError` text, and item/key separator element `TypeError` text,
 without adding JSONEncoder subclass support or arbitrary encoder hooks.
 
+`cpython_json_dumps_skipkeys_subset`, backed by
+`cpython_json_dumps_skipkeys_diff_subset`, keeps `skipkeys` unsupported-key omission for
+top-level and nested dictionaries with tuple/custom-object keys while preserving supported `str` subclass, `int` subclass, `None`, and integer keys.
+It covers `sort_keys=True` interaction, `ensure_ascii=False` and compact `separators` rendering,
+the `skipkeys=False` TypeError boundary, and truthy non-bool `skipkeys` values,
+without adding arbitrary mapping-protocol support or encoder hooks.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

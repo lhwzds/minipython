@@ -5183,6 +5183,77 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_dumps_skipkeys_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_dumps_skipkeys_diff_subset";
+    let subset_name = "cpython_json_dumps_skipkeys_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps skipkeys CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps skipkeys runtime subset evidence must exist"
+    );
+
+    for required in [
+        "class K:",
+        "class S(str):",
+        "class I(int):",
+        "({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, False, False)",
+        "({(1, 2): 'tuple', 'a': 1, None: 2, 3: 'three'}, True, False)",
+        "({K(): 'custom', 'a': [1, 2]}, True, False)",
+        "({(1, 2): 'tuple', S('s'): I(4)}, True, False)",
+        "({(1, 2): 'tuple', 'b': 1, 'a': 2}, True, True)",
+        "'outer': {(1, 2): 'drop', 'keep': 1}",
+        "skipkeys=False",
+        "skipkeys=True, ensure_ascii=False, separators=(',', ':')",
+        "skipkeys in [[], {}, K()]",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps skipkeys diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"{\\\"a\\\": 1, \\\"null\\\": 2, \\\"3\\\": \\\"three\\\"}\"",
+        "\"{\\\"a\\\": [1, 2]}\"",
+        "\"{\\\"s\\\": 4}\"",
+        "\"{\\\"outer\\\": {\\\"keep\\\": 1}, \\\"list\\\": [{\\\"ok\\\": 2}]}\"",
+        "\"{\\\"é\\\":\\\"𝄠\\\"}\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps skipkeys subset output must pin CPython rendered output `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`skipkeys` unsupported-key omission",
+            "top-level and nested dictionaries",
+            "tuple/custom-object keys",
+            "preserving supported `str` subclass, `int` subclass, `None`, and integer keys",
+            "`sort_keys=True` interaction",
+            "`ensure_ascii=False` and compact `separators` rendering",
+            "`skipkeys=False` TypeError boundary",
+            "truthy non-bool `skipkeys` values",
+            "without adding arbitrary mapping-protocol support or encoder hooks",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe skipkeys option boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (

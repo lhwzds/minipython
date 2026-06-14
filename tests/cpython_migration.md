@@ -144,9 +144,11 @@ conversion through `__index__` objects in addition to direct positive, zero,
 negative, string, and `None` values.
 
 `cpython_json_dumps_skipkeys_subset`, backed by
-`cpython_json_dumps_skipkeys_diff_subset`, keeps unsupported-key omission
-covered for top-level and nested dictionaries while preserving the
-`skipkeys=False` TypeError boundary.
+`cpython_json_dumps_skipkeys_diff_subset`, keeps `skipkeys` unsupported-key omission for
+top-level and nested dictionaries with tuple/custom-object keys while preserving supported `str` subclass, `int` subclass, `None`, and integer keys.
+It covers `sort_keys=True` interaction, `ensure_ascii=False` and compact `separators` rendering,
+the `skipkeys=False` TypeError boundary, and truthy non-bool `skipkeys` values,
+without adding arbitrary mapping-protocol support or encoder hooks.
 
 `cpython_json_dumps_allow_nan_subset`, backed by
 `cpython_json_dumps_allow_nan_diff_subset`, keeps non-finite float rendering and
