@@ -111,10 +111,9 @@ direct CPython diff evidence plus local subset/runtime evidence, not that the fu
 
 `cpython_json_dumps_sequence_subclass_iter_subset`, backed by
 `cpython_json_dumps_sequence_subclass_iter_diff_subset`, keeps the supported
-`dumps()` sequence subclass behavior tied to CPython public iteration for list,
-tuple, and namedtuple subclasses, including CPython's json encoder TypeError
-text for bad list/tuple subclass `__iter__` returns, without expanding into
-custom encoder hooks.
+`dumps()` sequence subclass behavior tied to CPython public iteration for list, tuple, and namedtuple subclasses,
+including CPython's json encoder TypeError text for bad list/tuple subclass `__iter__` returns,
+without expanding into custom encoder hooks.
 
 `cpython_json_dumps_default_hook_subset`, backed by
 `cpython_json_dumps_default_hook_diff_subset`, keeps the supported `default`

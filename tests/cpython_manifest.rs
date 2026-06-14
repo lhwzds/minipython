@@ -4605,6 +4605,62 @@ fn json_loads_dumps_basic_diff_covers_core_runtime_subset() {
 }
 
 #[test]
+fn json_dumps_sequence_subclass_iter_diff_covers_subset_surface() {
+    let diff_name = "cpython_json_dumps_sequence_subclass_iter_diff_subset";
+    let subset_name = "cpython_json_dumps_sequence_subclass_iter_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json sequence-subclass dumps CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json sequence-subclass dumps subset evidence must exist"
+    );
+
+    for required in [
+        "class JsonList(list):",
+        "class JsonTuple(tuple):",
+        "namedtuple('JsonPoint', 'x y')",
+        "class JsonPointSubclass(JsonPoint):",
+        "return iter([JsonInt(9), JsonInt(8)])",
+        "return iter([JsonInt(7)])",
+        "return iter([JsonInt(6)])",
+        "class BadList(list):",
+        "raise RuntimeError('boom')",
+        "class BadListIter(list):",
+        "class BadTupleIter(tuple):",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json sequence-subclass diff and subset evidence must both cover `{required}`"
+        );
+    }
+    assert!(
+        CPYTHON_SUBSET.contains("_iterencode_list needs a sequence"),
+        "json sequence-subclass subset output must pin CPython TypeError text"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`dumps()` sequence subclass behavior",
+            "CPython public iteration for list, tuple, and namedtuple subclasses",
+            "json encoder TypeError text for bad list/tuple subclass `__iter__` returns",
+            "without expanding into custom encoder hooks",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe sequence-subclass dumps boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_hook_boundaries_stay_sandbox_classified() {
     let diff_name = "cpython_json_keyword_argument_binding_diff_subset";
     let subset_name = "cpython_json_keyword_argument_binding_subset";
