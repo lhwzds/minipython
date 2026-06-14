@@ -383,6 +383,8 @@ Recent runtime migration notes:
   `cpython_functools_singledispatchmethod_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
+  `cpython_itertools_chain_diff_subset` and
+  `cpython_itertools_chain_subset`,
   `cpython_itertools_chain_from_iterable_diff_subset` and
   `cpython_itertools_chain_from_iterable_subset`,
   `cpython_itertools_repeat_diff_subset` and
@@ -923,6 +925,7 @@ Recent runtime migration notes:
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
   `cpython_itertools_product_diff_subset`, and
+  `cpython_itertools_chain_diff_subset`, and
   `cpython_itertools_chain_from_iterable_diff_subset`,
   `cpython_itertools_repeat_diff_subset`,
   `cpython_itertools_cycle_diff_subset`,

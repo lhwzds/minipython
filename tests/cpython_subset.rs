@@ -37686,6 +37686,35 @@ fn cpython_itertools_core_iterator_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public chain behavior over
+// pure in-memory iterables.
+#[test]
+fn cpython_itertools_chain_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "ch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))\n",
+            "print(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))\n",
+            "print(list(itertools.chain()))\n",
+            "print(list(itertools.chain(items for items in [range(2), 'xy'])))\n",
+            "source = (value for value in [3, 4])\n",
+            "ch = itertools.chain(source, [5])\n",
+            "print(next(ch), list(ch), list(source))\n",
+            "try:\n",
+            "    itertools.chain(iterable=[1])\n",
+            "except TypeError as error:\n",
+            "    print(type(error).__name__)"
+        ),
+        &[
+            "chain True [1, 2, 'a', 'b', 9, 9] []",
+            "[]",
+            "[range(0, 2), 'xy']",
+            "3 [4, 5] []",
+            "TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_itertools.py public chain.from_iterable
 // behavior over pure in-memory iterables.
 #[test]

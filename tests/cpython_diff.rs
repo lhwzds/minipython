@@ -14482,6 +14482,26 @@ fn cpython_itertools_core_iterator_diff_subset() {
 }
 
 #[test]
+fn cpython_itertools_chain_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public chain subset",
+        name: "itertools-chain",
+        source: r#"import itertools
+ch = itertools.chain([1, 2], (), 'ab', itertools.repeat(9, 2))
+print(type(ch).__name__, iter(ch) is ch, list(ch), list(ch))
+print(list(itertools.chain()))
+print(list(itertools.chain(items for items in [range(2), 'xy'])))
+source = (value for value in [3, 4])
+ch = itertools.chain(source, [5])
+print(next(ch), list(ch), list(source))
+try:
+    itertools.chain(iterable=[1])
+except TypeError as error:
+    print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_chain_from_iterable_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public chain.from_iterable subset",

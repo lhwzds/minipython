@@ -3979,6 +3979,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "itertools",
         &[
             "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_chain_subset",
             "cpython_itertools_chain_from_iterable_subset",
             "cpython_itertools_repeat_subset",
             "cpython_itertools_cycle_subset",
@@ -4014,6 +4015,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_itertools_core_diff_subset",
         "cpython_itertools_core_iterator_diff_subset",
+        "cpython_itertools_chain_diff_subset",
         "cpython_itertools_chain_from_iterable_diff_subset",
         "cpython_itertools_repeat_diff_subset",
         "cpython_itertools_cycle_diff_subset",
