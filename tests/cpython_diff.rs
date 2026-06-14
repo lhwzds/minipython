@@ -22385,11 +22385,18 @@ for expr in [
     lambda: memoryview(b'abc').tolist(bad=True),
     lambda: memoryview(b'abc').toreadonly(bad=True),
     lambda: memoryview(b'abc').release(bad=True),
+    lambda: memoryview(b'abc').__enter__(1),
+    lambda: memoryview(b'abc').__enter__(bad=True),
+    lambda: memoryview(b'abc').__exit__(None, None, None, bad=True),
 ]:
     try:
         expr()
     except (TypeError, ValueError) as error:
         print(error.__class__.__name__, str(error))
+
+for args in [(), (None,), (None, None), (None, None, None), (None, None, None, None)]:
+    m = memoryview(b'abc')
+    print('exit-args', len(args), m.__exit__(*args), 'released memory' in repr(m))
 
 m = memoryview(b'abcdef')
 print(list(reversed(m)), list(m[::-1]))

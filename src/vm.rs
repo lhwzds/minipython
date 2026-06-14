@@ -18946,7 +18946,7 @@ impl Vm {
             "memoryview.__enter__" => {
                 let [receiver @ Value::MemoryView(view)] = args.as_slice() else {
                     return Err(format!(
-                        "__enter__() expected 0 arguments, got {}",
+                        "TypeError: memoryview.__enter__() takes no arguments ({} given)",
                         method_arg_count(&args)
                     ));
                 };
@@ -18954,11 +18954,8 @@ impl Vm {
                 Ok(receiver.clone())
             }
             "memoryview.__exit__" => {
-                let [Value::MemoryView(view), _exc_type, _exc, _traceback] = args.as_slice() else {
-                    return Err(format!(
-                        "__exit__() expected 3 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                let [Value::MemoryView(view), ..] = args.as_slice() else {
+                    return Err("__exit__() expected a memoryview receiver".to_string());
                 };
                 release_memoryview(view);
                 Ok(Value::None)
@@ -71864,9 +71861,14 @@ fn reject_memoryview_method_keywords(
         Ok(())
     } else if matches!(
         name,
-        "memoryview.tolist" | "memoryview.toreadonly" | "memoryview.release"
+        "memoryview.tolist"
+            | "memoryview.toreadonly"
+            | "memoryview.release"
+            | "memoryview.__enter__"
     ) {
         Err(format!("TypeError: {name}() takes no keyword arguments"))
+    } else if name == "memoryview.__exit__" {
+        Err("TypeError: __exit__() takes no keyword arguments".to_string())
     } else {
         reject_method_keywords(name, keywords)
     }
