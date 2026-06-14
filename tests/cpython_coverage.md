@@ -339,6 +339,7 @@ Recent runtime migration notes:
   `cpython_math_lcm_diff_subset`,
   `cpython_math_prod_diff_subset`,
   `cpython_math_integer_diff_subset`,
+  `cpython_math_integer_alias_diff_subset`,
   `cpython_math_sqrt_diff_subset`,
   `cpython_math_fabs_diff_subset`,
   `cpython_math_copysign_diff_subset`,
@@ -1255,8 +1256,9 @@ without adding general custom encoder/decoder class support.
   `math` and `math.integer`, including exact integer results,
   bool/int-subclass/`__index__` conversion, negative-domain errors, and
   catchable TypeError cases. The default diff covers the stable `math` module
-  surface; the `math.integer` alias stays in the local subset because older
-  system CPython oracles do not expose that submodule.
+  surface; `cpython_math_integer_alias_diff_subset` capability-gates direct
+  `math.integer` alias parity for newer CPython oracles while older system
+  oracles continue to rely on the local subset evidence.
 - The bundled `math` module also includes `cpython_math_pow_diff_subset` and
   `cpython_math_pow_subset`, covering CPython
   `test_math.py::MathTests::testPow` float-result power behavior, NaN/inf

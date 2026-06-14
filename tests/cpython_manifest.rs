@@ -11399,6 +11399,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_math_lcm_diff_subset",
         "cpython_math_prod_diff_subset",
         "cpython_math_integer_diff_subset",
+        "cpython_math_integer_alias_diff_subset",
         "cpython_math_sqrt_diff_subset",
         "cpython_math_fabs_diff_subset",
         "cpython_math_copysign_diff_subset",
@@ -11576,6 +11577,30 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             integer_subset.contains(required),
             "math integer runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+    let integer_alias_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_math_integer_alias_diff_subset");
+    for required in [
+        "import math.integer as mi",
+        "skipping math.integer alias diff",
+        "mi.factorial.__module__",
+        "mi.factorial is math.factorial",
+        "lambda: mi.comb(n=1, k=1)",
+    ] {
+        assert!(
+            integer_alias_diff.contains(required),
+            "math.integer alias CPython diff evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "cpython_math_integer_alias_diff_subset",
+        "capability-gates direct",
+        "older system CPython oracles",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "math.integer alias docs must mention `{required}`"
         );
     }
 

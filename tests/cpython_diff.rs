@@ -2530,6 +2530,35 @@ for expr in [
 }
 
 #[test]
+fn cpython_math_integer_alias_diff_subset() {
+    let oracle_probe = run_cpython(
+        "try:\n    import math.integer as mi\nexcept Exception:\n    print(False)\nelse:\n    print(True)",
+    )
+    .expect("failed to probe CPython math.integer support");
+    let oracle_stdout =
+        String::from_utf8(oracle_probe.stdout).expect("CPython probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True" {
+        eprintln!("skipping math.integer alias diff: CPython oracle lacks math.integer");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_math_integer.py public math.integer alias subset",
+        name: "math-integer-alias",
+        source: r#"import math
+import math.integer as mi
+print(mi.__name__, mi.factorial.__module__, mi.gcd.__module__, mi.comb.__name__)
+print(mi.factorial(5), mi.isqrt(1729), mi.comb(5, 2), mi.perm(5, 2), mi.gcd(120, 84), mi.lcm(120, 84))
+print(mi.factorial is math.factorial, mi.isqrt is math.isqrt, mi.comb is math.comb, mi.perm is math.perm)
+for expr in [lambda: mi.factorial(n=5), lambda: mi.comb(n=1, k=1), lambda: mi.perm(n=1, k=1)]:
+    try:
+        expr()
+    except Exception as error:
+        print(error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_integer_bit_methods_diff_subset() {
     let oracle_probe = run_cpython("print(hasattr(int, 'bit_count'))")
         .expect("failed to run CPython int.bit_count capability probe");
