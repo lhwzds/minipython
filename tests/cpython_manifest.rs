@@ -10322,6 +10322,7 @@ fn io_stdlib_registry_stays_bytesio_only() {
         "\"BufferedWriter\"",
         "\"RawIOBase\"",
         "\"IOBase\"",
+        "__all__",
     ] {
         assert!(
             !io_registry.contains(forbidden),
@@ -10333,8 +10334,9 @@ fn io_stdlib_registry_stays_bytesio_only() {
         LANGUAGE_TESTS.contains("io_bytesio_sandbox_subset_excludes_host_io_apis")
             && LANGUAGE_TESTS.contains("'open', 'FileIO', 'TextIOWrapper'")
             && LANGUAGE_TESTS.contains("'StringIO', 'BufferedReader', 'BufferedWriter'")
-            && LANGUAGE_TESTS.contains("'RawIOBase', 'IOBase'"),
-        "language tests must keep host io APIs unavailable at runtime"
+            && LANGUAGE_TESTS.contains("'RawIOBase', 'IOBase', '__all__'")
+            && LANGUAGE_TESTS.contains("dir(io)"),
+        "language tests must keep host io APIs and module export metadata unavailable at runtime"
     );
 }
 
