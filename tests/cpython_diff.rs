@@ -14605,6 +14605,24 @@ print(list(itertools.takewhile(lambda value: False, [1, 2, 3])))"#,
 }
 
 #[test]
+fn cpython_itertools_dropwhile_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public dropwhile subset",
+        name: "itertools-dropwhile",
+        source: r#"import itertools
+dw = itertools.dropwhile(lambda value: value < 3, [1, 2, 3, 1])
+print(type(dw).__name__, iter(dw) is dw, list(dw), list(dw))
+print(list(itertools.dropwhile(lambda value: value, (value for value in [1, 2, 0, 3]))))
+calls = []
+def before_three(value):
+    calls.append(value)
+    return value < 3
+print(list(itertools.dropwhile(before_three, [1, 2, 3, 4])), calls)
+print(list(itertools.dropwhile(lambda value: True, [1, 2, 3])))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

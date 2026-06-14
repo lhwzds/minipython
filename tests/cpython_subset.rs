@@ -37867,6 +37867,32 @@ fn cpython_itertools_takewhile_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public dropwhile behavior
+// over pure in-memory iterables.
+#[test]
+fn cpython_itertools_dropwhile_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "dw = itertools.dropwhile(lambda value: value < 3, [1, 2, 3, 1])\n",
+            "print(type(dw).__name__, iter(dw) is dw, list(dw), list(dw))\n",
+            "print(list(itertools.dropwhile(lambda value: value, (value for value in [1, 2, 0, 3]))))\n",
+            "calls = []\n",
+            "def before_three(value):\n",
+            "    calls.append(value)\n",
+            "    return value < 3\n",
+            "print(list(itertools.dropwhile(before_three, [1, 2, 3, 4])), calls)\n",
+            "print(list(itertools.dropwhile(lambda value: True, [1, 2, 3])))"
+        ),
+        &[
+            "dropwhile True [3, 1] []",
+            "[0, 3]",
+            "[3, 4] [1, 2, 3]",
+            "[]",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
