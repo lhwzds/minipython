@@ -62603,6 +62603,11 @@ fn call_math_prod(
     let mut start = None;
     for (keyword, value) in keywords {
         if keyword != "start" {
+            if args.is_empty() {
+                return Err(
+                    "TypeError: prod() takes exactly 1 positional argument (0 given)".to_string(),
+                );
+            }
             return Err(format!(
                 "TypeError: prod() got an unexpected keyword argument '{keyword}'"
             ));
@@ -62618,6 +62623,8 @@ fn call_math_prod(
     let [iterable] = args.as_slice() else {
         return Err(if args.is_empty() {
             "TypeError: prod() takes exactly 1 positional argument (0 given)".to_string()
+        } else if args.len() == 2 {
+            "TypeError: prod() takes exactly 1 positional argument (2 given)".to_string()
         } else {
             format!(
                 "TypeError: prod() takes at most 2 arguments ({} given)",

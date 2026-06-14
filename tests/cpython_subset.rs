@@ -9859,10 +9859,11 @@ fn cpython_math_prod_subset() {
         ],
     );
     assert_output(
-        "import math\nprod = math.prod\nfor label, expr in [('missing', lambda: prod()), ('positional-start', lambda: prod([10, 20], 1)), ('too-many', lambda: prod([1], 2, 3))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        "import math\nprod = math.prod\nfor label, expr in [('missing', lambda: prod()), ('keyword-iterable', lambda: prod(iterable=[1, 2])), ('positional-start', lambda: prod([10, 20], 1)), ('too-many', lambda: prod([1], 2, 3))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
         &[
             "missing prod() takes exactly 1 positional argument (0 given)",
-            "positional-start prod() takes at most 2 arguments (2 given)",
+            "keyword-iterable prod() takes exactly 1 positional argument (0 given)",
+            "positional-start prod() takes exactly 1 positional argument (2 given)",
             "too-many prod() takes at most 2 arguments (3 given)",
         ],
     );

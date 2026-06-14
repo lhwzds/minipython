@@ -2430,12 +2430,15 @@ for expr in [
 #[test]
 fn cpython_math_prod_diff_subset() {
     // CPython oracle text: prod() takes exactly 1 positional argument (0 given);
-    // prod() takes at most 2 arguments (2 given);
+    // prod(iterable=[...]) also reports 0 positional arguments because iterable
+    // is positional-only;
+    // prod() takes exactly 1 positional argument (2 given);
     // prod() takes at most 2 arguments (3 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::test_prod public stable subset",
         name: "math-prod",
-        source: r#"import math
+        source: concat!(
+            r#"import math
 prod = math.prod
 print(prod([]), prod([], start=5), prod(list(range(2, 8))))
 print(prod(iter(list(range(2, 8)))), prod(range(1, 10), start=10))
@@ -2466,7 +2469,19 @@ for expr in [
     try:
         expr()
     except Exception as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+"#,
+            r#"for label, expr in [
+    ('missing', lambda: prod()),
+    ('keyword-iterable', lambda: prod(iterable=[1, 2])),
+    ('positional-start', lambda: prod([10, 20], 1)),
+    ('too-many', lambda: prod([1], 2, 3)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
+        ),
     });
 }
 

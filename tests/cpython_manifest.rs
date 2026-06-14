@@ -11970,10 +11970,12 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
     let prod_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_prod_subset");
     for required in [
         "lambda: prod()",
+        "lambda: prod(iterable=[1, 2])",
         "lambda: prod([10, 20], 1)",
         "lambda: prod([1], 2, 3)",
+        "keyword-iterable",
         "prod() takes exactly 1 positional argument (0 given)",
-        "prod() takes at most 2 arguments (2 given)",
+        "prod() takes exactly 1 positional argument (2 given)",
         "prod() takes at most 2 arguments (3 given)",
     ] {
         assert!(
