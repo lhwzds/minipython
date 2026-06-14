@@ -1450,6 +1450,8 @@ for indent in [None, 0, 2, '', '--']:
 for args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:
     print('SEP', args['indent'], repr(args['separators']))
     print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))
+for indent in [-1, -2]:
+    print('NEG', indent, repr(json.dumps({'b': [1, 2], 'a': 3}, indent=indent)))
 class IndexIndent:
     def __index__(self):
         return 2

@@ -832,7 +832,8 @@ Recent runtime migration notes:
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of non-finite
   float values and keys, `check_circular` cycle-error behavior,
   `ensure_ascii=False` direct non-ASCII string/key rendering,
-  `indent` pretty-print formatting for int/string and `__index__` indent values,
+  `indent` pretty-print formatting for positive, zero, negative, string, and
+  `__index__` indent values,
   `skipkeys` omission of unsupported dict keys,
   `sort_keys` ordering for supported comparable keys, `separators`
   compact/custom rendering for two-string list/tuple values, subclasses, and

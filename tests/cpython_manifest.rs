@@ -4806,6 +4806,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "dict(indent=2, separators=None)",
                 "dict(indent=2, separators=(',', ':'))",
                 "dict(indent=0, separators=(',', ':'))",
+                "for indent in [-1, -2]",
                 "class IndexIndent:",
                 "class BoolIndexIndent:",
                 "json.dumps([1, 2], indent=indent)",

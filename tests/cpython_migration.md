@@ -138,8 +138,8 @@ separator element `TypeError` text.
 
 `cpython_json_dumps_indent_subset`, backed by
 `cpython_json_dumps_indent_diff_subset`, now covers CPython public `indent`
-conversion through `__index__` objects in addition to direct int, string, and
-`None` values.
+conversion through `__index__` objects in addition to direct positive, zero,
+negative, string, and `None` values.
 
 `cpython_json_option_truthiness_subset`, backed by
 `cpython_json_option_truthiness_diff_subset`, now covers CPython public
