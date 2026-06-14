@@ -11779,6 +11779,20 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let fsum_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_fsum_diff_subset");
+    let fsum_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_fsum_subset");
+    for required in [
+        "('fsum-noargs', lambda: math.fsum())",
+        "('fsum-many', lambda: math.fsum([], []))",
+        "math.fsum() takes exactly one argument (0 given)",
+        "math.fsum() takes exactly one argument (2 given)",
+    ] {
+        assert!(
+            fsum_diff.contains(required) && fsum_subset.contains(required),
+            "math fsum diff and subset evidence must cover `{required}`"
+        );
+    }
+
     assert!(
         LANGUAGE_TESTS.contains("math_sandbox_subset_keeps_integer_submodule_narrow")
             && LANGUAGE_TESTS.contains("import math.integer as mi")

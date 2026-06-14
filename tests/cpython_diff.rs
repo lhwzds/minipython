@@ -3668,6 +3668,8 @@ for expr in [
 
 #[test]
 fn cpython_math_fsum_diff_subset() {
+    // CPython oracle text: math.fsum() takes exactly one argument (0 given);
+    // math.fsum() takes exactly one argument (2 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::testFsum public stable subset",
         name: "math-fsum",
@@ -3706,9 +3708,12 @@ def bad_iter():
     1 / 0
 
 print(math.fsum([FloatLike(1.25), FloatLike(2.75)]), math.fsum([IndexLike(2), IndexLike(3)]), math.fsum([True, False, True]))
+for label, expr in [('fsum-noargs', lambda: math.fsum()), ('fsum-many', lambda: math.fsum([], []))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 for expr in [
-    lambda: math.fsum(),
-    lambda: math.fsum([], []),
     lambda: math.fsum(iterable=[]),
     lambda: math.fsum(1),
     lambda: math.fsum(['spam']),

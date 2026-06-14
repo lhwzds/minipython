@@ -62900,7 +62900,7 @@ fn math_frexp_finite_nonzero(value: f64) -> (f64, i64) {
 fn call_math_fsum(vm: &mut Vm, args: Vec<Value>) -> Result<Value, String> {
     let [iterable] = args.as_slice() else {
         return Err(format!(
-            "TypeError: fsum() expected 1 argument, got {}",
+            "TypeError: math.fsum() takes exactly one argument ({} given)",
             args.len()
         ));
     };
