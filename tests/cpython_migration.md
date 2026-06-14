@@ -3850,8 +3850,10 @@ Completed in the bytes replace/partition-method pass:
   handling, empty-needle insertion behavior, empty-separator `ValueError`, and
   representative TypeError paths for non-bytes-like arguments. Direct CPython
   diff evidence for the portable public replace and partition surface is in
-  `cpython_bytes_replace_partition_methods_diff_subset`; the current
-  CPython-main keyword `count=` row remains covered by the local subset case.
+  `cpython_bytes_replace_partition_methods_diff_subset`; CPython-version-gated
+  direct diff evidence for the current CPython-main keyword `count=` row is in
+  `cpython_bytes_replace_keyword_count_diff_subset`, with local runtime coverage
+  remaining in `cpython_bytes_replace_partition_methods_subset`.
 
 Completed in the bytearray mutation-method pass:
 

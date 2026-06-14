@@ -2240,7 +2240,9 @@ without adding general custom encoder/decoder class support.
   `test_rpartition`, `test_partition_string_error`, and
   `test_partition_int_error` for bytes/bytearray result types, positional and
   keyword `count`, bytes-like arguments, partition tuple shapes, empty
-  separators, and representative public TypeError/ValueError paths.
+  separators, and representative public TypeError/ValueError paths. The
+  keyword `count=` row has CPython-version-gated direct diff evidence in
+  `cpython_bytes_replace_keyword_count_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_method_typeerror_messages_subset`, covering CPython
   `BaseBytesTest` public TypeError-message diagnostics for bytes/bytearray
@@ -2292,7 +2294,9 @@ without adding general custom encoder/decoder class support.
   bytes-like arguments, positional and keyword replacement counts, empty-needle
   replacement, empty separators, and representative TypeError/ValueError
   paths. Direct CPython diff evidence for the portable public replace and
-  partition surface is in `cpython_bytes_replace_partition_methods_diff_subset`.
+  partition surface is in `cpython_bytes_replace_partition_methods_diff_subset`;
+  CPython-version-gated direct diff evidence for the current keyword
+  `count=` surface is in `cpython_bytes_replace_keyword_count_diff_subset`.
 - `STRING_RUNTIME` also includes `cpython_bytes_split_rsplit_methods_subset`,
   covering bytes/bytearray `split()` and `rsplit()` over default ASCII
   whitespace, explicit bytes-like separators, `maxsplit`, keyword arguments,

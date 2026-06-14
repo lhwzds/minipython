@@ -20742,6 +20742,38 @@ for ctor in [bytes, bytearray]:
 }
 
 #[test]
+fn cpython_bytes_replace_keyword_count_diff_subset() {
+    let probe = run_cpython(
+        "try:\n    bytearray(b'aa').replace(b'a', b'b', count=0)\nexcept TypeError:\n    print('missing')\nelse:\n    print('supported')",
+    )
+    .expect("failed to run CPython bytes.replace count keyword feature probe");
+    if String::from_utf8_lossy(&probe.stdout).trim() != "supported" {
+        eprintln!(
+            "skipping bytes.replace count keyword diff: CPython oracle lacks replace(count=...)"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_bytes.py::BaseBytesTest::test_replace_count_keyword public subset",
+        name: "bytes-replace-keyword-count",
+        source: r#"for ctor in [bytes, bytearray]:
+    b = ctor(b'aa')
+    for count in [0, 1, 2, 3]:
+        print(ctor.__name__, count, b.replace(b'a', b'b', count=count))
+    for expr in [
+        lambda: b.replace(b'a', b'b', 1, count=2),
+        lambda: b.replace(b'a', b'b', spam=1),
+        lambda: b.replace(b'a', b'b', count='x'),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(ctor.__name__, error.__class__.__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_split_rsplit_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest split/rsplit public subset",

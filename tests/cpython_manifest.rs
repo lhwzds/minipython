@@ -2295,6 +2295,43 @@ fn cpython_bytes_search_compare_slice_diff_covers_compare_slice_reversed_runtime
 }
 
 #[test]
+fn cpython_bytes_replace_keyword_count_diff_stays_capability_gated() {
+    let diff_name = "cpython_bytes_replace_keyword_count_diff_subset";
+    let subset_name = "cpython_bytes_replace_partition_methods_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes replace keyword count direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes replace keyword count runtime subset evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    for required in [
+        "bytearray(b'aa').replace(b'a', b'b', count=0)",
+        "skipping bytes.replace count keyword diff",
+        "count=count",
+        "b.replace(b'a', b'b', 1, count=2)",
+        "b.replace(b'a', b'b', spam=1)",
+        "b.replace(b'a', b'b', count='x')",
+    ] {
+        assert!(
+            body.contains(required),
+            "bytes replace keyword count gated diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_repeat_allocation_guard_stays_cpython_diffed() {
     let diff_name = "cpython_bytes_constructor_concat_repeat_contains_diff_subset";
     let subset_name = "cpython_bytes_constructor_concat_repeat_contains_subset";
