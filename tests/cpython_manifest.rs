@@ -9487,10 +9487,13 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
     );
     assert!(
         CPYTHON_MIGRATION.contains("cpython_operator_signature_helper_subset")
+            && CPYTHON_MIGRATION.contains("cpython_operator_signature_helper_diff_subset")
             && CPYTHON_MIGRATION.contains("str(inspect.signature(...))")
             && CPYTHON_MIGRATION.contains("does not claim full `inspect.Signature`")
-            && CPYTHON_MIGRATION.contains("current default CPython 3.9")
-            && CPYTHON_MIGRATION.contains("oracle")
+            && CPYTHON_MIGRATION.contains("gated for CPython")
+            && CPYTHON_MIGRATION.contains("older")
+            && CPYTHON_MIGRATION
+                .contains("default oracles continue to rely on the local subset evidence")
             && CPYTHON_MIGRATION.contains("cpython_operator_helper_repr_subset")
             && CPYTHON_MIGRATION.contains("cpython_operator_helper_repr_diff_subset")
             && CPYTHON_MIGRATION.contains("constructor")

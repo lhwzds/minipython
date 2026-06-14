@@ -1924,9 +1924,10 @@ Completed in the differential parity harness pass:
   minimal `inspect.signature()` path for those operator helper constructors and
   helper instances, with the supported public surface limited to
   `str(inspect.signature(...))`; it does not claim full `inspect.Signature`
-  behavior or broad callable signature introspection. This remains subset-only
-  under the current default CPython 3.9 oracle, where
-  `inspect.signature(operator.attrgetter)` raises `ValueError`.
+  behavior or broad callable signature introspection. Direct CPython evidence
+  is in `cpython_operator_signature_helper_diff_subset`, gated for CPython
+  oracles where `inspect.signature(operator.attrgetter)` is supported; older
+  default oracles continue to rely on the local subset evidence.
 - Added `cpython_operator_helper_repr_subset`, migrating the public helper
   object repr/str shape exercised by CPython
   `test_operator.py::OperatorPickleTestCase` repr checks. MiniPython now renders
