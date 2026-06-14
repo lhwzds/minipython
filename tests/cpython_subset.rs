@@ -5478,6 +5478,7 @@ print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name
 print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.dont_write_bytecode)
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode)
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode)
+print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated)
 print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimize)
 print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode)
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
@@ -5524,6 +5525,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-dont-write-bytecode bool False",
             "sys-flags-dont-write-bytecode int 0",
             "sys-flags-dev-mode bool False",
+            "sys-flags-isolated int 0",
             "sys-flags-optimize int 0",
             "sys-flags-utf8-mode int 0",
             "sys-byteorder str True",
