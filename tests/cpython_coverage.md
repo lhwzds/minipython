@@ -353,6 +353,7 @@ Recent runtime migration notes:
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
+  `cpython_operator_index_normalization_diff_subset`,
   `cpython_operator_length_hint_diff_subset`,
   `cpython_operator_comparison_predicate_diff_subset`,
   `cpython_operator_is_none_predicates_diff_subset`,
@@ -1587,7 +1588,8 @@ Recent runtime migration notes:
 - The bundled `operator` module includes
   `cpython_operator_public_helpers_diff_subset`,
   `cpython_operator_index_normalization_diff_subset`, and
-  `cpython_operator_public_helpers_subset`, covering CPython public helper
+  `cpython_operator_public_helpers_subset`, plus the focused
+  `cpython_operator_index_normalization_subset`, covering CPython public helper
   parity for representative comparison, predicate, arithmetic, bitwise,
   sequence/member, `operator.index()` integer normalization including bool and
   int-subclass values, item mutation, `attrgetter`, `itemgetter`,

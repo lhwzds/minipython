@@ -5141,6 +5141,7 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         "operator",
         &[
             "cpython_operator_public_helpers_subset",
+            "cpython_operator_index_normalization_subset",
             "cpython_operator_length_hint_subset",
             "cpython_operator_comparison_predicate_subset",
             "cpython_operator_is_none_predicates_subset",

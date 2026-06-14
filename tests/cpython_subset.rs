@@ -39952,6 +39952,32 @@ fn cpython_operator_public_helpers_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_operator.py public operator.index
+// normalization behavior.
+#[test]
+fn cpython_operator_index_normalization_subset() {
+    assert_output(
+        concat!(
+            "import operator\n",
+            "class I(int):\n",
+            "    pass\n",
+            "class IndexSubclass:\n",
+            "    def __index__(self):\n",
+            "        return I(7)\n",
+            "for value in [True, False, I(5), IndexSubclass(), 2**100]:\n",
+            "    result = operator.index(value)\n",
+            "    print('index', type(value).__name__, type(result).__name__, repr(result))"
+        ),
+        &[
+            "index bool int 1",
+            "index bool int 0",
+            "index I int 5",
+            "index IndexSubclass int 7",
+            "index int int 1267650600228229401496703205376",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_operator.py::OperatorTestCase::test_length_hint
 // and Lib/test/test_enumerate.py::TestReversed::test_len. This covers the public
 // operator.length_hint fallback rules plus reversed iterator length hints.
