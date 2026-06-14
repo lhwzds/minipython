@@ -13320,6 +13320,9 @@ class TestFailingIter:
 class BadSeq:
     def __getitem__(self, index):
         raise ValueError
+class BadIterReturn:
+    def __iter__(self):
+        return 1
 
 checks = [
     lambda: reduce(),
@@ -13340,6 +13343,7 @@ checks = [
 ]
 exact_checks = [
     ('non-iterable-none', lambda: reduce(add, None)),
+    ('bad-iter-return', lambda: reduce(add, BadIterReturn())),
 ]
 for label, check in exact_checks:
     try:

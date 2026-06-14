@@ -8067,6 +8067,9 @@ impl Vm {
             Err(error) if error.ends_with(" is not iterable") => {
                 return Err("TypeError: reduce() arg 2 must support iteration".to_string());
             }
+            Err(error) if error == "TypeError: iter() returned non-iterator" => {
+                return Err("TypeError: reduce() arg 2 must support iteration".to_string());
+            }
             Err(error) => return Err(error),
         };
         let mut accumulator = match initial {
