@@ -29609,12 +29609,7 @@ impl Vm {
             value if str_subclass_string(value).is_some() => {
                 str_subclass_string(value).expect("str subclass storage exists after guard")
             }
-            value => {
-                return Err(format!(
-                    "TypeError: method name must be a string, not '{}'",
-                    type_name(value)
-                ));
-            }
+            _ => return Err("TypeError: method name must be a string".to_string()),
         };
 
         Ok(Value::OperatorMethodCaller {

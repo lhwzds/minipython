@@ -13223,6 +13223,7 @@ for expr in [lambda: operator.countOf(BadIterable(), 1), lambda: operator.indexO
 
 #[test]
 fn cpython_operator_callable_helper_diff_subset() {
+    // CPython oracle text: method name must be a string
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase callable helper public subset stable on CPython 3.9",
         name: "operator-callable-helper",
@@ -13313,6 +13314,7 @@ diagnostic_checks = [
     ('item-call-kw', lambda: operator.itemgetter(2)(data, size=3)),
     ('method-noargs', lambda: operator.methodcaller()),
     ('method-kw', lambda: operator.methodcaller(name='foo')),
+    ('method-nonstring', lambda: operator.methodcaller(12)),
     ('method-call-kw', lambda: operator.methodcaller('foo', 1, 2)(m, spam=3)),
 ]
 for label, expr in diagnostic_checks:
