@@ -6246,6 +6246,10 @@ fn json_dumps_allow_nan_docs_cover_option_boundaries() {
         "nested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]",
         "json.dumps(nested, allow_nan=allow_nan, sort_keys=True)",
         "json.dumps([float('nan')], allow_nan=[])",
+        "nan-msg",
+        "inf-msg",
+        "neg-inf-msg",
+        "str(error)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -6264,6 +6268,9 @@ fn json_dumps_allow_nan_docs_cover_option_boundaries() {
         "\"nested True {\\\"outer\\\": [NaN, {\\\"x\\\": Infinity, \\\"y\\\": -Infinity}]}\"",
         "\"nested False ValueError True\"",
         "\"list ValueError True\"",
+        "\"nan-msg ValueError Out of range float values are not JSON compliant: nan\"",
+        "\"inf-msg ValueError Out of range float values are not JSON compliant: inf\"",
+        "\"neg-inf-msg ValueError Out of range float values are not JSON compliant: -inf\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),

@@ -59405,7 +59405,10 @@ fn json_dumps_int_subclass(value: &Value) -> Option<String> {
 
 fn json_dumps_float(value: f64, options: &JsonDumpsOptions) -> Result<String, String> {
     if !options.allow_nan && !value.is_finite() {
-        return Err("ValueError: Out of range float values are not JSON compliant".to_string());
+        return Err(format!(
+            "ValueError: Out of range float values are not JSON compliant: {}",
+            json_dumps_nonfinite_float_error_value(value)
+        ));
     }
     if value.is_nan() {
         Ok("NaN".to_string())
@@ -59415,6 +59418,16 @@ fn json_dumps_float(value: f64, options: &JsonDumpsOptions) -> Result<String, St
         Ok("-Infinity".to_string())
     } else {
         Ok(format_float_display(value))
+    }
+}
+
+fn json_dumps_nonfinite_float_error_value(value: f64) -> &'static str {
+    if value.is_nan() {
+        "nan"
+    } else if value == f64::INFINITY {
+        "inf"
+    } else {
+        "-inf"
     }
 }
 

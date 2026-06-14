@@ -155,8 +155,12 @@ without adding arbitrary mapping-protocol support or encoder hooks.
 `cpython_json_dumps_allow_nan_subset`, backed by
 `cpython_json_dumps_allow_nan_diff_subset`, keeps `allow_nan` non-finite float rendering for
 NaN, Infinity, and -Infinity values, float subclass values, supported float keys, and nested list/dict values.
-It covers `allow_nan=False` and falsey-option `ValueError` rejection plus truthy numeric `allow_nan` values,
+It covers `allow_nan=False` and falsey-option `ValueError` rejection, including CPython's
+`nan` / `inf` / `-inf` error-value suffixes, plus truthy numeric `allow_nan` values,
 without adding Decimal, custom encoder, or locale-sensitive spelling support.
+The exact error-value suffix evidence is version-gated in
+`cpython_json_dumps_allow_nan_error_value_diff_subset` for CPython oracles that
+include the suffix.
 
 `cpython_json_dumps_check_circular_subset`, backed by
 `cpython_json_dumps_check_circular_diff_subset`, keeps `check_circular` cycle detection for

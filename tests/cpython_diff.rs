@@ -1409,6 +1409,30 @@ else:
 }
 
 #[test]
+fn cpython_json_dumps_allow_nan_error_value_diff_subset() {
+    let probe = run_cpython(
+        "import json\ntry:\n    json.dumps(float('nan'), allow_nan=False)\nexcept ValueError as error:\n    print(': nan' in str(error))",
+    )
+    .expect("failed to probe CPython json allow_nan error-value behavior");
+    let stdout = String::from_utf8(probe.stdout).expect("CPython probe emitted non-UTF-8");
+    if stdout.trim() != "True" {
+        eprintln!("skipping json allow_nan error-value diff: CPython oracle omits nan/inf suffix");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps allow_nan error value subset",
+        name: "json-dumps-allow-nan-error-value",
+        source: r#"import json
+for label, value in [('nan-msg', float('nan')), ('inf-msg', float('inf')), ('neg-inf-msg', float('-inf'))]:
+    try:
+        json.dumps(value, allow_nan=False)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_check_circular_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps check_circular subset",

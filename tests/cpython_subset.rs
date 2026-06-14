@@ -34186,7 +34186,7 @@ fn cpython_json_dumps_skipkeys_subset() {
 #[test]
 fn cpython_json_dumps_allow_nan_subset() {
     assert_output(
-        "import json\nclass F(float):\n    pass\nvalues = [float('nan'), float('inf'), float('-inf'), F(float('nan')), F(float('inf')), 1.5]\nfor allow_nan in [True, 1, False, 0]:\n    for value in values:\n        try:\n            print(allow_nan, json.dumps(value, allow_nan=allow_nan))\n        except Exception as error:\n            print(allow_nan, type(error).__name__, isinstance(error, ValueError))\nfor allow_nan in [True, False]:\n    try:\n        print('key', allow_nan, json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan))\n    except Exception as error:\n        print('key', allow_nan, type(error).__name__, isinstance(error, ValueError))\nnested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]}\nfor allow_nan in [True, False]:\n    try:\n        print('nested', allow_nan, json.dumps(nested, allow_nan=allow_nan, sort_keys=True))\n    except Exception as error:\n        print('nested', allow_nan, type(error).__name__, isinstance(error, ValueError))\ntry:\n    json.dumps([float('nan')], allow_nan=[])\nexcept Exception as error:\n    print('list', type(error).__name__, isinstance(error, ValueError))\nelse:\n    print('list ok')",
+        "import json\nclass F(float):\n    pass\nvalues = [float('nan'), float('inf'), float('-inf'), F(float('nan')), F(float('inf')), 1.5]\nfor allow_nan in [True, 1, False, 0]:\n    for value in values:\n        try:\n            print(allow_nan, json.dumps(value, allow_nan=allow_nan))\n        except Exception as error:\n            print(allow_nan, type(error).__name__, isinstance(error, ValueError))\nfor allow_nan in [True, False]:\n    try:\n        print('key', allow_nan, json.dumps({float('nan'): 'nan', float('inf'): 'inf', 1.0: 'one'}, allow_nan=allow_nan))\n    except Exception as error:\n        print('key', allow_nan, type(error).__name__, isinstance(error, ValueError))\nnested = {'outer': [float('nan'), {'x': float('inf'), 'y': float('-inf')}]}\nfor allow_nan in [True, False]:\n    try:\n        print('nested', allow_nan, json.dumps(nested, allow_nan=allow_nan, sort_keys=True))\n    except Exception as error:\n        print('nested', allow_nan, type(error).__name__, isinstance(error, ValueError))\ntry:\n    json.dumps([float('nan')], allow_nan=[])\nexcept Exception as error:\n    print('list', type(error).__name__, isinstance(error, ValueError))\nelse:\n    print('list ok')\nfor label, value in [('nan-msg', float('nan')), ('inf-msg', float('inf')), ('neg-inf-msg', float('-inf'))]:\n    try:\n        json.dumps(value, allow_nan=False)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))",
         &[
             "True NaN",
             "True Infinity",
@@ -34217,6 +34217,9 @@ fn cpython_json_dumps_allow_nan_subset() {
             "nested True {\"outer\": [NaN, {\"x\": Infinity, \"y\": -Infinity}]}",
             "nested False ValueError True",
             "list ValueError True",
+            "nan-msg ValueError Out of range float values are not JSON compliant: nan",
+            "inf-msg ValueError Out of range float values are not JSON compliant: inf",
+            "neg-inf-msg ValueError Out of range float values are not JSON compliant: -inf",
         ],
     );
 }
