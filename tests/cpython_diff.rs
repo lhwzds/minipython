@@ -7431,6 +7431,22 @@ values = [EqSentinel(1), EqSentinel(2), EqSentinel(3)]
 def next_value():
     return values.pop(0)
 print([item.value for item in iter(next_value, EqSentinel(3))])
+state = {'n': 0, 'it': None}
+def producer():
+    state['n'] += 1
+    if state['n'] > 4:
+        raise AssertionError('too far')
+    return state['n']
+class ReentrantSentinel:
+    def __eq__(self, other):
+        print('eq', other)
+        if other == 2:
+            print('inner', list(state['it']))
+        return other == 3
+state['it'] = iter(producer, ReentrantSentinel())
+print('outer', next(state['it']))
+print('outer', next(state['it']))
+print('tail', list(state['it']))
 for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(42)]:
     try:
         expr()

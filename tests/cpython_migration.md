@@ -1488,8 +1488,9 @@ Completed in the differential parity harness pass:
   arity/attribute rejection parity for common bad calls. Two-argument sentinel
   `iter(callable, sentinel)` now produces a shared callable iterator that stops
   before yielding the sentinel and supports direct iterator dunders. Rich
-  callable equality hooks and broader custom sequence fallback remain future
-  work. The callable-sentinel iterator now also treats callable-raised
+  callable equality hooks, including non-symmetric sentinel comparison and
+  equality-triggered reentrant exhaustion, are covered; broader custom sequence
+  fallback remains future work. The callable-sentinel iterator now also treats callable-raised
   `StopIteration` as exhaustion and preserves CPython's reentrant-exhaustion
   behavior from `test_iter_function_concealing_reentrant_exhaustion`: if the
   callable exhausts its own iterator before returning a non-sentinel value, the

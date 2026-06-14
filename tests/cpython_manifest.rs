@@ -9030,6 +9030,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "class EqSentinel",
         "def __eq__(self, other):",
         "iter(next_value, EqSentinel(3))",
+        "class ReentrantSentinel",
+        "iter(producer, ReentrantSentinel())",
+        "print('inner', list(state['it']))",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9052,6 +9055,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "class EqSentinel",
         "def __eq__(self, other):",
         "iter(next_value, EqSentinel(3))",
+        "class ReentrantSentinel",
+        "iter(producer, ReentrantSentinel())",
+        "print('inner', list(state['it']))",
         "lambda: iter()",
         "lambda: iter(42, 42)",
         "lambda: next()",

@@ -37156,6 +37156,30 @@ fn cpython_iter_next_builtin_subset() {
         &["eq 3 1", "eq 3 2", "eq 3 3", "[1, 2]"],
         8 * 1024 * 1024,
     );
+    assert_output_with_stack(
+        concat!(
+            "state = {'n': 0, 'it': None}\n",
+            "def producer():\n",
+            "    state['n'] += 1\n",
+            "    if state['n'] > 4:\n",
+            "        raise AssertionError('too far')\n",
+            "    return state['n']\n",
+            "class ReentrantSentinel:\n",
+            "    def __eq__(self, other):\n",
+            "        print('eq', other)\n",
+            "        if other == 2:\n",
+            "            print('inner', list(state['it']))\n",
+            "        return other == 3\n",
+            "state['it'] = iter(producer, ReentrantSentinel())\n",
+            "print('outer', next(state['it']))\n",
+            "print('outer', next(state['it']))\n",
+            "print('tail', list(state['it']))",
+        ),
+        &[
+            "eq 1", "outer 1", "eq 2", "eq 3", "inner []", "outer 2", "tail []",
+        ],
+        8 * 1024 * 1024,
+    );
 }
 
 // Covers the public StopIteration.value attribute used by generator return
