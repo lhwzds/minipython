@@ -330,6 +330,7 @@ Recent runtime migration notes:
   `cpython_collections_abc_bytestring_deprecation_warnings_diff_subset`,
   `cpython_collections_abc_composite_abstract_methods_diff_subset`,
   `cpython_math_core_diff_subset`,
+  `cpython_math_keyword_error_messages_diff_subset`,
   `cpython_math_constants_and_classification_diff_subset`,
   `cpython_math_isclose_diff_subset`,
   `cpython_math_hypot_dist_diff_subset`,
