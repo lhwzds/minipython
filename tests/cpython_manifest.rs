@@ -11,6 +11,7 @@ const AGENTS: &str = include_str!("../AGENTS.md");
 const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
+const VM_SOURCE: &str = include_str!("../src/vm.rs");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
 const CPYTHON_TEST_BUILTIN_SOURCE: &str =
@@ -12296,6 +12297,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'getrefcount', 'getallocatedblocks'")
             && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
             && LANGUAGE_TESTS.contains("'builtin_module_names'")
+            && LANGUAGE_TESTS.contains("'exc_info'")
             && LANGUAGE_TESTS.contains("'getdefaultencoding'")
             && LANGUAGE_TESTS.contains("'is_finalizing'")
             && LANGUAGE_TESTS.contains("'getfilesystemencoding'")
@@ -12304,6 +12306,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sys.getdefaultencoding()")
+            && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
@@ -12311,10 +12314,12 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         STDLIB_SOURCE.contains("\"builtin_module_names\"")
+            && STDLIB_SOURCE.contains("\"exc_info\"")
             && STDLIB_SOURCE.contains("\"getdefaultencoding\"")
             && STDLIB_SOURCE.contains("\"is_finalizing\"")
             && STDLIB_SOURCE.contains("\"implementation\"")
             && STDLIB_SOURCE.contains("\"version_info\"")
+            && VM_SOURCE.contains("call_sys_exc_info")
             && STDLIB_SOURCE.contains("call_sys_is_finalizing")
             && STDLIB_SOURCE.contains("sys_version_info_value()")
             && STDLIB_SOURCE.contains("sys_implementation_value()")
@@ -12340,6 +12345,15 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.getdefaultencoding(x=1)",
         "sys.getdefaultencoding() takes no arguments (1 given)",
         "sys.getdefaultencoding() takes no keyword arguments",
+        "sys.exc_info()",
+        "sys.exc_info(1)",
+        "sys.exc_info(x=1)",
+        "sys.exc_info() takes no arguments (1 given)",
+        "sys.exc_info() takes no keyword arguments",
+        "sys.exc_info() == (None, None, None)",
+        "info[0].__name__",
+        "info[1] is error",
+        "info[1].__traceback__ is info[2]",
         "sys.is_finalizing()",
         "sys.is_finalizing(1)",
         "sys.is_finalizing(x=1)",
@@ -12366,6 +12380,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("builtin_module_names")
+                && document.contains("exc_info")
                 && document.contains("getdefaultencoding")
                 && document.contains("is_finalizing")
                 && document.contains("implementation")

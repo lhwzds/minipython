@@ -25036,6 +25036,8 @@ fn cpython_float_hash_and_sys_info_diff_subset() {
     // sys.getdefaultencoding() takes no keyword arguments
     // CPython oracle text: sys.is_finalizing() takes no arguments (1 given);
     // sys.is_finalizing() takes no keyword arguments
+    // CPython oracle text: sys.exc_info() takes no arguments (1 given);
+    // sys.exc_info() takes no keyword arguments
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_float.py::GeneralFloatCases::test_hash and ::test_hash_nan",
         name: "float-hash-and-sys-info",
@@ -25066,12 +25068,24 @@ print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info)
 print('sys-implementation', type(sys.implementation).__name__, type(sys.implementation.name).__name__, type(sys.implementation.version).__name__, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-implementation-version-shape', len(sys.implementation.version), sys.implementation.version == sys.version_info)
 print('sys-is-finalizing', type(sys.is_finalizing()).__name__, sys.is_finalizing())
+print('sys-exc-info-empty', sys.exc_info() == (None, None, None))
+try:
+    raise ValueError('bad')
+except ValueError as error:
+    info = sys.exc_info()
+    print('sys-exc-info-active', info[0].__name__, info[1] is error, type(info[2]).__name__, info[1].__traceback__ is info[2])
+print('sys-exc-info-cleared', sys.exc_info() == (None, None, None))
 for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
     try:
         call()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 for label, call in [('finalizing-extra', lambda: sys.is_finalizing(1)), ('finalizing-keyword', lambda: sys.is_finalizing(x=1))]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyword', lambda: sys.exc_info(x=1))]:
     try:
         call()
     except TypeError as error:

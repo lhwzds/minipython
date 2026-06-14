@@ -5478,12 +5478,24 @@ print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
 print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-is-finalizing', type(sys.is_finalizing()).__name__, sys.is_finalizing())
+print('sys-exc-info-empty', sys.exc_info() == (None, None, None))
+try:
+    raise ValueError('bad')
+except ValueError as error:
+    info = sys.exc_info()
+    print('sys-exc-info-active', info[0].__name__, info[1] is error, type(info[2]).__name__, info[1].__traceback__ is info[2])
+print('sys-exc-info-cleared', sys.exc_info() == (None, None, None))
 for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
     try:
         call()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 for label, call in [('finalizing-extra', lambda: sys.is_finalizing(1)), ('finalizing-keyword', lambda: sys.is_finalizing(x=1))]:
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyword', lambda: sys.exc_info(x=1))]:
     try:
         call()
     except TypeError as error:
@@ -5504,10 +5516,15 @@ for label, call in [('finalizing-extra', lambda: sys.is_finalizing(1)), ('finali
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",
             "sys-implementation SimpleNamespace minipython True int str",
             "sys-is-finalizing bool False",
+            "sys-exc-info-empty True",
+            "sys-exc-info-active ValueError True traceback True",
+            "sys-exc-info-cleared True",
             "extra TypeError sys.getdefaultencoding() takes no arguments (1 given)",
             "keyword TypeError sys.getdefaultencoding() takes no keyword arguments",
             "finalizing-extra TypeError sys.is_finalizing() takes no arguments (1 given)",
             "finalizing-keyword TypeError sys.is_finalizing() takes no keyword arguments",
+            "exc-info-extra TypeError sys.exc_info() takes no arguments (1 given)",
+            "exc-info-keyword TypeError sys.exc_info() takes no keyword arguments",
         ],
     );
 }

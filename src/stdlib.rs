@@ -466,6 +466,7 @@ pub(crate) fn create_module(
                     "get_int_max_str_digits",
                     Value::Builtin("sys.get_int_max_str_digits".to_string()),
                 ),
+                ("exc_info", Value::Builtin("sys.exc_info".to_string())),
                 (
                     "getdefaultencoding",
                     Value::Builtin("sys.getdefaultencoding".to_string()),

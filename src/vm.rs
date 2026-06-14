@@ -8390,6 +8390,36 @@ impl Vm {
         })
     }
 
+    fn call_sys_exc_info(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if !keywords.is_empty() {
+            return Err("TypeError: sys.exc_info() takes no keyword arguments".to_string());
+        }
+        if !args.is_empty() {
+            return Err(format!(
+                "TypeError: sys.exc_info() takes no arguments ({} given)",
+                args.len()
+            ));
+        }
+
+        let Some(exception) = &self.current_exception else {
+            return Ok(tuple_value(vec![Value::None, Value::None, Value::None]));
+        };
+        let exception_type = exception
+            .type_object
+            .as_deref()
+            .cloned()
+            .unwrap_or_else(|| Value::Builtin(exception.type_name.clone()));
+        Ok(tuple_value(vec![
+            exception_type,
+            value_from_exception(exception),
+            exception_traceback_value(&exception.attrs),
+        ]))
+    }
+
     fn call_sys_default_breakpointhook(
         &mut self,
         _args: Vec<Value>,
@@ -8942,6 +8972,9 @@ impl Vm {
             }
             Value::Builtin(name) if name == "sys.get_int_max_str_digits" => {
                 call_sys_get_int_max_str_digits(args, keywords)
+            }
+            Value::Builtin(name) if name == "sys.exc_info" => {
+                self.call_sys_exc_info(args, keywords)
             }
             Value::Builtin(name) if name == "sys.getdefaultencoding" => {
                 call_sys_getdefaultencoding(args, keywords)
