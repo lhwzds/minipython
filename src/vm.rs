@@ -9723,23 +9723,17 @@ impl Vm {
                 self.call_list_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "generator.send" => {
-                if !keywords.is_empty() {
-                    return Err("send() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_generator_send(args)
             }
             Value::Builtin(name) if name == "generator.throw" => {
-                if !keywords.is_empty() {
-                    return Err("throw() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_generator_throw(args)
             }
             Value::Builtin(name) if name == "generator.close" => {
-                if !keywords.is_empty() {
-                    return Err("close() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_generator_close(args)
             }
@@ -9772,9 +9766,7 @@ impl Vm {
                 self.call_generator_wrapper_close(args)
             }
             Value::Builtin(name) if name == "coroutine.send" => {
-                if !keywords.is_empty() {
-                    return Err("send() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_coroutine_send(args)
             }
@@ -9786,16 +9778,12 @@ impl Vm {
                 call_coroutine_await(args)
             }
             Value::Builtin(name) if name == "coroutine.throw" => {
-                if !keywords.is_empty() {
-                    return Err("throw() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_coroutine_throw(args)
             }
             Value::Builtin(name) if name == "coroutine.close" => {
-                if !keywords.is_empty() {
-                    return Err("close() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_coroutine_close(args)
             }
@@ -9849,37 +9837,27 @@ impl Vm {
                 self.call_coroutine_close(args)
             }
             Value::Builtin(name) if name == "async_generator.__aiter__" => {
-                if !keywords.is_empty() {
-                    return Err("__aiter__() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_async_generator_aiter(args)
             }
             Value::Builtin(name) if name == "async_generator.__anext__" => {
-                if !keywords.is_empty() {
-                    return Err("__anext__() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_async_generator_anext(args)
             }
             Value::Builtin(name) if name == "async_generator.asend" => {
-                if !keywords.is_empty() {
-                    return Err("asend() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_async_generator_asend(args)
             }
             Value::Builtin(name) if name == "async_generator.athrow" => {
-                if !keywords.is_empty() {
-                    return Err("athrow() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_async_generator_athrow(args)
             }
             Value::Builtin(name) if name == "async_generator.aclose" => {
-                if !keywords.is_empty() {
-                    return Err("aclose() does not accept keyword arguments".to_string());
-                }
+                reject_generator_like_method_keywords(&name, &keywords)?;
 
                 self.call_async_generator_aclose(args)
             }
@@ -72101,6 +72079,23 @@ fn reject_method_keywords(name: &str, keywords: &[(String, Value)]) -> Result<()
             "TypeError: {}() takes no keyword arguments",
             method_keyword_error_name(name)
         ))
+    }
+}
+
+fn reject_generator_like_method_keywords(
+    name: &str,
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if keywords.is_empty() {
+        Ok(())
+    } else {
+        let display = match name {
+            "generator.throw" | "coroutine.throw" | "async_generator.athrow" => {
+                method_display_name(name).to_string()
+            }
+            _ => method_keyword_error_name(name),
+        };
+        Err(format!("TypeError: {display}() takes no keyword arguments"))
     }
 }
 

@@ -24314,6 +24314,22 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
+        "def generator_keyword_sample():\n    yield 1\nasync def coroutine_keyword_sample():\n    return 1\nasync def async_generator_keyword_sample():\n    yield 1\ngenerator_object = generator_keyword_sample()\ncoroutine_object = coroutine_keyword_sample()\nasync_generator_object = async_generator_keyword_sample()\nchecks = [\n    ('gen-send', lambda: generator_object.send(arg=None)),\n    ('gen-throw', lambda: generator_object.throw(typ=ValueError)),\n    ('gen-close', lambda: generator_object.close(bad=1)),\n    ('coro-send', lambda: coroutine_object.send(arg=None)),\n    ('coro-throw', lambda: coroutine_object.throw(typ=ValueError)),\n    ('coro-close', lambda: coroutine_object.close(bad=1)),\n    ('agen-aiter', lambda: async_generator_object.__aiter__(bad=1)),\n    ('agen-anext', lambda: async_generator_object.__anext__(bad=1)),\n    ('agen-asend', lambda: async_generator_object.asend(value=None)),\n    ('agen-athrow', lambda: async_generator_object.athrow(typ=ValueError)),\n    ('agen-aclose', lambda: async_generator_object.aclose(bad=1)),\n]\nfor label, expr in checks:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))\ncoroutine_object.close()",
+        &[
+            "gen-send generator.send() takes no keyword arguments",
+            "gen-throw throw() takes no keyword arguments",
+            "gen-close generator.close() takes no keyword arguments",
+            "coro-send coroutine.send() takes no keyword arguments",
+            "coro-throw throw() takes no keyword arguments",
+            "coro-close coroutine.close() takes no keyword arguments",
+            "agen-aiter wrapper __aiter__() takes no keyword arguments",
+            "agen-anext wrapper __anext__() takes no keyword arguments",
+            "agen-asend async_generator.asend() takes no keyword arguments",
+            "agen-athrow athrow() takes no keyword arguments",
+            "agen-aclose async_generator.aclose() takes no keyword arguments",
+        ],
+    );
+    assert_output(
         "try:\n    raise NotImplementedError(\"todo\")\nexcept NotImplementedError as error:\n    print(error.__class__.__name__, error)",
         &["NotImplementedError todo"],
     );

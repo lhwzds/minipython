@@ -100,6 +100,10 @@ Completed in the builtin method TypeError capture pass:
   `TypeError` text for `dict.keys`, list methods including `list.__iter__` and `list.append`, tuple methods including `tuple.__len__` and `tuple.count`, string and bytes methods including `str.upper` and `bytes.upper`, `set.add`, `frozenset.__hash__`,
   `int.bit_length`, and `float.hex`. Exact CPython message text for every
   builtin method remains a separate method-by-method migration task.
+- Extended the same runtime exception-capture evidence to public
+  generator/coroutine/async-generator keyword rejection for `send`, `throw`,
+  `close`, `__aiter__`, `__anext__`, `asend`, `athrow`, and `aclose`, keeping
+  those core runtime method errors catchable and aligned with CPython text.
 
 ## Sandbox Stdlib Manifest
 

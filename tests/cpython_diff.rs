@@ -6552,6 +6552,34 @@ for label, expr in checks:
         expr()
     except TypeError as error:
         print(label, str(error))
+def generator_keyword_sample():
+    yield 1
+async def coroutine_keyword_sample():
+    return 1
+async def async_generator_keyword_sample():
+    yield 1
+generator_object = generator_keyword_sample()
+coroutine_object = coroutine_keyword_sample()
+async_generator_object = async_generator_keyword_sample()
+checks = [
+    ("gen-send", lambda: generator_object.send(arg=None)),
+    ("gen-throw", lambda: generator_object.throw(typ=ValueError)),
+    ("gen-close", lambda: generator_object.close(bad=1)),
+    ("coro-send", lambda: coroutine_object.send(arg=None)),
+    ("coro-throw", lambda: coroutine_object.throw(typ=ValueError)),
+    ("coro-close", lambda: coroutine_object.close(bad=1)),
+    ("agen-aiter", lambda: async_generator_object.__aiter__(bad=1)),
+    ("agen-anext", lambda: async_generator_object.__anext__(bad=1)),
+    ("agen-asend", lambda: async_generator_object.asend(value=None)),
+    ("agen-athrow", lambda: async_generator_object.athrow(typ=ValueError)),
+    ("agen-aclose", lambda: async_generator_object.aclose(bad=1)),
+]
+for label, expr in checks:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))
+coroutine_object.close()
 try:
     raise NotImplementedError("todo")
 except NotImplementedError as error:

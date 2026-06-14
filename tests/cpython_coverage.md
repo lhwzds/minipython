@@ -40,6 +40,10 @@ Recent runtime migration notes:
   define `__getitem__`.
 - The same iterator evidence covers CPython's bad `__iter__` return TypeError
   text for direct `iter()`, list construction, and `itertools.chain.from_iterable()`.
+- `cpython_runtime_exception_capture_subset`, backed by
+  `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
+  no-keyword TypeError text for public generator, coroutine, and async
+  generator methods.
 - `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
   blocking over otherwise sequence-like objects, keeping the public reverse
   protocol distinct from sequence fallback.
