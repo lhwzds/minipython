@@ -9398,18 +9398,10 @@ impl Vm {
                 self.call_property_method(&name, args, keywords)
             }
             Value::Builtin(name) if name == "staticmethod.__get__" => {
-                if !keywords.is_empty() {
-                    return Err("__get__() does not accept keyword arguments".to_string());
-                }
-
-                self.call_staticmethod_get(args)
+                self.call_staticmethod_get(args, keywords)
             }
             Value::Builtin(name) if name == "classmethod.__get__" => {
-                if !keywords.is_empty() {
-                    return Err("__get__() does not accept keyword arguments".to_string());
-                }
-
-                self.call_classmethod_get(args)
+                self.call_classmethod_get(args, keywords)
             }
             Value::Builtin(name) if name == "super.__get__" => {
                 if !keywords.is_empty() {
@@ -16253,24 +16245,34 @@ impl Vm {
         }
     }
 
-    fn call_staticmethod_get(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_staticmethod_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("__get__() expected a staticmethod receiver".to_string());
         };
         let Value::StaticMethod { function } = descriptor.clone() else {
             return Err("__get__() expected a staticmethod receiver".to_string());
         };
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
         descriptor_get_owner(rest)?;
         Ok(*function)
     }
 
-    fn call_classmethod_get(&mut self, args: Vec<Value>) -> Result<Value, String> {
+    fn call_classmethod_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
         let Some((descriptor, rest)) = args.split_first() else {
             return Err("__get__() expected a classmethod receiver".to_string());
         };
         let Value::ClassMethod { function } = descriptor.clone() else {
             return Err("__get__() expected a classmethod receiver".to_string());
         };
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
         let owner = descriptor_get_owner(rest)?;
         Ok(Value::BoundMethod {
             function,
@@ -47715,6 +47717,28 @@ fn descriptor_get_owner(args: &[Value]) -> Result<Value, String> {
         return Ok(owner);
     }
     descriptor_owner_from_object(object).ok_or_else(|| "__get__(None, None) is invalid".to_string())
+}
+
+fn descriptor_get_reject_method_wrapper_args(
+    method: &str,
+    args: &[Value],
+    keywords: &[(String, Value)],
+) -> Result<(), String> {
+    if !keywords.is_empty() {
+        return Err(format!(
+            "TypeError: wrapper {method}() takes no keyword arguments"
+        ));
+    }
+    if args.is_empty() {
+        return Err(format!("TypeError:  expected at least 1 argument, got 0"));
+    }
+    if args.len() > 2 {
+        return Err(format!(
+            "TypeError:  expected at most 2 arguments, got {}",
+            args.len()
+        ));
+    }
+    Ok(())
 }
 
 fn descriptor_owner_from_object(object: &Value) -> Option<Value> {

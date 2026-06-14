@@ -6535,7 +6535,25 @@ for label, expected, expr in [
     try:
         expr()
     except TypeError as error:
-        print(label, type(error).__name__, str(error), str(error) == expected)"#,
+        print(label, type(error).__name__, str(error), str(error) == expected)
+
+def descriptor_function(*args):
+    return args
+
+for descriptor_name, descriptor in [
+    ('staticmethod', staticmethod(descriptor_function)),
+    ('classmethod', classmethod(descriptor_function)),
+]:
+    for label, expected, expr in [
+        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),
+        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
+        ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),
+        ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)"#,
     });
 }
 

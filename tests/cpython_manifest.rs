@@ -11035,6 +11035,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "descriptor.getter()",
         "descriptor.setter()",
         "descriptor.deleter()",
+        "staticmethod(descriptor_function)",
+        "classmethod(descriptor_function)",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -11060,6 +11062,9 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "property.getter() takes exactly one argument (0 given)",
         "property.setter() takes no keyword arguments",
         "property.deleter() takes no keyword arguments",
+        "staticmethod(descriptor_function)",
+        "classmethod(descriptor_function)",
+        "get-bad-keyword",
     ] {
         assert!(
             body.contains(required),
