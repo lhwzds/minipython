@@ -819,7 +819,8 @@ Recent runtime migration notes:
   parsing, CPython default non-finite constants, strings and `str` /
   `int` / `float`
   subclass and `IntEnum` values/keys,
-  list/tuple containers, list/tuple/namedtuple subclass containers through
+  list/tuple containers including 200-level nested list encoding,
+  list/tuple/namedtuple subclass containers through
   public iteration, non-empty dict subclass containers through public
   `items()` with CPython's 2-tuple item requirement, CPython's
   empty-dict-subclass `{}` fast path, `Counter` mapping containers, and

@@ -58798,7 +58798,8 @@ struct JsonDumpsOptions {
     default_hook: Option<Value>,
 }
 
-const JSON_DUMPS_MAX_DEPTH: usize = 100;
+const JSON_DUMPS_MAX_DEPTH: usize = 250;
+const JSON_DUMPS_MAX_DEFAULT_DEPTH: usize = 100;
 
 impl Default for JsonDumpsOptions {
     fn default() -> Self {
@@ -58915,7 +58916,7 @@ fn json_dumps_value(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
 ) -> Result<String, String> {
-    json_dumps_value_at_depth(vm, value, active, options, 0)
+    json_dumps_value_at_depth(vm, value, active, options, 0, 0)
 }
 
 fn json_dumps_value_at_depth(
@@ -58924,6 +58925,7 @@ fn json_dumps_value_at_depth(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
     if depth > JSON_DUMPS_MAX_DEPTH {
         return Err(
@@ -58942,11 +58944,11 @@ fn json_dumps_value_at_depth(
                 )
             };
         }
-        let result = json_dumps_value_inner(vm, value, active, options, depth);
+        let result = json_dumps_value_inner(vm, value, active, options, depth, default_depth);
         active.remove(&identity);
         return result;
     }
-    json_dumps_value_inner(vm, value, active, options, depth)
+    json_dumps_value_inner(vm, value, active, options, depth, default_depth)
 }
 
 fn json_dumps_value_inner(
@@ -58955,6 +58957,7 @@ fn json_dumps_value_inner(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
     match value {
         Value::None => Ok("null".to_string()),
@@ -58980,26 +58983,45 @@ fn json_dumps_value_inner(
                 options
             )
         )),
-        Value::List(items) => json_dumps_sequence(vm, &items.borrow(), active, options, depth),
-        Value::Tuple(items) => json_dumps_sequence(vm, items, active, options, depth),
-        Value::NamedTuple { values, .. } => json_dumps_sequence(vm, values, active, options, depth),
-        Value::Dict(entries) | Value::Counter { entries } => {
-            json_dumps_dict(vm, &entries.borrow().entries, active, options, depth)
+        Value::List(items) => {
+            json_dumps_sequence(vm, &items.borrow(), active, options, depth, default_depth)
         }
+        Value::Tuple(items) => {
+            json_dumps_sequence(vm, items, active, options, depth, default_depth)
+        }
+        Value::NamedTuple { values, .. } => {
+            json_dumps_sequence(vm, values, active, options, depth, default_depth)
+        }
+        Value::Dict(entries) | Value::Counter { entries } => json_dumps_dict(
+            vm,
+            &entries.borrow().entries,
+            active,
+            options,
+            depth,
+            default_depth,
+        ),
         value
             if list_subclass_storage(value).is_some()
                 || tuple_subclass_items(value).is_some()
                 || namedtuple_subclass_storage(value).is_some() =>
         {
-            json_dumps_iterable_sequence(vm, value, active, options, depth)
+            json_dumps_iterable_sequence(vm, value, active, options, depth, default_depth)
         }
         value if dict_subclass_entries(value).is_some() => {
             let entries = json_dumps_dict_subclass_items(vm, value)?;
-            json_dumps_dict(vm, &entries, active, options, depth)
+            json_dumps_dict(vm, &entries, active, options, depth, default_depth)
         }
         value => {
             if let Some(hook) = options.default_hook.clone() {
-                return json_dumps_default_value(vm, value, hook, active, options, depth);
+                return json_dumps_default_value(
+                    vm,
+                    value,
+                    hook,
+                    active,
+                    options,
+                    depth,
+                    default_depth,
+                );
             }
             Err(format!(
                 "TypeError: Object of type {} is not JSON serializable",
@@ -59016,7 +59038,14 @@ fn json_dumps_default_value(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
+    if default_depth > JSON_DUMPS_MAX_DEFAULT_DEPTH {
+        return Err(
+            "RecursionError: maximum recursion depth exceeded while encoding a JSON object"
+                .to_string(),
+        );
+    }
     if !is_callable_value(&hook) {
         return Err(format!(
             "TypeError: '{}' object is not callable",
@@ -59038,7 +59067,14 @@ fn json_dumps_default_value(
     }
     let replacement = vm.call_value(hook, vec![value.clone()]);
     let result = match replacement {
-        Ok(replacement) => json_dumps_value_at_depth(vm, &replacement, active, options, depth + 1),
+        Ok(replacement) => json_dumps_value_at_depth(
+            vm,
+            &replacement,
+            active,
+            options,
+            depth + 1,
+            default_depth + 1,
+        ),
         Err(error) => Err(error),
     };
     if let Some(identity) = identity {
@@ -59138,9 +59174,10 @@ fn json_dumps_iterable_sequence(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
     let items = vm.collect_iterable_values_propagating(value.clone())?;
-    json_dumps_sequence(vm, &items, active, options, depth)
+    json_dumps_sequence(vm, &items, active, options, depth, default_depth)
 }
 
 fn json_dumps_sequence(
@@ -59149,6 +59186,7 @@ fn json_dumps_sequence(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
     let mut parts = Vec::with_capacity(items.len());
     for item in items {
@@ -59158,6 +59196,7 @@ fn json_dumps_sequence(
             active,
             options,
             depth + 1,
+            default_depth,
         )?);
     }
     if let Some(indent) = &options.indent {
@@ -59182,6 +59221,7 @@ fn json_dumps_dict(
     active: &mut HashSet<usize>,
     options: &JsonDumpsOptions,
     depth: usize,
+    default_depth: usize,
 ) -> Result<String, String> {
     let mut sorted_entries;
     let entries = if options.sort_keys {
@@ -59200,7 +59240,7 @@ fn json_dumps_dict(
             "\"{}\"{}{}",
             json_escape_string(&key, options),
             options.key_separator,
-            json_dumps_value_at_depth(vm, value, active, options, depth + 1)?
+            json_dumps_value_at_depth(vm, value, active, options, depth + 1, default_depth)?
         ));
     }
     if let Some(indent) = &options.indent {

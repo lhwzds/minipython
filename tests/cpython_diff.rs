@@ -642,7 +642,11 @@ print(json.dumps(json.loads('"\\ud834\\udd20"')))
 print(json.dumps(float('nan')), json.dumps(float('inf')), json.dumps(float('-inf')))
 for text in ['NaN', 'Infinity', '-Infinity', '1e9999', '-1e9999']:
     value = json.loads(text)
-    print(text, math.isnan(value), math.isinf(value), value < 0)"#,
+    print(text, math.isnan(value), math.isinf(value), value < 0)
+deep = 0
+for _ in range(200):
+    deep = [deep]
+print('deep-list-len', len(json.dumps(deep)))"#,
     });
 }
 
