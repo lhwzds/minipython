@@ -6342,6 +6342,8 @@ fn json_keyword_argument_binding_docs_cover_call_surface() {
         "dumps-missing-obj",
         "loads-missing-text",
         "dumps-missing-text",
+        "loads-unknown-text",
+        "dumps-unknown-text",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -6357,6 +6359,8 @@ fn json_keyword_argument_binding_docs_cover_call_surface() {
         "\"dumps-cls TypeError True\"",
         "\"loads-missing-text TypeError loads() missing 1 required positional argument: 's'\"",
         "\"dumps-missing-text TypeError dumps() missing 1 required positional argument: 'obj'\"",
+        "\"loads-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'\"",
+        "\"dumps-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),

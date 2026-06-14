@@ -1197,7 +1197,9 @@ show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
 show('loads-missing-s', lambda: json.loads(strict=False))
 show('dumps-missing-obj', lambda: json.dumps(sort_keys=True))
 show_error('loads-missing-text', lambda: json.loads(strict=False))
-show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))"#,
+show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))
+show_error('loads-unknown-text', lambda: json.loads('{}', unknown=1))
+show_error('dumps-unknown-text', lambda: json.dumps({}, unknown=1))"#,
     });
 }
 

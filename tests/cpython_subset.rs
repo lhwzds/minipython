@@ -34300,7 +34300,39 @@ for value in [BadListIter([1]), BadTupleIter((1,))]:
 #[test]
 fn cpython_json_keyword_argument_binding_subset() {
     assert_output(
-        "import json\n\ndef show(label, callback):\n    try:\n        print(label, callback())\n    except Exception as error:\n        print(label, type(error).__name__, isinstance(error, TypeError))\n\ndef show_error(label, callback):\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))\n\nprint(json.loads(s='{\"a\": 1}')['a'])\nprint(json.loads(s=b'[1, 2]', strict=True))\nprint(json.loads(s='{\"none\": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))\nprint(json.loads('1', parse_int=lambda s: 'hook'))\nprint(json.loads('{\"x\": 1}', object_hook=lambda d: {'hooked': d['x']}))\nprint(json.loads('{\"x\": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))\nprint(json.dumps(obj={'b': [2]}, sort_keys=True))\nprint(json.dumps(obj='é', ensure_ascii=False))\nprint(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))\nprint(json.dumps(object(), default=lambda obj: 'fallback'))\nshow('loads-duplicate-s', lambda: json.loads('{}', s='[]'))\nshow('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))\nshow('loads-missing-s', lambda: json.loads(strict=False))\nshow('dumps-missing-obj', lambda: json.dumps(sort_keys=True))\nshow('dumps-cls', lambda: json.dumps({}, cls=object))\nshow_error('loads-missing-text', lambda: json.loads(strict=False))\nshow_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))",
+        r#"import json
+
+def show(label, callback):
+    try:
+        print(label, callback())
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, TypeError))
+
+def show_error(label, callback):
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+
+print(json.loads(s='{"a": 1}')['a'])
+print(json.loads(s=b'[1, 2]', strict=True))
+print(json.loads(s='{"none": true}', cls=None, object_hook=None, parse_float=None, parse_int=None, parse_constant=None, object_pairs_hook=None))
+print(json.loads('1', parse_int=lambda s: 'hook'))
+print(json.loads('{"x": 1}', object_hook=lambda d: {'hooked': d['x']}))
+print(json.loads('{"x": 1}', object_pairs_hook=lambda pairs: ('pairs', pairs)))
+print(json.dumps(obj={'b': [2]}, sort_keys=True))
+print(json.dumps(obj='é', ensure_ascii=False))
+print(json.dumps(obj={'b': [2]}, cls=None, default=None, sort_keys=True))
+print(json.dumps(object(), default=lambda obj: 'fallback'))
+show('loads-duplicate-s', lambda: json.loads('{}', s='[]'))
+show('dumps-duplicate-obj', lambda: json.dumps({}, obj=[]))
+show('loads-missing-s', lambda: json.loads(strict=False))
+show('dumps-missing-obj', lambda: json.dumps(sort_keys=True))
+show('dumps-cls', lambda: json.dumps({}, cls=object))
+show_error('loads-missing-text', lambda: json.loads(strict=False))
+show_error('dumps-missing-text', lambda: json.dumps(sort_keys=True))
+show_error('loads-unknown-text', lambda: json.loads('{}', unknown=1))
+show_error('dumps-unknown-text', lambda: json.dumps({}, unknown=1))"#,
         &[
             "1",
             "[1, 2]",
@@ -34319,6 +34351,8 @@ fn cpython_json_keyword_argument_binding_subset() {
             "dumps-cls TypeError True",
             "loads-missing-text TypeError loads() missing 1 required positional argument: 's'",
             "dumps-missing-text TypeError dumps() missing 1 required positional argument: 'obj'",
+            "loads-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'",
+            "dumps-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'",
         ],
     );
 }

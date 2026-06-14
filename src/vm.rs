@@ -24190,6 +24190,10 @@ impl Vm {
         .map_err(|message| {
             if message == "TypeError: loads() missing required argument 's'" {
                 "TypeError: loads() missing 1 required positional argument: 's'".to_string()
+            } else if let Some(keyword) =
+                message.strip_prefix("TypeError: loads() got an unexpected keyword argument ")
+            {
+                format!("TypeError: __init__() got an unexpected keyword argument {keyword}")
             } else {
                 message
             }
@@ -24274,6 +24278,10 @@ impl Vm {
         .map_err(|message| {
             if message == "TypeError: dumps() missing required argument 'obj'" {
                 "TypeError: dumps() missing 1 required positional argument: 'obj'".to_string()
+            } else if let Some(keyword) =
+                message.strip_prefix("TypeError: dumps() got an unexpected keyword argument ")
+            {
+                format!("TypeError: __init__() got an unexpected keyword argument {keyword}")
             } else {
                 message
             }
