@@ -10137,6 +10137,74 @@ fn set_reentrant_mutation_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_operations_mutating_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_operations_mutating_subset(",
+        "Lib/test/test_set.py::TestOperationsMutating",
+        "def make_sets():",
+        "set1.clear()",
+        "set2.clear()",
+        "('eq', lambda a, b: a == b)",
+        "('and', lambda a, b: a & b)",
+        "set.issubset(a, b)",
+        "set.difference_update(a, b)",
+        "set.symmetric_difference_update(a, b)",
+        "('update', lambda a, b: set.update(a, b))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set operations-mutating subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "set-operations-mutating",
+        "Lib/test/test_set.py::TestOperationsMutating",
+        "def make_sets():",
+        "set1.clear()",
+        "set2.clear()",
+        "('eq', lambda a, b: a == b)",
+        "('and', lambda a, b: a & b)",
+        "set.issubset(a, b)",
+        "set.difference_update(a, b)",
+        "set.symmetric_difference_update(a, b)",
+        "('update', lambda a, b: set.update(a, b))",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "focused set operations-mutating CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_set_operations_mutating_subset")
+            && CPYTHON_COVERAGE.contains("set-operations-mutating")
+            && CPYTHON_COVERAGE.contains("element equality clears both participating sets")
+            && CPYTHON_COVERAGE
+                .contains("set equality, ordering, algebra, relation methods, and update methods"),
+        "coverage notes must describe set operations-mutating subset and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_set_operations_mutating_subset")
+            && CPYTHON_MIGRATION.contains("set-operations-mutating")
+            && CPYTHON_MIGRATION.contains("element equality clears both participating sets")
+            && CPYTHON_MIGRATION
+                .contains("set equality, ordering, algebra, relation methods, and update methods"),
+        "migration notes must document set operations-mutating public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",

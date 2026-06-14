@@ -4497,6 +4497,11 @@ clear/refill-to-original-size no-crash regression tied to the oracle.
 rich equality clears the source set and hash-collision `set.add()` re-entering
 the same set from Python-level `__eq__` tied to the oracle.
 
+`cpython_set_operations_mutating_subset` is backed by the
+`set-operations-mutating` direct CPython diff case, keeping CPython's stable
+set equality, ordering, algebra, relation methods, and update methods whose
+element equality clears both participating sets tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.

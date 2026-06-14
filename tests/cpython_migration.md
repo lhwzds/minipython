@@ -6436,8 +6436,10 @@ Completed in the container constructor/reversed pass:
   output diff keeps both public behaviors tied to the oracle.
 - Added `cpython_set_operations_mutating_subset`, adapted from CPython
   `Lib/test/test_set.py::TestOperationsMutating`, covering a deterministic
-  stable subset of set equality, ordering, algebra, relation methods, and
-  update methods whose element `__eq__` clears both participating sets.
+  stable subset of set equality, ordering, algebra, relation methods, and update methods
+  whose element equality clears both participating sets. The matching
+  `set-operations-mutating` CPython output diff keeps those public behaviors
+  tied to the oracle.
 - Added `cpython_set_rich_compare_reflection_subset`, adapted from CPython
   `Lib/test/test_set.py::TestSet.test_rich_compare`, covering set ordering
   returning `NotImplemented` for unrelated operands and dispatching the right
