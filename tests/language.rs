@@ -5058,6 +5058,21 @@ fn json_sandbox_subset_excludes_file_apis_and_extension_hooks() {
 }
 
 #[test]
+fn json_sandbox_subset_rejects_unpaired_surrogate_escapes() {
+    assert_eq!(
+        run_source(
+            "import json\nfor source in ['\"\\\\ud800\"', '\"\\\\udc00\"', '\"\\\\ud800x\"']:\n    try:\n        json.loads(source)\n    except ValueError as error:\n        print(type(error).__name__, 'Unpaired surrogate escape' in str(error))\nvalue = json.loads('\"\\\\ud800\\\\udc00\"')\nprint(len(value), json.dumps(value))"
+        ),
+        Ok(output_lines(&[
+            "ValueError True",
+            "ValueError True",
+            "ValueError True",
+            "1 \"\\ud800\\udc00\"",
+        ]))
+    );
+}
+
+#[test]
 fn reads_runtime_frame_depths() {
     assert_eq!(
         run_source(
