@@ -77549,7 +77549,7 @@ fn repeat_bytes_len(len: usize, count: i64) -> Result<usize, String> {
     let count =
         usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
     len.checked_mul(count)
-        .ok_or_else(|| "sequence repeat count is too large".to_string())
+        .ok_or_else(|| "MemoryError".to_string())
 }
 
 fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
@@ -77559,9 +77559,10 @@ fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
 
     let count =
         usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
-    repeat_bytes_len(value.len(), count as i64)?;
+    let next_len = repeat_bytes_len(value.len(), count as i64)?;
+    checked_byte_sequence_alloc_length(next_len)?;
 
-    let mut repeated = Vec::with_capacity(value.len() * count);
+    let mut repeated = Vec::with_capacity(next_len);
     for _ in 0..count {
         repeated.extend_from_slice(&value);
     }

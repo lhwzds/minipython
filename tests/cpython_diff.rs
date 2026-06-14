@@ -20937,6 +20937,12 @@ for ctor in [bytes, bytearray]:
                 expr()
             except TypeError as error:
                 print(error.__class__.__name__)
+    tiny = ctor(b'a')
+    for expr in [lambda tiny=tiny: tiny * sys.maxsize, lambda tiny=tiny: sys.maxsize * tiny]:
+        try:
+            expr()
+        except (OverflowError, MemoryError) as error:
+            print(type(tiny).__name__, error.__class__.__name__)
     print(ctor(b'x') * 100 == ctor([ord('x')] * 100))
     b = ctor(b'abc')
     for needle in [ord('a'), int(ord('a')), 200]:

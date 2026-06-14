@@ -3511,7 +3511,8 @@ Completed in the bytes constructor/concat/repeat/contains pass:
   `test_concat`, `test_repeat`, `test_repeat_1char`, and `test_contains`.
 - Extended bytes/bytearray CPython parity evidence for integer-length
   construction, mixed bytes/bytearray concatenation result types, sequence
-  repetition including zero and negative counts, and membership over integer,
+  repetition including zero and negative counts, sandbox `MemoryError` handling
+  for address-space-sized bytes/bytearray repeats, and membership over integer,
   bytes, bytearray, and memoryview needles. Direct CPython diff evidence is in
   `cpython_bytes_constructor_concat_repeat_contains_diff_subset`.
 - Routed sequence repetition errors through Python-level exception conversion

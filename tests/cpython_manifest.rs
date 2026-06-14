@@ -2162,6 +2162,29 @@ fn cpython_bytes_search_compare_slice_diff_covers_compare_slice_reversed_runtime
 }
 
 #[test]
+fn cpython_bytes_repeat_allocation_guard_stays_cpython_diffed() {
+    let diff_name = "cpython_bytes_constructor_concat_repeat_contains_diff_subset";
+    let subset_name = "cpython_bytes_constructor_concat_repeat_contains_subset";
+
+    for source in [CPYTHON_DIFF, CPYTHON_SUBSET] {
+        assert!(
+            source.contains("* sys.maxsize")
+                && source.contains("sys.maxsize *")
+                && source.contains("MemoryError"),
+            "bytes repeat allocation guard must stay covered by `{diff_name}` / `{subset_name}`"
+        );
+    }
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("address-space-sized")
+                && document.contains("bytes/bytearray repeats"),
+            "bytes repeat allocation guard must stay documented"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
     let diff_name = "cpython_bytes_basics_and_empty_index_diff_subset";
     let runtime_subsets = [

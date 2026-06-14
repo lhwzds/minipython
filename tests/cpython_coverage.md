@@ -2436,8 +2436,9 @@ without adding general custom encoder/decoder class support.
   `cpython_bytes_constructor_concat_repeat_contains_subset`, covering
   bytes/bytearray integer-length construction, mixed bytes/bytearray
   concatenation result types, repetition with zero/negative counts, repeat
-  TypeErrors, and membership over integer and bytes-like needles. Direct
-  CPython diff evidence is in
+  TypeErrors, sandbox `MemoryError` handling for address-space-sized
+  bytes/bytearray repeats, and membership over integer and bytes-like needles.
+  Direct CPython diff evidence is in
   `cpython_bytes_constructor_concat_repeat_contains_diff_subset`.
 - `STRING_RUNTIME` also includes
   `cpython_bytes_check_encoding_errors_devmode_subset`, covering CPython

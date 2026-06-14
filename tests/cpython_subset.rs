@@ -32621,7 +32621,7 @@ fn cpython_bytes_compare_slice_reversed_subset() {
 #[test]
 fn cpython_bytes_constructor_concat_repeat_contains_subset() {
     assert_output(
-        "import sys\nfor ctor in [bytes, bytearray]:\n    print(ctor(0), len(ctor(10)), len(ctor(10000)))\n    print(ctor(10) == ctor([0] * 10), ctor(10000) == ctor([0] * 10000))\n    b1 = ctor(b'abc')\n    b2 = ctor(b'def')\n    print(b1 + b2)\n    print(b1 + bytes(b'def'))\n    print(bytes(b'def') + b1)\n    for expr in [lambda: b1 + 'def', lambda: 'abc' + b2]:\n        try:\n            expr()\n        except TypeError as error:\n            print(error.__class__.__name__)\n    for sample in [b'abc', ctor(b'abc')]:\n        print(sample * 3, sample * 0, sample * -1)\n        for expr in [lambda: sample * 3.14, lambda: 3.14 * sample]:\n            try:\n                expr()\n            except TypeError as error:\n                print(error.__class__.__name__)\n    print(ctor(b'x') * 100 == ctor([ord('x')] * 100))\n    b = ctor(b'abc')\n    for needle in [ord('a'), int(ord('a')), 200]:\n        print(needle in b)\n    for needle in [300, -1, sys.maxsize + 1, None, float(ord('a')), 'a']:\n        try:\n            needle in b\n        except (TypeError, ValueError) as error:\n            print(error.__class__.__name__)\n    for needle in [bytes(b''), bytearray(b''), memoryview(b''), bytes(b'a'), bytearray(b'b'), memoryview(b'c'), bytes(b'ab'), bytearray(b'bc'), bytes(b'ac'), bytes(b'd')]:\n        print(needle in b)",
+        "import sys\nfor ctor in [bytes, bytearray]:\n    print(ctor(0), len(ctor(10)), len(ctor(10000)))\n    print(ctor(10) == ctor([0] * 10), ctor(10000) == ctor([0] * 10000))\n    b1 = ctor(b'abc')\n    b2 = ctor(b'def')\n    print(b1 + b2)\n    print(b1 + bytes(b'def'))\n    print(bytes(b'def') + b1)\n    for expr in [lambda: b1 + 'def', lambda: 'abc' + b2]:\n        try:\n            expr()\n        except TypeError as error:\n            print(error.__class__.__name__)\n    for sample in [b'abc', ctor(b'abc')]:\n        print(sample * 3, sample * 0, sample * -1)\n        for expr in [lambda: sample * 3.14, lambda: 3.14 * sample]:\n            try:\n                expr()\n            except TypeError as error:\n                print(error.__class__.__name__)\n        for expr in [lambda sample=sample: sample * sys.maxsize, lambda sample=sample: sys.maxsize * sample]:\n            try:\n                expr()\n            except (OverflowError, MemoryError) as error:\n                print(type(sample).__name__, error.__class__.__name__)\n    print(ctor(b'x') * 100 == ctor([ord('x')] * 100))\n    b = ctor(b'abc')\n    for needle in [ord('a'), int(ord('a')), 200]:\n        print(needle in b)\n    for needle in [300, -1, sys.maxsize + 1, None, float(ord('a')), 'a']:\n        try:\n            needle in b\n        except (TypeError, ValueError) as error:\n            print(error.__class__.__name__)\n    for needle in [bytes(b''), bytearray(b''), memoryview(b''), bytes(b'a'), bytearray(b'b'), memoryview(b'c'), bytes(b'ab'), bytearray(b'bc'), bytes(b'ac'), bytes(b'd')]:\n        print(needle in b)",
         &[
             "b'' 10 10000",
             "True True",
@@ -32633,9 +32633,13 @@ fn cpython_bytes_constructor_concat_repeat_contains_subset() {
             "b'abcabcabc' b'' b''",
             "TypeError",
             "TypeError",
+            "bytes MemoryError",
+            "bytes MemoryError",
             "b'abcabcabc' b'' b''",
             "TypeError",
             "TypeError",
+            "bytes MemoryError",
+            "bytes MemoryError",
             "True",
             "True",
             "True",
@@ -32666,9 +32670,13 @@ fn cpython_bytes_constructor_concat_repeat_contains_subset() {
             "b'abcabcabc' b'' b''",
             "TypeError",
             "TypeError",
+            "bytes MemoryError",
+            "bytes MemoryError",
             "bytearray(b'abcabcabc') bytearray(b'') bytearray(b'')",
             "TypeError",
             "TypeError",
+            "bytearray MemoryError",
+            "bytearray MemoryError",
             "True",
             "True",
             "True",
