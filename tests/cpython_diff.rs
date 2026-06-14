@@ -25060,6 +25060,9 @@ print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.b
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
 print('sys-getdefaultencoding', sys.getdefaultencoding())
+print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__)
+print('sys-implementation', type(sys.implementation).__name__, type(sys.implementation.name).__name__, type(sys.implementation.version).__name__, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
+print('sys-implementation-version-shape', len(sys.implementation.version), sys.implementation.version == sys.version_info)
 for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
     try:
         call()

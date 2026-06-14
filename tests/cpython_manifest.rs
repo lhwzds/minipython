@@ -12298,15 +12298,22 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'builtin_module_names'")
             && LANGUAGE_TESTS.contains("'getdefaultencoding'")
             && LANGUAGE_TESTS.contains("'getfilesystemencoding'")
+            && LANGUAGE_TESTS.contains("'implementation'")
+            && LANGUAGE_TESTS.contains("'version_info'")
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sys.getdefaultencoding()")
+            && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
     );
     assert!(
         STDLIB_SOURCE.contains("\"builtin_module_names\"")
             && STDLIB_SOURCE.contains("\"getdefaultencoding\"")
+            && STDLIB_SOURCE.contains("\"implementation\"")
+            && STDLIB_SOURCE.contains("\"version_info\"")
+            && STDLIB_SOURCE.contains("sys_version_info_value()")
+            && STDLIB_SOURCE.contains("sys_implementation_value()")
             && STDLIB_SOURCE.contains("string_tuple_value(SYS_BUILTIN_MODULE_NAMES)")
             && STDLIB_SOURCE.contains("\"builtins\"")
             && STDLIB_SOURCE.contains("\"sys\"")
@@ -12329,6 +12336,14 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.getdefaultencoding(x=1)",
         "sys.getdefaultencoding() takes no arguments (1 given)",
         "sys.getdefaultencoding() takes no keyword arguments",
+        "sys.version_info",
+        "sys.version_info.major",
+        "sys.version_info.releaselevel",
+        "sys.implementation",
+        "sys.implementation.name",
+        "sys.implementation.version",
+        "sys.implementation.hexversion",
+        "sys.implementation.cache_tag",
     ] {
         assert!(
             sys_info_diff.contains(required),
@@ -12343,8 +12358,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             document.contains("builtin_module_names")
                 && document.contains("getdefaultencoding")
+                && document.contains("implementation")
+                && document.contains("version_info")
                 && document.contains("filesystem encoding"),
-            "sys docs must describe builtin_module_names/getdefaultencoding metadata and filesystem encoding stop-line"
+            "sys docs must describe sys metadata and filesystem encoding stop-line"
         );
     }
 

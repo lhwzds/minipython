@@ -1,8 +1,8 @@
 use crate::bytecode::Instruction;
 use crate::lexer::{get_int_max_str_digits, set_int_max_str_digits};
 use crate::value::{
-    CodeMode, DictRef, DictStorage, DictViewKind, INT_SUBCLASS_STORAGE_FIELD, Scope, Value,
-    dict_value, float_value, list_value, tuple_value,
+    CodeMode, DictRef, DictStorage, DictViewKind, INT_SUBCLASS_STORAGE_FIELD, NamedTupleType,
+    Scope, Value, dict_value, float_value, list_value, tuple_value,
 };
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};
@@ -62,6 +62,12 @@ pub(crate) const TYPES_ALL: &[&str] = &[
     "resolve_bases",
 ];
 pub(crate) const SYS_BUILTIN_MODULE_NAMES: &[&str] = &["builtins", "sys", "time"];
+pub(crate) const MINIPYTHON_VERSION_MAJOR: i64 = 0;
+pub(crate) const MINIPYTHON_VERSION_MINOR: i64 = 1;
+pub(crate) const MINIPYTHON_VERSION_MICRO: i64 = 0;
+pub(crate) const MINIPYTHON_VERSION_RELEASELEVEL: &str = "final";
+pub(crate) const MINIPYTHON_VERSION_SERIAL: i64 = 0;
+pub(crate) const MINIPYTHON_HEXVERSION: i64 = 0x0001_00f0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct SysFlags {
@@ -425,6 +431,7 @@ pub(crate) fn create_module(
             vec![
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
+                ("implementation", sys_implementation_value()),
                 (
                     "builtin_module_names",
                     string_tuple_value(SYS_BUILTIN_MODULE_NAMES),
@@ -445,6 +452,7 @@ pub(crate) fn create_module(
                     Value::Builtin("sys.__breakpointhook__".to_string()),
                 ),
                 ("version", Value::String("minipython".to_string())),
+                ("version_info", sys_version_info_value()),
                 (
                     "flags",
                     Value::SimpleNamespace {
@@ -1489,6 +1497,65 @@ fn reject_sum_start(value: &Value) -> Result<(), String> {
             Err("TypeError: sum() can't sum bytearray [use b''.join(seq) instead]".to_string())
         }
         _ => Ok(()),
+    }
+}
+
+fn sys_version_info_value() -> Value {
+    let fields = vec![
+        "major".to_string(),
+        "minor".to_string(),
+        "micro".to_string(),
+        "releaselevel".to_string(),
+        "serial".to_string(),
+    ];
+    let values = vec![
+        Value::Number(MINIPYTHON_VERSION_MAJOR),
+        Value::Number(MINIPYTHON_VERSION_MINOR),
+        Value::Number(MINIPYTHON_VERSION_MICRO),
+        Value::String(MINIPYTHON_VERSION_RELEASELEVEL.to_string()),
+        Value::Number(MINIPYTHON_VERSION_SERIAL),
+    ];
+    Value::NamedTuple {
+        typ: Rc::new(NamedTupleType {
+            name: "version_info".to_string(),
+            fields,
+            bases: vec![builtin_type_value("tuple")],
+            original_bases: None,
+            field_docs: (0..5)
+                .map(|index| RefCell::new(format!("Alias for field number {index}")))
+                .collect(),
+            field_defaults: Vec::new(),
+            new_defaults: None,
+            module: Value::String("sys".to_string()),
+            doc: RefCell::new(
+                "version_info(major, minor, micro, releaselevel, serial)".to_string(),
+            ),
+            identity: Rc::new(()),
+        }),
+        values: Rc::new(values),
+    }
+}
+
+fn sys_implementation_value() -> Value {
+    Value::SimpleNamespace {
+        fields: stdlib_dict_ref_from_entries(vec![
+            (
+                Value::String("name".to_string()),
+                Value::String("minipython".to_string()),
+            ),
+            (
+                Value::String("cache_tag".to_string()),
+                Value::String("minipython-0.1".to_string()),
+            ),
+            (
+                Value::String("version".to_string()),
+                sys_version_info_value(),
+            ),
+            (
+                Value::String("hexversion".to_string()),
+                Value::Number(MINIPYTHON_HEXVERSION),
+            ),
+        ]),
     }
 }
 

@@ -5475,6 +5475,8 @@ print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.b
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
 print('sys-getdefaultencoding', sys.getdefaultencoding())
+print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
+print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', lambda: sys.getdefaultencoding(x=1))]:
     try:
         call()
@@ -5493,6 +5495,8 @@ for label, call in [('extra', lambda: sys.getdefaultencoding(1)), ('keyword', la
             "sys-builtin-module-name-entries True True True",
             "sys-builtin-module-name-types True True",
             "sys-getdefaultencoding utf-8",
+            "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",
+            "sys-implementation SimpleNamespace minipython True int str",
             "extra TypeError sys.getdefaultencoding() takes no arguments (1 given)",
             "keyword TypeError sys.getdefaultencoding() takes no keyword arguments",
         ],
