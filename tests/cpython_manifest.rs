@@ -5046,6 +5046,9 @@ fn json_loads_parsing_diff_covers_subset_surface() {
             "cpython_json_loads_object_pairs_hook_subset",
             &[
                 "object_pairs_hook",
+                "object_pairs_hook=lambda value: None",
+                "object_pairs_hook=lambda value: [value]",
+                "object_pairs_hook=lambda value: [key for key, _ in value]",
                 "pairs-noncallable",
                 "'int' object is not callable",
                 "pairs-boom",

@@ -1768,6 +1768,9 @@ def obj(value):
 print(json.loads('{}', object_pairs_hook=pairs))
 print(json.loads('{"a": 1, "a": 2, "b": {"c": 3}}', object_pairs_hook=pairs))
 print(json.loads('{"a": 1, "b": {"c": 2}}', object_hook=obj, object_pairs_hook=pairs))
+print(json.loads('{"a": 1}', object_pairs_hook=lambda value: None))
+print(json.loads('{"a": 1}', object_pairs_hook=lambda value: [value]))
+print(json.loads('{"outer": {"inner": 1}}', object_pairs_hook=lambda value: [key for key, _ in value]))
 print(json.loads('[1, 2]', object_pairs_hook=1))
 
 def boom(value):

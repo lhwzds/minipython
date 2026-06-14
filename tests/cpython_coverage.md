@@ -853,8 +853,8 @@ Recent runtime migration notes:
   arbitrary returned values, exception propagation, and non-callable hook
   `TypeError` text,
   `object_pairs_hook` pair-list
-  post-processing with duplicate-key preservation and `object_hook`
-  precedence plus non-callable hook `TypeError` text,
+  post-processing with arbitrary returned values, duplicate-key preservation,
+  and `object_hook` precedence plus non-callable hook `TypeError` text,
   `sys.set_int_max_str_digits()`
   enforcement for default parsed JSON integer values, top-level scalar values,
   empty containers, finite and

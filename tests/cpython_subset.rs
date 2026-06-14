@@ -34403,7 +34403,7 @@ fn cpython_json_loads_object_hook_subset() {
 #[test]
 fn cpython_json_loads_object_pairs_hook_subset() {
     assert_output(
-        "import json\n\ndef pairs(value):\n    print('pairs', value)\n    return ('pairs', value)\n\ndef obj(value):\n    print('obj', value)\n    return ('obj', value)\n\nprint(json.loads('{}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"a\": 2, \"b\": {\"c\": 3}}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"b\": {\"c\": 2}}', object_hook=obj, object_pairs_hook=pairs))\nprint(json.loads('[1, 2]', object_pairs_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-pairs')\n\nfor label, source, kwargs in [\n    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),\n    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'pairs-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
+        "import json\n\ndef pairs(value):\n    print('pairs', value)\n    return ('pairs', value)\n\ndef obj(value):\n    print('obj', value)\n    return ('obj', value)\n\nprint(json.loads('{}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"a\": 2, \"b\": {\"c\": 3}}', object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1, \"b\": {\"c\": 2}}', object_hook=obj, object_pairs_hook=pairs))\nprint(json.loads('{\"a\": 1}', object_pairs_hook=lambda value: None))\nprint(json.loads('{\"a\": 1}', object_pairs_hook=lambda value: [value]))\nprint(json.loads('{\"outer\": {\"inner\": 1}}', object_pairs_hook=lambda value: [key for key, _ in value]))\nprint(json.loads('[1, 2]', object_pairs_hook=1))\n\ndef boom(value):\n    raise ValueError('boom-pairs')\n\nfor label, source, kwargs in [\n    ('pairs-noncallable', '{}', dict(object_pairs_hook=1)),\n    ('pairs-boom', '{}', dict(object_pairs_hook=boom)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        if label == 'pairs-boom':\n            print(label, type(error).__name__, str(error))\n        else:\n            print(label, type(error).__name__, str(error))",
         &[
             "pairs []",
             "('pairs', [])",
@@ -34413,6 +34413,9 @@ fn cpython_json_loads_object_pairs_hook_subset() {
             "pairs [('c', 2)]",
             "pairs [('a', 1), ('b', ('pairs', [('c', 2)]))]",
             "('pairs', [('a', 1), ('b', ('pairs', [('c', 2)]))])",
+            "None",
+            "[[('a', 1)]]",
+            "['outer']",
             "[1, 2]",
             "pairs-noncallable TypeError 'int' object is not callable",
             "pairs-boom ValueError boom-pairs",
