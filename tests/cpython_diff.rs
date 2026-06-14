@@ -14482,6 +14482,30 @@ fn cpython_itertools_core_iterator_diff_subset() {
 }
 
 #[test]
+fn cpython_itertools_chain_from_iterable_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public chain.from_iterable subset",
+        name: "itertools-chain-from-iterable",
+        source: r#"import itertools
+def source():
+    yield [1, 2]
+    yield ()
+    yield 'ab'
+    yield itertools.repeat(9, 2)
+cf = itertools.chain.from_iterable(source())
+print(callable(itertools.chain.from_iterable), type(cf).__name__, iter(cf) is cf, list(cf), list(cf))
+print(list(itertools.chain.from_iterable([])))
+cf = itertools.chain.from_iterable(items for items in [[3], [4, 5], []])
+print(next(cf), list(cf))
+for expr in [lambda: itertools.chain.from_iterable(), lambda: itertools.chain.from_iterable(iterable=[[1]]), lambda: list(itertools.chain.from_iterable([1]))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

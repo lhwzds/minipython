@@ -37686,6 +37686,40 @@ fn cpython_itertools_core_iterator_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public chain.from_iterable
+// behavior over pure in-memory iterables.
+#[test]
+fn cpython_itertools_chain_from_iterable_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "def source():\n",
+            "    yield [1, 2]\n",
+            "    yield ()\n",
+            "    yield 'ab'\n",
+            "    yield itertools.repeat(9, 2)\n",
+            "cf = itertools.chain.from_iterable(source())\n",
+            "print(callable(itertools.chain.from_iterable), type(cf).__name__, iter(cf) is cf, list(cf), list(cf))\n",
+            "print(list(itertools.chain.from_iterable([])))\n",
+            "cf = itertools.chain.from_iterable(items for items in [[3], [4, 5], []])\n",
+            "print(next(cf), list(cf))\n",
+            "for expr in [lambda: itertools.chain.from_iterable(), lambda: itertools.chain.from_iterable(iterable=[[1]]), lambda: list(itertools.chain.from_iterable([1]))]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)"
+        ),
+        &[
+            "True chain True [1, 2, 'a', 'b', 9, 9] []",
+            "[]",
+            "3 [4, 5]",
+            "TypeError",
+            "TypeError",
+            "TypeError",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
