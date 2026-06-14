@@ -5744,6 +5744,84 @@ fn json_loads_object_hook_docs_cover_option_boundaries() {
 }
 
 #[test]
+fn json_loads_object_pairs_hook_docs_cover_option_boundaries() {
+    let diff_name = "cpython_json_loads_object_pairs_hook_diff_subset";
+    let subset_name = "cpython_json_loads_object_pairs_hook_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads object_pairs_hook CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads object_pairs_hook runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def pairs(value):",
+        "def obj(value):",
+        "json.loads('{}', object_pairs_hook=pairs)",
+        "object_hook=obj, object_pairs_hook=pairs",
+        "object_pairs_hook=lambda value: None",
+        "object_pairs_hook=lambda value: [value]",
+        "object_pairs_hook=lambda value: [key for key, _ in value]",
+        "json.loads('[1, 2]', object_pairs_hook=1)",
+        "pairs-noncallable",
+        "pairs-boom",
+        "boom-pairs",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads object_pairs_hook diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"pairs []\"",
+        "\"('pairs', [])\"",
+        "\"pairs [('c', 3)]\"",
+        "\"pairs [('a', 1), ('a', 2), ('b', ('pairs', [('c', 3)]))]\"",
+        "\"('pairs', [('a', 1), ('a', 2), ('b', ('pairs', [('c', 3)]))])\"",
+        "\"pairs [('a', 1), ('b', ('pairs', [('c', 2)]))]\"",
+        "\"('pairs', [('a', 1), ('b', ('pairs', [('c', 2)]))])\"",
+        "\"None\"",
+        "\"[[('a', 1)]]\"",
+        "\"['outer']\"",
+        "\"[1, 2]\"",
+        "\"pairs-noncallable TypeError 'int' object is not callable\"",
+        "\"pairs-boom ValueError boom-pairs\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads object_pairs_hook subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` `object_pairs_hook` pair-list post-processing",
+            "decoded object pairs including nested object post-order traversal",
+            "duplicate-key preservation and input order",
+            "`object_pairs_hook` precedence over `object_hook`",
+            "arrays and scalar values bypassing `object_pairs_hook`",
+            "arbitrary returned values including `None`, lists, and derived key lists",
+            "non-callable hook `TypeError` text when the hook is used",
+            "hook exception propagation",
+            "without adding unsupported decoder hooks or `JSONDecoder` subclassing",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads object_pairs_hook boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
