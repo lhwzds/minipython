@@ -21162,7 +21162,10 @@ impl Vm {
                         type_name(&value)
                     ));
                 };
-                let result = self.call_value(method, Vec::new())?;
+                let result = match self.call_value_catching(method, Vec::new())? {
+                    Ok(result) => result,
+                    Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                };
                 integer_dunder_result("__index__", result)
             }
         }
@@ -21181,7 +21184,10 @@ impl Vm {
                 let Some(method) = instance_special_method(&value, "__index__") else {
                     return Ok(value);
                 };
-                let result = self.call_value(method, Vec::new())?;
+                let result = match self.call_value_catching(method, Vec::new())? {
+                    Ok(result) => result,
+                    Err(exception) => return Err(self.remember_runtime_exception_error(exception)),
+                };
                 integer_dunder_result("__index__", result)
             }
         }

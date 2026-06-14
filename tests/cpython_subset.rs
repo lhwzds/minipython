@@ -34615,7 +34615,7 @@ fn cpython_json_dumps_check_circular_subset() {
 #[test]
 fn cpython_json_dumps_indent_subset() {
     assert_output(
-        "import json\nvalue = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}\nfor indent in [None, 0, 2, '', '--']:\n    print('CASE', repr(indent))\n    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))\nfor args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:\n    print('SEP', args['indent'], repr(args['separators']))\n    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))\nfor indent in [-1, -2]:\n    print('NEG', indent, repr(json.dumps({'b': [1, 2], 'a': 3}, indent=indent)))\nclass IndexIndent:\n    def __index__(self):\n        return 2\nclass BoolIndexIndent:\n    def __index__(self):\n        return True\nfor indent in [IndexIndent(), BoolIndexIndent()]:\n    print('INDEX', type(indent).__name__, repr(json.dumps([1, 2], indent=indent)))\nfor indent in [True, False, 1.5, [], object()]:\n    try:\n        print('BAD', repr(json.dumps([1, 2], indent=indent)))\n    except Exception as error:\n        print('BAD', type(error).__name__, isinstance(error, TypeError))",
+        "import json\nvalue = {'b': [1, {'x': 2}], 'a': {'é': '𝄠'}, 'empty': []}\nfor indent in [None, 0, 2, '', '--']:\n    print('CASE', repr(indent))\n    print(repr(json.dumps(value, indent=indent, sort_keys=True, ensure_ascii=False)))\nfor args in [dict(indent=2, separators=None), dict(indent=2, separators=(',', ':')), dict(indent=2, separators=(', ', ': ')), dict(indent=0, separators=(',', ':'))]:\n    print('SEP', args['indent'], repr(args['separators']))\n    print(repr(json.dumps({'b': [1, 2], 'a': 3}, **args)))\nfor indent in [-1, -2]:\n    print('NEG', indent, repr(json.dumps({'b': [1, 2], 'a': 3}, indent=indent)))\nclass IndexIndent:\n    def __index__(self):\n        return 2\nclass BoolIndexIndent:\n    def __index__(self):\n        return True\nfor indent in [IndexIndent(), BoolIndexIndent()]:\n    print('INDEX', type(indent).__name__, repr(json.dumps([1, 2], indent=indent)))\nclass BadIndexIndent:\n    def __index__(self):\n        raise RuntimeError('boom-index')\ntry:\n    json.dumps([1], indent=BadIndexIndent())\nexcept Exception as error:\n    print('INDEX-ERROR', type(error).__name__, str(error))\nfor indent in [True, False, 1.5, [], object()]:\n    try:\n        print('BAD', repr(json.dumps([1, 2], indent=indent)))\n    except Exception as error:\n        print('BAD', type(error).__name__, isinstance(error, TypeError))",
         &[
             "CASE None",
             r#"'{"a": {"é": "𝄠"}, "b": [1, {"x": 2}], "empty": []}'"#,
@@ -34639,6 +34639,7 @@ fn cpython_json_dumps_indent_subset() {
             r#"NEG -2 '{\n"b": [\n1,\n2\n],\n"a": 3\n}'"#,
             r#"INDEX IndexIndent '[\n  1,\n  2\n]'"#,
             r#"INDEX BoolIndexIndent '[\n 1,\n 2\n]'"#,
+            "INDEX-ERROR RuntimeError boom-index",
             r#"BAD '[\n 1,\n 2\n]'"#,
             r#"BAD '[\n1,\n2\n]'"#,
             "BAD TypeError True",

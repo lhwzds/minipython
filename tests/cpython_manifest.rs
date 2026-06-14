@@ -6904,6 +6904,8 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "for indent in [-1, -2]",
                 "class IndexIndent:",
                 "class BoolIndexIndent:",
+                "class BadIndexIndent:",
+                "INDEX-ERROR",
                 "json.dumps([1, 2], indent=indent)",
                 "indent in [True, False, 1.5, [], object()]",
             ][..],
@@ -7356,6 +7358,8 @@ fn json_dumps_indent_docs_cover_option_boundaries() {
         "for indent in [-1, -2]",
         "class IndexIndent:",
         "class BoolIndexIndent:",
+        "class BadIndexIndent:",
+        "INDEX-ERROR",
         "json.dumps([1, 2], indent=indent)",
         "indent in [True, False, 1.5, [], object()]",
     ] {
@@ -7379,6 +7383,7 @@ fn json_dumps_indent_docs_cover_option_boundaries() {
         "r#\"NEG -2",
         "r#\"INDEX IndexIndent",
         "r#\"INDEX BoolIndexIndent",
+        "\"INDEX-ERROR RuntimeError boom-index\"",
         "\"BAD TypeError True\"",
     ] {
         assert!(
@@ -7399,9 +7404,12 @@ fn json_dumps_indent_docs_cover_option_boundaries() {
             "`separators=None` default item-separator behavior",
             "custom separator interaction",
             "`__index__` indent conversion",
+            "propagation of exceptions raised by `indent.__index__()`",
             "bool indent values",
             "bad non-index indent TypeError boundary",
-            "without adding writer streams, file output, or locale-sensitive formatting",
+            "without adding writer streams",
+            "file output",
+            "locale-sensitive formatting",
         ] {
             assert!(
                 document.contains(required),

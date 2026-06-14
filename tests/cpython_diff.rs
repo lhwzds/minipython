@@ -1618,6 +1618,13 @@ class BoolIndexIndent:
         return True
 for indent in [IndexIndent(), BoolIndexIndent()]:
     print('INDEX', type(indent).__name__, repr(json.dumps([1, 2], indent=indent)))
+class BadIndexIndent:
+    def __index__(self):
+        raise RuntimeError('boom-index')
+try:
+    json.dumps([1], indent=BadIndexIndent())
+except Exception as error:
+    print('INDEX-ERROR', type(error).__name__, str(error))
 for indent in [True, False, 1.5, [], object()]:
     try:
         print('BAD', repr(json.dumps([1, 2], indent=indent)))
