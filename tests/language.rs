@@ -1256,6 +1256,37 @@ fn itertools_sandbox_subset_keeps_export_surface_explicit() {
 }
 
 #[test]
+fn functools_sandbox_subset_keeps_export_surface_explicit() {
+    assert_eq!(
+        run_source(
+            "import functools\nfor name in ['WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']:\n    print(name, hasattr(functools, name))\nfor name in ['__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial']:\n    print(name, hasattr(functools, name))\nprint(dir(functools))"
+        ),
+        Ok(output_lines(&[
+            "WRAPPER_ASSIGNMENTS True",
+            "WRAPPER_UPDATES True",
+            "cache True",
+            "cached_property True",
+            "cmp_to_key True",
+            "lru_cache True",
+            "partial True",
+            "partialmethod True",
+            "reduce True",
+            "singledispatch True",
+            "singledispatchmethod True",
+            "total_ordering True",
+            "update_wrapper True",
+            "wraps True",
+            "__all__ False",
+            "_CacheInfo False",
+            "_lru_cache_wrapper False",
+            "_make_key False",
+            "_unwrap_partial False",
+            "['WRAPPER_ASSIGNMENTS', 'WRAPPER_UPDATES', '__name__', 'cache', 'cached_property', 'cmp_to_key', 'lru_cache', 'partial', 'partialmethod', 'reduce', 'singledispatch', 'singledispatchmethod', 'total_ordering', 'update_wrapper', 'wraps']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =

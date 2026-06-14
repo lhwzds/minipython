@@ -4130,6 +4130,15 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("functools_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains(
+                "'__all__', '_CacheInfo', '_lru_cache_wrapper', '_make_key', '_unwrap_partial'"
+            )
+            && LANGUAGE_TESTS.contains("dir(functools)"),
+        "functools sandbox export test must guard module __all__ and CPython cache internals"
+    );
+
     let partial_module_diff = CPYTHON_DIFF
         .split("fn cpython_functools_partial_instance_module_metadata_diff_subset()")
         .nth(1)
