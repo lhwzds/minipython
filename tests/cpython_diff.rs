@@ -14623,6 +14623,23 @@ print(list(itertools.dropwhile(lambda value: True, [1, 2, 3])))"#,
 }
 
 #[test]
+fn cpython_itertools_starmap_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public starmap subset",
+        name: "itertools-starmap",
+        source: r#"import itertools
+sm = itertools.starmap(lambda left, right: left + right, [(1, 2), [3, 4], ('a', 'b')])
+print(type(sm).__name__, iter(sm) is sm, list(sm), list(sm))
+print(list(itertools.starmap(lambda left, right: left * right, ((value, 2) for value in range(4)))))
+calls = []
+def combine(left, right):
+    calls.append((left, right))
+    return left - right
+print(list(itertools.starmap(combine, [(5, 1), (8, 3)])), calls)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

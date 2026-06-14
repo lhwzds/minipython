@@ -37893,6 +37893,30 @@ fn cpython_itertools_dropwhile_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public starmap behavior over
+// pure in-memory iterables.
+#[test]
+fn cpython_itertools_starmap_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "sm = itertools.starmap(lambda left, right: left + right, [(1, 2), [3, 4], ('a', 'b')])\n",
+            "print(type(sm).__name__, iter(sm) is sm, list(sm), list(sm))\n",
+            "print(list(itertools.starmap(lambda left, right: left * right, ((value, 2) for value in range(4)))))\n",
+            "calls = []\n",
+            "def combine(left, right):\n",
+            "    calls.append((left, right))\n",
+            "    return left - right\n",
+            "print(list(itertools.starmap(combine, [(5, 1), (8, 3)])), calls)"
+        ),
+        &[
+            "starmap True [3, 7, 'ab'] []",
+            "[0, 2, 4, 6]",
+            "[4, 5] [(5, 1), (8, 3)]",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
