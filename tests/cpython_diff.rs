@@ -706,6 +706,15 @@ fn cpython_json_loads_dumps_basic_diff_subset() {
 }
 
 #[test]
+fn cpython_sequence_repeat_allocation_guard_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public sequence repeat allocation behavior",
+        name: "sequence-repeat-allocation-guard",
+        source: "import sys\nfor label, sample in [('str', 'a'), ('list', [1]), ('tuple', (1,)), ('bytes', b'a'), ('empty-str', ''), ('empty-list', []), ('empty-tuple', ()), ('empty-bytes', b'')]:\n    for expr in [lambda sample=sample: sample * sys.maxsize, lambda sample=sample: sys.maxsize * sample]:\n        try:\n            value = expr()\n            print(label, type(value).__name__, len(value))\n        except (OverflowError, MemoryError) as error:\n            print(label, type(error).__name__)",
+    });
+}
+
+#[test]
 fn cpython_json_dumps_sequence_subclass_iter_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps sequence subclass iteration subset",

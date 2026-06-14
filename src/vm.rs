@@ -77436,18 +77436,18 @@ fn repeat_count_from_integer_value(value: Value) -> Result<i64, String> {
 }
 
 fn repeat_values(values: Vec<Value>, count: i64) -> Result<Vec<Value>, String> {
-    if count <= 0 {
+    if count <= 0 || values.is_empty() {
         return Ok(Vec::new());
     }
 
-    let count =
-        usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
-    values
+    let count = usize::try_from(count).map_err(|_| "MemoryError".to_string())?;
+    let next_len = values
         .len()
         .checked_mul(count)
-        .ok_or_else(|| "sequence repeat count is too large".to_string())?;
+        .ok_or_else(|| "MemoryError".to_string())?;
+    checked_byte_sequence_alloc_length(next_len)?;
 
-    let mut repeated = Vec::with_capacity(values.len() * count);
+    let mut repeated = Vec::with_capacity(next_len);
     for _ in 0..count {
         repeated.extend(values.iter().cloned());
     }
@@ -77527,16 +77527,16 @@ fn deque_truncate_left_to_maxlen(items: &mut Vec<Value>, maxlen: Option<usize>) 
 }
 
 fn repeat_string(value: String, count: i64) -> Result<String, String> {
-    if count <= 0 {
+    if count <= 0 || value.is_empty() {
         return Ok(String::new());
     }
 
-    let count =
-        usize::try_from(count).map_err(|_| "sequence repeat count is too large".to_string())?;
-    value
+    let count = usize::try_from(count).map_err(|_| "MemoryError".to_string())?;
+    let next_len = value
         .len()
         .checked_mul(count)
-        .ok_or_else(|| "sequence repeat count is too large".to_string())?;
+        .ok_or_else(|| "MemoryError".to_string())?;
+    checked_byte_sequence_alloc_length(next_len)?;
 
     Ok(value.repeat(count))
 }
@@ -77553,7 +77553,7 @@ fn repeat_bytes_len(len: usize, count: i64) -> Result<usize, String> {
 }
 
 fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
-    if count <= 0 {
+    if count <= 0 || value.is_empty() {
         return Ok(Vec::new());
     }
 

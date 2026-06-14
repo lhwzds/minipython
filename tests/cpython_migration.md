@@ -122,6 +122,13 @@ Completed in the builtin method TypeError capture pass:
   CPython-style unexpected keyword messages for unsupported keyword names
   without expanding the default sandbox module allow-list.
 
+`cpython_sequence_repeat_allocation_guard_subset`, backed by
+`cpython_sequence_repeat_allocation_guard_diff_subset`, keeps the core sequence
+repeat allocation guard tied to CPython public behavior: address-space-sized
+non-empty `str`, `list`, `tuple`, and `bytes` repeats raise catchable
+`MemoryError`, while empty sequence repeats return empty values without looping
+or allocating.
+
 ## Sandbox Stdlib Manifest
 
 This table is the required sandbox stdlib surface. A module can be useful and

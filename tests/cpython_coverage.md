@@ -490,6 +490,12 @@ Recent runtime migration notes:
 - `NUMBER` also includes CPython `test_compile.py::test_literals_with_leading_zeroes`
   coverage for invalid leading-zero integer/prefixed forms and valid
   leading-zero float, exponent, and imaginary literals.
+- `STRING` / container runtime coverage also includes
+  `cpython_sequence_repeat_allocation_guard_subset`, backed by
+  `cpython_sequence_repeat_allocation_guard_diff_subset`, for the core sequence
+  repeat allocation guard: address-space-sized non-empty `str`, `list`,
+  `tuple`, and `bytes` repeats raise catchable `MemoryError`, while empty
+  sequence repeats return empty values without looping or allocating.
 - `NUMBER` also includes CPython `BuiltinTest::test_round_large`, covering
   integral float `round()` stability across the `5e15 +/- n` boundary.
 - `NUMBER` also includes CPython

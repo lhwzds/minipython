@@ -34034,6 +34034,33 @@ fn cpython_bytearray_regexps_subset() {
     );
 }
 
+// CPython raises a catchable MemoryError for address-space-sized non-empty
+// sequence repeats, while empty sequence repeats return an empty result.
+#[test]
+fn cpython_sequence_repeat_allocation_guard_subset() {
+    assert_output(
+        "import sys\nfor label, sample in [('str', 'a'), ('list', [1]), ('tuple', (1,)), ('bytes', b'a'), ('empty-str', ''), ('empty-list', []), ('empty-tuple', ()), ('empty-bytes', b'')]:\n    for expr in [lambda sample=sample: sample * sys.maxsize, lambda sample=sample: sys.maxsize * sample]:\n        try:\n            value = expr()\n            print(label, type(value).__name__, len(value))\n        except (OverflowError, MemoryError) as error:\n            print(label, type(error).__name__)",
+        &[
+            "str MemoryError",
+            "str MemoryError",
+            "list MemoryError",
+            "list MemoryError",
+            "tuple MemoryError",
+            "tuple MemoryError",
+            "bytes MemoryError",
+            "bytes MemoryError",
+            "empty-str str 0",
+            "empty-str str 0",
+            "empty-list list 0",
+            "empty-list list 0",
+            "empty-tuple tuple 0",
+            "empty-tuple tuple 0",
+            "empty-bytes bytes 0",
+            "empty-bytes bytes 0",
+        ],
+    );
+}
+
 // MiniPython exposes a sandbox-safe first-pass `json` module: pure in-memory
 // loads/dumps for the core JSON data model, without file APIs or custom hooks.
 #[test]

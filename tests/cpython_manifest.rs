@@ -2185,6 +2185,44 @@ fn cpython_bytes_repeat_allocation_guard_stays_cpython_diffed() {
 }
 
 #[test]
+fn cpython_sequence_repeat_allocation_guard_stays_cpython_diffed() {
+    let diff_name = "cpython_sequence_repeat_allocation_guard_diff_subset";
+    let subset_name = "cpython_sequence_repeat_allocation_guard_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}("))
+            && CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "core sequence repeat allocation guard must keep direct CPython diff and subset coverage"
+    );
+
+    for source in [CPYTHON_DIFF, CPYTHON_SUBSET] {
+        for required in [
+            "* sys.maxsize",
+            "sys.maxsize *",
+            "MemoryError",
+            "empty-str",
+            "empty-list",
+            "empty-tuple",
+            "empty-bytes",
+        ] {
+            assert!(
+                source.contains(required),
+                "core sequence repeat allocation guard must contain `{required}`"
+            );
+        }
+    }
+
+    for document in [MANIFEST, CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains(subset_name)
+                && document.contains("repeat allocation"),
+            "core sequence repeat allocation guard must stay documented"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_basics_diff_covers_ord_and_empty_index_runtime_subsets() {
     let diff_name = "cpython_bytes_basics_and_empty_index_diff_subset";
     let runtime_subsets = [
