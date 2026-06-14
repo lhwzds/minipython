@@ -24297,7 +24297,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: chain() does not accept keyword arguments".to_string());
+            return Err("TypeError: chain() takes no keyword arguments".to_string());
         }
         let iterators = args
             .into_iter()
@@ -24400,9 +24400,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err(
-                "TypeError: chain.from_iterable() does not accept keyword arguments".to_string(),
-            );
+            return Err("TypeError: chain.from_iterable() takes no keyword arguments".to_string());
         }
         let [iterable] = args.as_slice() else {
             return Err(format!(
@@ -24680,7 +24678,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: islice() does not accept keyword arguments".to_string());
+            return Err("TypeError: islice() takes no keyword arguments".to_string());
         }
         if !(2..=4).contains(&args.len()) {
             return Err(format!(
@@ -24770,7 +24768,7 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: pairwise() does not accept keyword arguments".to_string());
+            return Err("TypeError: pairwise() takes no keyword arguments".to_string());
         }
         let [iterable] = args.as_slice() else {
             return Err(format!(

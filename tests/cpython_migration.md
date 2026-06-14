@@ -10798,7 +10798,9 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_itertools_pairwise_diff_subset` evidence plus manifest guards now
   keep core iterator evidence, duplicate-keyword diagnostics, and CPython
   3.10+ `pairwise()` behavior from drifting back into a single ambiguous
-  subset.
+  subset. Follow-up evidence now pins exact no-keyword TypeError text for
+  `chain()`, `chain.from_iterable()`, `islice()`, and the supported
+  `pairwise()` constructor.
 - Added `cpython_itertools_product_subset` and
   `cpython_itertools_product_diff_subset`, extending the pure in-memory
   `itertools` surface with `product()` over eager pools, generator inputs,

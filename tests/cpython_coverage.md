@@ -1135,7 +1135,8 @@ without adding general custom encoder/decoder class support.
   `dropwhile()`, `starmap()`, `zip_longest()`, `islice()`, `pairwise()`, and
   `product()`, `combinations()`, `combinations_with_replacement()`, and
   `permutations()`, `tee()`, `batched()`, and `groupby()` iterator protocol behavior, plus duplicate-keyword diagnostics for
-  `accumulate()` and `zip_longest()`.
+  `accumulate()` and `zip_longest()` and exact no-keyword TypeError text for
+  `chain()`, `chain.from_iterable()`, `islice()`, and supported `pairwise()`.
   This subset supports integer, float, complex, and bool `count()` arguments,
   nonnumeric `count()` argument rejection, finite and infinite
   `repeat()`, keyword forms for `count()` / `repeat()`, `chain()` over
