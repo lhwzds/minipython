@@ -16841,6 +16841,13 @@ impl Vm {
             return self.truth_value(target.as_ref().clone());
         }
 
+        if instance_special_method_is_none(&value, "__bool__") {
+            return Err(format!(
+                "TypeError: '{}' cannot be interpreted as a boolean",
+                type_name(&value)
+            ));
+        }
+
         if let Some(method) = instance_special_method(&value, "__bool__") {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(result) => result,

@@ -36528,6 +36528,14 @@ class TestFailingIter:
     def __iter__(self):
         raise RuntimeError('iter fail')
 
+class BlockBool:
+    __bool__ = None
+
+class BlockBoolLen:
+    __bool__ = None
+    def __len__(self):
+        return 0
+
 print(all([2, 4, 6]))
 print(all([2, None, 6]))
 print(all([]))
@@ -36541,10 +36549,36 @@ print(all(x > 42 for x in [50, 40, 60]))
 print(all(x > 42 for x in [50, 40, 60, TestFailingBool()]))
 print(any(x > 42 for x in [40, 60, 30]))
 print(any(x > 42 for x in [40, 60, 30, TestFailingBool()]))
-print(any(x > 42 for x in [10, 20, 30]))"#,
+print(any(x > 42 for x in [10, 20, 30]))
+for label, expr in [
+    ('bool', lambda: bool(BlockBool())),
+    ('bool-len', lambda: bool(BlockBoolLen())),
+    ('all', lambda: all([1, BlockBool()])),
+    ('any', lambda: any([0, BlockBoolLen()])),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error)"#,
         &[
-            "True", "False", "True", "False", "False", "True", "False", "True", "True", "False",
-            "False", "True", "True", "False",
+            "True",
+            "False",
+            "True",
+            "False",
+            "False",
+            "True",
+            "False",
+            "True",
+            "True",
+            "False",
+            "False",
+            "True",
+            "True",
+            "False",
+            "bool 'BlockBool' cannot be interpreted as a boolean",
+            "bool-len 'BlockBoolLen' cannot be interpreted as a boolean",
+            "all 'BlockBool' cannot be interpreted as a boolean",
+            "any 'BlockBoolLen' cannot be interpreted as a boolean",
         ],
     );
     assert_output(

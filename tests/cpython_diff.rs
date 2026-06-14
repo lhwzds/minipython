@@ -7281,10 +7281,21 @@ fn cpython_all_any_builtin_diff_subset() {
 class TestFailingIter:
     def __iter__(self):
         raise RuntimeError('iter fail')
+class BlockBool:
+    __bool__ = None
+class BlockBoolLen:
+    __bool__ = None
+    def __len__(self):
+        return 0
 print(all([2, 4, 6]), all([2, None, 6]), all([]), all([0, TestFailingBool()]))
 print(any([None, None, None]), any([None, 4, None]), any([]), any([1, TestFailingBool()]))
 print(all(x > 42 for x in [50, 60]), all(x > 42 for x in [50, 40, 60]))
 print(any(x > 42 for x in [40, 60, 30]), any(x > 42 for x in [10, 20, 30]))
+for label, expr in [('bool', lambda: bool(BlockBool())), ('bool-len', lambda: bool(BlockBoolLen())), ('all', lambda: all([1, BlockBool()])), ('any', lambda: any([0, BlockBoolLen()]))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__)
 for expr in [lambda: all([2, TestFailingBool(), 6]), lambda: all(TestFailingIter()), lambda: any([None, TestFailingBool(), 6]), lambda: any(TestFailingIter())]:
     try:
         expr()

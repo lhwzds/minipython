@@ -3688,6 +3688,7 @@ Recent runtime migration notes:
   `BuiltinTest::test_all` and `::test_any` semantics for empty iterables,
   truthy/falsy lists, generator expressions, short-circuiting before later
   truthiness failures, RuntimeError propagation from `__bool__` and `__iter__`,
+  CPython's `__bool__ = None` blocking before `__len__` fallback,
   non-iterable rejection, and catchable argument-count `TypeError`s.
 - `RUNTIME_BUILTINS` also includes
   `cpython_builtin_negation_sys_maxsize_subset`, covering CPython

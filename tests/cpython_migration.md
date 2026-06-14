@@ -1511,7 +1511,8 @@ Completed in the differential parity harness pass:
   tightened `all()` / `any()` argument-count failures into catchable
   `TypeError`s. The method-level subset now covers RuntimeError propagation
   from failing `__bool__` and `__iter__`, CPython short-circuit cases, generator
-  expression cases, non-iterable rejection, no-argument rejection, and
+  expression cases, `__bool__ = None` blocking before `__len__` fallback,
+  non-iterable rejection, no-argument rejection, and
   too-many-argument rejection.
 - Migrated first-pass `enumerate()` and `zip()` coverage from
   `Lib/test/test_enumerate.py` and `Lib/test/test_builtin.py`. Both builtins now

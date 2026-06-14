@@ -8933,6 +8933,13 @@ fn all_any_builtins_subset_has_focused_diff_evidence() {
         "raise RuntimeError('bool fail')",
         "class TestFailingIter",
         "raise RuntimeError('iter fail')",
+        "class BlockBool",
+        "__bool__ = None",
+        "class BlockBoolLen",
+        "lambda: bool(BlockBool())",
+        "lambda: bool(BlockBoolLen())",
+        "lambda: all([1, BlockBool()])",
+        "lambda: any([0, BlockBoolLen()])",
         "all([2, 4, 6])",
         "all([2, None, 6])",
         "all([])",
@@ -8968,6 +8975,13 @@ fn all_any_builtins_subset_has_focused_diff_evidence() {
         "raise RuntimeError('bool fail')",
         "class TestFailingIter",
         "raise RuntimeError('iter fail')",
+        "class BlockBool",
+        "__bool__ = None",
+        "class BlockBoolLen",
+        "lambda: bool(BlockBool())",
+        "lambda: bool(BlockBoolLen())",
+        "lambda: all([1, BlockBool()])",
+        "lambda: any([0, BlockBoolLen()])",
         "all([2, 4, 6])",
         "all([2, None, 6])",
         "all([])",
@@ -9000,7 +9014,8 @@ fn all_any_builtins_subset_has_focused_diff_evidence() {
             document.contains("cpython_all_any_builtin_subset")
                 && document.contains("cpython_all_any_builtin_diff_subset")
                 && document.contains("BuiltinTest::test_all")
-                && document.contains("test_any"),
+                && document.contains("test_any")
+                && document.contains("__bool__ = None"),
             "focused all/any evidence must be documented in coverage and migration notes"
         );
     }
