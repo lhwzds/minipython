@@ -1057,6 +1057,13 @@ falsey strict values accepting raw controls, and unknown keyword `TypeError` cla
 `ensure_ascii`, `allow_nan`, `skipkeys`, `sort_keys`, `check_circular`, and `strict`,
 including propagated `__bool__` exceptions, without adding unsupported options or locale-sensitive truth behavior.
 
+`cpython_json_dumps_string_escape_subset`, backed by
+`cpython_json_dumps_string_escape_diff_subset`, keeps `dumps()` default string escaping for
+NUL and unit-separator control characters, backspace, formfeed, newline, carriage return, and tab,
+quote and backslash escaping, default `ensure_ascii=True` non-ASCII scalar escaping,
+and valid surrogate-pair output for non-BMP characters,
+without adding alternate encoders or unpaired surrogate storage.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

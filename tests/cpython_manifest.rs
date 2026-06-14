@@ -5206,6 +5206,62 @@ fn json_strict_and_option_truthiness_docs_cover_boundaries() {
 }
 
 #[test]
+fn json_dumps_string_escape_docs_cover_encoding_boundaries() {
+    let diff_name = "cpython_json_dumps_string_escape_diff_subset";
+    let subset_name = "cpython_json_dumps_string_escape_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps string escape CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps string escape runtime subset evidence must exist"
+    );
+
+    for required in ["'é'", "'𝄠'", "json.dumps(value)"] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps string escape diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"\\\"\\\\u0000\\\\u001f\\\"\"",
+        "\"\\\"\\\\b\\\\f\\\\n\\\\r\\\\t\\\"\"",
+        "\"\\\"\\\\\\\"\\\\\\\\\\\"\"",
+        "\"\\\"\\\\u00e9\\\"\"",
+        "\"\\\"\\\\ud834\\\\udd20\\\"\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps string escape subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`dumps()` default string escaping",
+            "NUL and unit-separator control characters",
+            "backspace, formfeed, newline, carriage return, and tab",
+            "quote and backslash escaping",
+            "default `ensure_ascii=True` non-ASCII scalar escaping",
+            "valid surrogate-pair output for non-BMP characters",
+            "without adding alternate encoders or unpaired surrogate storage",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe dumps string escape boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_dumps_options_diff_covers_subset_surface() {
     let option_pairs = [
         (

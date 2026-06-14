@@ -255,6 +255,13 @@ falsey strict values accepting raw controls, and unknown keyword `TypeError` cla
 `ensure_ascii`, `allow_nan`, `skipkeys`, `sort_keys`, `check_circular`, and `strict`,
 including propagated `__bool__` exceptions, without adding unsupported options or locale-sensitive truth behavior.
 
+`cpython_json_dumps_string_escape_subset`, backed by
+`cpython_json_dumps_string_escape_diff_subset`, keeps `dumps()` default string escaping for
+NUL and unit-separator control characters, backspace, formfeed, newline, carriage return, and tab,
+quote and backslash escaping, default `ensure_ascii=True` non-ASCII scalar escaping,
+and valid surrogate-pair output for non-BMP characters,
+without adding alternate encoders or unpaired surrogate storage.
+
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering
 tied to CPython escaped and unescaped non-ASCII scalar and surrogate-pair output.
