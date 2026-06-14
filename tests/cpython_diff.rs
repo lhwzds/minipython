@@ -1040,6 +1040,62 @@ fn cpython_tokenize_unmatched_indentation_diff_subset() {
 }
 
 #[test]
+fn cpython_tokenize_error_token_diff_subset() {
+    for case in [
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-invalid-euro-character",
+            source: "€",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-invalid-nonbreaking-space",
+            source: "\u{a0}",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-unmatched-right-bracket",
+            source: "]",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-mismatched-right-bracket",
+            source: "(1+2]",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-eof-in-multiline",
+            source: "{1: 2",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-unterminated-triple-quote",
+            source: "'''sdfsdf''",
+        },
+        DiffCase {
+            origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+            name: "tokenize-line-continuation-eof",
+            source: "\\",
+        },
+    ] {
+        assert_cpython_rejection_parity(&case);
+    }
+
+    let too_deep = Box::leak(format!("{}a{}", "(".repeat(1000), ")".repeat(1000)).into_boxed_str());
+    assert_cpython_rejection_parity(&DiffCase {
+        origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN rejection subset",
+        name: "tokenize-too-deep-parentheses",
+        source: too_deep,
+    });
+
+    assert_cpython_bytes_rejection_parity(&BytesDiffCase {
+        origin: "Lib/test/test_tokenize.py TokenError/ERRORTOKEN bytes rejection subset",
+        name: "tokenize-null-byte-source",
+        source: b" a\n\0",
+    });
+}
+
+#[test]
 fn cpython_tokenize_implicit_line_joining_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_tokenize.py implicit line joining public execution subset",

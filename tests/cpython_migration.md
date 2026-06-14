@@ -4709,8 +4709,11 @@ Completed in the explicit line-joining tokenizer pass:
   invalid non-identifier characters such as `€`, non-breaking-space input,
   unmatched and mismatched bracket input, cross-line mismatched closing brackets,
   EOF-in-multiline input from bare and populated open brackets, line-continuation
-  EOF, embedded NUL source, and too-deep bracket nesting. The `€` and `]` cases
-  are also in the differential CPython/MiniPython rejection harness.
+  EOF, embedded NUL source, and too-deep bracket nesting. Added
+  `cpython_tokenize_error_token_diff_subset` as direct CPython/MiniPython
+  rejection parity evidence for representative invalid character, bracket,
+  EOF, null-byte, unterminated triple-quote, line-continuation EOF, and nesting
+  depth boundaries.
 - Added structured lexer spans for invalid characters such as `€`, the CPython
   `import ä £` shape from `Lib/test/test_syntax.py`, and embedded NUL source.
 - Added the CPython-style 200-level bracket nesting limit used by the tokenizer
