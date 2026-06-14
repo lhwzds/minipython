@@ -10140,6 +10140,31 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "array CPython diff evidence must assert exact typecode diagnostic `{required}`"
         );
     }
+    let mutation_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_array_one_byte_public_mutation_methods_diff_subset",
+    );
+    let mutation_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_array_one_byte_public_mutation_methods_subset",
+    );
+    for required in [
+        "a.index()",
+        "a.index(vals[0], 1)",
+        "a.index(vals[0], 0, 1)",
+        "array.index() takes exactly one argument (0 given)",
+        "array.index() takes exactly one argument (2 given)",
+        "array.index() takes exactly one argument (3 given)",
+    ] {
+        assert!(
+            mutation_subset.contains(required),
+            "array mutation subset evidence must assert exact index diagnostic `{required}`"
+        );
+        assert!(
+            mutation_diff.contains(required),
+            "array mutation CPython diff evidence must assert exact index diagnostic `{required}`"
+        );
+    }
 
     for required in ["Real file descriptors", "C buffer/allocator internals"] {
         assert!(

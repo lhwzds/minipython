@@ -24592,6 +24592,9 @@ for tc in {typecodes}:
 
 #[test]
 fn cpython_array_one_byte_public_mutation_methods_diff_subset() {
+    // CPython oracle text: array.index() takes exactly one argument (0 given);
+    // array.index() takes exactly one argument (2 given);
+    // array.index() takes exactly one argument (3 given)
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py public one-byte array mutable sequence methods",
         name: "array-one-byte-public-mutation-methods",
@@ -24610,6 +24613,9 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
     print('pop-reverse', tc, a.pop(), a.reverse(), repr(a), a.tolist())
     print('count-index-contains', tc, a.count(vals[0]), a.index(vals[0]), vals[0] in a, float(vals[0]) in a)
     show('index-missing-' + tc, lambda a=a: a.index(999))
+    show('index-arity0-' + tc, lambda a=a: a.index())
+    show('index-arity2-' + tc, lambda a=a, vals=vals: a.index(vals[0], 1))
+    show('index-arity3-' + tc, lambda a=a, vals=vals: a.index(vals[0], 0, 1))
     print('remove', tc, a.remove(vals[0]), repr(a), a.tolist())
     print('fromlist-frombytes', tc, a.fromlist(vals), a.frombytes(b'\xff\x02'), repr(a), a.tolist(), bytes(a))
 for tc, bad in [('B', -1), ('B', 256), ('b', -129), ('b', 128)]:

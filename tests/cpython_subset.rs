@@ -21296,6 +21296,9 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
     print('pop-reverse', tc, a.pop(), a.reverse(), repr(a), a.tolist())
     print('count-index-contains', tc, a.count(vals[0]), a.index(vals[0]), vals[0] in a, float(vals[0]) in a)
     show('index-missing-' + tc, lambda a=a: a.index(999))
+    show('index-arity0-' + tc, lambda a=a: a.index())
+    show('index-arity2-' + tc, lambda a=a, vals=vals: a.index(vals[0], 1))
+    show('index-arity3-' + tc, lambda a=a, vals=vals: a.index(vals[0], 0, 1))
     print('remove', tc, a.remove(vals[0]), repr(a), a.tolist())
     print('fromlist-frombytes', tc, a.fromlist(vals), a.frombytes(b'\xff\x02'), repr(a), a.tolist(), bytes(a))
     print('clear', tc, a.clear(), repr(a), bool(a), len(a))
@@ -21319,6 +21322,9 @@ for tc in ['B', 'b']:
             "pop-reverse B 2 None array('B', [1, 2, 2, 1, 1]) [1, 2, 2, 1, 1]",
             "count-index-contains B 3 0 True True",
             "index-missing-B ValueError array.index(x): x not in array",
+            "index-arity0-B TypeError array.index() takes exactly one argument (0 given)",
+            "index-arity2-B TypeError array.index() takes exactly one argument (2 given)",
+            "index-arity3-B TypeError array.index() takes exactly one argument (3 given)",
             "remove B None array('B', [2, 2, 1, 1]) [2, 2, 1, 1]",
             "fromlist-frombytes B None None array('B', [2, 2, 1, 1, 1, 2, 255, 2]) [2, 2, 1, 1, 1, 2, 255, 2] b'\\x02\\x02\\x01\\x01\\x01\\x02\\xff\\x02'",
             "clear B None array('B') False 0",
@@ -21328,6 +21334,9 @@ for tc in ['B', 'b']:
             "pop-reverse b 2 None array('b', [-1, 2, 2, -1, -1]) [-1, 2, 2, -1, -1]",
             "count-index-contains b 3 0 True True",
             "index-missing-b ValueError array.index(x): x not in array",
+            "index-arity0-b TypeError array.index() takes exactly one argument (0 given)",
+            "index-arity2-b TypeError array.index() takes exactly one argument (2 given)",
+            "index-arity3-b TypeError array.index() takes exactly one argument (3 given)",
             "remove b None array('b', [2, 2, -1, -1]) [2, 2, -1, -1]",
             "fromlist-frombytes b None None array('b', [2, 2, -1, -1, -1, 2, -1, 2]) [2, 2, -1, -1, -1, 2, -1, 2] b'\\x02\\x02\\xff\\xff\\xff\\x02\\xff\\x02'",
             "clear b None array('b') False 0",

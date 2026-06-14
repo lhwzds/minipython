@@ -23723,30 +23723,13 @@ impl Vm {
                 ))
             }
             "array.array.index" => {
-                let [receiver, rest @ ..] = args.as_slice() else {
+                let [receiver, needle] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: array.index() takes at least one argument ({} given)",
+                        "TypeError: array.index() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
-                if rest.is_empty() {
-                    return Err(
-                        "TypeError: array.index() takes at least one argument (0 given)"
-                            .to_string(),
-                    );
-                }
-                if rest.len() > 3 {
-                    return Err(format!(
-                        "TypeError: array.index() takes at most 3 arguments ({} given)",
-                        rest.len()
-                    ));
-                }
-                let index = self.array_array_index_value(
-                    receiver,
-                    rest[0].clone(),
-                    rest.get(1).cloned(),
-                    rest.get(2).cloned(),
-                )?;
+                let index = self.array_array_index_value(receiver, needle.clone(), None, None)?;
                 Ok(Value::Number(index))
             }
             "array.array.__contains__" => {
