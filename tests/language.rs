@@ -1429,7 +1429,7 @@ fn operator_sandbox_subset_keeps_export_surface_explicit() {
 fn sys_sandbox_subset_keeps_export_surface_explicit() {
     assert_eq!(
         run_source(
-            "import sys\nfor name in ['argv', 'breakpointhook', '__breakpointhook__', 'builtin_module_names', 'byteorder', 'exc_info', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'getdefaultencoding', 'hash_info', 'implementation', 'is_finalizing', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version', 'version_info', '_getframe']:\n    print(name, hasattr(sys, name))\nfor name in ['platform', 'getrefcount', 'getallocatedblocks', 'settrace', 'gettrace', 'setswitchinterval', 'getfilesystemencoding', 'executable', 'prefix', 'base_prefix', '_base_executable', '__all__', '__file__']:\n    print(name, hasattr(sys, name))\nprint(dir(sys))\nprint(type(sys.argv).__name__, sys.argv)\nprint(type(sys.path).__name__, sys.path)\nprint(type(sys.modules).__name__, 'sys' in sys.modules, sys.modules['sys'] is sys)\nprint(type(sys.builtin_module_names).__name__, sys.builtin_module_names, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))\nprint(type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)\nprint(type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)\nprint(type(sys.flags).__name__, sys.flags.bytes_warning)\nprint(type(sys.float_info).__name__, sys.float_info.max_exp, sys.float_info.radix)\nprint(type(sys.hash_info).__name__, sys.hash_info.width, sys.hash_info.algorithm)\nprint(type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))\nprint(sys.maxsize)\nprint(sys.version)\nprint(sys.float_repr_style)\nprint(sys.get_int_max_str_digits())\nprint(sys.getdefaultencoding())\nprint(sys.is_finalizing())\nprint(sys.exc_info() == (None, None, None))\ntry:\n    raise ValueError('bad')\nexcept ValueError as error:\n    info = sys.exc_info()\n    print(info[0].__name__, info[1] is error, type(info[2]).__name__, info[1].__traceback__ is info[2])\nprint(sys.exc_info() == (None, None, None))\nfor name in ['stdin', 'stdout', 'stderr']:\n    value = getattr(sys, name)\n    print(name, type(value).__name__, sorted(vars(value).items()))"
+            "import sys\nfor name in ['argv', 'breakpointhook', '__breakpointhook__', 'builtin_module_names', 'byteorder', 'exc_info', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'getdefaultencoding', 'hash_info', 'hexversion', 'implementation', 'is_finalizing', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version', 'version_info', '_getframe']:\n    print(name, hasattr(sys, name))\nfor name in ['platform', 'getrefcount', 'getallocatedblocks', 'settrace', 'gettrace', 'setswitchinterval', 'getfilesystemencoding', 'executable', 'prefix', 'base_prefix', '_base_executable', '__all__', '__file__']:\n    print(name, hasattr(sys, name))\nprint(dir(sys))\nprint(type(sys.argv).__name__, sys.argv)\nprint(type(sys.path).__name__, sys.path)\nprint(type(sys.modules).__name__, 'sys' in sys.modules, sys.modules['sys'] is sys)\nprint(type(sys.builtin_module_names).__name__, sys.builtin_module_names, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))\nprint(type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)\nprint(type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)\nprint(type(sys.flags).__name__, sys.flags.bytes_warning)\nprint(type(sys.float_info).__name__, sys.float_info.max_exp, sys.float_info.radix)\nprint(type(sys.hash_info).__name__, sys.hash_info.width, sys.hash_info.algorithm)\nprint(type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))\nprint(type(sys.hexversion).__name__, sys.hexversion == sys.implementation.hexversion)\nprint(sys.maxsize)\nprint(sys.version)\nprint(sys.float_repr_style)\nprint(sys.get_int_max_str_digits())\nprint(sys.getdefaultencoding())\nprint(sys.is_finalizing())\nprint(sys.exc_info() == (None, None, None))\ntry:\n    raise ValueError('bad')\nexcept ValueError as error:\n    info = sys.exc_info()\n    print(info[0].__name__, info[1] is error, type(info[2]).__name__, info[1].__traceback__ is info[2])\nprint(sys.exc_info() == (None, None, None))\nfor name in ['stdin', 'stdout', 'stderr']:\n    value = getattr(sys, name)\n    print(name, type(value).__name__, sorted(vars(value).items()))"
         ),
         Ok(output_lines(&[
             "argv True",
@@ -1444,6 +1444,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "get_int_max_str_digits True",
             "getdefaultencoding True",
             "hash_info True",
+            "hexversion True",
             "implementation True",
             "is_finalizing True",
             "maxsize True",
@@ -1469,7 +1470,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "_base_executable False",
             "__all__ False",
             "__file__ False",
-            "['__breakpointhook__', '__name__', '_getframe', 'argv', 'breakpointhook', 'builtin_module_names', 'byteorder', 'exc_info', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'getdefaultencoding', 'hash_info', 'implementation', 'is_finalizing', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version', 'version_info']",
+            "['__breakpointhook__', '__name__', '_getframe', 'argv', 'breakpointhook', 'builtin_module_names', 'byteorder', 'exc_info', 'flags', 'float_info', 'float_repr_style', 'get_int_max_str_digits', 'getdefaultencoding', 'hash_info', 'hexversion', 'implementation', 'is_finalizing', 'maxsize', 'modules', 'path', 'set_int_max_str_digits', 'stderr', 'stdin', 'stdout', 'version', 'version_info']",
             "list []",
             "list ['']",
             "dict True True",
@@ -1480,6 +1481,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "SimpleNamespace 1024 2",
             "SimpleNamespace 64 siphash13",
             "str True",
+            "int True",
             "9223372036854775807",
             "minipython",
             "short",

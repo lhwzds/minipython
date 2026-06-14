@@ -451,6 +451,7 @@ pub(crate) fn create_module(
                 ("float_repr_style", Value::String("short".to_string())),
                 ("float_info", sys_float_info_value()),
                 ("hash_info", sys_hash_info_value()),
+                ("hexversion", Value::Number(MINIPYTHON_HEXVERSION)),
                 ("stdin", stdio_stream_value("stdin")),
                 ("stdout", stdio_stream_value("stdout")),
                 ("stderr", stdio_stream_value("stderr")),

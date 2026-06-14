@@ -12302,12 +12302,14 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'getdefaultencoding'")
             && LANGUAGE_TESTS.contains("'is_finalizing'")
             && LANGUAGE_TESTS.contains("'getfilesystemencoding'")
+            && LANGUAGE_TESTS.contains("'hexversion'")
             && LANGUAGE_TESTS.contains("'implementation'")
             && LANGUAGE_TESTS.contains("'version_info'")
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sys.getdefaultencoding()")
             && LANGUAGE_TESTS.contains("sys.byteorder")
+            && LANGUAGE_TESTS.contains("sys.hexversion == sys.implementation.hexversion")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
@@ -12320,6 +12322,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && STDLIB_SOURCE.contains("\"exc_info\"")
             && STDLIB_SOURCE.contains("\"getdefaultencoding\"")
             && STDLIB_SOURCE.contains("\"is_finalizing\"")
+            && STDLIB_SOURCE.contains("\"hexversion\"")
             && STDLIB_SOURCE.contains("\"implementation\"")
             && STDLIB_SOURCE.contains("\"version_info\"")
             && VM_SOURCE.contains("call_sys_exc_info")
@@ -12372,6 +12375,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.implementation.version",
         "sys.implementation.hexversion",
         "sys.implementation.cache_tag",
+        "sys.hexversion",
+        "sys.hexversion == sys.implementation.hexversion",
     ] {
         assert!(
             sys_info_diff.contains(required),
@@ -12388,6 +12393,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
                 && document.contains("byteorder")
                 && document.contains("exc_info")
                 && document.contains("getdefaultencoding")
+                && document.contains("hexversion")
                 && document.contains("is_finalizing")
                 && document.contains("implementation")
                 && document.contains("version_info")

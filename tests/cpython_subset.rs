@@ -5478,6 +5478,7 @@ print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little',
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
 print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
+print('sys-hexversion', type(sys.hexversion).__name__, sys.hexversion == sys.implementation.hexversion)
 print('sys-is-finalizing', type(sys.is_finalizing()).__name__, sys.is_finalizing())
 print('sys-exc-info-empty', sys.exc_info() == (None, None, None))
 try:
@@ -5517,6 +5518,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",
             "sys-implementation SimpleNamespace minipython True int str",
+            "sys-hexversion int True",
             "sys-is-finalizing bool False",
             "sys-exc-info-empty True",
             "sys-exc-info-active ValueError True traceback True",
