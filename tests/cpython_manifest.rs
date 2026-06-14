@@ -14181,6 +14181,18 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    assert!(
+        LANGUAGE_TESTS.contains("types_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("for name in types.__all__")
+            && LANGUAGE_TESTS.contains("'DictProxyType', 'StringTypes', 'StringType'")
+            && LANGUAGE_TESTS.contains("'CoroutineWrapper', 'new_class_internal', '__file__'")
+            && LANGUAGE_TESTS.contains("types.SimpleNamespace(x=1)")
+            && LANGUAGE_TESTS.contains("types.MappingProxyType({'a': 1})")
+            && LANGUAGE_TESTS.contains("types.new_class('Made'")
+            && LANGUAGE_TESTS.contains("types.resolve_bases((Base,))"),
+        "types sandbox export test must guard public aliases, helpers, and internal/legacy stop lines"
+    );
+
     for required in [
         "CPython object-layout internals",
         "exact C descriptor types",
