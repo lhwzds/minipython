@@ -4822,6 +4822,9 @@ fn json_dumps_options_diff_covers_subset_surface() {
             "cpython_json_dumps_default_hook_subset",
             &[
                 "default=default",
+                "default=lambda o: None",
+                "default=lambda o: [o.value]",
+                "default=lambda o: {'v': [o.value]}",
                 "noncallable-unused",
                 "noncallable-used",
                 "'int' object is not callable",

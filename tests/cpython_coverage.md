@@ -838,7 +838,8 @@ Recent runtime migration notes:
   compact/custom rendering for two-string list/tuple values, subclasses, and
   general iterables plus CPython-style unpack length `ValueError` text and
   item/key separator element `TypeError` text, `default` hook handling for
-  otherwise unsupported objects including nested values, exception propagation,
+  otherwise unsupported objects including nested values, arbitrary supported
+  replacement values, exception propagation,
   CPython-style non-callable hook `TypeError` text, returned-self and
   returned-container circular detection, `check_circular=False` recursion
   classification, and fresh unsupported replacement recursion as a Python-level

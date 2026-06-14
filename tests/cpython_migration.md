@@ -116,6 +116,12 @@ tuple, and namedtuple subclasses, including CPython's json encoder TypeError
 text for bad list/tuple subclass `__iter__` returns, without expanding into
 custom encoder hooks.
 
+`cpython_json_dumps_default_hook_subset`, backed by
+`cpython_json_dumps_default_hook_diff_subset`, keeps the supported `default`
+hook fallback tied to CPython public behavior for nested values, `None`, list,
+and dict replacement values, exception propagation, non-callable hooks, circular
+replacement detection, and the documented recursion boundary.
+
 `cpython_json_dumps_key_coercion_subset`, backed by
 `cpython_json_dumps_key_coercion_diff_subset`, now includes CPython json encoder
 TypeError text for dict subclass `items()` results that either return a bad
