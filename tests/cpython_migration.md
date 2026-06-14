@@ -6452,10 +6452,11 @@ Completed in the container constructor/reversed pass:
   identity preservation, strict `TypeError` for unhashable iterable operands,
   and partial mutation before `set.update()` encounters an unhashable element.
 - Added `cpython_set_only_sets_in_binary_ops_subset`, adapted from CPython
-  `Lib/test/test_set.py::TestOnlySetsInBinaryOps`, covering equality with
-  unrelated operands, `TypeError` for ordering and binary/in-place set
-  operators with non-set operands, and method-form acceptance of iterable
-  operands including generators.
+  `Lib/test/test_set.py::TestOnlySetsInBinaryOps`, covering equality with unrelated operands,
+  TypeError behavior for ordering and binary/in-place set operators with non-set operands, and
+  method-form acceptance of iterable operands including generators. The matching
+  `set-only-sets-in-binary-ops` CPython output diff keeps this public behavior
+  tied to the oracle.
 - Extended `dict()` to consume supported mapping-style objects through
   `keys()` plus `__getitem__`, and extended `dict.fromkeys()` to consume the VM
   iterator protocol rather than only static sequence values.

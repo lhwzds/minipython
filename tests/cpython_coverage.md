@@ -4507,6 +4507,12 @@ element equality clears both participating sets tied to the oracle.
 fallback through `NotImplemented` into the right operand's reflected
 rich-comparison method tied to the oracle.
 
+`cpython_set_only_sets_in_binary_ops_subset` is backed by the
+`set-only-sets-in-binary-ops` direct CPython diff case, keeping equality with unrelated operands,
+TypeError behavior for ordering and binary/in-place set operators with non-set operands, and
+method-form acceptance of iterable operands including generators tied to the
+oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.

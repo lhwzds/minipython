@@ -10271,6 +10271,76 @@ fn set_rich_compare_reflection_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_only_sets_in_binary_ops_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_only_sets_in_binary_ops_subset(",
+        "Lib/test/test_set.py::TestOnlySetsInBinaryOps",
+        "def show_type_error(label, fn):",
+        "print(label, other == s, s == other, other != s, s != other)",
+        "('lt', lambda: s < other)",
+        "('or', lambda: s | other)",
+        "('ror', lambda: other | s)",
+        "('iand', inplace_and)",
+        "getattr(s, method)(other)",
+        "for label, other in",
+        "def gen():",
+        "getattr(s, method)(gen())",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set only-sets-in-binary-ops subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "set-only-sets-in-binary-ops",
+        "Lib/test/test_set.py::TestOnlySetsInBinaryOps",
+        "def show_type_error(label, fn):",
+        "print(label, other == s, s == other, other != s, s != other)",
+        "('lt', lambda: s < other)",
+        "('or', lambda: s | other)",
+        "('ror', lambda: other | s)",
+        "('iand', inplace_and)",
+        "getattr(s, method)(other)",
+        "for label, other in",
+        "def gen():",
+        "getattr(s, method)(gen())",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "focused set only-sets-in-binary-ops CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_set_only_sets_in_binary_ops_subset")
+            && CPYTHON_COVERAGE.contains("set-only-sets-in-binary-ops")
+            && CPYTHON_COVERAGE.contains("equality with unrelated operands")
+            && CPYTHON_COVERAGE.contains("TypeError behavior for ordering and binary/in-place set operators with non-set operands")
+            && CPYTHON_COVERAGE.contains("method-form acceptance of iterable operands including generators"),
+        "coverage notes must describe set only-sets-in-binary-ops subset and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_set_only_sets_in_binary_ops_subset")
+            && CPYTHON_MIGRATION.contains("set-only-sets-in-binary-ops")
+            && CPYTHON_MIGRATION.contains("equality with unrelated operands")
+            && CPYTHON_MIGRATION.contains("TypeError behavior for ordering and binary/in-place set operators with non-set operands")
+            && CPYTHON_MIGRATION.contains("method-form acceptance of iterable operands including generators"),
+        "migration notes must document set only-sets-in-binary-ops public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
