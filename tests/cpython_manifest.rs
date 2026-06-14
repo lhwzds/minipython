@@ -14820,6 +14820,42 @@ fn tokenizer_interpolated_string_split_subsets_stay_documented_as_partial() {
 }
 
 #[test]
+fn frontend_source_tracking_documents_tokenizer_path() {
+    for required in [
+        "/Volumes/samsung/GitHub/cpython/Grammar/python.gram",
+        "/Volumes/samsung/GitHub/cpython/Grammar/Tokens",
+        "/Volumes/samsung/GitHub/cpython/Parser/Python.asdl",
+        "tests/cpython_grammar_inventory.md",
+        "tests/cpython_migration.md",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "coverage docs must keep frontend authority source `{required}` visible"
+        );
+    }
+
+    assert!(
+        !MANIFEST.contains("Lib/test/test_tokenize.py"),
+        "tokenizer stream suite should not be mistaken for a strict method-manifest source group"
+    );
+
+    for required in [
+        "Tokenizer parity is tracked through `tests/cpython_coverage.md`",
+        "rather than the strict method-count manifest",
+        "`Lib/test/test_tokenize.py` is a tokenizer stream suite",
+        "Lib/test/test_fstring.py",
+        "Lib/test/test_tstring.py",
+        "f-string and t-string grammar",
+        "Partial",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration docs must keep tokenizer tracking boundary `{required}` visible"
+        );
+    }
+}
+
+#[test]
 fn f_string_basic_runtime_diff_covers_portable_subset() {
     let diff_name = "cpython_program_output_parity_smoke_diff_subset";
     let diff_start = CPYTHON_DIFF

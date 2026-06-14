@@ -348,6 +348,10 @@ compatibility.
 `tests/cpython_test_manifest.md` tracks CPython test modules by source test
 method count. Use it to decide which CPython module or class group is actually
 ported, partial, blocked by runtime/AST-module work, or not started.
+Tokenizer parity is tracked through `tests/cpython_coverage.md` and this
+migration log rather than the strict method-count manifest because
+`Lib/test/test_tokenize.py` is a tokenizer stream suite, not a current strict
+CPython method-manifest source group.
 
 ## Current Snapshot
 
