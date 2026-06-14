@@ -22434,25 +22434,26 @@ impl Vm {
                 args.len()
             ));
         }
-        let typecode = match args.first().expect("array constructor arity checked") {
-            Value::String(typecode)
-            | Value::IdentityString {
-                value: typecode, ..
-            } => typecode.clone(),
-            value if str_subclass_string(value).is_some() => {
-                str_subclass_string(value).expect("str subclass storage exists after guard")
-            }
-            value => {
-                return Err(format!(
-                    "TypeError: array() argument 1 must be a unicode character, not {}",
-                    array_array_typecode_argument_type_name(value)
-                ));
-            }
-        };
+        let (typecode, typecode_type_name) =
+            match args.first().expect("array constructor arity checked") {
+                Value::String(typecode)
+                | Value::IdentityString {
+                    value: typecode, ..
+                } => (typecode.clone(), "str".to_string()),
+                value if str_subclass_string(value).is_some() => (
+                    str_subclass_string(value).expect("str subclass storage exists after guard"),
+                    type_name(value).to_string(),
+                ),
+                value => {
+                    return Err(format!(
+                        "TypeError: array() argument 1 must be a unicode character, not {}",
+                        array_array_typecode_argument_type_name(value)
+                    ));
+                }
+            };
         if typecode.chars().count() != 1 {
             return Err(format!(
-                "TypeError: array() argument 1 must be a unicode character, not a string of length {}",
-                typecode.chars().count()
+                "TypeError: array() argument 1 must be a unicode character, not {typecode_type_name}"
             ));
         }
         if !ARRAY_ARRAY_TYPECODES.contains(typecode.as_str()) {

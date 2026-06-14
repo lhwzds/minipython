@@ -10066,6 +10066,10 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "array.array('B').tobytes(1)",
         "array.array('B').tolist(1)",
         "array.array('H', [1]).byteswap(1)",
+        "array.array('')",
+        "array.array('ii')",
+        "array.array(S(''))",
+        "array.array(S('ii'))",
         "print(label, error.__class__.__name__, str(error))",
     ] {
         assert!(
@@ -10109,6 +10113,19 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             constructor_diff.contains(required),
             "array CPython diff evidence must assert exact arity diagnostic `{required}`"
+        );
+    }
+    for required in [
+        "array() argument 1 must be a unicode character, not str",
+        "array() argument 1 must be a unicode character, not S",
+    ] {
+        assert!(
+            constructor_subset.contains(required),
+            "array runtime subset evidence must assert exact typecode diagnostic `{required}`"
+        );
+        assert!(
+            constructor_diff.contains(required),
+            "array CPython diff evidence must assert exact typecode diagnostic `{required}`"
         );
     }
 

@@ -20584,6 +20584,9 @@ print('constructors', array.array('B').typecode, array.array(S('b')).typecode)
 print('roundtrip-typecodes', ''.join(array.array(tc).typecode for tc in array.typecodes))
 show('bad-x', lambda: array.array('x'))
 show('bad-empty', lambda: array.array(''))
+show('bad-long', lambda: array.array('ii'))
+show('bad-sub-empty', lambda: array.array(S('')))
+show('bad-sub-long', lambda: array.array(S('ii')))
 show('bad-bytes', lambda: array.array(b'B'))
 show('bad-int', lambda: array.array(65))
 show('bad-none', lambda: array.array(None))
@@ -20626,7 +20629,10 @@ print('empty', len(a), len(a + a), len(a * 3), len(a.__iadd__(a)))"#,
             "constructors B b",
             "roundtrip-typecodes bBuwhHiIlLqQfd",
             "bad-x ValueError bad typecode (must be b, B, u, w, h, H, i, I, l, L, q, Q, f or d)",
-            "bad-empty TypeError array() argument 1 must be a unicode character, not a string of length 0",
+            "bad-empty TypeError array() argument 1 must be a unicode character, not str",
+            "bad-long TypeError array() argument 1 must be a unicode character, not str",
+            "bad-sub-empty TypeError array() argument 1 must be a unicode character, not S",
+            "bad-sub-long TypeError array() argument 1 must be a unicode character, not S",
             "bad-bytes TypeError array() argument 1 must be a unicode character, not bytes",
             "bad-int TypeError array() argument 1 must be a unicode character, not int",
             "bad-none TypeError array() argument 1 must be a unicode character, not None",

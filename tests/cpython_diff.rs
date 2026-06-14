@@ -24171,6 +24171,8 @@ print('index-object', arr.tolist(), view.tolist())"#,
 
 #[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
+    // CPython oracle text: array() argument 1 must be a unicode character, not str;
+    // array() argument 1 must be a unicode character, not S
     // CPython oracle text: array.append() takes exactly one argument (0 given);
     // array.append() takes exactly one argument (2 given);
     // array.extend() takes exactly one argument (0 given);
@@ -24199,7 +24201,10 @@ print('module', isinstance(array.typecodes, str), all(tc in array.typecodes for 
 print('constructors', array.array('B').typecode, array.array(S('b')).typecode)
 print('roundtrip-legacy', ''.join(array.array(tc).typecode for tc in legacy))
 show_class('bad-x', lambda: array.array('x'))
-show_class('bad-empty', lambda: array.array(''))
+show('bad-empty', lambda: array.array(''))
+show('bad-long', lambda: array.array('ii'))
+show('bad-sub-empty', lambda: array.array(S('')))
+show('bad-sub-long', lambda: array.array(S('ii')))
 show_class('bad-bytes', lambda: array.array(b'B'))
 show_class('bad-int', lambda: array.array(65))
 show_class('bad-none', lambda: array.array(None))
