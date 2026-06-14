@@ -9922,6 +9922,15 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "copy sandbox manifest must cite CPython diff evidence `{evidence}`"
         );
     }
+
+    assert!(
+        LANGUAGE_TESTS.contains("copy_sandbox_subset_excludes_pickle_dispatch_internals")
+            && LANGUAGE_TESTS.contains(
+                "'_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct', '__all__'"
+            )
+            && LANGUAGE_TESTS.contains("dir(copy)"),
+        "copy sandbox export test must guard pickle dispatch internals and module __all__"
+    );
 }
 
 #[test]

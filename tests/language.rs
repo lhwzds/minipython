@@ -1148,6 +1148,29 @@ fn io_bytesio_sandbox_subset_excludes_host_io_apis() {
 }
 
 #[test]
+fn copy_sandbox_subset_excludes_pickle_dispatch_internals() {
+    assert_eq!(
+        run_source(
+            "import copy\nfor name in ['Error', 'error', 'copy', 'deepcopy', 'replace', 'dispatch_table']:\n    print(name, hasattr(copy, name))\nfor name in ['_copy_dispatch', '_deepcopy_dispatch', '_keep_alive', '_reconstruct', '__all__']:\n    print(name, hasattr(copy, name))\nprint(dir(copy))"
+        ),
+        Ok(output_lines(&[
+            "Error True",
+            "error True",
+            "copy True",
+            "deepcopy True",
+            "replace True",
+            "dispatch_table True",
+            "_copy_dispatch False",
+            "_deepcopy_dispatch False",
+            "_keep_alive False",
+            "_reconstruct False",
+            "__all__ False",
+            "['Error', '__name__', 'copy', 'deepcopy', 'dispatch_table', 'error', 'replace']",
+        ]))
+    );
+}
+
+#[test]
 fn sandbox_policy_required_stdlib_allow_list_excludes_compatibility_shims() {
     let sandbox = TestSandboxDir::new("required-stdlib-excludes-shims");
     let policy =
