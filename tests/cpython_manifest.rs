@@ -11040,6 +11040,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "descriptor.deleter()",
         "staticmethod(descriptor_function)",
         "classmethod(descriptor_function)",
+        "get-none-none",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -11068,6 +11069,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "staticmethod(descriptor_function)",
         "classmethod(descriptor_function)",
         "get-bad-keyword",
+        "get-none-none",
     ] {
         assert!(
             body.contains(required),

@@ -47725,22 +47725,15 @@ fn call_generator_wrapper_await(args: Vec<Value>) -> Result<Value, String> {
 }
 
 fn descriptor_get_owner(args: &[Value]) -> Result<Value, String> {
-    if args.is_empty() {
-        return Err("__get__() expected at least 1 argument, got 0".to_string());
-    }
-    if args.len() > 2 {
-        return Err(format!(
-            "__get__() expected at most 2 arguments, got {}",
-            args.len()
-        ));
-    }
+    descriptor_get_reject_method_wrapper_args("__get__", args, &[])?;
 
     let object = &args[0];
     let owner = args.get(1).cloned().unwrap_or(Value::None);
     if !matches!(owner, Value::None) {
         return Ok(owner);
     }
-    descriptor_owner_from_object(object).ok_or_else(|| "__get__(None, None) is invalid".to_string())
+    descriptor_owner_from_object(object)
+        .ok_or_else(|| "TypeError: __get__(None, None) is invalid".to_string())
 }
 
 fn descriptor_get_reject_method_wrapper_args(

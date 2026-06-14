@@ -24294,16 +24294,18 @@ fn cpython_runtime_exception_capture_subset() {
         ],
     );
     assert_output(
-        "class DescriptorExample:\n    pass\n\ndef descriptor_function(*args):\n    return args\n\nfor descriptor_name, descriptor in [\n    ('staticmethod', staticmethod(descriptor_function)),\n    ('classmethod', classmethod(descriptor_function)),\n]:\n    for label, expected, expr in [\n        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),\n        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(DescriptorExample(), DescriptorExample, 1)),\n        ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=DescriptorExample(), type=DescriptorExample)),\n        ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)",
+        "class DescriptorExample:\n    pass\n\ndef descriptor_function(*args):\n    return args\n\nfor descriptor_name, descriptor in [\n    ('staticmethod', staticmethod(descriptor_function)),\n    ('classmethod', classmethod(descriptor_function)),\n]:\n    for label, expected, expr in [\n        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),\n        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(DescriptorExample(), DescriptorExample, 1)),\n        ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=DescriptorExample(), type=DescriptorExample)),\n        ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),\n        ('get-none-none', '__get__(None, None) is invalid', lambda descriptor=descriptor: descriptor.__get__(None, None)),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)",
         &[
             "staticmethod get-missing TypeError  expected at least 1 argument, got 0 True",
             "staticmethod get-too-many TypeError  expected at most 2 arguments, got 3 True",
             "staticmethod get-keyword TypeError wrapper __get__() takes no keyword arguments True",
             "staticmethod get-bad-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "staticmethod get-none-none TypeError __get__(None, None) is invalid True",
             "classmethod get-missing TypeError  expected at least 1 argument, got 0 True",
             "classmethod get-too-many TypeError  expected at most 2 arguments, got 3 True",
             "classmethod get-keyword TypeError wrapper __get__() takes no keyword arguments True",
             "classmethod get-bad-keyword TypeError wrapper __get__() takes no keyword arguments True",
+            "classmethod get-none-none TypeError __get__(None, None) is invalid True",
         ],
     );
 }

@@ -2604,7 +2604,9 @@ Completed in the raise-statement supported-promotion pass:
 - Added `cpython_runtime_exception_capture_diff_subset` to pin runtime-raised
   `IndexError`, `KeyError`, `TypeError`, and `NotImplementedError` exception
   class/catchability behavior to direct CPython output parity without claiming
-  full cross-version error-message wording.
+  full cross-version error-message wording. The same evidence covers catchable
+  builtin `property`, `staticmethod`, and `classmethod` descriptor method
+  arity, keyword, and invalid owner `TypeError` paths.
 - Migrated the first `BaseException` attribute slice from
   `Lib/test/test_exceptions.py::testAttributes`: builtin exceptions now preserve
   their original `args` tuple, `str(error)` follows CPython's zero-, one-, and

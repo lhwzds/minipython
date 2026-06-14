@@ -6549,6 +6549,7 @@ for descriptor_name, descriptor in [
         ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
         ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),
         ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),
+        ('get-none-none', '__get__(None, None) is invalid', lambda descriptor=descriptor: descriptor.__get__(None, None)),
     ]:
         try:
             expr()
