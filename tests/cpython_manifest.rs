@@ -11637,6 +11637,42 @@ fn math_newer_oracle_diff_evidence_stays_capability_gated() {
 }
 
 #[test]
+fn number_integer_bit_methods_diff_covers_runtime_subset() {
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_integer_bit_methods_subset("),
+        "integer bit methods runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_integer_bit_methods_diff_subset("),
+        "integer bit methods direct CPython diff evidence must exist"
+    );
+
+    for required in [
+        "bit_length()",
+        "bit_count()",
+        "2 ** 1009",
+        "True.bit_count()",
+        "hasattr(int, 'bit_count')",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) || CPYTHON_DIFF.contains(required),
+            "integer bit methods evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "cpython_integer_bit_methods_diff_subset",
+        "cpython_integer_bit_methods_subset",
+        "bit_count()",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "integer bit methods docs must mention `{required}`"
+        );
+    }
+}
+
+#[test]
 fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "sys",

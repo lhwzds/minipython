@@ -2530,6 +2530,28 @@ for expr in [
 }
 
 #[test]
+fn cpython_integer_bit_methods_diff_subset() {
+    let oracle_probe = run_cpython("print(hasattr(int, 'bit_count'))")
+        .expect("failed to run CPython int.bit_count capability probe");
+    let oracle_stdout =
+        String::from_utf8(oracle_probe.stdout).expect("CPython probe emitted non-UTF-8");
+    if oracle_stdout.trim() != "True" {
+        eprintln!("skipping integer bit methods diff: CPython oracle lacks int.bit_count");
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_long.py::test_bit_length and ::test_bit_count public subset",
+        name: "integer-bit-methods",
+        source: r#"for value in [0, 1, -1, 2, -2, 2 ** 63, -(2 ** 63), 2 ** 234, -(2 ** 234) - 1]:
+    print('length', value.bit_length())
+for value in [0, 1, -1, 7, -7, 2 ** 1009, (2 ** 1009) - 1, ((2 ** 1009) - 1) ^ 510]:
+    print('count', value.bit_count())
+print(True.bit_length(), False.bit_length(), True.bit_count(), False.bit_count())"#,
+    });
+}
+
+#[test]
 fn cpython_math_sqrt_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::MathTests::testSqrt public stable subset",

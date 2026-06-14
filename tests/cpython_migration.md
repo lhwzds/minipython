@@ -5238,9 +5238,10 @@ Completed in the integer method/property pass:
   `int.conjugate()`, and `int.as_integer_ratio()` for the same receiver set.
   `cpython_integer_ratio_and_component_methods_subset` covers ordinary values,
   arbitrary-precision values, negative values, and bool receivers.
-- Added a differential CPython/MiniPython smoke case for `bit_length()`. The
-  smoke case avoids `bit_count()` because the default system `python3` oracle
-  used by this test can be older than the CPython version that introduced it.
+- Added `cpython_integer_bit_methods_diff_subset` as a capability-gated
+  CPython/MiniPython differential case for `bit_length()` and `bit_count()`.
+  It skips `bit_count()` only when the configured CPython oracle predates that
+  public method.
 
 Completed in the float method/property pass:
 
