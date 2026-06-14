@@ -7516,6 +7516,16 @@ fn operator_sandbox_manifest_lists_public_subset_evidence() {
         "operator pickle helper subset must stay outside the default sandbox manifest surface"
     );
     assert!(
+        LANGUAGE_TESTS.contains("operator_sandbox_subset_keeps_export_surface_explicit")
+            && LANGUAGE_TESTS.contains("for name in operator.__all__")
+            && LANGUAGE_TESTS
+                .contains("'__file__', '__loader__', '__spec__', '__cached__', '_operator'")
+            && LANGUAGE_TESTS.contains("operator.attrgetter('x')")
+            && LANGUAGE_TESTS.contains("hasattr(helper, '__reduce__')")
+            && LANGUAGE_TESTS.contains("print(dir(operator))"),
+        "operator sandbox export test must guard public helpers, module metadata, and pickle helper stop lines"
+    );
+    assert!(
         row.diff_evidence
             .contains("cpython_operator_public_helpers_diff_subset"),
         "operator sandbox manifest must cite CPython public helper diff evidence"
