@@ -5544,6 +5544,10 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
         "def __add__(self, other):",
         "class BadIterable:",
         "def __iter__(self):",
+        "class BlockContainsIter:",
+        "__contains__ = None",
+        "class BlockContainsGetitem:",
+        "class BlockContainsOnly:",
         "operator.concat('py', 'thon')",
         "operator.concat([1, 2], [3, 4])",
         "operator.concat(Seq([5, 6]), Seq([7]))",
@@ -5560,6 +5564,7 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
         "operator.indexOf(it, 'a'), next(it)",
         "operator.contains(range(4), 2)",
         "operator.contains(range(4), 5)",
+        "operator.contains(source, 1)",
         "operator.getitem(a, 2)",
         "operator.setitem(a, 0, 9)",
         "operator.delitem(a, 1)",
@@ -5588,6 +5593,10 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
         "def __add__(self, other):",
         "class BadIterable:",
         "def __iter__(self):",
+        "class BlockContainsIter:",
+        "__contains__ = None",
+        "class BlockContainsGetitem:",
+        "class BlockContainsOnly:",
         "operator.concat('py', 'thon')",
         "operator.concat([1, 2], [3, 4])",
         "operator.concat(Seq([5, 6]), Seq([7]))",
@@ -5604,6 +5613,7 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
         "operator.indexOf(it, 'a'), next(it)",
         "operator.contains(range(4), 2)",
         "operator.contains(range(4), 5)",
+        "operator.contains(source, 1)",
         "operator.getitem(a, 2)",
         "operator.setitem(a, 0, 9)",
         "operator.delitem(a, 1)",
@@ -5629,6 +5639,7 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
             && CPYTHON_COVERAGE.contains("sequence and member helpers")
             && CPYTHON_COVERAGE.contains("equality-based counting/search")
             && CPYTHON_COVERAGE.contains("iterator partial-consumption")
+            && CPYTHON_COVERAGE.contains("__contains__ = None")
             && CPYTHON_COVERAGE.contains("TypeError/ZeroDivisionError propagation"),
         "coverage notes must describe operator sequence/member helpers and error propagation"
     );
@@ -5643,6 +5654,7 @@ fn operator_sequence_member_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("setitem")
             && CPYTHON_MIGRATION.contains("delitem")
             && CPYTHON_MIGRATION.contains("rich equality paths")
+            && CPYTHON_MIGRATION.contains("__contains__ = None")
             && CPYTHON_MIGRATION.contains("immediately after the matched value"),
         "migration notes must describe operator sequence/member public behavior and direct diff evidence"
     );

@@ -1601,6 +1601,8 @@ Completed in the differential parity harness pass:
   tests. MiniPython now exposes `operator.concat`, `countOf`, `indexOf`,
   `contains`, `getitem`, `setitem`, and `delitem` by reusing VM sequence
   concatenation, subscript, membership, iteration, and rich equality paths.
+  Membership now also preserves CPython's `__contains__ = None` blocking,
+  rejecting objects instead of falling back to `__iter__` or `__getitem__`.
   `indexOf` streams through iterators so a match leaves the iterator positioned
   immediately after the matched value, matching CPython's public behavior.
   Direct CPython diff evidence is in

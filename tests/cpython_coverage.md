@@ -1649,7 +1649,9 @@ Recent runtime migration notes:
   covering CPython `test_operator.py` sequence and member helpers `concat`,
   `countOf`, `indexOf`, `contains`, `getitem`, `setitem`, and `delitem`,
   including equality-based counting/search, iterator partial-consumption, and
-  representative TypeError/ZeroDivisionError propagation. Direct CPython diff
+  representative TypeError/ZeroDivisionError propagation. `contains` now also
+  covers CPython's `__contains__ = None` blocking over iterable and
+  sequence-fallback objects. Direct CPython diff
   evidence is in `cpython_operator_sequence_member_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_callable_helper_subset` and
   `cpython_operator_call_helper_subset`, covering CPython `test_operator.py`

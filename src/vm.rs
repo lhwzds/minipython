@@ -20814,6 +20814,13 @@ impl Vm {
             return self.contains_value(needle, target.as_ref().clone());
         }
 
+        if instance_special_method_is_none(&haystack, "__contains__") {
+            return Err(format!(
+                "TypeError: '{}' object is not a container",
+                type_name(&haystack)
+            ));
+        }
+
         if let Some(method) = instance_special_method(&haystack, "__contains__") {
             let result = self.call_value(method, vec![needle])?;
             return self.truth_value(result);

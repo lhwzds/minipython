@@ -12404,6 +12404,18 @@ class Seq:
 class BadIterable:
     def __iter__(self):
         raise ZeroDivisionError
+class BlockContainsIter:
+    __contains__ = None
+    def __iter__(self):
+        return iter([1, 2])
+class BlockContainsGetitem:
+    __contains__ = None
+    def __getitem__(self, index):
+        if index < 2:
+            return index + 1
+        raise IndexError
+class BlockContainsOnly:
+    __contains__ = None
 print(operator.concat('py', 'thon'))
 print(operator.concat([1, 2], [3, 4]))
 print(operator.concat(Seq([5, 6]), Seq([7])))
@@ -12419,6 +12431,11 @@ print(operator.indexOf([nan, nan, 21], nan), operator.indexOf([{}, 1, {}, 2], {}
 it = iter('leave the iterator at exactly the position after the match')
 print(operator.indexOf(it, 'a'), next(it))
 print(operator.contains(range(4), 2), operator.contains(range(4), 5))
+for label, source in [('iter', BlockContainsIter()), ('getitem', BlockContainsGetitem()), ('only', BlockContainsOnly())]:
+    try:
+        operator.contains(source, 1)
+    except TypeError as error:
+        print(label, error)
 a = list(range(4))
 print(operator.getitem(a, 2))
 print(operator.setitem(a, 0, 9), a)
