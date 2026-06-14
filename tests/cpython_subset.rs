@@ -38006,6 +38006,37 @@ fn cpython_itertools_islice_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public count behavior over
+// pure in-memory numeric values.
+#[test]
+fn cpython_itertools_count_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "c = itertools.count(2, 3)\n",
+            "print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))\n",
+            "ck = itertools.count(start=-1, step=2)\n",
+            "print(next(ck), next(ck), next(ck))\n",
+            "cf = itertools.count(1.5, 0.25)\n",
+            "print([next(cf) for _ in range(5)])\n",
+            "cc = itertools.count(1+2j, 2-1j)\n",
+            "print([next(cc) for _ in range(5)])\n",
+            "default = itertools.count()\n",
+            "print([next(default) for _ in range(4)])\n",
+            "single = itertools.count(3)\n",
+            "print([next(single) for _ in range(4)])"
+        ),
+        &[
+            "count True 2 5 8",
+            "-1 1 3",
+            "[1.5, 1.75, 2.0, 2.25, 2.5]",
+            "[(1+2j), (3+1j), (5+0j), (7-1j), (9-2j)]",
+            "[0, 1, 2, 3]",
+            "[3, 4, 5, 6]",
+        ],
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(

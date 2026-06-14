@@ -14697,6 +14697,27 @@ print(type(s).__name__, iter(s) is s, list(s), list(s))"#,
 }
 
 #[test]
+fn cpython_itertools_count_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public count subset",
+        name: "itertools-count",
+        source: r#"import itertools
+c = itertools.count(2, 3)
+print(type(c).__name__, iter(c) is c, next(c), next(c), next(c))
+ck = itertools.count(start=-1, step=2)
+print(next(ck), next(ck), next(ck))
+cf = itertools.count(1.5, 0.25)
+print([next(cf) for _ in range(5)])
+cc = itertools.count(1+2j, 2-1j)
+print([next(cc) for _ in range(5)])
+default = itertools.count()
+print([next(default) for _ in range(4)])
+single = itertools.count(3)
+print([next(single) for _ in range(4)])"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",
