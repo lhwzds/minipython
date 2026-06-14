@@ -134,6 +134,51 @@ fn cpython_test_manifest_summary_matches_source_groups() {
 }
 
 #[test]
+fn cpython_test_manifest_keeps_unfinished_scope_visible() {
+    let summary = summary_rows();
+    let unfinished_statuses = [
+        ("partial", 11, 492),
+        ("blocked_by_runtime", 5, 15),
+        ("blocked_by_ast_module", 2, 16),
+    ];
+
+    for (status, expected_groups, expected_methods) in unfinished_statuses {
+        let (groups, methods) = summary
+            .get(status)
+            .copied()
+            .unwrap_or_else(|| panic!("summary must include unfinished status `{status}`"));
+        assert_eq!(
+            (groups, methods),
+            (expected_groups, expected_methods),
+            "unfinished manifest status `{status}` drifted"
+        );
+        assert!(
+            groups > 0 && methods > 0,
+            "unfinished manifest status `{status}` must stay visible until the goal is actually complete"
+        );
+    }
+
+    assert_eq!(
+        summary.get("not_started").copied(),
+        Some((0, 0)),
+        "not_started rows should stay at zero; remaining work must be classified as partial or blocked"
+    );
+
+    for required in [
+        "partial",
+        "blocked_by_runtime",
+        "blocked_by_ast_module",
+        "full method-level parity has not been proven",
+        "MiniPython does not yet implement",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "migration notes must keep unfinished scope term `{required}` visible"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_source_totals_match_extracted_baseline() {
     let groups = manifest_groups();
     assert_source_total(&groups, "Lib/test/test_grammar.py", 75);
