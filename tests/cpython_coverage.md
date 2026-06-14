@@ -1010,6 +1010,12 @@ leading and trailing JSON whitespace, negative zero as `int` for `-0` and `float
 positive exponent notation, and uppercase exponent notation,
 without adding Decimal parsing or locale-sensitive number formats.
 
+`cpython_json_loads_top_level_scalar_and_empty_container_subset`, backed by
+`cpython_json_loads_top_level_scalar_and_empty_container_diff_subset`, keeps `loads()` top-level scalar values for
+`null`, booleans, empty string, empty list, and empty object, plus nested empty list/object containers and
+object members containing empty list and empty object. It pins CPython public Python value types
+without adding custom decoder classes or host-backed containers.
+
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
   `cpython_itertools_count_bool_arithmetic_subset`,

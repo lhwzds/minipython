@@ -5955,6 +5955,74 @@ fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
 }
 
 #[test]
+fn json_loads_top_level_scalar_docs_cover_value_boundaries() {
+    let diff_name = "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset";
+    let subset_name = "cpython_json_loads_top_level_scalar_and_empty_container_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json loads scalar/container CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json loads scalar/container runtime subset evidence must exist"
+    );
+
+    for required in [
+        "'null'",
+        "'true'",
+        "'false'",
+        "'[]'",
+        "'{}'",
+        "'[[], {}]'",
+        "empty_list",
+        "empty_dict",
+        "type(value).__name__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json loads scalar/container diff and subset evidence must both cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"null None NoneType\"",
+        "\"true True bool\"",
+        "\"false False bool\"",
+        "\"\\\"\\\" '' str\"",
+        "\"[] [] list\"",
+        "\"{} {} dict\"",
+        "\"[[], {}] [[], {}] list\"",
+        "\"{\\\"empty_list\\\": [], \\\"empty_dict\\\": {}} {'empty_list': [], 'empty_dict': {}} dict\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json loads scalar/container subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        for required in [
+            "`loads()` top-level scalar values",
+            "`null`, booleans, empty string, empty list, and empty object",
+            "nested empty list/object containers",
+            "object members containing empty list and empty object",
+            "CPython public Python value types",
+            "without adding custom decoder classes or host-backed containers",
+        ] {
+            assert!(
+                document.contains(required),
+                "json docs must describe loads scalar/container boundary `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn json_loads_parsing_diff_covers_subset_surface() {
     let parsing_pairs = [
         (
