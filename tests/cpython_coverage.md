@@ -4513,6 +4513,11 @@ TypeError behavior for ordering and binary/in-place set operators with non-set o
 method-form acceptance of iterable operands including generators tied to the
 oracle.
 
+`cpython_set_hash_exception_propagation_subset` is backed by the
+`set-hash-exception-propagation` direct CPython diff case, keeping exceptions
+raised by user-defined `__hash__` during set membership, `add`, and `discard`
+tied to the oracle.
+
 `cpython_dict_constructor_update_fromkeys_subset` now also covers instance-level
 `{}.fromkeys`, and `cpython_globals_locals_builtin_subset` covers
 classmethod-style `fromkeys()` lookup on scope-backed module namespace mappings.

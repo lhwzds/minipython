@@ -6411,8 +6411,9 @@ Completed in the container constructor/reversed pass:
   cases, including preserving the original missing key in `KeyError.args[0]`.
 - Added `cpython_set_hash_exception_propagation_subset`, adapted from CPython
   `TestSet.test_unhashable_element`, covering propagation of non-`TypeError`
-  exceptions raised by user-defined `__hash__` during set membership, `add`, and
-  `discard`.
+  exceptions raised by user-defined `__hash__` during set membership, `add`, and `discard`.
+  The matching `set-hash-exception-propagation` CPython output diff keeps this
+  public behavior tied to the oracle.
 - Added `cpython_set_bad_comparison_errors_subset`, adapted from CPython
   `Lib/test/test_set.py::TestJointOps.test_badcmp`, covering hash-collision
   rich equality and `RuntimeError` propagation during set construction,

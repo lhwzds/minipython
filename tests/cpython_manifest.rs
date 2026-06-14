@@ -10341,6 +10341,70 @@ fn set_only_sets_in_binary_ops_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_hash_exception_propagation_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_hash_exception_propagation_subset(",
+        "Lib/test/test_set.py::TestSet.test_unhashable_element",
+        "class HashError:",
+        "def __hash__(self):",
+        "raise KeyError('error')",
+        "lambda: elem in myset",
+        "lambda: myset.add(elem)",
+        "lambda: myset.discard(elem)",
+        "except KeyError as error:",
+        "KeyError error",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set hash-exception subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_name = "cpython_program_output_parity_smoke_diff_subset";
+    let diff_start = CPYTHON_DIFF
+        .find(&format!("fn {diff_name}("))
+        .expect("program output parity smoke diff must exist");
+    let diff_end = CPYTHON_DIFF[diff_start..]
+        .find("\n#[test]")
+        .map(|offset| diff_start + offset)
+        .unwrap_or(CPYTHON_DIFF.len());
+    let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+
+    for required in [
+        "set-hash-exception-propagation",
+        "Lib/test/test_set.py::TestSet.test_unhashable_element",
+        "class HashError:",
+        "def __hash__(self):",
+        "raise KeyError('error')",
+        "lambda: elem in myset",
+        "lambda: myset.add(elem)",
+        "lambda: myset.discard(elem)",
+        "except KeyError as error:",
+        "error.args[0]",
+    ] {
+        assert!(
+            diff_source.contains(required),
+            "focused set hash-exception CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_COVERAGE.contains("cpython_set_hash_exception_propagation_subset")
+            && CPYTHON_COVERAGE.contains("set-hash-exception-propagation")
+            && CPYTHON_COVERAGE.contains("exceptions raised by user-defined `__hash__`")
+            && CPYTHON_COVERAGE.contains("set membership, `add`, and `discard`"),
+        "coverage notes must describe set hash-exception subset and direct diff evidence"
+    );
+    assert!(
+        CPYTHON_MIGRATION.contains("cpython_set_hash_exception_propagation_subset")
+            && CPYTHON_MIGRATION.contains("set-hash-exception-propagation")
+            && CPYTHON_MIGRATION.contains("exceptions raised by user-defined `__hash__`")
+            && CPYTHON_MIGRATION.contains("set membership, `add`, and `discard`"),
+        "migration notes must document set hash-exception public behavior and direct diff evidence"
+    );
+}
+
+#[test]
 fn attribute_error_keyword_attributes_subset_is_source_migration_classified() {
     for required in [
         "fn cpython_attribute_error_keyword_attributes_subset(",
