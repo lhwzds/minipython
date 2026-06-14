@@ -431,6 +431,7 @@ pub(crate) fn create_module(
             vec![
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
+                ("warnoptions", list_value(Vec::new())),
                 (
                     "byteorder",
                     Value::String(

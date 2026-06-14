@@ -5474,6 +5474,7 @@ print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
+print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name__ == 'str' for option in sys.warnoptions))
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
@@ -5514,6 +5515,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-builtin-module-names tuple True",
             "sys-builtin-module-name-entries True True True",
             "sys-builtin-module-name-types True True",
+            "sys-warnoptions list True",
             "sys-byteorder str True",
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",

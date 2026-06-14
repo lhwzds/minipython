@@ -12304,6 +12304,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("'getfilesystemencoding'")
             && LANGUAGE_TESTS.contains("'hexversion'")
             && LANGUAGE_TESTS.contains("'implementation'")
+            && LANGUAGE_TESTS.contains("'warnoptions'")
             && LANGUAGE_TESTS.contains("'version_info'")
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
@@ -12312,6 +12313,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.hexversion == sys.implementation.hexversion")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
+            && LANGUAGE_TESTS.contains("sys.warnoptions")
             && LANGUAGE_TESTS.contains("sys.implementation.version == sys.version_info")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
@@ -12324,6 +12326,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && STDLIB_SOURCE.contains("\"is_finalizing\"")
             && STDLIB_SOURCE.contains("\"hexversion\"")
             && STDLIB_SOURCE.contains("\"implementation\"")
+            && STDLIB_SOURCE.contains("\"warnoptions\"")
             && STDLIB_SOURCE.contains("\"version_info\"")
             && VM_SOURCE.contains("call_sys_exc_info")
             && STDLIB_SOURCE.contains("call_sys_is_finalizing")
@@ -12346,6 +12349,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "'sys' in sys.builtin_module_names",
         "'time' in sys.builtin_module_names",
         "all(type(name).__name__ == 'str' for name in sys.builtin_module_names)",
+        "sys.warnoptions",
+        "all(type(option).__name__ == 'str' for option in sys.warnoptions)",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",
@@ -12396,6 +12401,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
                 && document.contains("hexversion")
                 && document.contains("is_finalizing")
                 && document.contains("implementation")
+                && document.contains("warnoptions")
                 && document.contains("version_info")
                 && document.contains("filesystem encoding"),
             "sys docs must describe sys metadata and filesystem encoding stop-line"
