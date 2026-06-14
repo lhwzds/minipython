@@ -42611,6 +42611,47 @@ fn cpython_functools_lru_cache_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_functools.py::TestLRU public behavior:
+// exceptions raised by the wrapped function are not cached.
+#[test]
+fn cpython_functools_lru_cache_exception_subset() {
+    assert_output(
+        concat!(
+            "from functools import lru_cache\n",
+            "@lru_cache(maxsize=None)\n",
+            "def bad(index):\n",
+            "    return 'abc'[index]\n",
+            "print(bad(0), tuple(bad.cache_info()))\n",
+            "for _ in range(2):\n",
+            "    try:\n",
+            "        bad(15)\n",
+            "    except IndexError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "print(tuple(bad.cache_info()))\n",
+            "@lru_cache(maxsize=128)\n",
+            "def finite_bad(index):\n",
+            "    return 'abc'[index]\n",
+            "print(finite_bad(0), tuple(finite_bad.cache_info()))\n",
+            "for _ in range(2):\n",
+            "    try:\n",
+            "        finite_bad(15)\n",
+            "    except IndexError as error:\n",
+            "        print(error.__class__.__name__)\n",
+            "print(tuple(finite_bad.cache_info()))"
+        ),
+        &[
+            "a (0, 1, None, 1)",
+            "IndexError",
+            "IndexError",
+            "(0, 3, None, 1)",
+            "a (0, 1, 128, 1)",
+            "IndexError",
+            "IndexError",
+            "(0, 3, 128, 1)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_functools.py::TestLRU public wrapper
 // metadata and helper methods.
 #[test]

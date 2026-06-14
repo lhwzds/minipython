@@ -14132,6 +14132,35 @@ print(identify(3), identify(3.0), identify(value=3), identify(value=3.0), tuple(
 }
 
 #[test]
+fn cpython_functools_lru_cache_exception_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_functools.py TestLRU exception caching subset",
+        name: "functools-lru-cache-exceptions",
+        source: r#"from functools import lru_cache
+@lru_cache(maxsize=None)
+def bad(index):
+    return 'abc'[index]
+print(bad(0), tuple(bad.cache_info()))
+for _ in range(2):
+    try:
+        bad(15)
+    except IndexError as error:
+        print(error.__class__.__name__)
+print(tuple(bad.cache_info()))
+@lru_cache(maxsize=128)
+def finite_bad(index):
+    return 'abc'[index]
+print(finite_bad(0), tuple(finite_bad.cache_info()))
+for _ in range(2):
+    try:
+        finite_bad(15)
+    except IndexError as error:
+        print(error.__class__.__name__)
+print(tuple(finite_bad.cache_info()))"#,
+    });
+}
+
+#[test]
 fn cpython_functools_cache_wrapper_methods_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cache wrapper public method subset",
