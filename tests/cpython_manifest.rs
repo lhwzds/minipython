@@ -3955,6 +3955,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
         "itertools",
         &[
             "cpython_itertools_core_iterator_subset",
+            "cpython_itertools_count_bool_arithmetic_subset",
             "cpython_itertools_keyword_error_subset",
             "cpython_itertools_pairwise_subset",
             "cpython_itertools_product_subset",
@@ -3976,6 +3977,7 @@ fn itertools_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_itertools_core_diff_subset",
         "cpython_itertools_core_iterator_diff_subset",
+        "cpython_itertools_count_bool_arithmetic_diff_subset",
         "cpython_itertools_keyword_error_diff_subset",
         "cpython_itertools_pairwise_diff_subset",
         "cpython_itertools_product_diff_subset",
@@ -4045,6 +4047,9 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
     let keyword_start = CPYTHON_SUBSET
         .find("fn cpython_itertools_keyword_error_subset()")
         .expect("itertools keyword error runtime subset evidence must exist");
+    let count_bool_start = CPYTHON_SUBSET
+        .find("fn cpython_itertools_count_bool_arithmetic_subset()")
+        .expect("itertools count bool arithmetic runtime subset evidence must exist");
     let pairwise_start = CPYTHON_SUBSET
         .find("fn cpython_itertools_pairwise_subset()")
         .expect("itertools pairwise runtime subset evidence must exist");
@@ -4074,7 +4079,8 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         .map(|offset| groupby_start + offset)
         .expect("itertools groupby subset must end before sequence constructor tests");
 
-    let core_source = &CPYTHON_SUBSET[core_start..keyword_start];
+    let core_source = &CPYTHON_SUBSET[core_start..count_bool_start];
+    let count_bool_source = &CPYTHON_SUBSET[count_bool_start..keyword_start];
     let keyword_source = &CPYTHON_SUBSET[keyword_start..pairwise_start];
     let pairwise_source = &CPYTHON_SUBSET[pairwise_start..product_start];
     let product_source = &CPYTHON_SUBSET[product_start..combinations_start];
@@ -4089,6 +4095,19 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         !core_source.contains("pairwise"),
         "itertools core runtime evidence must not cover pairwise()"
     );
+    for required in [
+        "(True, False) [True, 1, 1, 1, 1]",
+        "(True, True) [1, 2, 3, 4, 5]",
+        "(False, True) [0, 1, 2, 3, 4]",
+        "(False, False) [False, 0, 0, 0, 0]",
+        "(True, 2) [True, 3, 5, 7, 9]",
+        "(1, True) [1, 2, 3, 4, 5]",
+    ] {
+        assert!(
+            count_bool_source.contains(required),
+            "itertools count bool arithmetic runtime evidence must assert `{required}`"
+        );
+    }
     assert!(
         keyword_source.contains("multiple values"),
         "itertools keyword-error runtime evidence must assert duplicate keyword diagnostics"
@@ -4160,6 +4179,9 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
     let keyword_start = CPYTHON_DIFF
         .find("fn cpython_itertools_keyword_error_diff_subset()")
         .expect("itertools keyword-error diff evidence must exist");
+    let count_bool_start = CPYTHON_DIFF
+        .find("fn cpython_itertools_count_bool_arithmetic_diff_subset()")
+        .expect("itertools count bool arithmetic diff evidence must exist");
     let product_start = CPYTHON_DIFF
         .find("fn cpython_itertools_product_diff_subset()")
         .expect("itertools product diff evidence must exist");
@@ -4189,7 +4211,8 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         .map(|offset| repr_start + offset)
         .expect("itertools repr diff subset must end before smoke tests");
 
-    let core_source = &CPYTHON_DIFF[core_start..keyword_start];
+    let core_source = &CPYTHON_DIFF[core_start..count_bool_start];
+    let count_bool_source = &CPYTHON_DIFF[count_bool_start..keyword_start];
     let keyword_source = &CPYTHON_DIFF[keyword_start..pairwise_start];
     let pairwise_source = &CPYTHON_DIFF[pairwise_start..product_start];
     let product_source = &CPYTHON_DIFF[product_start..combinations_start];
@@ -4205,6 +4228,19 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         !core_source.contains("pairwise"),
         "itertools core CPython diff evidence must not cover pairwise()"
     );
+    for required in [
+        "(True, False)",
+        "(True, True)",
+        "(False, True)",
+        "(False, False)",
+        "(True, 2)",
+        "(1, True)",
+    ] {
+        assert!(
+            count_bool_source.contains(required),
+            "itertools count bool arithmetic CPython diff evidence must cover `{required}`"
+        );
+    }
     assert!(
         keyword_source.contains("itertools.count(foo=1)")
             && keyword_source.contains("itertools.count(1, start=2)")

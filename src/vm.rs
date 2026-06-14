@@ -30636,7 +30636,11 @@ impl Vm {
             }
             Value::Iterator(state) => return self.advance_shared_iterator(state.clone()),
             Value::ItertoolsCount { current, step } => {
-                let value = current.as_ref().clone();
+                let raw_value = current.as_ref().clone();
+                let value = match (&raw_value, step.as_ref()) {
+                    (Value::Bool(value), Value::Bool(true)) => Value::Number(bool_as_i64(*value)),
+                    _ => raw_value,
+                };
                 *current = Box::new(self.add_values(value.clone(), step.as_ref().clone())?);
                 return Ok(IteratorAdvance::Yield(value));
             }

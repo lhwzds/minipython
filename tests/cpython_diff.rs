@@ -14166,6 +14166,18 @@ fn cpython_itertools_core_iterator_diff_subset() {
 }
 
 #[test]
+fn cpython_itertools_count_bool_arithmetic_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public count bool arithmetic subset",
+        name: "itertools-count-bool-arithmetic",
+        source: r#"import itertools
+for pair in [(True, False), (True, True), (False, True), (False, False), (True, 2), (1, True)]:
+    c = itertools.count(*pair)
+    print(pair, [next(c) for _ in range(5)])"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_keyword_error_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public duplicate-keyword error subset",

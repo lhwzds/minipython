@@ -37417,6 +37417,26 @@ fn cpython_itertools_core_iterator_subset() {
 }
 
 #[test]
+fn cpython_itertools_count_bool_arithmetic_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "for pair in [(True, False), (True, True), (False, True), (False, False), (True, 2), (1, True)]:\n",
+            "    c = itertools.count(*pair)\n",
+            "    print(pair, [next(c) for _ in range(5)])",
+        ),
+        &[
+            "(True, False) [True, 1, 1, 1, 1]",
+            "(True, True) [1, 2, 3, 4, 5]",
+            "(False, True) [0, 1, 2, 3, 4]",
+            "(False, False) [False, 0, 0, 0, 0]",
+            "(True, 2) [True, 3, 5, 7, 9]",
+            "(1, True) [1, 2, 3, 4, 5]",
+        ],
+    );
+}
+
+#[test]
 fn cpython_itertools_keyword_error_subset() {
     assert_output(
         concat!(

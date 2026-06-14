@@ -367,6 +367,7 @@ Recent runtime migration notes:
   `cpython_functools_singledispatchmethod_diff_subset`,
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
+  `cpython_itertools_count_bool_arithmetic_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`,
   `cpython_itertools_pairwise_diff_subset`,
   `cpython_itertools_product_diff_subset`,
@@ -853,6 +854,7 @@ Recent runtime migration notes:
   unpaired surrogate storage remain intentionally outside this sandbox subset.
 - The bundled `itertools` module includes
   `cpython_itertools_core_iterator_subset`,
+  `cpython_itertools_count_bool_arithmetic_subset`,
   `cpython_itertools_keyword_error_subset`,
   `cpython_itertools_pairwise_subset`, and
   `cpython_itertools_product_subset`, and
@@ -865,6 +867,7 @@ Recent runtime migration notes:
   `cpython_itertools_repr_subset`, and
   `cpython_itertools_core_diff_subset`,
   `cpython_itertools_core_iterator_diff_subset`,
+  `cpython_itertools_count_bool_arithmetic_diff_subset`,
   `cpython_itertools_keyword_error_diff_subset`, plus the CPython 3.10+ gated
   `cpython_itertools_pairwise_diff_subset`, and
   `cpython_itertools_product_diff_subset`, and
