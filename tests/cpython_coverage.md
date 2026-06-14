@@ -1637,9 +1637,10 @@ Recent runtime migration notes:
   including TypeError default fallback, default-value normalization for bool,
   int-subclass, and `__index__` inputs, hint-result normalization for bool and
   int-subclass returns, default and hint-result overflow rejection, non-TypeError
-  propagation, finite `itertools.repeat()` remaining-length hints, and
-  infinite-repeat direct `__length_hint__()` TypeError behavior. Direct CPython
-  diff evidence is in `cpython_operator_length_hint_diff_subset`.
+  propagation, CPython non-integer hint-result TypeError text, finite
+  `itertools.repeat()` remaining-length hints, and infinite-repeat direct
+  `__length_hint__()` TypeError behavior. Direct CPython diff evidence is in
+  `cpython_operator_length_hint_diff_subset`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_operator_comparison_predicate_subset` and
   `cpython_operator_is_none_predicates_subset`, covering CPython

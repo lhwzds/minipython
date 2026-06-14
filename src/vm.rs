@@ -72194,7 +72194,7 @@ fn operator_length_hint_result(value: Value, default: Value) -> Result<Value, St
             default,
         ),
         value => Err(format!(
-            "TypeError: __length_hint__ must be integer, not {}",
+            "TypeError: __length_hint__ must be an integer, not {}",
             type_name(&value)
         )),
     }

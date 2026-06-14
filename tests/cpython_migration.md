@@ -1574,7 +1574,8 @@ Completed in the differential parity harness pass:
   falls back to custom `__length_hint__`, returns the caller default for
   missing hints, `NotImplemented`, and TypeError hints, normalizes bool/int-subclass/`__index__` defaults,
   normalizes bool/int-subclass hint results to CPython integer results, rejects oversized
-  defaults, rejects non-integer and negative hint results, and re-reads sequence lengths
+  defaults, rejects non-integer and negative hint results while preserving
+  CPython non-integer TypeError text, and re-reads sequence lengths
   for fallback reversed iterators so non-TypeError `__len__` exceptions
   propagate. Direct CPython diff evidence is in
   `cpython_operator_length_hint_diff_subset`.

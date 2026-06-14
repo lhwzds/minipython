@@ -12250,6 +12250,10 @@ for value in [X('abc'), X(-2), X(LookupError)]:
     except (TypeError, ValueError, LookupError) as error:
         print(type(error).__name__)
 try:
+    operator.length_hint(X(1.5))
+except TypeError as error:
+    print('bad-hint', type(error).__name__, str(error))
+try:
     operator.length_hint(X(2), 'abc')
 except TypeError as error:
     print(type(error).__name__)
