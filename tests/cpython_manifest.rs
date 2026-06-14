@@ -4918,6 +4918,51 @@ fn json_hook_boundaries_stay_sandbox_classified() {
 }
 
 #[test]
+fn json_stdlib_registry_stays_loads_dumps_only() {
+    let json_start = STDLIB_SOURCE
+        .find("\"json\" => Ok(module_value(")
+        .expect("stdlib registry must expose a json module arm");
+    let json_end = STDLIB_SOURCE[json_start..]
+        .find("        )),")
+        .map(|offset| json_start + offset)
+        .expect("json module registry arm must be extractable");
+    let json_registry = &STDLIB_SOURCE[json_start..json_end];
+
+    for required in [
+        "\"json\"",
+        "(\"loads\", Value::Builtin(\"json.loads\".to_string()))",
+        "(\"dumps\", Value::Builtin(\"json.dumps\".to_string()))",
+    ] {
+        assert!(
+            json_registry.contains(required),
+            "json registry must expose required loads/dumps surface `{required}`"
+        );
+    }
+
+    for forbidden in [
+        "\"load\"",
+        "\"dump\"",
+        "JSONDecodeError",
+        "JSONDecoder",
+        "JSONEncoder",
+    ] {
+        assert!(
+            !json_registry.contains(forbidden),
+            "json registry must not expose out-of-scope API `{forbidden}`"
+        );
+    }
+
+    assert!(
+        LANGUAGE_TESTS.contains("json_sandbox_subset_excludes_file_apis_and_extension_hooks")
+            && LANGUAGE_TESTS.contains("JSONDecodeError")
+            && LANGUAGE_TESTS.contains("JSONDecoder")
+            && LANGUAGE_TESTS.contains("JSONEncoder")
+            && LANGUAGE_TESTS.contains("'load', 'dump'"),
+        "language tests must keep json file APIs and extension hooks unavailable at runtime"
+    );
+}
+
+#[test]
 fn json_keyword_argument_binding_docs_cover_call_surface() {
     let diff_name = "cpython_json_keyword_argument_binding_diff_subset";
     let subset_name = "cpython_json_keyword_argument_binding_subset";
