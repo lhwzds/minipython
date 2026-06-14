@@ -3456,9 +3456,12 @@ Completed in the bytes-literal pass:
   `Lib/test/test_bytes.py`, and `Lib/test/test_ast/test_ast.py`.
 - Added direct CPython output parity evidence
   `cpython_bytes_literal_runtime_diff_subset` for the successful public runtime
-  slice of the same bytes literal behavior; MiniPython-specific parse-error
-  text for mixed bytes/non-bytes literals remains covered by the local subset
-  test rather than claimed as direct CPython diagnostic parity.
+  slice of the same bytes literal behavior.
+- Added direct CPython rejection parity evidence
+  `cpython_mixed_bytes_nonbytes_literal_rejection_diff_subset` for adjacent
+  mixed bytes/non-bytes literals; MiniPython-specific parse-error text remains
+  covered by the local subset test rather than claimed as exact CPython
+  diagnostic parity.
 - Kept `STRING` as `partial` because the row still tracks the broader CPython
   tokenizer string surface, including exact tokenizer token-stream modeling and
   remaining invalid-literal diagnostics.

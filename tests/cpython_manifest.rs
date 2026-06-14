@@ -104,6 +104,27 @@ fn cpython_diff_test_names_use_diff_subset_suffix() {
 }
 
 #[test]
+fn mixed_bytes_nonbytes_literal_rejection_has_direct_diff_evidence() {
+    assert!(
+        CPYTHON_SUBSET.contains("parse error: cannot mix bytes and nonbytes literals"),
+        "mixed bytes/nonbytes literal rejection must remain covered by local subset diagnostics"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_mixed_bytes_nonbytes_literal_rejection_diff_subset("),
+        "mixed bytes/nonbytes literal rejection must have direct CPython diff evidence"
+    );
+    for required in [
+        "cpython_mixed_bytes_nonbytes_literal_rejection_diff_subset",
+        "mixed bytes/non-bytes",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) && CPYTHON_MIGRATION.contains(required),
+            "mixed bytes/nonbytes literal docs must mention `{required}`"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_summary_matches_source_groups() {
     let groups = manifest_groups();
     let summary = summary_rows();

@@ -20392,6 +20392,17 @@ print(bytes(), bytes(3), bytes(b'abc'))"#,
 }
 
 #[test]
+fn cpython_mixed_bytes_nonbytes_literal_rejection_diff_subset() {
+    for source in ["print(b'a' 'b')", "print('a' b'b')"] {
+        assert_cpython_rejection_parity(&DiffCase {
+            origin: "Lib/test/test_tokenize.py adjacent bytes/non-bytes literal rejection",
+            name: "mixed-bytes-nonbytes-literal-rejection",
+            source,
+        });
+    }
+}
+
+#[test]
 fn cpython_bytes_search_compare_slice_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest search, compare, reversed, and slice public subset",
