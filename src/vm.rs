@@ -58798,6 +58798,8 @@ struct JsonDumpsOptions {
     default_hook: Option<Value>,
 }
 
+const JSON_DUMPS_MAX_DEPTH: usize = 100;
+
 impl Default for JsonDumpsOptions {
     fn default() -> Self {
         Self {
@@ -58923,6 +58925,12 @@ fn json_dumps_value_at_depth(
     options: &JsonDumpsOptions,
     depth: usize,
 ) -> Result<String, String> {
+    if depth > JSON_DUMPS_MAX_DEPTH {
+        return Err(
+            "RecursionError: maximum recursion depth exceeded while encoding a JSON object"
+                .to_string(),
+        );
+    }
     if let Some(identity) = json_dumps_container_identity(value) {
         if !active.insert(identity) {
             return if options.check_circular {
@@ -59030,7 +59038,7 @@ fn json_dumps_default_value(
     }
     let replacement = vm.call_value(hook, vec![value.clone()]);
     let result = match replacement {
-        Ok(replacement) => json_dumps_value_at_depth(vm, &replacement, active, options, depth),
+        Ok(replacement) => json_dumps_value_at_depth(vm, &replacement, active, options, depth + 1),
         Err(error) => Err(error),
     };
     if let Some(identity) = identity {

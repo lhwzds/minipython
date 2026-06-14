@@ -1494,7 +1494,16 @@ self_box = box(5)
 try:
     json.dumps(self_box, default=lambda obj: obj)
 except Exception as error:
-    print('same-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))"#,
+    print('same-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))
+
+class FreshDefault:
+    def __call__(self, obj):
+        return object()
+
+try:
+    json.dumps(object(), default=FreshDefault())
+except Exception as error:
+    print('fresh-default', type(error).__name__, isinstance(error, RecursionError))"#,
     });
 }
 
