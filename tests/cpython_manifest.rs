@@ -12294,11 +12294,47 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         LANGUAGE_TESTS.contains("sys_sandbox_subset_keeps_export_surface_explicit")
             && LANGUAGE_TESTS.contains("'getrefcount', 'getallocatedblocks'")
             && LANGUAGE_TESTS.contains("'executable', 'prefix', 'base_prefix'")
+            && LANGUAGE_TESTS.contains("'builtin_module_names'")
             && LANGUAGE_TESTS.contains("print(dir(sys))")
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sorted(vars(value).items())"),
         "sys sandbox export test must guard public in-memory surface and host/process/debug stop lines"
     );
+    assert!(
+        STDLIB_SOURCE.contains("\"builtin_module_names\"")
+            && STDLIB_SOURCE.contains("string_tuple_value(SYS_BUILTIN_MODULE_NAMES)")
+            && STDLIB_SOURCE.contains("\"builtins\"")
+            && STDLIB_SOURCE.contains("\"sys\"")
+            && STDLIB_SOURCE.contains("\"time\""),
+        "sys stdlib registry must expose sorted in-memory builtin module metadata"
+    );
+    let sys_info_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_float_hash_and_sys_info_diff_subset");
+    let sys_info_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_float_hash_and_sys_info_subset");
+    for required in [
+        "sys.builtin_module_names",
+        "tuple(sorted(sys.builtin_module_names))",
+        "'builtins' in sys.builtin_module_names",
+        "'sys' in sys.builtin_module_names",
+        "'time' in sys.builtin_module_names",
+        "all(type(name).__name__ == 'str' for name in sys.builtin_module_names)",
+    ] {
+        assert!(
+            sys_info_diff.contains(required),
+            "sys CPython diff evidence must cover builtin_module_names invariant `{required}`"
+        );
+        assert!(
+            sys_info_subset.contains(required),
+            "sys runtime subset evidence must cover builtin_module_names invariant `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("builtin_module_names"),
+            "sys docs must describe builtin_module_names sandbox metadata"
+        );
+    }
 
     let int_digits_diff = extract_rust_test_body(
         CPYTHON_DIFF,

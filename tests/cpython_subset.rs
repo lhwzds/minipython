@@ -5470,7 +5470,10 @@ class F(float, H):
 value = F('nan')
 print('subnan', hash(value) == object.__hash__(value), isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds)
-print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)"#,
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
+print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
+print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
+print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)"#,
         &[
             "small-int-float True",
             "minus-one -2 -2",
@@ -5480,6 +5483,9 @@ print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
             "subnan True True False",
             "sys-float-info 53 2 1",
             "sys-hash-info 314159 0 1000003",
+            "sys-builtin-module-names tuple True",
+            "sys-builtin-module-name-entries True True True",
+            "sys-builtin-module-name-types True True",
         ],
     );
 }

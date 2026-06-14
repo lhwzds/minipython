@@ -25053,7 +25053,10 @@ class F(float, H):
 value = F('nan')
 print('subnan', isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds)
-print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)"#,
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
+print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
+print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
+print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)"#,
     });
 }
 

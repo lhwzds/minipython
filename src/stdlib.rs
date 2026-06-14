@@ -61,6 +61,7 @@ pub(crate) const TYPES_ALL: &[&str] = &[
     "prepare_class",
     "resolve_bases",
 ];
+pub(crate) const SYS_BUILTIN_MODULE_NAMES: &[&str] = &["builtins", "sys", "time"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) struct SysFlags {
@@ -424,6 +425,10 @@ pub(crate) fn create_module(
             vec![
                 ("path", list_value(vec![Value::String(String::new())])),
                 ("argv", list_value(Vec::new())),
+                (
+                    "builtin_module_names",
+                    string_tuple_value(SYS_BUILTIN_MODULE_NAMES),
+                ),
                 ("maxsize", Value::Number(i64::MAX)),
                 ("float_repr_style", Value::String("short".to_string())),
                 ("float_info", sys_float_info_value()),
