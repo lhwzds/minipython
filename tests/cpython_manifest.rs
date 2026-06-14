@@ -9027,6 +9027,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "show('range', iter(range(5)))",
         "show('yield', gen())",
         "show('enumerate', enumerate(range(5)))",
+        "class EqSentinel",
+        "def __eq__(self, other):",
+        "iter(next_value, EqSentinel(3))",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -9046,6 +9049,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "class Iter",
         "def __next__(self):",
         "def gen():",
+        "class EqSentinel",
+        "def __eq__(self, other):",
+        "iter(next_value, EqSentinel(3))",
         "lambda: iter()",
         "lambda: iter(42, 42)",
         "lambda: next()",

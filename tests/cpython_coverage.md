@@ -29,6 +29,9 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
+- Callable-sentinel iterators in `cpython_iter_next_builtin_subset` now include
+  CPython's sentinel-first equality dispatch (`sentinel == value`) for
+  non-symmetric `__eq__` implementations.
 - `collections.deque` is currently a documented pure-memory sandbox surface:
   `cpython_collections_deque_public_surface_subset` and
   `cpython_collections_deque_public_surface_diff_subset` cover pure-memory

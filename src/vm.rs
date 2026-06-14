@@ -31210,7 +31210,7 @@ impl Vm {
                         if *done {
                             return Ok(IteratorAdvance::Complete(Value::None));
                         }
-                        if value == **sentinel {
+                        if self.equal_values(sentinel.as_ref().clone(), value.clone())? {
                             *done = true;
                             return Ok(IteratorAdvance::Complete(Value::None));
                         }
@@ -31308,15 +31308,20 @@ impl Vm {
         let result = self.call_iterator_method_catching(callable, Vec::new(), "StopIteration")?;
         match result {
             IteratorAdvance::Yield(value) => {
-                let mut iterator = state.borrow_mut();
-                let Value::CallIterator { sentinel, done, .. } = &mut *iterator else {
-                    return Ok(IteratorAdvance::Complete(Value::None));
+                let sentinel = {
+                    let iterator = state.borrow();
+                    let Value::CallIterator { sentinel, done, .. } = &*iterator else {
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    };
+                    if *done {
+                        return Ok(IteratorAdvance::Complete(Value::None));
+                    }
+                    sentinel.as_ref().clone()
                 };
-                if *done {
-                    return Ok(IteratorAdvance::Complete(Value::None));
-                }
-                if value == **sentinel {
-                    *done = true;
+                if self.equal_values(sentinel, value.clone())? {
+                    if let Value::CallIterator { done, .. } = &mut *state.borrow_mut() {
+                        *done = true;
+                    }
                     return Ok(IteratorAdvance::Complete(Value::None));
                 }
                 Ok(IteratorAdvance::Yield(value))

@@ -7421,6 +7421,16 @@ try:
 except StopIteration:
     print('stopped')
 print(next(iterator, 42))
+class EqSentinel:
+    def __init__(self, value):
+        self.value = value
+    def __eq__(self, other):
+        print('eq', self.value, getattr(other, 'value', other))
+        return self.value == getattr(other, 'value', other)
+values = [EqSentinel(1), EqSentinel(2), EqSentinel(3)]
+def next_value():
+    return values.pop(0)
+print([item.value for item in iter(next_value, EqSentinel(3))])
 for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(42)]:
     try:
         expr()

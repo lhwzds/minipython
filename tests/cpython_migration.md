@@ -6262,6 +6262,9 @@ Completed in the iter/next builtin pass:
   `StopIteration` now exhausts the callable iterator, and reentrant exhaustion
   of the same iterator prevents a stale non-sentinel return value from being
   yielded.
+- Extended callable-sentinel iterator comparison so the stop check dispatches
+  equality as `sentinel == value`, matching CPython's public behavior for
+  non-symmetric `__eq__` implementations.
 - Extended the same test with CPython `Lib/test/test_iter.py` sink-state
   semantics: supported iterators remain exhausted after completion, including
   sequence-protocol fallback iterators whose backing object later grows.

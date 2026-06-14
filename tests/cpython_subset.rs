@@ -37140,6 +37140,22 @@ fn cpython_iter_next_builtin_subset() {
         ],
         8 * 1024 * 1024,
     );
+    assert_output_with_stack(
+        concat!(
+            "class EqSentinel:\n",
+            "    def __init__(self, value):\n",
+            "        self.value = value\n",
+            "    def __eq__(self, other):\n",
+            "        print('eq', self.value, getattr(other, 'value', other))\n",
+            "        return self.value == getattr(other, 'value', other)\n",
+            "values = [EqSentinel(1), EqSentinel(2), EqSentinel(3)]\n",
+            "def next_value():\n",
+            "    return values.pop(0)\n",
+            "print([item.value for item in iter(next_value, EqSentinel(3))])",
+        ),
+        &["eq 3 1", "eq 3 2", "eq 3 3", "[1, 2]"],
+        8 * 1024 * 1024,
+    );
 }
 
 // Covers the public StopIteration.value attribute used by generator return
