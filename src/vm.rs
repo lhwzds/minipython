@@ -8245,7 +8245,7 @@ impl Vm {
     ) -> Result<Value, String> {
         if args.len() < 2 {
             return Err(format!(
-                "TypeError: reduce() takes at least 2 positional arguments ({} given)",
+                "TypeError: reduce expected at least 2 arguments, got {}",
                 args.len()
             ));
         }
@@ -8280,7 +8280,7 @@ impl Vm {
             }
             values => {
                 return Err(format!(
-                    "TypeError: reduce() takes at most 3 arguments ({} given)",
+                    "TypeError: reduce expected at most 3 arguments, got {}",
                     values.len()
                 ));
             }

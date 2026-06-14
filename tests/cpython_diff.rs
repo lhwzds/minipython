@@ -14001,6 +14001,9 @@ print(p.__module__, '__module__' in p.__dict__)"#,
 
 #[test]
 fn cpython_functools_reduce_diff_subset() {
+    // CPython oracle text: reduce expected at least 2 arguments, got 0;
+    // reduce expected at least 2 arguments, got 1;
+    // reduce expected at most 3 arguments, got 4.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestReduce public stable subset",
         name: "functools-reduce",
@@ -14073,6 +14076,9 @@ checks = [
 exact_checks = [
     ('non-iterable-none', lambda: reduce(add, None)),
     ('bad-iter-return', lambda: reduce(add, BadIterReturn())),
+    ('missing', lambda: reduce()),
+    ('one-arg', lambda: reduce(add)),
+    ('too-many', lambda: reduce(add, [1], 2, 3)),
 ]
 for label, check in exact_checks:
     try:
