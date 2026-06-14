@@ -14697,6 +14697,27 @@ print(type(s).__name__, iter(s) is s, list(s), list(s))"#,
 }
 
 #[test]
+fn cpython_itertools_islice_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public islice error subset",
+        name: "itertools-islice-errors",
+        source: r#"import itertools
+class BadIndex:
+    def __index__(self):
+        return 'x'
+for label, expr in [
+    ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),
+    ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),
+    ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count subset",

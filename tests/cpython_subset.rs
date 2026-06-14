@@ -38006,6 +38006,34 @@ fn cpython_itertools_islice_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public islice argument
+// conversion error behavior.
+#[test]
+fn cpython_itertools_islice_error_subset() {
+    assert_output(
+        concat!(
+            "import itertools\n",
+            "class BadIndex:\n",
+            "    def __index__(self):\n",
+            "        return 'x'\n",
+            "for label, expr in [\n",
+            "    ('stop', lambda: list(itertools.islice(range(5), BadIndex()))),\n",
+            "    ('start', lambda: list(itertools.islice(range(5), BadIndex(), 3))),\n",
+            "    ('step', lambda: list(itertools.islice(range(5), 1, 4, BadIndex()))),\n",
+            "]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except ValueError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "stop ValueError Stop argument for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
+            "start ValueError Indices for islice() must be None or an integer: 0 <= x <= sys.maxsize.",
+            "step ValueError Step for islice() must be a positive integer or None.",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_itertools.py public count behavior over
 // pure in-memory numeric values.
 #[test]
