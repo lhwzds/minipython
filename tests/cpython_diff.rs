@@ -14528,6 +14528,27 @@ for expr in [lambda: itertools.repeat(), lambda: itertools.repeat('x', 1, 2), la
 }
 
 #[test]
+fn cpython_itertools_cycle_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_itertools.py public cycle subset",
+        name: "itertools-cycle",
+        source: r#"import itertools
+cy = itertools.cycle('ab')
+print(type(cy).__name__, iter(cy) is cy, list(itertools.islice(cy, 6)), list(itertools.islice(cy, 3)))
+print(list(itertools.islice(itertools.cycle([]), 3)))
+print(list(itertools.islice(itertools.cycle(value for value in [1, 2]), 7)))
+marker = []
+cy = itertools.cycle([marker])
+print(next(cy) is marker, next(cy) is marker)
+for expr in [lambda: itertools.cycle(), lambda: itertools.cycle(iterable=[1])]:
+    try:
+        expr()
+    except TypeError as error:
+        print(type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_itertools_count_bool_arithmetic_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_itertools.py public count bool arithmetic subset",

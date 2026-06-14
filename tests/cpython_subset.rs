@@ -37754,6 +37754,38 @@ fn cpython_itertools_repeat_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_itertools.py public cycle behavior over
+// pure in-memory finite and generator sources.
+#[test]
+fn cpython_itertools_cycle_subset() {
+    assert_output_with_stack(
+        concat!(
+            "import itertools\n",
+            "cy = itertools.cycle('ab')\n",
+            "print(type(cy).__name__, iter(cy) is cy, list(itertools.islice(cy, 6)), list(itertools.islice(cy, 3)))\n",
+            "print(list(itertools.islice(itertools.cycle([]), 3)))\n",
+            "print(list(itertools.islice(itertools.cycle(value for value in [1, 2]), 7)))\n",
+            "marker = []\n",
+            "cy = itertools.cycle([marker])\n",
+            "print(next(cy) is marker, next(cy) is marker)\n",
+            "for expr in [lambda: itertools.cycle(), lambda: itertools.cycle(iterable=[1])]:\n",
+            "    try:\n",
+            "        expr()\n",
+            "    except TypeError as error:\n",
+            "        print(type(error).__name__)"
+        ),
+        &[
+            "cycle True ['a', 'b', 'a', 'b', 'a', 'b'] ['a', 'b', 'a']",
+            "[]",
+            "[1, 2, 1, 2, 1, 2, 1]",
+            "True True",
+            "TypeError",
+            "TypeError",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 #[test]
 fn cpython_itertools_count_bool_arithmetic_subset() {
     assert_output(
