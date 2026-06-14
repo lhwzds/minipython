@@ -1108,7 +1108,8 @@ without adding alternate encoders or unpaired surrogate storage.
 `str`, `bytes`, and `bytearray` input values and subclasses, UTF-8 BOM, UTF-16, and UTF-32 encoded byte input,
 `str`, `int`, `float`, list, tuple, dict, `IntEnum`, and namedtuple output paths,
 standard bool/null/list/dict/scalar round trips, 200-level nested list encoding, and default non-finite float spelling,
-without adding file APIs, custom encoder classes, or CPython internals.
+without adding file APIs, module `__all__` exports beyond the sandbox `loads` / `dumps` surface,
+custom encoder classes, or CPython internals.
 
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,

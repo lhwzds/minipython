@@ -4951,6 +4951,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cls",
             "File APIs",
+            "module `__all__` exports",
             "JSONDecodeError",
             "full `JSONDecodeError` compatibility",
         ],
@@ -5137,7 +5138,10 @@ fn json_loads_dumps_basic_docs_cover_core_data_model() {
             "standard bool/null/list/dict/scalar round trips",
             "200-level nested list encoding",
             "default non-finite float spelling",
-            "without adding file APIs, custom encoder classes, or CPython internals",
+            "without adding file APIs",
+            "module `__all__` exports beyond the sandbox `loads` / `dumps` surface",
+            "custom encoder classes",
+            "CPython internals",
         ] {
             assert!(
                 document.contains(required),
@@ -5344,7 +5348,12 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         .into_iter()
         .find(|row| row.module == "json")
         .expect("sandbox stdlib manifest must include json");
-    for excluded in ["cls", "File APIs", "full `JSONDecodeError` compatibility"] {
+    for excluded in [
+        "cls",
+        "File APIs",
+        "module `__all__` exports",
+        "full `JSONDecodeError` compatibility",
+    ] {
         assert!(
             row.excluded_surface.contains(excluded),
             "json sandbox manifest must keep `{excluded}` outside the supported surface"
@@ -5358,6 +5367,7 @@ fn json_hook_boundaries_stay_sandbox_classified() {
         );
         for required in [
             "File APIs",
+            "module `__all__` exports",
             "JSONDecodeError",
             "object_pairs_hook",
             "parse_int",
