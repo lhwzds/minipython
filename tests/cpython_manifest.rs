@@ -13705,6 +13705,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_simple_namespace_state_order_diff_subset",
         "cpython_types_simple_namespace_fake_comparison_diff_subset",
         "cpython_types_method_descriptor_types_diff_subset",
+        "cpython_types_dunder_get_signature_diff_subset",
         "cpython_types_slot_and_method_wrapper_types_diff_subset",
         "cpython_types_frame_locals_proxy_type_diff_subset",
         "cpython_types_int_format_diff_subset",
@@ -15982,7 +15983,7 @@ fn cpython_test_manifest_types_tests_method_audit_is_tracked() {
             .iter()
             .filter(|method| method.status == "ported")
             .count(),
-        23,
+        24,
         "ported TypesTests method count drifted"
     );
     assert_eq!(
@@ -15998,7 +15999,7 @@ fn cpython_test_manifest_types_tests_method_audit_is_tracked() {
             .iter()
             .filter(|method| method.status == "blocked_by_runtime")
             .count(),
-        4,
+        3,
         "blocked-by-runtime TypesTests method count drifted"
     );
     assert_eq!(

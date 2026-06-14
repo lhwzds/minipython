@@ -9423,6 +9423,15 @@ impl Vm {
 
                 self.call_method_get(args)
             }
+            Value::Builtin(name) if name == "descriptor.__get__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: __get__() does not accept keyword arguments".to_string()
+                    );
+                }
+
+                self.call_method_get(args)
+            }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
                 if !keywords.is_empty() {
                     return Err(format!(
@@ -54863,6 +54872,22 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(mapping_proxy_from_entries(entries))
         }
         Value::Builtin(function_name)
+            if name == "__get__"
+                && (is_builtin_wrapper_descriptor_name(&function_name)
+                    || is_builtin_method_descriptor_name(&function_name)
+                    || is_builtin_classmethod_descriptor_name(&function_name)) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("descriptor.__get__".to_string())),
+                receiver: Box::new(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(function_name)),
+                    receiver: Box::new(Value::None),
+                    identity: Rc::new(()),
+                }),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
             if name == "__type_params__" && is_builtin_type_object_name(&function_name) =>
         {
             Ok(tuple_value(Vec::new()))
@@ -56112,6 +56137,10 @@ fn is_builtin_classmethod_descriptor_name(name: &str) -> bool {
     name == "int.from_bytes.classmethod_descriptor"
 }
 
+fn is_descriptor_get_wrapper_name(name: &str) -> bool {
+    name == "descriptor.__get__"
+}
+
 fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {
     mro_for_bases(bases).ok()?.into_iter().find_map(|base| {
         let Value::Builtin(type_name) = base else {
@@ -57313,7 +57342,7 @@ fn type_name(value: &Value) -> &str {
         Value::StaticMethod { .. } => "staticmethod",
         Value::ClassMethod { .. } => "classmethod",
         Value::Super { .. } => "super",
-        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name)) => {
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name)) => {
             "method-wrapper"
         }
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(_)) => {
@@ -59987,6 +60016,9 @@ fn call_inspect_signature(
         Value::Builtin(name) if name == "operator.attrgetter" => "(attr, /, *attrs)",
         Value::Builtin(name) if name == "operator.itemgetter" => "(item, /, *items)",
         Value::Builtin(name) if name == "operator.methodcaller" => "(name, /, *args, **kwargs)",
+        Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_descriptor_get_wrapper_name(name)) => {
+            "(instance, owner, /)"
+        }
         Value::OperatorAttrGetter { .. }
         | Value::OperatorItemGetter { .. }
         | Value::OperatorMethodCaller { .. } => "(obj, /)",
@@ -74874,7 +74906,9 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             }
             Value::BoundMethod { function, .. } => matches!(
                 function.as_ref(),
-                Value::Builtin(name) if !is_builtin_wrapper_descriptor_name(name)
+                Value::Builtin(name)
+                    if !is_builtin_wrapper_descriptor_name(name)
+                        && !is_descriptor_get_wrapper_name(name)
             ),
             _ => false,
         },
@@ -74885,7 +74919,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             matches!(
                 subject,
                 Value::BoundMethod { function, .. }
-                    if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name))
+                    if matches!(function.as_ref(), Value::Builtin(name) if is_builtin_wrapper_descriptor_name(name) || is_descriptor_get_wrapper_name(name))
             )
         }
         "method_descriptor" => {

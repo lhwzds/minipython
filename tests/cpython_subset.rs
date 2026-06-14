@@ -50148,6 +50148,39 @@ fn cpython_types_method_descriptor_types_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py::TypesTests::test_dunder_get_signature.
+#[test]
+fn cpython_types_dunder_get_signature_subset() {
+    assert_output(
+        concat!(
+            "import inspect, types\n",
+            "for desc in [object.__init__, str.join, int.__dict__['from_bytes']]:\n",
+            "    print(type(desc).__name__)\n",
+            "    print(isinstance(desc.__get__, types.MethodWrapperType))\n",
+            "    print(isinstance(desc.__get__, types.BuiltinMethodType))\n",
+            "    print(type(desc.__get__).__name__)\n",
+            "    print(str(inspect.signature(desc.__get__)))"
+        ),
+        &[
+            "wrapper_descriptor",
+            "True",
+            "False",
+            "method-wrapper",
+            "(instance, owner, /)",
+            "method_descriptor",
+            "True",
+            "False",
+            "method-wrapper",
+            "(instance, owner, /)",
+            "classmethod_descriptor",
+            "True",
+            "False",
+            "method-wrapper",
+            "(instance, owner, /)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::TypesTests::test_slot_wrapper_types
 // and ::test_method_wrapper_types. MiniPython represents these slot wrappers
 // with its existing builtin and bound-method values, while preserving the

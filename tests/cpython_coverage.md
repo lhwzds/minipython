@@ -217,6 +217,7 @@ Recent runtime migration notes:
   `cpython_types_simple_namespace_state_order_diff_subset`,
   `cpython_types_simple_namespace_fake_comparison_diff_subset`,
   `cpython_types_method_descriptor_types_diff_subset`,
+  `cpython_types_dunder_get_signature_diff_subset`,
   `cpython_types_slot_and_method_wrapper_types_diff_subset`,
   `cpython_types_int_format_diff_subset`,
   `cpython_types_float_format_diff_subset`,
@@ -1762,6 +1763,13 @@ without adding general custom encoder/decoder class support.
   `int.__dict__['from_bytes']` as a classmethod descriptor, `int.from_bytes`
   and `int.__new__` as builtin methods, and executable unbound descriptor calls
   for the covered list and int methods.
+- The bundled `types` module also includes
+  `cpython_types_dunder_get_signature_subset`, covering CPython
+  `TypesTests::test_dunder_get_signature` for public `__get__`
+  method-wrapper exposure on `object.__init__`, `str.join`, and
+  `int.__dict__['from_bytes']`, plus `inspect.signature(...)` returning
+  `(instance, owner, /)`. Direct output parity is guarded by
+  `cpython_types_dunder_get_signature_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_slot_and_method_wrapper_types_subset`, covering CPython
   `TypesTests::test_slot_wrapper_types` and `::test_method_wrapper_types` for

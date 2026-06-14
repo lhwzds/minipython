@@ -10243,6 +10243,21 @@ print(items)"#,
 }
 
 #[test]
+fn cpython_types_dunder_get_signature_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests::test_dunder_get_signature",
+        name: "types-dunder-get-signature",
+        source: r#"import inspect, types
+for desc in [object.__init__, str.join, int.__dict__['from_bytes']]:
+    print(type(desc).__name__)
+    print(isinstance(desc.__get__, types.MethodWrapperType))
+    print(isinstance(desc.__get__, types.BuiltinMethodType))
+    print(type(desc.__get__).__name__)
+    print(str(inspect.signature(desc.__get__)))"#,
+    });
+}
+
+#[test]
 fn cpython_types_slot_and_method_wrapper_types_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests::test_slot_wrapper_types and ::test_method_wrapper_types",
