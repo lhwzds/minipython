@@ -542,8 +542,8 @@ Recent runtime migration notes:
   `sys.flags.debug`, `sys.flags.dont_write_bytecode`, `sys.flags.dev_mode`,
   `sys.flags.ignore_environment`, `sys.flags.inspect`,
   `sys.flags.interactive`, `sys.flags.no_user_site`, `sys.flags.no_site`,
-  `sys.flags.isolated`, `sys.flags.optimize`,
-  `sys.flags.utf8_mode`,
+  `sys.flags.isolated`, `sys.flags.optimize`, `sys.flags.quiet`,
+  `sys.flags.utf8_mode`, `sys.flags.verbose`,
   `sys.hexversion`, `sys.warnoptions`,
   `sys.getdefaultencoding()`, `sys.version_info`, `sys.implementation`, and the
   sandbox runtime-state query

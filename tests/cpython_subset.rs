@@ -5486,7 +5486,9 @@ print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags
 print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site)
 print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated)
 print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimize)
+print('sys-flags-quiet', type(sys.flags.quiet).__name__, sys.flags.quiet)
 print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode)
+print('sys-flags-verbose', type(sys.flags.verbose).__name__, sys.flags.verbose)
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
@@ -5539,7 +5541,9 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-no-site int 0",
             "sys-flags-isolated int 0",
             "sys-flags-optimize int 0",
+            "sys-flags-quiet int 0",
             "sys-flags-utf8-mode int 0",
+            "sys-flags-verbose int 0",
             "sys-byteorder str True",
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",
