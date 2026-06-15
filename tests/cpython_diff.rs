@@ -4297,6 +4297,70 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_collections_deque_mutating_eq_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_deque.py mutation during comparison public subset",
+        name: "collections-deque-mutating-eq",
+        source: r#"from collections import deque
+class Clears:
+    def __eq__(self, other):
+        target.clear()
+        print("clear-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: 1 in target),
+    ("dunder", lambda: target.__contains__(1)),
+    ("count", lambda: target.count(1)),
+    ("index", lambda: target.index(1)),
+    ("remove", lambda: target.remove(1)),
+]:
+    target = deque([Clears(), 1])
+    try:
+        result = call()
+        print("clear", label, result, len(target))
+    except Exception as error:
+        print("clear", label, type(error).__name__, str(error), len(target))
+class Appends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("append-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+    ("index-stop", lambda: target.index("needle", 0, 1)),
+]:
+    target = deque([Appends()])
+    try:
+        result = call()
+        print("append", label, result, len(target), target[-1])
+    except Exception as error:
+        print("append", label, type(error).__name__, str(error), len(target), target[-1] if target else "empty")
+class TrueClears:
+    def __eq__(self, other):
+        target.clear()
+        print("true-clear-eq", len(target))
+        return True
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+]:
+    target = deque([TrueClears()])
+    try:
+        result = call()
+        print("true-clear", label, result, len(target))
+    except Exception as error:
+        print("true-clear", label, type(error).__name__, str(error), len(target))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_core_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py core collections.abc public runtime subset",

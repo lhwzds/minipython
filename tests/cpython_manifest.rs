@@ -10697,6 +10697,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_deque_public_surface_subset",
+            "cpython_collections_deque_mutating_eq_subset",
             "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
             "cpython_collections_chainmap_iter_does_not_call_getitem_subset",
             "cpython_collections_chainmap_new_child_custom_mapping_subset",
@@ -10770,8 +10771,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     assert!(
         row.diff_evidence
-            .contains("cpython_collections_deque_public_surface_diff_subset"),
-        "collections sandbox manifest must cite CPython diff evidence for deque public surface"
+            .contains("cpython_collections_deque_public_surface_diff_subset")
+            && row
+                .diff_evidence
+                .contains("cpython_collections_deque_mutating_eq_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for deque public surface and mutating-eq behavior"
     );
     let deque_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -10944,6 +10948,71 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             assert!(
                 document.contains(required),
                 "deque error-message docs must contain `{required}`"
+            );
+        }
+    }
+    let deque_mutating_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_deque_mutating_eq_diff_subset",
+    );
+    let deque_mutating_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_deque_mutating_eq_subset",
+    );
+    for required in [
+        "target.clear()",
+        "target.append(\"needle\")",
+        "target.__contains__(\"needle\")",
+        "target.count(\"needle\")",
+        "target.index(\"needle\", 0, 1)",
+        "target.remove(\"needle\")",
+        "class TrueClears:",
+    ] {
+        assert!(
+            deque_mutating_diff_body.contains(required)
+                && deque_mutating_subset_body.contains(required),
+            "deque mutating-eq diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"clear contains RuntimeError deque mutated during iteration 0\"",
+        "\"clear remove IndexError deque mutated during remove(). 0\"",
+        "\"append index-stop RuntimeError deque mutated during iteration 2 needle\"",
+        "\"true-clear contains True 0\"",
+        "\"true-clear count RuntimeError deque mutated during iteration 0\"",
+        "\"true-clear index 0 0\"",
+        "\"true-clear remove IndexError deque mutated during remove(). 0\"",
+    ] {
+        assert!(
+            deque_mutating_subset_body.contains(required),
+            "deque mutating-eq subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn deque_search_snapshot(",
+        "fn deque_state_changed(",
+        "fn deque_contains_rich(",
+        "fn deque_count_rich(",
+        "fn deque_find_rich(",
+        "fn deque_remove_rich(",
+        "deque mutated during iteration",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "deque mutating-eq VM implementation must contain `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_deque_mutating_eq_subset",
+            "cpython_collections_deque_mutating_eq_diff_subset",
+            "deque mutation during comparison",
+            "mutated-iteration",
+            "`IndexError` classification",
+        ] {
+            assert!(
+                document.contains(required),
+                "deque mutating-eq docs must contain `{required}`"
             );
         }
     }

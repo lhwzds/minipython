@@ -49412,6 +49412,103 @@ for label, callback in [
     );
 }
 
+#[test]
+fn cpython_collections_deque_mutating_eq_subset() {
+    assert_output_with_stack(
+        r#"from collections import deque
+class Clears:
+    def __eq__(self, other):
+        target.clear()
+        print("clear-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: 1 in target),
+    ("dunder", lambda: target.__contains__(1)),
+    ("count", lambda: target.count(1)),
+    ("index", lambda: target.index(1)),
+    ("remove", lambda: target.remove(1)),
+]:
+    target = deque([Clears(), 1])
+    try:
+        result = call()
+        print("clear", label, result, len(target))
+    except Exception as error:
+        print("clear", label, type(error).__name__, str(error), len(target))
+class Appends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("append-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+    ("index-stop", lambda: target.index("needle", 0, 1)),
+]:
+    target = deque([Appends()])
+    try:
+        result = call()
+        print("append", label, result, len(target), target[-1])
+    except Exception as error:
+        print("append", label, type(error).__name__, str(error), len(target), target[-1] if target else "empty")
+class TrueClears:
+    def __eq__(self, other):
+        target.clear()
+        print("true-clear-eq", len(target))
+        return True
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+]:
+    target = deque([TrueClears()])
+    try:
+        result = call()
+        print("true-clear", label, result, len(target))
+    except Exception as error:
+        print("true-clear", label, type(error).__name__, str(error), len(target))"#,
+        &[
+            "clear-eq 0",
+            "clear contains RuntimeError deque mutated during iteration 0",
+            "clear-eq 0",
+            "clear dunder RuntimeError deque mutated during iteration 0",
+            "clear-eq 0",
+            "clear count RuntimeError deque mutated during iteration 0",
+            "clear-eq 0",
+            "clear index RuntimeError deque mutated during iteration 0",
+            "clear-eq 0",
+            "clear remove IndexError deque mutated during remove(). 0",
+            "append-eq 2",
+            "append contains RuntimeError deque mutated during iteration 2 needle",
+            "append-eq 2",
+            "append dunder RuntimeError deque mutated during iteration 2 needle",
+            "append-eq 2",
+            "append count RuntimeError deque mutated during iteration 2 needle",
+            "append-eq 2",
+            "append index RuntimeError deque mutated during iteration 2 needle",
+            "append-eq 2",
+            "append remove IndexError deque mutated during remove(). 2 needle",
+            "append-eq 2",
+            "append index-stop RuntimeError deque mutated during iteration 2 needle",
+            "true-clear-eq 0",
+            "true-clear contains True 0",
+            "true-clear-eq 0",
+            "true-clear dunder True 0",
+            "true-clear-eq 0",
+            "true-clear count RuntimeError deque mutated during iteration 0",
+            "true-clear-eq 0",
+            "true-clear index 0 0",
+            "true-clear-eq 0",
+            "true-clear remove IndexError deque mutated during remove(). 0",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public Counter coverage.
 #[test]
 fn cpython_collections_counter_public_subset() {

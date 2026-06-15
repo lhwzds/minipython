@@ -21519,15 +21519,7 @@ impl Vm {
 
         match haystack {
             Value::List(items) => self.list_contains_rich(&items, &needle),
-            Value::Deque { data, .. } => {
-                let items = data.borrow().clone();
-                for item in items {
-                    if self.equal_values(item, needle.clone())? {
-                        return Ok(true);
-                    }
-                }
-                Ok(false)
-            }
+            Value::Deque { data, .. } => self.deque_contains_rich(&data, &needle),
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
             Value::OrderedDict(entries) => contains_value(needle, Value::Dict(entries)),
             Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
@@ -30855,6 +30847,94 @@ impl Vm {
         self.call_list_method(&list_method, list_args, keywords)
     }
 
+    fn deque_search_snapshot(data: &ListRef) -> (Vec<Value>, Vec<u64>) {
+        let items = data.borrow();
+        (
+            items.clone(),
+            items.iter().map(|item| identity_bits(item)).collect(),
+        )
+    }
+
+    fn deque_state_changed(data: &ListRef, signature: &[u64]) -> bool {
+        let items = data.borrow();
+        items.len() != signature.len()
+            || items
+                .iter()
+                .zip(signature.iter())
+                .any(|(item, identity)| identity_bits(item) != *identity)
+    }
+
+    fn deque_mutated_iteration_error(method: &str) -> String {
+        if method == "remove" {
+            "IndexError: deque mutated during remove().".to_string()
+        } else {
+            "RuntimeError: deque mutated during iteration".to_string()
+        }
+    }
+
+    fn deque_contains_rich(&mut self, data: &ListRef, needle: &Value) -> Result<bool, String> {
+        let (items, signature) = Self::deque_search_snapshot(data);
+        for item in items {
+            if self.equal_values(item, needle.clone())? {
+                return Ok(true);
+            }
+            if Self::deque_state_changed(data, &signature) {
+                return Err(Self::deque_mutated_iteration_error("__contains__"));
+            }
+        }
+        Ok(false)
+    }
+
+    fn deque_count_rich(&mut self, data: &ListRef, needle: &Value) -> Result<i64, String> {
+        let (items, signature) = Self::deque_search_snapshot(data);
+        let mut count = 0_i64;
+        for item in items {
+            if self.equal_values(item, needle.clone())? {
+                count = count
+                    .checked_add(1)
+                    .ok_or_else(|| "count() result is too large".to_string())?;
+            }
+            if Self::deque_state_changed(data, &signature) {
+                return Err(Self::deque_mutated_iteration_error("count"));
+            }
+        }
+        Ok(count)
+    }
+
+    fn deque_find_rich(
+        &mut self,
+        data: &ListRef,
+        needle: &Value,
+        start: usize,
+        stop: usize,
+    ) -> Result<Option<usize>, String> {
+        let (items, signature) = Self::deque_search_snapshot(data);
+        for (offset, item) in items[start..stop].iter().cloned().enumerate() {
+            if self.equal_values(item, needle.clone())? {
+                return Ok(Some(start + offset));
+            }
+            if Self::deque_state_changed(data, &signature) {
+                return Err(Self::deque_mutated_iteration_error("index"));
+            }
+        }
+        Ok(None)
+    }
+
+    fn deque_remove_rich(&mut self, data: &ListRef, needle: &Value) -> Result<Value, String> {
+        let (items, signature) = Self::deque_search_snapshot(data);
+        for (index, item) in items.iter().cloned().enumerate() {
+            let matched = self.equal_values(item, needle.clone())?;
+            if Self::deque_state_changed(data, &signature) {
+                return Err(Self::deque_mutated_iteration_error("remove"));
+            }
+            if matched {
+                data.borrow_mut().remove(index);
+                return Ok(Value::None);
+            }
+        }
+        Err("ValueError: deque.remove(x): x not in deque".to_string())
+    }
+
     fn call_deque_method(
         &mut self,
         name: &str,
@@ -31081,16 +31161,7 @@ impl Vm {
                 let [needle] = rest else {
                     return Err(deque_exact_one_arg_error("count", method_arg_count(&args)));
                 };
-                let items = data.borrow().clone();
-                let mut count = 0_i64;
-                for item in items {
-                    if self.equal_values(item, needle.clone())? {
-                        count = count
-                            .checked_add(1)
-                            .ok_or_else(|| "count() result is too large".to_string())?;
-                    }
-                }
-                Ok(Value::Number(count))
+                Ok(Value::Number(self.deque_count_rich(data, needle)?))
             }
             "index" => {
                 if rest.is_empty() {
@@ -31107,10 +31178,8 @@ impl Vm {
                         method_arg_count(&args),
                     ));
                 }
-                let needle = rest[0].clone();
-                let items = data.borrow().clone();
-                let len =
-                    i64::try_from(items.len()).map_err(|_| "deque is too large".to_string())?;
+                let len = i64::try_from(data.borrow().len())
+                    .map_err(|_| "deque is too large".to_string())?;
                 let start = match rest.get(1) {
                     Some(value) => self.index_i64(value.clone(), "deque index")?,
                     None => 0,
@@ -31125,14 +31194,12 @@ impl Vm {
                     usize::try_from(start).map_err(|_| "deque index out of range".to_string())?;
                 let stop =
                     usize::try_from(stop).map_err(|_| "deque index out of range".to_string())?;
-                for (offset, item) in items[start..stop].iter().enumerate() {
-                    if self.equal_values(item.clone(), needle.clone())? {
-                        return i64::try_from(start + offset)
-                            .map(Value::Number)
-                            .map_err(|_| "deque index out of range".to_string());
-                    }
+                match self.deque_find_rich(data, &rest[0], start, stop)? {
+                    Some(index) => i64::try_from(index)
+                        .map(Value::Number)
+                        .map_err(|_| "deque index out of range".to_string()),
+                    None => Err(format!("ValueError: {} is not in deque", rest[0])),
                 }
-                Err(format!("ValueError: {needle} is not in deque"))
             }
             "insert" => {
                 let [index, value] = rest else {
@@ -31159,14 +31226,7 @@ impl Vm {
                 let [needle] = rest else {
                     return Err(deque_exact_one_arg_error("remove", method_arg_count(&args)));
                 };
-                let items = data.borrow().clone();
-                for (index, item) in items.iter().enumerate() {
-                    if self.equal_values(item.clone(), needle.clone())? {
-                        data.borrow_mut().remove(index);
-                        return Ok(Value::None);
-                    }
-                }
-                Err("ValueError: deque.remove(x): x not in deque".to_string())
+                self.deque_remove_rich(data, needle)
             }
             "__contains__" => {
                 let [needle] = rest else {
@@ -31175,13 +31235,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let items = data.borrow().clone();
-                for item in items {
-                    if self.equal_values(item, needle.clone())? {
-                        return Ok(Value::Bool(true));
-                    }
-                }
-                Ok(Value::Bool(false))
+                Ok(Value::Bool(self.deque_contains_rich(data, needle)?))
             }
             "__copy__" => {
                 if !rest.is_empty() {

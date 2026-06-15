@@ -118,6 +118,12 @@ Recent runtime migration notes:
   deque public method arity TypeError text and
   no-argument deque method TypeError text for the supported pure-memory
   methods, without expanding into full deque construction/mutation APIs.
+- `cpython_collections_deque_mutating_eq_subset`, backed by
+  `cpython_collections_deque_mutating_eq_diff_subset`, now pins deque mutation during comparison
+  for membership, `__contains__`, `count`, `index`, and
+  `remove`: mutation after a non-match raises CPython's public mutated-iteration
+  errors, true-match `contains` / `index` returns before the mutation check, and
+  `remove` keeps CPython's `IndexError` classification.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; adjacent mixed bytes/non-bytes
   literal rejection now has direct CPython rejection parity evidence in
