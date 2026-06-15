@@ -60399,41 +60399,41 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
             .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string());
     }
     if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) {
-        return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Little);
+        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Little);
     }
     if bytes.starts_with(&[0x00, 0x00, 0xfe, 0xff]) {
-        return json_decode_utf32_bytes(&bytes[4..], Utf16Endian::Big);
+        return json_decode_utf32_bytes(&bytes[4..], TextEndian::Big);
     }
     if bytes.starts_with(&[0xff, 0xfe]) || bytes.starts_with(&[0xfe, 0xff]) {
         return decode_utf16_bytes(bytes, None, CodecErrorMode::Strict);
     }
     if bytes.len() >= 4 {
         if bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
-            return json_decode_utf32_bytes(bytes, Utf16Endian::Big);
+            return json_decode_utf32_bytes(bytes, TextEndian::Big);
         }
         if bytes[1] == 0 && bytes[2] == 0 && bytes[3] == 0 {
-            return json_decode_utf32_bytes(bytes, Utf16Endian::Little);
+            return json_decode_utf32_bytes(bytes, TextEndian::Little);
         }
         if bytes[0] == 0 && bytes[2] == 0 {
-            return decode_utf16_bytes(bytes, Some(Utf16Endian::Big), CodecErrorMode::Strict);
+            return decode_utf16_bytes(bytes, Some(TextEndian::Big), CodecErrorMode::Strict);
         }
         if bytes[1] == 0 && bytes[3] == 0 {
-            return decode_utf16_bytes(bytes, Some(Utf16Endian::Little), CodecErrorMode::Strict);
+            return decode_utf16_bytes(bytes, Some(TextEndian::Little), CodecErrorMode::Strict);
         }
     }
     String::from_utf8(bytes.to_vec())
         .map_err(|_| "UnicodeDecodeError: 'utf-8' codec can't decode bytes".to_string())
 }
 
-fn json_decode_utf32_bytes(bytes: &[u8], endian: Utf16Endian) -> Result<String, String> {
+fn json_decode_utf32_bytes(bytes: &[u8], endian: TextEndian) -> Result<String, String> {
     if bytes.len() % 4 != 0 {
         return Err("UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string());
     }
     let mut output = String::new();
     for chunk in bytes.chunks_exact(4) {
         let codepoint = match endian {
-            Utf16Endian::Little => u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
-            Utf16Endian::Big => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            TextEndian::Little => u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
+            TextEndian::Big => u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]),
         };
         let ch = char::from_u32(codepoint)
             .ok_or_else(|| "UnicodeDecodeError: 'utf-32' codec can't decode bytes".to_string())?;
@@ -66462,6 +66462,9 @@ enum TextEncoding {
     Utf16,
     Utf16Le,
     Utf16Be,
+    Utf32,
+    Utf32Le,
+    Utf32Be,
     EncodingRs {
         encoding: &'static Encoding,
         name: String,
@@ -66476,7 +66479,7 @@ enum CodecErrorMode {
 }
 
 #[derive(Clone, Copy)]
-enum Utf16Endian {
+enum TextEndian {
     Little,
     Big,
 }
@@ -67029,6 +67032,9 @@ fn lookup_text_encoding(name: &str) -> Result<TextEncoding, String> {
         "utf16" => Ok(TextEncoding::Utf16),
         "utf16le" => Ok(TextEncoding::Utf16Le),
         "utf16be" => Ok(TextEncoding::Utf16Be),
+        "utf32" => Ok(TextEncoding::Utf32),
+        "utf32le" => Ok(TextEncoding::Utf32Le),
+        "utf32be" => Ok(TextEncoding::Utf32Be),
         _ => Encoding::for_label(name.as_bytes())
             .map(|encoding| TextEncoding::EncodingRs {
                 encoding,
@@ -67056,9 +67062,12 @@ fn encode_text(
         TextEncoding::Utf8 => Ok(text.as_bytes().to_vec()),
         TextEncoding::Ascii => encode_single_byte_text(text, 0x7f, "ascii", errors),
         TextEncoding::Latin1 => encode_single_byte_text(text, 0xff, "latin-1", errors),
-        TextEncoding::Utf16 => Ok(encode_utf16_text(text, Utf16Endian::Little, true)),
-        TextEncoding::Utf16Le => Ok(encode_utf16_text(text, Utf16Endian::Little, false)),
-        TextEncoding::Utf16Be => Ok(encode_utf16_text(text, Utf16Endian::Big, false)),
+        TextEncoding::Utf16 => Ok(encode_utf16_text(text, TextEndian::Little, true)),
+        TextEncoding::Utf16Le => Ok(encode_utf16_text(text, TextEndian::Little, false)),
+        TextEncoding::Utf16Be => Ok(encode_utf16_text(text, TextEndian::Big, false)),
+        TextEncoding::Utf32 => Ok(encode_utf32_text(text, TextEndian::Little, true)),
+        TextEncoding::Utf32Le => Ok(encode_utf32_text(text, TextEndian::Little, false)),
+        TextEncoding::Utf32Be => Ok(encode_utf32_text(text, TextEndian::Big, false)),
         TextEncoding::EncodingRs { encoding, name } => {
             encode_encoding_rs_text(text, encoding, &name, errors)
         }
@@ -67092,17 +67101,33 @@ fn encode_single_byte_text(
     Ok(bytes)
 }
 
-fn encode_utf16_text(text: &str, endian: Utf16Endian, with_bom: bool) -> Vec<u8> {
+fn encode_utf16_text(text: &str, endian: TextEndian, with_bom: bool) -> Vec<u8> {
     let mut bytes = Vec::new();
     if with_bom {
         bytes.extend([0xff, 0xfe]);
     }
     for unit in text.encode_utf16() {
         let pair = match endian {
-            Utf16Endian::Little => unit.to_le_bytes(),
-            Utf16Endian::Big => unit.to_be_bytes(),
+            TextEndian::Little => unit.to_le_bytes(),
+            TextEndian::Big => unit.to_be_bytes(),
         };
         bytes.extend(pair);
+    }
+    bytes
+}
+
+fn encode_utf32_text(text: &str, endian: TextEndian, with_bom: bool) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    if with_bom {
+        bytes.extend([0xff, 0xfe, 0x00, 0x00]);
+    }
+    for ch in text.chars() {
+        let codepoint = ch as u32;
+        let piece = match endian {
+            TextEndian::Little => codepoint.to_le_bytes(),
+            TextEndian::Big => codepoint.to_be_bytes(),
+        };
+        bytes.extend(piece);
     }
     bytes
 }
@@ -67173,8 +67198,11 @@ fn decode_bytes(
         TextEncoding::Ascii => decode_ascii_bytes(bytes, errors),
         TextEncoding::Latin1 => Ok(bytes.iter().map(|byte| *byte as char).collect()),
         TextEncoding::Utf16 => decode_utf16_bytes(bytes, None, errors),
-        TextEncoding::Utf16Le => decode_utf16_bytes(bytes, Some(Utf16Endian::Little), errors),
-        TextEncoding::Utf16Be => decode_utf16_bytes(bytes, Some(Utf16Endian::Big), errors),
+        TextEncoding::Utf16Le => decode_utf16_bytes(bytes, Some(TextEndian::Little), errors),
+        TextEncoding::Utf16Be => decode_utf16_bytes(bytes, Some(TextEndian::Big), errors),
+        TextEncoding::Utf32 => decode_utf32_bytes(bytes, None, errors),
+        TextEncoding::Utf32Le => decode_utf32_bytes(bytes, Some(TextEndian::Little), errors),
+        TextEncoding::Utf32Be => decode_utf32_bytes(bytes, Some(TextEndian::Big), errors),
         TextEncoding::EncodingRs { encoding, name } => {
             decode_encoding_rs_bytes(bytes, encoding, &name, errors)
         }
@@ -67237,22 +67265,22 @@ fn decode_ascii_bytes(bytes: &[u8], errors: CodecErrorMode) -> Result<String, St
 
 fn decode_utf16_bytes(
     bytes: &[u8],
-    forced_endian: Option<Utf16Endian>,
+    forced_endian: Option<TextEndian>,
     errors: CodecErrorMode,
 ) -> Result<String, String> {
     let (endian, start) = match forced_endian {
         Some(endian) => (endian, 0),
-        None if bytes.starts_with(&[0xff, 0xfe]) => (Utf16Endian::Little, 2),
-        None if bytes.starts_with(&[0xfe, 0xff]) => (Utf16Endian::Big, 2),
-        None => (Utf16Endian::Little, 0),
+        None if bytes.starts_with(&[0xff, 0xfe]) => (TextEndian::Little, 2),
+        None if bytes.starts_with(&[0xfe, 0xff]) => (TextEndian::Big, 2),
+        None => (TextEndian::Little, 0),
     };
 
     let mut units = Vec::new();
     let mut index = start;
     while index + 1 < bytes.len() {
         let unit = match endian {
-            Utf16Endian::Little => u16::from_le_bytes([bytes[index], bytes[index + 1]]),
-            Utf16Endian::Big => u16::from_be_bytes([bytes[index], bytes[index + 1]]),
+            TextEndian::Little => u16::from_le_bytes([bytes[index], bytes[index + 1]]),
+            TextEndian::Big => u16::from_be_bytes([bytes[index], bytes[index + 1]]),
         };
         units.push(unit);
         index += 2;
@@ -67284,6 +67312,64 @@ fn decode_utf16_bytes(
             },
         }
     }
+    Ok(output)
+}
+
+fn decode_utf32_bytes(
+    bytes: &[u8],
+    forced_endian: Option<TextEndian>,
+    errors: CodecErrorMode,
+) -> Result<String, String> {
+    let (endian, start) = match forced_endian {
+        Some(endian) => (endian, 0),
+        None if bytes.starts_with(&[0xff, 0xfe, 0x00, 0x00]) => (TextEndian::Little, 4),
+        None if bytes.starts_with(&[0x00, 0x00, 0xfe, 0xff]) => (TextEndian::Big, 4),
+        None => (TextEndian::Little, 0),
+    };
+
+    let mut output = String::new();
+    let mut index = start;
+    while index + 3 < bytes.len() {
+        let codepoint = match endian {
+            TextEndian::Little => u32::from_le_bytes([
+                bytes[index],
+                bytes[index + 1],
+                bytes[index + 2],
+                bytes[index + 3],
+            ]),
+            TextEndian::Big => u32::from_be_bytes([
+                bytes[index],
+                bytes[index + 1],
+                bytes[index + 2],
+                bytes[index + 3],
+            ]),
+        };
+        match char::from_u32(codepoint) {
+            Some(ch) => output.push(ch),
+            None => match errors {
+                CodecErrorMode::Strict => {
+                    return Err(
+                        "UnicodeDecodeError: 'utf-32' codec can't decode code point".to_string()
+                    );
+                }
+                CodecErrorMode::Ignore => {}
+                CodecErrorMode::Replace => output.push('\u{fffd}'),
+            },
+        }
+        index += 4;
+    }
+    if index < bytes.len() {
+        match errors {
+            CodecErrorMode::Strict => {
+                return Err(
+                    "UnicodeDecodeError: 'utf-32' codec can't decode truncated data".to_string(),
+                );
+            }
+            CodecErrorMode::Ignore => {}
+            CodecErrorMode::Replace => output.push('\u{fffd}'),
+        }
+    }
+
     Ok(output)
 }
 

@@ -32083,6 +32083,17 @@ fn cpython_string_bytes_codec_subset() {
         ],
     );
     assert_output(
+        "print('hi'.encode('utf-32') == b'\\xff\\xfe\\000\\000h\\000\\000\\000i\\000\\000\\000')\nprint('\\U0001d120'.encode('utf-32-le') == b' \\xd1\\001\\000', '\\U0001d120'.encode('utf-32-be') == b'\\000\\001\\xd1 ')\nprint(b'\\xff\\xfe\\000\\000h\\000\\000\\000i\\000\\000\\000'.decode('utf-32'), b' \\xd1\\001\\000'.decode('utf-32-le'), b'\\000\\001\\xd1 '.decode('utf-32-be'))\nfor expr in [lambda: b'{\\000'.decode('utf-32-le'), lambda: b'\\xff\\xff\\x11\\000'.decode('utf-32-le')]:\n    try:\n        expr()\n    except UnicodeDecodeError as error:\n        print(error.__class__.__name__)\nprint(repr(b'{\\000'.decode('utf-32-le', 'ignore')), repr(b'{\\000'.decode('utf-32-le', 'replace')))",
+        &[
+            "True",
+            "True True",
+            "hi 𝄠 𝄠",
+            "UnicodeDecodeError",
+            "UnicodeDecodeError",
+            "'' '�'",
+        ],
+    );
+    assert_output(
         "print('Andr\\x82 x'.encode('ascii', 'ignore'))\nprint('Andr\\x82 x'.encode('ascii', 'replace'))\nprint('Andr\\x82 x'.encode(encoding='ascii', errors='replace'))",
         &["b'Andr x'", "b'Andr? x'", "b'Andr? x'"],
     );
@@ -32146,10 +32157,11 @@ fn cpython_string_bytes_codec_subset() {
         ],
     );
     assert_output(
-        "sample = 'Hello world\\n\\u1234\\u5678\\u9abc'\nfor ctor in [bytes, bytearray]:\n    for enc in ['utf-8', 'utf-16']:\n        b = ctor(sample, enc)\n        print(ctor.__name__, enc, b == ctor(sample.encode(enc)), b.decode(enc) == sample, len(b))\n    try:\n        ctor(sample, 'latin-1')\n    except UnicodeEncodeError as error:\n        print(ctor.__name__, 'latin-1-encode', error.__class__.__name__)\n    print(ctor.__name__, 'latin-1-ignore', ctor(sample, 'latin-1', 'ignore'))\n    sample2 = 'Hello world\\n\\x80\\x81\\xfe\\xff'\n    b = ctor(sample2, 'latin-1')\n    try:\n        b.decode('utf-8')\n    except UnicodeDecodeError as error:\n        print(ctor.__name__, 'utf8-decode', error.__class__.__name__)\n    print(ctor.__name__, 'utf8-ignore', b.decode('utf-8', 'ignore'))\n    print(ctor.__name__, 'utf8-ignore-kw', b.decode(errors='ignore', encoding='utf-8'))\n    print(ctor.__name__, 'default-decode', ctor(b'\\xe2\\x98\\x83').decode())",
+        "sample = 'Hello world\\n\\u1234\\u5678\\u9abc'\nfor ctor in [bytes, bytearray]:\n    for enc in ['utf-8', 'utf-16', 'utf-32']:\n        b = ctor(sample, enc)\n        print(ctor.__name__, enc, b == ctor(sample.encode(enc)), b.decode(enc) == sample, len(b))\n    try:\n        ctor(sample, 'latin-1')\n    except UnicodeEncodeError as error:\n        print(ctor.__name__, 'latin-1-encode', error.__class__.__name__)\n    print(ctor.__name__, 'latin-1-ignore', ctor(sample, 'latin-1', 'ignore'))\n    sample2 = 'Hello world\\n\\x80\\x81\\xfe\\xff'\n    b = ctor(sample2, 'latin-1')\n    try:\n        b.decode('utf-8')\n    except UnicodeDecodeError as error:\n        print(ctor.__name__, 'utf8-decode', error.__class__.__name__)\n    print(ctor.__name__, 'utf8-ignore', b.decode('utf-8', 'ignore'))\n    print(ctor.__name__, 'utf8-ignore-kw', b.decode(errors='ignore', encoding='utf-8'))\n    print(ctor.__name__, 'default-decode', ctor(b'\\xe2\\x98\\x83').decode())",
         &[
             "bytes utf-8 True True 21",
             "bytes utf-16 True True 32",
+            "bytes utf-32 True True 64",
             "bytes latin-1-encode UnicodeEncodeError",
             "bytes latin-1-ignore b'Hello world\\n'",
             "bytes utf8-decode UnicodeDecodeError",
@@ -32158,6 +32170,7 @@ fn cpython_string_bytes_codec_subset() {
             "bytes default-decode ☃",
             "bytearray utf-8 True True 21",
             "bytearray utf-16 True True 32",
+            "bytearray utf-32 True True 64",
             "bytearray latin-1-encode UnicodeEncodeError",
             "bytearray latin-1-ignore bytearray(b'Hello world\\n')",
             "bytearray utf8-decode UnicodeDecodeError",

@@ -6071,11 +6071,12 @@ Completed in the string/bytes codec method pass:
   `Lib/test/test_str.py::test_codecs` and
   `Lib/test/test_bytes.py::BaseBytesTest::test_encoding` / `::test_decode`.
 - Added runtime support for first-pass `str.encode()` and `bytes.decode()`,
-  including default UTF-8, ASCII, Latin-1, UTF-16 little/big-endian spellings,
-  keyword `encoding=` / `errors=`, and `strict` / `ignore` / `replace`
+  including default UTF-8, ASCII, Latin-1, UTF-16 and UTF-32
+  little/big-endian spellings, keyword `encoding=` / `errors=`, and `strict` /
+  `ignore` / `replace`
   behavior for the supported codecs.
 - Extended the same subset with method-level BaseBytesTest codec cases for
-  bytes and bytearray text constructors under UTF-8/UTF-16, Latin-1
+  bytes and bytearray text constructors under UTF-8/UTF-16/UTF-32, Latin-1
   strict/ignore encode behavior, UTF-8 strict/ignore decode behavior through
   positional and keyword arguments, and default UTF-8 decode.
 - Extended the matching CPython differential case with direct

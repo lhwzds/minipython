@@ -17987,6 +17987,10 @@ fn cpython_string_bytes_codec_evidence_covers_str_subclass_args() {
             "encode(S('latin-1'))",
             "S('ignore')",
             "decode(S('latin-1'))",
+            "encode('utf-32')",
+            "decode('utf-32')",
+            "utf-32-le",
+            "utf-32-be",
         ] {
             assert!(
                 document.contains(required),

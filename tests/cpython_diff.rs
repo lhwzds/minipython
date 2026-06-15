@@ -6788,6 +6788,15 @@ fn cpython_string_bytes_codec_diff_subset() {
 print('hello'.encode('utf-8'), '\u2603'.encode())
 print('caf\xe9'.encode('latin-1'))
 print('hi'.encode('utf-16-le') == b'h\000i\000', 'hi'.encode('utf-16-be') == b'\000h\000i')
+print('hi'.encode('utf-32') == b'\xff\xfe\000\000h\000\000\000i\000\000\000')
+print('\U0001d120'.encode('utf-32-le') == b' \xd1\001\000', '\U0001d120'.encode('utf-32-be') == b'\000\001\xd1 ')
+print(b'\xff\xfe\000\000h\000\000\000i\000\000\000'.decode('utf-32'), b' \xd1\001\000'.decode('utf-32-le'), b'\000\001\xd1 '.decode('utf-32-be'))
+for expr in [lambda: b'{\000'.decode('utf-32-le'), lambda: b'\xff\xff\x11\000'.decode('utf-32-le')]:
+    try:
+        expr()
+    except UnicodeDecodeError as error:
+        print(error.__class__.__name__)
+print(repr(b'{\000'.decode('utf-32-le', 'ignore')), repr(b'{\000'.decode('utf-32-le', 'replace')))
 print('Andr\x82 x'.encode('ascii', 'ignore'))
 print('Andr\x82 x'.encode('ascii', 'replace'))
 print('Andr\x82 x'.encode(encoding='ascii', errors='replace'))
@@ -6829,7 +6838,7 @@ for expr in [lambda: '\xe9'.encode('ascii'), lambda: '\u2603'.encode('latin-1'),
         print(error.__class__.__name__)
 sample = 'Hello world\n\u1234\u5678\u9abc'
 for ctor in [bytes, bytearray]:
-    for enc in ['utf-8', 'utf-16']:
+    for enc in ['utf-8', 'utf-16', 'utf-32']:
         b = ctor(sample, enc)
         print(ctor.__name__, enc, b == ctor(sample.encode(enc)), b.decode(enc) == sample, len(b))
     try:
