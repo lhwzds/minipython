@@ -179,6 +179,7 @@ Recent runtime migration notes:
   `cpython_system_exit_oserror_attributes_diff_subset`,
   `cpython_syntax_error_attributes_diff_subset`,
   `cpython_unicode_error_attributes_diff_subset`,
+  `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
@@ -320,9 +321,11 @@ Recent runtime migration notes:
   `cpython_collections_userdict_userlist_public_diff_subset`,
   `cpython_collections_userdict_public_methods_diff_subset`,
   `cpython_collections_userlist_public_methods_diff_subset`,
+  `cpython_collections_userlist_mutating_eq_diff_subset`,
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset`,
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `cpython_collections_deque_public_surface_diff_subset`,
+  `cpython_collections_deque_mutating_eq_diff_subset`,
   `cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset`,
   `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset`,
   `cpython_collections_chainmap_new_child_custom_mapping_diff_subset`,
@@ -907,6 +910,12 @@ Recent runtime migration notes:
   reverse `+`, `*`, reverse `*`, `+=`, and `*=`), plus class-level direct
   public method calls such as `UserList.append(obj, value)`, with direct output
   parity evidence.
+- `cpython_collections_userlist_mutating_eq_subset`, backed by
+  `cpython_collections_userlist_mutating_eq_diff_subset`, pins UserList mutation during comparison
+  for membership, `__contains__`, `count`, `index`, and `remove`: appending
+  during a false comparison is visible to the ongoing
+  search, clearing during a false comparison stops the search, and true matches
+  preserve CPython's public return values after the mutation.
 - The bundled `json` module includes `cpython_json_loads_dumps_diff_subset` /
   `cpython_json_loads_dumps_basic_diff_subset` /
   `cpython_json_loads_dumps_basic_subset`,
@@ -1330,8 +1339,9 @@ without adding general custom encoder/decoder class support.
   bool/int-subclass/`__index__` conversion, negative-domain errors, and
   catchable TypeError cases. The default diff covers the stable `math` module
   surface; `cpython_math_integer_alias_diff_subset` capability-gates direct
-  `math.integer` alias parity for newer CPython oracles while older system
-  oracles continue to rely on the local subset evidence.
+  `math.integer` alias parity for newer CPython oracles while
+  `cpython_math_integer_subset` keeps the local alias runtime evidence for older
+  system oracles.
 - The bundled `math` module also includes `cpython_math_pow_diff_subset` and
   `cpython_math_pow_subset`, covering CPython
   `test_math.py::MathTests::testPow` float-result power behavior, NaN/inf
@@ -1633,7 +1643,8 @@ without adding general custom encoder/decoder class support.
   and TypeError rejection for non-class registration/dispatch keys. The default
   diff covers the stable explicit-registration core; PEP 604 and
   `typing.Union` registration also has gated direct CPython evidence in
-  `cpython_functools_singledispatch_union_diff_subset`. Current strict
+  `cpython_functools_singledispatch_union_diff_subset` and local runtime
+  evidence in `cpython_functools_singledispatch_subset`. Current strict
   invalid-key rejection stays in the local subset because older system CPython
   oracles accept some of those boundary calls.
 - The bundled `functools` module also includes

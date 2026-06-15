@@ -21519,6 +21519,7 @@ impl Vm {
 
         match haystack {
             Value::List(items) => self.list_contains_rich(&items, &needle),
+            Value::UserList { data, .. } => self.list_contains_rich(&data, &needle),
             Value::Deque { data, .. } => self.deque_contains_rich(&data, &needle),
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
             Value::OrderedDict(entries) => contains_value(needle, Value::Dict(entries)),

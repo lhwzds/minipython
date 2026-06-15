@@ -48910,6 +48910,99 @@ fn cpython_collections_userlist_public_methods_subset() {
     );
 }
 
+// Pins CPython public UserList search behavior when element equality mutates
+// the underlying list data during comparison.
+#[test]
+fn cpython_collections_userlist_mutating_eq_subset() {
+    assert_output_with_stack(
+        r#"from collections import UserList
+def show(label, call):
+    try:
+        result = call()
+        print(label, result, len(target))
+    except Exception as error:
+        print(label, type(error).__name__, len(target))
+class Appends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("append-eq", len(target))
+        return False
+for label, call in [
+    ("append-in", lambda: "needle" in target),
+    ("append-dunder", lambda: target.__contains__("needle")),
+    ("append-count", lambda: target.count("needle")),
+    ("append-index", lambda: target.index("needle")),
+    ("append-remove", lambda: target.remove("needle")),
+    ("append-index-stop", lambda: target.index("needle", 0, 1)),
+]:
+    target = UserList([Appends()])
+    show(label, call)
+class Clears:
+    def __eq__(self, other):
+        target.clear()
+        print("clear-eq", len(target))
+        return False
+for label, call in [
+    ("clear-in", lambda: 1 in target),
+    ("clear-dunder", lambda: target.__contains__(1)),
+    ("clear-count", lambda: target.count(1)),
+    ("clear-index", lambda: target.index(1)),
+    ("clear-remove", lambda: target.remove(1)),
+]:
+    target = UserList([Clears(), 1])
+    show(label, call)
+class TrueClears:
+    def __eq__(self, other):
+        target.clear()
+        print("true-clear-eq", len(target))
+        return True
+for label, call in [
+    ("true-clear-in", lambda: "needle" in target),
+    ("true-clear-dunder", lambda: target.__contains__("needle")),
+    ("true-clear-count", lambda: target.count("needle")),
+    ("true-clear-index", lambda: target.index("needle")),
+    ("true-clear-remove", lambda: target.remove("needle")),
+]:
+    target = UserList([TrueClears()])
+    show(label, call)"#,
+        &[
+            "append-eq 2",
+            "append-in True 2",
+            "append-eq 2",
+            "append-dunder True 2",
+            "append-eq 2",
+            "append-count 1 2",
+            "append-eq 2",
+            "append-index 1 2",
+            "append-eq 2",
+            "append-remove None 1",
+            "append-eq 2",
+            "append-index-stop ValueError 2",
+            "clear-eq 0",
+            "clear-in False 0",
+            "clear-eq 0",
+            "clear-dunder False 0",
+            "clear-eq 0",
+            "clear-count 0 0",
+            "clear-eq 0",
+            "clear-index ValueError 0",
+            "clear-eq 0",
+            "clear-remove ValueError 0",
+            "true-clear-eq 0",
+            "true-clear-in True 0",
+            "true-clear-eq 0",
+            "true-clear-dunder True 0",
+            "true-clear-eq 0",
+            "true-clear-count 1 0",
+            "true-clear-eq 0",
+            "true-clear-index 0 0",
+            "true-clear-eq 0",
+            "true-clear-remove None 0",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestUserObjects
 // test_list_protocol and TestNamedTuple::test_tupleness. This pins the public
 // sequence comparison behavior shared by UserList/list and namedtuple/tuple.

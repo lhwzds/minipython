@@ -4791,6 +4791,12 @@ fn sandbox_stdlib_runtime_subset_candidates(evidence: &str) -> Vec<String> {
         candidates.push("cpython_array_one_byte_public_clear_subset".to_string());
         candidates.push("cpython_array_one_byte_public_mutation_methods_subset".to_string());
     }
+    if evidence == "cpython_math_integer_alias_diff_subset" {
+        candidates.push("cpython_math_integer_subset".to_string());
+    }
+    if evidence == "cpython_functools_singledispatch_union_diff_subset" {
+        candidates.push("cpython_functools_singledispatch_subset".to_string());
+    }
     if evidence == "cpython_types_simple_namespace_recursive_diff_subset" {
         candidates.push("cpython_types_simple_namespace_recursive_and_replace_subset".to_string());
     }
@@ -10694,6 +10700,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_userdict_userlist_public_subset",
             "cpython_collections_userdict_public_methods_subset",
             "cpython_collections_userlist_public_methods_subset",
+            "cpython_collections_userlist_mutating_eq_subset",
             "cpython_collections_userlist_namedtuple_sequence_order_subset",
             "cpython_collections_userstring_protocol_and_userdict_missing_subset",
             "cpython_collections_deque_public_surface_subset",
@@ -11227,6 +11234,67 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
                 && userlist_public_subset_body.contains(required),
             "UserList public diff and subset evidence must cover `{required}`"
         );
+    }
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_userlist_mutating_eq_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for UserList mutation during comparison"
+    );
+    let userlist_mutating_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_mutating_eq_diff_subset",
+    );
+    let userlist_mutating_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_mutating_eq_subset",
+    );
+    for required in [
+        "target.append(\"needle\")",
+        "target.clear()",
+        "\"needle\" in target",
+        "target.__contains__(\"needle\")",
+        "target.count(\"needle\")",
+        "target.index(\"needle\", 0, 1)",
+        "target.remove(\"needle\")",
+        "class TrueClears:",
+    ] {
+        assert!(
+            userlist_mutating_diff_body.contains(required)
+                && userlist_mutating_subset_body.contains(required),
+            "UserList mutating-eq diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"append-in True 2\"",
+        "\"append-index-stop ValueError 2\"",
+        "\"clear-in False 0\"",
+        "\"clear-remove ValueError 0\"",
+        "\"true-clear-in True 0\"",
+        "\"true-clear-count 1 0\"",
+        "\"true-clear-remove None 0\"",
+    ] {
+        assert!(
+            userlist_mutating_subset_body.contains(required),
+            "UserList mutating-eq subset output must pin CPython behavior `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE
+            .contains("Value::UserList { data, .. } => self.list_contains_rich(&data, &needle)"),
+        "UserList containment must use the same rich equality search path as list"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_userlist_mutating_eq_subset",
+            "cpython_collections_userlist_mutating_eq_diff_subset",
+            "UserList mutation during comparison",
+            "membership, `__contains__`, `count`, `index`, and `remove`",
+        ] {
+            assert!(
+                document.contains(required),
+                "UserList mutating-eq docs must contain `{required}`"
+            );
+        }
     }
 
     assert!(
