@@ -10613,6 +10613,34 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_copy_subclass_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subclass copying"
     );
+    let userlist_public_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userlist_public_methods_diff_subset",
+    );
+    let userlist_public_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userlist_public_methods_subset",
+    );
+    for required in [
+        "UserList([1, 2]) + [3]",
+        "[0] + UserList([1, 2])",
+        "UserList([1, 2]) + (3,)",
+        "('x',) + UserList([1, 2])",
+        "UserList([1]) * 3",
+        "3 * UserList([1])",
+        "seq += (3, 4)",
+        "seq *= 2",
+        "UserList.__add__(UserList([1]), [2])",
+        "UserList.__radd__(UserList([1]), [0])",
+        "UserList.__mul__(UserList([1]), 2)",
+        "UserList.__rmul__(UserList([1]), 2)",
+    ] {
+        assert!(
+            userlist_public_diff_body.contains(required)
+                && userlist_public_subset_body.contains(required),
+            "UserList public diff and subset evidence must cover `{required}`"
+        );
+    }
 
     assert!(
         LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")

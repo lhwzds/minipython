@@ -9923,7 +9923,8 @@ Completed in the CPython collections manifest expansion pass:
   `test_list_protocol` and `test_list_copy` for supported `UserList`
   behavior: `dir(UserList)` includes the current list protocol surface,
   construction from list/UserList inputs, `.data`, list mutation and iteration,
-  direct display/empty-format methods, recursive display, `.copy()`, and
+  direct display/empty-format methods, recursive display, sequence arithmetic
+  (`+`, reverse `+`, `*`, reverse `*`, `+=`, and `*=`), `.copy()`, and
   `copy.copy()` with shallow instance-attribute copying.
 - Completed the guarded `TestUserObjects` method audit: `test_list_protocol`,
   `test_dict_protocol`, `test_list_copy`, `test_dict_copy`,

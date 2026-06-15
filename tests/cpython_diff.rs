@@ -12746,7 +12746,22 @@ from_userlist = UserList(constructed)
 print(constructed.data, from_userlist.data, from_userlist.data is constructed.data)
 from_userlist[0] = 9
 del from_userlist[1]
-print(from_userlist.data, constructed.data)"#,
+print(from_userlist.data, constructed.data)
+print(UserList([1, 2]) + [3])
+print([0] + UserList([1, 2]))
+print(UserList([1, 2]) + (3,))
+print(('x',) + UserList([1, 2]))
+print(UserList([1]) * 3, 3 * UserList([1]))
+seq = UserList([1, 2])
+same = seq
+seq += (3, 4)
+print(seq, seq is same)
+seq *= 2
+print(seq, seq is same)
+print(UserList.__add__(UserList([1]), [2]))
+print(UserList.__radd__(UserList([1]), [0]))
+print(UserList.__mul__(UserList([1]), 2))
+print(UserList.__rmul__(UserList([1]), 2))"#,
     });
 }
 

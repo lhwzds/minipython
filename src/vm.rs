@@ -13776,6 +13776,12 @@ impl Vm {
             return Ok(left);
         }
 
+        if let Value::UserList { data, .. } = &left {
+            let values = self.collect_iterable_values(right)?;
+            data.borrow_mut().extend(values);
+            return Ok(left);
+        }
+
         in_place_add_values(left, right)
     }
 
@@ -13796,6 +13802,17 @@ impl Vm {
         if matches!(right, Value::Deque { .. }) {
             let count = self.deque_repeat_count_operator(left)?;
             return deque_repeat_value(&right, count);
+        }
+
+        if let Value::UserList { data, .. } = &left {
+            let count = self.index_integer_value(right)?;
+            let count = repeat_count_from_integer_value(count)?;
+            return user_list_value(repeat_values(data.borrow().clone(), count)?);
+        }
+        if let Value::UserList { data, .. } = &right {
+            let count = self.index_integer_value(left)?;
+            let count = repeat_count_from_integer_value(count)?;
+            return user_list_value(repeat_values(data.borrow().clone(), count)?);
         }
 
         multiply_values(left, right)
@@ -13823,6 +13840,14 @@ impl Vm {
         if let Value::Deque { data, maxlen } = &left {
             let count = self.deque_repeat_count_operator(right)?;
             deque_repeat_in_place(data, *maxlen, count)?;
+            return Ok(left);
+        }
+
+        if let Value::UserList { data, .. } = &left {
+            let count = self.index_integer_value(right)?;
+            let count = repeat_count_from_integer_value(count)?;
+            let repeated = repeat_values(data.borrow().clone(), count)?;
+            *data.borrow_mut() = repeated;
             return Ok(left);
         }
 
@@ -27369,6 +27394,17 @@ impl Vm {
             return deque_concat_value(&left, &right);
         }
 
+        if let Value::UserList { data, .. } = &left {
+            let mut items = data.borrow().clone();
+            items.extend(self.collect_iterable_values(right)?);
+            return user_list_value(items);
+        }
+        if let Value::UserList { data, .. } = &right {
+            let mut items = self.collect_iterable_values(left)?;
+            items.extend(data.borrow().iter().cloned());
+            return user_list_value(items);
+        }
+
         let left = int_subclass_integer(&left).unwrap_or(left);
         let right = int_subclass_integer(&right).unwrap_or(right);
         add_values(left, right)
@@ -30380,6 +30416,74 @@ impl Vm {
                 _ => unreachable!("method is filtered above"),
             };
             return Ok(Value::Bool(result));
+        }
+
+        if matches!(method, "__add__" | "__radd__") {
+            reject_method_keywords(name, &keywords)?;
+            let [other] = rest else {
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let mut items = if method == "__add__" {
+                data.borrow().clone()
+            } else {
+                self.collect_iterable_values(other.clone())?
+            };
+            if method == "__add__" {
+                items.extend(self.collect_iterable_values(other.clone())?);
+            } else {
+                items.extend(data.borrow().iter().cloned());
+            }
+            return user_list_value(items);
+        }
+
+        if method == "__iadd__" {
+            reject_method_keywords(name, &keywords)?;
+            let [other] = rest else {
+                return Err(format!(
+                    "__iadd__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let values = self.collect_iterable_values(other.clone())?;
+            data.borrow_mut().extend(values);
+            return Ok(Value::UserList {
+                data: data.clone(),
+                attrs: attrs.clone(),
+            });
+        }
+
+        if matches!(method, "__mul__" | "__rmul__") {
+            reject_method_keywords(name, &keywords)?;
+            let [count] = rest else {
+                return Err(format!(
+                    "{method}() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let count = self.index_integer_value(count.clone())?;
+            let count = repeat_count_from_integer_value(count)?;
+            return user_list_value(repeat_values(data.borrow().clone(), count)?);
+        }
+
+        if method == "__imul__" {
+            reject_method_keywords(name, &keywords)?;
+            let [count] = rest else {
+                return Err(format!(
+                    "__imul__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let count = self.index_integer_value(count.clone())?;
+            let count = repeat_count_from_integer_value(count)?;
+            let repeated = repeat_values(data.borrow().clone(), count)?;
+            *data.borrow_mut() = repeated;
+            return Ok(Value::UserList {
+                data: data.clone(),
+                attrs: attrs.clone(),
+            });
         }
 
         let mut list_args = Vec::with_capacity(args.len());
@@ -46825,14 +46929,46 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "upper",
             "zfill",
         ],
-        "list" | "UserList" => &[
+        "list" => &[
+            "__add__",
             "__contains__",
             "__delitem__",
             "__eq__",
             "__getitem__",
+            "__iadd__",
+            "__imul__",
             "__iter__",
             "__len__",
+            "__mul__",
             "__ne__",
+            "__rmul__",
+            "__setitem__",
+            "append",
+            "clear",
+            "copy",
+            "count",
+            "extend",
+            "index",
+            "insert",
+            "pop",
+            "remove",
+            "reverse",
+            "sort",
+        ],
+        "UserList" => &[
+            "__add__",
+            "__contains__",
+            "__delitem__",
+            "__eq__",
+            "__getitem__",
+            "__iadd__",
+            "__imul__",
+            "__iter__",
+            "__len__",
+            "__mul__",
+            "__ne__",
+            "__radd__",
+            "__rmul__",
             "__setitem__",
             "append",
             "clear",
@@ -53947,15 +54083,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }
             match name {
                 "append" | "extend" | "clear" | "copy" | "pop" | "reverse" | "sort" | "count"
-                | "index" | "insert" | "remove" | "__contains__" | "__delitem__" | "__eq__"
-                | "__format__" | "__getitem__" | "__iter__" | "__len__" | "__ne__" | "__repr__"
-                | "__setitem__" | "__str__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
-                    Ok(Value::BoundMethod {
-                        function: Box::new(Value::Builtin(format!("UserList.{name}"))),
-                        receiver: Box::new(Value::UserList { data, attrs }),
-                        identity: Rc::new(()),
-                    })
-                }
+                | "index" | "insert" | "remove" | "__add__" | "__contains__" | "__delitem__"
+                | "__eq__" | "__format__" | "__getitem__" | "__iadd__" | "__imul__"
+                | "__iter__" | "__len__" | "__lt__" | "__le__" | "__gt__" | "__ge__"
+                | "__mul__" | "__ne__" | "__repr__" | "__radd__" | "__rmul__" | "__setitem__"
+                | "__str__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("UserList.{name}"))),
+                    receiver: Box::new(Value::UserList { data, attrs }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!(
                     "AttributeError: UserList has no attribute '{name}'"
                 )),
@@ -55038,7 +55174,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if function_name == "UserList"
-                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+                && matches!(
+                    name,
+                    "__add__"
+                        | "__format__"
+                        | "__iadd__"
+                        | "__imul__"
+                        | "__mul__"
+                        | "__radd__"
+                        | "__repr__"
+                        | "__rmul__"
+                        | "__str__"
+                ) =>
         {
             Ok(Value::Builtin(format!("UserList.{name}")))
         }
@@ -76375,6 +76522,13 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
     }
 }
 
+fn user_list_value(values: Vec<Value>) -> Result<Value, String> {
+    Ok(Value::UserList {
+        data: Rc::new(RefCell::new(values)),
+        attrs: dict_ref_from_entries(Vec::new())?,
+    })
+}
+
 fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, String> {
     let mut values = Vec::new();
 
@@ -77760,6 +77914,16 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             items.extend(right.borrow().iter().cloned());
             Ok(list_value(items))
         }
+        (Value::UserList { data, .. }, right) => {
+            let mut items = data.borrow().clone();
+            items.extend(sequence_values(right)?);
+            user_list_value(items)
+        }
+        (left, Value::UserList { data, .. }) => {
+            let mut items = sequence_values(left)?;
+            items.extend(data.borrow().iter().cloned());
+            user_list_value(items)
+        }
         (Value::Tuple(left), Value::Tuple(right)) => {
             let mut items = left.as_ref().clone();
             items.extend(right.iter().cloned());
@@ -77995,6 +78159,15 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
                 big_int_repeat_count(&count)?,
             )?))
         }
+        (Value::UserList { data, .. }, Value::Number(count))
+        | (Value::Number(count), Value::UserList { data, .. }) => {
+            user_list_value(repeat_values(data.borrow().clone(), count)?)
+        }
+        (Value::UserList { data, .. }, Value::BigInt(count))
+        | (Value::BigInt(count), Value::UserList { data, .. }) => user_list_value(repeat_values(
+            data.borrow().clone(),
+            big_int_repeat_count(&count)?,
+        )?),
         (Value::Tuple(items), Value::Number(count))
         | (Value::Number(count), Value::Tuple(items)) => {
             Ok(tuple_value(repeat_values(items.as_ref().clone(), count)?))
