@@ -25084,6 +25084,11 @@ print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little',
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields >= 0, sys.version_info.n_sequence_fields >= 0, sys.version_info.n_unnamed_fields >= 0)
 print('sys-version-info-type-metadata', type(sys.version_info).n_fields >= 0, type(sys.version_info).n_sequence_fields >= 0, type(sys.version_info).n_unnamed_fields >= 0)
+version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']
+version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
+print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
+print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))
+print('sys-version-info-getnewargs', sys.version_info.__getnewargs__() == (tuple(sys.version_info),), type(sys.version_info).__getnewargs__(sys.version_info) == (tuple(sys.version_info),))
 print('sys-implementation', type(sys.implementation).__name__, type(sys.implementation.name).__name__, type(sys.implementation.version).__name__, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-implementation-version-shape', len(sys.implementation.version), sys.implementation.version == sys.version_info)
 print('sys-implementation-version-metadata', sys.implementation.version.n_fields >= 0, sys.implementation.version.n_sequence_fields >= 0, sys.implementation.version.n_unnamed_fields >= 0)

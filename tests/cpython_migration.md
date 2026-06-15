@@ -5318,7 +5318,10 @@ Completed in the float method/property pass:
   `sys.version_info.n_unnamed_fields` now expose the supported in-memory
   version tuple shape, and `sys.implementation.version` exposes the same
   structure metadata without expanding into full CPython `structseq`
-  compatibility.
+  compatibility. The same evidence now keeps `sys.version_info` from exposing
+  namedtuple-only helpers such as `_fields`, `_asdict`, `_replace`, and
+  `__match_args__`, and pins the CPython public `__getnewargs__()` result
+  shape.
 - Added `sys.float_info` and `sys.hash_info` public attribute objects plus
   `object.__hash__` and `float.__hash__` runtime support for the migrated
   CPython float hash rows. `hash(-1)` and `hash(-1.0)` now follow CPython's

@@ -12322,6 +12322,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.version_info.n_unnamed_fields")
             && LANGUAGE_TESTS.contains("type(sys.version_info).n_fields")
             && LANGUAGE_TESTS.contains("sys.implementation.version.n_fields")
+            && LANGUAGE_TESTS.contains("version_helpers")
+            && LANGUAGE_TESTS.contains("hasattr(sys.version_info, name)")
+            && LANGUAGE_TESTS.contains("dir(sys.version_info)")
+            && LANGUAGE_TESTS.contains("sys.version_info.__getnewargs__()")
             && LANGUAGE_TESTS.contains("sys.hexversion == sys.implementation.hexversion")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
@@ -12437,6 +12441,13 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "type(sys.version_info).n_fields",
         "type(sys.version_info).n_sequence_fields",
         "type(sys.version_info).n_unnamed_fields",
+        "version_helpers",
+        "hasattr(sys.version_info, name)",
+        "hasattr(type(sys.version_info), name)",
+        "dir(sys.version_info)",
+        "dir(type(sys.version_info))",
+        "sys.version_info.__getnewargs__()",
+        "type(sys.version_info).__getnewargs__(sys.version_info)",
         "sys.implementation",
         "sys.implementation.name",
         "sys.implementation.version",

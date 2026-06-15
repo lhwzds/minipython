@@ -1520,6 +1520,16 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
         ),
         Ok(output_lines(&["int 9 9 0"]))
     );
+    assert_eq!(
+        run_source(
+            "import sys\nversion_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nversion_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nprint(any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))\nprint(any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))\nprint(sys.version_info.__getnewargs__() == (tuple(sys.version_info),), type(sys.version_info).__getnewargs__(sys.version_info) == (tuple(sys.version_info),))"
+        ),
+        Ok(output_lines(&[
+            "False False",
+            "False False True True",
+            "True True",
+        ]))
+    );
 }
 
 #[test]

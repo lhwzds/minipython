@@ -5495,6 +5495,11 @@ print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little',
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields, sys.version_info.n_sequence_fields, sys.version_info.n_unnamed_fields)
 print('sys-version-info-type-metadata', type(sys.version_info).n_fields, type(sys.version_info).n_sequence_fields, type(sys.version_info).n_unnamed_fields)
+version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']
+version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
+print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
+print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))
+print('sys-version-info-getnewargs', sys.version_info.__getnewargs__() == (tuple(sys.version_info),), type(sys.version_info).__getnewargs__(sys.version_info) == (tuple(sys.version_info),))
 print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-implementation-version-metadata', sys.implementation.version.n_fields, sys.implementation.version.n_sequence_fields, sys.implementation.version.n_unnamed_fields)
 print('sys-hexversion', type(sys.hexversion).__name__, sys.hexversion == sys.implementation.hexversion)
@@ -5554,6 +5559,9 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final int 5 5 0",
             "sys-version-info-type-metadata 5 5 0",
+            "sys-version-info-namedtuple-helpers False False",
+            "sys-version-info-dir-helpers False False True True",
+            "sys-version-info-getnewargs True True",
             "sys-implementation SimpleNamespace minipython True int str",
             "sys-implementation-version-metadata 5 5 0",
             "sys-hexversion int True",
