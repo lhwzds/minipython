@@ -15461,6 +15461,9 @@ fn str_builtin_custom_dunder_subset_has_focused_diff_evidence() {
         "str(Bad())",
         "str(Raises())",
         "instance_only.__str__",
+        "class ReprOnly:",
+        "str(repr_only)",
+        "str(BadReprOnly())",
         "format-priority",
         "str-sub",
     ] {
@@ -15483,6 +15486,9 @@ fn str_builtin_custom_dunder_subset_has_focused_diff_evidence() {
         "str(Bad())",
         "str(Raises())",
         "instance_only.__str__",
+        "class ReprOnly:",
+        "str(repr_only)",
+        "str(BadReprOnly())",
         "format-priority",
         "str-sub",
     ] {

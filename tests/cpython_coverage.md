@@ -4216,9 +4216,10 @@ without adding general custom encoder/decoder class support.
   in `cpython_str_builtin_custom_dunder_diff_subset`, covering ordinary
   `str()` / `print()` / f-string `!s` / default f-string /
   `object.__format__(..., "")` / string `%s` dispatch through class-level
-  `__str__`, non-string result rejection, propagated exceptions, ignored
-  instance-level `__str__`, custom `__format__` precedence, and empty-format
-  behavior for `str` subclasses overriding `__str__`.
+  `__str__`, fallback through class-level `__repr__` when `__str__` is absent,
+  non-string result rejection on both conversion paths, propagated exceptions,
+  ignored instance-level `__str__`, custom `__format__` precedence, and
+  empty-format behavior for `str` subclasses overriding `__str__`.
 - The `BuiltinTest Core Runtime Method Audit` in `cpython_test_manifest.md`
   now pins the direct Rust evidence for 27 scalar, representation, and
   introspection methods that were previously covered only through the broader

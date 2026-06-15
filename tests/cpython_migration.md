@@ -6641,10 +6641,11 @@ Completed in the ordinary str conversion pass:
   `object.__format__`, and string `%s`.
 - Added VM-context stringification so `str()`, `print()`, f-string `!s`,
   default empty-format f-strings, `object.__format__(..., "")`, t-string
-  `!s` conversion, and string `%s` dispatch through class-level `__str__`.
+  `!s` conversion, and string `%s` dispatch through class-level `__str__` or
+  the class-level `__repr__` fallback when `__str__` is absent.
 - Kept direct `object.__str__` semantics distinct: direct calls still delegate
-  to `__repr__`, while ordinary string conversion rejects non-string
-  `__str__` results and propagates exceptions.
+  to `__repr__`, while ordinary string conversion rejects non-string fallback
+  results as string-conversion errors and propagates exceptions.
 
 Completed in the integer digit-limit runtime pass:
 

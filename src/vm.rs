@@ -18498,6 +18498,14 @@ impl Vm {
             return dunder_str_result_text(result);
         }
 
+        if let Some(method) = instance_special_method(value, "__repr__") {
+            let result = match self.call_value_catching(method, Vec::new())? {
+                Ok(result) => result,
+                Err(exception) => return Err(format_exception_error(&exception)),
+            };
+            return dunder_str_result_text(result);
+        }
+
         str_value_checked(value)
     }
 

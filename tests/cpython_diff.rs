@@ -7318,6 +7318,19 @@ instance_only = InstanceOnly()
 instance_only.__str__ = lambda: 'instance-str'
 instance_value = str(instance_only)
 print('instance-only', instance_value.startswith('<'), 'InstanceOnly object' in instance_value)
+class ReprOnly:
+    def __repr__(self):
+        return 'repr-only'
+repr_only = ReprOnly()
+print('repr-only', str(repr_only), f'{repr_only}', '%s' % repr_only)
+class BadReprOnly:
+    def __repr__(self):
+        return 1
+for label, expr in [('str-bad-repr', lambda: str(BadReprOnly())), ('format-bad-repr', lambda: f'{BadReprOnly()}'), ('percent-bad-repr', lambda: '%s' % BadReprOnly())]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, '__str__ returned non-string' in str(error))
 class Blocked:
     __str__ = None
 try:
