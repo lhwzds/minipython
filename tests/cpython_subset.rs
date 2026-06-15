@@ -26121,6 +26121,62 @@ fn cpython_grammar_class_def_subset() {
     );
 }
 
+#[test]
+fn cpython_user_class_new_staticmethod_subset() {
+    assert_output(
+        r#"class A:
+    def __new__(cls, x):
+        print('new', cls.__name__, x)
+        return object.__new__(cls)
+    def __init__(self, x):
+        print('init', type(self).__name__, x)
+print(type(A.__dict__['__new__']).__name__)
+print(type(A.__new__).__name__)
+a = A(3)
+print(type(a).__name__)
+class B:
+    def __new__(cls):
+        return 42
+    def __init__(self):
+        print('bad init')
+print(B())
+class C:
+    def __new__(cls):
+        return object.__new__(D)
+    def __init__(self):
+        print('C init', type(self).__name__)
+class D(C):
+    pass
+print(type(C()).__name__)
+class E:
+    def __new__(cls, x):
+        print('new only', x)
+        return object.__new__(cls)
+print(type(E(9)).__name__)
+class G:
+    @classmethod
+    def __new__(cls):
+        return object.__new__(cls)
+try:
+    G()
+except Exception as error:
+    print('classmethod-new', type(error).__name__)"#,
+        &[
+            "staticmethod",
+            "function",
+            "new A 3",
+            "init A 3",
+            "A",
+            "42",
+            "C init D",
+            "D",
+            "new only 9",
+            "E",
+            "classmethod-new TypeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_grammar.py::GrammarTests.test_classdef.
 // CPython's method mainly checks that these class definition and decorator
 // shapes compile and execute, so this prints representative metadata and method

@@ -41,6 +41,9 @@ MiniPython's Rust runtime and local pure-memory shims. A standard-library
 addition is accepted only when this file records its supported surface, excluded
 surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 
+- Added `cpython_user_class_new_staticmethod_subset` and
+  `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
+  automatic `staticmethod` wrapping for class-body `__new__`, and `__init__` only when `__new__` returns a matching instance.
 - Extended `cpython_json_loads_dumps_error_boundary_subset` and
   `cpython_json_loads_dumps_error_boundary_diff_subset` with CPython public
   delimiter-message substrings for `json.loads()` missing colon and missing

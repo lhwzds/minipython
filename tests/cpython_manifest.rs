@@ -32,6 +32,67 @@ const CPYTHON_TEST_TYPE_COMMENTS_SOURCE: &str =
 const CPYTHON_TEST_TYPE_PARAMS_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_type_params.py";
 
+#[test]
+fn user_class_new_staticmethod_docs_cover_core_runtime() {
+    let diff_name = "cpython_user_class_new_staticmethod_diff_subset";
+    let subset_name = "cpython_user_class_new_staticmethod_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "user class __new__ CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "user class __new__ runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def __new__(cls, x):",
+        "type(A.__dict__['__new__']).__name__",
+        "type(A.__new__).__name__",
+        "return 42",
+        "return object.__new__(D)",
+        "new only",
+        "@classmethod",
+        "classmethod-new",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "user class __new__ diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"staticmethod\"",
+        "\"function\"",
+        "\"new A 3\"",
+        "\"init A 3\"",
+        "\"42\"",
+        "\"C init D\"",
+        "\"new only 9\"",
+        "\"classmethod-new TypeError\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "user class __new__ subset output must pin CPython behavior `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "user-defined `__new__` construction",
+            "automatic `staticmethod` wrapping for class-body `__new__`",
+            "`__init__` only when `__new__` returns a matching instance",
+        ] {
+            assert!(
+                document.contains(required),
+                "user class __new__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
 macro_rules! cpython_source_or_skip {
     ($path:expr) => {
         match fs::read_to_string($path) {

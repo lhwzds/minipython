@@ -11805,6 +11805,7 @@ impl Vm {
                 return Ok(None);
             }
         }
+        wrap_dunder_new_as_staticmethod(&attrs);
         let class_value = Value::Class {
             name,
             type_params,
@@ -12433,21 +12434,38 @@ impl Vm {
             return Err(abstract_class_instantiation_error(&name, &missing));
         }
 
-        let instance = Value::Instance {
-            class_name: name.clone(),
-            fields: new_scope(),
-            class_attrs: attrs.clone(),
-            class_bases: bases.clone(),
+        let class_value = Value::Class {
+            name: name.clone(),
+            type_params,
+            metaclass: None,
+            bases: bases.clone(),
+            attrs: attrs.clone(),
+        };
+        let new_descriptor = find_class_attr(&attrs, &bases, "__new__");
+        let custom_new = new_descriptor.is_some();
+        let instance = if let Some(new_descriptor) = new_descriptor {
+            let mut new_args = vec![class_value.clone()];
+            new_args.extend(args.iter().cloned());
+            let new = class_new_callable(new_descriptor, class_value.clone());
+            self.call_value_with_keywords(new, new_args, keywords.clone())?
+        } else {
+            Value::Instance {
+                class_name: name.clone(),
+                fields: new_scope(),
+                class_attrs: attrs.clone(),
+                class_bases: bases.clone(),
+            }
         };
 
-        let init = find_class_attr(&attrs, &bases, "__init__");
-        if let Some(init) = init {
+        if value_matches_class_value(&instance, &class_value)
+            && let Some(init) = find_class_attr(&attrs, &bases, "__init__")
+        {
             let result =
                 self.call_value_with_keywords(bind_method(init, instance.clone()), args, keywords)?;
             if !matches!(result, Value::None) {
                 return Err("__init__() should return None".to_string());
             }
-        } else if !args.is_empty() || !keywords.is_empty() {
+        } else if !custom_new && (!args.is_empty() || !keywords.is_empty()) {
             return Err(format!("{name}() takes no arguments"));
         }
 
@@ -47697,6 +47715,30 @@ fn attach_owner_class_to_members(class: &Value) {
         .map(|(name, value)| (name.clone(), attach_owner_class(value.clone(), class)))
         .collect::<Vec<_>>();
     attrs.borrow_mut().extend(updates);
+}
+
+fn wrap_dunder_new_as_staticmethod(attrs: &Scope) {
+    let Some(value @ Value::Function { .. }) = attrs.borrow().get("__new__").cloned() else {
+        return;
+    };
+    attrs.borrow_mut().insert(
+        "__new__".to_string(),
+        Value::StaticMethod {
+            function: Box::new(value),
+        },
+    );
+}
+
+fn class_new_callable(descriptor: Value, class_value: Value) -> Value {
+    match descriptor {
+        Value::StaticMethod { function } => *function,
+        Value::ClassMethod { function } => Value::BoundMethod {
+            function,
+            receiver: Box::new(class_value),
+            identity: Rc::new(()),
+        },
+        value => value,
+    }
 }
 
 fn attach_owner_class(value: Value, class: &Value) -> Value {

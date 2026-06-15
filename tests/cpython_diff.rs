@@ -9767,6 +9767,51 @@ print(types.NoneType is type(None), types.EllipsisType is type(Ellipsis), types.
 }
 
 #[test]
+fn cpython_user_class_new_staticmethod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py user class __new__ public construction subset",
+        name: "user-class-new-staticmethod",
+        source: r#"class A:
+    def __new__(cls, x):
+        print('new', cls.__name__, x)
+        return object.__new__(cls)
+    def __init__(self, x):
+        print('init', type(self).__name__, x)
+print(type(A.__dict__['__new__']).__name__)
+print(type(A.__new__).__name__)
+a = A(3)
+print(type(a).__name__)
+class B:
+    def __new__(cls):
+        return 42
+    def __init__(self):
+        print('bad init')
+print(B())
+class C:
+    def __new__(cls):
+        return object.__new__(D)
+    def __init__(self):
+        print('C init', type(self).__name__)
+class D(C):
+    pass
+print(type(C()).__name__)
+class E:
+    def __new__(cls, x):
+        print('new only', x)
+        return object.__new__(cls)
+print(type(E(9)).__name__)
+class G:
+    @classmethod
+    def __new__(cls):
+        return object.__new__(cls)
+try:
+    G()
+except Exception as error:
+    print('classmethod-new', type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_new_class_meta_helper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_new_class_basics through ::test_new_class_metaclass_keywords",

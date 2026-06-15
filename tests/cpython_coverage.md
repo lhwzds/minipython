@@ -29,6 +29,9 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
+- `cpython_user_class_new_staticmethod_subset`, backed by
+  `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
+  automatic `staticmethod` wrapping for class-body `__new__`, and `__init__` only when `__new__` returns a matching instance.
 - `cpython_json_loads_dumps_error_boundary_subset`, backed by
   `cpython_json_loads_dumps_error_boundary_diff_subset`, now pins CPython
   public delimiter-message substrings for `json.loads()` missing colon and
