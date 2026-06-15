@@ -1483,7 +1483,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "5 5 0",
             "SimpleNamespace minipython True int str",
             "5 5 0",
-            "SimpleNamespace 0 0 0 False 0 0 0 0 0 0 0 0 0 0 0",
+            "flags 0 0 0 False 0 0 0 0 0 0 0 0 0 0 0",
             "float_info 1024 2",
             "hash_info 64 siphash13",
             "str True",
@@ -1507,6 +1507,17 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "import sys\nprint(type(sys.flags.n_fields).__name__, sys.flags.n_fields, sys.flags.n_sequence_fields, sys.flags.n_unnamed_fields)"
         ),
         Ok(output_lines(&["int 15 15 0"]))
+    );
+    assert_eq!(
+        run_source(
+            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nprint(type(sys.flags).__name__, len(sys.flags), len(tuple(sys.flags)) == sys.flags.n_sequence_fields)\nprint(any(hasattr(sys.flags, name) for name in helpers), any(hasattr(type(sys.flags), name) for name in helpers))\nprint(any(name in dir(sys.flags) for name in helpers), all(name in dir(sys.flags) for name in metadata), all(name in dir(type(sys.flags)) for name in metadata))\nprint(sys.flags.__getnewargs__() == (tuple(sys.flags),), type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),))"
+        ),
+        Ok(output_lines(&[
+            "flags 15 True",
+            "False False",
+            "False True True",
+            "True True",
+        ]))
     );
     assert_eq!(
         run_source(

@@ -72556,7 +72556,7 @@ fn sys_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<Value> {
 fn is_sys_structseq(typ: &NamedTupleType) -> bool {
     matches!(
         typ.name.as_str(),
-        "version_info" | "float_info" | "hash_info"
+        "version_info" | "float_info" | "hash_info" | "flags"
     ) && matches!(&typ.module, Value::String(module) if module == "sys")
 }
 

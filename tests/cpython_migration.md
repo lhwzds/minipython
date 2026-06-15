@@ -5363,9 +5363,12 @@ Completed in the float method/property pass:
   environment configuration,
   `sys.flags.inspect` and `sys.flags.interactive` are exposed as integer `0`
   without enabling host REPL, stdin, or TTY behavior,
-  `sys.flags.n_fields`, `sys.flags.n_sequence_fields`, and
-  `sys.flags.n_unnamed_fields` expose the current supported flag metadata
-  counts without implying full CPython structseq compatibility,
+  `sys.flags` is now a tuple-like in-memory sys structseq value for the
+  supported public fields; its `n_fields`, `n_sequence_fields`, and
+  `n_unnamed_fields` attributes expose the current supported flag metadata
+  counts, namedtuple-only helpers remain hidden, and `__getnewargs__()` returns
+  the CPython public nested tuple shape without reading host startup flags or
+  implying full CPython internal structseq compatibility,
   `sys.flags.no_user_site` is exposed as integer `0` without enabling host
   user-site path configuration,
   `sys.flags.no_site` is exposed as integer `0` without enabling host site

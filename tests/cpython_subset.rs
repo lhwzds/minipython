@@ -5491,6 +5491,10 @@ print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name_
 print('sys-flags-inspect', type(sys.flags.inspect).__name__, sys.flags.inspect)
 print('sys-flags-interactive', type(sys.flags.interactive).__name__, sys.flags.interactive)
 print('sys-flags-struct-metadata', type(sys.flags.n_fields).__name__, sys.flags.n_fields, sys.flags.n_sequence_fields, sys.flags.n_unnamed_fields)
+print('sys-flags-shape', type(sys.flags).__name__, len(sys.flags), tuple(sys.flags), len(tuple(sys.flags)) == sys.flags.n_sequence_fields)
+print('sys-flags-helpers', any(hasattr(sys.flags, name) for name in sys_structseq_helpers), any(hasattr(type(sys.flags), name) for name in sys_structseq_helpers))
+print('sys-flags-dir', any(name in dir(sys.flags) for name in sys_structseq_helpers), all(name in dir(sys.flags) for name in sys_structseq_metadata), all(name in dir(type(sys.flags)) for name in sys_structseq_metadata))
+print('sys-flags-getnewargs', sys.flags.__getnewargs__() == (tuple(sys.flags),), type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),))
 print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags.no_user_site)
 print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site)
 print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated)
@@ -5563,6 +5567,10 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-inspect int 0",
             "sys-flags-interactive int 0",
             "sys-flags-struct-metadata int 15 15 0",
+            "sys-flags-shape flags 15 (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False, 0) True",
+            "sys-flags-helpers False False",
+            "sys-flags-dir False True True",
+            "sys-flags-getnewargs True True",
             "sys-flags-no-user-site int 0",
             "sys-flags-no-site int 0",
             "sys-flags-isolated int 0",

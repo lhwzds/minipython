@@ -12344,6 +12344,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.flags.n_fields")
             && LANGUAGE_TESTS.contains("sys.flags.n_sequence_fields")
             && LANGUAGE_TESTS.contains("sys.flags.n_unnamed_fields")
+            && LANGUAGE_TESTS.contains("len(tuple(sys.flags)) == sys.flags.n_sequence_fields")
+            && LANGUAGE_TESTS.contains("sys.flags.__getnewargs__() == (tuple(sys.flags),)")
             && LANGUAGE_TESTS.contains("sys.flags.no_user_site")
             && LANGUAGE_TESTS.contains("sys.flags.no_site")
             && LANGUAGE_TESTS.contains("sys.flags.isolated")
@@ -12401,6 +12403,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.n_fields",
         "sys.flags.n_sequence_fields",
         "sys.flags.n_unnamed_fields",
+        "sys-flags-shape",
+        "len(tuple(sys.flags)) == sys.flags.n_sequence_fields",
+        "sys.flags.__getnewargs__() == (tuple(sys.flags),)",
+        "type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),)",
         "sys.flags.no_user_site",
         "sys.flags.no_site",
         "sys.flags.isolated",
