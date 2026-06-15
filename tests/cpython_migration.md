@@ -44,6 +44,9 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_user_class_new_staticmethod_subset` and
   `cpython_user_class_new_staticmethod_diff_subset` for user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, and `__init__` only when `__new__` returns a matching instance.
+- Added `cpython_list_rich_search_subset` and
+  `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
+  `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
 - Extended `cpython_json_loads_dumps_error_boundary_subset` and
   `cpython_json_loads_dumps_error_boundary_diff_subset` with CPython public
   delimiter-message substrings for `json.loads()` missing colon and missing
@@ -2108,9 +2111,11 @@ Completed in the differential parity harness pass:
   out-of-range index clamping, first-match removal, counting via the current
   value equality model, `index(value[, start[, stop]])` with slice-style
   bounds, and CPython-aligned rejection for common missing, excessive, absent,
-  and out-of-window argument cases. Custom `__eq__` dispatch, comparison-error
-  propagation, and list mutation during comparison remain future object-model
-  work.
+  and out-of-window argument cases. `cpython_list_rich_search_subset`, backed by
+  `cpython_list_rich_search_diff_subset`, now covers user-defined `__eq__`
+  dispatch and comparison-error propagation for membership, `__contains__`,
+  `count`, `index`, and `remove`; list mutation during comparison remains
+  future object-model work.
 - Migrated first-pass list special-method coverage from
   `Lib/test/seq_tests.py::CommonTest::test_subscript`. Lists now expose
   `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, and `__len__`

@@ -9812,6 +9812,41 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_list_rich_search_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/list_tests.py rich comparison list search public subset",
+        name: "list-rich-search",
+        source: r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+print(Probe("a") in [Probe("a")])
+print([Probe("a")].__contains__(Probe("a")))
+items = [Probe("a"), Probe("b"), Probe("a")]
+print(items.count(Probe("a")))
+print(items.index(Probe("b")))
+print(items.index(Probe("a"), 1))
+items.remove(Probe("a"))
+print(len(items), items[0].tag, items[1].tag)
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+for label, call in [
+    ("contains", lambda: [Boom()].__contains__(1)),
+    ("count", lambda: [Boom()].count(1)),
+    ("index", lambda: [Boom()].index(1)),
+    ("remove", lambda: [Boom()].remove(1)),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_new_class_meta_helper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_new_class_basics through ::test_new_class_metaclass_keywords",

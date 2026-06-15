@@ -32,6 +32,9 @@ Recent runtime migration notes:
 - `cpython_user_class_new_staticmethod_subset`, backed by
   `cpython_user_class_new_staticmethod_diff_subset`, now pins user-defined `__new__` construction,
   automatic `staticmethod` wrapping for class-body `__new__`, and `__init__` only when `__new__` returns a matching instance.
+- `cpython_list_rich_search_subset`, backed by
+  `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
+  `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
 - `cpython_json_loads_dumps_error_boundary_subset`, backed by
   `cpython_json_loads_dumps_error_boundary_diff_subset`, now pins CPython
   public delimiter-message substrings for `json.loads()` missing colon and

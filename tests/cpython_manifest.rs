@@ -93,6 +93,77 @@ fn user_class_new_staticmethod_docs_cover_core_runtime() {
     }
 }
 
+#[test]
+fn list_rich_search_docs_cover_container_runtime() {
+    let diff_name = "cpython_list_rich_search_diff_subset";
+    let subset_name = "cpython_list_rich_search_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list rich search CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list rich search runtime subset evidence must exist"
+    );
+
+    for required in [
+        "def __eq__(self, other):",
+        "Probe(\"a\") in [Probe(\"a\")]",
+        ".__contains__(Probe(\"a\"))",
+        "items.count(Probe(\"a\"))",
+        "items.index(Probe(\"b\"))",
+        "items.index(Probe(\"a\"), 1)",
+        "items.remove(Probe(\"a\"))",
+        "raise ValueError(\"boom\")",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list rich search diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"eq a a\"",
+        "\"eq b a\"",
+        "\"2 b a\"",
+        "\"contains ValueError boom\"",
+        "\"count ValueError boom\"",
+        "\"index ValueError boom\"",
+        "\"remove ValueError boom\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list rich search subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn list_item_matches(",
+        "fn list_contains_rich(",
+        "fn list_find_rich(",
+        "fn call_list_search_method(",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list rich search VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "list membership, `__contains__`,",
+            "`count`, `index`, and `remove` dispatch through user-defined `__eq__`",
+            "comparison-exception propagation",
+        ] {
+            assert!(
+                document.contains(required),
+                "list rich search docs must contain `{required}`"
+            );
+        }
+    }
+}
+
 macro_rules! cpython_source_or_skip {
     ($path:expr) => {
         match fs::read_to_string($path) {

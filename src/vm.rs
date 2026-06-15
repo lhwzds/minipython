@@ -21495,10 +21495,7 @@ impl Vm {
 
         if matches!(haystack, Value::Instance { .. }) {
             if let Some(items) = list_subclass_storage(&haystack) {
-                return Ok(items
-                    .borrow()
-                    .iter()
-                    .any(|item| sequence_items_match(item, &needle)));
+                return self.list_contains_rich(&items, &needle);
             }
             if let Some(items) = set_subclass_items(&haystack) {
                 let snapshot = items.borrow().clone();
@@ -21521,6 +21518,7 @@ impl Vm {
         }
 
         match haystack {
+            Value::List(items) => self.list_contains_rich(&items, &needle),
             Value::Deque { data, .. } => {
                 let items = data.borrow().clone();
                 for item in items {
@@ -30512,7 +30510,126 @@ impl Vm {
             return self.call_list_equality_method(name, args);
         }
 
+        if matches!(
+            name,
+            "list.__contains__" | "list.count" | "list.index" | "list.remove"
+        ) {
+            return self.call_list_search_method(name, args);
+        }
+
         call_list_method(name, args)
+    }
+
+    fn list_item_matches(&mut self, item: Value, needle: &Value) -> Result<bool, String> {
+        if sequence_items_match(&item, needle) {
+            return Ok(true);
+        }
+        self.equal_values(item, needle.clone())
+    }
+
+    fn list_contains_rich(&mut self, items: &ListRef, needle: &Value) -> Result<bool, String> {
+        for item in items.borrow().clone() {
+            if self.list_item_matches(item, needle)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    fn list_find_rich(
+        &mut self,
+        items: &ListRef,
+        needle: &Value,
+        start: usize,
+        stop: usize,
+    ) -> Result<Option<usize>, String> {
+        let snapshot = items.borrow().clone();
+        for (index, item) in snapshot
+            .into_iter()
+            .enumerate()
+            .skip(start)
+            .take(stop.saturating_sub(start))
+        {
+            if self.list_item_matches(item, needle)? {
+                return Ok(Some(index));
+            }
+        }
+        Ok(None)
+    }
+
+    fn call_list_search_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
+        match name {
+            "list.__contains__" => {
+                let [Value::List(items), needle] = args.as_slice() else {
+                    return Err(format!(
+                        "__contains__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(Value::Bool(self.list_contains_rich(items, needle)?))
+            }
+            "list.count" => {
+                let [Value::List(items), needle] = args.as_slice() else {
+                    return Err(format!(
+                        "count() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let mut count = 0_i64;
+                for item in items.borrow().clone() {
+                    if self.list_item_matches(item, needle)? {
+                        count = count
+                            .checked_add(1)
+                            .ok_or_else(|| "count() result is too large".to_string())?;
+                    }
+                }
+                Ok(Value::Number(count))
+            }
+            "list.index" => {
+                let [Value::List(items), needle, rest @ ..] = args.as_slice() else {
+                    return Err(format!(
+                        "index expected at least 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                if rest.len() > 2 {
+                    return Err(format!(
+                        "index expected at most 3 arguments, got {}",
+                        method_arg_count(&args)
+                    ));
+                }
+
+                let len = items.borrow().len();
+                let (start, stop) = list_search_bounds(rest, len)?;
+                match self.list_find_rich(items, needle, start, stop)? {
+                    Some(index) => {
+                        let index = i64::try_from(index)
+                            .map_err(|_| "index() result is too large".to_string())?;
+                        Ok(Value::Number(index))
+                    }
+                    None => Err(format!("ValueError: {needle} is not in list")),
+                }
+            }
+            "list.remove" => {
+                let [Value::List(items), needle] = args.as_slice() else {
+                    return Err(format!(
+                        "remove() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                let len = items.borrow().len();
+                let Some(index) = self.list_find_rich(items, needle, 0, len)? else {
+                    return Err("ValueError: list.remove(x): x not in list".to_string());
+                };
+                let mut items = items.borrow_mut();
+                if index >= items.len() {
+                    return Err("ValueError: list.remove(x): x not in list".to_string());
+                }
+                items.remove(index);
+                Ok(Value::None)
+            }
+            _ => unreachable!("list search method is filtered before dispatch"),
+        }
     }
 
     fn call_user_list_method(

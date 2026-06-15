@@ -34508,6 +34508,61 @@ fn cpython_sequence_repeat_count_overflow_subset() {
     );
 }
 
+#[test]
+fn cpython_list_rich_search_subset() {
+    assert_output(
+        r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+print(Probe("a") in [Probe("a")])
+print([Probe("a")].__contains__(Probe("a")))
+items = [Probe("a"), Probe("b"), Probe("a")]
+print(items.count(Probe("a")))
+print(items.index(Probe("b")))
+print(items.index(Probe("a"), 1))
+items.remove(Probe("a"))
+print(len(items), items[0].tag, items[1].tag)
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+for label, call in [
+    ("contains", lambda: [Boom()].__contains__(1)),
+    ("count", lambda: [Boom()].count(1)),
+    ("index", lambda: [Boom()].index(1)),
+    ("remove", lambda: [Boom()].remove(1)),
+]:
+    try:
+        call()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "eq a a",
+            "True",
+            "eq a a",
+            "True",
+            "eq a a",
+            "eq b a",
+            "eq a a",
+            "2",
+            "eq a b",
+            "eq b b",
+            "1",
+            "eq b a",
+            "eq a a",
+            "2",
+            "eq a a",
+            "2 b a",
+            "contains ValueError boom",
+            "count ValueError boom",
+            "index ValueError boom",
+            "remove ValueError boom",
+        ],
+    );
+}
+
 // MiniPython exposes a sandbox-safe first-pass `json` module: pure in-memory
 // loads/dumps for the core JSON data model, without file APIs or custom hooks.
 #[test]
