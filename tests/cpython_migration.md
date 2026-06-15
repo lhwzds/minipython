@@ -11133,7 +11133,8 @@ Completed in the CPython collections manifest expansion pass:
   `deque.maxlen` getset descriptor visibility through `dir(deque)`,
   `deque.__dict__`, `type(deque.maxlen)`, and `types.GetSetDescriptorType`
   evidence, plus descriptor `__get__`, `__name__`, `__qualname__`,
-  `__objclass__`, `__class__`, and `__doc__` public behavior.
+  readonly `__set__` / `__delete__`, `__objclass__`, `__class__`, and
+  `__doc__` public behavior.
 - Extended the same `collections.deque` public surface with deque-to-deque rich
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,

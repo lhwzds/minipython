@@ -9734,6 +9734,12 @@ impl Vm {
             Value::Builtin(name) if name == "getset_descriptor.__get__" => {
                 self.call_getset_descriptor_get(args, keywords)
             }
+            Value::Builtin(name) if name == "getset_descriptor.__set__" => {
+                self.call_getset_descriptor_set(args, keywords)
+            }
+            Value::Builtin(name) if name == "getset_descriptor.__delete__" => {
+                self.call_getset_descriptor_delete(args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
                 self.call_namedtuple_field_descriptor_method(&name, args, keywords)
             }
@@ -15973,6 +15979,54 @@ impl Vm {
         Ok(maxlen
             .map(|value| Value::Number(value as i64))
             .unwrap_or(Value::None))
+    }
+
+    fn call_getset_descriptor_set(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((descriptor, rest)) = args.split_first() else {
+            return Err("TypeError: __set__() expected a getset_descriptor receiver".to_string());
+        };
+        let Value::Builtin(descriptor_name) = descriptor else {
+            return Err("TypeError: __set__() expected a getset_descriptor receiver".to_string());
+        };
+        if !is_builtin_getset_descriptor_name(descriptor_name) {
+            return Err("TypeError: __set__() expected a getset_descriptor receiver".to_string());
+        }
+        descriptor_set_reject_method_wrapper_args("__set__", rest, &keywords)?;
+        let [object, _value] = rest else {
+            unreachable!("descriptor_set_reject_method_wrapper_args checked arity");
+        };
+        readonly_deque_maxlen_descriptor_error(object)
+    }
+
+    fn call_getset_descriptor_delete(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((descriptor, rest)) = args.split_first() else {
+            return Err(
+                "TypeError: __delete__() expected a getset_descriptor receiver".to_string(),
+            );
+        };
+        let Value::Builtin(descriptor_name) = descriptor else {
+            return Err(
+                "TypeError: __delete__() expected a getset_descriptor receiver".to_string(),
+            );
+        };
+        if !is_builtin_getset_descriptor_name(descriptor_name) {
+            return Err(
+                "TypeError: __delete__() expected a getset_descriptor receiver".to_string(),
+            );
+        }
+        descriptor_delete_reject_method_wrapper_args("__delete__", rest, &keywords)?;
+        let [object] = rest else {
+            unreachable!("descriptor_delete_reject_method_wrapper_args checked arity");
+        };
+        readonly_deque_maxlen_descriptor_error(object)
     }
 
     fn property_get(&mut self, property: Value, object: Value) -> Result<Value, String> {
@@ -46739,11 +46793,13 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => names.extend(
             [
                 "__class__",
+                "__delete__",
                 "__doc__",
                 "__get__",
                 "__name__",
                 "__objclass__",
                 "__qualname__",
+                "__set__",
             ]
             .into_iter()
             .map(str::to_string),
@@ -48444,6 +48500,19 @@ fn descriptor_delete_reject_method_wrapper_args(
         ));
     }
     Ok(())
+}
+
+fn readonly_deque_maxlen_descriptor_error(object: &Value) -> Result<Value, String> {
+    if matches!(object, Value::Deque { .. }) {
+        return Err(
+            "AttributeError: attribute 'maxlen' of 'collections.deque' objects is not writable"
+                .to_string(),
+        );
+    }
+    Err(format!(
+        "TypeError: descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a '{}' object",
+        type_name(object)
+    ))
 }
 
 fn descriptor_owner_from_object(object: &Value) -> Option<Value> {
@@ -55247,6 +55316,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     receiver: Box::new(Value::Builtin(function_name)),
                     identity: Rc::new(()),
                 }),
+                "__set__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("getset_descriptor.__set__".to_string())),
+                    receiver: Box::new(Value::Builtin(function_name)),
+                    identity: Rc::new(()),
+                }),
+                "__delete__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("getset_descriptor.__delete__".to_string())),
+                    receiver: Box::new(Value::Builtin(function_name)),
+                    identity: Rc::new(()),
+                }),
                 "__name__" => Ok(Value::String("maxlen".to_string())),
                 "__qualname__" => Ok(Value::String("deque.maxlen".to_string())),
                 "__objclass__" => Ok(Value::Builtin("deque".to_string())),
@@ -57245,7 +57324,13 @@ fn is_builtin_classmethod_descriptor_name(name: &str) -> bool {
 }
 
 fn is_descriptor_get_wrapper_name(name: &str) -> bool {
-    matches!(name, "descriptor.__get__" | "getset_descriptor.__get__")
+    matches!(
+        name,
+        "descriptor.__get__"
+            | "getset_descriptor.__get__"
+            | "getset_descriptor.__set__"
+            | "getset_descriptor.__delete__"
+    )
 }
 
 fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {

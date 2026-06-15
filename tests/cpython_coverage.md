@@ -78,7 +78,8 @@ Recent runtime migration notes:
   iteration, len/bool/repr, direct display/empty-format methods, recursive
   display, public `__doc__` / `__module__` / `__qualname__` metadata,
   `dir()` visibility, class-level `maxlen` getset descriptor shape including
-  `__get__`, `__name__`, `__qualname__`, `__objclass__`, and `__doc__`,
+  `__get__`, readonly `__set__` / `__delete__`, `__name__`, `__qualname__`,
+  `__objclass__`, and `__doc__`,
   generic-alias repr, direct type-level public method calls, basic `append` /
   `appendleft` / `extend` / `extendleft` / `insert` / `remove` / `pop` /
   `popleft` / `count` / `index` / `rotate` / `reverse` / `clear` / `copy`,

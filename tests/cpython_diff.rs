@@ -4031,6 +4031,23 @@ for label, callback in [
         callback()
     except TypeError as error:
         print(label, type(error).__name__, str(error))
+print('__set__' in dir(descriptor), '__delete__' in dir(descriptor), type(descriptor.__set__).__name__, type(descriptor.__delete__).__name__)
+for label, callback in [
+    ('descriptor-set-inst', lambda: descriptor.__set__(deque(), 5)),
+    ('descriptor-set-none', lambda: descriptor.__set__(None, 5)),
+    ('descriptor-set-wrong', lambda: descriptor.__set__([], 5)),
+    ('descriptor-set-missing', lambda: descriptor.__set__()),
+    ('descriptor-set-keyword', lambda: descriptor.__set__(obj=deque(), value=5)),
+    ('descriptor-delete-inst', lambda: descriptor.__delete__(deque())),
+    ('descriptor-delete-none', lambda: descriptor.__delete__(None)),
+    ('descriptor-delete-wrong', lambda: descriptor.__delete__([])),
+    ('descriptor-delete-missing', lambda: descriptor.__delete__()),
+    ('descriptor-delete-keyword', lambda: descriptor.__delete__(obj=deque())),
+]:
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
 alias = deque[int]
 print(deque.__module__, deque.__qualname__, repr(alias), alias.__origin__ is deque, alias.__origin__.__module__)
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:
