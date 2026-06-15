@@ -549,7 +549,9 @@ Recent runtime migration notes:
   `sys.flags.no_user_site`, `sys.flags.no_site`, `sys.flags.isolated`,
   `sys.flags.optimize`, `sys.flags.quiet`,
   `sys.flags.utf8_mode`, `sys.flags.verbose`, `sys.flags` tuple-like
-  structure metadata and `__getnewargs__()` shape,
+  structure metadata, `sys.flags` / `sys.float_info` / `sys.hash_info` /
+  `sys.version_info` `repr()` prefixes, type `repr()` module-qualified names,
+  type `__module__ == "sys"`, and `__getnewargs__()` shape,
   `sys.hexversion`, `sys.warnoptions`,
   `sys.getdefaultencoding()`, `sys.version_info` structure metadata,
   `sys.version_info` structseq-style absence of namedtuple helper attributes

@@ -1504,6 +1504,17 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
     );
     assert_eq!(
         run_source(
+            "import sys\nfor obj in [sys.version_info, sys.float_info, sys.hash_info, sys.flags]:\n    print(repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\", type(obj).__module__)"
+        ),
+        Ok(output_lines(&[
+            "True True sys",
+            "True True sys",
+            "True True sys",
+            "True True sys",
+        ]))
+    );
+    assert_eq!(
+        run_source(
             "import sys\nprint(type(sys.flags.n_fields).__name__, sys.flags.n_fields, sys.flags.n_sequence_fields, sys.flags.n_unnamed_fields)"
         ),
         Ok(output_lines(&["int 15 15 0"]))

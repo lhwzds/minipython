@@ -12318,6 +12318,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.hash_info.n_sequence_fields")
             && LANGUAGE_TESTS.contains("sys.hash_info.n_unnamed_fields")
             && LANGUAGE_TESTS.contains("for obj in [sys.float_info, sys.hash_info]")
+            && LANGUAGE_TESTS.contains("repr(obj).startswith('sys.' + type(obj).__name__ + '(')")
             && LANGUAGE_TESTS.contains("len(tuple(obj)) == obj.n_sequence_fields")
             && LANGUAGE_TESTS.contains("obj.__getnewargs__() == (tuple(obj),)")
             && LANGUAGE_TESTS.contains("sys.version_info.n_fields")
@@ -12405,6 +12406,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.n_unnamed_fields",
         "sys-flags-shape",
         "len(tuple(sys.flags)) == sys.flags.n_sequence_fields",
+        "repr(sys.flags).startswith('sys.flags(')",
+        "repr(type(sys.flags)) == \"<class 'sys.flags'>\"",
         "sys.flags.__getnewargs__() == (tuple(sys.flags),)",
         "type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),)",
         "sys.flags.no_user_site",
@@ -12422,6 +12425,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.hash_info.n_unnamed_fields",
         "sys_structseq_helpers",
         "sys_structseq_metadata",
+        "repr(obj).startswith('sys.' + type(obj).__name__ + '(')",
+        "repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\"",
+        "type(obj).__module__",
         "len(tuple(obj)) == obj.n_sequence_fields",
         "obj.__getnewargs__() == (tuple(obj),)",
         "type(obj).__getnewargs__(obj) == (tuple(obj),)",
@@ -12456,6 +12462,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "type(sys.version_info).n_sequence_fields",
         "type(sys.version_info).n_unnamed_fields",
         "version_helpers",
+        "repr(sys.version_info).startswith('sys.version_info(')",
+        "repr(type(sys.version_info)) == \"<class 'sys.version_info'>\"",
+        "type(sys.version_info).__module__",
         "hasattr(sys.version_info, name)",
         "hasattr(type(sys.version_info), name)",
         "dir(sys.version_info)",

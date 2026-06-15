@@ -1202,7 +1202,9 @@ impl fmt::Display for Value {
                 }
             }
             Value::UserDict { data, .. } => write!(f, "{{{}}}", format_dict(&data.borrow())),
-            Value::NamedTupleType(typ) => write!(f, "<class '{}'>", typ.name),
+            Value::NamedTupleType(typ) => {
+                write!(f, "<class '{}'>", named_tuple_display_name(typ))
+            }
             Value::NamedTuple { typ, values } => {
                 write!(f, "{}", format_named_tuple(typ, values))
             }
@@ -3897,7 +3899,7 @@ fn format_tuple(items: &[Value]) -> String {
 }
 
 fn format_named_tuple(typ: &NamedTupleType, values: &[Value]) -> String {
-    format_named_tuple_with_name(&typ.name, &typ.fields, values)
+    format_named_tuple_with_name(&named_tuple_display_name(typ), &typ.fields, values)
 }
 
 fn format_named_tuple_with_name(name: &str, fields: &[String], values: &[Value]) -> String {
@@ -3908,6 +3910,19 @@ fn format_named_tuple_with_name(name: &str, fields: &[String], values: &[Value])
         .collect::<Vec<_>>()
         .join(", ");
     format!("{name}({rendered})")
+}
+
+fn named_tuple_display_name(typ: &NamedTupleType) -> String {
+    if matches!(&typ.module, Value::String(module) if module == "sys")
+        && matches!(
+            typ.name.as_str(),
+            "version_info" | "float_info" | "hash_info" | "flags"
+        )
+    {
+        format!("sys.{}", typ.name)
+    } else {
+        typ.name.clone()
+    }
 }
 
 fn format_named_tuple_subclass(class_name: &str, fields: &Scope) -> Option<String> {
