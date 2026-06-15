@@ -81,7 +81,8 @@ Recent runtime migration notes:
   `__get__`, readonly `__set__` / `__delete__`, `__name__`, `__qualname__`,
   `__objclass__`, `__doc__`, and CPython's inherited object-dunder `dir()`
   names for the descriptor object, instance-level `maxlen` assignment/deletion
-  rejection, and non-dynamic instance attribute rejection,
+  rejection, non-dynamic instance attribute rejection, and type-object
+  attribute mutation rejection,
   generic-alias repr, direct type-level public method calls, basic `append` /
   `appendleft` / `extend` / `extendleft` / `insert` / `remove` / `pop` /
   `popleft` / `count` / `index` / `rotate` / `reverse` / `clear` / `copy`,

@@ -4060,6 +4060,16 @@ for label, callback in [
         callback()
     except Exception as error:
         print(label, type(error).__name__, str(error))
+for label, callback in [
+    ('class-set-maxlen', lambda: setattr(deque, 'maxlen', 5)),
+    ('class-del-maxlen', lambda: delattr(deque, 'maxlen')),
+    ('class-set-extra', lambda: setattr(deque, 'foo', 5)),
+    ('class-del-extra', lambda: delattr(deque, 'foo')),
+]:
+    try:
+        callback()
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
 alias = deque[int]
 print(deque.__module__, deque.__qualname__, repr(alias), alias.__origin__ is deque, alias.__origin__.__module__)
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:

@@ -56906,6 +56906,9 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::Builtin(function_name) if is_singleton_type_name(&function_name) => Err(format!(
             "TypeError: cannot set '{name}' attribute of immutable type '{function_name}'"
         )),
+        Value::Builtin(function_name) if function_name == "deque" => {
+            Err(deque_type_attribute_assignment_error())
+        }
         Value::Builtin(function_name)
             if name == "_fields" && ast_builtin_kind(&function_name).is_some() =>
         {
@@ -57172,6 +57175,9 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                 Ok(())
             }
         }
+        Value::Builtin(function_name) if function_name == "deque" => {
+            Err(deque_type_attribute_assignment_error())
+        }
         Value::NamedTupleType(typ) if name == "__doc__" => {
             *typ.doc.borrow_mut() = String::new();
             Ok(())
@@ -57193,6 +57199,10 @@ fn deque_attribute_assignment_error(name: &str) -> String {
     } else {
         format!("AttributeError: 'collections.deque' object has no attribute '{name}'")
     }
+}
+
+fn deque_type_attribute_assignment_error() -> String {
+    "TypeError: can't set attributes of built-in/extension type 'collections.deque'".to_string()
 }
 
 fn bind_method(value: Value, receiver: Value) -> Value {

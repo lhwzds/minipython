@@ -11141,6 +11141,8 @@ Completed in the CPython collections manifest expansion pass:
 - Extended the same `collections.deque` public surface with CPython parity for
   instance-level `maxlen` assignment/deletion rejection and non-dynamic deque
   instance attribute rejection.
+- Extended the same `collections.deque` public surface with CPython parity for
+  class-level deque attribute assignment/deletion rejection.
 - Extended the same `collections.deque` public surface with deque-to-deque rich
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,
