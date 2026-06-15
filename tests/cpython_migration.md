@@ -11135,6 +11135,9 @@ Completed in the CPython collections manifest expansion pass:
   evidence, plus descriptor `__get__`, `__name__`, `__qualname__`,
   readonly `__set__` / `__delete__`, `__objclass__`, `__class__`, and
   `__doc__` public behavior.
+- Extended the same `collections.deque` public surface with CPython parity for
+  `dir(deque.maxlen)` inherited object-dunder names, keeping object-dunder
+  callable behavior outside this descriptor-only step.
 - Extended the same `collections.deque` public surface with deque-to-deque rich
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,

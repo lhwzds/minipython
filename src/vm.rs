@@ -46790,20 +46790,9 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("path".to_string());
             }
         }
-        Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => names.extend(
-            [
-                "__class__",
-                "__delete__",
-                "__doc__",
-                "__get__",
-                "__name__",
-                "__objclass__",
-                "__qualname__",
-                "__set__",
-            ]
-            .into_iter()
-            .map(str::to_string),
-        ),
+        Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => {
+            names.extend(getset_descriptor_dir_names())
+        }
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
             if name == "deque" {
@@ -47042,6 +47031,43 @@ fn append_visible_class_dir_names(names: &mut Vec<String>, class_value: &Value) 
         }
         _ => {}
     }
+}
+
+fn getset_descriptor_dir_names() -> Vec<String> {
+    [
+        "__class__",
+        "__delattr__",
+        "__delete__",
+        "__dir__",
+        "__doc__",
+        "__eq__",
+        "__format__",
+        "__ge__",
+        "__get__",
+        "__getattribute__",
+        "__gt__",
+        "__hash__",
+        "__init__",
+        "__init_subclass__",
+        "__le__",
+        "__lt__",
+        "__name__",
+        "__ne__",
+        "__new__",
+        "__objclass__",
+        "__qualname__",
+        "__reduce__",
+        "__reduce_ex__",
+        "__repr__",
+        "__set__",
+        "__setattr__",
+        "__sizeof__",
+        "__str__",
+        "__subclasshook__",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
 }
 
 fn builtin_type_dir_names(name: &str) -> Vec<String> {

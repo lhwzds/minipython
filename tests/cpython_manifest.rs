@@ -10501,6 +10501,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "descriptor.__qualname__",
         "descriptor.__objclass__ is deque",
         "descriptor.__class__ is types.GetSetDescriptorType",
+        "descriptor_dir_dunders",
+        "'__subclasshook__'",
         "descriptor.__get__([], deque)",
         "descriptor.__get__(None, None)",
         "descriptor.__get__(obj=deque(), type=deque)",
