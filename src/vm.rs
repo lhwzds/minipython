@@ -22605,10 +22605,15 @@ impl Vm {
     ) -> Result<Value, String> {
         let mut iterable = None;
         let mut maxlen = None;
-        if args.len() > 2 {
+        let total_args = args.len() + keywords.len();
+        if total_args > 2 {
+            let noun = if args.is_empty() {
+                "keyword arguments"
+            } else {
+                "arguments"
+            };
             return Err(format!(
-                "TypeError: deque expected at most 2 arguments, got {}",
-                args.len()
+                "TypeError: deque() takes at most 2 {noun} ({total_args} given)"
             ));
         }
         for (index, value) in args.into_iter().enumerate() {

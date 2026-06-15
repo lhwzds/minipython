@@ -103,6 +103,7 @@ Recent runtime migration notes:
 - `cpython_collections_deque_error_messages_subset` and
   `cpython_collections_deque_error_messages_diff_subset` pin the public
   deque `maxlen` integer acceptance and rejection boundary plus
+  deque constructor arity TypeError text,
   deque public method arity TypeError text and
   no-argument deque method TypeError text for the supported pure-memory
   methods, without expanding into full deque construction/mutation APIs.
