@@ -10613,6 +10613,37 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_copy_subclass_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter subclass copying"
     );
+    let userdict_public_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userdict_public_methods_diff_subset",
+    );
+    let userdict_public_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userdict_public_methods_subset",
+    );
+    for required in [
+        "UserDict.__getitem__(class_obj, 'a')",
+        "UserDict.get(class_obj, 'missing', 9)",
+        "UserDict.keys(class_obj)",
+        "UserDict.items(class_obj)",
+        "UserDict.values(class_obj)",
+        "UserDict.__contains__(class_obj, 'a')",
+        "UserDict.__len__(class_obj)",
+        "UserDict.__iter__(class_obj)",
+        "UserDict.__setitem__(class_obj, 'c', 3)",
+        "UserDict.pop(class_obj, 'b')",
+        "UserDict.setdefault(class_obj, 'd', 4)",
+        "UserDict.update(class_obj, {'e': 5})",
+        "UserDict.__delitem__(class_obj, 'c')",
+        "UserDict.copy(class_obj)",
+        "UserDict.clear(class_obj)",
+    ] {
+        assert!(
+            userdict_public_diff_body.contains(required)
+                && userdict_public_subset_body.contains(required),
+            "UserDict public diff and subset evidence must cover `{required}`"
+        );
+    }
     let userlist_public_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_collections_userlist_public_methods_diff_subset",

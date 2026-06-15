@@ -12710,7 +12710,22 @@ obj.test = [1234]
 external = copy(obj)
 print(external.data is obj.data, external.data == obj.data, external.test is obj.test)
 del obj[123]
-print(list(obj), len(obj))"#,
+print(list(obj), len(obj))
+class_obj = UserDict({'a': 1, 'b': 2})
+print(UserDict.__getitem__(class_obj, 'a'))
+print(UserDict.get(class_obj, 'missing', 9))
+print(list(UserDict.keys(class_obj)))
+print(list(UserDict.items(class_obj)))
+print(list(UserDict.values(class_obj)))
+print(UserDict.__contains__(class_obj, 'a'), UserDict.__len__(class_obj), list(UserDict.__iter__(class_obj)))
+print(UserDict.__setitem__(class_obj, 'c', 3), class_obj)
+print(UserDict.pop(class_obj, 'b'), class_obj)
+print(UserDict.setdefault(class_obj, 'd', 4), class_obj)
+print(UserDict.update(class_obj, {'e': 5}), class_obj)
+print(UserDict.__delitem__(class_obj, 'c'), class_obj)
+class_copy = UserDict.copy(class_obj)
+print(class_copy, type(class_copy).__name__, class_copy.data is class_obj.data)
+print(UserDict.clear(class_obj), class_obj)"#,
     });
 }
 

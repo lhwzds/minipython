@@ -860,7 +860,8 @@ Recent runtime migration notes:
 - The bundled `collections` module also includes
   `cpython_collections_userdict_public_methods_diff_subset`, covering the
   CPython public `UserDict` method subset, including direct display and
-  empty-format behavior, with direct output parity evidence.
+  empty-format behavior plus class-level direct public method calls such as
+  `UserDict.get(obj, key)`, with direct output parity evidence.
 - The bundled `collections` module also includes
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
   CPython public `UserList` method subset, including direct display,
@@ -3778,8 +3779,8 @@ without adding general custom encoder/decoder class support.
   `TestUserObjects` public `UserDict` behavior for `dir(UserDict)` protocol
   coverage against `dict`, item assignment/deletion, lookup, iteration,
   containment, `get()`, `.data`, direct display/empty-format methods, recursive
-  display, `.copy()`, and `copy.copy()` with shallow instance-attribute
-  copying.
+  display, class-level direct public method calls, `.copy()`, and `copy.copy()`
+  with shallow instance-attribute copying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_public_methods_diff_subset` and
   `cpython_collections_userlist_public_methods_subset`, covering CPython

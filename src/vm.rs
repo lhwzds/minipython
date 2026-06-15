@@ -50127,6 +50127,10 @@ fn is_builtin_dict_type_method(name: &str) -> bool {
     )
 }
 
+fn is_builtin_user_dict_type_method(name: &str) -> bool {
+    is_builtin_dict_type_method(name) || matches!(name, "__format__" | "__init__")
+}
+
 fn is_builtin_mappingproxy_type_method(name: &str) -> bool {
     matches!(
         name,
@@ -55207,17 +55211,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin("itertools.chain.from_iterable".to_string()))
         }
-        Value::Builtin(function_name) if function_name == "UserDict" && name == "__init__" => {
-            Ok(Value::Builtin("UserDict.__init__".to_string()))
-        }
         Value::Builtin(function_name)
             if function_name == "UserList" && is_builtin_user_list_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserList.{name}")))
         }
         Value::Builtin(function_name)
-            if function_name == "UserDict"
-                && matches!(name, "__repr__" | "__str__" | "__format__") =>
+            if function_name == "UserDict" && is_builtin_user_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserDict.{name}")))
         }
