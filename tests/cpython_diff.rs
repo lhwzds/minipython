@@ -10233,6 +10233,15 @@ fn cpython_types_coroutine_async_def_diff_subset() {
         origin: "Lib/test/test_types.py::CoroutineTests async def public subset",
         name: "types-coroutine-async-def",
         source: r#"import types
+async def running_cr():
+    print('cr-running-inside', running_coro.cr_running)
+    return running_coro.cr_running
+running_coro = running_cr()
+print('cr-running-before', running_coro.cr_running)
+try:
+    running_coro.send(None)
+except StopIteration as done:
+    print('cr-running-stop', done.value, running_coro.cr_running)
 async def foo():
     pass
 foo_code = foo.__code__
@@ -10252,6 +10261,35 @@ for index in range(2):
     print('cr-code-flags', coro.cr_code.co_flags == foo_flags)
     print('close', coro.close())
     print('cr-frame-closed', coro.cr_frame is None)"#,
+    });
+}
+
+#[test]
+fn cpython_generator_running_flag_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_generators.py public gi_running state subset",
+        name: "generator-running-flag",
+        source: r#"def running_gen_func():
+    print('gi-running-inside', running_gen.gi_running)
+    yield running_gen.gi_running
+running_gen = running_gen_func()
+print('gi-running-before', running_gen.gi_running)
+print('gi-running-yield', next(running_gen), running_gen.gi_running)
+try:
+    next(running_gen)
+except StopIteration:
+    pass
+print('gi-running-closed', running_gen.gi_running)
+
+def throwing_gen_func():
+    try:
+        yield 1
+    except ValueError:
+        print('gi-running-throw-inside', throwing_gen.gi_running)
+        yield throwing_gen.gi_running
+throwing_gen = throwing_gen_func()
+print('throw-start', next(throwing_gen), throwing_gen.gi_running)
+print('throw-yield', throwing_gen.throw(ValueError()), throwing_gen.gi_running)"#,
     });
 }
 

@@ -57258,6 +57258,15 @@ fn cpython_types_coroutine_async_def_subset() {
     assert_output(
         concat!(
             "import types\n",
+            "async def running_cr():\n",
+            "    print('cr-running-inside', running_coro.cr_running)\n",
+            "    return running_coro.cr_running\n",
+            "running_coro = running_cr()\n",
+            "print('cr-running-before', running_coro.cr_running)\n",
+            "try:\n",
+            "    running_coro.send(None)\n",
+            "except StopIteration as done:\n",
+            "    print('cr-running-stop', done.value, running_coro.cr_running)\n",
             "async def foo():\n",
             "    pass\n",
             "foo_code = foo.__code__\n",
@@ -57279,6 +57288,9 @@ fn cpython_types_coroutine_async_def_subset() {
             "    print('cr-frame-closed', coro.cr_frame is None)"
         ),
         &[
+            "cr-running-before False",
+            "cr-running-inside True",
+            "cr-running-stop True False",
             "func-id True",
             "flags-stable True",
             "code-is True",
@@ -57348,6 +57360,22 @@ fn cpython_types_coroutine_generator_wrapper_subset() {
             "wrapper-dir True",
         ],
         16 * 1024 * 1024,
+    );
+}
+
+#[test]
+fn cpython_generator_running_flag_subset() {
+    assert_output(
+        "def running_gen_func():\n    print('gi-running-inside', running_gen.gi_running)\n    yield running_gen.gi_running\nrunning_gen = running_gen_func()\nprint('gi-running-before', running_gen.gi_running)\nprint('gi-running-yield', next(running_gen), running_gen.gi_running)\ntry:\n    next(running_gen)\nexcept StopIteration:\n    pass\nprint('gi-running-closed', running_gen.gi_running)\n\ndef throwing_gen_func():\n    try:\n        yield 1\n    except ValueError:\n        print('gi-running-throw-inside', throwing_gen.gi_running)\n        yield throwing_gen.gi_running\nthrowing_gen = throwing_gen_func()\nprint('throw-start', next(throwing_gen), throwing_gen.gi_running)\nprint('throw-yield', throwing_gen.throw(ValueError()), throwing_gen.gi_running)",
+        &[
+            "gi-running-before False",
+            "gi-running-inside True",
+            "gi-running-yield True False",
+            "gi-running-closed False",
+            "throw-start 1 False",
+            "gi-running-throw-inside True",
+            "throw-yield True False",
+        ],
     );
 }
 

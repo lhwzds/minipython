@@ -15967,6 +15967,8 @@ fn types_coroutine_diff_covers_generator_async_runtime_subsets() {
         "foo_coro.cr_frame is foo_coro.cr_frame",
         "foo_coro.cr_frame.f_code is foo_coro.cr_code",
         "coro.cr_frame is None",
+        "running_coro.cr_running",
+        "done.value, running_coro.cr_running",
     ] {
         assert!(
             async_def_diff.contains(required) && async_def_subset.contains(required),
@@ -16012,6 +16014,31 @@ fn types_coroutine_diff_covers_generator_async_runtime_subsets() {
         assert!(
             frame_diff.contains(required),
             "types.coroutine frame diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_generator_running_flag_diff_subset()")
+            && CPYTHON_SUBSET.contains("fn cpython_generator_running_flag_subset()"),
+        "generator gi_running runtime subset and direct CPython diff evidence must exist"
+    );
+    for required in [
+        "running_gen.gi_running",
+        "next(running_gen), running_gen.gi_running",
+        "throwing_gen.gi_running",
+        "throwing_gen.throw(ValueError()), throwing_gen.gi_running",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "generator gi_running direct diff and subset evidence must cover `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_generator_running_flag_subset")
+                && document.contains("cpython_generator_running_flag_diff_subset")
+                && document.contains("gi_running"),
+            "generator running flag docs must mention direct subset/diff evidence"
         );
     }
 

@@ -3216,6 +3216,10 @@ Completed in the generator-expression walrus scope pass:
   list comprehensions, generator expressions, explicit `global`, explicit
   `nonlocal`, and the no-`nonlocal` nested-function case where the binding stays
   in the immediate containing function rather than leaking to an outer function.
+- Added `cpython_generator_running_flag_subset`, backed by
+  `cpython_generator_running_flag_diff_subset`, to cover public `gi_running`
+  state during `next()` and `throw()` resume paths without depending on CPython
+  frame internals.
 - Added the `any` builtin and migrated the CPython `containsOne =
   any((lastNum := num) == 1 for num in [1, 2, 3])` scope behavior, including
   short-circuiting so the walrus target keeps the first truthy element rather
@@ -10681,12 +10685,12 @@ Completed in the CPython collections manifest expansion pass:
   `test_returning_itercoro`, `test_async_def`, `test_gen`, `test_genfunc`,
   `test_wrapper_object`, `test_duck_functional_gen`, and `test_duck_gen`.
   Runtime support now includes
-  stable function `__code__` identity, native coroutine `cr_code` and
-  `cr_frame` open/closed lifecycle,
+  stable function `__code__` identity, native coroutine `cr_code`,
+  `cr_frame` open/closed lifecycle, and `cr_running` active-body state,
   `inspect.CO_ITERABLE_COROUTINE`, generator `gi_code.co_flags`,
   `_GeneratorWrapper` type/ABC relationships, repr/dir, native-generator
   forwarding, exact native generator `__name__` / `__qualname__` / `gi_code` /
-  `gi_frame` and wrapper `cr_code` / `cr_frame` stable identity through
+  `gi_frame`, active-body `gi_running`, and wrapper `cr_code` / `cr_frame` stable identity through
   `cpython_types_coroutine_generator_frame_subset`, native generator
   `gi_yieldfrom` and wrapper `cr_await` delegate identity through
   `cpython_types_coroutine_generator_yieldfrom_subset`, direct duck-generator

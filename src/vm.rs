@@ -11497,6 +11497,7 @@ impl Vm {
                 pending_exception_after_clear: None,
                 resume_dst: None,
                 done: false,
+                running: false,
                 is_iterable_coroutine: is_iterable_coroutine && !is_async,
                 first_line,
                 line_sequence,
@@ -11532,6 +11533,7 @@ impl Vm {
                 current_exception: None,
                 pending_exception_after_clear: None,
                 done: false,
+                running: false,
                 first_line,
                 line_sequence,
                 code_identity,
@@ -18049,6 +18051,7 @@ impl Vm {
                 current_exception: None,
                 pending_exception_after_clear: None,
                 done: false,
+                running: false,
                 first_line,
                 line_sequence,
                 code_identity: identity,
@@ -33760,6 +33763,7 @@ impl Vm {
         };
 
         let is_closing = matches!(resume, CoroutineResume::Close);
+        state.borrow_mut().running = true;
         match resume {
             CoroutineResume::Send(_) => {}
             CoroutineResume::Throw(exception) => {
@@ -33769,6 +33773,7 @@ impl Vm {
                     self.absorb_output_from(&mut coroutine_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
+                    state.running = false;
                     state.frame_fields = None;
                     if let Some(exception) = coroutine_vm.current_exception {
                         self.raise_exception(exception, true)?;
@@ -33795,6 +33800,7 @@ impl Vm {
                     self.absorb_output_from(&mut coroutine_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
+                    state.running = false;
                     state.frame_fields = None;
                     if let Some(exception) = coroutine_vm.current_exception {
                         if exception.type_name == "GeneratorExit" {
@@ -33814,6 +33820,7 @@ impl Vm {
                 self.absorb_output_from(&mut coroutine_vm);
                 let mut state = state.borrow_mut();
                 state.done = true;
+                state.running = false;
                 state.frame_fields = None;
                 if let Some(exception) = coroutine_vm.current_exception {
                     if is_closing
@@ -33859,16 +33866,19 @@ impl Vm {
         match exit {
             ExecutionExit::Return(value) => {
                 state.done = true;
+                state.running = false;
                 state.frame_fields = None;
                 Ok(IteratorAdvance::Complete(value))
             }
             ExecutionExit::Halt => {
                 state.done = true;
+                state.running = false;
                 state.frame_fields = None;
                 Ok(IteratorAdvance::Complete(Value::None))
             }
             ExecutionExit::Yield { value, .. } => {
                 state.done = false;
+                state.running = false;
                 update_coroutine_frame_line(&state, coroutine_vm.ip.saturating_sub(1));
                 Ok(IteratorAdvance::Yield(value))
             }
@@ -33894,6 +33904,7 @@ impl Vm {
         if matches!(resume, GeneratorResume::Close) && state.borrow().ip == 0 {
             let mut state = state.borrow_mut();
             state.done = true;
+            state.running = false;
             state.resume_dst = None;
             state.frame_fields = None;
             state.yield_from = None;
@@ -33960,15 +33971,18 @@ impl Vm {
                 if is_just_started && !matches!(sent, Value::None) {
                     return Err("can't send non-None value to a just-started generator".to_string());
                 }
+                state.borrow_mut().running = true;
                 if let Some(resume_dst) = resume_dst {
                     generator_vm.write_register(resume_dst, sent);
                 }
             }
             GeneratorResume::Throw(exception) => {
+                state.borrow_mut().running = true;
                 if let Err(message) = generator_vm.raise_exception(exception, true) {
                     self.absorb_output_from(&mut generator_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
+                    state.running = false;
                     state.frame_fields = None;
                     state.yield_from = None;
                     if let Some(exception) = generator_vm.current_exception {
@@ -33979,6 +33993,7 @@ impl Vm {
                 }
             }
             GeneratorResume::Close => {
+                state.borrow_mut().running = true;
                 let exception = MiniException {
                     type_name: "GeneratorExit".to_string(),
                     type_hierarchy: builtin_exception_type_hierarchy("GeneratorExit"),
@@ -33996,6 +34011,7 @@ impl Vm {
                     self.absorb_output_from(&mut generator_vm);
                     let mut state = state.borrow_mut();
                     state.done = true;
+                    state.running = false;
                     state.frame_fields = None;
                     state.yield_from = None;
                     if let Some(exception) = generator_vm.current_exception {
@@ -34016,6 +34032,7 @@ impl Vm {
                 self.absorb_output_from(&mut generator_vm);
                 let mut state = state.borrow_mut();
                 state.done = true;
+                state.running = false;
                 state.frame_fields = None;
                 state.yield_from = None;
                 if let Some(exception) = generator_vm.current_exception {
@@ -34062,6 +34079,7 @@ impl Vm {
             ExecutionExit::Yield { value, resume_dst } => {
                 if is_closing {
                     state.done = true;
+                    state.running = false;
                     state.resume_dst = None;
                     state.frame_fields = None;
                     state.yield_from = None;
@@ -34085,12 +34103,14 @@ impl Vm {
                     return Ok(IteratorAdvance::Raised);
                 }
                 state.resume_dst = resume_dst;
+                state.running = false;
                 state.yield_from = generator_vm.yield_from_delegate.clone();
                 update_generator_frame_line(&state, generator_vm.ip.saturating_sub(1));
                 Ok(IteratorAdvance::Yield(value))
             }
             ExecutionExit::Return(value) => {
                 state.done = true;
+                state.running = false;
                 state.resume_dst = None;
                 state.frame_fields = None;
                 state.yield_from = None;
@@ -34098,6 +34118,7 @@ impl Vm {
             }
             ExecutionExit::Halt => {
                 state.done = true;
+                state.running = false;
                 state.resume_dst = None;
                 state.frame_fields = None;
                 state.yield_from = None;
@@ -51760,7 +51781,7 @@ fn load_coroutine_introspection_attribute(
         "cr_code" => Ok(coroutine_code_object_value(&state)),
         "cr_frame" => Ok(coroutine_frame_value(&state)),
         "cr_await" => Ok(Value::None),
-        "cr_running" => Ok(Value::Bool(false)),
+        "cr_running" => Ok(Value::Bool(state.running)),
         "cr_suspended" => Ok(Value::Bool(coroutine_is_suspended_on_await(&state))),
         "cr_state" => Ok(Value::String(coroutine_state_name(&state).to_string())),
         _ => Err(format!(
@@ -51780,7 +51801,7 @@ fn load_generator_introspection_attribute(
         "gi_code" => Ok(generator_code_object_value(&state)),
         "gi_frame" => Ok(generator_frame_value(&state)),
         "gi_yieldfrom" => Ok(state.yield_from.clone().unwrap_or(Value::None)),
-        "gi_running" => Ok(Value::Bool(false)),
+        "gi_running" => Ok(Value::Bool(state.running)),
         "gi_suspended" => Ok(Value::Bool(generator_suspended(&state))),
         "gi_state" => Ok(Value::String(generator_state_name(&state).to_string())),
         _ => Err(format!(
@@ -73751,6 +73772,7 @@ fn empty_generator_value(name: &str, globals: Scope) -> Value {
         pending_exception_after_clear: None,
         resume_dst: None,
         done: false,
+        running: false,
         is_iterable_coroutine: false,
         first_line: 1,
         line_sequence: vec![1],

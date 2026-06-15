@@ -1753,7 +1753,8 @@ without adding general custom encoder/decoder class support.
   `cpython_types_coroutine_public_diff_subset`.
   `cpython_types_coroutine_async_def_subset`
   covers stable function `__code__` identity, native coroutine `cr_code`
-  flags, and native coroutine `cr_frame` open/closed lifecycle. Direct output parity is guarded by
+  flags, native coroutine `cr_frame` open/closed lifecycle, and
+  `cr_running` while the coroutine body is active. Direct output parity is guarded by
   `cpython_types_coroutine_async_def_diff_subset`.
   `cpython_types_coroutine_generator_wrapper_subset`,
   `cpython_types_coroutine_generator_frame_subset`,
@@ -1763,7 +1764,8 @@ without adding general custom encoder/decoder class support.
   `cpython_types_coroutine_duck_generator_proxy_subset` cover
   `_GeneratorWrapper` type/ABC relationships, repr/dir, native-generator
   forwarding, exact native generator `__name__` / `__qualname__` / `gi_code` /
-  `gi_frame` / `gi_yieldfrom` and wrapper `cr_code` / `cr_frame` / `cr_await`
+  `gi_frame` / `gi_yieldfrom`, generator `gi_running` while the generator body
+  is active, and wrapper `cr_code` / `cr_frame` / `cr_await`
   stable identity, direct duck-generator forwarding,
   duck-generator await execution,
   duck-generator attribute pass-through and `cr_*` aliases,
@@ -5435,6 +5437,10 @@ runtime-blocked.
 part of `BuiltinTest::test_all_any_tuple_list_set_optimization`, covering
 dynamic global and builtins-module lookup for `all`, `any`, `tuple`, `list`,
 and `set` when used around generator expressions.
+`cpython_generator_running_flag_subset`, backed by
+`cpython_generator_running_flag_diff_subset`, covers public generator
+`gi_running` state while the generator body is active during `next()` and
+`throw()` resume paths, plus restoration to `False` after yield and close.
 `cpython_builtin_print_keyword_diff_subset` and
 `cpython_builtin_print_keyword_subset` cover the sandbox-safe `print()` keyword
 surface: `sep`, `end`, `file=None`, `flush`, string-subclass separators/endings,
