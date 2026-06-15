@@ -540,7 +540,8 @@ Recent runtime migration notes:
   NaN identity hashing, float-subclass NaN hash inheritance, public
   `sys.builtin_module_names`, `sys.byteorder`, `sys.dont_write_bytecode`,
   `sys.flags.debug`, `sys.flags.dont_write_bytecode`, `sys.flags.dev_mode`,
-  `sys.flags.ignore_environment`, `sys.flags.inspect`,
+  `sys.flags.hash_randomization`, `sys.flags.ignore_environment`,
+  `sys.flags.inspect`,
   `sys.flags.interactive`, `sys.flags.no_user_site`, `sys.flags.no_site`,
   `sys.flags.isolated`, `sys.flags.optimize`, `sys.flags.quiet`,
   `sys.flags.utf8_mode`, `sys.flags.verbose`,

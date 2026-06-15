@@ -482,6 +482,10 @@ pub(crate) fn create_module(
                             ),
                             (Value::String("dev_mode".to_string()), Value::Bool(false)),
                             (
+                                Value::String("hash_randomization".to_string()),
+                                Value::Number(0),
+                            ),
+                            (
                                 Value::String("ignore_environment".to_string()),
                                 Value::Number(0),
                             ),

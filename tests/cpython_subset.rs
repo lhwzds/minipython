@@ -5479,6 +5479,7 @@ print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.don
 print('sys-flags-debug', type(sys.flags.debug).__name__, sys.flags.debug)
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode)
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode)
+print('sys-flags-hash-randomization', type(sys.flags.hash_randomization).__name__, sys.flags.hash_randomization)
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment)
 print('sys-flags-inspect', type(sys.flags.inspect).__name__, sys.flags.inspect)
 print('sys-flags-interactive', type(sys.flags.interactive).__name__, sys.flags.interactive)
@@ -5534,6 +5535,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-debug int 0",
             "sys-flags-dont-write-bytecode int 0",
             "sys-flags-dev-mode bool False",
+            "sys-flags-hash-randomization int 0",
             "sys-flags-ignore-environment int 0",
             "sys-flags-inspect int 0",
             "sys-flags-interactive int 0",
