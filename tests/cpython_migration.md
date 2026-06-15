@@ -50,6 +50,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_json_loads_parse_hooks_diff_subset` with falsey parse-hook fallback through public truthiness
   for `parse_int`, `parse_float`, and `parse_constant`, while keeping object
   hooks on the existing non-`None` callable path.
+- Added `cpython_collections_deque_error_messages_subset` and
+  `cpython_collections_deque_error_messages_diff_subset` for the supported
+  deque `maxlen` integer acceptance and rejection boundary plus
+  no-argument deque method TypeError text, without expanding into full deque
+  construction/mutation APIs.
 
 The current runtime scope includes:
 

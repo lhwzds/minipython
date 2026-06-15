@@ -10640,6 +10640,67 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "deque public surface subset output must pin CPython behavior `{required}`"
         );
     }
+    let deque_error_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_deque_error_messages_diff_subset",
+    );
+    let deque_error_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_deque_error_messages_subset",
+    );
+    for required in [
+        "deque([], 'x')",
+        "deque([], 1.5)",
+        "deque([1, 2, 3], IndexOnly())",
+        "deque([1, 2, 3], MyInt(2))",
+        "deque([1, 2, 3], True)",
+        "deque([1, 2, 3], False)",
+        "deque([1]).pop(1)",
+        "deque([1]).popleft(1)",
+        "deque([1]).reverse(1)",
+        "deque([1]).clear(1)",
+        "deque([1]).copy(1)",
+        "deque([1]).__copy__(1)",
+        "deque([1]).__reversed__(1)",
+    ] {
+        assert!(
+            deque_error_diff_body.contains(required) && deque_error_subset_body.contains(required),
+            "deque error-message diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"maxlen-str TypeError an integer is required\"",
+        "\"maxlen-float TypeError an integer is required\"",
+        "\"maxlen-index-only TypeError an integer is required\"",
+        "\"maxlen-myint [2, 3] 2\"",
+        "\"maxlen-true [3] 1\"",
+        "\"maxlen-false [] 0\"",
+        "\"pop-arg TypeError deque.pop() takes no arguments (1 given)\"",
+        "\"popleft-arg TypeError deque.popleft() takes no arguments (1 given)\"",
+        "\"reverse-arg TypeError deque.reverse() takes no arguments (1 given)\"",
+        "\"clear-arg TypeError deque.clear() takes no arguments (1 given)\"",
+        "\"copy-arg TypeError deque.copy() takes no arguments (1 given)\"",
+        "\"dunder-copy-arg TypeError deque.__copy__() takes no arguments (1 given)\"",
+        "\"reversed-arg TypeError deque.__reversed__() takes no arguments (1 given)\"",
+    ] {
+        assert!(
+            deque_error_subset_body.contains(required),
+            "deque error-message subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_deque_error_messages_subset",
+            "cpython_collections_deque_error_messages_diff_subset",
+            "deque `maxlen` integer acceptance and rejection",
+            "no-argument deque method TypeError text",
+        ] {
+            assert!(
+                document.contains(required),
+                "deque error-message docs must contain `{required}`"
+            );
+        }
+    }
     let counter_public_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_collections_counter_public_diff_subset",

@@ -100,6 +100,11 @@ Recent runtime migration notes:
   thread-safety stress, and unported ABC edge matrices also remain outside
   `collections` / `collections.abc` until separately promoted with direct
   public-behavior evidence.
+- `cpython_collections_deque_error_messages_subset` and
+  `cpython_collections_deque_error_messages_diff_subset` pin the public
+  deque `maxlen` integer acceptance and rejection boundary plus
+  no-argument deque method TypeError text for the supported pure-memory
+  methods, without expanding into full deque construction/mutation APIs.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; adjacent mixed bytes/non-bytes
   literal rejection now has direct CPython rejection parity evidence in

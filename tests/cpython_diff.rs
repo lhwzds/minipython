@@ -4234,6 +4234,49 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_collections_deque_error_messages_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py deque public error message subset",
+        name: "collections-deque-error-messages",
+        source: r#"from collections import deque
+
+class MyInt(int):
+    pass
+
+class IndexOnly:
+    def __index__(self):
+        return 2
+
+def show(label, callback):
+    try:
+        value = callback()
+        if isinstance(value, deque):
+            print(label, list(value), value.maxlen)
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, callback in [
+    ('maxlen-str', lambda: deque([], 'x')),
+    ('maxlen-float', lambda: deque([], 1.5)),
+    ('maxlen-index-only', lambda: deque([1, 2, 3], IndexOnly())),
+    ('maxlen-myint', lambda: deque([1, 2, 3], MyInt(2))),
+    ('maxlen-true', lambda: deque([1, 2, 3], True)),
+    ('maxlen-false', lambda: deque([1, 2, 3], False)),
+    ('pop-arg', lambda: deque([1]).pop(1)),
+    ('popleft-arg', lambda: deque([1]).popleft(1)),
+    ('reverse-arg', lambda: deque([1]).reverse(1)),
+    ('clear-arg', lambda: deque([1]).clear(1)),
+    ('copy-arg', lambda: deque([1]).copy(1)),
+    ('dunder-copy-arg', lambda: deque([1]).__copy__(1)),
+    ('reversed-arg', lambda: deque([1]).__reversed__(1)),
+]:
+    show(label, callback)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_core_runtime_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py core collections.abc public runtime subset",

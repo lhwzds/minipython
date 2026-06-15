@@ -49104,6 +49104,62 @@ fn cpython_collections_deque_public_surface_subset() {
     );
 }
 
+#[test]
+fn cpython_collections_deque_error_messages_subset() {
+    assert_output(
+        r#"from collections import deque
+
+class MyInt(int):
+    pass
+
+class IndexOnly:
+    def __index__(self):
+        return 2
+
+def show(label, callback):
+    try:
+        value = callback()
+        if isinstance(value, deque):
+            print(label, list(value), value.maxlen)
+        else:
+            print(label, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, callback in [
+    ('maxlen-str', lambda: deque([], 'x')),
+    ('maxlen-float', lambda: deque([], 1.5)),
+    ('maxlen-index-only', lambda: deque([1, 2, 3], IndexOnly())),
+    ('maxlen-myint', lambda: deque([1, 2, 3], MyInt(2))),
+    ('maxlen-true', lambda: deque([1, 2, 3], True)),
+    ('maxlen-false', lambda: deque([1, 2, 3], False)),
+    ('pop-arg', lambda: deque([1]).pop(1)),
+    ('popleft-arg', lambda: deque([1]).popleft(1)),
+    ('reverse-arg', lambda: deque([1]).reverse(1)),
+    ('clear-arg', lambda: deque([1]).clear(1)),
+    ('copy-arg', lambda: deque([1]).copy(1)),
+    ('dunder-copy-arg', lambda: deque([1]).__copy__(1)),
+    ('reversed-arg', lambda: deque([1]).__reversed__(1)),
+]:
+    show(label, callback)"#,
+        &[
+            "maxlen-str TypeError an integer is required",
+            "maxlen-float TypeError an integer is required",
+            "maxlen-index-only TypeError an integer is required",
+            "maxlen-myint [2, 3] 2",
+            "maxlen-true [3] 1",
+            "maxlen-false [] 0",
+            "pop-arg TypeError deque.pop() takes no arguments (1 given)",
+            "popleft-arg TypeError deque.popleft() takes no arguments (1 given)",
+            "reverse-arg TypeError deque.reverse() takes no arguments (1 given)",
+            "clear-arg TypeError deque.clear() takes no arguments (1 given)",
+            "copy-arg TypeError deque.copy() takes no arguments (1 given)",
+            "dunder-copy-arg TypeError deque.__copy__() takes no arguments (1 given)",
+            "reversed-arg TypeError deque.__reversed__() takes no arguments (1 given)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public Counter coverage.
 #[test]
 fn cpython_collections_counter_public_subset() {

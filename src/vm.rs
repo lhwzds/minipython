@@ -22647,17 +22647,7 @@ impl Vm {
         }
         let maxlen = match maxlen {
             None | Some(Value::None) => None,
-            Some(value) => {
-                let value = self.index_big_int(value)?;
-                if value.is_negative() {
-                    return Err("ValueError: maxlen must be non-negative".to_string());
-                }
-                Some(
-                    value
-                        .to_usize()
-                        .ok_or_else(|| "OverflowError: maxlen is too large".to_string())?,
-                )
-            }
+            Some(value) => Some(deque_maxlen_value(value)?),
         };
         let mut values = match iterable {
             None => Vec::new(),
@@ -30868,10 +30858,7 @@ impl Vm {
             }
             "pop" | "popleft" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "{method}() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error(method, method_arg_count(&args)));
                 }
                 let mut items = data.borrow_mut();
                 let value = if method == "pop" {
@@ -30908,10 +30895,7 @@ impl Vm {
             }
             "reverse" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "reverse() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error("reverse", method_arg_count(&args)));
                 }
                 data.borrow_mut().reverse();
                 Ok(Value::None)
@@ -31025,10 +31009,7 @@ impl Vm {
             }
             "__copy__" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "__copy__() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error("__copy__", method_arg_count(&args)));
                 }
                 Ok(Value::Deque {
                     data: Rc::new(RefCell::new(data.borrow().clone())),
@@ -31085,10 +31066,7 @@ impl Vm {
             }
             "__reversed__" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "__reversed__() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error("__reversed__", method_arg_count(&args)));
                 }
                 let items_ref = data.borrow();
                 i64::try_from(items_ref.len())
@@ -31098,20 +31076,14 @@ impl Vm {
             }
             "clear" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "clear() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error("clear", method_arg_count(&args)));
                 }
                 data.borrow_mut().clear();
                 Ok(Value::None)
             }
             "copy" => {
                 if !rest.is_empty() {
-                    return Err(format!(
-                        "copy() expected 0 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_no_args_error("copy", method_arg_count(&args)));
                 }
                 Ok(Value::Deque {
                     data: Rc::new(RefCell::new(data.borrow().clone())),
@@ -78866,6 +78838,33 @@ fn deque_concat_value(left: &Value, right: &Value) -> Result<Value, String> {
         data: Rc::new(RefCell::new(values)),
         maxlen: *maxlen,
     })
+}
+
+fn deque_no_args_error(method: &str, given: usize) -> String {
+    format!("TypeError: deque.{method}() takes no arguments ({given} given)")
+}
+
+fn deque_maxlen_value(value: Value) -> Result<usize, String> {
+    let integer = if let Some(integer) = int_subclass_integer(&value) {
+        integer
+    } else {
+        match value {
+            Value::Bool(value) => Value::Number(bool_as_i64(value)),
+            value @ (Value::Number(_) | Value::BigInt(_)) => value,
+            _ => return Err("TypeError: an integer is required".to_string()),
+        }
+    };
+    let value = match integer {
+        Value::Number(value) => BigInt::from(value),
+        Value::BigInt(value) => value,
+        _ => unreachable!("deque_maxlen_value keeps only integer values"),
+    };
+    if value.is_negative() {
+        return Err("ValueError: maxlen must be non-negative".to_string());
+    }
+    value
+        .to_usize()
+        .ok_or_else(|| "OverflowError: maxlen is too large".to_string())
 }
 
 fn deque_repeat_value(receiver: &Value, count: i64) -> Result<Value, String> {
