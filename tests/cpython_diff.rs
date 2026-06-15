@@ -8787,6 +8787,10 @@ fn cpython_builtin_breakpoint_custom_hook_diff_subset() {
         source: r#"import builtins, sys
 print(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))
 print(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)
+for fn in [builtins.breakpoint, builtins.len, builtins.print]:
+    print(fn.__name__, fn.__qualname__, fn.__module__, type(fn.__doc__).__name__, bool(fn.__doc__), all(name in dir(fn) for name in ['__doc__', '__module__', '__name__', '__qualname__']))
+hook_meta = sys.__breakpointhook__
+print(hook_meta.__name__, hook_meta.__qualname__, hook_meta.__module__, type(hook_meta.__doc__).__name__, bool(hook_meta.__doc__), all(name in dir(hook_meta) for name in ['__doc__', '__module__', '__name__', '__qualname__']))
 def hook(*args, **kwargs):
     print('hook', args, kwargs)
     return 'ret'

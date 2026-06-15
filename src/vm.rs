@@ -46793,6 +46793,12 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => {
             names.extend(getset_descriptor_dir_names())
         }
+        Value::Builtin(name)
+            if is_builtins_builtin_function_name(name)
+                || is_sys_breakpointhook_builtin_name(name) =>
+        {
+            names.extend(builtin_function_dir_names())
+        }
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
             if name == "deque" {
@@ -47064,6 +47070,19 @@ fn getset_descriptor_dir_names() -> Vec<String> {
         "__sizeof__",
         "__str__",
         "__subclasshook__",
+    ]
+    .into_iter()
+    .map(str::to_string)
+    .collect()
+}
+
+fn builtin_function_dir_names() -> Vec<String> {
+    [
+        "__class__",
+        "__doc__",
+        "__module__",
+        "__name__",
+        "__qualname__",
     ]
     .into_iter()
     .map(str::to_string)
@@ -56273,6 +56292,45 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if name == "__doc__" && is_math_builtin(&function_name) => {
             Ok(Value::String(math_builtin_doc(&function_name).to_string()))
         }
+        Value::Builtin(function_name)
+            if name == "__name__" && is_sys_breakpointhook_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("breakpointhook".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_sys_breakpointhook_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("breakpointhook".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && is_sys_breakpointhook_builtin_name(&function_name) =>
+        {
+            Ok(Value::String("sys".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_sys_breakpointhook_builtin_name(&function_name) =>
+        {
+            Ok(Value::String(
+                "Default sandbox breakpoint hook. Returns None.".to_string(),
+            ))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_builtins_builtin_function_name(&function_name) =>
+        {
+            Ok(Value::String(builtin_public_name(&function_name)))
+        }
+        Value::Builtin(function_name)
+            if name == "__module__" && is_builtins_builtin_function_name(&function_name) =>
+        {
+            Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
+            if name == "__doc__" && is_builtins_builtin_function_name(&function_name) =>
+        {
+            Ok(Value::String(
+                "Built-in function in the MiniPython sandbox.".to_string(),
+            ))
+        }
         Value::Builtin(function_name) if name == "__name__" => {
             Ok(Value::String(builtin_public_name(&function_name)))
         }
@@ -57550,6 +57608,59 @@ fn is_builtin_name(name: &str) -> bool {
             | "ValueError"
             | "ZeroDivisionError"
     ) || is_exception_type_name(name)
+}
+
+fn is_builtins_builtin_function_name(name: &str) -> bool {
+    matches!(
+        name,
+        "__import__"
+            | "__build_class__"
+            | "print"
+            | "format"
+            | "eval"
+            | "exec"
+            | "compile"
+            | "breakpoint"
+            | "next"
+            | "iter"
+            | "aiter"
+            | "anext"
+            | "len"
+            | "max"
+            | "min"
+            | "sum"
+            | "abs"
+            | "hash"
+            | "id"
+            | "divmod"
+            | "round"
+            | "bin"
+            | "oct"
+            | "hex"
+            | "pow"
+            | "any"
+            | "all"
+            | "sorted"
+            | "isinstance"
+            | "issubclass"
+            | "repr"
+            | "ascii"
+            | "chr"
+            | "ord"
+            | "getattr"
+            | "setattr"
+            | "delattr"
+            | "hasattr"
+            | "callable"
+            | "vars"
+            | "globals"
+            | "locals"
+            | "dir"
+    )
+}
+
+fn is_sys_breakpointhook_builtin_name(name: &str) -> bool {
+    name == "sys.__breakpointhook__"
 }
 
 fn is_class_like_builtin(name: &str) -> bool {

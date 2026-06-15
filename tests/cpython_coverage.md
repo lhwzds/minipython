@@ -5449,10 +5449,12 @@ Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
 `cpython_builtin_breakpoint_passthru_error_diff_subset`
 cover the sandbox-safe public subset from
 `Lib/test/test_builtin.py::TestBreakpoint`: builtin and `builtins.breakpoint`
-visibility, `sys.breakpointhook` / `sys.__breakpointhook__` metadata, custom
-hook dispatch, positional/keyword passthrough, hook return values, custom-hook
-TypeError propagation, reset identity, a sandbox no-op default hook returning
-`None`, and the lost-hook `RuntimeError`.
+visibility, builtin-function `__module__` / `__qualname__` / `__doc__`
+metadata for the covered callable surface, `sys.breakpointhook` /
+`sys.__breakpointhook__` metadata, custom hook dispatch, positional/keyword
+passthrough, hook return values, custom-hook TypeError propagation, reset
+identity, a sandbox no-op default hook returning `None`, and the lost-hook
+`RuntimeError`.
 default pdb-backed breakpoint behavior, `PYTHONBREAKPOINT`, environment
 lookup, import warnings, and interactive debugger behavior remain
 runtime-blocked.

@@ -12986,6 +12986,32 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "builtins sandbox export test must guard public builtins, exceptions, and host IO stop lines"
     );
 
+    for required in [
+        "fn.__qualname__",
+        "fn.__module__",
+        "type(fn.__doc__).__name__",
+        "all(name in dir(fn) for name in ['__doc__', '__module__', '__name__', '__qualname__'])",
+        "hook_meta.__name__",
+        "hook_meta.__qualname__",
+        "hook_meta.__module__",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "builtins breakpoint metadata diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "breakpoint breakpoint builtins str True True",
+        "len len builtins str True True",
+        "print print builtins str True True",
+        "breakpointhook breakpointhook sys str True True",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "builtins breakpoint metadata subset output must pin `{required}`"
+        );
+    }
+
     let globals_locals_start = CPYTHON_SUBSET
         .find("fn cpython_globals_locals_builtin_subset()")
         .expect("globals/locals builtin subset evidence must be extractable");

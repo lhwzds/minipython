@@ -25163,10 +25163,14 @@ fn cpython_builtin_callable_public_subset() {
 #[test]
 fn cpython_builtin_breakpoint_custom_hook_subset() {
     assert_output(
-        "import builtins, sys\nprint(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))\nprint(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)\ndef hook(*args, **kwargs):\n    print('hook', args, kwargs)\n    return 'ret'\nsaved = sys.breakpointhook\nsys.breakpointhook = hook\nprint('call0', breakpoint())\nprint('callargs', breakpoint(1, 'x', key=3))\nprint('module-call', builtins.breakpoint())\ndel sys.breakpointhook\ntry:\n    breakpoint()\nexcept RuntimeError as error:\n    print('lost', type(error).__name__, str(error))\nfinally:\n    sys.breakpointhook = saved\nprint('reset-same', sys.breakpointhook is sys.__breakpointhook__)",
+        "import builtins, sys\nprint(hasattr(builtins, 'breakpoint'), callable(builtins.breakpoint))\nprint(hasattr(sys, 'breakpointhook'), hasattr(sys, '__breakpointhook__'), sys.breakpointhook is sys.__breakpointhook__)\nfor fn in [builtins.breakpoint, builtins.len, builtins.print]:\n    print(fn.__name__, fn.__qualname__, fn.__module__, type(fn.__doc__).__name__, bool(fn.__doc__), all(name in dir(fn) for name in ['__doc__', '__module__', '__name__', '__qualname__']))\nhook_meta = sys.__breakpointhook__\nprint(hook_meta.__name__, hook_meta.__qualname__, hook_meta.__module__, type(hook_meta.__doc__).__name__, bool(hook_meta.__doc__), all(name in dir(hook_meta) for name in ['__doc__', '__module__', '__name__', '__qualname__']))\ndef hook(*args, **kwargs):\n    print('hook', args, kwargs)\n    return 'ret'\nsaved = sys.breakpointhook\nsys.breakpointhook = hook\nprint('call0', breakpoint())\nprint('callargs', breakpoint(1, 'x', key=3))\nprint('module-call', builtins.breakpoint())\ndel sys.breakpointhook\ntry:\n    breakpoint()\nexcept RuntimeError as error:\n    print('lost', type(error).__name__, str(error))\nfinally:\n    sys.breakpointhook = saved\nprint('reset-same', sys.breakpointhook is sys.__breakpointhook__)",
         &[
             "True True",
             "True True True",
+            "breakpoint breakpoint builtins str True True",
+            "len len builtins str True True",
+            "print print builtins str True True",
+            "breakpointhook breakpointhook sys str True True",
             "hook () {}",
             "call0 ret",
             "hook (1, 'x') {'key': 3}",

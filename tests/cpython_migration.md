@@ -6292,6 +6292,10 @@ Completed in the `test_builtin.py` breakpoint custom-hook pass:
   `Lib/test/test_builtin.py::TestBreakpoint`.
 - Added a `breakpoint` builtin plus `sys.breakpointhook` and
   `sys.__breakpointhook__` metadata.
+- Added builtin-function metadata for the covered builtins callable surface:
+  `__module__`, `__qualname__`, and non-empty `__doc__` for ordinary builtins
+  functions plus matching `breakpointhook` metadata on the sandbox default
+  `sys.__breakpointhook__`.
 - `breakpoint()` now dynamically dispatches to the current
   `sys.breakpointhook`, preserves positional and keyword arguments, returns the
   hook result, uses a sandbox no-op default hook returning `None`, propagates
