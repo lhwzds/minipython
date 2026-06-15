@@ -25065,6 +25065,7 @@ print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names,
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
 print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name__ == 'str' for option in sys.warnoptions))
 print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.dont_write_bytecode in (False, True))
+print('sys-flags-debug', type(sys.flags.debug).__name__, sys.flags.debug in (0, 1))
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode in (0, 1))
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode in (False, True))
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment in (0, 1))

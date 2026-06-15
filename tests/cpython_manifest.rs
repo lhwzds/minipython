@@ -12316,6 +12316,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
             && LANGUAGE_TESTS.contains("sys.warnoptions")
             && LANGUAGE_TESTS.contains("sys.dont_write_bytecode")
+            && LANGUAGE_TESTS.contains("sys.flags.debug")
             && LANGUAGE_TESTS.contains("sys.flags.dont_write_bytecode")
             && LANGUAGE_TESTS.contains("sys.flags.dev_mode")
             && LANGUAGE_TESTS.contains("sys.flags.ignore_environment")
@@ -12364,6 +12365,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.warnoptions",
         "all(type(option).__name__ == 'str' for option in sys.warnoptions)",
         "sys.dont_write_bytecode",
+        "sys.flags.debug",
         "sys.flags.dont_write_bytecode",
         "sys.flags.dev_mode",
         "sys.flags.ignore_environment",

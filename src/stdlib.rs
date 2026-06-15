@@ -471,6 +471,7 @@ pub(crate) fn create_module(
                     "flags",
                     Value::SimpleNamespace {
                         fields: stdlib_dict_ref_from_entries(vec![
+                            (Value::String("debug".to_string()), Value::Number(0)),
                             (
                                 Value::String("bytes_warning".to_string()),
                                 Value::Number(flags.bytes_warning),

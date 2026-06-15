@@ -5476,6 +5476,7 @@ print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names,
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
 print('sys-warnoptions', type(sys.warnoptions).__name__, all(type(option).__name__ == 'str' for option in sys.warnoptions))
 print('sys-dont-write-bytecode', type(sys.dont_write_bytecode).__name__, sys.dont_write_bytecode)
+print('sys-flags-debug', type(sys.flags.debug).__name__, sys.flags.debug)
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode)
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode)
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment)
@@ -5526,6 +5527,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-builtin-module-name-types True True",
             "sys-warnoptions list True",
             "sys-dont-write-bytecode bool False",
+            "sys-flags-debug int 0",
             "sys-flags-dont-write-bytecode int 0",
             "sys-flags-dev-mode bool False",
             "sys-flags-ignore-environment int 0",
