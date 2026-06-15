@@ -59743,7 +59743,7 @@ impl<'a> JsonParser<'a> {
             }
             let key = self.parse_string()?;
             self.skip_whitespace();
-            self.expect_char(':')?;
+            self.expect_char_with_message(':', "Expecting ':' delimiter")?;
             self.skip_whitespace();
             let value = self.parse_value()?;
             let key = Value::String(key);
@@ -59753,7 +59753,7 @@ impl<'a> JsonParser<'a> {
             if self.consume_if('}') {
                 break;
             }
-            self.expect_char(',')?;
+            self.expect_char_with_message(',', "Expecting ',' delimiter")?;
         }
         self.apply_object_hooks(entries, pairs)
     }
@@ -59772,7 +59772,7 @@ impl<'a> JsonParser<'a> {
             if self.consume_if(']') {
                 break;
             }
-            self.expect_char(',')?;
+            self.expect_char_with_message(',', "Expecting ',' delimiter")?;
         }
         Ok(list_value(values))
     }
@@ -59962,10 +59962,14 @@ impl<'a> JsonParser<'a> {
     }
 
     fn expect_char(&mut self, expected: char) -> Result<(), String> {
+        self.expect_char_with_message(expected, "Unexpected character")
+    }
+
+    fn expect_char_with_message(&mut self, expected: char, message: &str) -> Result<(), String> {
         if self.next() == Some(expected) {
             Ok(())
         } else {
-            self.error("Unexpected character")
+            self.error(message)
         }
     }
 

@@ -1985,6 +1985,14 @@ def show(label, callback):
     else:
         print(label, 'OK')
 
+def show_message(label, callback, text):
+    try:
+        callback()
+    except Exception as error:
+        print(label, text in str(error))
+    else:
+        print(label, 'OK')
+
 show('loads-no-args', lambda: json.loads())
 show('loads-extra-arg', lambda: json.loads('{}', 1))
 show('loads-unknown-keyword', lambda: json.loads('{}', unknown=1))
@@ -2002,6 +2010,9 @@ show('loads-trailing-data', lambda: json.loads('{} []'))
 show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
 show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))
 show('loads-missing-colon', lambda: json.loads('{"a" 1}'))
+show_message('loads-missing-colon-text', lambda: json.loads('{"a" 1}'), "Expecting ':' delimiter")
+show_message('loads-array-missing-comma-text', lambda: json.loads('[1 2]'), "Expecting ',' delimiter")
+show_message('loads-object-missing-comma-text', lambda: json.loads('{"a":1 "b":2}'), "Expecting ',' delimiter")
 show('loads-uppercase-true', lambda: json.loads('True'))
 show('loads-uppercase-null', lambda: json.loads('NULL'))
 show('loads-leading-zero', lambda: json.loads('01'))

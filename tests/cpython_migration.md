@@ -41,6 +41,12 @@ MiniPython's Rust runtime and local pure-memory shims. A standard-library
 addition is accepted only when this file records its supported surface, excluded
 surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 
+- Extended `cpython_json_loads_dumps_error_boundary_subset` and
+  `cpython_json_loads_dumps_error_boundary_diff_subset` with CPython public
+  delimiter-message substrings for `json.loads()` missing colon and missing
+  comma errors. This keeps the supported error text sharper without adding full
+  `JSONDecodeError` class compatibility to the sandbox `json` scope.
+
 The current runtime scope includes:
 
 - CPython-compatible syntax frontend coverage where practical: tokenizer,

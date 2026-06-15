@@ -29,6 +29,11 @@ Recent runtime migration notes:
 - CPython remains the behavior oracle, not an implementation source to copy.
   MiniPython must not wholesale port CPython `Lib/`; public behavior should be
   migrated through local Rust/runtime shims plus direct differential evidence.
+- `cpython_json_loads_dumps_error_boundary_subset`, backed by
+  `cpython_json_loads_dumps_error_boundary_diff_subset`, now pins CPython
+  public delimiter-message substrings for `json.loads()` missing colon and
+  missing comma errors while keeping full `JSONDecodeError` compatibility out
+  of the sandbox `json` scope.
 - Callable-sentinel iterators in `cpython_iter_next_builtin_subset` now include
   CPython's sentinel-first equality dispatch (`sentinel == value`) for
   non-symmetric `__eq__` implementations.
