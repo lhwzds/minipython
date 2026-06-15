@@ -4355,7 +4355,8 @@ without adding general custom encoder/decoder class support.
   public memoryview constructor/equality/hash surface in
   `cpython_memoryview_minimal_runtime_diff_subset` and the supported
   method/attribute/release/context-manager surface in
-  `cpython_memoryview_methods_release_diff_subset`.
+  `cpython_memoryview_methods_release_diff_subset`, including `str` subclass
+  order arguments for `memoryview.tobytes()`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_b_buffer_subset`, covering the CPython public
   one-byte `array.array('B')` exporter surface for `memoryview()`: writable

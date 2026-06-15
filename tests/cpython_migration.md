@@ -1013,8 +1013,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   CPython diff evidence now covers the constructor/equality/hash slice through
   `cpython_memoryview_minimal_runtime_diff_subset` and the method/release slice
   through `cpython_memoryview_methods_release_diff_subset`, with
-  `comprehension-scope-and-release` covering module-level comprehension scope
-  isolation and released frame temporaries.
+  `str` subclass `memoryview.tobytes(order=...)` arguments included in that
+  method/release slice, and `comprehension-scope-and-release` covering
+  module-level comprehension scope isolation and released frame temporaries.
 - Added `cpython_memoryview_basic_methods_and_release_subset`, giving direct
   method-level evidence for `AbstractMemoryTests::test_tobytes`,
   `test_tolist`, `test_attributes_readonly`, `test_attributes_writable`,

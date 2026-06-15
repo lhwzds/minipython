@@ -23584,9 +23584,14 @@ fn cpython_memoryview_methods_release_diff_subset() {
     print(m.tobytes('C'), m.tobytes(order='A'), m.tobytes(None))
     print(m.format, m.itemsize, m.ndim, m.shape, m.strides, m.suboffsets, m.readonly, m.nbytes)
     print(m.toreadonly().readonly, m.toreadonly().tolist() == m.tolist())
+class Order(str):
+    pass
+m = memoryview(b'abc')
+print(m.tobytes(Order('C')), m.tobytes(Order('F')), m.tobytes(order=Order('A')))
 
 for expr in [
     lambda: memoryview(b'abc').tobytes(1),
+    lambda: memoryview(b'abc').tobytes(Order('Z')),
     lambda: memoryview(b'abc').tobytes('bad'),
     lambda: memoryview(b'abc').tobytes(order=b'C'),
     lambda: memoryview(b'abc').tobytes(bad='C'),

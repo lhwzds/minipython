@@ -675,6 +675,15 @@ fn validate_memoryview_tobytes_order(order: Option<&Value>) -> Result<(), String
                 Err("ValueError: order must be 'C', 'F' or 'A'".to_string())
             }
         }
+        value if str_subclass_string(value).is_some() => {
+            let value =
+                str_subclass_string(value).expect("str subclass storage exists after guard");
+            if matches!(value.as_str(), "C" | "F" | "A") {
+                Ok(())
+            } else {
+                Err("ValueError: order must be 'C', 'F' or 'A'".to_string())
+            }
+        }
         value => Err(format!(
             "TypeError: argument 1 must be str or None, not {}",
             type_name(value)
