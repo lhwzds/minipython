@@ -10242,6 +10242,7 @@ print('func-id', foo is decorated_foo)
 print('flags-stable', foo.__code__.co_flags == foo_flags)
 print('code-is', decorated_foo.__code__ is foo_code)
 foo_coro = foo()
+print('cr-frame-open', type(foo_coro.cr_frame).__name__, foo_coro.cr_frame is foo_coro.cr_frame, foo_coro.cr_frame.f_code is foo_coro.cr_code)
 def bar():
     return foo_coro
 for index in range(2):
@@ -10249,7 +10250,8 @@ for index in range(2):
     coro = bar()
     print('coro-is', index, foo_coro is coro)
     print('cr-code-flags', coro.cr_code.co_flags == foo_flags)
-    print('close', coro.close())"#,
+    print('close', coro.close())
+    print('cr-frame-closed', coro.cr_frame is None)"#,
     });
 }
 

@@ -1752,8 +1752,8 @@ without adding general custom encoder/decoder class support.
   identity, `func=` keyword binding and errors, and iterable-coroutine flags. Direct output parity is guarded by
   `cpython_types_coroutine_public_diff_subset`.
   `cpython_types_coroutine_async_def_subset`
-  covers stable function `__code__` identity and native coroutine `cr_code`
-  flags. Direct output parity is guarded by
+  covers stable function `__code__` identity, native coroutine `cr_code`
+  flags, and native coroutine `cr_frame` open/closed lifecycle. Direct output parity is guarded by
   `cpython_types_coroutine_async_def_diff_subset`.
   `cpython_types_coroutine_generator_wrapper_subset`,
   `cpython_types_coroutine_generator_frame_subset`,

@@ -15947,6 +15947,33 @@ fn types_coroutine_diff_covers_generator_async_runtime_subsets() {
         );
     }
 
+    let async_def_diff = CPYTHON_DIFF
+        .split("fn cpython_types_coroutine_async_def_diff_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_generator_wrapper_diff_subset()")
+                .next()
+        })
+        .expect("types.coroutine async def diff evidence must be extractable");
+    let async_def_subset = CPYTHON_SUBSET
+        .split("fn cpython_types_coroutine_async_def_subset()")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn cpython_types_coroutine_generator_wrapper_subset()")
+                .next()
+        })
+        .expect("types.coroutine async def subset evidence must be extractable");
+    for required in [
+        "foo_coro.cr_frame is foo_coro.cr_frame",
+        "foo_coro.cr_frame.f_code is foo_coro.cr_code",
+        "coro.cr_frame is None",
+    ] {
+        assert!(
+            async_def_diff.contains(required) && async_def_subset.contains(required),
+            "types.coroutine async def evidence must cover native coroutine frame lifecycle `{required}`"
+        );
+    }
+
     let wrapper_diff = CPYTHON_DIFF
         .split("fn cpython_types_coroutine_generator_wrapper_diff_subset()")
         .nth(1)

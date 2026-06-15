@@ -10681,7 +10681,8 @@ Completed in the CPython collections manifest expansion pass:
   `test_returning_itercoro`, `test_async_def`, `test_gen`, `test_genfunc`,
   `test_wrapper_object`, `test_duck_functional_gen`, and `test_duck_gen`.
   Runtime support now includes
-  stable function `__code__` identity, native coroutine `cr_code`,
+  stable function `__code__` identity, native coroutine `cr_code` and
+  `cr_frame` open/closed lifecycle,
   `inspect.CO_ITERABLE_COROUTINE`, generator `gi_code.co_flags`,
   `_GeneratorWrapper` type/ABC relationships, repr/dir, native-generator
   forwarding, exact native generator `__name__` / `__qualname__` / `gi_code` /

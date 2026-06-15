@@ -57267,6 +57267,7 @@ fn cpython_types_coroutine_async_def_subset() {
             "print('flags-stable', foo.__code__.co_flags == foo_flags)\n",
             "print('code-is', decorated_foo.__code__ is foo_code)\n",
             "foo_coro = foo()\n",
+            "print('cr-frame-open', type(foo_coro.cr_frame).__name__, foo_coro.cr_frame is foo_coro.cr_frame, foo_coro.cr_frame.f_code is foo_coro.cr_code)\n",
             "def bar():\n",
             "    return foo_coro\n",
             "for index in range(2):\n",
@@ -57274,18 +57275,22 @@ fn cpython_types_coroutine_async_def_subset() {
             "    coro = bar()\n",
             "    print('coro-is', index, foo_coro is coro)\n",
             "    print('cr-code-flags', coro.cr_code.co_flags == foo_flags)\n",
-            "    print('close', coro.close())"
+            "    print('close', coro.close())\n",
+            "    print('cr-frame-closed', coro.cr_frame is None)"
         ),
         &[
             "func-id True",
             "flags-stable True",
             "code-is True",
+            "cr-frame-open frame True True",
             "coro-is 0 True",
             "cr-code-flags True",
             "close None",
+            "cr-frame-closed True",
             "coro-is 1 True",
             "cr-code-flags True",
             "close None",
+            "cr-frame-closed True",
         ],
     );
 }

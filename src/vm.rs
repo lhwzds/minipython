@@ -11517,7 +11517,7 @@ impl Vm {
         }
 
         if is_async {
-            return Ok(Value::Coroutine(Rc::new(RefCell::new(CoroutineState {
+            let state = Rc::new(RefCell::new(CoroutineState {
                 name,
                 instructions: function_vm.instructions,
                 ip: function_vm.ip,
@@ -11535,7 +11535,14 @@ impl Vm {
                 first_line,
                 line_sequence,
                 code_identity,
-            }))));
+                frame_fields: None,
+            }));
+            let frame_fields = {
+                let state_ref = state.borrow();
+                coroutine_frame_fields(&state_ref)?
+            };
+            state.borrow_mut().frame_fields = Some(frame_fields);
+            return Ok(Value::Coroutine(state));
         }
 
         let exit = match function_vm.run_inner() {
@@ -18027,7 +18034,7 @@ impl Vm {
         let closure = closure_override.unwrap_or_else(|| self.closure.clone());
         if flags & CO_COROUTINE != 0 {
             let (first_line, line_sequence) = code_object_function_lines(&line_spans);
-            let coroutine = Value::Coroutine(Rc::new(RefCell::new(CoroutineState {
+            let state = Rc::new(RefCell::new(CoroutineState {
                 name,
                 instructions,
                 ip: 0,
@@ -18045,7 +18052,14 @@ impl Vm {
                 first_line,
                 line_sequence,
                 code_identity: identity,
-            })));
+                frame_fields: None,
+            }));
+            let frame_fields = {
+                let state_ref = state.borrow();
+                coroutine_frame_fields(&state_ref)?
+            };
+            state.borrow_mut().frame_fields = Some(frame_fields);
+            let coroutine = Value::Coroutine(state);
             return Ok(if value_context {
                 coroutine
             } else {
@@ -32924,7 +32938,9 @@ impl Vm {
                     return Ok(Value::None);
                 }
                 if state.borrow().ip == 0 {
-                    state.borrow_mut().done = true;
+                    let mut state = state.borrow_mut();
+                    state.done = true;
+                    state.frame_fields = None;
                     return Ok(Value::None);
                 }
 
@@ -33751,7 +33767,9 @@ impl Vm {
                     coroutine_vm.resume_exception = Some(exception);
                 } else if let Err(message) = coroutine_vm.raise_exception(exception, true) {
                     self.absorb_output_from(&mut coroutine_vm);
-                    state.borrow_mut().done = true;
+                    let mut state = state.borrow_mut();
+                    state.done = true;
+                    state.frame_fields = None;
                     if let Some(exception) = coroutine_vm.current_exception {
                         self.raise_exception(exception, true)?;
                         return Ok(IteratorAdvance::Raised);
@@ -33775,7 +33793,9 @@ impl Vm {
                 };
                 if let Err(message) = coroutine_vm.raise_exception(exception, true) {
                     self.absorb_output_from(&mut coroutine_vm);
-                    state.borrow_mut().done = true;
+                    let mut state = state.borrow_mut();
+                    state.done = true;
+                    state.frame_fields = None;
                     if let Some(exception) = coroutine_vm.current_exception {
                         if exception.type_name == "GeneratorExit" {
                             return Ok(IteratorAdvance::Complete(Value::None));
@@ -33792,7 +33812,9 @@ impl Vm {
             Ok(exit) => exit,
             Err(message) => {
                 self.absorb_output_from(&mut coroutine_vm);
-                state.borrow_mut().done = true;
+                let mut state = state.borrow_mut();
+                state.done = true;
+                state.frame_fields = None;
                 if let Some(exception) = coroutine_vm.current_exception {
                     if is_closing
                         && matches!(
@@ -33837,14 +33859,17 @@ impl Vm {
         match exit {
             ExecutionExit::Return(value) => {
                 state.done = true;
+                state.frame_fields = None;
                 Ok(IteratorAdvance::Complete(value))
             }
             ExecutionExit::Halt => {
                 state.done = true;
+                state.frame_fields = None;
                 Ok(IteratorAdvance::Complete(Value::None))
             }
             ExecutionExit::Yield { value, .. } => {
                 state.done = false;
+                update_coroutine_frame_line(&state, coroutine_vm.ip.saturating_sub(1));
                 Ok(IteratorAdvance::Yield(value))
             }
         }
@@ -51662,6 +51687,59 @@ fn coroutine_code_object_value(state: &CoroutineState) -> Value {
     }
 }
 
+fn coroutine_frame_fields(state: &CoroutineState) -> Result<DictRef, String> {
+    let code = coroutine_code_object_value(state);
+    dict_ref_from_entries(vec![
+        (
+            Value::String("f_lineno".to_string()),
+            Value::Number(frame_line_for_ip(
+                &function_code_line_spans(
+                    &state.instructions,
+                    state.first_line,
+                    &state.line_sequence,
+                ),
+                state.ip,
+            )),
+        ),
+        (Value::String("f_code".to_string()), code),
+        (
+            Value::String("f_globals".to_string()),
+            Value::ScopeDict(state.globals.clone()),
+        ),
+        (
+            Value::String("f_locals".to_string()),
+            frame_locals_proxy_value(state.locals.clone()),
+        ),
+        (Value::String("f_back".to_string()), Value::None),
+    ])
+}
+
+fn coroutine_frame_value(state: &CoroutineState) -> Value {
+    state
+        .frame_fields
+        .as_ref()
+        .map(|fields| Value::Frame {
+            fields: fields.clone(),
+        })
+        .unwrap_or(Value::None)
+}
+
+fn update_coroutine_frame_line(state: &CoroutineState, instruction_index: usize) {
+    let Some(fields) = &state.frame_fields else {
+        return;
+    };
+    let line = frame_line_for_ip(
+        &function_code_line_spans(&state.instructions, state.first_line, &state.line_sequence),
+        instruction_index,
+    );
+    let mut fields = fields.borrow_mut();
+    let _ = insert_live_dict_entry(
+        &mut fields,
+        Value::String("f_lineno".to_string()),
+        Value::Number(line),
+    );
+}
+
 fn coroutine_state_name(state: &CoroutineState) -> &'static str {
     if state.done {
         "CORO_CLOSED"
@@ -51680,7 +51758,8 @@ fn load_coroutine_introspection_attribute(
     match name {
         "__name__" | "__qualname__" => Ok(Value::String(state.name.clone())),
         "cr_code" => Ok(coroutine_code_object_value(&state)),
-        "cr_frame" | "cr_await" => Ok(Value::None),
+        "cr_frame" => Ok(coroutine_frame_value(&state)),
+        "cr_await" => Ok(Value::None),
         "cr_running" => Ok(Value::Bool(false)),
         "cr_suspended" => Ok(Value::Bool(coroutine_is_suspended_on_await(&state))),
         "cr_state" => Ok(Value::String(coroutine_state_name(&state).to_string())),

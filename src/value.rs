@@ -501,6 +501,7 @@ pub struct CoroutineState {
     pub first_line: usize,
     pub line_sequence: Vec<usize>,
     pub code_identity: Rc<()>,
+    pub frame_fields: Option<DictRef>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
