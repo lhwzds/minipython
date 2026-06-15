@@ -12319,6 +12319,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.flags.dont_write_bytecode")
             && LANGUAGE_TESTS.contains("sys.flags.dev_mode")
             && LANGUAGE_TESTS.contains("sys.flags.ignore_environment")
+            && LANGUAGE_TESTS.contains("sys.flags.no_user_site")
             && LANGUAGE_TESTS.contains("sys.flags.isolated")
             && LANGUAGE_TESTS.contains("sys.flags.optimize")
             && LANGUAGE_TESTS.contains("sys.flags.utf8_mode")
@@ -12365,6 +12366,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.dont_write_bytecode",
         "sys.flags.dev_mode",
         "sys.flags.ignore_environment",
+        "sys.flags.no_user_site",
         "sys.flags.isolated",
         "sys.flags.optimize",
         "sys.flags.utf8_mode",
