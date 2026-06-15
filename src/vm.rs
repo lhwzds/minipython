@@ -26823,6 +26823,45 @@ impl Vm {
                 Ok(counter_in_place_value_from_operands(left, right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
+            "__eq__" | "__ne__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [left, right] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let Some(equal) = self.counter_equal_values(left, right)? else {
+                    return Ok(Value::NotImplemented);
+                };
+                Ok(Value::Bool(if method_display_name(name) == "__ne__" {
+                    !equal
+                } else {
+                    equal
+                }))
+            }
+            "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [left, right] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let op = match method_display_name(name) {
+                    "__lt__" => CounterCompareOp::Less,
+                    "__le__" => CounterCompareOp::LessEqual,
+                    "__gt__" => CounterCompareOp::Greater,
+                    "__ge__" => CounterCompareOp::GreaterEqual,
+                    _ => unreachable!("counter comparison method names are matched above"),
+                };
+                let Some(result) = self.counter_compare_values(left, right, op)? else {
+                    return Ok(Value::NotImplemented);
+                };
+                Ok(Value::Bool(result))
+            }
             "__pos__" | "__neg__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
@@ -50241,6 +50280,12 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__delitem__"
             | "__format__"
             | "__getitem__"
+            | "__eq__"
+            | "__ne__"
+            | "__lt__"
+            | "__le__"
+            | "__gt__"
+            | "__ge__"
             | "__add__"
             | "__sub__"
             | "__or__"
@@ -54258,13 +54303,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
             | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__setitem__" | "__str__"
             | "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" | "__iadd__"
-            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" | "__pos__" | "__neg__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
-                    receiver: Box::new(Value::Counter { entries }),
-                    identity: Rc::new(()),
-                })
-            }
+            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" | "__eq__" | "__ne__" | "__lt__"
+            | "__le__" | "__gt__" | "__ge__" | "__pos__" | "__neg__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                receiver: Box::new(Value::Counter { entries }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
         },
         Value::UserDict { data, attrs } => {

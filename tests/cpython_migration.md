@@ -10027,7 +10027,9 @@ Completed in the CPython collections manifest expansion pass:
   `TestCounter::test_total`, `::test_invariant_for_the_in_operator`,
   `::test_eq`, `::test_le`, `::test_lt`, `::test_ge`, and `::test_gt`.
   MiniPython now treats missing Counter keys as zero for Counter-vs-Counter
-  equality and rich comparisons, while keeping membership tied to stored keys.
+  equality and rich comparisons, including direct `Counter.__eq__()` /
+  `Counter.__ne__()` / ordering public dunder calls, while keeping membership
+  tied to stored keys.
 - Added `cpython_collections_counter_comparison_diff_subset` as gated direct
   diff evidence for `Counter.total()`, membership over stored zero/negative
   keys, and zero-count rich-comparison rules when the configured CPython oracle

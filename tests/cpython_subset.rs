@@ -50182,7 +50182,15 @@ fn cpython_collections_counter_comparison_subset() {
             "print(Counter() >= Counter(c=1))\n",
             "print(Counter(a=3, b=2, c=0) >= Counter('aabd'))\n",
             "print(Counter(a=3, b=2, c=0) > Counter('aab'))\n",
-            "print(Counter(a=2, b=1, c=0) > Counter('aab'))"
+            "print(Counter(a=2, b=1, c=0) > Counter('aab'))\n",
+            "print(Counter.__eq__(Counter(a=1), Counter(a=1, b=0)))\n",
+            "print(Counter.__ne__(Counter(a=1), Counter(a=2)))\n",
+            "print(Counter.__lt__(Counter(a=1), Counter(a=2)))\n",
+            "print(Counter.__le__(Counter(a=1), Counter(a=1)))\n",
+            "print(Counter.__gt__(Counter(a=2), Counter(a=1)))\n",
+            "print(Counter.__ge__(Counter(a=1), Counter(a=1, b=0)))\n",
+            "print(Counter.__eq__(Counter(a=1), {'a': 1}))\n",
+            "print(Counter.__lt__(Counter(a=1), {'a': 2}))"
         ),
         &[
             "15",
@@ -50201,6 +50209,14 @@ fn cpython_collections_counter_comparison_subset() {
             "False",
             "True",
             "False",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "True",
+            "NotImplemented",
+            "NotImplemented",
         ],
     );
 }

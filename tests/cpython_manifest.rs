@@ -10610,6 +10610,30 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_comparison_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter comparison behavior"
     );
+    let counter_comparison_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_comparison_diff_subset",
+    );
+    let counter_comparison_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_comparison_subset",
+    );
+    for required in [
+        "Counter.__eq__(Counter(a=1), Counter(a=1, b=0))",
+        "Counter.__ne__(Counter(a=1), Counter(a=2))",
+        "Counter.__lt__(Counter(a=1), Counter(a=2))",
+        "Counter.__le__(Counter(a=1), Counter(a=1))",
+        "Counter.__gt__(Counter(a=2), Counter(a=1))",
+        "Counter.__ge__(Counter(a=1), Counter(a=1, b=0))",
+        "Counter.__eq__(Counter(a=1), {'a': 1})",
+        "Counter.__lt__(Counter(a=1), {'a': 2})",
+    ] {
+        assert!(
+            counter_comparison_diff_body.contains(required)
+                && counter_comparison_subset_body.contains(required),
+            "Counter comparison diff and subset evidence must cover `{required}`"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_counter_copy_subclass_diff_subset"),

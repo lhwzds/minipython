@@ -11707,7 +11707,15 @@ print(Counter() >= Counter(c=-1))
 print(Counter() >= Counter(c=1))
 print(Counter(a=3, b=2, c=0) >= Counter('aabd'))
 print(Counter(a=3, b=2, c=0) > Counter('aab'))
-print(Counter(a=2, b=1, c=0) > Counter('aab'))"#,
+print(Counter(a=2, b=1, c=0) > Counter('aab'))
+print(Counter.__eq__(Counter(a=1), Counter(a=1, b=0)))
+print(Counter.__ne__(Counter(a=1), Counter(a=2)))
+print(Counter.__lt__(Counter(a=1), Counter(a=2)))
+print(Counter.__le__(Counter(a=1), Counter(a=1)))
+print(Counter.__gt__(Counter(a=2), Counter(a=1)))
+print(Counter.__ge__(Counter(a=1), Counter(a=1, b=0)))
+print(Counter.__eq__(Counter(a=1), {'a': 1}))
+print(Counter.__lt__(Counter(a=1), {'a': 2}))"#,
     });
 }
 
