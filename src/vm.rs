@@ -49098,6 +49098,44 @@ fn is_builtin_list_type_method(name: &str) -> bool {
     )
 }
 
+fn is_builtin_user_list_type_method(name: &str) -> bool {
+    matches!(
+        name,
+        "append"
+            | "extend"
+            | "clear"
+            | "copy"
+            | "pop"
+            | "reverse"
+            | "sort"
+            | "count"
+            | "index"
+            | "insert"
+            | "remove"
+            | "__add__"
+            | "__contains__"
+            | "__delitem__"
+            | "__eq__"
+            | "__format__"
+            | "__getitem__"
+            | "__iadd__"
+            | "__imul__"
+            | "__iter__"
+            | "__len__"
+            | "__lt__"
+            | "__le__"
+            | "__gt__"
+            | "__ge__"
+            | "__mul__"
+            | "__ne__"
+            | "__repr__"
+            | "__radd__"
+            | "__rmul__"
+            | "__setitem__"
+            | "__str__"
+    )
+}
+
 fn float_subclass_float(value: &Value) -> Option<Rc<f64>> {
     let Value::Instance {
         fields,
@@ -55173,19 +55211,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin("UserDict.__init__".to_string()))
         }
         Value::Builtin(function_name)
-            if function_name == "UserList"
-                && matches!(
-                    name,
-                    "__add__"
-                        | "__format__"
-                        | "__iadd__"
-                        | "__imul__"
-                        | "__mul__"
-                        | "__radd__"
-                        | "__repr__"
-                        | "__rmul__"
-                        | "__str__"
-                ) =>
+            if function_name == "UserList" && is_builtin_user_list_type_method(name) =>
         {
             Ok(Value::Builtin(format!("UserList.{name}")))
         }

@@ -10634,6 +10634,22 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserList.__radd__(UserList([1]), [0])",
         "UserList.__mul__(UserList([1]), 2)",
         "UserList.__rmul__(UserList([1]), 2)",
+        "UserList.append(class_obj, 3)",
+        "UserList.extend(class_obj, [4])",
+        "UserList.insert(class_obj, 0, 0)",
+        "UserList.count(class_obj, 2)",
+        "UserList.index(class_obj, 2)",
+        "UserList.__contains__(class_obj, 3)",
+        "UserList.pop(class_obj)",
+        "UserList.reverse(class_obj)",
+        "UserList.copy(class_obj)",
+        "UserList.sort(class_obj)",
+        "UserList.__len__(class_obj)",
+        "UserList.__getitem__(class_obj, 1)",
+        "UserList.__setitem__(class_obj, 1, 9)",
+        "UserList.__delitem__(class_obj, 0)",
+        "UserList.__eq__(UserList([1]), [1])",
+        "UserList.__lt__(UserList([1]), [2])",
     ] {
         assert!(
             userlist_public_diff_body.contains(required)

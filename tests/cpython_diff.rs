@@ -12761,7 +12761,26 @@ print(seq, seq is same)
 print(UserList.__add__(UserList([1]), [2]))
 print(UserList.__radd__(UserList([1]), [0]))
 print(UserList.__mul__(UserList([1]), 2))
-print(UserList.__rmul__(UserList([1]), 2))"#,
+print(UserList.__rmul__(UserList([1]), 2))
+class_obj = UserList([2, 1])
+UserList.append(class_obj, 3)
+print(class_obj)
+UserList.extend(class_obj, [4])
+print(class_obj)
+UserList.insert(class_obj, 0, 0)
+print(class_obj)
+print(UserList.count(class_obj, 2), UserList.index(class_obj, 2), UserList.__contains__(class_obj, 3))
+print(UserList.pop(class_obj), class_obj)
+UserList.reverse(class_obj)
+print(class_obj)
+class_copy = UserList.copy(class_obj)
+print(class_copy, type(class_copy).__name__, class_copy.data is class_obj.data)
+class_obj = UserList([3, 1, 2])
+print(UserList.sort(class_obj), class_obj)
+print(UserList.__len__(class_obj), UserList.__getitem__(class_obj, 1))
+print(UserList.__setitem__(class_obj, 1, 9), class_obj)
+print(UserList.__delitem__(class_obj, 0), class_obj)
+print(UserList.__eq__(UserList([1]), [1]), UserList.__lt__(UserList([1]), [2]))"#,
     });
 }
 

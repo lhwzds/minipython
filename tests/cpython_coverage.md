@@ -865,8 +865,9 @@ Recent runtime migration notes:
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
   CPython public `UserList` method subset, including direct display,
   empty-format, recursive display behavior, and sequence arithmetic (`+`,
-  reverse `+`, `*`, reverse `*`, `+=`, and `*=`), with direct output parity
-  evidence.
+  reverse `+`, `*`, reverse `*`, `+=`, and `*=`), plus class-level direct
+  public method calls such as `UserList.append(obj, value)`, with direct output
+  parity evidence.
 - The bundled `json` module includes `cpython_json_loads_dumps_diff_subset` /
   `cpython_json_loads_dumps_basic_diff_subset` /
   `cpython_json_loads_dumps_basic_subset`,
@@ -3786,8 +3787,9 @@ without adding general custom encoder/decoder class support.
   coverage against `list`, construction from lists and other UserList objects,
   `.data`, list mutation/iteration/length/containment, direct
   display/empty-format methods, recursive display, sequence arithmetic (`+`,
-  reverse `+`, `*`, reverse `*`, `+=`, and `*=`), `.copy()`, and `copy.copy()`
-  with shallow instance-attribute copying.
+  reverse `+`, `*`, reverse `*`, `+=`, and `*=`), class-level direct public
+  method calls, `.copy()`, and `copy.copy()` with shallow instance-attribute
+  copying.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_userlist_namedtuple_sequence_order_diff_subset` and
   `cpython_collections_userlist_namedtuple_sequence_order_subset`, covering
