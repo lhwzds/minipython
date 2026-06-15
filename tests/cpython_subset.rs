@@ -5480,6 +5480,8 @@ print('sys-flags-debug', type(sys.flags.debug).__name__, sys.flags.debug)
 print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__name__, sys.flags.dont_write_bytecode)
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode)
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment)
+print('sys-flags-inspect', type(sys.flags.inspect).__name__, sys.flags.inspect)
+print('sys-flags-interactive', type(sys.flags.interactive).__name__, sys.flags.interactive)
 print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags.no_user_site)
 print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site)
 print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated)
@@ -5531,6 +5533,8 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-dont-write-bytecode int 0",
             "sys-flags-dev-mode bool False",
             "sys-flags-ignore-environment int 0",
+            "sys-flags-inspect int 0",
+            "sys-flags-interactive int 0",
             "sys-flags-no-user-site int 0",
             "sys-flags-no-site int 0",
             "sys-flags-isolated int 0",

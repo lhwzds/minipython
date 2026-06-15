@@ -485,6 +485,8 @@ pub(crate) fn create_module(
                                 Value::String("ignore_environment".to_string()),
                                 Value::Number(0),
                             ),
+                            (Value::String("inspect".to_string()), Value::Number(0)),
+                            (Value::String("interactive".to_string()), Value::Number(0)),
                             (Value::String("no_user_site".to_string()), Value::Number(0)),
                             (Value::String("no_site".to_string()), Value::Number(0)),
                             (Value::String("isolated".to_string()), Value::Number(0)),
