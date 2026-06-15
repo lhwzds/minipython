@@ -117,12 +117,13 @@ Recent runtime migration notes:
   subset pins the current public safety behavior.
 - Bytes/bytearray `hex()` separator, grouping, overflow, and nibble/length
   boundary output now has direct CPython output parity evidence in
-  `cpython_bytes_hex_separator_diff_subset`; exact unbound descriptor
-  diagnostics remain in `cpython_bytes_hex_descriptor_error_messages_subset`.
+  `cpython_bytes_hex_separator_diff_subset`, including `str` subclass separator
+  arguments; exact unbound descriptor diagnostics remain in
+  `cpython_bytes_hex_descriptor_error_messages_subset`.
 - Bytes/bytearray `fromhex()` over stable string input now has direct CPython
-  output parity evidence in `cpython_bytes_fromhex_string_diff_subset`; newer
-  bytes-like `fromhex()` inputs have gated direct CPython evidence in
-  `cpython_bytes_fromhex_bytes_like_diff_subset`.
+  output parity evidence in `cpython_bytes_fromhex_string_diff_subset`,
+  including `str` subclass input; newer bytes-like `fromhex()` inputs have
+  gated direct CPython evidence in `cpython_bytes_fromhex_bytes_like_diff_subset`.
 - Compatibility/test-support modules exposed by `src/stdlib.rs::create_module()`
   are tracked separately by the `Runtime Compatibility Module Registry` in
   `tests/cpython_migration.md`. They do not expand the default sandbox product
@@ -2257,10 +2258,11 @@ without adding general custom encoder/decoder class support.
   `test_hex_separator_five_bytes`, `test_hex_separator_six_bytes`, and current
   CPython main `test_hex_simd_boundaries` / `test_hex_nibble_boundaries` public
   behavior for string and bytes-like `fromhex()` inputs including contiguous
-  `memoryview` and `array.array('B')`, non-contiguous `memoryview` `BufferError`
-  rejection, ASCII whitespace skipping including vertical tab, non-ASCII
-  rejection, exact odd-hex-digit and invalid-position diagnostics,
-  bytes/bytearray `hex()` separator grouping, separator-byte boundaries,
+  `memoryview`, `array.array('B')`, and `str` subclasses, non-contiguous
+  `memoryview` `BufferError` rejection, ASCII whitespace skipping including
+  vertical tab, non-ASCII rejection, exact odd-hex-digit and invalid-position
+  diagnostics, bytes/bytearray `hex()` separator grouping, separator-byte
+  boundaries including `str` subclasses,
   `bytes_per_sep` `__index__` conversion, catchable C-int overflow errors, and
   public `hex()` output correctness across length and nibble boundary samples,
   `memoryview` separator length/type error boundaries, plus exact unbound and

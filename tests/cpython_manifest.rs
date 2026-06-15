@@ -3036,6 +3036,9 @@ fn cpython_bytes_hex_memoryview_separator_diff_covers_runtime_subset() {
     let body = &body[..end];
 
     for required in [
+        "class S(str):",
+        "three.hex(S(':'), 2)",
+        "three.hex(S('xx'))",
         "memoryview(b':')",
         "memoryview(b'::')",
         "memoryview(b'::')[::2]",
@@ -3057,9 +3060,14 @@ fn cpython_bytes_hex_memoryview_separator_diff_covers_runtime_subset() {
 
 #[test]
 fn cpython_bytes_fromhex_memoryview_contiguity_diff_covers_runtime_subset() {
+    let string_diff_name = "cpython_bytes_fromhex_string_diff_subset";
     let diff_name = "cpython_bytes_fromhex_bytes_like_diff_subset";
     let subset_name = "cpython_bytes_hex_fromhex_subset";
 
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {string_diff_name}(")),
+        "bytes fromhex string direct CPython diff evidence must exist"
+    );
     assert!(
         CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
         "bytes fromhex bytes-like direct CPython diff evidence must exist"
@@ -3071,8 +3079,24 @@ fn cpython_bytes_fromhex_memoryview_contiguity_diff_covers_runtime_subset() {
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
-            document.contains(diff_name) && document.contains(subset_name),
+            document.contains(string_diff_name)
+                && document.contains(diff_name)
+                && document.contains(subset_name),
             "bytes fromhex docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    let string_start = CPYTHON_DIFF
+        .find(&format!("fn {string_diff_name}("))
+        .expect("bytes fromhex string diff evidence must exist");
+    let string_body = &CPYTHON_DIFF[string_start..];
+    let string_end = string_body.find("\n#[test]").unwrap_or(string_body.len());
+    let string_body = &string_body[..string_end];
+
+    for required in ["class S(str):", "bytes.fromhex(S('61 62'))", "S('zz')"] {
+        assert!(
+            string_body.contains(required),
+            "bytes fromhex string diff evidence must contain `{required}`"
         );
     }
 

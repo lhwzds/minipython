@@ -66479,6 +66479,21 @@ fn hex_separator(vm: &mut Vm, value: &Value) -> Result<char, String> {
             }
             Ok(ch)
         }
+        value if str_subclass_string(value).is_some() => {
+            let value =
+                str_subclass_string(value).expect("str subclass storage exists after guard");
+            let mut chars = value.chars();
+            let Some(ch) = chars.next() else {
+                return Err("ValueError: sep must be length 1.".to_string());
+            };
+            if chars.next().is_some() {
+                return Err("ValueError: sep must be length 1.".to_string());
+            }
+            if !ch.is_ascii() {
+                return Err("ValueError: sep must be ASCII.".to_string());
+            }
+            Ok(ch)
+        }
         Value::Bytes(value) => {
             let [byte] = value.as_slice() else {
                 return Err("ValueError: sep must be length 1.".to_string());
@@ -66519,6 +66534,9 @@ fn hex_separator(vm: &mut Vm, value: &Value) -> Result<char, String> {
 fn bytes_fromhex(value: &Value) -> Result<Vec<u8>, String> {
     let text = match value {
         Value::String(value) | Value::IdentityString { value, .. } => value.clone(),
+        value if str_subclass_string(value).is_some() => {
+            str_subclass_string(value).expect("str subclass storage exists after guard")
+        }
         Value::Bytes(value) => fromhex_ascii_bytes_text(value)?,
         Value::ByteArray(value) => {
             let value = value.borrow();

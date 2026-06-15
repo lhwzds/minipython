@@ -32159,10 +32159,11 @@ fn cpython_bytes_check_encoding_errors_devmode_subset() {
 #[test]
 fn cpython_bytes_hex_fromhex_subset() {
     assert_output(
-        "import array\nprint(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30\\v'), bytes.fromhex(b' 1A\\n2B\\t30\\v'))\nprint(bytes.fromhex(bytearray(b' 1A 2B 30 ')), bytes.fromhex(memoryview(b' 1A 2B 30 ')), bytes.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytearray.fromhex(bytearray(b' 1A 2B 30 ')), bytearray.fromhex(memoryview(b' 1A 2B 30 ')), bytearray.fromhex(array.array('B', b' 1A 2B 30 ')))\nmid = memoryview(bytearray(b' 1A 2B 30 '))[1:9]\nprint(bytes.fromhex(mid), bytearray.fromhex(mid))\nprint(bytes.fromhex('0000'))",
+        "import array\nclass S(str):\n    pass\nprint(bytes.fromhex(''), bytearray.fromhex(''))\nprint(bytes.fromhex('1a2B30'))\nprint(bytes.fromhex(S('61 62')), bytearray.fromhex(S('63 64')))\nprint(bytearray.fromhex('  1A 2B  30   '))\nprint(bytes.fromhex(' 1A\\n2B\\t30\\v'), bytes.fromhex(b' 1A\\n2B\\t30\\v'))\nprint(bytes.fromhex(bytearray(b' 1A 2B 30 ')), bytes.fromhex(memoryview(b' 1A 2B 30 ')), bytes.fromhex(array.array('B', b' 1A 2B 30 ')))\nprint(bytearray.fromhex(bytearray(b' 1A 2B 30 ')), bytearray.fromhex(memoryview(b' 1A 2B 30 ')), bytearray.fromhex(array.array('B', b' 1A 2B 30 ')))\nmid = memoryview(bytearray(b' 1A 2B 30 '))[1:9]\nprint(bytes.fromhex(mid), bytearray.fromhex(mid))\nprint(bytes.fromhex('0000'))",
         &[
             "b'' bytearray(b'')",
             "b'\\x1a+0'",
+            "b'ab' bytearray(b'cd')",
             "bytearray(b'\\x1a+0')",
             "b'\\x1a+0' b'\\x1a+0'",
             "b'\\x1a+0' b'\\x1a+0' b'\\x1a+0'",
@@ -32172,11 +32173,12 @@ fn cpython_bytes_hex_fromhex_subset() {
         ],
     );
     assert_output(
-        "print(b''.hex())\nprint(b'\\x1a\\x2b\\x30'.hex(), bytearray(b'\\x1a\\x2b\\x30').hex())\nthree = b'\\xb9\\x01\\xef'\nprint(three.hex(), three.hex(':'), three.hex(':', 2), three.hex('*', -2), three.hex(sep=':', bytes_per_sep=2))\nsix = b'\\x03\\x06\\x09\\x0c\\x0f\\x12'\nprint(six.hex('.', 1))\nprint(six.hex(' ', 2))\nprint(six.hex('-', 3))\nprint(six.hex(':', 4))\nprint(six.hex('_', -3))\nprint(six.hex(':', -4))",
+        "class S(str):\n    pass\nprint(b''.hex())\nprint(b'\\x1a\\x2b\\x30'.hex(), bytearray(b'\\x1a\\x2b\\x30').hex())\nthree = b'\\xb9\\x01\\xef'\nprint(three.hex(), three.hex(':'), three.hex(':', 2), three.hex('*', -2), three.hex(sep=':', bytes_per_sep=2))\nprint(three.hex(S(':'), 2), bytearray(three).hex(S('$')))\nsix = b'\\x03\\x06\\x09\\x0c\\x0f\\x12'\nprint(six.hex('.', 1))\nprint(six.hex(' ', 2))\nprint(six.hex('-', 3))\nprint(six.hex(':', 4))\nprint(six.hex('_', -3))\nprint(six.hex(':', -4))",
         &[
             "",
             "1a2b30 1a2b30",
             "b901ef b9:01:ef b9:01ef b901*ef b9:01ef",
+            "b9:01ef b9$01$ef",
             "03.06.09.0c.0f.12",
             "0306 090c 0f12",
             "030609-0c0f12",
@@ -32186,7 +32188,7 @@ fn cpython_bytes_hex_fromhex_subset() {
         ],
     );
     assert_output(
-        "for expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex(()), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: bytes.fromhex('\\x00'), lambda: bytes.fromhex('\\u0085'), lambda: bytes.fromhex('\\u00a0'), lambda: bytes.fromhex(bytes([30, 31, 128])), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex('Ā'), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
+        "class S(str):\n    pass\nfor expr in [lambda: bytes.fromhex(), lambda: bytes.fromhex(1), lambda: bytes.fromhex(()), lambda: bytes.fromhex('a'), lambda: bytes.fromhex('rt'), lambda: bytes.fromhex('1a b cd'), lambda: bytes.fromhex('\\x00'), lambda: bytes.fromhex('\\u0085'), lambda: bytes.fromhex('\\u00a0'), lambda: bytes.fromhex(S('zz')), lambda: bytes.fromhex(bytes([30, 31, 128])), lambda: b'abc'.hex(1), lambda: b'abc'.hex(''), lambda: b'abc'.hex('xx'), lambda: b'abc'.hex(S('xx')), lambda: b'abc'.hex('Ā'), lambda: b'abc'.hex(b'\\x80'), lambda: b'abc'.hex(sep=':', bytes_per_sep='x')]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         &[
             "TypeError",
             "TypeError",
@@ -32198,7 +32200,9 @@ fn cpython_bytes_hex_fromhex_subset() {
             "ValueError",
             "ValueError",
             "ValueError",
+            "ValueError",
             "TypeError",
+            "ValueError",
             "ValueError",
             "ValueError",
             "ValueError",

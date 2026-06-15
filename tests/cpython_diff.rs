@@ -22253,10 +22253,13 @@ fn cpython_bytes_hex_separator_diff_subset() {
         self.value = value
     def __index__(self):
         return self.value
+class S(str):
+    pass
 
 for ctor in [bytes, bytearray]:
     three = ctor(b'\xb9\x01\xef')
     print(ctor.__name__, repr(three.hex(b'\x00')), repr(three.hex('\x00')))
+    print(ctor.__name__, three.hex(S(':'), 2), three.hex(S('$')))
     print(ctor.__name__, repr(three.hex(b'\x7f')), repr(three.hex('\x7f')), three.hex(b'$'))
     print(ctor.__name__, three.hex(':', 3), three.hex(':', -3), three.hex(':', 2**31 - 1), three.hex(':', -(2**31 - 1)), three.hex(':', -2**31))
     print(ctor.__name__, three.hex(':', Indexable(2)), three.hex(':', True), three.hex(':', False))
@@ -22265,6 +22268,10 @@ for ctor in [bytes, bytearray]:
             three.hex(':', n)
         except OverflowError as error:
             print(ctor.__name__, 'overflow', n.bit_length(), error.__class__.__name__)
+    try:
+        three.hex(S('xx'))
+    except ValueError as error:
+        print(ctor.__name__, 'str-subclass-sep', error.__class__.__name__, str(error))
     six = ctor(x * 3 for x in range(1, 7))
     print(ctor.__name__, six.hex(':', 5), six.hex(b'@', -5), six.hex(':', -6), six.hex(' ', -95))
     for label, sep in [('mv1', memoryview(b':')), ('mv2', memoryview(b'::')), ('mvempty', memoryview(b'')), ('mvnonascii', memoryview(bytes([255]))), ('mvstep', memoryview(b'::')[::2])]:
@@ -22315,7 +22322,10 @@ fn cpython_bytes_fromhex_string_diff_subset() {
         origin: "Lib/test/test_bytes.py::BaseBytesTest::test_fromhex stable string-input public subset",
         name: "bytes-fromhex-string",
         source: r#"print(bytes.fromhex(''), bytearray.fromhex(''))
+class S(str):
+    pass
 print(bytes.fromhex('1a2B30'))
+print(bytes.fromhex(S('61 62')), bytearray.fromhex(S('63 64')))
 print(bytearray.fromhex('  1A 2B  30   '))
 print(bytes.fromhex(' 1A\n2B\t30\v'))
 print(bytes.fromhex('0000'))
@@ -22327,6 +22337,7 @@ for ctor in [bytes, bytearray]:
         ('nul', '\x00'),
         ('next-line', '\u0085'),
         ('nbsp', '\u00a0'),
+        ('str-subclass-bad', S('zz')),
     ]:
         try:
             ctor.fromhex(source)

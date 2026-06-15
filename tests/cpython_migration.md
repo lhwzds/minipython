@@ -6073,15 +6073,15 @@ Completed in the bytes hex/fromhex method pass:
   boundary samples.
 - Added direct CPython output parity evidence
   `cpython_bytes_hex_separator_diff_subset` for the stable public bytes and
-  bytearray `hex()` separator/grouping/overflow, memoryview separator
-  length/type error boundaries, and length/nibble-boundary output slice. Exact
-  unbound descriptor diagnostics remain covered by the local subset test below
-  rather than being required for this direct diff.
+  bytearray `hex()` separator/grouping/overflow, `str` subclass separators,
+  memoryview separator length/type error boundaries, and length/nibble-boundary
+  output slice. Exact unbound descriptor diagnostics remain covered by the
+  local subset test below rather than being required for this direct diff.
 - Added direct CPython output parity evidence
   `cpython_bytes_fromhex_string_diff_subset` for the stable public
   string-input bytes/bytearray `fromhex()` behavior, including ASCII whitespace
-  skipping and representative `ValueError` / `TypeError` classes. Added
-  capability-gated direct CPython evidence in
+  skipping, `str` subclass input, and representative `ValueError` / `TypeError`
+  classes. Added capability-gated direct CPython evidence in
   `cpython_bytes_fromhex_bytes_like_diff_subset` for newer bytes-like
   `fromhex()` inputs, including bytes, bytearray, memoryview, `array('B')`, and
   bytes/bytearray subclass storage.
