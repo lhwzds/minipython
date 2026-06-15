@@ -56939,6 +56939,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't set attribute '{name}' on namedtuple"
         )),
+        Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot set attribute '{name}' on {value}"
         )),
@@ -57178,9 +57179,19 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
         Value::NamedTuple { .. } => Err(format!(
             "AttributeError: can't delete attribute '{name}' on namedtuple"
         )),
+        Value::Deque { .. } => Err(deque_attribute_assignment_error(name)),
         value => Err(format!(
             "AttributeError: cannot delete attribute '{name}' on {value}"
         )),
+    }
+}
+
+fn deque_attribute_assignment_error(name: &str) -> String {
+    if name == "maxlen" {
+        "AttributeError: attribute 'maxlen' of 'collections.deque' objects is not writable"
+            .to_string()
+    } else {
+        format!("AttributeError: 'collections.deque' object has no attribute '{name}'")
     }
 }
 

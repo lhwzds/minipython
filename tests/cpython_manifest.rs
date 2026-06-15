@@ -10516,6 +10516,10 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "descriptor.__delete__([])",
         "descriptor.__delete__()",
         "descriptor.__delete__(obj=deque())",
+        "setattr(deque(), 'maxlen', 5)",
+        "delattr(deque(), 'maxlen')",
+        "setattr(deque(), 'foo', 5)",
+        "delattr(deque(), 'foo')",
         "('bad-keyword', lambda: deque([], bad=1))",
         "('duplicate-iterable', lambda: deque([], iterable=[]))",
     ] {
@@ -10530,6 +10534,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a 'list' object",
         "descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a 'NoneType' object",
         "attribute 'maxlen' of 'collections.deque' objects is not writable",
+        "'collections.deque' object has no attribute 'foo'",
         "__get__(None, None) is invalid",
         "wrapper __get__() takes no keyword arguments",
         "wrapper __set__() takes no keyword arguments",
