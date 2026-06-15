@@ -4003,6 +4003,7 @@ fn cpython_collections_deque_public_surface_diff_subset() {
         source: r#"from collections import deque
 from collections.abc import MutableSequence
 import copy as copy_module
+import types
 d = deque()
 print(type(d).__name__)
 print(isinstance(d, deque), isinstance(d, MutableSequence))
@@ -4011,6 +4012,11 @@ for value in [deque, deque()]:
     doc = value.__doc__
     print(type(doc).__name__, bool(doc), doc.splitlines()[0])
 print('__doc__' in dir(deque), '__doc__' in dir(deque()), 'append' in dir(deque()))
+descriptor = deque.maxlen
+print('maxlen' in dir(deque), 'maxlen' in deque.__dict__)
+print(type(descriptor).__name__, isinstance(descriptor, types.GetSetDescriptorType))
+print(repr(descriptor))
+print(repr(deque.__dict__['maxlen']) == repr(descriptor))
 alias = deque[int]
 print(deque.__module__, deque.__qualname__, repr(alias), alias.__origin__ is deque, alias.__origin__.__module__)
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:

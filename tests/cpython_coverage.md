@@ -77,10 +77,11 @@ Recent runtime migration notes:
   construction from iterables, `maxlen` truncation and readonly access,
   iteration, len/bool/repr, direct display/empty-format methods, recursive
   display, public `__doc__` / `__module__` / `__qualname__` metadata,
-  `dir()` visibility, generic-alias repr, direct type-level public method
-  calls, basic `append` / `appendleft` / `extend` / `extendleft` / `insert` /
-  `remove` / `pop` / `popleft` / `count` / `index` / `rotate` / `reverse` /
-  `clear` / `copy`, membership, rich comparison between deque instances,
+  `dir()` visibility, class-level `maxlen` getset descriptor shape,
+  generic-alias repr, direct type-level public method calls, basic `append` /
+  `appendleft` / `extend` / `extendleft` / `insert` / `remove` / `pop` /
+  `popleft` / `count` / `index` / `rotate` / `reverse` / `clear` / `copy`,
+  membership, rich comparison between deque instances,
   integer indexing/assignment/deletion, concat/repeat, in-place concat/repeat,
   `.copy()` / `__copy__()` / `copy.copy()`, reverse iteration, concrete type
   identity, and `MutableSequence` registration. Full deque construction/mutation APIs

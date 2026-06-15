@@ -1504,6 +1504,9 @@ impl fmt::Display for Value {
             Value::Builtin(name) if is_typing_special_form_name(name) => {
                 write!(f, "{name}")
             }
+            Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
+                write!(f, "<attribute 'maxlen' of 'collections.deque' objects>")
+            }
             Value::Builtin(name) if is_builtin_type_display_name(name) => {
                 write!(f, "<class '{}'>", builtin_type_public_name(name))
             }
@@ -1931,6 +1934,9 @@ fn format_value_repr(value: &Value) -> String {
         Value::NamedTupleFieldDescriptor { typ, index } => {
             let field = namedtuple_field_name(typ, *index);
             format!("<namedtuple field '{field}' of '{}'>", typ.name)
+        }
+        Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
+            "<attribute 'maxlen' of 'collections.deque' objects>".to_string()
         }
         Value::MemberDescriptor { name, owner_name } => {
             format!("<member '{name}' of '{owner_name}' objects>")
@@ -2360,6 +2366,10 @@ fn is_builtin_type_display_name(name: &str) -> bool {
 
 fn is_typing_special_form_name(name: &str) -> bool {
     matches!(name, "typing.Any" | "typing.NoReturn" | "typing.Optional")
+}
+
+fn is_deque_maxlen_getset_descriptor(name: &str) -> bool {
+    name == "deque.maxlen.getset_descriptor"
 }
 
 fn builtin_type_public_name(name: &str) -> &str {

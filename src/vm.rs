@@ -46696,7 +46696,12 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("path".to_string());
             }
         }
-        Value::Builtin(name) => names.extend(builtin_type_dir_names(name)),
+        Value::Builtin(name) => {
+            names.extend(builtin_type_dir_names(name));
+            if name == "deque" {
+                names.push("maxlen".to_string());
+            }
+        }
         Value::Function { .. } => names.extend(
             [
                 "__annotations__",
@@ -47320,6 +47325,7 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "extendleft",
             "index",
             "insert",
+            "maxlen",
             "pop",
             "popleft",
             "remove",
@@ -48577,6 +48583,10 @@ fn is_data_descriptor(value: &Value) -> bool {
         Value::Property { .. } | Value::MemberDescriptor { .. }
     ) || instance_special_method(value, "__set__").is_some()
         || instance_special_method(value, "__delete__").is_some()
+}
+
+fn is_builtin_getset_descriptor_name(name: &str) -> bool {
+    name == "deque.maxlen.getset_descriptor"
 }
 
 fn is_iterator_value(value: &Value) -> bool {
@@ -55345,6 +55355,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::Builtin(format!("UserDict.{name}")))
         }
+        Value::Builtin(function_name) if function_name == "deque" && name == "maxlen" => {
+            Ok(Value::Builtin("deque.maxlen.getset_descriptor".to_string()))
+        }
         Value::Builtin(function_name)
             if function_name == "deque" && is_builtin_deque_type_method(name) =>
         {
@@ -55877,6 +55890,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 entries.push((
                     Value::String("from_bytes".to_string()),
                     Value::Builtin("int.from_bytes.classmethod_descriptor".to_string()),
+                ));
+            }
+            if class_name == "deque" {
+                entries.push((
+                    Value::String("maxlen".to_string()),
+                    Value::Builtin("deque.maxlen.getset_descriptor".to_string()),
                 ));
             }
             Ok(mapping_proxy_from_entries(entries))
@@ -58329,6 +58348,7 @@ fn type_name(value: &Value) -> &str {
         }
         Value::AnextDefault { .. } => "anext_awaitable",
         Value::Class { .. } => "type",
+        Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => "getset_descriptor",
         Value::Builtin(name) if is_builtin_classmethod_descriptor_name(name) => {
             "classmethod_descriptor"
         }
@@ -76132,6 +76152,7 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
             Value::Builtin(name) => {
                 !is_builtin_type_object_name(name)
                     && !is_exception_type_name(name)
+                    && !is_builtin_getset_descriptor_name(name)
                     && !is_builtin_wrapper_descriptor_name(name)
                     && !is_builtin_method_descriptor_name(name)
                     && !is_builtin_classmethod_descriptor_name(name)
@@ -76159,6 +76180,9 @@ fn value_matches_builtin_class(subject: &Value, class_name: &str) -> bool {
         }
         "classmethod_descriptor" => {
             matches!(subject, Value::Builtin(name) if is_builtin_classmethod_descriptor_name(name))
+        }
+        "getset_descriptor" => {
+            matches!(subject, Value::Builtin(name) if is_builtin_getset_descriptor_name(name))
         }
         "method" => {
             matches!(subject, Value::BoundMethod { function, .. } if !matches!(function.as_ref(), Value::Builtin(_)))

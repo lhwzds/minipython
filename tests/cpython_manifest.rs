@@ -10490,6 +10490,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_collections_deque_public_surface_subset",
     );
     for required in [
+        "descriptor = deque.maxlen",
+        "'maxlen' in dir(deque)",
+        "'maxlen' in deque.__dict__",
+        "types.GetSetDescriptorType",
+        "repr(descriptor)",
         "('bad-keyword', lambda: deque([], bad=1))",
         "('duplicate-iterable', lambda: deque([], iterable=[]))",
     ] {
@@ -10499,6 +10504,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
+        "<attribute 'maxlen' of 'collections.deque' objects>",
         "'bad' is an invalid keyword argument for deque()",
         "argument for deque() given by name ('iterable') and position (1)",
     ] {

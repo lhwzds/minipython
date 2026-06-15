@@ -11129,6 +11129,10 @@ Completed in the CPython collections manifest expansion pass:
   through both `reversed(deque(...))` and `deque.__reversed__()`, reusing the
   sequence reverse iterator path and keeping pickle, eval, thread-safety, and
   performance contracts out of scope.
+- Extended the same `collections.deque` public surface with class-level
+  `deque.maxlen` getset descriptor visibility through `dir(deque)`,
+  `deque.__dict__`, `type(deque.maxlen)`, and `types.GetSetDescriptorType`
+  evidence.
 - Extended the same `collections.deque` public surface with deque-to-deque rich
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,
