@@ -66762,10 +66762,8 @@ fn validate_optional_codec_string(value: Option<&Value>, name: &str) -> Result<(
 fn codec_string_arg(value: &Value, name: &str) -> Result<String, String> {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
-        value => Err(format!(
-            "TypeError: {name} must be str, not {}",
-            type_name(value)
-        )),
+        value => str_subclass_string(value)
+            .ok_or_else(|| format!("TypeError: {name} must be str, not {}", type_name(value))),
     }
 }
 

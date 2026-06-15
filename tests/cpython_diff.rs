@@ -6654,6 +6654,12 @@ print(bytearray(source='caf\xe9', encoding='latin-1'))
 print(str(object=b'caf\xe9', encoding='latin-1'))
 print(str(b'caf\xe9', errors='ignore'))
 print(str(object='plain'))
+class S(str):
+    pass
+print('\xe9'.encode(S('latin-1')), '\xe9'.encode('ascii', S('ignore')))
+print(b'\xe9'.decode(S('latin-1')), repr(b'\xff'.decode('utf-8', S('ignore'))))
+print(bytearray(b'\xe9').decode(S('latin-1')), repr(bytearray(b'\xff').decode('utf-8', S('ignore'))))
+print(bytes('\xe9', S('latin-1')), bytearray('\xe9', S('latin-1')), str(b'\xe9', S('latin-1')))
 print('\u20ac'.encode('cp1252'))
 print(b'\x80'.decode('cp1252'))
 print('snowman \u2603'.encode('cp1252', 'ignore'))

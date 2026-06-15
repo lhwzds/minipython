@@ -17466,6 +17466,62 @@ fn cpython_source_encoding_evidence_stays_documented() {
 }
 
 #[test]
+fn cpython_string_bytes_codec_evidence_covers_str_subclass_args() {
+    let subset_name = "cpython_string_bytes_codec_subset";
+    let diff_name = "cpython_string_bytes_codec_diff_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "string/bytes codec subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "string/bytes codec CPython diff evidence must exist"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(subset_name) && document.contains(diff_name),
+            "string/bytes codec docs must link `{diff_name}` to `{subset_name}`"
+        );
+    }
+
+    for (label, document) in [("subset", CPYTHON_SUBSET), ("diff", CPYTHON_DIFF)] {
+        for required in [
+            "class S(str):",
+            "encode(S('latin-1'))",
+            "S('ignore')",
+            "decode(S('latin-1'))",
+        ] {
+            assert!(
+                document.contains(required),
+                "string/bytes codec {label} evidence must contain `{required}`"
+            );
+        }
+    }
+
+    for required in [
+        "bytes('\\\\xe9', S('latin-1'))",
+        "str(b'\\\\xe9', S('latin-1'))",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "string/bytes codec subset evidence must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "bytes('\\xe9', S('latin-1'))",
+        "str(b'\\xe9', S('latin-1'))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "string/bytes codec diff evidence must contain `{required}`"
+        );
+    }
+}
+
+#[test]
 fn tokenizer_interpolated_string_split_subsets_stay_documented_as_partial() {
     for subset in [
         "cpython_tokenize_f_string_span_subset",

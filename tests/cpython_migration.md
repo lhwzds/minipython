@@ -6046,6 +6046,9 @@ Completed in the string/bytes codec method pass:
 - Extended the same constructor slice with `object=`, `source=`, `encoding=`,
   and `errors=` keyword forms, including CPython-style rejection when encoding
   or errors are supplied without a string/bytes-compatible source.
+- Extended the same codec argument path to accept `str` subclass
+  `encoding` / `errors` values across `str.encode()`, `bytes.decode()`,
+  `bytearray.decode()`, and `str` / `bytes` / `bytearray` constructors.
 - Added `cpython_bytes_check_encoding_errors_devmode_subset`, adapted from
   `Lib/test/test_bytes.py::BaseBytesTest::test_check_encoding_errors`, covering
   the CPython `-X dev` public behavior where invalid codec `encoding` /

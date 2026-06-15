@@ -32054,6 +32054,15 @@ fn cpython_string_bytes_codec_subset() {
         ],
     );
     assert_output(
+        "class S(str):\n    pass\nprint('\\xe9'.encode(S('latin-1')), '\\xe9'.encode('ascii', S('ignore')))\nprint(b'\\xe9'.decode(S('latin-1')), repr(b'\\xff'.decode('utf-8', S('ignore'))))\nprint(bytearray(b'\\xe9').decode(S('latin-1')), repr(bytearray(b'\\xff').decode('utf-8', S('ignore'))))\nprint(bytes('\\xe9', S('latin-1')), bytearray('\\xe9', S('latin-1')), str(b'\\xe9', S('latin-1')))",
+        &[
+            "b'\\xe9' b''",
+            "é ''",
+            "é ''",
+            "b'\\xe9' bytearray(b'\\xe9') é",
+        ],
+    );
+    assert_output(
         "print('\\u20ac'.encode('cp1252'))\nprint(b'\\x80'.decode('cp1252'))\nprint('snowman \\u2603'.encode('cp1252', 'ignore'))\nprint('snowman \\u2603'.encode('cp1252', 'replace'))\nprint(b'\\x81'.decode('cp1252', 'ignore'))\nprint(b'\\x81'.decode('cp1252', 'replace'))",
         &["b'\\x80'", "€", "b'snowman '", "b'snowman ?'", "", "�"],
     );
