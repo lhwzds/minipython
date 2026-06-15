@@ -719,7 +719,8 @@ Recent runtime migration notes:
   values-based count totals, basic mutation helpers, `most_common()`,
   `elements()`, direct display/empty-format methods, update and subtract
   behavior, unary positive/negative filtering, multiset arithmetic, and equality
-  with matching counts.
+  with matching counts, including direct `Counter.__pos__()` /
+  `Counter.__neg__()` public dunder calls.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public

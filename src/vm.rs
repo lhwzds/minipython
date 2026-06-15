@@ -26823,6 +26823,23 @@ impl Vm {
                 Ok(counter_in_place_value_from_operands(left, right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
+            "__pos__" | "__neg__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [receiver] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 0 arguments, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                let entries = counter_receiver_entries(receiver)?;
+                let op = if method_display_name(name) == "__pos__" {
+                    CounterUnaryOp::Positive
+                } else {
+                    CounterUnaryOp::Negative
+                };
+                counter_unary_value(&entries, op)
+            }
             "__repr__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
@@ -50234,6 +50251,8 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__ior__"
             | "__iand__"
             | "__ixor__"
+            | "__pos__"
+            | "__neg__"
             | "__iter__"
             | "__len__"
             | "__repr__"
@@ -54239,11 +54258,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             | "update" | "values" | "__contains__" | "__delitem__" | "__format__"
             | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__setitem__" | "__str__"
             | "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" | "__iadd__"
-            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("Counter.{name}"))),
-                receiver: Box::new(Value::Counter { entries }),
-                identity: Rc::new(()),
-            }),
+            | "__isub__" | "__ior__" | "__iand__" | "__ixor__" | "__pos__" | "__neg__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                    receiver: Box::new(Value::Counter { entries }),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
         },
         Value::UserDict { data, attrs } => {

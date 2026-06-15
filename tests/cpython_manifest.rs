@@ -10514,6 +10514,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     let counter_public_subset_body =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_collections_counter_public_subset");
     for required in [
+        "Counter.__pos__(Counter(a=2, b=-1, c=0))",
+        "Counter.__neg__(Counter(a=2, b=-1, c=0))",
         "Counter.elements(Counter(a=2), 1)",
         "elements() takes 1 positional argument but 2 were given",
     ] {
