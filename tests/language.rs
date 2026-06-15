@@ -1504,7 +1504,7 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
     );
     assert_eq!(
         run_source(
-            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nfor obj in [sys.version_info, sys.float_info, sys.hash_info, sys.flags]:\n    mapping = type(obj).__dict__\n    print(repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\", type(obj).__module__)\n    print(type(mapping).__name__, all(name in mapping for name in metadata), any(name in mapping for name in helpers))"
+            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nfor obj in [sys.version_info, sys.float_info, sys.hash_info, sys.flags]:\n    mapping = type(obj).__dict__\n    print(repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\", type(obj).__module__)\n    print(type(mapping).__name__, all(name in mapping for name in metadata), any(name in mapping for name in helpers))"
         ),
         Ok(output_lines(&[
             "True True sys",

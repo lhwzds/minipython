@@ -5337,9 +5337,9 @@ Completed in the float method/property pass:
   `repr()` and type `repr()` use CPython's public `sys.<name>` spelling,
   their public type `__module__` is `sys`, their type `__dict__` exposes the
   supported field descriptors and structure metadata while keeping
-  namedtuple-only helper entries hidden, and `__getnewargs__()` returns the
-  CPython public nested tuple shape without implying full CPython internal
-  `structseq` compatibility.
+  namedtuple-only helper entries including `__slots__` hidden, and
+  `__getnewargs__()` returns the CPython public nested tuple shape without
+  implying full CPython internal `structseq` compatibility.
 - Added `cpython_float_hash_and_sys_info_subset`, adapted from CPython
   `Lib/test/test_float.py::GeneralFloatCases::test_hash` and
   `::test_hash_nan`, plus a matching `cpython_diff` case that compares the
@@ -5357,7 +5357,8 @@ Completed in the float method/property pass:
   CPython public `sys.version_info` `repr()` / type `repr()` spelling and
   public type `__module__ == "sys"` while its type `__dict__` exposes the
   supported version fields and structseq metadata without namedtuple helper
-  entries. It remains a sandbox-owned version tuple. `sys.warnoptions` is exposed as an
+  entries such as `__slots__`. It remains a sandbox-owned version tuple.
+  `sys.warnoptions` is exposed as an
   in-memory list of warning option strings; MiniPython does not import host
   `-W` / environment warning configuration into the sandbox by default.
   `sys.dont_write_bytecode` is exposed as `False` CPython-compatible metadata
@@ -5377,9 +5378,10 @@ Completed in the float method/property pass:
   counts, namedtuple-only helpers remain hidden, `repr()` and type `repr()`
   use CPython's public `sys.flags` spelling, the public type `__module__` is
   `sys`, type `__dict__` exposes supported flag fields and structseq metadata
-  without namedtuple helper entries, and `__getnewargs__()` returns the
-  CPython public nested tuple shape without reading host startup flags or
-  implying full CPython internal structseq compatibility,
+  without namedtuple helper entries such as `__slots__`, and
+  `__getnewargs__()` returns the CPython public nested tuple shape without
+  reading host startup flags or implying full CPython internal structseq
+  compatibility,
   `sys.flags.no_user_site` is exposed as integer `0` without enabling host
   user-site path configuration,
   `sys.flags.no_site` is exposed as integer `0` without enabling host site

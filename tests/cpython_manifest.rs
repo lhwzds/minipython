@@ -12429,6 +12429,7 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.hash_info.n_sequence_fields",
         "sys.hash_info.n_unnamed_fields",
         "sys_structseq_helpers",
+        "__slots__",
         "sys_structseq_metadata",
         "repr(obj).startswith('sys.' + type(obj).__name__ + '(')",
         "repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\"",

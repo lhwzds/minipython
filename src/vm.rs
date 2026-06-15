@@ -72567,7 +72567,13 @@ fn is_sys_structseq_hidden_namedtuple_attr(typ: &NamedTupleType, name: &str) -> 
     is_sys_structseq(typ)
         && matches!(
             name,
-            "__match_args__" | "_asdict" | "_field_defaults" | "_fields" | "_make" | "_replace"
+            "__match_args__"
+                | "__slots__"
+                | "_asdict"
+                | "_field_defaults"
+                | "_fields"
+                | "_make"
+                | "_replace"
         )
 }
 

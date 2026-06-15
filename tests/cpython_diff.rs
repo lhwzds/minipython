@@ -25060,7 +25060,7 @@ value = F('nan')
 print('subnan', isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields >= 0, sys.float_info.n_sequence_fields >= 0, sys.float_info.n_unnamed_fields >= 0)
 print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields >= 0, sys.hash_info.n_sequence_fields >= 0, sys.hash_info.n_unnamed_fields >= 0)
-sys_structseq_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']
+sys_structseq_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
 sys_structseq_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]:
     print('sys-' + label + '-shape', type(obj).__name__, len(obj), len(tuple(obj)) == obj.n_sequence_fields)
@@ -25099,7 +25099,7 @@ print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little',
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields >= 0, sys.version_info.n_sequence_fields >= 0, sys.version_info.n_unnamed_fields >= 0)
 print('sys-version-info-type-metadata', type(sys.version_info).n_fields >= 0, type(sys.version_info).n_sequence_fields >= 0, type(sys.version_info).n_unnamed_fields >= 0)
-version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']
+version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
 version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 print('sys-version-info-repr', repr(sys.version_info).startswith('sys.version_info('), repr(type(sys.version_info)) == "<class 'sys.version_info'>", type(sys.version_info).__module__)
 print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
