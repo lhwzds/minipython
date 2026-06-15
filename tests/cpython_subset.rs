@@ -5470,7 +5470,7 @@ class F(float, H):
 value = F('nan')
 print('subnan', hash(value) == object.__hash__(value), isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields, sys.float_info.n_sequence_fields, sys.float_info.n_unnamed_fields)
-print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields, sys.hash_info.n_sequence_fields, sys.hash_info.n_unnamed_fields)
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
@@ -5527,7 +5527,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "nan True True",
             "subnan True True False",
             "sys-float-info 53 2 1 int 11 11 0",
-            "sys-hash-info 314159 0 1000003",
+            "sys-hash-info 314159 0 1000003 int 9 9 0",
             "sys-builtin-module-names tuple True",
             "sys-builtin-module-name-entries True True True",
             "sys-builtin-module-name-types True True",

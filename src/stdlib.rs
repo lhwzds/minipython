@@ -1718,6 +1718,15 @@ fn sys_hash_info_value() -> Value {
             (Value::String("hash_bits".to_string()), Value::Number(64)),
             (Value::String("seed_bits".to_string()), Value::Number(128)),
             (Value::String("cutoff".to_string()), Value::Number(0)),
+            (Value::String("n_fields".to_string()), Value::Number(9)),
+            (
+                Value::String("n_sequence_fields".to_string()),
+                Value::Number(9),
+            ),
+            (
+                Value::String("n_unnamed_fields".to_string()),
+                Value::Number(0),
+            ),
         ]),
     }
 }

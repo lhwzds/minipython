@@ -25059,7 +25059,7 @@ class F(float, H):
 value = F('nan')
 print('subnan', isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields >= 0, sys.float_info.n_sequence_fields >= 0, sys.float_info.n_unnamed_fields >= 0)
-print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag)
+print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields >= 0, sys.hash_info.n_sequence_fields >= 0, sys.hash_info.n_unnamed_fields >= 0)
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)

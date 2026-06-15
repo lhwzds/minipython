@@ -1512,6 +1512,12 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
         ),
         Ok(output_lines(&["int 11 11 0"]))
     );
+    assert_eq!(
+        run_source(
+            "import sys\nprint(type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields, sys.hash_info.n_sequence_fields, sys.hash_info.n_unnamed_fields)"
+        ),
+        Ok(output_lines(&["int 9 9 0"]))
+    );
 }
 
 #[test]
