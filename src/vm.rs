@@ -30528,12 +30528,53 @@ impl Vm {
     }
 
     fn list_contains_rich(&mut self, items: &ListRef, needle: &Value) -> Result<bool, String> {
-        for item in items.borrow().clone() {
+        Ok(self.list_find_rich(items, needle, 0, None)?.is_some())
+    }
+
+    fn list_count_rich(&mut self, items: &ListRef, needle: &Value) -> Result<i64, String> {
+        let mut count = 0_i64;
+        let mut index = 0_usize;
+        loop {
+            let item = {
+                let items = items.borrow();
+                if index >= items.len() {
+                    return Ok(count);
+                }
+                items[index].clone()
+            };
             if self.list_item_matches(item, needle)? {
-                return Ok(true);
+                count = count
+                    .checked_add(1)
+                    .ok_or_else(|| "count() result is too large".to_string())?;
             }
+            index = index
+                .checked_add(1)
+                .ok_or_else(|| "list index overflow".to_string())?;
         }
-        Ok(false)
+    }
+
+    fn list_search_bounds_for_dynamic_list(
+        args: &[Value],
+        len: usize,
+    ) -> Result<(usize, Option<usize>), String> {
+        let len = i64::try_from(len).map_err(|_| "list is too large".to_string())?;
+        let start = match args.first() {
+            Some(value) => list_bound_argument(value, "list index")?,
+            None => 0,
+        };
+        let start = normalize_positive_slice_bound(start, len);
+        let stop = match args.get(1) {
+            Some(value) => {
+                let stop = list_bound_argument(value, "list index")?;
+                Some(normalize_positive_slice_bound(stop, len).max(start))
+            }
+            None => None,
+        };
+        let start = usize::try_from(start).map_err(|_| "list index out of range".to_string())?;
+        let stop = stop
+            .map(|stop| usize::try_from(stop).map_err(|_| "list index out of range".to_string()))
+            .transpose()?;
+        Ok((start, stop))
     }
 
     fn list_find_rich(
@@ -30541,20 +30582,38 @@ impl Vm {
         items: &ListRef,
         needle: &Value,
         start: usize,
-        stop: usize,
+        stop: Option<usize>,
     ) -> Result<Option<usize>, String> {
-        let snapshot = items.borrow().clone();
-        for (index, item) in snapshot
-            .into_iter()
-            .enumerate()
-            .skip(start)
-            .take(stop.saturating_sub(start))
-        {
+        let mut index = start;
+        loop {
+            if stop.is_some_and(|stop| index >= stop) {
+                return Ok(None);
+            }
+            let item = {
+                let items = items.borrow();
+                if index >= items.len() {
+                    return Ok(None);
+                }
+                items[index].clone()
+            };
             if self.list_item_matches(item, needle)? {
                 return Ok(Some(index));
             }
+            index = index
+                .checked_add(1)
+                .ok_or_else(|| "list index overflow".to_string())?;
         }
-        Ok(None)
+    }
+
+    fn list_remove_rich(&mut self, items: &ListRef, needle: &Value) -> Result<Value, String> {
+        let Some(index) = self.list_find_rich(items, needle, 0, None)? else {
+            return Err("ValueError: list.remove(x): x not in list".to_string());
+        };
+        let mut items = items.borrow_mut();
+        if index < items.len() {
+            items.remove(index);
+        }
+        Ok(Value::None)
     }
 
     fn call_list_search_method(&mut self, name: &str, args: Vec<Value>) -> Result<Value, String> {
@@ -30575,15 +30634,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let mut count = 0_i64;
-                for item in items.borrow().clone() {
-                    if self.list_item_matches(item, needle)? {
-                        count = count
-                            .checked_add(1)
-                            .ok_or_else(|| "count() result is too large".to_string())?;
-                    }
-                }
-                Ok(Value::Number(count))
+                Ok(Value::Number(self.list_count_rich(items, needle)?))
             }
             "list.index" => {
                 let [Value::List(items), needle, rest @ ..] = args.as_slice() else {
@@ -30600,7 +30651,7 @@ impl Vm {
                 }
 
                 let len = items.borrow().len();
-                let (start, stop) = list_search_bounds(rest, len)?;
+                let (start, stop) = Self::list_search_bounds_for_dynamic_list(rest, len)?;
                 match self.list_find_rich(items, needle, start, stop)? {
                     Some(index) => {
                         let index = i64::try_from(index)
@@ -30617,16 +30668,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                let len = items.borrow().len();
-                let Some(index) = self.list_find_rich(items, needle, 0, len)? else {
-                    return Err("ValueError: list.remove(x): x not in list".to_string());
-                };
-                let mut items = items.borrow_mut();
-                if index >= items.len() {
-                    return Err("ValueError: list.remove(x): x not in list".to_string());
-                }
-                items.remove(index);
-                Ok(Value::None)
+                self.list_remove_rich(items, needle)
             }
             _ => unreachable!("list search method is filtered before dispatch"),
         }

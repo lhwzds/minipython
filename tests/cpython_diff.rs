@@ -9847,6 +9847,72 @@ for label, call in [
 }
 
 #[test]
+fn cpython_list_search_mutating_eq_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/list_tests.py mutation during rich comparison list search public subset",
+        name: "list-search-mutating-eq",
+        source: r#"class Clears:
+    def __eq__(self, other):
+        target.clear()
+        print("clear-eq", len(target))
+        return False
+target = [Clears(), 1]
+print("contains-clear", 1 in target, len(target))
+class Appends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("append-eq", len(target))
+        return False
+target = [Appends()]
+print("contains-append", "needle" in target, len(target), target[-1])
+class RemovesSecond:
+    def __eq__(self, other):
+        target.pop(1)
+        print("remove-second", len(target))
+        return False
+target = [RemovesSecond(), "needle"]
+try:
+    print("index-remove", target.index("needle"))
+except ValueError:
+    print("index-remove", "ValueError", len(target))
+class APIAppends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("api-append-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+    ("index-stop", lambda: target.index("needle", 0, 1)),
+]:
+    target = [APIAppends()]
+    try:
+        result = call()
+        print("api-append", label, result, len(target), type(target[-1]).__name__ if target else "empty")
+    except ValueError:
+        print("api-append", label, "ValueError", len(target), target[-1] if target else "empty")
+class TrueClears:
+    def __eq__(self, other):
+        target.clear()
+        print("true-clear-eq", len(target))
+        return True
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+]:
+    target = [TrueClears()]
+    result = call()
+    print("true-clear", label, result, len(target))"#,
+    });
+}
+
+#[test]
 fn cpython_types_class_creation_new_class_meta_helper_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::ClassCreationTests::test_new_class_basics through ::test_new_class_metaclass_keywords",

@@ -34563,6 +34563,101 @@ for label, call in [
     );
 }
 
+#[test]
+fn cpython_list_search_mutating_eq_subset() {
+    assert_output_with_stack(
+        r#"class Clears:
+    def __eq__(self, other):
+        target.clear()
+        print("clear-eq", len(target))
+        return False
+target = [Clears(), 1]
+print("contains-clear", 1 in target, len(target))
+class Appends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("append-eq", len(target))
+        return False
+target = [Appends()]
+print("contains-append", "needle" in target, len(target), target[-1])
+class RemovesSecond:
+    def __eq__(self, other):
+        target.pop(1)
+        print("remove-second", len(target))
+        return False
+target = [RemovesSecond(), "needle"]
+try:
+    print("index-remove", target.index("needle"))
+except ValueError:
+    print("index-remove", "ValueError", len(target))
+class APIAppends:
+    def __eq__(self, other):
+        target.append("needle")
+        print("api-append-eq", len(target))
+        return False
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+    ("index-stop", lambda: target.index("needle", 0, 1)),
+]:
+    target = [APIAppends()]
+    try:
+        result = call()
+        print("api-append", label, result, len(target), type(target[-1]).__name__ if target else "empty")
+    except ValueError:
+        print("api-append", label, "ValueError", len(target), target[-1] if target else "empty")
+class TrueClears:
+    def __eq__(self, other):
+        target.clear()
+        print("true-clear-eq", len(target))
+        return True
+for label, call in [
+    ("contains", lambda: "needle" in target),
+    ("dunder", lambda: target.__contains__("needle")),
+    ("count", lambda: target.count("needle")),
+    ("index", lambda: target.index("needle")),
+    ("remove", lambda: target.remove("needle")),
+]:
+    target = [TrueClears()]
+    result = call()
+    print("true-clear", label, result, len(target))"#,
+        &[
+            "clear-eq 0",
+            "contains-clear False 0",
+            "append-eq 2",
+            "contains-append True 2 needle",
+            "remove-second 1",
+            "index-remove ValueError 1",
+            "api-append-eq 2",
+            "api-append contains True 2 str",
+            "api-append-eq 2",
+            "api-append dunder True 2 str",
+            "api-append-eq 2",
+            "api-append count 1 2 str",
+            "api-append-eq 2",
+            "api-append index 1 2 str",
+            "api-append-eq 2",
+            "api-append remove None 1 APIAppends",
+            "api-append-eq 2",
+            "api-append index-stop ValueError 2 needle",
+            "true-clear-eq 0",
+            "true-clear contains True 0",
+            "true-clear-eq 0",
+            "true-clear dunder True 0",
+            "true-clear-eq 0",
+            "true-clear count 1 0",
+            "true-clear-eq 0",
+            "true-clear index 0 0",
+            "true-clear-eq 0",
+            "true-clear remove None 0",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
 // MiniPython exposes a sandbox-safe first-pass `json` module: pure in-memory
 // loads/dumps for the core JSON data model, without file APIs or custom hooks.
 #[test]

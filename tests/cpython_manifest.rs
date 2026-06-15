@@ -164,6 +164,73 @@ fn list_rich_search_docs_cover_container_runtime() {
     }
 }
 
+#[test]
+fn list_search_mutating_eq_docs_cover_container_runtime() {
+    let diff_name = "cpython_list_search_mutating_eq_diff_subset";
+    let subset_name = "cpython_list_search_mutating_eq_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "list mutating-eq search CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "list mutating-eq search runtime subset evidence must exist"
+    );
+
+    for required in [
+        "target.clear()",
+        "target.append(\"needle\")",
+        "target.pop(1)",
+        "target.remove(\"needle\")",
+        "target.index(\"needle\", 0, 1)",
+        "class TrueClears:",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "list mutating-eq diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"contains-clear False 0\"",
+        "\"contains-append True 2 needle\"",
+        "\"index-remove ValueError 1\"",
+        "\"api-append index-stop ValueError 2 needle\"",
+        "\"true-clear remove None 0\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "list mutating-eq subset output must pin CPython behavior `{required}`"
+        );
+    }
+    for required in [
+        "fn list_count_rich(",
+        "fn list_search_bounds_for_dynamic_list(",
+        "fn list_remove_rich(",
+        "stop: Option<usize>",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list mutating-eq VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "list mutation during comparison",
+            "dynamic list search semantics",
+            "explicit `stop` bounds remain fixed",
+        ] {
+            assert!(
+                document.contains(required),
+                "list mutating-eq docs must contain `{required}`"
+            );
+        }
+    }
+}
+
 macro_rules! cpython_source_or_skip {
     ($path:expr) => {
         match fs::read_to_string($path) {

@@ -47,6 +47,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
+- Added `cpython_list_search_mutating_eq_subset` and
+  `cpython_list_search_mutating_eq_diff_subset` for list mutation during comparison
+  across membership, `__contains__`, `count`, `index`, and `remove`: clear,
+  append, delete-before-visit, and true-match-while-clear cases now follow
+  CPython's dynamic list search semantics, while explicit `stop` bounds remain fixed.
 - Extended `cpython_json_loads_dumps_error_boundary_subset` and
   `cpython_json_loads_dumps_error_boundary_diff_subset` with CPython public
   delimiter-message substrings for `json.loads()` missing colon and missing
@@ -2114,8 +2119,12 @@ Completed in the differential parity harness pass:
   and out-of-window argument cases. `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now covers user-defined `__eq__`
   dispatch and comparison-error propagation for membership, `__contains__`,
-  `count`, `index`, and `remove`; list mutation during comparison remains
-  future object-model work.
+  `count`, `index`, and `remove`. `cpython_list_search_mutating_eq_subset`,
+  backed by `cpython_list_search_mutating_eq_diff_subset`, now covers list
+  mutation during comparison for the same search APIs, including clear, append,
+  delete-before-visit, true-match-while-clear, and fixed explicit `stop` bounds.
+  Broader mutation matrices outside these search APIs remain future object-model
+  work.
 - Migrated first-pass list special-method coverage from
   `Lib/test/seq_tests.py::CommonTest::test_subscript`. Lists now expose
   `__getitem__`, `__setitem__`, `__delitem__`, `__contains__`, and `__len__`

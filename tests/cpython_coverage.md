@@ -35,6 +35,11 @@ Recent runtime migration notes:
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
+- `cpython_list_search_mutating_eq_subset`, backed by
+  `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
+  clear, append, delete-before-visit, and true-match-while-clear cases use
+  CPython's dynamic list search semantics, while explicit `stop` bounds remain fixed
+  to the call-time normalized boundary.
 - `cpython_json_loads_dumps_error_boundary_subset`, backed by
   `cpython_json_loads_dumps_error_boundary_diff_subset`, now pins CPython
   public delimiter-message substrings for `json.loads()` missing colon and
