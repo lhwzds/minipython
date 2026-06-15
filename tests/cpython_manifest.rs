@@ -10495,6 +10495,15 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "'maxlen' in deque.__dict__",
         "types.GetSetDescriptorType",
         "repr(descriptor)",
+        "descriptor.__get__(None, deque) is descriptor",
+        "descriptor.__get__(deque([1], maxlen=3), deque)",
+        "type(descriptor.__get__).__name__",
+        "descriptor.__qualname__",
+        "descriptor.__objclass__ is deque",
+        "descriptor.__class__ is types.GetSetDescriptorType",
+        "descriptor.__get__([], deque)",
+        "descriptor.__get__(None, None)",
+        "descriptor.__get__(obj=deque(), type=deque)",
         "('bad-keyword', lambda: deque([], bad=1))",
         "('duplicate-iterable', lambda: deque([], iterable=[]))",
     ] {
@@ -10505,6 +10514,10 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "<attribute 'maxlen' of 'collections.deque' objects>",
+        "maximum size of a deque or None if unbounded",
+        "descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a 'list' object",
+        "__get__(None, None) is invalid",
+        "wrapper __get__() takes no keyword arguments",
         "'bad' is an invalid keyword argument for deque()",
         "argument for deque() given by name ('iterable') and position (1)",
     ] {

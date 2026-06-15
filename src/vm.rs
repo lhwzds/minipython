@@ -9731,6 +9731,9 @@ impl Vm {
             Value::Builtin(name) if name == "descriptor.__get__" => {
                 self.call_method_get(args, keywords)
             }
+            Value::Builtin(name) if name == "getset_descriptor.__get__" => {
+                self.call_getset_descriptor_get(args, keywords)
+            }
             Value::Builtin(name) if name.starts_with("namedtuple_field_descriptor.") => {
                 self.call_namedtuple_field_descriptor_method(&name, args, keywords)
             }
@@ -15933,6 +15936,43 @@ impl Vm {
                 "unknown namedtuple field descriptor method: {name}"
             )),
         }
+    }
+
+    fn call_getset_descriptor_get(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        let Some((descriptor, rest)) = args.split_first() else {
+            return Err("TypeError: __get__() expected a getset_descriptor receiver".to_string());
+        };
+        let Value::Builtin(descriptor_name) = descriptor else {
+            return Err("TypeError: __get__() expected a getset_descriptor receiver".to_string());
+        };
+        if !is_builtin_getset_descriptor_name(descriptor_name) {
+            return Err("TypeError: __get__() expected a getset_descriptor receiver".to_string());
+        }
+        descriptor_get_reject_method_wrapper_args("__get__", rest, &keywords)?;
+        let object = &rest[0];
+        if matches!(object, Value::None) {
+            if rest
+                .get(1)
+                .is_some_and(|owner| matches!(owner, Value::None))
+                || rest.get(1).is_none()
+            {
+                return Err("TypeError: __get__(None, None) is invalid".to_string());
+            }
+            return Ok(descriptor.clone());
+        }
+        let Value::Deque { maxlen, .. } = object else {
+            return Err(format!(
+                "TypeError: descriptor 'maxlen' for 'collections.deque' objects doesn't apply to a '{}' object",
+                type_name(object)
+            ));
+        };
+        Ok(maxlen
+            .map(|value| Value::Number(value as i64))
+            .unwrap_or(Value::None))
     }
 
     fn property_get(&mut self, property: Value, object: Value) -> Result<Value, String> {
@@ -46696,6 +46736,18 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 names.push("path".to_string());
             }
         }
+        Value::Builtin(name) if is_builtin_getset_descriptor_name(name) => names.extend(
+            [
+                "__class__",
+                "__doc__",
+                "__get__",
+                "__name__",
+                "__objclass__",
+                "__qualname__",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        ),
         Value::Builtin(name) => {
             names.extend(builtin_type_dir_names(name));
             if name == "deque" {
@@ -55187,6 +55239,25 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name) if function_name == "OrderedDict" && name == "__format__" => {
             Ok(Value::Builtin("object.__format__".to_string()))
         }
+        Value::Builtin(function_name) if is_builtin_getset_descriptor_name(&function_name) => {
+            match name {
+                "__class__" => Ok(Value::Builtin("getset_descriptor".to_string())),
+                "__get__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin("getset_descriptor.__get__".to_string())),
+                    receiver: Box::new(Value::Builtin(function_name)),
+                    identity: Rc::new(()),
+                }),
+                "__name__" => Ok(Value::String("maxlen".to_string())),
+                "__qualname__" => Ok(Value::String("deque.maxlen".to_string())),
+                "__objclass__" => Ok(Value::Builtin("deque".to_string())),
+                "__doc__" => Ok(Value::String(
+                    "maximum size of a deque or None if unbounded".to_string(),
+                )),
+                _ => Err(format!(
+                    "AttributeError: 'getset_descriptor' object has no attribute '{name}'"
+                )),
+            }
+        }
         Value::Builtin(function_name) if name == "__class__" => {
             if is_builtin_type_object_name(&function_name) || is_exception_type_name(&function_name)
             {
@@ -57174,7 +57245,7 @@ fn is_builtin_classmethod_descriptor_name(name: &str) -> bool {
 }
 
 fn is_descriptor_get_wrapper_name(name: &str) -> bool {
-    name == "descriptor.__get__"
+    matches!(name, "descriptor.__get__" | "getset_descriptor.__get__")
 }
 
 fn collections_abc_mixin_method_from_bases(bases: &[Value], name: &str) -> Option<&'static str> {

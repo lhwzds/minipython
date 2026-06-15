@@ -4017,6 +4017,20 @@ print('maxlen' in dir(deque), 'maxlen' in deque.__dict__)
 print(type(descriptor).__name__, isinstance(descriptor, types.GetSetDescriptorType))
 print(repr(descriptor))
 print(repr(deque.__dict__['maxlen']) == repr(descriptor))
+print(descriptor.__get__(None, deque) is descriptor)
+print(descriptor.__get__(deque([1], maxlen=3), deque), descriptor.__get__(deque([1], maxlen=3), None), descriptor.__get__(deque()) is None)
+print(type(descriptor.__get__).__name__, '__get__' in dir(descriptor))
+print(descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is deque, descriptor.__class__ is types.GetSetDescriptorType)
+print(descriptor.__doc__)
+for label, callback in [
+    ('descriptor-wrong', lambda: descriptor.__get__([], deque)),
+    ('descriptor-none-none', lambda: descriptor.__get__(None, None)),
+    ('descriptor-keyword', lambda: descriptor.__get__(obj=deque(), type=deque)),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 alias = deque[int]
 print(deque.__module__, deque.__qualname__, repr(alias), alias.__origin__ is deque, alias.__origin__.__module__)
 for d in [deque(), deque([1, 2, 3]), deque(iter([1, 2, 3]), maxlen=2), deque('abc', 0)]:
