@@ -81584,6 +81584,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             )),
         },
         Value::Bytes(haystack) => match needle {
+            Value::Bool(needle) => Ok(haystack.contains(&(bool_as_i64(needle) as u8))),
             Value::Number(needle) if (0..=255).contains(&needle) => {
                 Ok(haystack.contains(&(needle as u8)))
             }
@@ -81629,6 +81630,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
             )),
         },
         Value::ByteArray(haystack) => match needle {
+            Value::Bool(needle) => Ok(haystack.borrow().contains(&(bool_as_i64(needle) as u8))),
             Value::Number(needle) if (0..=255).contains(&needle) => {
                 Ok(haystack.borrow().contains(&(needle as u8)))
             }

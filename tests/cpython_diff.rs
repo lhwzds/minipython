@@ -21664,6 +21664,7 @@ for ctor in [bytes, bytearray]:
     b = ctor(b'abc')
     for needle in [ord('a'), int(ord('a')), 200]:
         print(needle in b)
+    print(True in ctor(bytes([1, 97])), False in ctor(bytes([0, 97])), True in b, False in b)
     for needle in [300, -1, sys.maxsize + 1, None, float(ord('a')), 'a']:
         try:
             needle in b

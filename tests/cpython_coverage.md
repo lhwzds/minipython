@@ -2511,7 +2511,8 @@ without adding general custom encoder/decoder class support.
   bytes/bytearray integer-length construction, mixed bytes/bytearray
   concatenation result types, repetition with zero/negative counts, repeat
   TypeErrors, sandbox `MemoryError` handling for address-space-sized
-  bytes/bytearray repeats, and membership over integer and bytes-like needles.
+  bytes/bytearray repeats, bool membership as integer byte membership, and
+  membership over integer and bytes-like needles.
   Direct CPython diff evidence is in
   `cpython_bytes_constructor_concat_repeat_contains_diff_subset`.
 - `STRING_RUNTIME` also includes

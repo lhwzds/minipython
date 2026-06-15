@@ -3570,8 +3570,9 @@ Completed in the bytes constructor/concat/repeat/contains pass:
 - Extended bytes/bytearray CPython parity evidence for integer-length
   construction, mixed bytes/bytearray concatenation result types, sequence
   repetition including zero and negative counts, sandbox `MemoryError` handling
-  for address-space-sized bytes/bytearray repeats, and membership over integer,
-  bytes, bytearray, and memoryview needles. Direct CPython diff evidence is in
+  for address-space-sized bytes/bytearray repeats, bool membership as integer
+  byte membership, and membership over integer, bytes, bytearray, and
+  memoryview needles. Direct CPython diff evidence is in
   `cpython_bytes_constructor_concat_repeat_contains_diff_subset`.
 - Routed sequence repetition errors through Python-level exception conversion
   so `try` / `except TypeError` can catch unsupported repeat operands, and

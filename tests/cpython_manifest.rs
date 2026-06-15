@@ -2360,6 +2360,37 @@ fn cpython_bytes_repeat_allocation_guard_stays_cpython_diffed() {
 }
 
 #[test]
+fn cpython_bytes_bool_membership_stays_cpython_diffed() {
+    let diff_name = "cpython_bytes_constructor_concat_repeat_contains_diff_subset";
+    let subset_name = "cpython_bytes_constructor_concat_repeat_contains_subset";
+
+    for source in [CPYTHON_DIFF, CPYTHON_SUBSET] {
+        assert!(
+            source.contains(&format!("fn {diff_name}("))
+                || source.contains(&format!("fn {subset_name}(")),
+            "bytes bool membership evidence must exist"
+        );
+        for required in [
+            "True in ctor(bytes([1, 97]))",
+            "False in ctor(bytes([0, 97]))",
+        ] {
+            assert!(
+                source.contains(required),
+                "bytes bool membership evidence must contain `{required}`"
+            );
+        }
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("bool membership")
+                && document.contains("cpython_bytes_constructor_concat_repeat_contains_subset"),
+            "bytes bool membership behavior must stay documented"
+        );
+    }
+}
+
+#[test]
 fn cpython_sequence_repeat_allocation_guard_stays_cpython_diffed() {
     let diff_name = "cpython_sequence_repeat_allocation_guard_diff_subset";
     let subset_name = "cpython_sequence_repeat_allocation_guard_subset";
