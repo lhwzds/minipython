@@ -53,6 +53,7 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_collections_deque_error_messages_subset` and
   `cpython_collections_deque_error_messages_diff_subset` for the supported
   deque `maxlen` integer acceptance and rejection boundary plus
+  deque public method arity TypeError text and
   no-argument deque method TypeError text, without expanding into full deque
   construction/mutation APIs.
 

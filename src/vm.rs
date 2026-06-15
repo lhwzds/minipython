@@ -30801,10 +30801,7 @@ impl Vm {
             }
             "extend" | "extendleft" => {
                 let [iterable] = rest else {
-                    return Err(format!(
-                        "{method}() expected 1 argument, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_exact_one_arg_error(method, method_arg_count(&args)));
                 };
                 let values = self.collect_iterable_values(iterable.clone())?;
                 let mut items = data.borrow_mut();
@@ -30832,10 +30829,7 @@ impl Vm {
             }
             "append" | "appendleft" => {
                 let [value] = rest else {
-                    return Err(format!(
-                        "{method}() expected 1 argument, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_exact_one_arg_error(method, method_arg_count(&args)));
                 };
                 let mut items = data.borrow_mut();
                 if maxlen == &Some(0) {
@@ -30872,9 +30866,10 @@ impl Vm {
             }
             "rotate" => {
                 if rest.len() > 1 {
-                    return Err(format!(
-                        "rotate() expected at most 1 argument, got {}",
-                        method_arg_count(&args)
+                    return Err(deque_at_most_args_error(
+                        "rotate",
+                        1,
+                        method_arg_count(&args),
                     ));
                 }
                 let mut items = data.borrow_mut();
@@ -30902,10 +30897,7 @@ impl Vm {
             }
             "count" => {
                 let [needle] = rest else {
-                    return Err(format!(
-                        "count() expected 1 argument, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_exact_one_arg_error("count", method_arg_count(&args)));
                 };
                 let items = data.borrow().clone();
                 let mut count = 0_i64;
@@ -30919,10 +30911,18 @@ impl Vm {
                 Ok(Value::Number(count))
             }
             "index" => {
-                if rest.is_empty() || rest.len() > 3 {
-                    return Err(format!(
-                        "index() expected 1 to 3 arguments, got {}",
-                        method_arg_count(&args)
+                if rest.is_empty() {
+                    return Err(deque_at_least_args_error(
+                        "index",
+                        1,
+                        method_arg_count(&args),
+                    ));
+                }
+                if rest.len() > 3 {
+                    return Err(deque_at_most_args_error(
+                        "index",
+                        3,
+                        method_arg_count(&args),
                     ));
                 }
                 let needle = rest[0].clone();
@@ -30954,10 +30954,7 @@ impl Vm {
             }
             "insert" => {
                 let [index, value] = rest else {
-                    return Err(format!(
-                        "insert() expected 2 arguments, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_exact_args_error("insert", 2, method_arg_count(&args)));
                 };
                 let mut items = data.borrow_mut();
                 if maxlen.is_some_and(|maxlen| items.len() >= maxlen) {
@@ -30978,10 +30975,7 @@ impl Vm {
             }
             "remove" => {
                 let [needle] = rest else {
-                    return Err(format!(
-                        "remove() expected 1 argument, got {}",
-                        method_arg_count(&args)
-                    ));
+                    return Err(deque_exact_one_arg_error("remove", method_arg_count(&args)));
                 };
                 let items = data.borrow().clone();
                 for (index, item) in items.iter().enumerate() {
@@ -78842,6 +78836,32 @@ fn deque_concat_value(left: &Value, right: &Value) -> Result<Value, String> {
 
 fn deque_no_args_error(method: &str, given: usize) -> String {
     format!("TypeError: deque.{method}() takes no arguments ({given} given)")
+}
+
+fn deque_exact_one_arg_error(method: &str, given: usize) -> String {
+    format!("TypeError: deque.{method}() takes exactly one argument ({given} given)")
+}
+
+fn deque_exact_args_error(method: &str, expected: usize, given: usize) -> String {
+    format!("TypeError: {method}() takes exactly {expected} arguments ({given} given)")
+}
+
+fn deque_at_least_args_error(method: &str, expected: usize, given: usize) -> String {
+    let noun = if expected == 1 {
+        "argument"
+    } else {
+        "arguments"
+    };
+    format!("TypeError: {method}() takes at least {expected} {noun} ({given} given)")
+}
+
+fn deque_at_most_args_error(method: &str, expected: usize, given: usize) -> String {
+    let noun = if expected == 1 {
+        "argument"
+    } else {
+        "arguments"
+    };
+    format!("TypeError: {method}() takes at most {expected} {noun} ({given} given)")
 }
 
 fn deque_maxlen_value(value: Value) -> Result<usize, String> {
