@@ -22054,6 +22054,31 @@ impl Vm {
                 };
                 sys_structseq_getnewargs(instance)
             }
+            "__repr__" if is_sys_structseq(&typ) => {
+                reject_method_keywords("__repr__", &keywords)?;
+                let [instance] = args.as_slice() else {
+                    return Err(format!(
+                        "TypeError: __repr__() expected 1 argument, got {}",
+                        args.len()
+                    ));
+                };
+                let Value::NamedTuple {
+                    typ: instance_type, ..
+                } = instance
+                else {
+                    return Err(
+                        "TypeError: descriptor '__repr__' requires a sys structseq object"
+                            .to_string(),
+                    );
+                };
+                if !Rc::ptr_eq(&instance_type.identity, &typ.identity) {
+                    return Err(
+                        "TypeError: descriptor '__repr__' requires a matching sys structseq object"
+                            .to_string(),
+                    );
+                }
+                Ok(Value::String(repr_value_checked(instance)?))
+            }
             _ => Err(format!(
                 "AttributeError: {} has no method '{name}'",
                 typ.name
@@ -53954,7 +53979,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if let Some(value) = sys_structseq_attr(&typ, name) {
                 return Ok(value);
             }
-            if is_sys_structseq(&typ) && name == "__getnewargs__" {
+            if is_sys_structseq(&typ) && matches!(name, "__getnewargs__" | "__repr__") {
                 return Ok(Value::NamedTupleTypeMethod {
                     typ,
                     name: name.to_string(),
@@ -72610,6 +72635,13 @@ fn sys_structseq_type_dict(typ: &NamedTupleTypeRef) -> Value {
             Value::String("__doc__".to_string()),
             Value::String(typ.doc.borrow().clone()),
         ),
+        (
+            Value::String("__repr__".to_string()),
+            Value::NamedTupleTypeMethod {
+                typ: typ.clone(),
+                name: "__repr__".to_string(),
+            },
+        ),
     ];
     for (index, field) in typ.fields.iter().enumerate() {
         entries.push((
@@ -72626,6 +72658,7 @@ fn sys_structseq_names() -> impl Iterator<Item = String> {
         "n_sequence_fields",
         "n_unnamed_fields",
         "__getnewargs__",
+        "__repr__",
     ]
     .into_iter()
     .map(str::to_string)

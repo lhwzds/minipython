@@ -553,7 +553,8 @@ Recent runtime migration notes:
   `sys.version_info` `repr()` prefixes, type `repr()` module-qualified names,
   type `__module__ == "sys"`, public type `__doc__` first lines,
   type `__dict__` mappingproxy metadata with namedtuple helper entries
-  including `__slots__` hidden, and `__getnewargs__()` shape,
+  including `__slots__` hidden, public type-level `__repr__` descriptors,
+  and `__getnewargs__()` shape,
   `sys.hexversion`, `sys.warnoptions`,
   `sys.getdefaultencoding()`, `sys.version_info` structure metadata,
   `sys.version_info` structseq-style absence of namedtuple helper attributes

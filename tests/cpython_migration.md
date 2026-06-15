@@ -5359,7 +5359,8 @@ Completed in the float method/property pass:
   public type `__module__ == "sys"` while its public type `__doc__` starts
   with `sys.version_info` and its type `__dict__` exposes the supported
   version fields and structseq metadata without namedtuple helper entries such
-  as `__slots__`. It remains a sandbox-owned version tuple.
+  as `__slots__`, while preserving the public type-level `__repr__` descriptor
+  call shape. It remains a sandbox-owned version tuple.
   `sys.warnoptions` is exposed as an
   in-memory list of warning option strings; MiniPython does not import host
   `-W` / environment warning configuration into the sandbox by default.

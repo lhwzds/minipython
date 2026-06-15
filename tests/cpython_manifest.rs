@@ -12321,6 +12321,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("repr(obj).startswith('sys.' + type(obj).__name__ + '(')")
             && LANGUAGE_TESTS.contains("type(obj).__dict__")
             && LANGUAGE_TESTS.contains("any(name in mapping for name in helpers)")
+            && LANGUAGE_TESTS.contains("'__repr__' in mapping")
+            && LANGUAGE_TESTS.contains("type(obj).__repr__(obj) == repr(obj)")
             && LANGUAGE_TESTS.contains("len(tuple(obj)) == obj.n_sequence_fields")
             && LANGUAGE_TESTS.contains("obj.__getnewargs__() == (tuple(obj),)")
             && LANGUAGE_TESTS.contains("sys.version_info.n_fields")
@@ -12413,6 +12415,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "type(type(sys.flags).__dict__).__name__",
         "any(name in type(sys.flags).__dict__ for name in sys_structseq_helpers)",
         "'debug' in type(sys.flags).__dict__",
+        "'__repr__' in type(sys.flags).__dict__",
+        "type(sys.flags).__repr__(sys.flags) == repr(sys.flags)",
         "sys.flags.__getnewargs__() == (tuple(sys.flags),)",
         "type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),)",
         "sys.flags.no_user_site",
@@ -12438,6 +12442,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "type(type(obj).__dict__).__name__",
         "all(name in type(obj).__dict__ for name in sys_structseq_metadata)",
         "any(name in type(obj).__dict__ for name in sys_structseq_helpers)",
+        "'__repr__' in type(obj).__dict__",
+        "type(obj).__repr__(obj) == repr(obj)",
         "len(tuple(obj)) == obj.n_sequence_fields",
         "obj.__getnewargs__() == (tuple(obj),)",
         "type(obj).__getnewargs__(obj) == (tuple(obj),)",
@@ -12480,6 +12486,8 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "all(name in type(sys.version_info).__dict__ for name in version_metadata)",
         "any(name in type(sys.version_info).__dict__ for name in version_helpers)",
         "'major' in type(sys.version_info).__dict__",
+        "'__repr__' in type(sys.version_info).__dict__",
+        "type(sys.version_info).__repr__(sys.version_info) == repr(sys.version_info)",
         "hasattr(sys.version_info, name)",
         "hasattr(type(sys.version_info), name)",
         "dir(sys.version_info)",

@@ -1504,17 +1504,17 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
     );
     assert_eq!(
         run_source(
-            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nexpected_docs = ['sys.version_info', 'sys.float_info', 'hash_info', 'sys.flags']\nfor index, obj in enumerate([sys.version_info, sys.float_info, sys.hash_info, sys.flags]):\n    mapping = type(obj).__dict__\n    print(repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\", type(obj).__module__)\n    print(type(mapping).__name__, all(name in mapping for name in metadata), any(name in mapping for name in helpers), type(obj).__doc__.splitlines()[0] == expected_docs[index])"
+            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nexpected_docs = ['sys.version_info', 'sys.float_info', 'hash_info', 'sys.flags']\nfor index, obj in enumerate([sys.version_info, sys.float_info, sys.hash_info, sys.flags]):\n    mapping = type(obj).__dict__\n    print(repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\", type(obj).__module__)\n    print(type(mapping).__name__, all(name in mapping for name in metadata), any(name in mapping for name in helpers), type(obj).__doc__.splitlines()[0] == expected_docs[index], '__repr__' in mapping, type(obj).__repr__(obj) == repr(obj))"
         ),
         Ok(output_lines(&[
             "True True sys",
-            "mappingproxy True False True",
+            "mappingproxy True False True True True",
             "True True sys",
-            "mappingproxy True False True",
+            "mappingproxy True False True True True",
             "True True sys",
-            "mappingproxy True False True",
+            "mappingproxy True False True True True",
             "True True sys",
-            "mappingproxy True False True",
+            "mappingproxy True False True True True",
         ]))
     );
     assert_eq!(
