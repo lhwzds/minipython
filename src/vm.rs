@@ -59079,7 +59079,9 @@ impl<'a> JsonParser<'a> {
                 self.expect_literal("-Infinity")?;
                 self.parse_constant_value("-Infinity", f64::NEG_INFINITY)
             }
-            Some('-' | '0'..='9') => self.parse_number(),
+            Some('-') if matches!(self.peek_offset(1), Some('0'..='9')) => self.parse_number(),
+            Some('-') => self.error("Expecting value"),
+            Some('0'..='9') => self.parse_number(),
             Some(_) | None => self.error("Expecting value"),
         }
     }
@@ -59225,7 +59227,8 @@ impl<'a> JsonParser<'a> {
             _ => return self.error("Invalid number"),
         }
         let mut is_float = false;
-        if self.consume_if('.') {
+        if self.peek() == Some('.') && matches!(self.peek_offset(1), Some('0'..='9')) {
+            self.pos += 1;
             is_float = true;
             let mut digits = 0;
             while matches!(self.peek(), Some('0'..='9')) {
@@ -59236,7 +59239,7 @@ impl<'a> JsonParser<'a> {
                 return self.error("Invalid number");
             }
         }
-        if matches!(self.peek(), Some('e' | 'E')) {
+        if matches!(self.peek(), Some('e' | 'E')) && self.has_valid_exponent_suffix() {
             is_float = true;
             self.pos += 1;
             if matches!(self.peek(), Some('+' | '-')) {
@@ -59347,6 +59350,18 @@ impl<'a> JsonParser<'a> {
 
     fn peek(&self) -> Option<char> {
         self.chars.get(self.pos).copied()
+    }
+
+    fn peek_offset(&self, offset: usize) -> Option<char> {
+        self.chars.get(self.pos + offset).copied()
+    }
+
+    fn has_valid_exponent_suffix(&self) -> bool {
+        let mut offset = 1;
+        if matches!(self.peek_offset(offset), Some('+' | '-')) {
+            offset += 1;
+        }
+        matches!(self.peek_offset(offset), Some('0'..='9'))
     }
 
     fn next(&mut self) -> Option<char> {

@@ -1745,7 +1745,13 @@ value = json.loads('{"negzero": -0, "negfloat": -0.0, "exp": 6.02e+23, "small": 
 print(value['negzero'], type(value['negzero']).__name__)
 print(value['negfloat'], type(value['negfloat']).__name__)
 print(value['exp'])
-print(value['small'])"#,
+print(value['small'])
+for label, source in [('dash', '-'), ('dash-dot', '-.1'), ('dash-nan', '-NaN'), ('dot-tail', '1.'), ('exp-tail', '1e'), ('signed-exp-tail', '1e+')]:
+    try:
+        json.loads(source)
+    except ValueError as error:
+        message = str(error)
+        print(label, 'Expecting value' in message, 'Extra data' in message, 'Invalid number' in message)"#,
     });
 }
 

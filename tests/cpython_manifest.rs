@@ -7926,6 +7926,15 @@ fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
         "1E-2",
         "type(value['negzero']).__name__",
         "type(value['negfloat']).__name__",
+        "('dash', '-')",
+        "('dash-dot', '-.1')",
+        "('dash-nan', '-NaN')",
+        "('dot-tail', '1.')",
+        "('exp-tail', '1e')",
+        "('signed-exp-tail', '1e+')",
+        "'Expecting value' in message",
+        "'Extra data' in message",
+        "'Invalid number' in message",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -7939,6 +7948,12 @@ fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
         "\"-0.0 float\"",
         "\"6.02e+23\"",
         "\"0.01\"",
+        "\"dash True False False\"",
+        "\"dash-dot True False False\"",
+        "\"dash-nan True False False\"",
+        "\"dot-tail False True False\"",
+        "\"exp-tail False True False\"",
+        "\"signed-exp-tail False True False\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -7957,6 +7972,7 @@ fn json_loads_number_whitespace_docs_cover_numeric_boundaries() {
             "negative zero as `int` for `-0` and `float` for `-0.0`",
             "positive exponent notation",
             "uppercase exponent notation",
+            "CPython-compatible invalid number boundary classification",
             "without adding Decimal parsing or locale-sensitive number formats",
         ] {
             assert!(

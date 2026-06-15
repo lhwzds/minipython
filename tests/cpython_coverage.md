@@ -1088,7 +1088,8 @@ without adding unsupported decoder hooks or `JSONDecoder` subclassing.
 `cpython_json_loads_number_and_whitespace_subset`, backed by
 `cpython_json_loads_number_and_whitespace_diff_subset`, keeps `loads()` number grammar and whitespace behavior for
 leading and trailing JSON whitespace, negative zero as `int` for `-0` and `float` for `-0.0`,
-positive exponent notation, and uppercase exponent notation,
+positive exponent notation, uppercase exponent notation, and
+CPython-compatible invalid number boundary classification,
 without adding Decimal parsing or locale-sensitive number formats.
 
 `cpython_json_loads_int_digit_limit_subset`, backed by
