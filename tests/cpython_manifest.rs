@@ -5311,6 +5311,30 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
 
+    let lru_argument_shape_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_functools_lru_cache_argument_shape_diff_subset",
+    );
+    let lru_argument_shape_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_functools_lru_cache_argument_shape_subset",
+    );
+    for required in [
+        "def identify(value):",
+        "identify(1), identify(True), identify(1.0)",
+        "def identify_kw(**kwargs):",
+        "identify_kw(value=1), identify_kw(value=True), identify_kw(value=1.0)",
+    ] {
+        assert!(
+            lru_argument_shape_diff.contains(required),
+            "functools lru_cache CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            lru_argument_shape_subset.contains(required),
+            "functools lru_cache runtime subset evidence must cover `{required}`"
+        );
+    }
+
     let reduce_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_functools_reduce_diff_subset");
     for required in [
         "reduce(add, [0, 1], initial='')",

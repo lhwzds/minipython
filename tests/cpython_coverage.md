@@ -1590,7 +1590,9 @@ without adding general custom encoder/decoder class support.
   `typed=True` top-level key separation, non-recursive typed tuple behavior,
   keyword-order-sensitive cache keys, full keyword-recursive `maxsize=None`
   statistics and clearing,
-  recursive calls that mutate the cache during a miss, empty `**{}`
+  recursive calls that mutate the cache during a miss, `typed=False`
+  single-argument exact int/str fasttype key separation from bool/float-shaped
+  keys, empty `**{}`
   equivalence with no keywords, `*args` key shape, cached method descriptor
   binding with shared cache statistics, wrapper-assignment metadata,
   bound-method wrapper metadata and instance-side cache control,

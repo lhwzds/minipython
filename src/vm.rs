@@ -3777,6 +3777,10 @@ fn usize_number_value(value: usize) -> Value {
 }
 
 fn lru_cache_key(args: &[Value], keywords: &[(String, Value)], typed: bool) -> Value {
+    if !typed && keywords.is_empty() && args.len() == 1 && lru_cache_fasttype_key(&args[0]) {
+        return args[0].clone();
+    }
+
     let mut key = Vec::with_capacity(args.len() + keywords.len().saturating_mul(2) + 1);
     key.extend(args.iter().cloned());
     if !keywords.is_empty() {
@@ -3796,6 +3800,13 @@ fn lru_cache_key(args: &[Value], keywords: &[(String, Value)], typed: bool) -> V
         }
     }
     tuple_value(key)
+}
+
+fn lru_cache_fasttype_key(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::Number(_) | Value::BigInt(_) | Value::String(_) | Value::IdentityString { .. }
+    )
 }
 
 fn lru_cache_info_value(state: &LruCacheState) -> Value {

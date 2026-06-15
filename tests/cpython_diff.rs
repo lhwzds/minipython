@@ -15542,7 +15542,24 @@ print(tuple(empty_kwargs.cache_info()))
 def star_args(*args):
     return args
 print(star_args(1, 2), star_args((1, 2)), tuple(star_args.cache_info()))
-print(star_args(1, 2), tuple(star_args.cache_info()))"#,
+print(star_args(1, 2), tuple(star_args.cache_info()))
+calls = []
+@lru_cache()
+def identify(value):
+    calls.append(type(value).__name__)
+    return type(value).__name__
+print(identify(1), identify(True), identify(1.0), identify(1), identify(True), identify(1.0))
+print(calls)
+print(tuple(identify.cache_info()))
+kw_calls = []
+@lru_cache()
+def identify_kw(**kwargs):
+    value = kwargs['value']
+    kw_calls.append(type(value).__name__)
+    return type(value).__name__
+print(identify_kw(value=1), identify_kw(value=True), identify_kw(value=1.0), identify_kw(value=1))
+print(kw_calls)
+print(tuple(identify_kw.cache_info()))"#,
     });
 }
 
