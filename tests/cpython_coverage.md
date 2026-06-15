@@ -1041,7 +1041,8 @@ without adding locale-sensitive collation or arbitrary incomparable-key support.
 two-string list/tuple values, subclasses, and general iterables such as
 tuple iterators, custom iterables, and generators, plus compact non-ASCII rendering with `ensure_ascii=False` and `sort_keys=True`.
 It pins CPython's unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences,
-non-iterable separator `TypeError` text, and item/key separator element `TypeError` text,
+non-iterable separator `TypeError` text, item/key separator element `TypeError` text,
+and `None` separator spelling and key-separator precedence when both elements are invalid,
 without adding JSONEncoder subclass support or arbitrary encoder hooks.
 
 `cpython_json_dumps_skipkeys_subset`, backed by

@@ -60332,8 +60332,8 @@ fn json_dumps_apply_separators(
             Err("ValueError: too many values to unpack (expected 2)".to_string())
         };
     };
-    options.item_separator = json_dumps_separator_string(item_separator, "item")?;
     options.key_separator = json_dumps_separator_string(key_separator, "key")?;
+    options.item_separator = json_dumps_separator_string(item_separator, "item")?;
     Ok(())
 }
 
@@ -60348,11 +60348,20 @@ fn json_dumps_separator_string(value: &Value, label: &str) -> Result<String, Str
                 "key" => 5,
                 _ => 6,
             };
+            let type_name = json_dumps_separator_type_name(value);
             Err(format!(
                 "TypeError: make_encoder() argument {argument} must be str, not {}",
-                type_name(value)
+                type_name
             ))
         }
+    }
+}
+
+fn json_dumps_separator_type_name(value: &Value) -> String {
+    if matches!(value, Value::None) {
+        "None".to_string()
+    } else {
+        type_name(value).to_string()
     }
 }
 

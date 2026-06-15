@@ -7211,6 +7211,7 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
         "cannot unpack non-iterable int object",
         "make_encoder() argument 6 must be str, not int",
         "make_encoder() argument 5 must be str, not int",
+        "make_encoder() argument 5 must be str, not None",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -7220,6 +7221,9 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
     for required in [
         "not enough values to unpack (expected 2, got 1)",
         "cannot unpack non-iterable object object",
+        "make_encoder() argument 6 must be str, not None",
+        "make_encoder() argument 5 must be str, not bool",
+        "make_encoder() argument 6 must be str, not bool",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -7240,6 +7244,7 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
             "unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences",
             "non-iterable separator `TypeError` text",
             "item/key separator element `TypeError` text",
+            "`None` separator spelling and key-separator precedence when both elements are invalid",
             "without adding JSONEncoder subclass support or arbitrary encoder hooks",
         ] {
             assert!(
