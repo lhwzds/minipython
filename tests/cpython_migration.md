@@ -5335,8 +5335,9 @@ Completed in the float method/property pass:
   `n_fields`, `n_sequence_fields`, and `n_unnamed_fields` attributes expose
   CPython-compatible structure counts, namedtuple-only helpers remain hidden,
   `repr()` and type `repr()` use CPython's public `sys.<name>` spelling,
-  their public type `__module__` is `sys`, their type `__dict__` exposes the
-  supported field descriptors and structure metadata while keeping
+  their public type `__module__` is `sys`, their public type `__doc__` first
+  lines follow CPython's documented sys structseq names, their type `__dict__`
+  exposes the supported field descriptors and structure metadata while keeping
   namedtuple-only helper entries including `__slots__` hidden, and
   `__getnewargs__()` returns the CPython public nested tuple shape without
   implying full CPython internal `structseq` compatibility.
@@ -5355,9 +5356,10 @@ Completed in the float method/property pass:
   public `"little"` / `"big"` values, and `sys.hexversion` as the integer
   mirror of `sys.implementation.hexversion`. `sys.version_info` also keeps the
   CPython public `sys.version_info` `repr()` / type `repr()` spelling and
-  public type `__module__ == "sys"` while its type `__dict__` exposes the
-  supported version fields and structseq metadata without namedtuple helper
-  entries such as `__slots__`. It remains a sandbox-owned version tuple.
+  public type `__module__ == "sys"` while its public type `__doc__` starts
+  with `sys.version_info` and its type `__dict__` exposes the supported
+  version fields and structseq metadata without namedtuple helper entries such
+  as `__slots__`. It remains a sandbox-owned version tuple.
   `sys.warnoptions` is exposed as an
   in-memory list of warning option strings; MiniPython does not import host
   `-W` / environment warning configuration into the sandbox by default.
@@ -5377,8 +5379,9 @@ Completed in the float method/property pass:
   `n_unnamed_fields` attributes expose the current supported flag metadata
   counts, namedtuple-only helpers remain hidden, `repr()` and type `repr()`
   use CPython's public `sys.flags` spelling, the public type `__module__` is
-  `sys`, type `__dict__` exposes supported flag fields and structseq metadata
-  without namedtuple helper entries such as `__slots__`, and
+  `sys`, public type `__doc__` starts with `sys.flags`, type `__dict__`
+  exposes supported flag fields and structseq metadata without namedtuple
+  helper entries such as `__slots__`, and
   `__getnewargs__()` returns the CPython public nested tuple shape without
   reading host startup flags or implying full CPython internal structseq
   compatibility,

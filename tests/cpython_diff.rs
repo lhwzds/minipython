@@ -25065,6 +25065,7 @@ sys_structseq_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]:
     print('sys-' + label + '-shape', type(obj).__name__, len(obj), len(tuple(obj)) == obj.n_sequence_fields)
     print('sys-' + label + '-repr', repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == "<class 'sys." + type(obj).__name__ + "'>", type(obj).__module__)
+    print('sys-' + label + '-doc', type(obj).__doc__.splitlines()[0])
     print('sys-' + label + '-helpers', any(hasattr(obj, name) for name in sys_structseq_helpers), any(hasattr(type(obj), name) for name in sys_structseq_helpers))
     print('sys-' + label + '-dir', any(name in dir(obj) for name in sys_structseq_helpers), all(name in dir(obj) for name in sys_structseq_metadata), all(name in dir(type(obj)) for name in sys_structseq_metadata))
     print('sys-' + label + '-type-dict', type(type(obj).__dict__).__name__, all(name in type(obj).__dict__ for name in sys_structseq_metadata), any(name in type(obj).__dict__ for name in sys_structseq_helpers), type(obj).__name__ in repr(type(obj).__dict__))
@@ -25084,6 +25085,7 @@ print('sys-flags-interactive', type(sys.flags.interactive).__name__, sys.flags.i
 print('sys-flags-struct-metadata', type(sys.flags.n_fields).__name__, sys.flags.n_fields >= 0, sys.flags.n_sequence_fields >= 0, sys.flags.n_unnamed_fields >= 0)
 print('sys-flags-shape', type(sys.flags).__name__, len(sys.flags), len(tuple(sys.flags)) == sys.flags.n_sequence_fields)
 print('sys-flags-repr', repr(sys.flags).startswith('sys.flags('), repr(type(sys.flags)) == "<class 'sys.flags'>", type(sys.flags).__module__)
+print('sys-flags-doc', type(sys.flags).__doc__.splitlines()[0])
 print('sys-flags-helpers', any(hasattr(sys.flags, name) for name in sys_structseq_helpers), any(hasattr(type(sys.flags), name) for name in sys_structseq_helpers))
 print('sys-flags-dir', any(name in dir(sys.flags) for name in sys_structseq_helpers), all(name in dir(sys.flags) for name in sys_structseq_metadata), all(name in dir(type(sys.flags)) for name in sys_structseq_metadata))
 print('sys-flags-type-dict', type(type(sys.flags).__dict__).__name__, all(name in type(sys.flags).__dict__ for name in sys_structseq_metadata), any(name in type(sys.flags).__dict__ for name in sys_structseq_helpers), 'debug' in type(sys.flags).__dict__)
@@ -25102,6 +25104,7 @@ print('sys-version-info-type-metadata', type(sys.version_info).n_fields >= 0, ty
 version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
 version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 print('sys-version-info-repr', repr(sys.version_info).startswith('sys.version_info('), repr(type(sys.version_info)) == "<class 'sys.version_info'>", type(sys.version_info).__module__)
+print('sys-version-info-doc', type(sys.version_info).__doc__.splitlines()[0])
 print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
 print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))
 print('sys-version-info-type-dict', type(type(sys.version_info).__dict__).__name__, all(name in type(sys.version_info).__dict__ for name in version_metadata), any(name in type(sys.version_info).__dict__ for name in version_helpers), 'major' in type(sys.version_info).__dict__)

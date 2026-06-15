@@ -1595,7 +1595,7 @@ fn sys_version_info_value() -> Value {
             new_defaults: None,
             module: Value::String("sys".to_string()),
             doc: RefCell::new(
-                "version_info(major, minor, micro, releaselevel, serial)".to_string(),
+                "sys.version_info\n\nVersion information as a named tuple.".to_string(),
             ),
             identity: Rc::new(()),
         }),
@@ -1737,10 +1737,26 @@ fn sys_structseq_value(name: &str, fields: Vec<&str>, values: Vec<Value>) -> Val
             field_defaults: Vec::new(),
             new_defaults: None,
             module: Value::String("sys".to_string()),
-            doc: RefCell::new(format!("{name}({})", fields.join(", "))),
+            doc: RefCell::new(sys_structseq_doc(name, &fields).to_string()),
             identity: Rc::new(()),
         }),
         values: Rc::new(values),
+    }
+}
+
+fn sys_structseq_doc(name: &str, fields: &[&str]) -> String {
+    match name {
+        "float_info" => {
+            "sys.float_info\n\nA named tuple holding information about the float type.".to_string()
+        }
+        "hash_info" => {
+            "hash_info\n\nA named tuple providing parameters used for computing hashes.".to_string()
+        }
+        "flags" => {
+            "sys.flags\n\nFlags provided through command line arguments or environment vars."
+                .to_string()
+        }
+        _ => format!("{name}({})", fields.join(", ")),
     }
 }
 
