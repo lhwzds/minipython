@@ -25072,6 +25072,7 @@ print('sys-flags-hash-randomization', type(sys.flags.hash_randomization).__name_
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment in (0, 1))
 print('sys-flags-inspect', type(sys.flags.inspect).__name__, sys.flags.inspect in (0, 1))
 print('sys-flags-interactive', type(sys.flags.interactive).__name__, sys.flags.interactive in (0, 1))
+print('sys-flags-struct-metadata', type(sys.flags.n_fields).__name__, sys.flags.n_fields >= 0, sys.flags.n_sequence_fields >= 0, sys.flags.n_unnamed_fields >= 0)
 print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags.no_user_site in (0, 1))
 print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site in (0, 1))
 print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated in (0, 1))

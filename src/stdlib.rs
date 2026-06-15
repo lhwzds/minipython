@@ -491,6 +491,15 @@ pub(crate) fn create_module(
                             ),
                             (Value::String("inspect".to_string()), Value::Number(0)),
                             (Value::String("interactive".to_string()), Value::Number(0)),
+                            (Value::String("n_fields".to_string()), Value::Number(15)),
+                            (
+                                Value::String("n_sequence_fields".to_string()),
+                                Value::Number(15),
+                            ),
+                            (
+                                Value::String("n_unnamed_fields".to_string()),
+                                Value::Number(0),
+                            ),
                             (Value::String("no_user_site".to_string()), Value::Number(0)),
                             (Value::String("no_site".to_string()), Value::Number(0)),
                             (Value::String("isolated".to_string()), Value::Number(0)),

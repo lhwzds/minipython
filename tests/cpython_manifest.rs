@@ -12323,6 +12323,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.flags.ignore_environment")
             && LANGUAGE_TESTS.contains("sys.flags.inspect")
             && LANGUAGE_TESTS.contains("sys.flags.interactive")
+            && LANGUAGE_TESTS.contains("sys.flags.n_fields")
+            && LANGUAGE_TESTS.contains("sys.flags.n_sequence_fields")
+            && LANGUAGE_TESTS.contains("sys.flags.n_unnamed_fields")
             && LANGUAGE_TESTS.contains("sys.flags.no_user_site")
             && LANGUAGE_TESTS.contains("sys.flags.no_site")
             && LANGUAGE_TESTS.contains("sys.flags.isolated")
@@ -12377,6 +12380,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.ignore_environment",
         "sys.flags.inspect",
         "sys.flags.interactive",
+        "sys.flags.n_fields",
+        "sys.flags.n_sequence_fields",
+        "sys.flags.n_unnamed_fields",
         "sys.flags.no_user_site",
         "sys.flags.no_site",
         "sys.flags.isolated",

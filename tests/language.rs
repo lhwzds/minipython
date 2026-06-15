@@ -1500,6 +1500,12 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "stderr SimpleNamespace [('name', '<stderr>')]",
         ]))
     );
+    assert_eq!(
+        run_source(
+            "import sys\nprint(type(sys.flags.n_fields).__name__, sys.flags.n_fields, sys.flags.n_sequence_fields, sys.flags.n_unnamed_fields)"
+        ),
+        Ok(output_lines(&["int 15 15 0"]))
+    );
 }
 
 #[test]
