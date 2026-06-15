@@ -12311,6 +12311,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.get_int_max_str_digits()")
             && LANGUAGE_TESTS.contains("sys.getdefaultencoding()")
             && LANGUAGE_TESTS.contains("sys.byteorder")
+            && LANGUAGE_TESTS.contains("sys.float_info.n_fields")
+            && LANGUAGE_TESTS.contains("sys.float_info.n_sequence_fields")
+            && LANGUAGE_TESTS.contains("sys.float_info.n_unnamed_fields")
             && LANGUAGE_TESTS.contains("sys.hexversion == sys.implementation.hexversion")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
@@ -12390,6 +12393,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.quiet",
         "sys.flags.utf8_mode",
         "sys.flags.verbose",
+        "sys.float_info.n_fields",
+        "sys.float_info.n_sequence_fields",
+        "sys.float_info.n_unnamed_fields",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",

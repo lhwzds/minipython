@@ -1687,6 +1687,15 @@ fn sys_float_info_value() -> Value {
             ),
             (Value::String("radix".to_string()), Value::Number(2)),
             (Value::String("rounds".to_string()), Value::Number(1)),
+            (Value::String("n_fields".to_string()), Value::Number(11)),
+            (
+                Value::String("n_sequence_fields".to_string()),
+                Value::Number(11),
+            ),
+            (
+                Value::String("n_unnamed_fields".to_string()),
+                Value::Number(0),
+            ),
         ]),
     }
 }

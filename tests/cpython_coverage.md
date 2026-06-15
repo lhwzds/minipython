@@ -535,7 +535,8 @@ Recent runtime migration notes:
 - `NUMBER` also includes CPython
   `test_float.py::GeneralFloatCases::test_hash` and `::test_hash_nan` through
   `cpython_float_hash_and_sys_info_subset`, covering public `sys.float_info`
-  and `sys.hash_info` attributes used by the float tests, integer-valued float
+  including `sys.float_info` structure metadata and `sys.hash_info` attributes
+  used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, float-subclass NaN hash inheritance, public
   `sys.builtin_module_names`, `sys.byteorder`, `sys.dont_write_bytecode`,
