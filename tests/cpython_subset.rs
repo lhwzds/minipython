@@ -5478,6 +5478,7 @@ for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]
     print('sys-' + label + '-repr', repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == "<class 'sys." + type(obj).__name__ + "'>", type(obj).__module__)
     print('sys-' + label + '-helpers', any(hasattr(obj, name) for name in sys_structseq_helpers), any(hasattr(type(obj), name) for name in sys_structseq_helpers))
     print('sys-' + label + '-dir', any(name in dir(obj) for name in sys_structseq_helpers), all(name in dir(obj) for name in sys_structseq_metadata), all(name in dir(type(obj)) for name in sys_structseq_metadata))
+    print('sys-' + label + '-type-dict', type(type(obj).__dict__).__name__, all(name in type(obj).__dict__ for name in sys_structseq_metadata), any(name in type(obj).__dict__ for name in sys_structseq_helpers), type(obj).__name__ in repr(type(obj).__dict__))
     print('sys-' + label + '-getnewargs', obj.__getnewargs__() == (tuple(obj),), type(obj).__getnewargs__(obj) == (tuple(obj),))
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
@@ -5496,6 +5497,7 @@ print('sys-flags-shape', type(sys.flags).__name__, len(sys.flags), tuple(sys.fla
 print('sys-flags-repr', repr(sys.flags).startswith('sys.flags('), repr(type(sys.flags)) == "<class 'sys.flags'>", type(sys.flags).__module__)
 print('sys-flags-helpers', any(hasattr(sys.flags, name) for name in sys_structseq_helpers), any(hasattr(type(sys.flags), name) for name in sys_structseq_helpers))
 print('sys-flags-dir', any(name in dir(sys.flags) for name in sys_structseq_helpers), all(name in dir(sys.flags) for name in sys_structseq_metadata), all(name in dir(type(sys.flags)) for name in sys_structseq_metadata))
+print('sys-flags-type-dict', type(type(sys.flags).__dict__).__name__, all(name in type(sys.flags).__dict__ for name in sys_structseq_metadata), any(name in type(sys.flags).__dict__ for name in sys_structseq_helpers), 'debug' in type(sys.flags).__dict__)
 print('sys-flags-getnewargs', sys.flags.__getnewargs__() == (tuple(sys.flags),), type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),))
 print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags.no_user_site)
 print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site)
@@ -5513,6 +5515,7 @@ version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 print('sys-version-info-repr', repr(sys.version_info).startswith('sys.version_info('), repr(type(sys.version_info)) == "<class 'sys.version_info'>", type(sys.version_info).__module__)
 print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
 print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))
+print('sys-version-info-type-dict', type(type(sys.version_info).__dict__).__name__, all(name in type(sys.version_info).__dict__ for name in version_metadata), any(name in type(sys.version_info).__dict__ for name in version_helpers), 'major' in type(sys.version_info).__dict__)
 print('sys-version-info-getnewargs', sys.version_info.__getnewargs__() == (tuple(sys.version_info),), type(sys.version_info).__getnewargs__(sys.version_info) == (tuple(sys.version_info),))
 print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
 print('sys-implementation-version-metadata', sys.implementation.version.n_fields, sys.implementation.version.n_sequence_fields, sys.implementation.version.n_unnamed_fields)
@@ -5553,11 +5556,13 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-float-info-repr True True sys",
             "sys-float-info-helpers False False",
             "sys-float-info-dir False True True",
+            "sys-float-info-type-dict mappingproxy True False True",
             "sys-float-info-getnewargs True True",
             "sys-hash-info-shape hash_info 9 (64, 2305843009213693951, 314159) True",
             "sys-hash-info-repr True True sys",
             "sys-hash-info-helpers False False",
             "sys-hash-info-dir False True True",
+            "sys-hash-info-type-dict mappingproxy True False True",
             "sys-hash-info-getnewargs True True",
             "sys-builtin-module-names tuple True",
             "sys-builtin-module-name-entries True True True",
@@ -5576,6 +5581,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-repr True True sys",
             "sys-flags-helpers False False",
             "sys-flags-dir False True True",
+            "sys-flags-type-dict mappingproxy True False True",
             "sys-flags-getnewargs True True",
             "sys-flags-no-user-site int 0",
             "sys-flags-no-site int 0",
@@ -5591,6 +5597,7 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-version-info-repr True True sys",
             "sys-version-info-namedtuple-helpers False False",
             "sys-version-info-dir-helpers False False True True",
+            "sys-version-info-type-dict mappingproxy True False True",
             "sys-version-info-getnewargs True True",
             "sys-implementation SimpleNamespace minipython True int str",
             "sys-implementation-version-metadata 5 5 0",

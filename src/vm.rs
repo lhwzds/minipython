@@ -53990,6 +53990,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     name: name.to_string(),
                 }),
                 "__dict__" => {
+                    if is_sys_structseq(&typ) {
+                        return Ok(sys_structseq_type_dict(&typ));
+                    }
                     let mut entries = vec![
                         (
                             Value::String("__name__".to_string()),
@@ -72580,6 +72583,35 @@ fn sys_structseq_getnewargs(instance: &Value) -> Result<Value, String> {
         );
     }
     Ok(tuple_value(vec![tuple_value(values.as_ref().clone())]))
+}
+
+fn sys_structseq_type_dict(typ: &NamedTupleTypeRef) -> Value {
+    let field_count = typ.fields.len() as i64;
+    let mut entries = vec![
+        (
+            Value::String("n_fields".to_string()),
+            Value::Number(field_count),
+        ),
+        (
+            Value::String("n_sequence_fields".to_string()),
+            Value::Number(field_count),
+        ),
+        (
+            Value::String("n_unnamed_fields".to_string()),
+            Value::Number(0),
+        ),
+        (
+            Value::String("__doc__".to_string()),
+            Value::String(typ.doc.borrow().clone()),
+        ),
+    ];
+    for (index, field) in typ.fields.iter().enumerate() {
+        entries.push((
+            Value::String(field.clone()),
+            namedtuple_field_descriptor(typ, index),
+        ));
+    }
+    mapping_proxy_from_entries(entries)
 }
 
 fn sys_structseq_names() -> impl Iterator<Item = String> {
