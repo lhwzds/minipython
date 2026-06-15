@@ -1859,6 +1859,29 @@ print(json.loads('1', parse_int=lambda s: [s]))
 print(json.loads('1.5', parse_float=lambda s: None))
 print(json.loads('NaN', parse_constant=lambda s: [s]))
 print(json.loads('[1, 2]', parse_int=lambda s: {'n': s}))
+for label, source, kwargs in [
+    ('int-false', '1', dict(parse_int=False)),
+    ('int-zero', '1', dict(parse_int=0)),
+    ('int-empty-string', '1', dict(parse_int='')),
+    ('int-empty-list', '1', dict(parse_int=[])),
+    ('float-false', '1.5', dict(parse_float=False)),
+    ('constant-false', 'NaN', dict(parse_constant=False)),
+]:
+    value = json.loads(source, **kwargs)
+    print(label, type(value).__name__, repr(value), value != value)
+class FalseHook:
+    def __bool__(self):
+        print('bool falsehook')
+        return False
+class BoolBoom:
+    def __bool__(self):
+        print('bool boom')
+        raise ValueError('bool-boom')
+print('falsehook', json.loads('1', parse_int=FalseHook()))
+try:
+    json.loads('1', parse_int=BoolBoom())
+except Exception as error:
+    print('boom', type(error).__name__, str(error))
 def boom_int(s):
     raise ValueError('boom-int')
 

@@ -46,6 +46,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   delimiter-message substrings for `json.loads()` missing colon and missing
   comma errors. This keeps the supported error text sharper without adding full
   `JSONDecodeError` class compatibility to the sandbox `json` scope.
+- Extended `cpython_json_loads_parse_hooks_subset` and
+  `cpython_json_loads_parse_hooks_diff_subset` with falsey parse-hook fallback through public truthiness
+  for `parse_int`, `parse_float`, and `parse_constant`, while keeping object
+  hooks on the existing non-`None` callable path.
 
 The current runtime scope includes:
 

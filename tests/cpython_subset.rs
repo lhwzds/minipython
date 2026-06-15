@@ -35114,7 +35114,78 @@ fn cpython_json_loads_nonfinite_constants_subset() {
 #[test]
 fn cpython_json_loads_parse_hooks_subset() {
     assert_output(
-        "import json\n\ndef pint(s):\n    print('parse_int', s)\n    return 'I:' + s\n\ndef pfloat(s):\n    print('parse_float', s)\n    return 'F:' + s\n\ndef pconst(s):\n    print('parse_constant', s)\n    return 'C:' + s\nvalue = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)\nprint(value)\nprint(json.loads('{\"a\": 123, \"b\": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))\nprint(json.loads('\"x\"', parse_int=1))\nprint(json.loads('1', parse_int=lambda s: None))\nprint(json.loads('1', parse_int=lambda s: [s]))\nprint(json.loads('1.5', parse_float=lambda s: None))\nprint(json.loads('NaN', parse_constant=lambda s: [s]))\nprint(json.loads('[1, 2]', parse_int=lambda s: {'n': s}))\ndef boom_int(s):\n    raise ValueError('boom-int')\n\ndef boom_float(s):\n    raise ValueError('boom-float')\n\ndef boom_constant(s):\n    raise ValueError('boom-constant')\n\nfor label, source, kwargs in [\n    ('int-noncallable', '1', dict(parse_int=1)),\n    ('float-noncallable', '1.5', dict(parse_float=1)),\n    ('constant-noncallable', 'NaN', dict(parse_constant=1)),\n]:\n    try:\n        json.loads(source, **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))\nfor label, kwargs in [\n    ('int-boom', dict(parse_int=boom_int)),\n    ('float-boom', dict(parse_float=boom_float)),\n    ('constant-boom', dict(parse_constant=boom_constant)),\n]:\n    try:\n        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)\n    except Exception as error:\n        print(label, type(error).__name__, str(error))",
+        r#"import json
+
+def pint(s):
+    print('parse_int', s)
+    return 'I:' + s
+
+def pfloat(s):
+    print('parse_float', s)
+    return 'F:' + s
+
+def pconst(s):
+    print('parse_constant', s)
+    return 'C:' + s
+value = json.loads('[1, -2, 3.5, -0.0, 6.02e+23, NaN, Infinity, -Infinity]', parse_int=pint, parse_float=pfloat, parse_constant=pconst)
+print(value)
+print(json.loads('{"a": 123, "b": 4.5}', parse_int=lambda s: ('int', s), parse_float=lambda s: ('float', s)))
+print(json.loads('"x"', parse_int=1))
+print(json.loads('1', parse_int=lambda s: None))
+print(json.loads('1', parse_int=lambda s: [s]))
+print(json.loads('1.5', parse_float=lambda s: None))
+print(json.loads('NaN', parse_constant=lambda s: [s]))
+print(json.loads('[1, 2]', parse_int=lambda s: {'n': s}))
+for label, source, kwargs in [
+    ('int-false', '1', dict(parse_int=False)),
+    ('int-zero', '1', dict(parse_int=0)),
+    ('int-empty-string', '1', dict(parse_int='')),
+    ('int-empty-list', '1', dict(parse_int=[])),
+    ('float-false', '1.5', dict(parse_float=False)),
+    ('constant-false', 'NaN', dict(parse_constant=False)),
+]:
+    value = json.loads(source, **kwargs)
+    print(label, type(value).__name__, repr(value), value != value)
+class FalseHook:
+    def __bool__(self):
+        print('bool falsehook')
+        return False
+class BoolBoom:
+    def __bool__(self):
+        print('bool boom')
+        raise ValueError('bool-boom')
+print('falsehook', json.loads('1', parse_int=FalseHook()))
+try:
+    json.loads('1', parse_int=BoolBoom())
+except Exception as error:
+    print('boom', type(error).__name__, str(error))
+def boom_int(s):
+    raise ValueError('boom-int')
+
+def boom_float(s):
+    raise ValueError('boom-float')
+
+def boom_constant(s):
+    raise ValueError('boom-constant')
+
+for label, source, kwargs in [
+    ('int-noncallable', '1', dict(parse_int=1)),
+    ('float-noncallable', '1.5', dict(parse_float=1)),
+    ('constant-noncallable', 'NaN', dict(parse_constant=1)),
+]:
+    try:
+        json.loads(source, **kwargs)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+for label, kwargs in [
+    ('int-boom', dict(parse_int=boom_int)),
+    ('float-boom', dict(parse_float=boom_float)),
+    ('constant-boom', dict(parse_constant=boom_constant)),
+]:
+    try:
+        json.loads({'int-boom':'1','float-boom':'1.5','constant-boom':'NaN'}[label], **kwargs)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
         &[
             "parse_int 1",
             "parse_int -2",
@@ -35132,6 +35203,16 @@ fn cpython_json_loads_parse_hooks_subset() {
             "None",
             "['NaN']",
             "[{'n': '1'}, {'n': '2'}]",
+            "int-false int 1 False",
+            "int-zero int 1 False",
+            "int-empty-string int 1 False",
+            "int-empty-list int 1 False",
+            "float-false float 1.5 False",
+            "constant-false float nan True",
+            "bool falsehook",
+            "falsehook 1",
+            "bool boom",
+            "boom ValueError bool-boom",
             "int-noncallable TypeError 'int' object is not callable",
             "float-noncallable TypeError 'int' object is not callable",
             "constant-noncallable TypeError 'int' object is not callable",

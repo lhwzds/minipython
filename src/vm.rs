@@ -24471,9 +24471,9 @@ impl Vm {
             .expect("required json.loads source is present after keyword binding");
         json_unsupported_keyword_none("loads", "cls", values[1].as_ref())?;
         let object_hook = json_optional_hook(values[2].take());
-        let parse_float = json_optional_hook(values[3].take());
-        let parse_int = json_optional_hook(values[4].take());
-        let parse_constant = json_optional_hook(values[5].take());
+        let parse_float = self.json_optional_parse_hook(values[3].take())?;
+        let parse_int = self.json_optional_parse_hook(values[4].take())?;
+        let parse_constant = self.json_optional_parse_hook(values[5].take())?;
         let object_pairs_hook = json_optional_hook(values[6].take());
         let strict = values[7]
             .as_ref()
@@ -24593,6 +24593,19 @@ impl Vm {
             &mut active,
             &options,
         )?))
+    }
+
+    fn json_optional_parse_hook(&mut self, value: Option<Value>) -> Result<Option<Value>, String> {
+        match value {
+            None | Some(Value::None) => Ok(None),
+            Some(value) => {
+                if self.truth_value(value.clone())? {
+                    Ok(Some(value))
+                } else {
+                    Ok(None)
+                }
+            }
+        }
     }
 
     fn call_itertools_count(
