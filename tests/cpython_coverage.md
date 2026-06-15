@@ -716,11 +716,12 @@ Recent runtime migration notes:
   `cpython_collections_counter_public_diff_subset` /
   `cpython_collections_counter_public_subset`, covering CPython public
   `Counter` construction, mapping identity, missing-key zero lookup,
-  values-based count totals, basic mutation helpers, `most_common()`,
-  `elements()`, direct display/empty-format methods, update and subtract
-  behavior, unary positive/negative filtering, multiset arithmetic, and equality
-  with matching counts, including direct `Counter.__pos__()` /
-  `Counter.__neg__()` public dunder calls.
+  `Counter.__missing__()` zero defaults, supported `dir(Counter)` method
+  visibility, values-based count totals, basic mutation helpers,
+  `most_common()`, `elements()`, direct display/empty-format methods, update
+  and subtract behavior, unary positive/negative filtering, multiset
+  arithmetic, and equality with matching counts, including direct
+  `Counter.__pos__()` / `Counter.__neg__()` public dunder calls.
 - The bundled `collections` module also includes
   `cpython_collections_counter_conversions_diff_subset` and
   `cpython_collections_counter_conversions_subset`, covering CPython public
@@ -5241,6 +5242,9 @@ mappings, and keywords; dict/Mapping instance and subclass checks; missing-key
 zero lookup; count updates; views; iteration; exact repr; `most_common()`;
 `elements()`; `pop`; `popitem`; `clear`; `setdefault()`; unhashability; and
 Reversible registration for OrderedDict and Counter plus reverse key iteration.
+`cpython_collections_counter_public_subset` adds method-level Counter coverage
+for public method visibility through `dir(Counter)` plus direct
+`Counter.__missing__()` zero defaults on Counter and non-Counter receivers.
 `cpython_collections_counter_init_update_subset` adds method-level Counter
 coverage for `Counter(...)` and `update()` keyword names that are real keys,
 `iterable=None` direct insertion into an empty Counter, bad sources, too many

@@ -10048,6 +10048,10 @@ Completed in the CPython collections manifest expansion pass:
   Counter `pop()`, `pop(default)`, `setdefault()`, `popitem()`, `clear()`, and
   zero lookup after deletion behavior out of the broader Counter basics
   coverage.
+- Extended `cpython_collections_counter_public_diff_subset` and
+  `cpython_collections_counter_public_subset` to cover supported
+  `dir(Counter)` public method visibility and direct `Counter.__missing__()`
+  zero-default behavior for Counter and non-Counter receivers.
 - Added `cpython_collections_counter_subtract_unary_subset`, adapted from
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
   count subtraction from keyword, Counter, and iterable sources plus unary

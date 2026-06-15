@@ -26747,6 +26747,16 @@ impl Vm {
                 };
                 load_subscript(receiver.clone(), key.clone())
             }
+            "__missing__" => {
+                reject_method_keywords(name, &keywords)?;
+                let [_receiver, _key] = args.as_slice() else {
+                    return Err(format!(
+                        "__missing__() expected 1 argument, got {}",
+                        method_arg_count(&args)
+                    ));
+                };
+                Ok(Value::Number(0))
+            }
             "__iter__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
@@ -47090,6 +47100,52 @@ fn builtin_type_dir_names(name: &str) -> Vec<String> {
             "update",
             "values",
         ],
+        "Counter" => &[
+            "__add__",
+            "__and__",
+            "__contains__",
+            "__delitem__",
+            "__eq__",
+            "__format__",
+            "__ge__",
+            "__getitem__",
+            "__gt__",
+            "__iadd__",
+            "__iand__",
+            "__init__",
+            "__ior__",
+            "__isub__",
+            "__iter__",
+            "__ixor__",
+            "__le__",
+            "__len__",
+            "__lt__",
+            "__missing__",
+            "__ne__",
+            "__neg__",
+            "__or__",
+            "__pos__",
+            "__repr__",
+            "__setitem__",
+            "__str__",
+            "__sub__",
+            "__xor__",
+            "clear",
+            "copy",
+            "elements",
+            "fromkeys",
+            "get",
+            "items",
+            "keys",
+            "most_common",
+            "pop",
+            "popitem",
+            "setdefault",
+            "subtract",
+            "total",
+            "update",
+            "values",
+        ],
         "mappingproxy" => &[
             "__class_getitem__",
             "__contains__",
@@ -50286,6 +50342,7 @@ fn is_builtin_counter_type_method(name: &str) -> bool {
             | "__le__"
             | "__gt__"
             | "__ge__"
+            | "__missing__"
             | "__add__"
             | "__sub__"
             | "__or__"
@@ -54304,11 +54361,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             | "__getitem__" | "__iter__" | "__len__" | "__repr__" | "__setitem__" | "__str__"
             | "__add__" | "__sub__" | "__or__" | "__and__" | "__xor__" | "__iadd__"
             | "__isub__" | "__ior__" | "__iand__" | "__ixor__" | "__eq__" | "__ne__" | "__lt__"
-            | "__le__" | "__gt__" | "__ge__" | "__pos__" | "__neg__" => Ok(Value::BoundMethod {
-                function: Box::new(Value::Builtin(format!("Counter.{name}"))),
-                receiver: Box::new(Value::Counter { entries }),
-                identity: Rc::new(()),
-            }),
+            | "__le__" | "__gt__" | "__ge__" | "__missing__" | "__pos__" | "__neg__" => {
+                Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("Counter.{name}"))),
+                    receiver: Box::new(Value::Counter { entries }),
+                    identity: Rc::new(()),
+                })
+            }
             _ => Err(format!("AttributeError: Counter has no attribute '{name}'")),
         },
         Value::UserDict { data, attrs } => {
