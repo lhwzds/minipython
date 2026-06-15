@@ -5493,8 +5493,10 @@ print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_
 print('sys-flags-verbose', type(sys.flags.verbose).__name__, sys.flags.verbose)
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
-print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel)
+print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields, sys.version_info.n_sequence_fields, sys.version_info.n_unnamed_fields)
+print('sys-version-info-type-metadata', type(sys.version_info).n_fields, type(sys.version_info).n_sequence_fields, type(sys.version_info).n_unnamed_fields)
 print('sys-implementation', type(sys.implementation).__name__, sys.implementation.name, sys.implementation.version == sys.version_info, type(sys.implementation.hexversion).__name__, type(sys.implementation.cache_tag).__name__)
+print('sys-implementation-version-metadata', sys.implementation.version.n_fields, sys.implementation.version.n_sequence_fields, sys.implementation.version.n_unnamed_fields)
 print('sys-hexversion', type(sys.hexversion).__name__, sys.hexversion == sys.implementation.hexversion)
 print('sys-is-finalizing', type(sys.is_finalizing()).__name__, sys.is_finalizing())
 print('sys-exc-info-empty', sys.exc_info() == (None, None, None))
@@ -5550,8 +5552,10 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-verbose int 0",
             "sys-byteorder str True",
             "sys-getdefaultencoding utf-8",
-            "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final",
+            "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final int 5 5 0",
+            "sys-version-info-type-metadata 5 5 0",
             "sys-implementation SimpleNamespace minipython True int str",
+            "sys-implementation-version-metadata 5 5 0",
             "sys-hexversion int True",
             "sys-is-finalizing bool False",
             "sys-exc-info-empty True",

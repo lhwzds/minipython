@@ -12317,6 +12317,11 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.hash_info.n_fields")
             && LANGUAGE_TESTS.contains("sys.hash_info.n_sequence_fields")
             && LANGUAGE_TESTS.contains("sys.hash_info.n_unnamed_fields")
+            && LANGUAGE_TESTS.contains("sys.version_info.n_fields")
+            && LANGUAGE_TESTS.contains("sys.version_info.n_sequence_fields")
+            && LANGUAGE_TESTS.contains("sys.version_info.n_unnamed_fields")
+            && LANGUAGE_TESTS.contains("type(sys.version_info).n_fields")
+            && LANGUAGE_TESTS.contains("sys.implementation.version.n_fields")
             && LANGUAGE_TESTS.contains("sys.hexversion == sys.implementation.hexversion")
             && LANGUAGE_TESTS.contains("sys.exc_info()")
             && LANGUAGE_TESTS.contains("sys.is_finalizing()")
@@ -12426,9 +12431,18 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.version_info",
         "sys.version_info.major",
         "sys.version_info.releaselevel",
+        "sys.version_info.n_fields",
+        "sys.version_info.n_sequence_fields",
+        "sys.version_info.n_unnamed_fields",
+        "type(sys.version_info).n_fields",
+        "type(sys.version_info).n_sequence_fields",
+        "type(sys.version_info).n_unnamed_fields",
         "sys.implementation",
         "sys.implementation.name",
         "sys.implementation.version",
+        "sys.implementation.version.n_fields",
+        "sys.implementation.version.n_sequence_fields",
+        "sys.implementation.version.n_unnamed_fields",
         "sys.implementation.hexversion",
         "sys.implementation.cache_tag",
         "sys.hexversion",

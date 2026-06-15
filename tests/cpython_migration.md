@@ -5313,7 +5313,12 @@ Completed in the float method/property pass:
   encoding remains outside the sandbox surface.
 - Added MiniPython `sys.version_info` and `sys.implementation` metadata with
   direct CPython diff coverage for the stable public shape and local subset
-  coverage for MiniPython's own version values.
+  coverage for MiniPython's own version values. `sys.version_info.n_fields`,
+  `sys.version_info.n_sequence_fields`, and
+  `sys.version_info.n_unnamed_fields` now expose the supported in-memory
+  version tuple shape, and `sys.implementation.version` exposes the same
+  structure metadata without expanding into full CPython `structseq`
+  compatibility.
 - Added `sys.float_info` and `sys.hash_info` public attribute objects plus
   `object.__hash__` and `float.__hash__` runtime support for the migrated
   CPython float hash rows. `hash(-1)` and `hash(-1.0)` now follow CPython's

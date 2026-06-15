@@ -53930,6 +53930,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if let Some(index) = typ.fields.iter().position(|field| field == name) {
                 return Ok(namedtuple_field_descriptor(&typ, index));
             }
+            if let Some(value) = sys_version_info_structseq_attr(&typ, name) {
+                return Ok(value);
+            }
             match name {
                 "__name__" | "__qualname__" => Ok(Value::String(typ.name.clone())),
                 "__module__" => Ok(typ.module.clone()),
@@ -54005,6 +54008,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .get(index)
                     .cloned()
                     .ok_or_else(|| format!("AttributeError: object has no attribute '{name}'"));
+            }
+            if let Some(value) = sys_version_info_structseq_attr(&typ, name) {
+                return Ok(value);
             }
             match name {
                 "__class__" => Ok(Value::NamedTupleType(typ.clone())),
@@ -72494,6 +72500,20 @@ fn reject_array_method_keywords(name: &str, keywords: &[(String, Value)]) -> Res
 
 fn namedtuple_fields_value(typ: &NamedTupleType) -> Value {
     tuple_value(typ.fields.iter().cloned().map(Value::String).collect())
+}
+
+fn sys_version_info_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<Value> {
+    if typ.name != "version_info"
+        || !matches!(&typ.module, Value::String(module) if module == "sys")
+    {
+        return None;
+    }
+    let field_count = typ.fields.len() as i64;
+    match name {
+        "n_fields" | "n_sequence_fields" => Some(Value::Number(field_count)),
+        "n_unnamed_fields" => Some(Value::Number(0)),
+        _ => None,
+    }
 }
 
 fn namedtuple_field_descriptor(typ: &NamedTupleTypeRef, index: usize) -> Value {
