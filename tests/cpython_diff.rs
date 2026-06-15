@@ -25069,6 +25069,7 @@ print('sys-flags-dont-write-bytecode', type(sys.flags.dont_write_bytecode).__nam
 print('sys-flags-dev-mode', type(sys.flags.dev_mode).__name__, sys.flags.dev_mode in (False, True))
 print('sys-flags-ignore-environment', type(sys.flags.ignore_environment).__name__, sys.flags.ignore_environment in (0, 1))
 print('sys-flags-no-user-site', type(sys.flags.no_user_site).__name__, sys.flags.no_user_site in (0, 1))
+print('sys-flags-no-site', type(sys.flags.no_site).__name__, sys.flags.no_site in (0, 1))
 print('sys-flags-isolated', type(sys.flags.isolated).__name__, sys.flags.isolated in (0, 1))
 print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimize in (0, 1, 2))
 print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode in (0, 1))

@@ -485,6 +485,7 @@ pub(crate) fn create_module(
                                 Value::Number(0),
                             ),
                             (Value::String("no_user_site".to_string()), Value::Number(0)),
+                            (Value::String("no_site".to_string()), Value::Number(0)),
                             (Value::String("isolated".to_string()), Value::Number(0)),
                             (Value::String("optimize".to_string()), Value::Number(0)),
                             (Value::String("utf8_mode".to_string()), Value::Number(0)),
