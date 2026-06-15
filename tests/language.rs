@@ -1484,8 +1484,8 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "SimpleNamespace minipython True int str",
             "5 5 0",
             "SimpleNamespace 0 0 0 False 0 0 0 0 0 0 0 0 0 0 0",
-            "SimpleNamespace 1024 2",
-            "SimpleNamespace 64 siphash13",
+            "float_info 1024 2",
+            "hash_info 64 siphash13",
             "str True",
             "int True",
             "9223372036854775807",
@@ -1519,6 +1519,21 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "import sys\nprint(type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields, sys.hash_info.n_sequence_fields, sys.hash_info.n_unnamed_fields)"
         ),
         Ok(output_lines(&["int 9 9 0"]))
+    );
+    assert_eq!(
+        run_source(
+            "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nfor obj in [sys.float_info, sys.hash_info]:\n    print(type(obj).__name__, len(obj), len(tuple(obj)) == obj.n_sequence_fields)\n    print(any(hasattr(obj, name) for name in helpers), any(hasattr(type(obj), name) for name in helpers))\n    print(any(name in dir(obj) for name in helpers), all(name in dir(obj) for name in metadata), all(name in dir(type(obj)) for name in metadata))\n    print(obj.__getnewargs__() == (tuple(obj),), type(obj).__getnewargs__(obj) == (tuple(obj),))"
+        ),
+        Ok(output_lines(&[
+            "float_info 11 True",
+            "False False",
+            "False True True",
+            "True True",
+            "hash_info 9 True",
+            "False False",
+            "False True True",
+            "True True",
+        ]))
     );
     assert_eq!(
         run_source(

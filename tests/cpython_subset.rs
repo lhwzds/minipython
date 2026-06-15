@@ -5471,6 +5471,13 @@ value = F('nan')
 print('subnan', hash(value) == object.__hash__(value), isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields, sys.float_info.n_sequence_fields, sys.float_info.n_unnamed_fields)
 print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields, sys.hash_info.n_sequence_fields, sys.hash_info.n_unnamed_fields)
+sys_structseq_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']
+sys_structseq_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
+for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]:
+    print('sys-' + label + '-shape', type(obj).__name__, len(obj), tuple(obj)[:3], len(tuple(obj)) == obj.n_sequence_fields)
+    print('sys-' + label + '-helpers', any(hasattr(obj, name) for name in sys_structseq_helpers), any(hasattr(type(obj), name) for name in sys_structseq_helpers))
+    print('sys-' + label + '-dir', any(name in dir(obj) for name in sys_structseq_helpers), all(name in dir(obj) for name in sys_structseq_metadata), all(name in dir(type(obj)) for name in sys_structseq_metadata))
+    print('sys-' + label + '-getnewargs', obj.__getnewargs__() == (tuple(obj),), type(obj).__getnewargs__(obj) == (tuple(obj),))
 print('sys-builtin-module-names', type(sys.builtin_module_names).__name__, sys.builtin_module_names == tuple(sorted(sys.builtin_module_names)))
 print('sys-builtin-module-name-entries', 'builtins' in sys.builtin_module_names, 'sys' in sys.builtin_module_names, 'time' in sys.builtin_module_names)
 print('sys-builtin-module-name-types', all(type(name).__name__ == 'str' for name in sys.builtin_module_names), len(sys.builtin_module_names) > 0)
@@ -5535,6 +5542,14 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "subnan True True False",
             "sys-float-info 53 2 1 int 11 11 0",
             "sys-hash-info 314159 0 1000003 int 9 9 0",
+            "sys-float-info-shape float_info 11 (1.7976931348623157e+308, 1024, 308) True",
+            "sys-float-info-helpers False False",
+            "sys-float-info-dir False True True",
+            "sys-float-info-getnewargs True True",
+            "sys-hash-info-shape hash_info 9 (64, 2305843009213693951, 314159) True",
+            "sys-hash-info-helpers False False",
+            "sys-hash-info-dir False True True",
+            "sys-hash-info-getnewargs True True",
             "sys-builtin-module-names tuple True",
             "sys-builtin-module-name-entries True True True",
             "sys-builtin-module-name-types True True",

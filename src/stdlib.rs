@@ -1668,66 +1668,82 @@ pub(crate) fn call_import_builtin<C: StdlibContext + ?Sized>(
 }
 
 fn sys_float_info_value() -> Value {
-    Value::SimpleNamespace {
-        fields: stdlib_dict_ref_from_entries(vec![
-            (Value::String("max".to_string()), float_value(f64::MAX)),
-            (Value::String("max_exp".to_string()), Value::Number(1024)),
-            (Value::String("max_10_exp".to_string()), Value::Number(308)),
-            (
-                Value::String("min".to_string()),
-                float_value(f64::MIN_POSITIVE),
-            ),
-            (Value::String("min_exp".to_string()), Value::Number(-1021)),
-            (Value::String("min_10_exp".to_string()), Value::Number(-307)),
-            (Value::String("dig".to_string()), Value::Number(15)),
-            (Value::String("mant_dig".to_string()), Value::Number(53)),
-            (
-                Value::String("epsilon".to_string()),
-                float_value(f64::EPSILON),
-            ),
-            (Value::String("radix".to_string()), Value::Number(2)),
-            (Value::String("rounds".to_string()), Value::Number(1)),
-            (Value::String("n_fields".to_string()), Value::Number(11)),
-            (
-                Value::String("n_sequence_fields".to_string()),
-                Value::Number(11),
-            ),
-            (
-                Value::String("n_unnamed_fields".to_string()),
-                Value::Number(0),
-            ),
-        ]),
-    }
+    sys_structseq_value(
+        "float_info",
+        vec![
+            "max",
+            "max_exp",
+            "max_10_exp",
+            "min",
+            "min_exp",
+            "min_10_exp",
+            "dig",
+            "mant_dig",
+            "epsilon",
+            "radix",
+            "rounds",
+        ],
+        vec![
+            float_value(f64::MAX),
+            Value::Number(1024),
+            Value::Number(308),
+            float_value(f64::MIN_POSITIVE),
+            Value::Number(-1021),
+            Value::Number(-307),
+            Value::Number(15),
+            Value::Number(53),
+            float_value(f64::EPSILON),
+            Value::Number(2),
+            Value::Number(1),
+        ],
+    )
 }
 
 fn sys_hash_info_value() -> Value {
-    Value::SimpleNamespace {
-        fields: stdlib_dict_ref_from_entries(vec![
-            (Value::String("width".to_string()), Value::Number(64)),
-            (
-                Value::String("modulus".to_string()),
-                Value::Number(2_305_843_009_213_693_951),
-            ),
-            (Value::String("inf".to_string()), Value::Number(314_159)),
-            (Value::String("nan".to_string()), Value::Number(0)),
-            (Value::String("imag".to_string()), Value::Number(1_000_003)),
-            (
-                Value::String("algorithm".to_string()),
-                Value::String("siphash13".to_string()),
-            ),
-            (Value::String("hash_bits".to_string()), Value::Number(64)),
-            (Value::String("seed_bits".to_string()), Value::Number(128)),
-            (Value::String("cutoff".to_string()), Value::Number(0)),
-            (Value::String("n_fields".to_string()), Value::Number(9)),
-            (
-                Value::String("n_sequence_fields".to_string()),
-                Value::Number(9),
-            ),
-            (
-                Value::String("n_unnamed_fields".to_string()),
-                Value::Number(0),
-            ),
-        ]),
+    sys_structseq_value(
+        "hash_info",
+        vec![
+            "width",
+            "modulus",
+            "inf",
+            "nan",
+            "imag",
+            "algorithm",
+            "hash_bits",
+            "seed_bits",
+            "cutoff",
+        ],
+        vec![
+            Value::Number(64),
+            Value::Number(2_305_843_009_213_693_951),
+            Value::Number(314_159),
+            Value::Number(0),
+            Value::Number(1_000_003),
+            Value::String("siphash13".to_string()),
+            Value::Number(64),
+            Value::Number(128),
+            Value::Number(0),
+        ],
+    )
+}
+
+fn sys_structseq_value(name: &str, fields: Vec<&str>, values: Vec<Value>) -> Value {
+    Value::NamedTuple {
+        typ: Rc::new(NamedTupleType {
+            name: name.to_string(),
+            fields: fields.iter().map(|field| (*field).to_string()).collect(),
+            bases: vec![builtin_type_value("tuple")],
+            original_bases: None,
+            field_docs: (0..values.len())
+                .map(|index| RefCell::new(format!("Alias for field number {index}")))
+                .collect(),
+            field_defaults: Vec::new(),
+            new_defaults: None,
+            module: Value::String("sys".to_string()),
+            doc: RefCell::new(format!("{name}({})", fields.join(", "))),
+            identity: Rc::new(()),
+        }),
+        values: Rc::new(values),
     }
 }
 

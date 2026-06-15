@@ -12317,6 +12317,9 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && LANGUAGE_TESTS.contains("sys.hash_info.n_fields")
             && LANGUAGE_TESTS.contains("sys.hash_info.n_sequence_fields")
             && LANGUAGE_TESTS.contains("sys.hash_info.n_unnamed_fields")
+            && LANGUAGE_TESTS.contains("for obj in [sys.float_info, sys.hash_info]")
+            && LANGUAGE_TESTS.contains("len(tuple(obj)) == obj.n_sequence_fields")
+            && LANGUAGE_TESTS.contains("obj.__getnewargs__() == (tuple(obj),)")
             && LANGUAGE_TESTS.contains("sys.version_info.n_fields")
             && LANGUAGE_TESTS.contains("sys.version_info.n_sequence_fields")
             && LANGUAGE_TESTS.contains("sys.version_info.n_unnamed_fields")
@@ -12411,6 +12414,11 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.hash_info.n_fields",
         "sys.hash_info.n_sequence_fields",
         "sys.hash_info.n_unnamed_fields",
+        "sys_structseq_helpers",
+        "sys_structseq_metadata",
+        "len(tuple(obj)) == obj.n_sequence_fields",
+        "obj.__getnewargs__() == (tuple(obj),)",
+        "type(obj).__getnewargs__(obj) == (tuple(obj),)",
         "sys.byteorder",
         "sys.byteorder in ('little', 'big')",
         "sys.getdefaultencoding()",

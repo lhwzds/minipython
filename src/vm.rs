@@ -22044,7 +22044,7 @@ impl Vm {
                     values: Rc::new(values),
                 })
             }
-            "__getnewargs__" if is_sys_version_info_structseq(&typ) => {
+            "__getnewargs__" if is_sys_structseq(&typ) => {
                 reject_method_keywords("__getnewargs__", &keywords)?;
                 let [instance] = args.as_slice() else {
                     return Err(format!(
@@ -22052,7 +22052,7 @@ impl Vm {
                         args.len()
                     ));
                 };
-                sys_version_info_getnewargs(instance)
+                sys_structseq_getnewargs(instance)
             }
             _ => Err(format!(
                 "AttributeError: {} has no method '{name}'",
@@ -22113,8 +22113,8 @@ impl Vm {
                         args.len()
                     ));
                 }
-                if is_sys_version_info_structseq(&typ) {
-                    return sys_version_info_getnewargs(&Value::NamedTuple { typ, values });
+                if is_sys_structseq(&typ) {
+                    return sys_structseq_getnewargs(&Value::NamedTuple { typ, values });
                 }
                 Ok(tuple_value(values.as_ref().clone()))
             }
@@ -46512,8 +46512,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         }
         Value::NamedTupleType(typ) => {
             names.extend(builtin_type_dir_names("tuple"));
-            if is_sys_version_info_structseq(typ) {
-                names.extend(sys_version_info_structseq_names());
+            if is_sys_structseq(typ) {
+                names.extend(sys_structseq_names());
             } else {
                 names.extend(
                     [
@@ -46534,8 +46534,8 @@ fn default_dir_names(value: &Value) -> Vec<String> {
         Value::Tuple(_) => names.extend(builtin_type_dir_names("tuple")),
         Value::NamedTuple { typ, .. } => {
             names.extend(builtin_type_dir_names("tuple"));
-            if is_sys_version_info_structseq(typ) {
-                names.extend(sys_version_info_structseq_names());
+            if is_sys_structseq(typ) {
+                names.extend(sys_structseq_names());
             } else {
                 names.extend(
                     [
@@ -53951,16 +53951,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if let Some(index) = typ.fields.iter().position(|field| field == name) {
                 return Ok(namedtuple_field_descriptor(&typ, index));
             }
-            if let Some(value) = sys_version_info_structseq_attr(&typ, name) {
+            if let Some(value) = sys_structseq_attr(&typ, name) {
                 return Ok(value);
             }
-            if is_sys_version_info_structseq(&typ) && name == "__getnewargs__" {
+            if is_sys_structseq(&typ) && name == "__getnewargs__" {
                 return Ok(Value::NamedTupleTypeMethod {
                     typ,
                     name: name.to_string(),
                 });
             }
-            if is_sys_version_info_hidden_namedtuple_attr(&typ, name) {
+            if is_sys_structseq_hidden_namedtuple_attr(&typ, name) {
                 return Err(format!(
                     "AttributeError: type object '{}' has no attribute '{name}'",
                     typ.name
@@ -54042,10 +54042,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     .cloned()
                     .ok_or_else(|| format!("AttributeError: object has no attribute '{name}'"));
             }
-            if let Some(value) = sys_version_info_structseq_attr(&typ, name) {
+            if let Some(value) = sys_structseq_attr(&typ, name) {
                 return Ok(value);
             }
-            if is_sys_version_info_hidden_namedtuple_attr(&typ, name) {
+            if is_sys_structseq_hidden_namedtuple_attr(&typ, name) {
                 return Err(format!(
                     "AttributeError: '{}' object has no attribute '{name}'",
                     typ.name
@@ -72541,8 +72541,8 @@ fn namedtuple_fields_value(typ: &NamedTupleType) -> Value {
     tuple_value(typ.fields.iter().cloned().map(Value::String).collect())
 }
 
-fn sys_version_info_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<Value> {
-    if !is_sys_version_info_structseq(typ) {
+fn sys_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<Value> {
+    if !is_sys_structseq(typ) {
         return None;
     }
     let field_count = typ.fields.len() as i64;
@@ -72553,33 +72553,36 @@ fn sys_version_info_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<V
     }
 }
 
-fn is_sys_version_info_structseq(typ: &NamedTupleType) -> bool {
-    typ.name == "version_info" && matches!(&typ.module, Value::String(module) if module == "sys")
+fn is_sys_structseq(typ: &NamedTupleType) -> bool {
+    matches!(
+        typ.name.as_str(),
+        "version_info" | "float_info" | "hash_info"
+    ) && matches!(&typ.module, Value::String(module) if module == "sys")
 }
 
-fn is_sys_version_info_hidden_namedtuple_attr(typ: &NamedTupleType, name: &str) -> bool {
-    is_sys_version_info_structseq(typ)
+fn is_sys_structseq_hidden_namedtuple_attr(typ: &NamedTupleType, name: &str) -> bool {
+    is_sys_structseq(typ)
         && matches!(
             name,
             "__match_args__" | "_asdict" | "_field_defaults" | "_fields" | "_make" | "_replace"
         )
 }
 
-fn sys_version_info_getnewargs(instance: &Value) -> Result<Value, String> {
+fn sys_structseq_getnewargs(instance: &Value) -> Result<Value, String> {
     let Value::NamedTuple { typ, values } = instance else {
         return Err(
-            "TypeError: descriptor '__getnewargs__' requires a 'version_info' object".to_string(),
+            "TypeError: descriptor '__getnewargs__' requires a sys structseq object".to_string(),
         );
     };
-    if !is_sys_version_info_structseq(typ) {
+    if !is_sys_structseq(typ) {
         return Err(
-            "TypeError: descriptor '__getnewargs__' requires a 'version_info' object".to_string(),
+            "TypeError: descriptor '__getnewargs__' requires a sys structseq object".to_string(),
         );
     }
     Ok(tuple_value(vec![tuple_value(values.as_ref().clone())]))
 }
 
-fn sys_version_info_structseq_names() -> impl Iterator<Item = String> {
+fn sys_structseq_names() -> impl Iterator<Item = String> {
     [
         "n_fields",
         "n_sequence_fields",

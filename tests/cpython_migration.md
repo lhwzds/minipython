@@ -5330,12 +5330,12 @@ Completed in the float method/property pass:
   `sys.hash_info.inf`, and NaN floats/hashable float subclasses use identity
   hashing. `int(float)` conversion for large finite floats now builds the exact
   truncated `BigInt` from the IEEE-754 representation instead of saturating
-  through `i128`. `sys.float_info.n_fields`,
-  `sys.float_info.n_sequence_fields`, and `sys.float_info.n_unnamed_fields`
-  expose CPython-compatible structure counts for the supported in-memory
-  metadata object without implying full structseq behavior. The matching
-  `sys.hash_info.n_fields`, `sys.hash_info.n_sequence_fields`, and
-  `sys.hash_info.n_unnamed_fields` fields do the same for hash metadata.
+  through `i128`. `sys.float_info` and `sys.hash_info` are now tuple-like
+  in-memory sys structseq values for the supported public fields; their
+  `n_fields`, `n_sequence_fields`, and `n_unnamed_fields` attributes expose
+  CPython-compatible structure counts, namedtuple-only helpers remain hidden,
+  and `__getnewargs__()` returns the CPython public nested tuple shape without
+  implying full CPython internal `structseq` compatibility.
 - Added `cpython_float_hash_and_sys_info_subset`, adapted from CPython
   `Lib/test/test_float.py::GeneralFloatCases::test_hash` and
   `::test_hash_nan`, plus a matching `cpython_diff` case that compares the
