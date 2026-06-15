@@ -7115,6 +7115,14 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         bound_args.extend(args);
+        Self::merge_partial_keywords(&mut bound_keywords, keywords);
+        self.call_value_with_keywords(function, bound_args, bound_keywords)
+    }
+
+    fn merge_partial_keywords(
+        bound_keywords: &mut Vec<(String, Value)>,
+        keywords: Vec<(String, Value)>,
+    ) {
         for (keyword, value) in keywords {
             if let Some((_, bound_value)) = bound_keywords
                 .iter_mut()
@@ -7125,7 +7133,6 @@ impl Vm {
                 bound_keywords.push((keyword, value));
             }
         }
-        self.call_value_with_keywords(function, bound_args, bound_keywords)
     }
 
     fn partial_keywords_dict(keywords: Vec<(String, Value)>) -> DictRef {
@@ -7189,6 +7196,21 @@ impl Vm {
         if !is_callable_value(&function) {
             return Err("TypeError: the first argument must be callable".to_string());
         }
+
+        let (function, args, keywords) = match function {
+            Value::Partial {
+                function,
+                args: mut bound_args,
+                keywords: bound_keywords,
+                ..
+            } => {
+                bound_args.extend(args);
+                let mut merged_keywords = Self::partial_keywords_from_dict(&bound_keywords)?;
+                Self::merge_partial_keywords(&mut merged_keywords, keywords);
+                (*function, bound_args, merged_keywords)
+            }
+            function => (function, args, keywords),
+        };
 
         Ok(Value::Partial {
             function: Box::new(function),

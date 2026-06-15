@@ -1470,7 +1470,8 @@ without adding general custom encoder/decoder class support.
   subclass keys and non-string-key call rejection, caller keyword-dict
   isolation, constructor keyword copying, positional/keyword combinations,
   public `repr()` shape for function/type callables and stored arguments,
-  exception propagation, nested partial calls, custom attributes, default and
+  exception propagation, nested partial calls and constructor-time flattening
+  for public `func` / `args` / `keywords`, custom attributes, default and
   instance-overridden `__doc__` metadata, default and instance-overridden
   `__module__` metadata with deletion fallback, and readonly core attributes.
   The newer CPython partial instance `__module__` surface is also pinned by

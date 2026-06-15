@@ -14124,6 +14124,9 @@ p = partial(capture, 'first')
 p2 = partial(p, 'second')
 p2.new_attr = 'spam'
 print(p2(), p2.new_attr, p2.__dict__['new_attr'])
+print(p2.func is capture, p2.args, p2.keywords)
+p3 = partial(partial(capture, 'base', a=1), 'tail', a=2, b=3)
+print(p3.func is capture, p3.args, p3.keywords, p3())
 del p2.new_attr
 try:
     p2.new_attr

@@ -5000,6 +5000,8 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "lambda: partial()",
         "lambda: partial(2)",
         "lambda: partial(2)()",
+        "print(p2.func is capture, p2.args, p2.keywords)",
+        "partial(partial(capture, 'base', a=1), 'tail', a=2, b=3)",
         "print(error.__class__.__name__, str(error))",
     ] {
         assert!(
