@@ -137,6 +137,7 @@ pub struct LruCacheState {
     pub hits: usize,
     pub misses: usize,
     pub maxsize: Option<usize>,
+    pub maxsize_parameter: Value,
     pub typed: bool,
 }
 

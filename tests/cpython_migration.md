@@ -6446,8 +6446,9 @@ Completed in the pow builtin pass:
   migrated slice covers recursive cache hits, `CacheInfo` tuple/field access,
   `cache_clear`, `cache_parameters`, `cache_info` / `cache_clear` bound-method
   metadata, `__wrapped__`, wrapper instance attributes, direct `@lru_cache`
-  decoration, zero and negative maxsize behavior, user-function exceptions not
-  being cached, `typed=True` top-level
+  decoration, zero, negative, and bool `maxsize` behavior including
+  `cache_parameters()` metadata, user-function exceptions not being cached,
+  `typed=True` top-level
   key separation, non-recursive typed tuple behavior, keyword-order-sensitive
   cache keys, full keyword-recursive `maxsize=None` statistics and clearing,
   recursive calls that mutate the cache during a miss, `typed=False`

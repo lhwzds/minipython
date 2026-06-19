@@ -15409,6 +15409,27 @@ for _ in range(2):
         neg(value)
 print(tuple(neg.cache_info()))
 
+class I(int):
+    pass
+false_calls = []
+@lru_cache(maxsize=False)
+def false_cached(value):
+    false_calls.append(value)
+    return value
+print(sorted(false_cached.cache_parameters().items()), tuple(false_cached.cache_info()))
+print(false_cached(1), false_cached(1), false_calls, tuple(false_cached.cache_info()))
+true_calls = []
+@lru_cache(maxsize=True)
+def true_cached(value):
+    true_calls.append(value)
+    return value
+print(sorted(true_cached.cache_parameters().items()), tuple(true_cached.cache_info()))
+print(true_cached(1), true_cached(1), true_calls, tuple(true_cached.cache_info()))
+@lru_cache(maxsize=I(3))
+def subclass_cached(value):
+    return value
+print(sorted(subclass_cached.cache_parameters().items()), tuple(subclass_cached.cache_info()))
+
 @lru_cache(maxsize=None)
 def bad(index):
     return 'abc'[index]

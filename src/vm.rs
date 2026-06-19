@@ -3770,6 +3770,55 @@ fn lru_cache_maxsize_value(maxsize: Option<usize>) -> Value {
     }
 }
 
+struct LruCacheMaxsizeArg {
+    limit: Option<usize>,
+    parameter: Value,
+}
+
+fn lru_cache_default_maxsize_arg() -> LruCacheMaxsizeArg {
+    LruCacheMaxsizeArg {
+        limit: Some(128),
+        parameter: Value::Number(128),
+    }
+}
+
+fn lru_cache_unbounded_maxsize_arg() -> LruCacheMaxsizeArg {
+    LruCacheMaxsizeArg {
+        limit: None,
+        parameter: Value::None,
+    }
+}
+
+fn lru_cache_integer_maxsize_arg(value: Value) -> Result<LruCacheMaxsizeArg, String> {
+    match value {
+        Value::Number(value) if value <= 0 => Ok(LruCacheMaxsizeArg {
+            limit: Some(0),
+            parameter: Value::Number(0),
+        }),
+        Value::Number(value) => Ok(LruCacheMaxsizeArg {
+            limit: Some(
+                usize::try_from(value)
+                    .map_err(|_| "TypeError: maxsize is too large".to_string())?,
+            ),
+            parameter: Value::Number(value),
+        }),
+        Value::BigInt(value) if value.is_negative() => Ok(LruCacheMaxsizeArg {
+            limit: Some(0),
+            parameter: Value::Number(0),
+        }),
+        Value::BigInt(value) => {
+            let limit = value
+                .to_usize()
+                .ok_or_else(|| "TypeError: maxsize is too large".to_string())?;
+            Ok(LruCacheMaxsizeArg {
+                limit: Some(limit),
+                parameter: lru_cache_maxsize_value(Some(limit)),
+            })
+        }
+        _ => unreachable!("lru_cache_integer_maxsize_arg only accepts integer values"),
+    }
+}
+
 fn usize_number_value(value: usize) -> Value {
     i64::try_from(value)
         .map(Value::Number)
@@ -7358,7 +7407,7 @@ impl Vm {
     fn make_lru_cache_wrapper(
         &mut self,
         function: Value,
-        maxsize: Option<usize>,
+        maxsize: LruCacheMaxsizeArg,
         typed: bool,
     ) -> Result<Value, String> {
         if !is_callable_value(&function) {
@@ -7371,7 +7420,8 @@ impl Vm {
                 entries: Vec::new(),
                 hits: 0,
                 misses: 0,
-                maxsize,
+                maxsize: maxsize.limit,
+                maxsize_parameter: maxsize.parameter,
                 typed,
             })),
             attrs: new_scope(),
@@ -7458,7 +7508,7 @@ impl Vm {
         let function = values[0]
             .clone()
             .expect("required user_function is validated by bind_keyword_call");
-        self.make_lru_cache_wrapper(function, None, false)
+        self.make_lru_cache_wrapper(function, lru_cache_unbounded_maxsize_arg(), false)
     }
 
     fn call_functools_lru_cache(
@@ -7474,12 +7524,12 @@ impl Vm {
                 Some(value) => self.truth_value(value)?,
                 None => false,
             };
-            return self.make_lru_cache_wrapper(function, Some(128), typed);
+            return self.make_lru_cache_wrapper(function, lru_cache_default_maxsize_arg(), typed);
         }
 
         let maxsize = match values[0].clone() {
             Some(value) => self.lru_cache_maxsize_arg(value)?,
-            None => Some(128),
+            None => lru_cache_default_maxsize_arg(),
         };
         let typed = match values[1].clone() {
             Some(value) => self.truth_value(value)?,
@@ -7490,7 +7540,7 @@ impl Vm {
             function: Box::new(Value::Builtin("functools.lru_cache.wrap".to_string())),
             args: Vec::new(),
             keywords: Self::partial_keywords_dict(vec![
-                ("maxsize".to_string(), lru_cache_maxsize_value(maxsize)),
+                ("maxsize".to_string(), maxsize.parameter),
                 ("typed".to_string(), Value::Bool(typed)),
             ]),
             attrs: new_scope(),
@@ -7515,7 +7565,7 @@ impl Vm {
             .expect("required user_function is validated by bind_keyword_call");
         let maxsize = match values[1].clone() {
             Some(value) => self.lru_cache_maxsize_arg(value)?,
-            None => Some(128),
+            None => lru_cache_default_maxsize_arg(),
         };
         let typed = match values[2].clone() {
             Some(value) => self.truth_value(value)?,
@@ -7524,19 +7574,17 @@ impl Vm {
         self.make_lru_cache_wrapper(function, maxsize, typed)
     }
 
-    fn lru_cache_maxsize_arg(&self, value: Value) -> Result<Option<usize>, String> {
+    fn lru_cache_maxsize_arg(&self, value: Value) -> Result<LruCacheMaxsizeArg, String> {
+        if let Some(value) = int_subclass_integer(&value) {
+            return lru_cache_integer_maxsize_arg(value);
+        }
         match value {
-            Value::None => Ok(None),
-            Value::Bool(value) => Ok(Some(bool_as_i64(value) as usize)),
-            Value::Number(value) if value <= 0 => Ok(Some(0)),
-            Value::Number(value) => usize::try_from(value)
-                .map(Some)
-                .map_err(|_| "TypeError: maxsize is too large".to_string()),
-            Value::BigInt(value) if value.is_negative() => Ok(Some(0)),
-            Value::BigInt(value) => value
-                .to_usize()
-                .map(Some)
-                .ok_or_else(|| "TypeError: maxsize is too large".to_string()),
+            Value::None => Ok(lru_cache_unbounded_maxsize_arg()),
+            Value::Bool(value) => Ok(LruCacheMaxsizeArg {
+                limit: Some(bool_as_i64(value) as usize),
+                parameter: Value::Bool(value),
+            }),
+            value @ (Value::Number(_) | Value::BigInt(_)) => lru_cache_integer_maxsize_arg(value),
             value => Err(format!(
                 "TypeError: Expected first argument to be an integer, a callable, or None, got {}",
                 type_name(&value)
@@ -7576,7 +7624,7 @@ impl Vm {
         build_dict(vec![
             (
                 Value::String("maxsize".to_string()),
-                lru_cache_maxsize_value(state.maxsize),
+                state.maxsize_parameter.clone(),
             ),
             (Value::String("typed".to_string()), Value::Bool(state.typed)),
         ])

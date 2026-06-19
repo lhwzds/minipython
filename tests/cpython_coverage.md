@@ -1585,8 +1585,9 @@ without adding general custom encoder/decoder class support.
   for `cache`, unbounded `lru_cache`, finite LRU eviction, `cache_info`,
   `cache_clear`, `cache_parameters`, `cache_info` / `cache_clear` bound-method
   metadata, `__wrapped__`, wrapper instance attributes, public wrapper
-  `repr()` / `str()` shape, direct `@lru_cache` decoration, zero and negative
-  maxsize behavior, user-function exceptions not being cached,
+  `repr()` / `str()` shape, direct `@lru_cache` decoration, zero, negative, and
+  bool `maxsize` behavior including `cache_parameters()` metadata,
+  user-function exceptions not being cached,
   `typed=True` top-level key separation, non-recursive typed tuple behavior,
   keyword-order-sensitive cache keys, full keyword-recursive `maxsize=None`
   statistics and clearing,
