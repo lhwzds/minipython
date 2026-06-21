@@ -13514,6 +13514,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
             "cpython_classmethod_metadata_subset",
+            "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
             "cpython_property_name_metadata_subset",
             "cpython_property_doc_metadata_subset",
@@ -13566,6 +13567,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
+        "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
         "cpython_property_name_metadata_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
@@ -13911,6 +13913,62 @@ fn classmethod_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("__wrapped__")
                 && document.contains("__annotations__"),
             "classmethod metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn staticmethod_classmethod_abstractmethod_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_staticmethod_classmethod_abstractmethod_subset(",
+        "marked.__isabstractmethod__ = True",
+        "falsey.__isabstractmethod__ = 0",
+        "staticmethod(marked)",
+        "classmethod(marked)",
+        "wrapped.__isabstractmethod__",
+        "dynamic-false",
+        "dynamic-truthy",
+        "wrapped.__isabstractmethod__ = 123",
+        "'__isabstractmethod__', '__func__'",
+        "dynamically reflects the wrapped",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "staticmethod/classmethod abstractmethod subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
+    );
+    for required in [
+        "CPython public staticmethod/classmethod __isabstractmethod__ behavior",
+        "marked.__isabstractmethod__ = True",
+        "falsey.__isabstractmethod__ = 0",
+        "staticmethod(marked)",
+        "classmethod(marked)",
+        "wrapped.__isabstractmethod__",
+        "dynamic-false",
+        "dynamic-truthy",
+        "wrapped.__isabstractmethod__ = 123",
+        "'__isabstractmethod__', '__func__'",
+    ] {
+        assert!(
+            body.contains(required),
+            "staticmethod/classmethod abstractmethod CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_staticmethod_classmethod_abstractmethod_subset")
+                && document.contains("cpython_staticmethod_classmethod_abstractmethod_diff_subset")
+                && document.contains("staticmethod")
+                && document.contains("classmethod")
+                && document.contains("__isabstractmethod__")
+                && document.contains("read-only"),
+            "staticmethod/classmethod abstractmethod evidence must be documented in coverage and migration notes"
         );
     }
 }

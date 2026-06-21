@@ -47216,6 +47216,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__doc__",
                 "__func__",
                 "__get__",
+                "__isabstractmethod__",
                 "__module__",
                 "__name__",
                 "__qualname__",
@@ -47230,6 +47231,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__doc__",
                 "__func__",
                 "__get__",
+                "__isabstractmethod__",
                 "__module__",
                 "__name__",
                 "__qualname__",
@@ -53784,6 +53786,14 @@ fn derived_property_doc(
     Ok(Rc::new(RefCell::new(current_doc.borrow().clone())))
 }
 
+fn descriptor_is_abstract_method(function: Value) -> Result<Value, String> {
+    match load_attribute(function, "__isabstractmethod__") {
+        Ok(value) => Ok(Value::Bool(is_truthy(&value)?)),
+        Err(message) if message.starts_with("AttributeError:") => Ok(Value::Bool(false)),
+        Err(message) => Err(message),
+    }
+}
+
 fn property_is_abstract_method(
     fget: &Option<Box<Value>>,
     fset: &Option<Box<Value>>,
@@ -54533,6 +54543,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::StaticMethod { function } => match name {
             "__func__" | "__wrapped__" => Ok(*function),
+            "__isabstractmethod__" => descriptor_is_abstract_method(*function),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("staticmethod.__get__".to_string())),
                 receiver: Box::new(Value::StaticMethod { function }),
@@ -54547,6 +54558,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         },
         Value::ClassMethod { function } => match name {
             "__func__" | "__wrapped__" => Ok(*function),
+            "__isabstractmethod__" => descriptor_is_abstract_method(*function),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("classmethod.__get__".to_string())),
                 receiver: Box::new(Value::ClassMethod { function }),

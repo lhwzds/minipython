@@ -25392,6 +25392,30 @@ fn cpython_classmethod_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public abstract-method marker on staticmethod and
+// classmethod descriptor objects. The marker dynamically reflects the wrapped
+// callable, is read-only on the descriptor, and appears in dir().
+#[test]
+fn cpython_staticmethod_classmethod_abstractmethod_subset() {
+    assert_output(
+        "def plain(*args):\n    return 1\ndef marked(*args):\n    return 2\nmarked.__isabstractmethod__ = True\ndef falsey(*args):\n    return 3\nfalsey.__isabstractmethod__ = 0\nsm = staticmethod(marked)\ncm = classmethod(marked)\nfor label, wrapped in [\n    ('sm-plain', staticmethod(plain)),\n    ('sm-marked', sm),\n    ('sm-falsey', staticmethod(falsey)),\n    ('cm-plain', classmethod(plain)),\n    ('cm-marked', cm),\n    ('cm-falsey', classmethod(falsey)),\n]:\n    print(label, wrapped.__isabstractmethod__)\nmarked.__isabstractmethod__ = False\nprint('dynamic-false', sm.__isabstractmethod__, cm.__isabstractmethod__)\nmarked.__isabstractmethod__ = 'yes'\nprint('dynamic-truthy', sm.__isabstractmethod__, cm.__isabstractmethod__)\nfor label, wrapped in [('sm', sm), ('cm', cm)]:\n    try:\n        wrapped.__isabstractmethod__ = 123\n    except AttributeError as error:\n        print(label, type(error).__name__)\nprint([name in dir(sm) for name in ['__isabstractmethod__', '__func__']])\nprint([name in dir(cm) for name in ['__isabstractmethod__', '__func__']])",
+        &[
+            "sm-plain False",
+            "sm-marked True",
+            "sm-falsey False",
+            "cm-plain False",
+            "cm-marked True",
+            "cm-falsey False",
+            "dynamic-false False False",
+            "dynamic-truthy True True",
+            "sm AttributeError",
+            "cm AttributeError",
+            "[True, True]",
+            "[True, True]",
+        ],
+    );
+}
+
 // Mirrors CPython's public property abstract-method marker. The newer writable
 // property.__name__ surface remains a separate descriptor metadata slice.
 #[test]

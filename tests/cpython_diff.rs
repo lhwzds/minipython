@@ -7085,6 +7085,44 @@ print([name in dir(wrapped) for name in names])"#,
 }
 
 #[test]
+fn cpython_staticmethod_classmethod_abstractmethod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public staticmethod/classmethod __isabstractmethod__ behavior",
+        name: "staticmethod-classmethod-abstractmethod",
+        source: r#"def plain(*args):
+    return 1
+def marked(*args):
+    return 2
+marked.__isabstractmethod__ = True
+def falsey(*args):
+    return 3
+falsey.__isabstractmethod__ = 0
+sm = staticmethod(marked)
+cm = classmethod(marked)
+for label, wrapped in [
+    ('sm-plain', staticmethod(plain)),
+    ('sm-marked', sm),
+    ('sm-falsey', staticmethod(falsey)),
+    ('cm-plain', classmethod(plain)),
+    ('cm-marked', cm),
+    ('cm-falsey', classmethod(falsey)),
+]:
+    print(label, wrapped.__isabstractmethod__)
+marked.__isabstractmethod__ = False
+print('dynamic-false', sm.__isabstractmethod__, cm.__isabstractmethod__)
+marked.__isabstractmethod__ = 'yes'
+print('dynamic-truthy', sm.__isabstractmethod__, cm.__isabstractmethod__)
+for label, wrapped in [('sm', sm), ('cm', cm)]:
+    try:
+        wrapped.__isabstractmethod__ = 123
+    except AttributeError as error:
+        print(label, type(error).__name__)
+print([name in dir(sm) for name in ['__isabstractmethod__', '__func__']])
+print([name in dir(cm) for name in ['__isabstractmethod__', '__func__']])"#,
+    });
+}
+
+#[test]
 fn cpython_property_abstractmethod_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property __isabstractmethod__ behavior",
