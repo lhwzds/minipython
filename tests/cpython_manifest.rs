@@ -13514,6 +13514,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
             "cpython_classmethod_metadata_subset",
+            "cpython_property_abstractmethod_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -13563,6 +13564,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
+        "cpython_property_abstractmethod_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -13905,6 +13907,52 @@ fn classmethod_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("__wrapped__")
                 && document.contains("__annotations__"),
             "classmethod metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_abstractmethod_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_abstractmethod_subset(",
+        "marked.__isabstractmethod__ = True",
+        "not_marked.__isabstractmethod__ = 0",
+        "property(plain).setter(marked)",
+        "property(plain).deleter(marked)",
+        "prop.__isabstractmethod__",
+        "name in dir(cases[0][1])",
+        "property.__name__ surface remains a separate descriptor metadata slice",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property abstractmethod subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_property_abstractmethod_diff_subset");
+    for required in [
+        "CPython public property __isabstractmethod__ behavior",
+        "marked.__isabstractmethod__ = True",
+        "not_marked.__isabstractmethod__ = 0",
+        "property(plain).setter(marked)",
+        "property(plain).deleter(marked)",
+        "prop.__isabstractmethod__",
+        "name in dir(cases[0][1])",
+    ] {
+        assert!(
+            body.contains(required),
+            "property abstractmethod CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_abstractmethod_subset")
+                && document.contains("cpython_property_abstractmethod_diff_subset")
+                && document.contains("property")
+                && document.contains("__isabstractmethod__")
+                && document.contains("property.__name__"),
+            "property abstractmethod evidence must be documented in coverage and migration notes"
         );
     }
 }

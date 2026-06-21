@@ -7085,6 +7085,33 @@ print([name in dir(wrapped) for name in names])"#,
 }
 
 #[test]
+fn cpython_property_abstractmethod_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property __isabstractmethod__ behavior",
+        name: "property-abstractmethod",
+        source: r#"def plain(self):
+    return 1
+def marked(self):
+    return 2
+marked.__isabstractmethod__ = True
+def not_marked(self):
+    return 3
+not_marked.__isabstractmethod__ = 0
+cases = [
+    ('plain', property(plain)),
+    ('get', property(marked)),
+    ('set', property(plain).setter(marked)),
+    ('del', property(plain).deleter(marked)),
+    ('false', property(not_marked)),
+]
+for label, prop in cases:
+    print(label, prop.__isabstractmethod__)
+names = ['__isabstractmethod__', 'fget', 'fset', 'fdel', 'getter', 'setter', 'deleter', '__get__', '__set__', '__delete__']
+print([name in dir(cases[0][1]) for name in names])"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",

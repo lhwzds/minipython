@@ -47120,6 +47120,23 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             .into_iter()
             .map(str::to_string),
         ),
+        Value::Property { .. } => names.extend(
+            [
+                "__delete__",
+                "__doc__",
+                "__get__",
+                "__isabstractmethod__",
+                "__set__",
+                "deleter",
+                "fdel",
+                "fget",
+                "fset",
+                "getter",
+                "setter",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        ),
         Value::StaticMethod { .. } => names.extend(
             [
                 "__annotations__",
@@ -53635,6 +53652,25 @@ fn refresh_singledispatch_registry_attr(dispatcher: &Value) {
     }
 }
 
+fn property_is_abstract_method(
+    fget: &Option<Box<Value>>,
+    fset: &Option<Box<Value>>,
+    fdel: &Option<Box<Value>>,
+) -> Result<Value, String> {
+    for accessor in [fget.as_deref(), fset.as_deref(), fdel.as_deref()]
+        .into_iter()
+        .flatten()
+    {
+        match load_attribute(accessor.clone(), "__isabstractmethod__") {
+            Ok(value) if is_truthy(&value)? => return Ok(Value::Bool(true)),
+            Ok(_) => {}
+            Err(message) if message.starts_with("AttributeError:") => {}
+            Err(message) => return Err(message),
+        }
+    }
+    Ok(Value::Bool(false))
+}
+
 fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
     if name == "__class__" {
         if let Value::WeakProxy { target, .. } = &object {
@@ -54285,6 +54321,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "fset" => Ok(fset.map(|value| *value).unwrap_or(Value::None)),
             "fdel" => Ok(fdel.map(|value| *value).unwrap_or(Value::None)),
             "__doc__" => Ok(doc.map(|value| *value).unwrap_or(Value::None)),
+            "__isabstractmethod__" => property_is_abstract_method(&fget, &fset, &fdel),
             "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("property.{name}"))),

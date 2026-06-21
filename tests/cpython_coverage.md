@@ -186,6 +186,7 @@ Recent runtime migration notes:
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
   `cpython_classmethod_metadata_diff_subset`,
+  `cpython_property_abstractmethod_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -5496,6 +5497,12 @@ metadata surface on classmethod objects: `__wrapped__`, `__func__`,
 `__name__`, `__qualname__`, `__module__`, `__doc__`, `__annotations__`, and
 `dir()` visibility. Custom classmethod `__dict__` mutation remains outside this
 focused metadata slice.
+`cpython_property_abstractmethod_subset` and direct CPython evidence in
+`cpython_property_abstractmethod_diff_subset` cover public
+`property.__isabstractmethod__` aggregation across getter, setter, and deleter
+callables, plus `dir()` visibility for the supported property descriptor
+surface. Newer writable `property.__name__` metadata remains a separate
+descriptor slice.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin

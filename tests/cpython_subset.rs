@@ -25392,6 +25392,23 @@ fn cpython_classmethod_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public property abstract-method marker. The newer writable
+// property.__name__ surface remains a separate descriptor metadata slice.
+#[test]
+fn cpython_property_abstractmethod_subset() {
+    assert_output(
+        "def plain(self):\n    return 1\ndef marked(self):\n    return 2\nmarked.__isabstractmethod__ = True\ndef not_marked(self):\n    return 3\nnot_marked.__isabstractmethod__ = 0\ncases = [\n    ('plain', property(plain)),\n    ('get', property(marked)),\n    ('set', property(plain).setter(marked)),\n    ('del', property(plain).deleter(marked)),\n    ('false', property(not_marked)),\n]\nfor label, prop in cases:\n    print(label, prop.__isabstractmethod__)\nnames = ['__isabstractmethod__', 'fget', 'fset', 'fdel', 'getter', 'setter', 'deleter', '__get__', '__set__', '__delete__']\nprint([name in dir(cases[0][1]) for name in names])",
+        &[
+            "plain False",
+            "get True",
+            "set True",
+            "del True",
+            "false False",
+            "[True, True, True, True, True, True, True, True, True, True]",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
 #[test]
 fn cpython_builtin_construct_singletons_subset() {
