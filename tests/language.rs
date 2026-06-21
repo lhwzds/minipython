@@ -2354,9 +2354,7 @@ fn reports_async_await_errors() {
         run_source(
             "async def main():\n    await 1\ntry:\n    main().send(None)\nexcept TypeError as error:\n    print(error)"
         ),
-        Ok(vec![
-            "object int can't be used in 'await' expression".to_string()
-        ])
+        Ok(vec!["'int' object can't be awaited".to_string()])
     );
 }
 
@@ -5260,11 +5258,11 @@ fn reports_division_by_zero() {
     );
     assert_eq!(
         run_source("print(1 // 0)"),
-        Err("runtime error: ZeroDivisionError: integer division or modulo by zero".to_string())
+        Err("runtime error: ZeroDivisionError: division by zero".to_string())
     );
     assert_eq!(
         run_source("print(1 % 0)"),
-        Err("runtime error: ZeroDivisionError: integer division or modulo by zero".to_string())
+        Err("runtime error: ZeroDivisionError: division by zero".to_string())
     );
     assert_eq!(
         run_source(

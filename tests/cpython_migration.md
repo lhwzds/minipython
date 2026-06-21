@@ -2215,9 +2215,9 @@ Completed in the control-flow helper promotion pass:
   `with` block. MiniPython now catches exceptions raised by `__bool__` /
   `__len__` during truthiness through the normal exception machinery instead of
   treating the interrupted call as a returned `None`.
-- Updated integer `//` and `%` zero-division messages to CPython's
-  `integer division or modulo by zero` wording so the migrated truthiness case
-  can compare exact output.
+- Updated modern integer `//` and `%` zero-division messages to CPython's
+  `division by zero` wording so the migrated truthiness case can compare exact
+  output through `cpython_program_output_parity_smoke_diff_subset`.
 - Added CPython `Lib/test/test_with.py::FailureTestCase` context-manager
   protocol coverage for missing `__enter__`, `__exit__`, `__aenter__`, and
   `__aexit__`, including the newer sync/async manager mixup hints. The compiler
@@ -4299,9 +4299,11 @@ Completed in the async function definition pass:
   messages.
 - Migrated CPython `Lib/test/test_coroutines.py::test_await_8`,
   `::test_await_9`, `::test_await_10`, and `::test_await_11` observable await
-  expression behavior. Objects without `__await__` now raise the expected
-  catchable `TypeError`, and await expressions compose through arithmetic,
-  nested awaits, call keyword arguments, and tuple values.
+  expression behavior. Objects without `__await__` now raise the modern
+  `'<type>' object can't be awaited` catchable `TypeError`, with direct
+  `cpython_program_output_parity_smoke_diff_subset` evidence, and await
+  expressions compose through arithmetic, nested awaits, call keyword
+  arguments, and tuple values.
 - Migrated CPython `Lib/test/test_coroutines.py::test_await_14`,
   `::test_await_15`, and `::test_await_16` observable await-resume behavior.
   Suspended await expressions now receive both `send(value)` and `throw(exc)`,

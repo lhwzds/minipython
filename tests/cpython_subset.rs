@@ -27353,7 +27353,7 @@ except StopIteration:
         );
         assert_output(
             "async def main():\n    await 1\ntry:\n    main().send(None)\nexcept TypeError as error:\n    print(error)",
-            &["object int can't be used in 'await' expression"],
+            &["'int' object can't be awaited"],
         );
         assert_output(
             "async def raises_stop_iteration():\n    raise StopIteration(42)\nasync def raises_stop_async_iteration():\n    raise StopAsyncIteration(99)\nfor coro in [raises_stop_iteration(), raises_stop_async_iteration()]:\n    try:\n        coro.send(None)\n    except Exception as error:\n        print(error.__class__.__name__, error)\n        if error.__cause__ is None:\n            print(\"cause\", None)\n        else:\n            print(\"cause\", error.__cause__.__class__.__name__, error.__cause__)",
@@ -27410,7 +27410,7 @@ except StopIteration:
         );
         assert_output(
             "class Awaitable:\n    pass\nasync def f():\n    return await Awaitable()\ntry:\n    f().send(None)\nexcept TypeError as error:\n    print(error)",
-            &["object Awaitable can't be used in 'await' expression"],
+            &["'Awaitable' object can't be awaited"],
         );
         assert_output(
             "def wrap():\n    return bar\nasync def bar():\n    return 42\nasync def f():\n    db = {'b': lambda: wrap}\n    class DB:\n        b = wrap\n    return await bar() + await wrap()() + await db[\"b\"]()()() + await bar() * 1000 + await DB.b()()\nasync def g():\n    return -await bar()\nfor coro in [f(), g()]:\n    try:\n        coro.send(None)\n    except StopIteration as done:\n        print(done)",
@@ -55758,7 +55758,7 @@ fn cpython_control_flow_inside_except_and_with_subset() {
             "enter raise",
             "exit raise AssertionError",
             "bool raise",
-            "caught bool ZeroDivisionError integer division or modulo by zero",
+            "caught bool ZeroDivisionError division by zero",
         ],
     );
     assert_output(

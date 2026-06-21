@@ -14249,6 +14249,87 @@ fn bound_method_descriptor_subset_has_focused_error_evidence() {
 }
 
 #[test]
+fn await_non_awaitable_errors_have_modern_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_grammar_async_await_subset");
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_program_output_parity_smoke_diff_subset",
+    );
+
+    for required in [
+        "async def main():\\n    await 1",
+        "'int' object can't be awaited",
+        "class Awaitable:\\n    pass",
+        "'Awaitable' object can't be awaited",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "async-await subset evidence must cover modern non-awaitable error `{required}`"
+        );
+    }
+
+    for required in [
+        "Lib/test/test_coroutines.py::test_await_8",
+        "await-object-without-dunder-await-rejected",
+        "return await Awaitable()",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "async-await CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("modern")
+                && document.contains("`'<type>' object can't be awaited`")
+                && document.contains("cpython_grammar_async_await_subset")
+                && document.contains("cpython_program_output_parity_smoke_diff_subset"),
+            "async-await docs must link modern non-awaitable errors to subset and diff evidence"
+        );
+    }
+}
+
+#[test]
+fn integer_zero_division_errors_have_modern_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_control_flow_inside_except_and_with_subset",
+    );
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_program_output_parity_smoke_diff_subset",
+    );
+
+    for required in ["1 // 0", "caught bool ZeroDivisionError division by zero"] {
+        assert!(
+            subset_body.contains(required),
+            "with-statement subset evidence must cover modern integer zero-division error `{required}`"
+        );
+    }
+
+    for required in [
+        "with-exit-result-truthiness-errors",
+        "Lib/test/test_with.py::ExceptionalTestCase::testErrorsInBool",
+        "1 // 0",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "with-statement CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("modern integer `//` and `%` zero-division messages")
+                && document.contains("`division by zero`")
+                && document.contains("cpython_program_output_parity_smoke_diff_subset"),
+            "docs must link modern integer zero-division text to subset and diff evidence"
+        );
+    }
+}
+
+#[test]
 fn slot_and_namedtuple_descriptor_get_errors_have_diff_evidence() {
     for required in [
         "Point.x.__get__()",

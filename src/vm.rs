@@ -33062,19 +33062,17 @@ impl Vm {
                     return self.await_generic_value(await_method, resume);
                 }
 
+                let message = format!(
+                    "'{}' object can't be awaited",
+                    type_name_for_await_error(&value)
+                );
                 self.raise_exception(
                     MiniException {
                         type_name: "TypeError".to_string(),
                         type_hierarchy: builtin_exception_type_hierarchy("TypeError"),
                         type_object: None,
-                        message: Some(format!(
-                            "object {} can't be used in 'await' expression",
-                            type_name_for_await_error(&value)
-                        )),
-                        args: exception_args_from_message(&format!(
-                            "object {} can't be used in 'await' expression",
-                            type_name_for_await_error(&value)
-                        )),
+                        message: Some(message.clone()),
+                        args: exception_args_from_message(&message),
                         attrs: Vec::new(),
                         cause: None,
                         context: None,
@@ -59464,7 +59462,7 @@ fn is_pending_await_value(value: &Value) -> bool {
 }
 
 fn is_non_awaitable_error_message(message: &str) -> bool {
-    message.starts_with("object ") && message.ends_with(" can't be used in 'await' expression")
+    message.starts_with('\'') && message.ends_with("' object can't be awaited")
 }
 
 fn exception_from_value(value: Value) -> Result<MiniException, String> {
@@ -79972,18 +79970,14 @@ fn real_divide_by_complex_value(
 fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
-        (Value::Number(_), Value::Number(0)) => {
-            Err("integer division or modulo by zero".to_string())
-        }
+        (Value::Number(_), Value::Number(0)) => Err("division by zero".to_string()),
         (Value::BigInt(_), Value::BigInt(ref right)) if right.is_zero() => {
-            Err("integer division or modulo by zero".to_string())
+            Err("division by zero".to_string())
         }
         (Value::Number(_), Value::BigInt(ref right)) if right.is_zero() => {
-            Err("integer division or modulo by zero".to_string())
+            Err("division by zero".to_string())
         }
-        (Value::BigInt(_), Value::Number(0)) => {
-            Err("integer division or modulo by zero".to_string())
-        }
+        (Value::BigInt(_), Value::Number(0)) => Err("division by zero".to_string()),
         (Value::Number(left), Value::Number(right)) => Ok(normalize_big_int(
             BigInt::from(left).div_floor(&BigInt::from(right)),
         )),
@@ -80039,18 +80033,14 @@ fn modulo_values_impl(vm: Option<&mut Vm>, left: Value, right: Value) -> Result<
 
 fn modulo_numeric_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
-        (Value::Number(_), Value::Number(0)) => {
-            Err("integer division or modulo by zero".to_string())
-        }
+        (Value::Number(_), Value::Number(0)) => Err("division by zero".to_string()),
         (Value::BigInt(_), Value::BigInt(ref right)) if right.is_zero() => {
-            Err("integer division or modulo by zero".to_string())
+            Err("division by zero".to_string())
         }
         (Value::Number(_), Value::BigInt(ref right)) if right.is_zero() => {
-            Err("integer division or modulo by zero".to_string())
+            Err("division by zero".to_string())
         }
-        (Value::BigInt(_), Value::Number(0)) => {
-            Err("integer division or modulo by zero".to_string())
-        }
+        (Value::BigInt(_), Value::Number(0)) => Err("division by zero".to_string()),
         (Value::Number(left), Value::Number(right)) => Ok(normalize_big_int(
             BigInt::from(left).mod_floor(&BigInt::from(right)),
         )),
