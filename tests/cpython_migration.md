@@ -6417,7 +6417,8 @@ Completed in the pow builtin pass:
   CPython `Lib/test/test_functools.py::TestReduce`. The migrated slice covers
   built-in iterables, sequence-protocol iterables, dictionaries, optional
   positional and keyword `initial` values, empty-input errors, one-item
-  non-callable behavior where the function is never invoked, rejection of
+  non-callable behavior where the function is never invoked, newer-CPython
+  diagnostics for positional-only `function` / `sequence` keyword forms and
   unsupported keyword forms, and propagation of iterator/function exceptions.
 - Added `functools.cmp_to_key` and `cpython_functools_cmp_to_key_subset`,
   adapted from CPython `Lib/test/test_functools.py::TestCmpToKey`. The migrated

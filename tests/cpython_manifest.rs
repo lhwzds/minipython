@@ -5366,7 +5366,6 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce expected at least 2 arguments, got 0",
         "reduce expected at least 2 arguments, got 1",
         "reduce expected at most 3 arguments, got 4",
-        "reduce() takes no keyword arguments",
     ] {
         assert!(
             reduce_diff.contains(required),
@@ -5385,8 +5384,17 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce(add, [1], 2, initial=3)",
         "kw-function-sequence",
         "kw-sequence-with-function",
+        "kw-foo-empty",
+        "kw-foo-with-pos",
+        "kw-function-with-pos",
+        "kw-sequence-with-pos",
         "kw-initial-duplicate",
         "kw-four-initial",
+        "reduce() takes at least 2 positional arguments (0 given)",
+        "reduce() takes at least 2 positional arguments (1 given)",
+        "reduce() got an unexpected keyword argument 'foo'",
+        "reduce() got an unexpected keyword argument 'function'",
+        "reduce() got an unexpected keyword argument 'sequence'",
     ] {
         assert!(
             reduce_initial_diff.contains(required),
@@ -5417,6 +5425,27 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             CPYTHON_COVERAGE.contains(required),
             "functools coverage notes must document sandbox boundary `{required}`"
+        );
+    }
+
+    for required in [
+        "newer-oracle",
+        "missing-positional diagnostics",
+        "unsupported-keyword text",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required),
+            "functools coverage notes must document reduce keyword boundary `{required}`"
+        );
+    }
+    for required in [
+        "newer-CPython",
+        "positional-only `function` / `sequence` keyword forms",
+        "unsupported keyword forms",
+    ] {
+        assert!(
+            CPYTHON_MIGRATION.contains(required),
+            "functools migration notes must document reduce keyword boundary `{required}`"
         );
     }
 }

@@ -14783,8 +14783,7 @@ print(p.__module__, '__module__' in p.__dict__)"#,
 fn cpython_functools_reduce_diff_subset() {
     // CPython oracle text: reduce expected at least 2 arguments, got 0;
     // reduce expected at least 2 arguments, got 1;
-    // reduce expected at most 3 arguments, got 4;
-    // reduce() takes no keyword arguments.
+    // reduce expected at most 3 arguments, got 4.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestReduce public stable subset",
         name: "functools-reduce",
@@ -14860,10 +14859,6 @@ exact_checks = [
     ('missing', lambda: reduce()),
     ('one-arg', lambda: reduce(add)),
     ('too-many', lambda: reduce(add, [1], 2, 3)),
-    ('kw-function-sequence', lambda: reduce(function=lambda x, y: (x or 1) + y, sequence=[1, 2, 3])),
-    ('kw-sequence-with-function', lambda: reduce(add, sequence=[1, 2])),
-    ('kw-foo-empty', lambda: reduce(foo=1)),
-    ('kw-foo-with-pos', lambda: reduce(add, [1], foo=1)),
 ]
 for label, check in exact_checks:
     try:
@@ -14903,6 +14898,7 @@ from operator import add
 
 print(reduce(add, [1, 2], initial=10))
 print(reduce(add, [], initial=42))
+# CPython oracle text: reduce() takes at least 2 positional arguments (0 given); reduce() takes at least 2 positional arguments (1 given); reduce() got an unexpected keyword argument 'foo'; reduce() got an unexpected keyword argument 'function'; reduce() got an unexpected keyword argument 'sequence'
 exact_checks = [
     ('kw-function-sequence', lambda: reduce(function=lambda a, b: a + b, sequence=[1, 2])),
     ('kw-sequence-with-function', lambda: reduce(add, sequence=[1, 2])),
