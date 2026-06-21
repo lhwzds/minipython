@@ -38744,12 +38744,13 @@ fn cpython_zip_strict_builtin_subset() {
         ],
     );
     assert_output(
-        "for expr in [lambda: list(zip((1, 2, 3, 4), 'abc', strict=True)), lambda: list(zip((1, 2), 'abc', strict=True)), lambda: list(zip((1, 2), (1, 2), 'abc', strict=True)), lambda: zip([1], bad=True)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, error)",
+        "for expr in [lambda: list(zip((1, 2, 3, 4), 'abc', strict=True)), lambda: list(zip((1, 2), 'abc', strict=True)), lambda: list(zip((1, 2), (1, 2), 'abc', strict=True)), lambda: zip([1], bad=True), lambda: zip([1], strict=True, bad=True)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, error)",
         &[
             "ValueError zip() argument 2 is shorter than argument 1",
             "ValueError zip() argument 2 is longer than argument 1",
             "ValueError zip() argument 3 is longer than arguments 1-2",
-            "TypeError 'bad' is an invalid keyword argument for zip()",
+            "TypeError zip() got an unexpected keyword argument 'bad'",
+            "TypeError zip() takes at most 1 keyword argument (2 given)",
         ],
     );
     assert_output(

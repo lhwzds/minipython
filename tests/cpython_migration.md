@@ -1836,9 +1836,10 @@ Completed in the differential parity harness pass:
   range, dict, set, reverse, and sequence-fallback iterators now expose direct
   `__length_hint__()` with remaining-count behavior, including `NotImplemented`
   for fallback sequence iterators without `__len__`. The strict-zip slice now
-  covers `zip(strict=True)`, strict mismatch `ValueError` cases, invalid keyword
-  rejection, and CPython's iterator-consumption side effect when a later
-  argument is shorter. The bad-iterable slice covers
+  covers `zip(strict=True)`, strict mismatch `ValueError` cases, modern
+  unexpected-keyword and too-many-keyword diagnostics, and CPython's
+  iterator-consumption side effect when a later argument is shorter. The
+  bad-iterable slice covers
   `BuiltinTest::test_zip_bad_iterable` by preserving the exact exception object
   raised by `__iter__` through `zip()` and the sibling iterator constructors
   `iter()`, `enumerate()`, `map()`, and `filter()`. Tuple-reuse, subclassable

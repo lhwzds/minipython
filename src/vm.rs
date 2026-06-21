@@ -30514,13 +30514,20 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if keywords.len() > 1 {
+            return Err(format!(
+                "TypeError: zip() takes at most 1 keyword argument ({} given)",
+                keywords.len()
+            ));
+        }
+
         let mut strict = false;
         for (keyword, value) in keywords {
             match keyword.as_str() {
                 "strict" => strict = self.truth_value(value)?,
                 _ => {
                     return Err(format!(
-                        "TypeError: '{keyword}' is an invalid keyword argument for zip()"
+                        "TypeError: zip() got an unexpected keyword argument '{keyword}'"
                     ));
                 }
             }

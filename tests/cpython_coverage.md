@@ -4235,9 +4235,9 @@ without adding general custom encoder/decoder class support.
   `dict` class identity and `isinstance(..., dict)` parity for scope-backed
   module namespaces, recursive repr guards for those views, and function-local snapshot
   `copy()` / `get()` / `pop()` / `setdefault()` behavior, class/type relationship checks,
-  iterator-producing builtins, strict zip, map/filter bad-argument diagnostics
-  including `map()` too-few-argument `TypeError` text, and absolute-value
-  behavior used by the sandbox builtin surface. Direct CPython output parity for
+  iterator-producing builtins, strict zip including modern `zip()` unexpected
+  keyword diagnostics, map/filter bad-argument diagnostics including `map()` too-few-argument `TypeError` text,
+  and absolute-value behavior used by the sandbox builtin surface. Direct CPython output parity for
   the supported `globals()` / `locals()` subset is tracked by
   `cpython_globals_locals_builtin_diff_subset`; class/type relationship checks are tracked by
   `cpython_isinstance_builtin_diff_subset` and

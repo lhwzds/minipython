@@ -9056,10 +9056,23 @@ for expr in [
 
 #[test]
 fn cpython_zip_strict_builtin_diff_subset() {
-    let probe = run_cpython("print(list(zip([1], [2], strict=True)))")
-        .expect("failed to probe CPython zip(strict=...) support");
-    if !probe.status.success() {
-        eprintln!("skipping zip(strict) diff: CPython oracle lacks zip strict support");
+    let probe = run_cpython(
+        r#"print(list(zip([1], [2], strict=True)))
+try:
+    zip([1], bad=True)
+except TypeError as error:
+    print(error)"#,
+    )
+    .expect("failed to probe CPython zip(strict=...) support");
+    if !probe.status.success()
+        || String::from_utf8_lossy(&probe.stdout)
+            .lines()
+            .collect::<Vec<_>>()
+            != ["[(1, 2)]", "zip() got an unexpected keyword argument 'bad'"]
+    {
+        eprintln!(
+            "skipping zip(strict) diff: CPython oracle lacks strict zip or modern keyword diagnostics"
+        );
         return;
     }
 
@@ -9069,7 +9082,7 @@ fn cpython_zip_strict_builtin_diff_subset() {
         source: r#"print(list(zip((1, 2, 3), 'abc', strict=True)))
 print(list(zip((1, 2), 'abc', strict=False)))
 print(list(zip(strict=True)))
-for expr in [lambda: list(zip((1, 2, 3, 4), 'abc', strict=True)), lambda: list(zip((1, 2), 'abc', strict=True)), lambda: list(zip((1, 2), (1, 2), 'abc', strict=True)), lambda: zip([1], bad=True)]:
+for expr in [lambda: list(zip((1, 2, 3, 4), 'abc', strict=True)), lambda: list(zip((1, 2), 'abc', strict=True)), lambda: list(zip((1, 2), (1, 2), 'abc', strict=True)), lambda: zip([1], bad=True), lambda: zip([1], strict=True, bad=True)]:
     try:
         expr()
     except (TypeError, ValueError) as error:
