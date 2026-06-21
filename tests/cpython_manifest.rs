@@ -9000,7 +9000,7 @@ fn operator_length_hint_subset_has_focused_diff_evidence() {
     }
     for required in [
         "\"missing TypeError length_hint expected at least 1 argument, got 0\"",
-        "\"default-float TypeError integer argument expected, got float\"",
+        "\"default-float TypeError 'float' object cannot be interpreted as an integer\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),

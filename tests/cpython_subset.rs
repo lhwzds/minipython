@@ -41793,7 +41793,7 @@ fn cpython_operator_length_hint_subset() {
             "missing TypeError length_hint expected at least 1 argument, got 0",
             "kw TypeError _operator.length_hint() takes no keyword arguments",
             "defaultkw TypeError _operator.length_hint() takes no keyword arguments",
-            "default-float TypeError integer argument expected, got float",
+            "default-float TypeError 'float' object cannot be interpreted as an integer",
             "many TypeError length_hint expected at most 2 arguments, got 3",
             "[(5, 5), 0, (5, 5), 0, (5, 5), 0, (5, 5), 0]",
             "ZeroDivisionError",

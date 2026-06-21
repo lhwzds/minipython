@@ -29768,9 +29768,6 @@ impl Vm {
         let (object, default) = match args.as_slice() {
             [object] => (object.clone(), Value::Number(0)),
             [object, default] => {
-                if matches!(default, Value::Float(_)) {
-                    return Err("TypeError: integer argument expected, got float".to_string());
-                }
                 let default = self.index_integer_value(default.clone())?;
                 let default = operator_length_hint_default_value(&default)?;
                 (object.clone(), default)

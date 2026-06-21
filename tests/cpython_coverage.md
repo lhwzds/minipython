@@ -2052,9 +2052,10 @@ without adding general custom encoder/decoder class support.
   `test_enumerate.py::TestReversed::test_len` reversed iterator length hints,
   including TypeError default fallback, implicit zero fallback for
   `NotImplemented`, default-value normalization for bool,
-  int-subclass, and `__index__` inputs, hint-result normalization for bool and
-  int-subclass returns, default and hint-result overflow rejection, non-TypeError
-  propagation, CPython non-integer hint-result TypeError text, finite
+  int-subclass, and `__index__` inputs, CPython non-integer default TypeError
+  text, hint-result normalization for bool and int-subclass returns, default
+  and hint-result overflow rejection, non-TypeError propagation, CPython
+  non-integer hint-result TypeError text, finite
   `itertools.repeat()` remaining-length hints, and infinite-repeat direct
   `__length_hint__()` TypeError behavior. Direct CPython diff evidence is in
   `cpython_operator_length_hint_diff_subset`.
