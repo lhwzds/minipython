@@ -25352,6 +25352,16 @@ fn cpython_builtin_bool_notimplemented_subset() {
     assert_error("not NotImplemented", expected);
 }
 
+// Mirrors CPython's public callable `staticmethod` object behavior while
+// keeping the normal descriptor binding path covered in language tests.
+#[test]
+fn cpython_staticmethod_callable_subset() {
+    assert_output(
+        "def add(a, b=0):\n    return a + b\nwrapped = staticmethod(add)\nprint(callable(wrapped))\nprint(wrapped(2, b=3))\nprint(wrapped.__func__ is add)\nclass C:\n    method = wrapped\nprint(C.method(4, b=5), C().method(6, b=7))\nclass Callable:\n    def __call__(self, value):\n        return value * 2\ncallable_obj = Callable()\nwrapped_obj = staticmethod(callable_obj)\nprint(callable(wrapped_obj), wrapped_obj(8), wrapped_obj.__func__ is callable_obj)",
+        &["True", "5", "True", "9 13", "True 16 True"],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
 #[test]
 fn cpython_builtin_construct_singletons_subset() {

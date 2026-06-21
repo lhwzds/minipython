@@ -7001,6 +7001,38 @@ fn cpython_builtin_bool_notimplemented_diff_subset() {
 }
 
 #[test]
+fn cpython_staticmethod_callable_diff_subset() {
+    let probe = run_cpython("print(callable(staticmethod(lambda: None)))")
+        .expect("failed to probe CPython staticmethod callable support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping staticmethod callable diff: CPython oracle has legacy non-callable staticmethod objects"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public staticmethod callable behavior",
+        name: "staticmethod-callable",
+        source: r#"def add(a, b=0):
+    return a + b
+wrapped = staticmethod(add)
+print(callable(wrapped))
+print(wrapped(2, b=3))
+print(wrapped.__func__ is add)
+class C:
+    method = wrapped
+print(C.method(4, b=5), C().method(6, b=7))
+class Callable:
+    def __call__(self, value):
+        return value * 2
+callable_obj = Callable()
+wrapped_obj = staticmethod(callable_obj)
+print(callable(wrapped_obj), wrapped_obj(8), wrapped_obj.__func__ is callable_obj)"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",
@@ -18539,7 +18571,6 @@ class D(C):
 inst = C()
 print(C.s(1), inst.s(2), C.s.__name__, inst.s.__name__)
 print(C.c(3), inst.c(4), D.c(5), D().c(6))
-print(callable(staticmethod(C.s)), callable(classmethod(C.s)))
 
 sm = staticmethod(lambda x: x + 10)
 print(sm.__func__(1), sm.__get__(None, C)(2), sm.__get__(inst, None)(3), isinstance(sm, staticmethod))

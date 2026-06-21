@@ -183,6 +183,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
+  `cpython_staticmethod_callable_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -4797,10 +4798,10 @@ without adding general custom encoder/decoder class support.
   The `sys` sandbox surface remains limited to in-memory metadata, `modules`,
   `builtin_module_names`, `implementation`, `version_info`,
   `dont_write_bytecode`, `getdefaultencoding()`, placeholder stdio objects,
-  numeric/runtime limits, frame inspection, and breakpoint hook metadata; Real
-  argv/process state, real stdin/stdout/stderr streams, host filesystem encoding
-  policy, bytecode cache writes, and implementation refcount/GC/debug APIs stay
-  outside the product surface.
+  numeric/runtime limits, frame inspection, and breakpoint hook metadata; Real argv/process state,
+  real stdin/stdout/stderr streams, host filesystem encoding policy, bytecode
+  cache writes, and implementation refcount/GC/debug APIs stay outside the
+  product surface.
   `out_of_scope_host_io_network_and_process_surfaces_stay_unavailable` guards
   the default blocked runtime surface so host I/O (`open()`, `input()` and
   host TTY behavior plus non-`None` `print(file=...)` targets), network and
@@ -5474,6 +5475,13 @@ version-stable singleton identity/equality and unsupported set-dunder
 `NotImplemented` surface separate from the current-source boolean-context
 rejection, because older default system `python3` oracles can still have the
 legacy deprecation-warning behavior.
+
+Builtin descriptor note: `cpython_staticmethod_callable_subset` and gated
+direct CPython evidence in `cpython_staticmethod_callable_diff_subset` cover
+current public `staticmethod` object callability, direct forwarding to the
+wrapped callable with positional and keyword arguments, preserved `__func__`,
+and unchanged descriptor access through classes and instances. The diff skips
+older CPython oracles whose `staticmethod` objects still report non-callable.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin

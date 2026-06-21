@@ -6815,7 +6815,7 @@ class D(C):
 inst = C()
 print(C.s(1), inst.s(2), C.s.__name__, inst.s.__name__)
 print(C.c(3), inst.c(4), D.c(5), D().c(6))
-print(callable(staticmethod(C.s)), callable(classmethod(C.s)))
+print(callable(staticmethod(C.s)), staticmethod(C.s)(7), callable(classmethod(C.s)))
 
 sm = staticmethod(lambda x: x + 10)
 print(sm.__func__(1), sm.__get__(None, C)(2), sm.__get__(inst, None)(3), isinstance(sm, staticmethod))
@@ -6826,7 +6826,7 @@ print(cm.__func__(C, 7), cm.__get__(None, C)(8), cm.__get__(inst, None)(9), isin
         Ok(vec![
             "2 3 s s".to_string(),
             "C3 C4 D5 D6".to_string(),
-            "False False".to_string(),
+            "True 8 False".to_string(),
             "11 12 13 True".to_string(),
             "C7 C8 C9 True".to_string(),
         ])

@@ -8830,6 +8830,9 @@ impl Vm {
             Value::LruCacheWrapper {
                 function, state, ..
             } => self.call_lru_cache_wrapper(*function, state, args, keywords),
+            Value::StaticMethod { function } => {
+                self.call_value_with_keywords(*function, args, keywords)
+            }
             Value::SingleDispatch {
                 function, registry, ..
             } => self.call_singledispatch_wrapper(*function, registry, args, keywords),
@@ -61906,6 +61909,7 @@ fn is_callable_value(value: &Value) -> bool {
             | Value::BoundMethod { .. }
             | Value::Partial { .. }
             | Value::PartialMethodCall { .. }
+            | Value::StaticMethod { .. }
             | Value::LruCacheWrapper { .. }
             | Value::SingleDispatch { .. }
             | Value::SingleDispatchRegister { .. }

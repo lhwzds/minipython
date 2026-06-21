@@ -13511,6 +13511,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
+            "cpython_staticmethod_callable_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -13557,6 +13558,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
+        "cpython_staticmethod_callable_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -13756,6 +13758,47 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
             document.contains("cpython_runtime_exception_capture_subset")
                 && document.contains("cpython_runtime_exception_capture_diff_subset"),
             "focused runtime exception capture evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn staticmethod_callable_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_staticmethod_callable_subset(",
+        "callable(wrapped)",
+        "wrapped(2, b=3)",
+        "wrapped.__func__ is add",
+        "C.method(4, b=5)",
+        "wrapped_obj(8)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "staticmethod callable subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_staticmethod_callable_diff_subset");
+    for required in [
+        "callable(staticmethod(lambda: None))",
+        "legacy non-callable staticmethod objects",
+        "callable(wrapped)",
+        "wrapped(2, b=3)",
+        "wrapped.__func__ is add",
+        "C.method(4, b=5)",
+        "wrapped_obj(8)",
+    ] {
+        assert!(
+            body.contains(required),
+            "staticmethod callable CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_staticmethod_callable_subset")
+                && document.contains("cpython_staticmethod_callable_diff_subset"),
+            "staticmethod callable evidence must be documented in coverage and migration notes"
         );
     }
 }
