@@ -6762,8 +6762,8 @@ fn json_keyword_argument_binding_docs_cover_call_surface() {
         "\"dumps-cls TypeError True\"",
         "\"loads-missing-text TypeError loads() missing 1 required positional argument: 's'\"",
         "\"dumps-missing-text TypeError dumps() missing 1 required positional argument: 'obj'\"",
-        "\"loads-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'\"",
-        "\"dumps-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'\"",
+        "\"loads-unknown-text TypeError JSONDecoder.__init__() got an unexpected keyword argument 'unknown'\"",
+        "\"dumps-unknown-text TypeError JSONEncoder.__init__() got an unexpected keyword argument 'unknown'\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -6780,6 +6780,7 @@ fn json_keyword_argument_binding_docs_cover_call_surface() {
             "`loads(s=...)` and `dumps(obj=...)` keyword binding",
             "duplicate positional/keyword argument `TypeError` classification",
             "missing required `s` / `obj` argument text",
+            "CPython `JSONDecoder.__init__()` / `JSONEncoder.__init__()` unexpected keyword text",
             "no-op `None` binding for supported hook keywords",
             "`parse_int`, `object_hook`, `object_pairs_hook`, and `default` callable keyword paths",
             "non-`None` `cls` remaining outside the sandbox subset",

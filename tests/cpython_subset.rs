@@ -35017,8 +35017,8 @@ show_error('dumps-unknown-text', lambda: json.dumps({}, unknown=1))"#,
             "dumps-cls TypeError True",
             "loads-missing-text TypeError loads() missing 1 required positional argument: 's'",
             "dumps-missing-text TypeError dumps() missing 1 required positional argument: 'obj'",
-            "loads-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'",
-            "dumps-unknown-text TypeError __init__() got an unexpected keyword argument 'unknown'",
+            "loads-unknown-text TypeError JSONDecoder.__init__() got an unexpected keyword argument 'unknown'",
+            "dumps-unknown-text TypeError JSONEncoder.__init__() got an unexpected keyword argument 'unknown'",
         ],
     );
 }

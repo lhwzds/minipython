@@ -24623,7 +24623,9 @@ impl Vm {
             } else if let Some(keyword) =
                 message.strip_prefix("TypeError: loads() got an unexpected keyword argument ")
             {
-                format!("TypeError: __init__() got an unexpected keyword argument {keyword}")
+                format!(
+                    "TypeError: JSONDecoder.__init__() got an unexpected keyword argument {keyword}"
+                )
             } else {
                 message
             }
@@ -24711,7 +24713,9 @@ impl Vm {
             } else if let Some(keyword) =
                 message.strip_prefix("TypeError: dumps() got an unexpected keyword argument ")
             {
-                format!("TypeError: __init__() got an unexpected keyword argument {keyword}")
+                format!(
+                    "TypeError: JSONEncoder.__init__() got an unexpected keyword argument {keyword}"
+                )
             } else {
                 message
             }

@@ -1223,6 +1223,7 @@ custom encoder classes, or CPython internals.
 `cpython_json_keyword_argument_binding_subset`, backed by
 `cpython_json_keyword_argument_binding_diff_subset`, keeps `loads(s=...)` and `dumps(obj=...)` keyword binding,
 duplicate positional/keyword argument `TypeError` classification, missing required `s` / `obj` argument text,
+CPython `JSONDecoder.__init__()` / `JSONEncoder.__init__()` unexpected keyword text,
 no-op `None` binding for supported hook keywords, and `parse_int`, `object_hook`, `object_pairs_hook`, and `default` callable keyword paths,
 while keeping non-`None` `cls` remaining outside the sandbox subset,
 without adding general custom encoder/decoder class support.
