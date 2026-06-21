@@ -7112,6 +7112,42 @@ print([name in dir(cases[0][1]) for name in names])"#,
 }
 
 #[test]
+fn cpython_property_name_metadata_diff_subset() {
+    let probe = run_cpython("print(hasattr(property(lambda self: None), '__name__'))")
+        .expect("failed to probe CPython property __name__ support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping property __name__ metadata diff: CPython oracle lacks property.__name__"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property __name__ metadata behavior",
+        name: "property-name-metadata",
+        source: r#"def f(self):
+    return 1
+def s(self, value):
+    pass
+p = property(f)
+print(p.__name__, hasattr(property(), '__name__'))
+f.__name__ = 'renamed_func'
+print(p.__name__)
+p.__name__ = 123
+print(p.__name__, type(p.__name__).__name__)
+q = p.setter(s)
+p.__name__ = 'later'
+print(p.__name__, q.__name__)
+del p.__name__
+print(p.__name__)
+p.__name__ = None
+print(p.__name__ is None)
+del p.__name__
+print('__name__' in dir(p))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",

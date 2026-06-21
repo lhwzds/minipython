@@ -187,6 +187,7 @@ Recent runtime migration notes:
   `cpython_staticmethod_metadata_diff_subset`,
   `cpython_classmethod_metadata_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
+  `cpython_property_name_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -5501,8 +5502,13 @@ focused metadata slice.
 `cpython_property_abstractmethod_diff_subset` cover public
 `property.__isabstractmethod__` aggregation across getter, setter, and deleter
 callables, plus `dir()` visibility for the supported property descriptor
-surface. Newer writable `property.__name__` metadata remains a separate
-descriptor slice.
+surface.
+`cpython_property_name_metadata_subset` and gated direct CPython evidence in
+`cpython_property_name_metadata_diff_subset` cover newer public
+`property.__name__` metadata: fallback to `fget.__name__`, dynamic getter-name
+updates such as `renamed_func`, arbitrary assigned values, deletion back to the
+fallback state, copied explicit values through `setter()`, and `dir()`
+visibility.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin

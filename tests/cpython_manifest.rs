@@ -13515,6 +13515,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_staticmethod_metadata_subset",
             "cpython_classmethod_metadata_subset",
             "cpython_property_abstractmethod_subset",
+            "cpython_property_name_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -13565,6 +13566,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_staticmethod_metadata_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
+        "cpython_property_name_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -13953,6 +13955,58 @@ fn property_abstractmethod_subset_has_focused_diff_evidence() {
                 && document.contains("__isabstractmethod__")
                 && document.contains("property.__name__"),
             "property abstractmethod evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_name_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_name_metadata_subset(",
+        "p.__name__",
+        "hasattr(property(), '__name__')",
+        "f.__name__ = 'renamed_func'",
+        "p.__name__ = 123",
+        "q = p.setter(s)",
+        "del p.__name__",
+        "p.__name__ = None",
+        "'__name__' in dir(p)",
+        "accepts arbitrary assigned values",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property __name__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_property_name_metadata_diff_subset");
+    for required in [
+        "hasattr(property(lambda self: None), '__name__')",
+        "CPython oracle lacks property.__name__",
+        "CPython public property __name__ metadata behavior",
+        "p.__name__",
+        "hasattr(property(), '__name__')",
+        "f.__name__ = 'renamed_func'",
+        "p.__name__ = 123",
+        "q = p.setter(s)",
+        "del p.__name__",
+        "p.__name__ = None",
+        "'__name__' in dir(p)",
+    ] {
+        assert!(
+            body.contains(required),
+            "property __name__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_name_metadata_subset")
+                && document.contains("cpython_property_name_metadata_diff_subset")
+                && document.contains("property.__name__")
+                && document.contains("renamed_func")
+                && document.contains("fallback"),
+            "property __name__ evidence must be documented in coverage and migration notes"
         );
     }
 }

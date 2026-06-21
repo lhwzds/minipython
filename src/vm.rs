@@ -15821,6 +15821,7 @@ impl Vm {
             fset,
             fdel,
             doc,
+            name: property_name,
         } = property.clone()
         else {
             return Err(format!(
@@ -15847,6 +15848,7 @@ impl Vm {
                     fset,
                     fdel,
                     doc,
+                    name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
             "property.setter" => {
@@ -15866,6 +15868,7 @@ impl Vm {
                     fset: Some(Box::new(setter.clone())),
                     fdel,
                     doc,
+                    name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
             "property.deleter" => {
@@ -15885,6 +15888,7 @@ impl Vm {
                     fset,
                     fdel: Some(Box::new(deleter.clone())),
                     doc,
+                    name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
             "property.__get__" => {
@@ -15908,6 +15912,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        name: property_name,
                     },
                     rest[0].clone(),
                 )
@@ -15930,6 +15935,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        name: property_name,
                     },
                     object.clone(),
                     value.clone(),
@@ -15954,6 +15960,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        name: property_name,
                     },
                     object.clone(),
                 )?;
@@ -47126,6 +47133,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__doc__",
                 "__get__",
                 "__isabstractmethod__",
+                "__name__",
                 "__set__",
                 "deleter",
                 "fdel",
@@ -48130,11 +48138,13 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             fset,
             fdel,
             doc,
+            name,
         } => Value::Property {
             fget: fget.map(|value| Box::new(attach_owner_class(*value, class))),
             fset: fset.map(|value| Box::new(attach_owner_class(*value, class))),
             fdel: fdel.map(|value| Box::new(attach_owner_class(*value, class))),
             doc,
+            name,
         },
         Value::CachedProperty {
             function,
@@ -53671,6 +53681,23 @@ fn property_is_abstract_method(
     Ok(Value::Bool(false))
 }
 
+fn property_name_value(
+    fget: &Option<Box<Value>>,
+    property_name: &Rc<RefCell<Option<Value>>>,
+) -> Result<Value, String> {
+    if let Some(name) = property_name.borrow().clone() {
+        return Ok(name);
+    }
+    if let Some(fget) = fget.as_deref() {
+        match load_attribute(fget.clone(), "__name__") {
+            Ok(name) => return Ok(name),
+            Err(message) if message.starts_with("AttributeError:") => {}
+            Err(message) => return Err(message),
+        }
+    }
+    Err("AttributeError: property has no attribute '__name__'".to_string())
+}
+
 fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
     if name == "__class__" {
         if let Value::WeakProxy { target, .. } = &object {
@@ -54316,12 +54343,14 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             fset,
             fdel,
             doc,
+            name: property_name,
         } => match name {
             "fget" => Ok(fget.map(|value| *value).unwrap_or(Value::None)),
             "fset" => Ok(fset.map(|value| *value).unwrap_or(Value::None)),
             "fdel" => Ok(fdel.map(|value| *value).unwrap_or(Value::None)),
             "__doc__" => Ok(doc.map(|value| *value).unwrap_or(Value::None)),
             "__isabstractmethod__" => property_is_abstract_method(&fget, &fset, &fdel),
+            "__name__" => property_name_value(&fget, &property_name),
             "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" => {
                 Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("property.{name}"))),
@@ -54330,6 +54359,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         fset,
                         fdel,
                         doc,
+                        name: property_name,
                     }),
                     identity: Rc::new(()),
                 })
@@ -57248,6 +57278,13 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             attrs.borrow_mut().insert(name.to_string(), value);
             Ok(())
         }
+        Value::Property {
+            name: property_name,
+            ..
+        } if name == "__name__" => {
+            *property_name.borrow_mut() = Some(value);
+            Ok(())
+        }
         Value::WeakProxy { target, .. } => store_attribute(*target, name, value),
         Value::BytesIO(bytes_io) => {
             bytes_io
@@ -57526,6 +57563,13 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
                     "AttributeError: function has no attribute '{name}'"
                 ))
             }
+        }
+        Value::Property {
+            name: property_name,
+            ..
+        } if name == "__name__" => {
+            *property_name.borrow_mut() = None;
+            Ok(())
         }
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),
         Value::BytesIO(bytes_io) => {

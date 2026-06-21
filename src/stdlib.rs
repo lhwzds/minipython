@@ -2098,6 +2098,7 @@ pub(crate) fn call_property_constructor(
         fset: optional_property_part(fset),
         fdel: optional_property_part(fdel),
         doc: optional_property_part(doc),
+        name: Rc::new(RefCell::new(None)),
     })
 }
 

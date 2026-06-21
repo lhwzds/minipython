@@ -25409,6 +25409,25 @@ fn cpython_property_abstractmethod_subset() {
     );
 }
 
+// Mirrors newer CPython's public property.__name__ metadata. The slot falls
+// back to fget.__name__, accepts arbitrary assigned values, and resets to the
+// fallback when deleted.
+#[test]
+fn cpython_property_name_metadata_subset() {
+    assert_output(
+        "def f(self):\n    return 1\ndef s(self, value):\n    pass\np = property(f)\nprint(p.__name__, hasattr(property(), '__name__'))\nf.__name__ = 'renamed_func'\nprint(p.__name__)\np.__name__ = 123\nprint(p.__name__, type(p.__name__).__name__)\nq = p.setter(s)\np.__name__ = 'later'\nprint(p.__name__, q.__name__)\ndel p.__name__\nprint(p.__name__)\np.__name__ = None\nprint(p.__name__ is None)\ndel p.__name__\nprint('__name__' in dir(p))",
+        &[
+            "f False",
+            "renamed_func",
+            "123 int",
+            "later 123",
+            "renamed_func",
+            "True",
+            "True",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
 #[test]
 fn cpython_builtin_construct_singletons_subset() {
