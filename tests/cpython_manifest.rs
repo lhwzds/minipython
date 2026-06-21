@@ -13517,6 +13517,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_staticmethod_classmethod_abstractmethod_subset",
             "cpython_property_abstractmethod_subset",
             "cpython_property_name_metadata_subset",
+            "cpython_property_set_name_metadata_subset",
             "cpython_property_doc_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
@@ -13570,6 +13571,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_staticmethod_classmethod_abstractmethod_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
         "cpython_property_name_metadata_diff_subset",
+        "cpython_property_set_name_metadata_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
@@ -14067,6 +14069,67 @@ fn property_name_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("renamed_func")
                 && document.contains("fallback"),
             "property __name__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_set_name_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_set_name_metadata_subset(",
+        "'__set_name__' in dir(property(f))",
+        "p.__set_name__(object, 'field')",
+        "p.__name__ = 'manual'",
+        "p.__set_name__(object, 'auto')",
+        "p.__set_name__(123, 456)",
+        "p.__set_name__(None, None)",
+        "class C:",
+        "C.__dict__['x'].__name__",
+        "property(f).__set_name__(*args)",
+        "property(f).__set_name__(owner=object, name='kw')",
+        "class creation",
+        "accepts arbitrary",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property __set_name__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_property_set_name_metadata_diff_subset",
+    );
+    for required in [
+        "hasattr(p, '__set_name__')",
+        "getattr(p, '__name__', None) == 'field'",
+        "CPython oracle lacks property.__set_name__/__name__ support",
+        "CPython public property __set_name__ metadata behavior",
+        "'__set_name__' in dir(property(f))",
+        "p.__set_name__(object, 'field')",
+        "p.__name__ = 'manual'",
+        "p.__set_name__(object, 'auto')",
+        "p.__set_name__(123, 456)",
+        "p.__set_name__(None, None)",
+        "class C:",
+        "C.__dict__['x'].__name__",
+        "property(f).__set_name__(*args)",
+        "property(f).__set_name__(owner=object, name='kw')",
+    ] {
+        assert!(
+            body.contains(required),
+            "property __set_name__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_set_name_metadata_subset")
+                && document.contains("cpython_property_set_name_metadata_diff_subset")
+                && document.contains("property.__set_name__")
+                && document.contains("class creation")
+                && document.contains("arbitrary"),
+            "property __set_name__ evidence must be documented in coverage and migration notes"
         );
     }
 }

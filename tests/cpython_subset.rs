@@ -25452,6 +25452,28 @@ fn cpython_property_name_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public property.__set_name__ metadata hook. The hook sets
+// property.__name__ from explicit calls and class creation, accepts arbitrary
+// name values, rejects keywords, and appears in dir().
+#[test]
+fn cpython_property_set_name_metadata_subset() {
+    assert_output(
+        "def f(self):\n    return 1\nprint('__set_name__' in dir(property(f)))\np = property(f)\nprint(p.__set_name__(object, 'field'), p.__name__)\np = property(f)\np.__name__ = 'manual'\nprint(p.__set_name__(object, 'auto'), p.__name__)\np = property(f)\nprint(p.__set_name__(123, 456), p.__name__, type(p.__name__).__name__)\np = property(f)\nprint(p.__set_name__(None, None), p.__name__ is None)\nclass C:\n    x = property(f)\nprint(C.__dict__['x'].__name__)\nfor label, args in [('arity-0', ()), ('arity-1', (object,)), ('arity-3', (object, 'x', 'y'))]:\n    try:\n        property(f).__set_name__(*args)\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))\ntry:\n    property(f).__set_name__(owner=object, name='kw')\nexcept TypeError as error:\n    print('keyword', type(error).__name__, str(error))",
+        &[
+            "True",
+            "None field",
+            "None auto",
+            "None 456 int",
+            "None True",
+            "x",
+            "arity-0 TypeError __set_name__() takes 2 positional arguments but 0 were given",
+            "arity-1 TypeError __set_name__() takes 2 positional arguments but 1 were given",
+            "arity-3 TypeError __set_name__() takes 2 positional arguments but 3 were given",
+            "keyword TypeError property.__set_name__() takes no keyword arguments",
+        ],
+    );
+}
+
 // Mirrors CPython's public property.__doc__ metadata. Default and doc=None
 // values are getter-derived, assigned values are arbitrary, deletion resets the
 // readable slot to None, and derived properties recompute getter docs only when

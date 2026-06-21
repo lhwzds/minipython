@@ -12313,6 +12313,10 @@ impl Vm {
                     )
                     .map_err(|_| class_set_name_error(&descriptor, class_value, &name))?;
                 }
+                descriptor @ Value::Property { .. } => {
+                    property_set_name(descriptor.clone(), Value::String(name.clone()))
+                        .map_err(|_| class_set_name_error(&descriptor, class_value, &name))?;
+                }
                 descriptor => {
                     let Some(set_name) = instance_special_method(&descriptor, "__set_name__")
                     else {
@@ -16030,6 +16034,20 @@ impl Vm {
                     object.clone(),
                 )?;
                 Ok(Value::None)
+            }
+            "property.__set_name__" => {
+                if !keywords.is_empty() {
+                    return Err(
+                        "TypeError: property.__set_name__() takes no keyword arguments".to_string(),
+                    );
+                }
+                if rest.len() != 2 {
+                    return Err(format!(
+                        "TypeError: __set_name__() takes 2 positional arguments but {} were given",
+                        rest.len()
+                    ));
+                }
+                property_set_name(property.clone(), rest[1].clone())
             }
             _ => Err(format!("unknown property method: {name}")),
         }
@@ -47200,6 +47218,7 @@ fn default_dir_names(value: &Value) -> Vec<String> {
                 "__isabstractmethod__",
                 "__name__",
                 "__set__",
+                "__set_name__",
                 "deleter",
                 "fdel",
                 "fget",
@@ -53794,6 +53813,18 @@ fn descriptor_is_abstract_method(function: Value) -> Result<Value, String> {
     }
 }
 
+fn property_set_name(property: Value, name: Value) -> Result<Value, String> {
+    let Value::Property {
+        name: property_name,
+        ..
+    } = property
+    else {
+        return Err("__set_name__() expected a property receiver".to_string());
+    };
+    *property_name.borrow_mut() = Some(name);
+    Ok(Value::None)
+}
+
 fn property_is_abstract_method(
     fget: &Option<Box<Value>>,
     fset: &Option<Box<Value>>,
@@ -54484,20 +54515,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__doc__" => Ok(doc.borrow().clone().unwrap_or(Value::None)),
             "__isabstractmethod__" => property_is_abstract_method(&fget, &fset, &fdel),
             "__name__" => property_name_value(&fget, &property_name),
-            "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" => {
-                Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("property.{name}"))),
-                    receiver: Box::new(Value::Property {
-                        fget,
-                        fset,
-                        fdel,
-                        doc,
-                        doc_from_getter,
-                        name: property_name,
-                    }),
-                    identity: Rc::new(()),
-                })
-            }
+            "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__"
+            | "__set_name__" => Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin(format!("property.{name}"))),
+                receiver: Box::new(Value::Property {
+                    fget,
+                    fset,
+                    fdel,
+                    doc,
+                    doc_from_getter,
+                    name: property_name,
+                }),
+                identity: Rc::new(()),
+            }),
             _ => Err(format!(
                 "AttributeError: property has no attribute '{name}'"
             )),

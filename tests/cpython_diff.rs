@@ -7186,6 +7186,58 @@ print('__name__' in dir(p))"#,
 }
 
 #[test]
+fn cpython_property_set_name_metadata_diff_subset() {
+    let probe = run_cpython(
+        r#"p = property(lambda self: None)
+print(hasattr(p, '__set_name__'))
+if hasattr(p, '__set_name__'):
+    p.__set_name__(object, 'field')
+    print(getattr(p, '__name__', None) == 'field')"#,
+    )
+    .expect("failed to probe CPython property __set_name__/__name__ support");
+    if !probe.status.success()
+        || String::from_utf8_lossy(&probe.stdout)
+            .lines()
+            .collect::<Vec<_>>()
+            != ["True", "True"]
+    {
+        eprintln!(
+            "skipping property __set_name__ metadata diff: CPython oracle lacks property.__set_name__/__name__ support"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property __set_name__ metadata behavior",
+        name: "property-set-name-metadata",
+        source: r#"def f(self):
+    return 1
+print('__set_name__' in dir(property(f)))
+p = property(f)
+print(p.__set_name__(object, 'field'), p.__name__)
+p = property(f)
+p.__name__ = 'manual'
+print(p.__set_name__(object, 'auto'), p.__name__)
+p = property(f)
+print(p.__set_name__(123, 456), p.__name__, type(p.__name__).__name__)
+p = property(f)
+print(p.__set_name__(None, None), p.__name__ is None)
+class C:
+    x = property(f)
+print(C.__dict__['x'].__name__)
+for label, args in [('arity-0', ()), ('arity-1', (object,)), ('arity-3', (object, 'x', 'y'))]:
+    try:
+        property(f).__set_name__(*args)
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+try:
+    property(f).__set_name__(owner=object, name='kw')
+except TypeError as error:
+    print('keyword', type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_property_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property __doc__ metadata behavior",

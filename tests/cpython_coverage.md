@@ -189,6 +189,7 @@ Recent runtime migration notes:
   `cpython_staticmethod_classmethod_abstractmethod_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
   `cpython_property_name_metadata_diff_subset`,
+  `cpython_property_set_name_metadata_diff_subset`,
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
@@ -5516,6 +5517,12 @@ surface.
 updates such as `renamed_func`, arbitrary assigned values, deletion back to the
 fallback state, copied explicit values through `setter()`, and `dir()`
 visibility.
+`cpython_property_set_name_metadata_subset` and gated direct CPython evidence
+in `cpython_property_set_name_metadata_diff_subset` cover public
+`property.__set_name__` metadata: explicit calls update `property.__name__`,
+class creation auto-sets the descriptor name, arbitrary name values are
+accepted, keywords are rejected, arity errors match the supported method
+wrapper surface, and `dir()` exposes the hook.
 `cpython_property_doc_metadata_subset` and direct CPython evidence in
 `cpython_property_doc_metadata_diff_subset` cover public `property.__doc__`
 metadata: getter-derived default docs for omitted and `None` doc arguments,
