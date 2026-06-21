@@ -15022,7 +15022,7 @@ impl Vm {
             }
         };
 
-        let name = builtin_attribute_name_arg("getattr", &name)?;
+        let name = builtin_attribute_name_arg(&name)?;
         if let Some(default) = default {
             return match self.load_attribute_catching(object, &name)? {
                 Ok(value) => Ok(value),
@@ -15068,7 +15068,7 @@ impl Vm {
             ));
         };
 
-        let name = builtin_attribute_name_arg("hasattr", name)?;
+        let name = builtin_attribute_name_arg(name)?;
         match self.load_attribute_catching(object.clone(), &name)? {
             Ok(_) => Ok(Value::Bool(true)),
             Err(exception) if exception.type_name == "AttributeError" => Ok(Value::Bool(false)),
@@ -62144,11 +62144,12 @@ fn attribute_name_arg(value: &Value) -> Result<String, String> {
     }
 }
 
-fn builtin_attribute_name_arg(function: &str, value: &Value) -> Result<String, String> {
+fn builtin_attribute_name_arg(value: &Value) -> Result<String, String> {
     match value {
         Value::String(name) | Value::IdentityString { value: name, .. } => Ok(name.clone()),
-        _ => Err(format!(
-            "TypeError: {function}(): attribute name must be string"
+        value => Err(format!(
+            "TypeError: attribute name must be string, not '{}'",
+            type_name(value)
         )),
     }
 }

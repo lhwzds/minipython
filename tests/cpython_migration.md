@@ -6650,7 +6650,13 @@ Completed in the attribute introspection builtin pass:
   object callable or block callable class-level dispatch.
 - Covered `getattr`, `hasattr`, `setattr`, and `delattr` over module,
   instance, and class attributes, default values, custom attribute hooks, and
-  TypeError/AttributeError paths for the supported subset.
+  TypeError/AttributeError paths for the supported subset, including modern
+  non-string `getattr()` / `hasattr()` attribute-name diagnostics that report
+  the offending type. Focused evidence lives in
+  `cpython_builtin_getattr_public_subset` /
+  `cpython_builtin_getattr_public_diff_subset` and
+  `cpython_builtin_hasattr_public_subset` /
+  `cpython_builtin_hasattr_public_diff_subset`.
 - Added supported `sys.stdin`, `sys.stdout`, and `sys.stderr` module attributes
   as stable placeholder stream objects, covering CPython's public
   `getattr(sys, "stdout") is sys.stdout`, `hasattr(sys, "stdout")`, and

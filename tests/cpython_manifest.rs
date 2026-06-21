@@ -16396,7 +16396,7 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         );
     }
     assert!(
-        CPYTHON_SUBSET.contains("getattr(): attribute name must be string")
+        CPYTHON_SUBSET.contains("attribute name must be string, not 'int'")
             && CPYTHON_SUBSET.contains("getattr() takes no keyword arguments"),
         "focused getattr subset evidence must cover non-string attribute-name text"
     );
@@ -16423,13 +16423,19 @@ fn builtin_getattr_public_subset_has_focused_diff_evidence() {
         );
     }
 
-    for document in [CPYTHON_COVERAGE, MANIFEST] {
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
         assert!(
             document.contains("cpython_builtin_getattr_public_subset")
                 && document.contains("cpython_builtin_getattr_public_diff_subset"),
             "focused getattr evidence must be documented in coverage and CPython test manifest"
         );
     }
+    assert!(
+        CPYTHON_COVERAGE.contains("non-string attribute-name diagnostics")
+            && CPYTHON_MIGRATION
+                .contains("non-string `getattr()` / `hasattr()` attribute-name diagnostics"),
+        "focused getattr docs must describe modern non-string attribute-name diagnostics"
+    );
 }
 
 #[test]
@@ -16646,7 +16652,7 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         );
     }
     assert!(
-        CPYTHON_SUBSET.contains("hasattr(): attribute name must be string")
+        CPYTHON_SUBSET.contains("attribute name must be string, not 'int'")
             && CPYTHON_SUBSET.contains("hasattr() takes no keyword arguments"),
         "focused hasattr subset evidence must cover non-string attribute-name text"
     );
@@ -16674,13 +16680,19 @@ fn builtin_hasattr_public_subset_has_focused_diff_evidence() {
         );
     }
 
-    for document in [CPYTHON_COVERAGE, MANIFEST] {
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION, MANIFEST] {
         assert!(
             document.contains("cpython_builtin_hasattr_public_subset")
                 && document.contains("cpython_builtin_hasattr_public_diff_subset"),
             "focused hasattr evidence must be documented in coverage and CPython test manifest"
         );
     }
+    assert!(
+        CPYTHON_COVERAGE.contains("attribute-name diagnostics with the offending type")
+            && CPYTHON_MIGRATION
+                .contains("non-string `getattr()` / `hasattr()` attribute-name diagnostics"),
+        "focused hasattr docs must describe modern non-string attribute-name diagnostics"
+    );
 }
 
 #[test]

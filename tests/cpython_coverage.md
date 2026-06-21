@@ -4199,7 +4199,8 @@ without adding general custom encoder/decoder class support.
   `cpython_builtin_getattr_public_diff_subset`, covering the supported
   `BuiltinTest::test_getattr` slice for module attributes, default values,
   instance/class attribute lookup, `sys.stdout`, maximum-valid-Unicode-scalar
-  missing-name behavior, and public TypeError arity/name validation.
+  missing-name behavior, and public TypeError arity/name validation including
+  non-string attribute-name diagnostics with the offending type.
 - `RUNTIME_BUILTINS` also includes the focused
   `cpython_builtin_setattr_delattr_public_subset` with direct CPython output
   parity in `cpython_builtin_setattr_delattr_public_diff_subset`, covering the
@@ -4213,7 +4214,8 @@ without adding general custom encoder/decoder class support.
   `BuiltinTest::test_hasattr` slice for present/missing module and instance
   attributes, class attributes seen through instances, maximum-valid-Unicode
   scalar missing names, `AttributeError` suppression, non-`AttributeError`
-  propagation, and public TypeError arity/name validation.
+  propagation, and public TypeError arity/name validation including non-string
+  attribute-name diagnostics with the offending type.
 - `RUNTIME_BUILTINS` also includes `cpython_vars_dir_builtin_subset` with
   direct CPython output parity in `cpython_vars_dir_builtin_diff_subset`,
   covering `BuiltinTest::test_dir` / `::test_vars` public behavior for local
