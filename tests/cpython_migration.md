@@ -2055,8 +2055,10 @@ Completed in the differential parity harness pass:
   defining class to class-created functions and exposing the method
   `__class__` cell name. The unbound `super` slice now supports `super(type)`,
   `super(type, None)`, descriptor rebinding through `super.__get__`,
-  `__self_class__`, and CPython-compatible rejection of invalid first arguments
-  and invalid descriptor receivers. The MRO slice now uses C3 linearization for
+  `__self_class__`, modern `__get__` / `__set__ expected ...` descriptor arity text
+  with `cpython_descriptor_method_wrapper_arity_diff_subset` coverage,
+  and CPython-compatible rejection of invalid first arguments and invalid
+  descriptor receivers. The MRO slice now uses C3 linearization for
   class attribute lookup and `super()` chains, and rejects duplicate direct bases
   and inconsistent multiple-inheritance hierarchies at class creation time. The
   first `__slots__` slice now enforces slot-only instance attributes for classes
@@ -10340,8 +10342,8 @@ Completed in the CPython collections manifest expansion pass:
   methods are migrated or explicitly classified.
 - Added `cpython_collections_namedtuple_field_doc_subset`, porting CPython
   `TestNamedTuple::test_field_doc` for generated field descriptor default docs
-  and per-field `__doc__` mutation, plus field descriptor `__get__`
-  method-wrapper error paths.
+  and per-field `__doc__` mutation, plus field descriptor modern
+  `__get__ expected ...` method-wrapper arity text.
 - Added `cpython_collections_namedtuple_name_conflicts_subset`, porting CPython
   `TestNamedTuple::test_name_conflicts` for conflict-prone public field names,
   the full broader `words` set, positional and keyword construction, `_make()`,
@@ -10419,7 +10421,9 @@ Completed in the CPython collections manifest expansion pass:
   migrated field-doc slice, including default field docstrings, per-field
   doc mutation, hashing/truthiness/type-name handling, and descriptor identity
   participation in VM comparisons. Field descriptor `__get__` also follows
-  CPython method-wrapper arity, keyword, and invalid `None, None` owner errors.
+  CPython method-wrapper arity, keyword, and invalid `None, None` owner errors,
+  including modern `__get__` / `__set__ expected ...` descriptor arity text
+  with `cpython_descriptor_method_wrapper_arity_diff_subset` coverage.
 - Remaining `TestNamedTuple` work is limited to CPython-internal descriptor
   reuse/repr details that should remain classified rather than copied.
 - Added `cpython_compile_specifics_dont_merge_constants_public_subset`, porting

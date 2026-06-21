@@ -15964,11 +15964,13 @@ impl Vm {
                     );
                 }
                 if rest.is_empty() {
-                    return Err("TypeError:  expected at least 1 argument, got 0".to_string());
+                    return Err(
+                        "TypeError: __get__ expected at least 1 argument, got 0".to_string()
+                    );
                 }
                 if rest.len() > 2 {
                     return Err(format!(
-                        "TypeError:  expected at most 2 arguments, got {}",
+                        "TypeError: __get__ expected at most 2 arguments, got {}",
                         rest.len()
                     ));
                 }
@@ -15992,7 +15994,7 @@ impl Vm {
                 }
                 let [object, value] = rest else {
                     return Err(format!(
-                        "TypeError:  expected 2 arguments, got {}",
+                        "TypeError: __set__ expected 2 arguments, got {}",
                         rest.len()
                     ));
                 };
@@ -48972,11 +48974,13 @@ fn descriptor_get_reject_method_wrapper_args(
         ));
     }
     if args.is_empty() {
-        return Err(format!("TypeError:  expected at least 1 argument, got 0"));
+        return Err(format!(
+            "TypeError: {method} expected at least 1 argument, got 0"
+        ));
     }
     if args.len() > 2 {
         return Err(format!(
-            "TypeError:  expected at most 2 arguments, got {}",
+            "TypeError: {method} expected at most 2 arguments, got {}",
             args.len()
         ));
     }
@@ -48995,7 +48999,7 @@ fn descriptor_set_reject_method_wrapper_args(
     }
     if args.len() != 2 {
         return Err(format!(
-            "TypeError:  expected 2 arguments, got {}",
+            "TypeError: {method} expected 2 arguments, got {}",
             args.len()
         ));
     }

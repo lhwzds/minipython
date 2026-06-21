@@ -14249,6 +14249,105 @@ fn bound_method_descriptor_subset_has_focused_error_evidence() {
 }
 
 #[test]
+fn descriptor_get_method_wrapper_arity_errors_have_modern_diff_evidence() {
+    let focused_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_descriptor_method_wrapper_arity_diff_subset",
+    );
+
+    for (label, subset_name) in [
+        (
+            "property/staticmethod/classmethod",
+            "cpython_runtime_exception_capture_subset",
+        ),
+        (
+            "bound method",
+            "cpython_bound_method_descriptor_and_repr_subset",
+        ),
+        ("unbound super", "cpython_unbound_super_descriptor_subset"),
+        (
+            "method descriptor",
+            "cpython_types_method_descriptor_types_subset",
+        ),
+        (
+            "namedtuple field descriptor",
+            "cpython_collections_namedtuple_field_doc_subset",
+        ),
+    ] {
+        let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+        for required in [
+            "__get__ expected at least 1 argument, got 0",
+            "__get__ expected at most 2 arguments, got 3",
+        ] {
+            assert!(
+                subset_body.contains(required),
+                "{label} subset evidence must cover modern method-wrapper arity text `{required}`"
+            );
+            assert!(
+                focused_diff_body.contains(required),
+                "focused CPython diff evidence must cover {label} method-wrapper arity text `{required}`"
+            );
+        }
+    }
+
+    for required in [
+        "__get__ expected at least 1 argument, got 0",
+        "__get__ expected at most 2 arguments, got 3",
+        "__set__ expected 2 arguments, got 0",
+    ] {
+        assert!(
+            LANGUAGE_TESTS.contains(required),
+            "slot descriptor runtime evidence must cover modern descriptor arity text `{required}`"
+        );
+        assert!(
+            focused_diff_body.contains(required),
+            "slot descriptor CPython diff evidence must cover modern descriptor arity text `{required}`"
+        );
+    }
+
+    for (label, subset_name) in [("property", "cpython_runtime_exception_capture_subset")] {
+        let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+        for required in ["__set__ expected 2 arguments, got 0"] {
+            assert!(
+                subset_body.contains(required),
+                "{label} subset evidence must cover modern descriptor arity text `{required}`"
+            );
+            assert!(
+                focused_diff_body.contains(required),
+                "{label} CPython diff evidence must cover modern descriptor arity text `{required}`"
+            );
+        }
+    }
+
+    let deque_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_deque_public_surface_subset",
+    );
+    let deque_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_deque_public_surface_diff_subset",
+    );
+    assert!(
+        deque_subset.contains("__set__ expected 2 arguments, got 0"),
+        "deque getset descriptor subset output must pin modern descriptor __set__ arity text"
+    );
+    assert!(
+        deque_diff.contains("descriptor.__set__()")
+            && focused_diff_body.contains("deque.set.missing")
+            && focused_diff_body.contains("__set__ expected 2 arguments, got 0"),
+        "deque getset descriptor CPython diff evidence must execute descriptor.__set__()"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("modern `__get__` / `__set__ expected ...` descriptor arity text")
+                && document.contains("cpython_descriptor_method_wrapper_arity_diff_subset"),
+            "docs must link modern descriptor arity text to subset and diff evidence"
+        );
+    }
+}
+
+#[test]
 fn await_non_awaitable_errors_have_modern_diff_evidence() {
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_grammar_async_await_subset");
     let diff_body = extract_rust_test_body(

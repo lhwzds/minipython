@@ -7591,10 +7591,10 @@ def replacement(self):
     return 2
 
 for label, expected, expr in [
-    ('property-get-missing', ' expected at least 1 argument, got 0', lambda: descriptor.__get__()),
-    ('property-get-too-many', ' expected at most 2 arguments, got 3', lambda: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
+    ('property-get-missing', '__get__ expected at least 1 argument, got 0', lambda: descriptor.__get__()),
+    ('property-get-too-many', '__get__ expected at most 2 arguments, got 3', lambda: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
     ('property-get-keyword', 'wrapper __get__() takes no keyword arguments', lambda: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),
-    ('property-set-missing', ' expected 2 arguments, got 0', lambda: descriptor.__set__()),
+    ('property-set-missing', '__set__ expected 2 arguments, got 0', lambda: descriptor.__set__()),
     ('property-set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: descriptor.__set__(obj=PropertyExample(), value=2)),
     ('property-delete-missing', 'expected 1 argument, got 0', lambda: descriptor.__delete__()),
     ('property-delete-keyword', 'wrapper __delete__() takes no keyword arguments', lambda: descriptor.__delete__(obj=PropertyExample())),
@@ -7627,8 +7627,8 @@ for descriptor_name, descriptor in [
     ('classmethod', classmethod(descriptor_function)),
 ]:
     for label, expected, expr in [
-        ('get-missing', ' expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),
-        ('get-too-many', ' expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
+        ('get-missing', '__get__ expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__()),
+        ('get-too-many', '__get__ expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(PropertyExample(), PropertyExample, 1)),
         ('get-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(obj=PropertyExample(), type=PropertyExample)),
         ('get-bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda descriptor=descriptor: descriptor.__get__(bad=1)),
         ('get-none-none', '__get__(None, None) is invalid', lambda descriptor=descriptor: descriptor.__get__(None, None)),
@@ -7637,6 +7637,81 @@ for descriptor_name, descriptor in [
             expr()
         except TypeError as error:
             print(descriptor_name, label, type(error).__name__, str(error), str(error) == expected)"#,
+    });
+}
+
+#[test]
+fn cpython_descriptor_method_wrapper_arity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_descr.py and Lib/test/test_collections.py descriptor arity public subset",
+        name: "descriptor-method-wrapper-arity-direct",
+        source: r#"from collections import deque, namedtuple
+
+def check(label, expected, expr):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error), str(error) == expected)
+
+class PropertyExample:
+    @property
+    def value(self):
+        return 1
+
+property_descriptor = PropertyExample.__dict__['value']
+check('property.get.missing', '__get__ expected at least 1 argument, got 0', lambda: property_descriptor.__get__())
+check('property.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: property_descriptor.__get__(PropertyExample(), PropertyExample, 1))
+check('property.set.missing', '__set__ expected 2 arguments, got 0', lambda: property_descriptor.__set__())
+check('property.set.one', '__set__ expected 2 arguments, got 1', lambda: property_descriptor.__set__(PropertyExample()))
+
+def descriptor_function(*args):
+    return args
+
+for descriptor_name, descriptor in [
+    ('staticmethod', staticmethod(descriptor_function)),
+    ('classmethod', classmethod(descriptor_function)),
+]:
+    check(descriptor_name + '.get.missing', '__get__ expected at least 1 argument, got 0', lambda descriptor=descriptor: descriptor.__get__())
+    check(descriptor_name + '.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda descriptor=descriptor: descriptor.__get__(PropertyExample(), PropertyExample, 1))
+
+check('methoddescriptor.get.missing', '__get__ expected at least 1 argument, got 0', lambda: str.join.__get__())
+check('methoddescriptor.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: str.join.__get__('', str, 1))
+
+class MethodOwner:
+    def method(self):
+        return self
+
+method_owner = MethodOwner()
+bound_method = method_owner.method
+check('boundmethod.get.missing', '__get__ expected at least 1 argument, got 0', lambda: bound_method.__get__())
+check('boundmethod.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: bound_method.__get__(method_owner, MethodOwner, object))
+
+class Base:
+    pass
+class Derived(Base):
+    pass
+
+super_descriptor = super(Derived)
+derived = Derived()
+check('super.get.missing', '__get__ expected at least 1 argument, got 0', lambda: super_descriptor.__get__())
+check('super.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: super_descriptor.__get__(derived, Derived, Base))
+
+NamedPoint = namedtuple('NamedPoint', 'x')
+named_point = NamedPoint(1)
+check('namedtuple.get.missing', '__get__ expected at least 1 argument, got 0', lambda: NamedPoint.x.__get__())
+check('namedtuple.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: NamedPoint.x.__get__(named_point, NamedPoint, 1))
+
+class SlotPoint:
+    __slots__ = ('x',)
+
+slot_point = SlotPoint()
+check('slot.get.missing', '__get__ expected at least 1 argument, got 0', lambda: SlotPoint.x.__get__())
+check('slot.get.too-many', '__get__ expected at most 2 arguments, got 3', lambda: SlotPoint.x.__get__(slot_point, SlotPoint, 1))
+check('slot.set.missing', '__set__ expected 2 arguments, got 0', lambda: SlotPoint.x.__set__())
+check('slot.set.one', '__set__ expected 2 arguments, got 1', lambda: SlotPoint.x.__set__(slot_point))
+
+deque_maxlen_descriptor = deque.__dict__['maxlen']
+check('deque.set.missing', '__set__ expected 2 arguments, got 0', lambda: deque_maxlen_descriptor.__set__())"#,
     });
 }
 
@@ -11670,8 +11745,8 @@ items = []
 list.append(items, 3)
 print(items)
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: str.join.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: str.join.__get__('', str, 1)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: str.join.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: str.join.__get__('', str, 1)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(obj='', cls=str)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: str.join.__get__(bad=1)),
     ('none-none', '__get__(None, None) is invalid', lambda: str.join.__get__(None, None)),
@@ -13384,8 +13459,8 @@ point = Point(11, 22)
 print(Point.x.__get__(point, Point))
 print(Point.x.__get__(point, None))
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(point, Point, 1)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: Point.x.__get__(point, Point, 1)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=point, type=Point)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
     ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
@@ -18937,8 +19012,8 @@ for expr in [lambda: super(1), lambda: super(C).__get__(12), lambda: super(C).__
     except TypeError as error:
         print(error.__class__.__name__)
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: s.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: s.__get__(c, C, A)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: s.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: s.__get__(c, C, A)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(obj=c, type=C)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: s.__get__(bad=1)),
     ('none-none', '__get__(None, None) is invalid', lambda: s.__get__(None, None)),
@@ -18997,8 +19072,8 @@ class Foo:
 check(repr(Foo().method), 'Foo.method', '<class')
 check(repr(Foo.method), 'Foo.method', '<class')
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: bound.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: bound.__get__(b, B, A)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: bound.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: bound.__get__(b, B, A)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: bound.__get__(obj=b, type=B)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: bound.__get__(bad=1)),
     ('none-none', '__get__(None, None) is invalid', lambda: bound.__get__(None, None)),
@@ -19073,8 +19148,8 @@ Point.x.__set__(p, 7)
 print(p.x, Point.x.__get__(p, Point))
 print(Point.x.__get__(p, None))
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=p, type=Point)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
     ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
@@ -19085,9 +19160,9 @@ for label, expected, expr in [
     except TypeError as error:
         print(label, error.__class__.__name__, str(error), str(error) == expected)
 for label, expected, expr in [
-    ('set-missing', ' expected 2 arguments, got 0', lambda: Point.x.__set__()),
-    ('set-one', ' expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
-    ('set-too-many', ' expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
+    ('set-missing', '__set__ expected 2 arguments, got 0', lambda: Point.x.__set__()),
+    ('set-one', '__set__ expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
+    ('set-too-many', '__set__ expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
     ('set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(obj=p, value=1)),
     ('set-bad-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(bad=1)),
     ('delete-missing', 'expected 1 argument, got 0', lambda: Point.x.__delete__()),

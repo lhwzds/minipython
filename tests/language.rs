@@ -6986,8 +6986,8 @@ Point.x.__set__(p, 7)
 print(p.x, Point.x.__get__(p, Point))
 print(Point.x.__get__(p, None))
 for label, expected, expr in [
-    ('missing', ' expected at least 1 argument, got 0', lambda: Point.x.__get__()),
-    ('too-many', ' expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
+    ('missing', '__get__ expected at least 1 argument, got 0', lambda: Point.x.__get__()),
+    ('too-many', '__get__ expected at most 2 arguments, got 3', lambda: Point.x.__get__(p, Point, 1)),
     ('keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(obj=p, type=Point)),
     ('bad-keyword', 'wrapper __get__() takes no keyword arguments', lambda: Point.x.__get__(bad=1)),
     ('none-only', '__get__(None, None) is invalid', lambda: Point.x.__get__(None)),
@@ -6998,9 +6998,9 @@ for label, expected, expr in [
     except TypeError as error:
         print(label, error.__class__.__name__, str(error), str(error) == expected)
 for label, expected, expr in [
-    ('set-missing', ' expected 2 arguments, got 0', lambda: Point.x.__set__()),
-    ('set-one', ' expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
-    ('set-too-many', ' expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
+    ('set-missing', '__set__ expected 2 arguments, got 0', lambda: Point.x.__set__()),
+    ('set-one', '__set__ expected 2 arguments, got 1', lambda: Point.x.__set__(p)),
+    ('set-too-many', '__set__ expected 2 arguments, got 3', lambda: Point.x.__set__(p, 1, 2)),
     ('set-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(obj=p, value=1)),
     ('set-bad-keyword', 'wrapper __set__() takes no keyword arguments', lambda: Point.x.__set__(bad=1)),
     ('delete-missing', 'expected 1 argument, got 0', lambda: Point.x.__delete__()),
@@ -7108,15 +7108,15 @@ print(d.x)"#
             "<member 'x' of 'Point' objects>".to_string(),
             "7 7".to_string(),
             "7".to_string(),
-            "missing TypeError  expected at least 1 argument, got 0 True".to_string(),
-            "too-many TypeError  expected at most 2 arguments, got 3 True".to_string(),
+            "missing TypeError __get__ expected at least 1 argument, got 0 True".to_string(),
+            "too-many TypeError __get__ expected at most 2 arguments, got 3 True".to_string(),
             "keyword TypeError wrapper __get__() takes no keyword arguments True".to_string(),
             "bad-keyword TypeError wrapper __get__() takes no keyword arguments True".to_string(),
             "none-only TypeError __get__(None, None) is invalid True".to_string(),
             "none-none TypeError __get__(None, None) is invalid True".to_string(),
-            "set-missing TypeError  expected 2 arguments, got 0 True".to_string(),
-            "set-one TypeError  expected 2 arguments, got 1 True".to_string(),
-            "set-too-many TypeError  expected 2 arguments, got 3 True".to_string(),
+            "set-missing TypeError __set__ expected 2 arguments, got 0 True".to_string(),
+            "set-one TypeError __set__ expected 2 arguments, got 1 True".to_string(),
+            "set-too-many TypeError __set__ expected 2 arguments, got 3 True".to_string(),
             "set-keyword TypeError wrapper __set__() takes no keyword arguments True".to_string(),
             "set-bad-keyword TypeError wrapper __set__() takes no keyword arguments True"
                 .to_string(),
