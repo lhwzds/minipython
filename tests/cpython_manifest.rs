@@ -13516,6 +13516,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_classmethod_metadata_subset",
             "cpython_property_abstractmethod_subset",
             "cpython_property_name_metadata_subset",
+            "cpython_property_doc_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -13567,6 +13568,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_classmethod_metadata_diff_subset",
         "cpython_property_abstractmethod_diff_subset",
         "cpython_property_name_metadata_diff_subset",
+        "cpython_property_doc_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -14007,6 +14009,62 @@ fn property_name_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("renamed_func")
                 && document.contains("fallback"),
             "property __name__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_doc_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_doc_metadata_subset(",
+        "p.__doc__",
+        "f.__doc__ = 'changed f'",
+        "p.setter(s).__doc__",
+        "p.deleter(d).__doc__",
+        "p.__doc__ = 'manual'",
+        "p.__doc__ = 123",
+        "del p.__doc__",
+        "property(f, None, None, None).__doc__",
+        "property(f, doc='explicit').getter(g).__doc__",
+        "p.getter(g).__doc__",
+        "'__doc__' in dir(p)",
+        "getter-derived documentation",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property __doc__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_property_doc_metadata_diff_subset");
+    for required in [
+        "CPython public property __doc__ metadata behavior",
+        "p.__doc__",
+        "f.__doc__ = 'changed f'",
+        "p.setter(s).__doc__",
+        "p.deleter(d).__doc__",
+        "p.__doc__ = 'manual'",
+        "p.__doc__ = 123",
+        "del p.__doc__",
+        "property(f, None, None, None).__doc__",
+        "property(f, doc='explicit').getter(g).__doc__",
+        "p.getter(g).__doc__",
+        "'__doc__' in dir(p)",
+    ] {
+        assert!(
+            body.contains(required),
+            "property __doc__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_doc_metadata_subset")
+                && document.contains("cpython_property_doc_metadata_diff_subset")
+                && document.contains("property.__doc__")
+                && document.contains("getter-derived")
+                && document.contains("explicit"),
+            "property __doc__ evidence must be documented in coverage and migration notes"
         );
     }
 }

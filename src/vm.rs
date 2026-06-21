@@ -24,10 +24,10 @@ use crate::stdlib::{
     call_callable, call_chr, call_classmethod_constructor, call_code_lines, call_code_positions,
     call_collections_count_elements, call_dis_get_instructions, call_divmod_builtin,
     call_hash_builtin, call_hashable_hash, call_id, call_import_builtin, call_int_base_builtin,
-    call_len_builtin, call_max_builtin, call_min_builtin, call_ord, call_property_constructor,
-    call_repr_builtin, call_staticmethod_constructor, call_sum_builtin,
-    call_sys_get_int_max_str_digits, call_sys_getdefaultencoding, call_sys_is_finalizing,
-    call_sys_set_int_max_str_digits, call_types_coroutine, create_module, import_from,
+    call_len_builtin, call_max_builtin, call_min_builtin, call_ord, call_repr_builtin,
+    call_staticmethod_constructor, call_sum_builtin, call_sys_get_int_max_str_digits,
+    call_sys_getdefaultencoding, call_sys_is_finalizing, call_sys_set_int_max_str_digits,
+    call_types_coroutine, create_module, import_from,
 };
 use crate::value::{
     ByteArrayRef, BytesIORef, COMPLEX_SUBCLASS_STORAGE_FIELD, CodeLineSpan, CodeMode,
@@ -9685,7 +9685,9 @@ impl Vm {
             Value::Builtin(name) if name == "classmethod" => {
                 call_classmethod_constructor(args, keywords)
             }
-            Value::Builtin(name) if name == "property" => call_property_constructor(args, keywords),
+            Value::Builtin(name) if name == "property" => {
+                self.call_property_constructor(args, keywords)
+            }
             Value::Builtin(name) if name == "object.__init__" => {
                 if !keywords.is_empty() {
                     return Err(
@@ -15804,6 +15806,59 @@ impl Vm {
         Ok(Value::None)
     }
 
+    fn call_property_constructor(
+        &mut self,
+        args: Vec<Value>,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Value, String> {
+        if args.len() > 4 {
+            return Err(format!(
+                "property() expected at most 4 arguments, got {}",
+                args.len()
+            ));
+        }
+
+        let mut fget = None;
+        let mut fset = None;
+        let mut fdel = None;
+        let mut doc = None;
+
+        for (index, value) in args.into_iter().enumerate() {
+            match index {
+                0 => fget = Some(value),
+                1 => fset = Some(value),
+                2 => fdel = Some(value),
+                3 => doc = Some(value),
+                _ => unreachable!("property positional arity is checked above"),
+            }
+        }
+
+        for (keyword, value) in keywords {
+            match keyword.as_str() {
+                "fget" => set_property_constructor_slot("property", "fget", &mut fget, value)?,
+                "fset" => set_property_constructor_slot("property", "fset", &mut fset, value)?,
+                "fdel" => set_property_constructor_slot("property", "fdel", &mut fdel, value)?,
+                "doc" => set_property_constructor_slot("property", "doc", &mut doc, value)?,
+                _ => {
+                    return Err(format!(
+                        "property() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+            }
+        }
+
+        let (doc, doc_from_getter) = property_constructor_doc(doc, fget.as_ref())?;
+
+        Ok(Value::Property {
+            fget: optional_property_part(fget),
+            fset: optional_property_part(fset),
+            fdel: optional_property_part(fdel),
+            doc,
+            doc_from_getter,
+            name: Rc::new(RefCell::new(None)),
+        })
+    }
+
     fn call_property_method(
         &mut self,
         name: &str,
@@ -15821,6 +15876,7 @@ impl Vm {
             fset,
             fdel,
             doc,
+            doc_from_getter,
             name: property_name,
         } = property.clone()
         else {
@@ -15843,11 +15899,13 @@ impl Vm {
                         rest.len()
                     ));
                 };
+                let doc = derived_property_doc(doc_from_getter, Some(getter), &doc)?;
                 Ok(Value::Property {
                     fget: Some(Box::new(getter.clone())),
                     fset,
                     fdel,
                     doc,
+                    doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
@@ -15863,11 +15921,13 @@ impl Vm {
                         rest.len()
                     ));
                 };
+                let doc = derived_property_doc(doc_from_getter, fget.as_deref(), &doc)?;
                 Ok(Value::Property {
                     fget,
                     fset: Some(Box::new(setter.clone())),
                     fdel,
                     doc,
+                    doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
@@ -15883,11 +15943,13 @@ impl Vm {
                         rest.len()
                     ));
                 };
+                let doc = derived_property_doc(doc_from_getter, fget.as_deref(), &doc)?;
                 Ok(Value::Property {
                     fget,
                     fset,
                     fdel: Some(Box::new(deleter.clone())),
                     doc,
+                    doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
                 })
             }
@@ -15912,6 +15974,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        doc_from_getter,
                         name: property_name,
                     },
                     rest[0].clone(),
@@ -15935,6 +15998,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        doc_from_getter,
                         name: property_name,
                     },
                     object.clone(),
@@ -15960,6 +16024,7 @@ impl Vm {
                         fset,
                         fdel,
                         doc,
+                        doc_from_getter,
                         name: property_name,
                     },
                     object.clone(),
@@ -48138,12 +48203,14 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             fset,
             fdel,
             doc,
+            doc_from_getter,
             name,
         } => Value::Property {
             fget: fget.map(|value| Box::new(attach_owner_class(*value, class))),
             fset: fset.map(|value| Box::new(attach_owner_class(*value, class))),
             fdel: fdel.map(|value| Box::new(attach_owner_class(*value, class))),
             doc,
+            doc_from_getter,
             name,
         },
         Value::CachedProperty {
@@ -53662,6 +53729,61 @@ fn refresh_singledispatch_registry_attr(dispatcher: &Value) {
     }
 }
 
+fn set_property_constructor_slot(
+    function_name: &str,
+    slot_name: &str,
+    slot: &mut Option<Value>,
+    value: Value,
+) -> Result<(), String> {
+    if slot.is_some() {
+        return Err(format!(
+            "{function_name}() got multiple values for argument '{slot_name}'"
+        ));
+    }
+    *slot = Some(value);
+    Ok(())
+}
+
+fn optional_property_part(value: Option<Value>) -> Option<Box<Value>> {
+    match value {
+        Some(Value::None) | None => None,
+        Some(value) => Some(Box::new(value)),
+    }
+}
+
+fn property_constructor_doc(
+    explicit_doc: Option<Value>,
+    fget: Option<&Value>,
+) -> Result<(Rc<RefCell<Option<Value>>>, bool), String> {
+    match explicit_doc {
+        Some(Value::None) | None => Ok((Rc::new(RefCell::new(property_getter_doc(fget)?)), true)),
+        Some(doc) => Ok((Rc::new(RefCell::new(Some(doc))), false)),
+    }
+}
+
+fn property_getter_doc(fget: Option<&Value>) -> Result<Option<Value>, String> {
+    let Some(fget) = fget else {
+        return Ok(None);
+    };
+    match load_attribute(fget.clone(), "__doc__") {
+        Ok(Value::None) => Ok(None),
+        Ok(value) => Ok(Some(value)),
+        Err(message) if message.starts_with("AttributeError:") => Ok(None),
+        Err(message) => Err(message),
+    }
+}
+
+fn derived_property_doc(
+    doc_from_getter: bool,
+    fget: Option<&Value>,
+    current_doc: &Rc<RefCell<Option<Value>>>,
+) -> Result<Rc<RefCell<Option<Value>>>, String> {
+    if doc_from_getter {
+        return Ok(Rc::new(RefCell::new(property_getter_doc(fget)?)));
+    }
+    Ok(Rc::new(RefCell::new(current_doc.borrow().clone())))
+}
+
 fn property_is_abstract_method(
     fget: &Option<Box<Value>>,
     fset: &Option<Box<Value>>,
@@ -54343,12 +54465,13 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             fset,
             fdel,
             doc,
+            doc_from_getter,
             name: property_name,
         } => match name {
             "fget" => Ok(fget.map(|value| *value).unwrap_or(Value::None)),
             "fset" => Ok(fset.map(|value| *value).unwrap_or(Value::None)),
             "fdel" => Ok(fdel.map(|value| *value).unwrap_or(Value::None)),
-            "__doc__" => Ok(doc.map(|value| *value).unwrap_or(Value::None)),
+            "__doc__" => Ok(doc.borrow().clone().unwrap_or(Value::None)),
             "__isabstractmethod__" => property_is_abstract_method(&fget, &fset, &fdel),
             "__name__" => property_name_value(&fget, &property_name),
             "getter" | "setter" | "deleter" | "__get__" | "__set__" | "__delete__" => {
@@ -54359,6 +54482,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         fset,
                         fdel,
                         doc,
+                        doc_from_getter,
                         name: property_name,
                     }),
                     identity: Rc::new(()),
@@ -57285,6 +57409,10 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             *property_name.borrow_mut() = Some(value);
             Ok(())
         }
+        Value::Property { doc, .. } if name == "__doc__" => {
+            *doc.borrow_mut() = Some(value);
+            Ok(())
+        }
         Value::WeakProxy { target, .. } => store_attribute(*target, name, value),
         Value::BytesIO(bytes_io) => {
             bytes_io
@@ -57569,6 +57697,10 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             ..
         } if name == "__name__" => {
             *property_name.borrow_mut() = None;
+            Ok(())
+        }
+        Value::Property { doc, .. } if name == "__doc__" => {
+            *doc.borrow_mut() = None;
             Ok(())
         }
         Value::WeakProxy { target, .. } => delete_attribute(*target, name),

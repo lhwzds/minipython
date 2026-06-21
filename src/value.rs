@@ -1011,7 +1011,8 @@ pub enum Value {
         fget: Option<Box<Value>>,
         fset: Option<Box<Value>>,
         fdel: Option<Box<Value>>,
-        doc: Option<Box<Value>>,
+        doc: Rc<RefCell<Option<Value>>>,
+        doc_from_getter: bool,
         name: Rc<RefCell<Option<Value>>>,
     },
     MemberDescriptor {
@@ -3623,6 +3624,7 @@ impl PartialEq for Value {
                     fset: left_fset,
                     fdel: left_fdel,
                     doc: left_doc,
+                    doc_from_getter: left_doc_from_getter,
                     name: left_name,
                 },
                 Value::Property {
@@ -3630,13 +3632,15 @@ impl PartialEq for Value {
                     fset: right_fset,
                     fdel: right_fdel,
                     doc: right_doc,
+                    doc_from_getter: right_doc_from_getter,
                     name: right_name,
                 },
             ) => {
                 left_fget == right_fget
                     && left_fset == right_fset
                     && left_fdel == right_fdel
-                    && left_doc == right_doc
+                    && *left_doc.borrow() == *right_doc.borrow()
+                    && left_doc_from_getter == right_doc_from_getter
                     && *left_name.borrow() == *right_name.borrow()
             }
             (

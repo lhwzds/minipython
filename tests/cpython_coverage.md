@@ -188,6 +188,7 @@ Recent runtime migration notes:
   `cpython_classmethod_metadata_diff_subset`,
   `cpython_property_abstractmethod_diff_subset`,
   `cpython_property_name_metadata_diff_subset`,
+  `cpython_property_doc_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -5508,6 +5509,13 @@ surface.
 `property.__name__` metadata: fallback to `fget.__name__`, dynamic getter-name
 updates such as `renamed_func`, arbitrary assigned values, deletion back to the
 fallback state, copied explicit values through `setter()`, and `dir()`
+visibility.
+`cpython_property_doc_metadata_subset` and direct CPython evidence in
+`cpython_property_doc_metadata_diff_subset` cover public `property.__doc__`
+metadata: getter-derived default docs for omitted and `None` doc arguments,
+explicit doc values, arbitrary assigned values, deletion to `None`, derived
+`getter()` / `setter()` / `deleter()` doc recomputation for getter-derived
+properties, explicit-doc preservation through `getter()`, and `dir()`
 visibility.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and

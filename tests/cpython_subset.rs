@@ -25428,6 +25428,30 @@ fn cpython_property_name_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public property.__doc__ metadata. Default and doc=None
+// values are getter-derived, assigned values are arbitrary, deletion resets the
+// readable slot to None, and derived properties recompute getter docs only when
+// the original property was created with getter-derived documentation.
+#[test]
+fn cpython_property_doc_metadata_subset() {
+    assert_output(
+        "def f(self):\n    'doc f'\n    return 1\ndef g(self):\n    'doc g'\n    return 2\ndef s(self, value):\n    pass\ndef d(self):\n    pass\np = property(f)\nprint(p.__doc__)\nf.__doc__ = 'changed f'\nprint(p.__doc__, p.setter(s).__doc__, p.deleter(d).__doc__)\np.__doc__ = 'manual'\nprint(p.__doc__, p.setter(s).__doc__)\np.__doc__ = 123\nprint(p.__doc__, type(p.__doc__).__name__, p.setter(s).__doc__)\ndel p.__doc__\nprint(p.__doc__ is None, p.setter(s).__doc__)\nprint(property().__doc__ is None)\nprint(property(f, None, None, None).__doc__)\nprint(property(f, doc='explicit').__doc__, property(f, doc=123).__doc__)\nprint(property(f, doc='explicit').getter(g).__doc__)\nprint(p.getter(g).__doc__)\nprint('__doc__' in dir(p))",
+        &[
+            "doc f",
+            "doc f changed f changed f",
+            "manual changed f",
+            "123 int changed f",
+            "True changed f",
+            "True",
+            "changed f",
+            "explicit 123",
+            "explicit",
+            "doc g",
+            "True",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
 #[test]
 fn cpython_builtin_construct_singletons_subset() {

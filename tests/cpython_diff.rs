@@ -7148,6 +7148,40 @@ print('__name__' in dir(p))"#,
 }
 
 #[test]
+fn cpython_property_doc_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property __doc__ metadata behavior",
+        name: "property-doc-metadata",
+        source: r#"def f(self):
+    'doc f'
+    return 1
+def g(self):
+    'doc g'
+    return 2
+def s(self, value):
+    pass
+def d(self):
+    pass
+p = property(f)
+print(p.__doc__)
+f.__doc__ = 'changed f'
+print(p.__doc__, p.setter(s).__doc__, p.deleter(d).__doc__)
+p.__doc__ = 'manual'
+print(p.__doc__, p.setter(s).__doc__)
+p.__doc__ = 123
+print(p.__doc__, type(p.__doc__).__name__, p.setter(s).__doc__)
+del p.__doc__
+print(p.__doc__ is None, p.setter(s).__doc__)
+print(property().__doc__ is None)
+print(property(f, None, None, None).__doc__)
+print(property(f, doc='explicit').__doc__, property(f, doc=123).__doc__)
+print(property(f, doc='explicit').getter(g).__doc__)
+print(p.getter(g).__doc__)
+print('__doc__' in dir(p))"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",
