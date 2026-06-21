@@ -55,6 +55,8 @@ fn user_class_new_staticmethod_docs_cover_core_runtime() {
         "new only",
         "@classmethod",
         "classmethod-new",
+        "class FloatNew(float):",
+        "return float.__new__(cls, value + 1)",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -70,6 +72,9 @@ fn user_class_new_staticmethod_docs_cover_core_runtime() {
         "\"C init D\"",
         "\"new only 9\"",
         "\"classmethod-new TypeError\"",
+        "\"float-new FloatNew 1.5\"",
+        "\"float-init FloatNew 1.5\"",
+        "\"FloatNew 2.5 True 0x1.4000000000000p+1\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -83,6 +88,7 @@ fn user_class_new_staticmethod_docs_cover_core_runtime() {
             subset_name,
             "user-defined `__new__` construction",
             "automatic `staticmethod` wrapping for class-body `__new__`",
+            "builtin-subclass `__new__` staticmethod path",
             "`__init__` only when `__new__` returns a matching instance",
         ] {
             assert!(

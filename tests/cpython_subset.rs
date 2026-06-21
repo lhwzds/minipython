@@ -26160,7 +26160,15 @@ class G:
 try:
     G()
 except Exception as error:
-    print('classmethod-new', type(error).__name__)"#,
+    print('classmethod-new', type(error).__name__)
+class FloatNew(float):
+    def __new__(cls, value):
+        print('float-new', cls.__name__, value)
+        return float.__new__(cls, value + 1)
+    def __init__(self, value):
+        print('float-init', type(self).__name__, value)
+float_value = FloatNew(1.5)
+print(type(float_value).__name__, float_value, isinstance(float_value, float), float_value.hex())"#,
         &[
             "staticmethod",
             "function",
@@ -26173,6 +26181,9 @@ except Exception as error:
             "new only 9",
             "E",
             "classmethod-new TypeError",
+            "float-new FloatNew 1.5",
+            "float-init FloatNew 1.5",
+            "FloatNew 2.5 True 0x1.4000000000000p+1",
         ],
     );
 }

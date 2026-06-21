@@ -13393,7 +13393,10 @@ impl Vm {
             .get(method_name)
             .cloned()
             .ok_or_else(|| format!("type object has no attribute '{method_name}'"))?;
-        self.call_value_with_keywords(bind_method(new, class.clone()), args, keywords)
+        let mut new_args = vec![class.clone()];
+        new_args.extend(args);
+        let new = class_new_callable(new, class.clone());
+        self.call_value_with_keywords(new, new_args, keywords)
     }
 
     fn call_simple_namespace_subclass(
