@@ -1448,11 +1448,62 @@ for separators in [iter((',', ':')), SepIter(), SepGen()]:
     print(json.dumps({'b': [1, 2], 'a': 3}, separators=separators, sort_keys=True))
 print(json.dumps({'é': ['𝄠', {'b': 1, 'a': 2}]}, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
 # CPython oracle text: not enough values to unpack (expected 2, got 0); too many values to unpack (expected 2); cannot unpack non-iterable int object; make_encoder() argument 6 must be str, not int; make_encoder() argument 5 must be str, not int; make_encoder() argument 5 must be str, not None
-for separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', 7, object(), (1, ':'), (',', 1), (None, ':'), (',', None), (None, None), (False, ':'), (',', False), (False, False)]:
+for separators in [(), [], (',',), [','], 'bad', 7, object(), (1, ':'), (',', 1), (None, ':'), (',', None), (None, None), (False, ':'), (',', False), (False, False)]:
     try:
         json.dumps(value, separators=separators)
     except Exception as error:
         print(type(error).__name__, isinstance(error, (TypeError, ValueError)), str(error))"#,
+    });
+}
+
+#[test]
+fn cpython_json_dumps_separators_too_many_exact_sequence_diff_subset() {
+    let oracle = run_cpython(
+        r#"import json
+try:
+    json.dumps({'a': [1]}, separators=(',', ':', 'x'))
+except Exception as error:
+    print(str(error))"#,
+    )
+    .expect("failed to probe CPython json separator exact-sequence too-many behavior");
+    let stdout = String::from_utf8_lossy(&oracle.stdout);
+    if !stdout.contains("too many values to unpack (expected 2, got 3)") {
+        eprintln!(
+            "skipping json separator exact-sequence too-many diff: CPython oracle uses legacy separator unpack text"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps separators exact sequence unpack subset",
+        name: "json-dumps-separators-too-many-exact-sequence",
+        source: r#"import json
+class SepList(list):
+    pass
+class SepTuple(tuple):
+    pass
+class SepIter:
+    def __iter__(self):
+        return iter((',', ':', 'x'))
+class SepGen:
+    def __iter__(self):
+        yield ','
+        yield ':'
+        yield 'x'
+for label, separators in [
+    ('tuple', (',', ':', 'x')),
+    ('list', [',', ':', 'x']),
+    ('tuple-sub', SepTuple((',', ':', 'x'))),
+    ('list-sub', SepList([',', ':', 'x'])),
+    ('string', 'bad'),
+    ('iter', iter((',', ':', 'x'))),
+    ('custom', SepIter()),
+    ('gen', SepGen()),
+]:
+    try:
+        json.dumps({'a': [1]}, separators=separators)
+    except Exception as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 

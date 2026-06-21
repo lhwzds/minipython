@@ -60614,16 +60614,26 @@ fn json_dumps_apply_separators(
     if matches!(value, Value::None) {
         return Ok(());
     }
-    let values = match value {
-        Value::Tuple(values) => values.as_ref().clone(),
-        Value::List(values) => values.borrow().clone(),
-        value if tuple_subclass_items(value).is_some() => tuple_subclass_items(value)
-            .expect("tuple subclass items exist after guard")
-            .to_vec(),
-        value if list_subclass_storage(value).is_some() => list_subclass_storage(value)
-            .expect("list subclass storage exists after guard")
-            .borrow()
-            .clone(),
+    let (values, exact_sequence_len) = match value {
+        Value::Tuple(values) => (values.as_ref().clone(), Some(values.len())),
+        Value::List(values) => {
+            let values = values.borrow().clone();
+            let len = values.len();
+            (values, Some(len))
+        }
+        value if tuple_subclass_items(value).is_some() => (
+            tuple_subclass_items(value)
+                .expect("tuple subclass items exist after guard")
+                .to_vec(),
+            None,
+        ),
+        value if list_subclass_storage(value).is_some() => (
+            list_subclass_storage(value)
+                .expect("list subclass storage exists after guard")
+                .borrow()
+                .clone(),
+            None,
+        ),
         value => vm
             .collect_iterable_values_propagating(value.clone())
             .map_err(|error| {
@@ -60635,13 +60645,18 @@ fn json_dumps_apply_separators(
                 } else {
                     error
                 }
-            })?,
+            })
+            .map(|values| (values, None))?,
     };
     let [item_separator, key_separator] = values.as_slice() else {
         let got = values.len();
         return if values.len() < 2 {
             Err(format!(
                 "ValueError: not enough values to unpack (expected 2, got {got})"
+            ))
+        } else if let Some(got) = exact_sequence_len {
+            Err(format!(
+                "ValueError: too many values to unpack (expected 2, got {got})"
             ))
         } else {
             Err("ValueError: too many values to unpack (expected 2)".to_string())

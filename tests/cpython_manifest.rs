@@ -7235,7 +7235,7 @@ fn json_dumps_options_diff_covers_subset_surface() {
                 "separators in [None, (',', ':'), [',', ': ']",
                 "separators in [iter((',', ':')), SepIter(), SepGen()]",
                 "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
-                "separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad', 7, object(), (1, ':'), (',', 1)]",
+                "separators in [(), [], (',',), [',']",
                 "not enough values to unpack (expected 2, got 0)",
                 "too many values to unpack (expected 2)",
                 "cannot unpack non-iterable int object",
@@ -7435,11 +7435,17 @@ fn json_dumps_ensure_ascii_sort_keys_docs_cover_option_boundaries() {
 #[test]
 fn json_dumps_separators_docs_cover_option_boundaries() {
     let diff_name = "cpython_json_dumps_separators_diff_subset";
+    let exact_sequence_diff_name =
+        "cpython_json_dumps_separators_too_many_exact_sequence_diff_subset";
     let subset_name = "cpython_json_dumps_separators_subset";
 
     assert!(
         CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
         "json dumps separators CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {exact_sequence_diff_name}(")),
+        "json dumps separators exact sequence CPython diff evidence must exist"
     );
     assert!(
         CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
@@ -7462,6 +7468,7 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
         "separators in [iter((',', ':')), SepIter(), SepGen()]",
         "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
         "not enough values to unpack (expected 2, got 0)",
+        "too many values to unpack (expected 2, got 3)",
         "too many values to unpack (expected 2)",
         "cannot unpack non-iterable int object",
         "make_encoder() argument 6 must be str, not int",
@@ -7490,8 +7497,10 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
-            document.contains(diff_name) && document.contains(subset_name),
-            "json docs must link `{diff_name}` to `{subset_name}`"
+            document.contains(diff_name)
+                && document.contains(exact_sequence_diff_name)
+                && document.contains(subset_name),
+            "json docs must link `{diff_name}` and `{exact_sequence_diff_name}` to `{subset_name}`"
         );
         for required in [
             "`separators` unpacking",
@@ -7499,7 +7508,7 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
             "str-subclass separator `__str__` conversion and exception propagation",
             "tuple iterators, custom iterables, and generators",
             "compact non-ASCII rendering with `ensure_ascii=False` and `sort_keys=True`",
-            "unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences",
+            "unpack length `ValueError` text for 0-, 1-, exact list/tuple 3-item, and generic 3-item separator sequences",
             "non-iterable separator `TypeError` text",
             "item/key separator element `TypeError` text",
             "`None` separator spelling and key-separator precedence when both elements are invalid",
