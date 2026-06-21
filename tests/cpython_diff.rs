@@ -7033,6 +7033,32 @@ print(callable(wrapped_obj), wrapped_obj(8), wrapped_obj.__func__ is callable_ob
 }
 
 #[test]
+fn cpython_staticmethod_metadata_diff_subset() {
+    let probe = run_cpython("print(hasattr(staticmethod(lambda: None), '__wrapped__'))")
+        .expect("failed to probe CPython staticmethod metadata support");
+    if !probe.status.success() || String::from_utf8_lossy(&probe.stdout).trim() != "True" {
+        eprintln!(
+            "skipping staticmethod metadata diff: CPython oracle lacks wrapped staticmethod metadata"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public staticmethod metadata behavior",
+        name: "staticmethod-metadata",
+        source: r#"def sample(x: 'int') -> 'int':
+    'docstring'
+    return x
+wrapped = staticmethod(sample)
+print(wrapped.__wrapped__ is sample, wrapped.__func__ is sample)
+print(wrapped.__name__, wrapped.__qualname__, wrapped.__module__, wrapped.__doc__)
+print(wrapped.__annotations__['x'], wrapped.__annotations__['return'])
+names = ['__wrapped__', '__func__', '__name__', '__qualname__', '__module__', '__doc__', '__annotations__']
+print([name in dir(wrapped) for name in names])"#,
+    });
+}
+
+#[test]
 fn cpython_builtin_singleton_construction_and_attributes_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons / ::test_singleton_attribute_access",

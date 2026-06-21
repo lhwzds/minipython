@@ -184,6 +184,7 @@ Recent runtime migration notes:
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
+  `cpython_staticmethod_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -5482,6 +5483,12 @@ current public `staticmethod` object callability, direct forwarding to the
 wrapped callable with positional and keyword arguments, preserved `__func__`,
 and unchanged descriptor access through classes and instances. The diff skips
 older CPython oracles whose `staticmethod` objects still report non-callable.
+`cpython_staticmethod_metadata_subset` and gated direct CPython evidence in
+`cpython_staticmethod_metadata_diff_subset` cover the wrapped callable metadata
+that current CPython exposes on staticmethod objects: `__wrapped__`,
+`__func__`, `__name__`, `__qualname__`, `__module__`, `__doc__`,
+`__annotations__`, and `dir()` visibility for that supported metadata. Custom
+staticmethod `__dict__` mutation remains outside this focused metadata slice.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin
