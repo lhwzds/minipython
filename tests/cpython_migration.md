@@ -11193,7 +11193,8 @@ Completed in the CPython collections manifest expansion pass:
   3.10+ `pairwise()` behavior from drifting back into a single ambiguous
   subset. Follow-up evidence now pins exact no-keyword TypeError text for
   `chain()`, `chain.from_iterable()`, `islice()`, and the supported
-  `pairwise()` constructor.
+  `pairwise()` constructor, plus modern unexpected-keyword diagnostics for
+  `count()` and `repeat()`.
 - Added `cpython_itertools_product_subset` and
   `cpython_itertools_product_diff_subset`, extending the pure in-memory
   `itertools` surface with `product()` over eager pools, generator inputs,

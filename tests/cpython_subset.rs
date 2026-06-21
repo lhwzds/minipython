@@ -39427,11 +39427,11 @@ fn cpython_itertools_keyword_error_subset() {
             "show('permutations-extra', lambda: itertools.permutations([1], 1, r=2))",
         ),
         &[
-            "count-badkw TypeError 'foo' is an invalid keyword argument for count()",
+            "count-badkw TypeError count() got an unexpected keyword argument 'foo'",
             "count-dup-start TypeError argument for count() given by name ('start') and position (1)",
             "count-dup-step TypeError count() takes at most 2 arguments (3 given)",
             "count-many-kw TypeError count() takes at most 2 keyword arguments (3 given)",
-            "repeat-badkw TypeError 'bad' is an invalid keyword argument for repeat()",
+            "repeat-badkw TypeError repeat() got an unexpected keyword argument 'bad'",
             "repeat-many-kw TypeError repeat() takes at most 2 keyword arguments (3 given)",
             "repeat-dup-object TypeError argument for repeat() given by name ('object') and position (1)",
             "repeat-dup-times TypeError repeat() takes at most 2 arguments (3 given)",

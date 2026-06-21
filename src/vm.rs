@@ -24805,7 +24805,7 @@ impl Vm {
         for (name, value) in keywords {
             let Some(index) = names.iter().position(|candidate| *candidate == name) else {
                 return Err(format!(
-                    "TypeError: '{name}' is an invalid keyword argument for count()"
+                    "TypeError: count() got an unexpected keyword argument '{name}'"
                 ));
             };
             if values[index].is_some() {
@@ -24868,7 +24868,7 @@ impl Vm {
         for (name, value) in keywords {
             let Some(index) = names.iter().position(|candidate| *candidate == name) else {
                 return Err(format!(
-                    "TypeError: '{name}' is an invalid keyword argument for repeat()"
+                    "TypeError: repeat() got an unexpected keyword argument '{name}'"
                 ));
             };
             if values[index].is_some() {

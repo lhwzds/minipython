@@ -5916,6 +5916,8 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         "itertools.compress()",
         "itertools.compress([1])",
         "itertools.compress([1], data=[])",
+        "count() got an unexpected keyword argument 'foo'",
+        "repeat() got an unexpected keyword argument 'bad'",
         "compress() missing required argument 'data' (pos 1)",
         "compress() missing required argument 'selectors' (pos 2)",
         "itertools.groupby()",
