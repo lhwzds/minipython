@@ -77429,9 +77429,10 @@ fn validate_match_class_arguments(
             0
         };
         if positional_count > max_positional {
-            return Err(format!(
-                "{name}() accepts {max_positional} positional sub-pattern{}",
-                if max_positional == 1 { "" } else { "s" }
+            return Err(match_class_positional_count_error(
+                name,
+                max_positional,
+                positional_count,
             ));
         }
         return Ok(());
@@ -77474,13 +77475,17 @@ fn validate_match_class_arguments(
 
     let Some(match_args) = find_class_attr(attrs, bases, "__match_args__") else {
         if positional_count > 0 {
-            return Err(format!("{name}() accepts 0 positional sub-patterns"));
+            return Err(match_class_positional_count_error(
+                name,
+                0,
+                positional_count,
+            ));
         }
         return Ok(());
     };
 
     let Value::Tuple(items) = match_args else {
-        return Err(format!("{name}.__match_args__ must be a tuple"));
+        return Err(match_class_match_args_tuple_error(name, &match_args));
     };
 
     if positional_count > items.len() {
@@ -77537,9 +77542,10 @@ fn load_match_class_positional(
         } else {
             0
         };
-        return Err(format!(
-            "{name}() accepts {max_positional} positional sub-pattern{}",
-            if max_positional == 1 { "" } else { "s" }
+        return Err(match_class_positional_count_error(
+            name,
+            max_positional,
+            index + 1,
         ));
     }
 
@@ -77573,7 +77579,7 @@ fn match_class_positional_attr_name(class: &Value, index: usize) -> Result<Optio
     };
 
     let Value::Tuple(items) = match_args else {
-        return Err(format!("{name}.__match_args__ must be a tuple"));
+        return Err(match_class_match_args_tuple_error(name, &match_args));
     };
 
     if index >= items.len() {
@@ -77592,6 +77598,20 @@ fn match_class_positional_attr_name(class: &Value, index: usize) -> Result<Optio
             "{name}.__match_args__ elements must be strings, got {value}"
         )),
     }
+}
+
+fn match_class_positional_count_error(name: &str, max_positional: usize, given: usize) -> String {
+    format!(
+        "{name}() accepts {max_positional} positional sub-pattern{} ({given} given)",
+        if max_positional == 1 { "" } else { "s" }
+    )
+}
+
+fn match_class_match_args_tuple_error(name: &str, value: &Value) -> String {
+    format!(
+        "{name}.__match_args__ must be a tuple (got {})",
+        type_name(value)
+    )
 }
 
 fn load_match_attribute(object: Value, name: &str) -> Result<Option<Value>, String> {

@@ -3245,8 +3245,9 @@ Completed in the match class-pattern runtime TypeError pass:
   match-self builtins such as `int` and `str` from zero-positional builtins such
   as `range`, `slice`, `object`, `type`, and exception classes.
 - Migrated CPython `Lib/test/test_patma.py` TypeError semantics for
-  `range(10)`, non-tuple `__match_args__` values such as `"XYZ"` and
-  `["spam", "eggs"]`, and verified these failed class-pattern matches leave
+  `range(10)` including CPython's given-count suffix, non-tuple
+  `__match_args__` values such as `"XYZ"` and `["spam", "eggs"]` including
+  CPython's `(got type)` suffix, and verified these failed class-pattern matches leave
   capture variables unbound.
 
 Completed in the match class-pattern non-class-callee pass:

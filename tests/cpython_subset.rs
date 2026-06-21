@@ -27908,7 +27908,7 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "class Class:\n    __match_args__ = ()\nx = Class()\nmatch x:\n    case Class(y):\n        print(y)",
-        "runtime error: TypeError: Class() accepts 0 positional sub-patterns",
+        "runtime error: TypeError: Class() accepts 0 positional sub-patterns (1 given)",
     );
     assert_error(
         "class Class:\n    __match_args__ = ('a', 'a')\n    a = None\nx = Class()\nmatch x:\n    case Class(y, z):\n        print(y, z)",
@@ -27924,7 +27924,7 @@ fn cpython_grammar_match_stmt_subset() {
     );
     assert_error(
         "class Class:\n    __match_args__ = None\nx = Class()\nmatch x:\n    case Class(y):\n        print(y)",
-        "runtime error: TypeError: Class.__match_args__ must be a tuple",
+        "runtime error: TypeError: Class.__match_args__ must be a tuple (got NoneType)",
     );
     assert_output(
         "match 2:\n    case 0 | 1 | 2 | 3:\n        print(\"matched\")",
@@ -28421,11 +28421,17 @@ fn cpython_match_class_helper_rules_subset() {
     );
     assert_output(
         "y = None\ntry:\n    match range(10):\n        case range(10):\n            y = 0\nexcept TypeError as error:\n    print(error)\nprint(y)",
-        &["range() accepts 0 positional sub-patterns", "None"],
+        &[
+            "range() accepts 0 positional sub-patterns (1 given)",
+            "None",
+        ],
     );
     assert_output(
         "y = None\ntry:\n    match object():\n        case object(y):\n            pass\nexcept TypeError as error:\n    print(error)\nprint(y)",
-        &["object() accepts 0 positional sub-patterns", "None"],
+        &[
+            "object() accepts 0 positional sub-patterns (1 given)",
+            "None",
+        ],
     );
     assert_output(
         "w = None\ntry:\n    match 1:\n        case max(0, 1):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w)",
@@ -28441,11 +28447,17 @@ fn cpython_match_class_helper_rules_subset() {
     );
     assert_output(
         "class Class:\n    __match_args__ = \"XYZ\"\nx = Class()\ny = z = None\ntry:\n    match x:\n        case Class(y):\n            z = 0\nexcept TypeError as error:\n    print(error)\nprint(y, z)",
-        &["Class.__match_args__ must be a tuple", "None None"],
+        &[
+            "Class.__match_args__ must be a tuple (got str)",
+            "None None",
+        ],
     );
     assert_output(
         "class Class:\n    __match_args__ = [\"spam\", \"eggs\"]\n    spam = 0\n    eggs = 1\nx = Class()\nw = y = z = None\ntry:\n    match x:\n        case Class(y, z):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w, y, z)",
-        &["Class.__match_args__ must be a tuple", "None None None"],
+        &[
+            "Class.__match_args__ must be a tuple (got list)",
+            "None None None",
+        ],
     );
 }
 
