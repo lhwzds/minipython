@@ -42721,7 +42721,7 @@ fn cpython_map_strict_builtin_subset() {
             "ValueError map() argument 2 is shorter than argument 1",
             "ValueError map() argument 2 is longer than argument 1",
             "ValueError map() argument 3 is longer than arguments 1-2",
-            "TypeError 'bad' is an invalid keyword argument for map()",
+            "TypeError map() got an unexpected keyword argument 'bad'",
         ],
     );
     assert_output(

@@ -15381,7 +15381,7 @@ fn map_strict_builtin_subset_has_focused_diff_evidence() {
         "ValueError map() argument 2 is shorter than argument 1",
         "ValueError map() argument 2 is longer than argument 1",
         "ValueError map() argument 3 is longer than arguments 1-2",
-        "TypeError 'bad' is an invalid keyword argument for map()",
+        "TypeError map() got an unexpected keyword argument 'bad'",
         "x = iter(range(5))",
         "y = [0]",
         "z = iter(range(5))",
@@ -15435,6 +15435,7 @@ fn map_strict_builtin_subset_has_focused_diff_evidence() {
     }
     assert!(
         CPYTHON_COVERAGE.contains("strict `map()` length checks")
+            && CPYTHON_COVERAGE.contains("modern `map()` unexpected-keyword diagnostics")
             && CPYTHON_COVERAGE.contains("iterator-consumption side effects")
             && CPYTHON_COVERAGE.contains("strict-mode `StopIteration` conversion"),
         "focused map strict coverage notes must describe strict length, consumption, and StopIteration conversion"
@@ -15443,6 +15444,7 @@ fn map_strict_builtin_subset_has_focused_diff_evidence() {
         CPYTHON_MIGRATION.contains("strict-map slice")
             && CPYTHON_MIGRATION.contains("map(..., strict=True)")
             && CPYTHON_MIGRATION.contains("strict mismatch `ValueError` cases")
+            && CPYTHON_MIGRATION.contains("modern unexpected-keyword diagnostics")
             && CPYTHON_MIGRATION.contains("iterator-consumption side effects"),
         "focused map strict migration notes must describe strict mismatch and consumption behavior"
     );

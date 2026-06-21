@@ -1859,7 +1859,7 @@ Completed in the differential parity harness pass:
   `filter(None, iterable)` truth filtering, and reject common CPython bad
   argument shapes including `map()` too-few-argument `TypeError` text. The
   strict-map slice now covers `map(..., strict=True)`,
-  strict mismatch `ValueError` cases, invalid keyword rejection, the same
+  strict mismatch `ValueError` cases, modern unexpected-keyword diagnostics, the same
   iterator-consumption side effects as `zip(strict=True)`, and CPython's
   distinction between propagated custom iterator exceptions and strict-mode
   `StopIteration` converted into `ValueError`. Richer callable protocol hooks

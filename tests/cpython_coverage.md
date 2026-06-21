@@ -1973,6 +1973,8 @@ without adding general custom encoder/decoder class support.
   covering CPython `BuiltinTest` filter/map/zip iterator pickle round trips,
   strict map/zip round trips, and strict-length failure preservation over
   MiniPython's internal pickle payload surface.
+- `cpython_map_strict_builtin_subset` also pins modern `map()` unexpected-keyword diagnostics
+  for unsupported keyword names while preserving strict-length iterator-consumption behavior.
 - The `BuiltinTest Iterator Builtins Method Audit` maps the current CPython
   filter/map/zip/iter methods to direct Rust evidence and explicitly classifies
   CPython's filter deallocation and zip GC-tracking regressions as

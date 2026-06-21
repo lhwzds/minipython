@@ -30555,7 +30555,7 @@ impl Vm {
                 "strict" => strict = self.truth_value(value)?,
                 _ => {
                     return Err(format!(
-                        "TypeError: '{keyword}' is an invalid keyword argument for map()"
+                        "TypeError: map() got an unexpected keyword argument '{keyword}'"
                     ));
                 }
             }
