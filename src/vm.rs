@@ -30455,13 +30455,13 @@ impl Vm {
         }
 
         if args.len() < 2 {
-            return Err("TypeError: map() must have at least two arguments".to_string());
+            return Err("TypeError: map() must have at least two arguments.".to_string());
         }
 
         let mut values = args.into_iter();
         let function = values
             .next()
-            .ok_or_else(|| "TypeError: map() must have at least two arguments".to_string())?;
+            .ok_or_else(|| "TypeError: map() must have at least two arguments.".to_string())?;
         let mut iterators = Vec::new();
         for value in values {
             let Some(iterator) = self.get_iter_or_raise(value)? else {

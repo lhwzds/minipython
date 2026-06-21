@@ -1854,7 +1854,8 @@ Completed in the differential parity harness pass:
   `iter(obj) is obj`, operate over generators and user-defined `__getitem__`
   sequence fallback objects, stop at the shortest mapped iterable, support
   `filter(None, iterable)` truth filtering, and reject common CPython bad
-  argument shapes. The strict-map slice now covers `map(..., strict=True)`,
+  argument shapes including `map()` too-few-argument `TypeError` text. The
+  strict-map slice now covers `map(..., strict=True)`,
   strict mismatch `ValueError` cases, invalid keyword rejection, the same
   iterator-consumption side effects as `zip(strict=True)`, and CPython's
   distinction between propagated custom iterator exceptions and strict-mode

@@ -8635,6 +8635,11 @@ for expr in [lambda: filter(), lambda: filter(None), lambda: filter(None, 42), l
         expr()
     except TypeError as error:
         print(error.__class__.__name__)
+for label, expr in [('map-missing', lambda: map()), ('map-one-arg', lambda: map(lambda x: x))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 try:
     list(filter(lambda x: x, BadSeq()))
 except ValueError as error:

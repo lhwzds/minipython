@@ -38618,7 +38618,7 @@ fn cpython_map_filter_builtin_subset() {
         ],
     );
     assert_output(
-        "class Squares:\n    def __init__(self, stop):\n        self.stop = stop\n    def __getitem__(self, index):\n        if index < 0 or index >= self.stop:\n            raise IndexError\n        return index * index\nprint(list(filter(lambda c: 'a' <= c <= 'z', 'Hello World')))\nprint(list(filter(None, [1, 'hello', [], [3], '', None, 9, 0])))\nprint(list(filter(lambda x: x > 0, [1, -3, 9, 0, 2])))\nprint(list(filter(None, Squares(10))))\nprint(list(filter(lambda x: x % 2, Squares(10))))\nprint(list(filter(None, (1, 2))))\nprint(list(filter(lambda x: x >= 3, (1, 2, 3, 4))))\nclass BadSeq:\n    def __getitem__(self, index):\n        if index < 4:\n            return 42\n        raise ValueError\ndef badfunc():\n    pass\nfor expr in [lambda: filter(), lambda: filter(None), lambda: filter(None, 42), lambda: list(filter(42, (1, 2))), lambda: list(filter(badfunc, range(5))), lambda: map(), lambda: map(lambda x: x), lambda: map(lambda x: x, 42), lambda: list(map(None, [1]))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)\ntry:\n    list(filter(lambda x: x, BadSeq()))\nexcept ValueError as error:\n    print(error.__class__.__name__)",
+        "class Squares:\n    def __init__(self, stop):\n        self.stop = stop\n    def __getitem__(self, index):\n        if index < 0 or index >= self.stop:\n            raise IndexError\n        return index * index\nprint(list(filter(lambda c: 'a' <= c <= 'z', 'Hello World')))\nprint(list(filter(None, [1, 'hello', [], [3], '', None, 9, 0])))\nprint(list(filter(lambda x: x > 0, [1, -3, 9, 0, 2])))\nprint(list(filter(None, Squares(10))))\nprint(list(filter(lambda x: x % 2, Squares(10))))\nprint(list(filter(None, (1, 2))))\nprint(list(filter(lambda x: x >= 3, (1, 2, 3, 4))))\nclass BadSeq:\n    def __getitem__(self, index):\n        if index < 4:\n            return 42\n        raise ValueError\ndef badfunc():\n    pass\nfor expr in [lambda: filter(), lambda: filter(None), lambda: filter(None, 42), lambda: list(filter(42, (1, 2))), lambda: list(filter(badfunc, range(5))), lambda: map(), lambda: map(lambda x: x), lambda: map(lambda x: x, 42), lambda: list(map(None, [1]))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)\nfor label, expr in [('map-missing', lambda: map()), ('map-one-arg', lambda: map(lambda x: x))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\ntry:\n    list(filter(lambda x: x, BadSeq()))\nexcept ValueError as error:\n    print(error.__class__.__name__)",
         &[
             "['e', 'l', 'l', 'o', 'o', 'r', 'l', 'd']",
             "[1, 'hello', [3], 9]",
@@ -38636,6 +38636,8 @@ fn cpython_map_filter_builtin_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "map-missing TypeError map() must have at least two arguments.",
+            "map-one-arg TypeError map() must have at least two arguments.",
             "ValueError",
         ],
     );

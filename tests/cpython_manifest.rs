@@ -14791,6 +14791,9 @@ fn map_filter_builtins_subset_has_focused_diff_evidence() {
         "lambda: map(lambda x: x)",
         "lambda: map(lambda x: x, 42)",
         "lambda: list(map(None, [1]))",
+        "map-missing",
+        "map-one-arg",
+        "map() must have at least two arguments.",
         "list(filter(lambda x: x, BadSeq()))",
     ] {
         assert!(
@@ -14829,6 +14832,9 @@ fn map_filter_builtins_subset_has_focused_diff_evidence() {
         "lambda: map(lambda x: x)",
         "lambda: map(lambda x: x, 42)",
         "lambda: list(map(None, [1]))",
+        "map-missing",
+        "map-one-arg",
+        "str(error)",
         "list(filter(lambda x: x, BadSeq()))",
     ] {
         assert!(
@@ -14853,8 +14859,14 @@ fn map_filter_builtins_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("filter(None")
             && CPYTHON_MIGRATION.contains("truth filtering")
             && CPYTHON_MIGRATION.contains("common CPython bad")
+            && CPYTHON_MIGRATION.contains("`map()` too-few-argument `TypeError` text")
             && CPYTHON_MIGRATION.contains("argument shapes"),
         "focused map/filter migration notes must describe CPython sources, sequence fallback, truth filtering, and bad arguments"
+    );
+    assert!(
+        CPYTHON_COVERAGE.contains("map/filter bad-argument diagnostics")
+            && CPYTHON_COVERAGE.contains("`map()` too-few-argument `TypeError` text"),
+        "focused map/filter coverage notes must describe the map too-few-argument diagnostic"
     );
 }
 
