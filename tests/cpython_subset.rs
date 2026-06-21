@@ -25377,6 +25377,21 @@ fn cpython_staticmethod_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public metadata copied by classmethod() for the wrapped
+// callable. Custom classmethod __dict__ mutation remains a separate surface.
+#[test]
+fn cpython_classmethod_metadata_subset() {
+    assert_output(
+        "def sample(cls, x: 'int') -> 'int':\n    'docstring'\n    return x\nwrapped = classmethod(sample)\nprint(wrapped.__wrapped__ is sample, wrapped.__func__ is sample)\nprint(wrapped.__name__, wrapped.__qualname__, wrapped.__module__, wrapped.__doc__)\nprint(wrapped.__annotations__['x'], wrapped.__annotations__['return'])\nnames = ['__wrapped__', '__func__', '__name__', '__qualname__', '__module__', '__doc__', '__annotations__']\nprint([name in dir(wrapped) for name in names])",
+        &[
+            "True True",
+            "sample sample __main__ docstring",
+            "int int",
+            "[True, True, True, True, True, True, True]",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_construct_singletons`.
 #[test]
 fn cpython_builtin_construct_singletons_subset() {

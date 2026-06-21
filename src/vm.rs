@@ -47134,6 +47134,20 @@ fn default_dir_names(value: &Value) -> Vec<String> {
             .into_iter()
             .map(str::to_string),
         ),
+        Value::ClassMethod { .. } => names.extend(
+            [
+                "__annotations__",
+                "__doc__",
+                "__func__",
+                "__get__",
+                "__module__",
+                "__name__",
+                "__qualname__",
+                "__wrapped__",
+            ]
+            .into_iter()
+            .map(str::to_string),
+        ),
         Value::TypesCoroutineFunction { function, .. } => names.extend(default_dir_names(function)),
         Value::GeneratorWrapper { .. } => names.extend(
             [
@@ -54341,13 +54355,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             )),
         },
         Value::ClassMethod { function } => match name {
-            "__func__" => Ok(*function),
+            "__func__" | "__wrapped__" => Ok(*function),
             "__get__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("classmethod.__get__".to_string())),
                 receiver: Box::new(Value::ClassMethod { function }),
                 identity: Rc::new(()),
             }),
-            "__name__" => load_attribute(*function, "__name__"),
+            "__name__" | "__qualname__" | "__module__" | "__doc__" | "__annotations__" => {
+                load_attribute(*function, name)
+            }
             _ => Err(format!(
                 "AttributeError: classmethod has no attribute '{name}'"
             )),

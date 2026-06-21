@@ -13513,6 +13513,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_str_builtin_custom_dunder_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
+            "cpython_classmethod_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
             "cpython_builtin_singleton_attribute_access_subset",
@@ -13561,6 +13562,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_str_builtin_custom_dunder_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
+        "cpython_classmethod_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
         "cpython_all_any_builtin_diff_subset",
@@ -13852,6 +13854,57 @@ fn staticmethod_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("__wrapped__")
                 && document.contains("__annotations__"),
             "staticmethod metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn classmethod_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_classmethod_metadata_subset(",
+        "wrapped.__wrapped__ is sample",
+        "wrapped.__func__ is sample",
+        "wrapped.__name__",
+        "wrapped.__qualname__",
+        "wrapped.__module__",
+        "wrapped.__doc__",
+        "wrapped.__annotations__['x']",
+        "name in dir(wrapped)",
+        "Custom classmethod __dict__ mutation remains a separate surface",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "classmethod metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_classmethod_metadata_diff_subset");
+    for required in [
+        "hasattr(classmethod(lambda cls: None), '__wrapped__')",
+        "lacks wrapped classmethod metadata",
+        "wrapped.__wrapped__ is sample",
+        "wrapped.__func__ is sample",
+        "wrapped.__name__",
+        "wrapped.__qualname__",
+        "wrapped.__module__",
+        "wrapped.__doc__",
+        "wrapped.__annotations__['x']",
+        "name in dir(wrapped)",
+    ] {
+        assert!(
+            body.contains(required),
+            "classmethod metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_classmethod_metadata_subset")
+                && document.contains("cpython_classmethod_metadata_diff_subset")
+                && document.contains("classmethod")
+                && document.contains("__wrapped__")
+                && document.contains("__annotations__"),
+            "classmethod metadata evidence must be documented in coverage and migration notes"
         );
     }
 }

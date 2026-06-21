@@ -185,6 +185,7 @@ Recent runtime migration notes:
   `cpython_str_builtin_custom_dunder_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
+  `cpython_classmethod_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
@@ -5489,6 +5490,12 @@ that current CPython exposes on staticmethod objects: `__wrapped__`,
 `__func__`, `__name__`, `__qualname__`, `__module__`, `__doc__`,
 `__annotations__`, and `dir()` visibility for that supported metadata. Custom
 staticmethod `__dict__` mutation remains outside this focused metadata slice.
+`cpython_classmethod_metadata_subset` and gated direct CPython evidence in
+`cpython_classmethod_metadata_diff_subset` cover the matching wrapped callable
+metadata surface on classmethod objects: `__wrapped__`, `__func__`,
+`__name__`, `__qualname__`, `__module__`, `__doc__`, `__annotations__`, and
+`dir()` visibility. Custom classmethod `__dict__` mutation remains outside this
+focused metadata slice.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin
