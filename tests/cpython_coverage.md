@@ -1327,7 +1327,7 @@ without adding general custom encoder/decoder class support.
   `test_math.py::IsCloseTests` public relative and absolute tolerance behavior,
   identical values, near-zero comparisons, infinity/NaN handling, keyword-only
   tolerances, real-number input conversion, negative tolerance rejection, and
-  catchable error classes.
+  catchable error classes, including modern `isclose()` unexpected-keyword diagnostics.
 - The bundled `math` module also includes `cpython_math_hypot_dist_diff_subset`
   and `cpython_math_hypot_dist_subset`, covering CPython
   `test_math.py::MathTests::testHypot` and `::testDist` public Euclidean

@@ -63863,7 +63863,7 @@ fn call_math_isclose(
             }
             _ => {
                 return Err(format!(
-                    "TypeError: '{keyword}' is an invalid keyword argument for isclose()"
+                    "TypeError: isclose() got an unexpected keyword argument '{keyword}'"
                 ));
             }
         }

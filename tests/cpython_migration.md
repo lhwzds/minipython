@@ -5642,8 +5642,8 @@ Completed in the float method/property pass:
   `Lib/test/test_math.py::IsCloseTests`. The bundled `math` module now exposes
   `isclose()` with public relative and absolute tolerance behavior, identical
   values, near-zero comparisons, infinity/NaN handling, keyword-only
-  tolerances, real-number input conversion, negative tolerance rejection, and
-  catchable error classes.
+  tolerances, real-number input conversion, negative tolerance rejection,
+  catchable error classes, and modern `isclose()` unexpected-keyword diagnostics.
 - Added `cpython_math_hypot_dist_diff_subset` and
   `cpython_math_hypot_dist_subset`, adapted from CPython
   `Lib/test/test_math.py::MathTests::testHypot` and `::testDist`. The bundled

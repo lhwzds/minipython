@@ -7934,7 +7934,7 @@ fn cpython_math_isclose_subset() {
             "TypeError isclose() missing required argument 'a' (pos 1)",
             "TypeError isclose() missing required argument 'b' (pos 2)",
             "TypeError isclose() takes exactly 2 positional arguments (3 given)",
-            "TypeError 'spam' is an invalid keyword argument for isclose()",
+            "TypeError isclose() got an unexpected keyword argument 'spam'",
         ],
     );
 }

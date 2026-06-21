@@ -2354,6 +2354,24 @@ for expr in [
 
 #[test]
 fn cpython_math_isclose_diff_subset() {
+    let probe = run_cpython(
+        r#"import math
+try:
+    math.isclose(1, 1, spam=1)
+except TypeError as error:
+    print(error)"#,
+    )
+    .expect("failed to probe CPython math.isclose keyword diagnostics");
+    if !probe.status.success()
+        || String::from_utf8_lossy(&probe.stdout).trim()
+            != "isclose() got an unexpected keyword argument 'spam'"
+    {
+        eprintln!(
+            "skipping math.isclose diff: CPython oracle lacks modern isclose keyword diagnostics"
+        );
+        return;
+    }
+
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_math.py::IsCloseTests public stable subset",
         name: "math-isclose",

@@ -12858,6 +12858,16 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
     let isclose_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_math_isclose_diff_subset");
     let isclose_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_math_isclose_subset");
     for required in [
+        "math.isclose(1, 1, spam=1)",
+        "isclose() got an unexpected keyword argument 'spam'",
+        "CPython oracle lacks modern isclose keyword diagnostics",
+    ] {
+        assert!(
+            isclose_diff.contains(required),
+            "math isclose CPython diff evidence must cover modern keyword diagnostic gate `{required}`"
+        );
+    }
+    for required in [
         "lambda: math.isclose()",
         "lambda: math.isclose(1)",
         "lambda: math.isclose(1, 1, 1e-9)",
@@ -12877,11 +12887,19 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         "isclose() missing required argument 'a' (pos 1)",
         "isclose() missing required argument 'b' (pos 2)",
         "isclose() takes exactly 2 positional arguments (3 given)",
-        "'spam' is an invalid keyword argument for isclose()",
+        "isclose() got an unexpected keyword argument 'spam'",
     ] {
         assert!(
             isclose_subset.contains(required),
             "math isclose runtime subset evidence must assert exact diagnostic `{required}`"
+        );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("modern `isclose()` unexpected-keyword diagnostics")
+                && document.contains("cpython_math_isclose_diff_subset")
+                && document.contains("cpython_math_isclose_subset"),
+            "math isclose docs must describe modern unexpected-keyword diagnostics"
         );
     }
 
