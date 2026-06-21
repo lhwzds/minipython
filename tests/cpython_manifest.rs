@@ -7448,11 +7448,17 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
 
     for required in [
         "class Sep(str):",
+        "class SepAsBang(str):",
+        "class SepNonString(str):",
+        "class SepBoom(str):",
         "class SepList(list):",
         "class SepTuple(tuple):",
         "class SepIter:",
         "class SepGen:",
         "separators in [None, (',', ':'), [',', ': ']",
+        "str-override",
+        "SepNonString('|')",
+        "SepBoom('|')",
         "separators in [iter((',', ':')), SepIter(), SepGen()]",
         "ensure_ascii=False, sort_keys=True, separators=(',', ':')",
         "not enough values to unpack (expected 2, got 0)",
@@ -7470,6 +7476,8 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
     for required in [
         "not enough values to unpack (expected 2, got 1)",
         "cannot unpack non-iterable object object",
+        "__str__ returned non-string (type int)",
+        "sep boom",
         "make_encoder() argument 6 must be str, not None",
         "make_encoder() argument 5 must be str, not bool",
         "make_encoder() argument 6 must be str, not bool",
@@ -7488,6 +7496,7 @@ fn json_dumps_separators_docs_cover_option_boundaries() {
         for required in [
             "`separators` unpacking",
             "two-string list/tuple values, subclasses, and general iterables",
+            "str-subclass separator `__str__` conversion and exception propagation",
             "tuple iterators, custom iterables, and generators",
             "compact non-ASCII rendering with `ensure_ascii=False` and `sort_keys=True`",
             "unpack length `ValueError` text for 0-, 1-, and 3-item separator sequences",

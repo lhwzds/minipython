@@ -60647,17 +60647,15 @@ fn json_dumps_apply_separators(
             Err("ValueError: too many values to unpack (expected 2)".to_string())
         };
     };
-    options.key_separator = json_dumps_separator_string(key_separator, "key")?;
-    options.item_separator = json_dumps_separator_string(item_separator, "item")?;
+    options.key_separator = json_dumps_separator_string(vm, key_separator, "key")?;
+    options.item_separator = json_dumps_separator_string(vm, item_separator, "item")?;
     Ok(())
 }
 
-fn json_dumps_separator_string(value: &Value, label: &str) -> Result<String, String> {
+fn json_dumps_separator_string(vm: &mut Vm, value: &Value, label: &str) -> Result<String, String> {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
-        value if str_subclass_string(value).is_some() => {
-            Ok(str_subclass_string(value).expect("str subclass storage exists after guard"))
-        }
+        value if str_subclass_string(value).is_some() => vm.str_value(value),
         value => {
             let argument = match label {
                 "key" => 5,

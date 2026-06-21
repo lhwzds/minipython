@@ -1457,6 +1457,47 @@ for separators in [(), [], (',',), [','], (',', ':', 'x'), [',', ':', 'x'], 'bad
 }
 
 #[test]
+fn cpython_json_dumps_separators_str_subclass_dunder_str_diff_subset() {
+    let str_subclass_oracle = run_cpython(
+        r#"import json
+class SepAsBang(str):
+    def __str__(self):
+        return '!'
+print(json.dumps({'a': [1, 2]}, separators=(SepAsBang('|'), SepAsBang('='))))"#,
+    )
+    .expect("failed to probe CPython json separator str-subclass behavior");
+    let str_subclass_stdout = String::from_utf8_lossy(&str_subclass_oracle.stdout);
+    if !str_subclass_stdout.contains(r#"{"a"![1!2]}"#) {
+        eprintln!(
+            "skipping json separator str-subclass __str__ diff: CPython oracle uses legacy separator storage behavior"
+        );
+        return;
+    }
+
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps separators str-subclass __str__ subset",
+        name: "json-dumps-separators-str-subclass-dunder-str",
+        source: r#"import json
+class SepAsBang(str):
+    def __str__(self):
+        return '!'
+class SepNonString(str):
+    def __str__(self):
+        return 42
+class SepBoom(str):
+    def __str__(self):
+        raise RuntimeError('sep boom')
+simple = {'a': [1, 2]}
+print('str-override', json.dumps(simple, separators=(SepAsBang('|'), SepAsBang('='))))
+for separators in [(SepNonString('|'), '='), ('|', SepNonString('=')), (SepBoom('|'), '='), ('|', SepBoom('='))]:
+    try:
+        json.dumps(simple, separators=separators)
+    except Exception as error:
+        print(type(error).__name__, isinstance(error, (TypeError, RuntimeError)), str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_skipkeys_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps skipkeys subset",
