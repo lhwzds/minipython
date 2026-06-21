@@ -57044,9 +57044,6 @@ fn is_math_builtin(name: &str) -> bool {
 }
 
 fn math_no_keyword_type_error(name: &str) -> String {
-    if name == "math.log" {
-        return "TypeError: log() takes no keyword arguments".to_string();
-    }
     format!("TypeError: {name}() takes no keyword arguments")
 }
 

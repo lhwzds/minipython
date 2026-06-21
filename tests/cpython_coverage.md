@@ -756,8 +756,9 @@ Recent runtime migration notes:
   `pi` / `e` / `tau` / `inf` / `nan` constants plus
   `math.isfinite()`, `math.isnormal()`, `math.issubnormal()`, `math.isnan()`,
   and `math.isinf()` classification for finite normal/subnormal values, signed
-  zero, infinities, NaNs, representative no-keyword `TypeError` messages,
-  argument errors, and huge integer overflow.
+  zero, infinities, NaNs, representative no-keyword `TypeError` messages
+  including `math.log() takes no keyword arguments`, argument errors, and huge
+  integer overflow.
 - The bundled `collections` module includes
   `cpython_collections_counter_basics_diff_subset` /
   `cpython_collections_counter_basics_subset` and

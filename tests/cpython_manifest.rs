@@ -12749,7 +12749,7 @@ fn math_sandbox_manifest_lists_public_subset_evidence() {
         "math.radians() takes no keyword arguments",
         "math.exp() takes no keyword arguments",
         "math.expm1() takes no keyword arguments",
-        "log() takes no keyword arguments",
+        "math.log() takes no keyword arguments",
         "math.log1p() takes no keyword arguments",
         "math.log2() takes no keyword arguments",
         "math.log10() takes no keyword arguments",

@@ -7645,7 +7645,7 @@ fn cpython_math_keyword_error_messages_subset() {
             "radians math.radians() takes no keyword arguments",
             "exp math.exp() takes no keyword arguments",
             "expm1 math.expm1() takes no keyword arguments",
-            "log log() takes no keyword arguments",
+            "log math.log() takes no keyword arguments",
             "log1p math.log1p() takes no keyword arguments",
             "log2 math.log2() takes no keyword arguments",
             "log10 math.log10() takes no keyword arguments",
