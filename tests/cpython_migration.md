@@ -8018,9 +8018,10 @@ Completed in the collections ABC abstract-method pass:
   method raise `TypeError`.
 - Rejected direct constructor calls for those abstract ABC objects themselves.
   The runtime now matches CPython's public `TypeError` text for missing-method
-  subclasses and direct ABC constructor calls, including the sorted
-  abstract-method name list, while still avoiding CPython's ABCMeta cache
-  machinery and `__abstractmethods__` internals.
+  subclasses and direct ABC constructor calls, including the
+  `without an implementation for abstract method ...` wording and sorted,
+  quoted abstract-method name list, while still avoiding CPython's ABCMeta
+  cache machinery and `__abstractmethods__` internals.
 - Added `cpython_collections_abc_composite_abstract_methods_subset`, adapted
   from the same `validate_abstract_methods` helper as used by
   `TestCollectionABCs`.

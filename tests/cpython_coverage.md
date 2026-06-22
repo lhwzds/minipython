@@ -3693,9 +3693,10 @@ without adding general custom encoder/decoder class support.
   `ABCTestCase.validate_abstract_methods` behavior used by CPython's
   one-trick pony ABC tests: complete direct subclasses instantiate,
   subclasses missing each required abstract method raise `TypeError` with
-  CPython-style abstract-method text, and direct ABC constructors reject
-  instantiation with the exact public method-name list without copying
-  CPython's ABCMeta cache internals. Direct CPython diff evidence is in
+  CPython's `without an implementation for abstract method ...` text, and
+  direct ABC constructors reject instantiation with the exact public quoted
+  abstract-method name list without copying CPython's ABCMeta cache internals.
+  Direct CPython diff evidence is in
   `cpython_collections_abc_abstract_methods_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_direct_subclassing_subset`, covering CPython's

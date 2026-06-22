@@ -58717,14 +58717,18 @@ fn abstract_class_instantiation_error(class_name: &str, missing: &[String]) -> S
     let mut missing = missing.to_vec();
     missing.sort_unstable();
     missing.dedup();
-    let methods = missing.join(", ");
+    let methods = missing
+        .iter()
+        .map(|method| format!("'{method}'"))
+        .collect::<Vec<_>>()
+        .join(", ");
     let plural = if missing.len() == 1 {
         "method"
     } else {
         "methods"
     };
     format!(
-        "TypeError: Can't instantiate abstract class {class_name} with abstract {plural} {methods}"
+        "TypeError: Can't instantiate abstract class {class_name} without an implementation for abstract {plural} {methods}"
     )
 }
 

@@ -11898,6 +11898,73 @@ fn collections_abc_generator_coroutine_diff_covers_runtime_subsets() {
 }
 
 #[test]
+fn collections_abc_abstract_method_errors_pin_cpython_wording() {
+    for required in [
+        "fn abstract_class_instantiation_error(",
+        "without an implementation for abstract {plural} {methods}",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "VM abstract-method error implementation must contain `{required}`"
+        );
+    }
+
+    let abstract_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_abc_abstract_methods_subset",
+    );
+    let composite_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_abc_composite_abstract_methods_subset",
+    );
+    for required in [
+        "fn cpython_abstract_instantiation_error(",
+        "without an implementation for abstract {plural} {methods}",
+        "cpython_abstract_instantiation_error(\"C\", &[*missing])",
+        "cpython_abstract_instantiation_error(abc, names)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) || abstract_subset.contains(required),
+            "abstract-method subset evidence must contain `{required}`"
+        );
+    }
+    for required in [
+        "cpython_abstract_instantiation_error(abc, methods)",
+        "cpython_abstract_instantiation_error(class_name, methods)",
+    ] {
+        assert!(
+            composite_subset.contains(required),
+            "composite abstract-method subset evidence must contain `{required}`"
+        );
+    }
+
+    for required in [
+        "without an implementation for abstract method '__await__'",
+        "without an implementation for abstract methods '__await__', 'send', 'throw'",
+        "without an implementation for abstract methods",
+        "'__contains__', '__iter__', '__len__'",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "abstract-method diff evidence must contain CPython oracle wording `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "without an implementation for abstract method",
+            "quoted",
+            "abstract-method name list",
+        ] {
+            assert!(
+                document.contains(required),
+                "abstract-method docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn collections_abc_newer_oracle_diff_evidence_stays_capability_gated() {
     for (function, required) in [
         (

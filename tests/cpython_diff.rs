@@ -5871,6 +5871,8 @@ except ValueError as error:
 
 #[test]
 fn cpython_collections_abc_abstract_methods_diff_subset() {
+    // CPython oracle text: without an implementation for abstract method '__await__';
+    // without an implementation for abstract methods '__await__', 'send', 'throw'.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::ABCTestCase::validate_abstract_methods used by TestOneTrickPonyABCs",
         name: "collections-abc-abstract-methods",
@@ -6102,6 +6104,8 @@ print('dynamic', ok_name, missing_getitem, len(caught), [wm.category is Deprecat
 
 #[test]
 fn cpython_collections_abc_composite_abstract_methods_diff_subset() {
+    // CPython oracle text: without an implementation for abstract methods
+    // '__contains__', '__iter__', '__len__'.
     let probe = run_cpython("import collections.abc; print(hasattr(collections.abc, 'Buffer'))")
         .expect("failed to probe CPython collections.abc.Buffer support");
     if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
