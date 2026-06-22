@@ -22886,26 +22886,25 @@ impl Vm {
                 args.len()
             ));
         }
-        let (typecode, typecode_type_name) =
-            match args.first().expect("array constructor arity checked") {
-                Value::String(typecode)
-                | Value::IdentityString {
-                    value: typecode, ..
-                } => (typecode.clone(), "str".to_string()),
-                value if str_subclass_string(value).is_some() => (
-                    str_subclass_string(value).expect("str subclass storage exists after guard"),
-                    type_name(value).to_string(),
-                ),
-                value => {
-                    return Err(format!(
-                        "TypeError: array() argument 1 must be a unicode character, not {}",
-                        array_array_typecode_argument_type_name(value)
-                    ));
-                }
-            };
+        let typecode = match args.first().expect("array constructor arity checked") {
+            Value::String(typecode)
+            | Value::IdentityString {
+                value: typecode, ..
+            } => typecode.clone(),
+            value if str_subclass_string(value).is_some() => {
+                str_subclass_string(value).expect("str subclass storage exists after guard")
+            }
+            value => {
+                return Err(format!(
+                    "TypeError: array() argument 1 must be a unicode character, not {}",
+                    array_array_typecode_argument_type_name(value)
+                ));
+            }
+        };
         if typecode.chars().count() != 1 {
             return Err(format!(
-                "TypeError: array() argument 1 must be a unicode character, not {typecode_type_name}"
+                "TypeError: array() argument 1 must be a unicode character, not a string of length {}",
+                typecode.chars().count()
             ));
         }
         if !ARRAY_ARRAY_TYPECODES.contains(typecode.as_str()) {
@@ -23768,6 +23767,12 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if name == "array.array.extend" && !keywords.is_empty() {
+            return Err(array_extend_positional_only_error(
+                method_arg_count(&args),
+                keywords.len(),
+            ));
+        }
         reject_array_method_keywords(name, &keywords)?;
 
         match name {
@@ -23914,9 +23919,9 @@ impl Vm {
             }
             "array.array.extend" => {
                 let [receiver, source] = args.as_slice() else {
-                    return Err(format!(
-                        "TypeError: array.extend() takes exactly one argument ({} given)",
-                        method_arg_count(&args)
+                    return Err(array_extend_positional_only_error(
+                        method_arg_count(&args),
+                        0,
                     ));
                 };
                 self.array_array_extend_items(receiver, source.clone())?;
@@ -74112,6 +74117,17 @@ fn reject_array_method_keywords(name: &str, keywords: &[(String, Value)]) -> Res
             "TypeError: array.{method}() takes no keyword arguments"
         )),
         _ => reject_method_keywords(name, keywords),
+    }
+}
+
+fn array_extend_positional_only_error(positional: usize, keywords: usize) -> String {
+    if positional == 0 {
+        "TypeError: extend() takes exactly 1 positional argument (0 given)".to_string()
+    } else {
+        format!(
+            "TypeError: extend() takes at most 1 argument ({} given)",
+            positional + keywords
+        )
     }
 }
 

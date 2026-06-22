@@ -1154,7 +1154,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   CPython public `array` module and constructor behavior before item-specific
   storage tests: `array.typecodes`, legacy typecode construction,
   str-subclass typecode arguments, invalid typecode `ValueError`, non-string
-  and wrong-arity constructor `TypeError`s, keyword rejection, and zero-length
+  and wrong-arity constructor `TypeError`s, string-length typecode diagnostics,
+  keyword rejection, `extend()` positional argument diagnostics, and zero-length
   array self-slice / concat / repeat behavior. The runtime now rejects bad
   typecodes directly instead of producing a half-initialized array object.
 - Added `cpython_array_subclass_public_construction_subset` and

@@ -10609,7 +10609,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "array.array() takes no keyword arguments",
         "array.append() takes no keyword arguments",
-        "array.extend() takes no keyword arguments",
+        "extend() takes exactly 1 positional argument (0 given)",
         "array.frombytes() takes no keyword arguments",
         "array.fromlist() takes no keyword arguments",
         "array.tolist() takes no keyword arguments",
@@ -10626,7 +10626,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "array.append() takes exactly one argument (0 given)",
         "array.append() takes exactly one argument (2 given)",
-        "array.extend() takes exactly one argument (0 given)",
+        "extend() takes exactly 1 positional argument (0 given)",
         "array.fromlist() takes exactly one argument (0 given)",
         "array.fromlist() takes exactly one argument (2 given)",
         "array.frombytes() takes exactly one argument (0 given)",
@@ -10648,8 +10648,8 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "array() argument 1 must be a unicode character, not str",
-        "array() argument 1 must be a unicode character, not S",
+        "array() argument 1 must be a unicode character, not a string of length 0",
+        "array() argument 1 must be a unicode character, not a string of length 2",
     ] {
         assert!(
             constructor_subset.contains(required),

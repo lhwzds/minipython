@@ -25407,11 +25407,11 @@ print('index-object', arr.tolist(), view.tolist())"#,
 
 #[test]
 fn cpython_array_module_and_constructor_public_surface_diff_subset() {
-    // CPython oracle text: array() argument 1 must be a unicode character, not str;
-    // array() argument 1 must be a unicode character, not S
+    // CPython oracle text: array() argument 1 must be a unicode character, not a string of length 0;
+    // array() argument 1 must be a unicode character, not a string of length 2
     // CPython oracle text: array.append() takes exactly one argument (0 given);
     // array.append() takes exactly one argument (2 given);
-    // array.extend() takes exactly one argument (0 given);
+    // extend() takes exactly 1 positional argument (0 given);
     // array.fromlist() takes exactly one argument (0 given);
     // array.fromlist() takes exactly one argument (2 given);
     // array.frombytes() takes exactly one argument (0 given);

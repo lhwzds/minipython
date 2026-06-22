@@ -4476,7 +4476,8 @@ without adding general custom encoder/decoder class support.
   CPython public `array` module constructor surface: `array.typecodes`,
   legacy typecode construction, str-subclass typecode arguments, invalid
   typecode `ValueError`, non-string and wrong-arity constructor `TypeError`s,
-  keyword rejection, and zero-length array self-slice / concat / repeat
+  string-length typecode diagnostics, keyword rejection, `extend()` positional
+  argument diagnostics, and zero-length array self-slice / concat / repeat
   behavior without constructing half-initialized arrays.
   Real file descriptors and C buffer/allocator internals remain outside the
   sandbox `array` surface; file-oriented behavior is limited to pure in-memory
