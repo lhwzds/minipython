@@ -8357,14 +8357,8 @@ impl Vm {
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if args.len() < 2 {
-            if !keywords.is_empty() {
-                return Err(format!(
-                    "TypeError: reduce() takes at least 2 positional arguments ({} given)",
-                    args.len()
-                ));
-            }
             return Err(format!(
-                "TypeError: reduce expected at least 2 arguments, got {}",
+                "TypeError: reduce() takes at least 2 positional arguments ({} given)",
                 args.len()
             ));
         }
@@ -8399,7 +8393,7 @@ impl Vm {
             }
             values => {
                 return Err(format!(
-                    "TypeError: reduce expected at most 3 arguments, got {}",
+                    "TypeError: reduce() takes at most 3 arguments ({} given)",
                     values.len()
                 ));
             }

@@ -15179,9 +15179,9 @@ print(p.__module__, '__module__' in p.__dict__)"#,
 
 #[test]
 fn cpython_functools_reduce_diff_subset() {
-    // CPython oracle text: reduce expected at least 2 arguments, got 0;
-    // reduce expected at least 2 arguments, got 1;
-    // reduce expected at most 3 arguments, got 4.
+    // CPython oracle text: reduce() takes at least 2 positional arguments (0 given);
+    // reduce() takes at least 2 positional arguments (1 given);
+    // reduce() takes at most 3 arguments (4 given).
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py::TestReduce public stable subset",
         name: "functools-reduce",

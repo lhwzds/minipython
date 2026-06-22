@@ -6523,7 +6523,10 @@ Completed in the pow builtin pass:
   positional and keyword `initial` values, empty-input errors, one-item
   non-callable behavior where the function is never invoked, newer-CPython
   diagnostics for positional-only `function` / `sequence` keyword forms and
-  unsupported keyword forms, and propagation of iterator/function exceptions.
+  unsupported keyword forms, current no-keyword arity messages such as
+  `reduce() takes at least 2 positional arguments (0 given)` and
+  `reduce() takes at most 3 arguments (4 given)`, and propagation of
+  iterator/function exceptions.
 - Added `functools.cmp_to_key` and `cpython_functools_cmp_to_key_subset`,
   adapted from CPython `Lib/test/test_functools.py::TestCmpToKey`. The migrated
   slice covers callable key wrappers, direct six-way comparisons, sorted key

@@ -5378,9 +5378,9 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "reduce(add, [1], 2, initial=3)",
         "reduce(add, None)",
         "reduce(add, BadIterReturn())",
-        "reduce expected at least 2 arguments, got 0",
-        "reduce expected at least 2 arguments, got 1",
-        "reduce expected at most 3 arguments, got 4",
+        "reduce() takes at least 2 positional arguments (0 given)",
+        "reduce() takes at least 2 positional arguments (1 given)",
+        "reduce() takes at most 3 arguments (4 given)",
     ] {
         assert!(
             reduce_diff.contains(required),

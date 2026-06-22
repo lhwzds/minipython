@@ -1645,7 +1645,7 @@ without adding general custom encoder/decoder class support.
   `test_functools.py::TestReduce` public reduction behavior over built-in
   iterables, sequence-protocol iterables, dictionaries, positional and keyword initializer
   values, positional-only `function` / `sequence` keyword error text including newer-oracle
-  missing-positional diagnostics and unsupported-keyword text,
+  missing-positional diagnostics, current no-keyword arity diagnostics, and unsupported-keyword text,
   non-iterable and bad-iterator-return second-argument error text, empty-input
   errors, non-callable edge cases, and propagated iterator/function exceptions.
 - The bundled `functools` module also includes
