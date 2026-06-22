@@ -3607,9 +3607,10 @@ without adding general custom encoder/decoder class support.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_set_hash_matches_frozenset_subset`, covering CPython
   `test_Set_hash_matches_frozenset` for the current public `Set._hash()` mixin
-  algorithm over supported hashable samples, including `None`, numbers,
-  strings, booleans, object identities, NaN, nested frozensets, large integers,
-  range-derived frozensets, and the CPython `sys.maxsize` range stress sample.
+  algorithm matching builtin `frozenset` hashing over supported hashable
+  samples, including `None`, numbers, strings, booleans, object identities,
+  NaN, nested frozensets, large integers, range-derived frozensets, and the
+  CPython `sys.maxsize` range stress sample.
   Direct CPython diff evidence is in
   `cpython_collections_abc_set_hash_matches_frozenset_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes

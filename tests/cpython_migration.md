@@ -11379,6 +11379,12 @@ Completed in the CPython collections manifest expansion pass:
   `__module__` / `__qualname__` metadata and `collections.deque[int]`
   generic-alias repr parity while keeping the runtime dispatch name as the
   existing internal `deque` builtin.
+- Aligned exact `frozenset.__hash__()` and `collections.abc.Set._hash()` on
+  the current public frozenset hash algorithm, including the final avalanche
+  mix step, so `cpython_collections_abc_set_hash_matches_frozenset_subset` and
+  `cpython_collections_abc_set_hash_matches_frozenset_diff_subset` now verify
+  equality against the Homebrew CPython oracle for the supported hashable sample
+  matrix.
 
 Next:
 

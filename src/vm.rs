@@ -15146,6 +15146,10 @@ impl Vm {
             return self.hash_key_value(&alias);
         }
 
+        if let Value::FrozenSet(items) = value {
+            return self.frozenset_hash(items.as_ref().clone());
+        }
+
         if let Value::GenericAlias {
             origin,
             args,
@@ -29586,6 +29590,10 @@ impl Vm {
 
     fn set_abc_hash(&mut self, receiver: Value) -> Result<Value, String> {
         let values = self.collect_iterable_values(receiver)?;
+        self.frozenset_hash(values)
+    }
+
+    fn frozenset_hash(&mut self, values: Vec<Value>) -> Result<Value, String> {
         let mask = u64::MAX;
         let mut hash = 1_927_868_237_u64.wrapping_mul(values.len() as u64 + 1) & mask;
         for value in values {
@@ -29595,6 +29603,7 @@ impl Vm {
                 .wrapping_mul(3_644_798_167_u64);
             hash = (hash ^ mixed) & mask;
         }
+        hash ^= hash.wrapping_shr(11) ^ hash.wrapping_shr(25);
         hash = hash.wrapping_mul(69_069).wrapping_add(907_133_923) & mask;
         let signed = hash as i64;
         if signed == -1 {
@@ -71382,7 +71391,10 @@ fn call_frozen_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<V
                     method_arg_count(&args)
                 ));
             };
-            hash_value(set)
+            let Value::FrozenSet(items) = set else {
+                unreachable!("frozenset receiver checked above")
+            };
+            vm.frozenset_hash(items.as_ref().clone())
         }
         "frozenset.__init__" => {
             let [Value::FrozenSet(_), ..] = args.as_slice() else {
