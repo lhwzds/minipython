@@ -5970,6 +5970,17 @@ fn itertools_core_and_pairwise_runtime_evidence_stay_split() {
         tee_source.contains("itertools.tee"),
         "itertools tee runtime evidence must cover tee()"
     );
+    for required in [
+        "c, d = itertools.tee(a)",
+        "print(c is a, d is a, c is d)",
+        "False False False",
+        "3 3 [3, 4] [4] [4] [2, 3, 4]",
+    ] {
+        assert!(
+            tee_source.contains(required),
+            "itertools tee runtime evidence must cover tee-of-tee flattening `{required}`"
+        );
+    }
     assert!(
         batched_source.contains("itertools.batched"),
         "itertools batched runtime evidence must cover batched()"
@@ -6130,6 +6141,16 @@ fn itertools_core_and_pairwise_diff_evidence_stay_split() {
         tee_source.contains("itertools.tee"),
         "itertools tee CPython diff evidence must cover tee()"
     );
+    for required in [
+        "c, d = itertools.tee(a)",
+        "print(c is a, d is a, c is d)",
+        "print(next(c), next(d), list(a), list(c), list(d), list(b))",
+    ] {
+        assert!(
+            tee_source.contains(required),
+            "itertools tee CPython diff evidence must cover tee-of-tee flattening `{required}`"
+        );
+    }
     assert!(
         batched_source.contains("itertools.batched"),
         "itertools batched CPython diff evidence must cover batched()"

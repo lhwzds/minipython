@@ -25640,15 +25640,15 @@ impl Vm {
             return Ok(tuple_value(Vec::new()));
         }
 
-        if let Some((tee, state, index)) = itertools_tee_flatten_source(&args[0]) {
-            let mut iterators = Vec::with_capacity(n);
-            iterators.push(tee);
-            iterators.extend((1..n).map(|_| {
-                shared_iterator(Value::ItertoolsTee {
-                    state: state.clone(),
-                    index,
+        if let Some((state, index)) = itertools_tee_flatten_source(&args[0]) {
+            let iterators = (0..n)
+                .map(|_| {
+                    shared_iterator(Value::ItertoolsTee {
+                        state: state.clone(),
+                        index,
+                    })
                 })
-            }));
+                .collect();
             return Ok(tuple_value(iterators));
         }
 
@@ -75167,7 +75167,7 @@ fn shared_iterator(iterator: Value) -> Value {
     Value::Iterator(Rc::new(RefCell::new(iterator)))
 }
 
-fn itertools_tee_flatten_source(value: &Value) -> Option<(Value, TeeRef, usize)> {
+fn itertools_tee_flatten_source(value: &Value) -> Option<(TeeRef, usize)> {
     let Value::Iterator(iterator) = value else {
         return None;
     };
@@ -75175,7 +75175,7 @@ fn itertools_tee_flatten_source(value: &Value) -> Option<(Value, TeeRef, usize)>
     let Value::ItertoolsTee { state, index } = &*borrowed else {
         return None;
     };
-    Some((Value::Iterator(iterator.clone()), state.clone(), *index))
+    Some((state.clone(), *index))
 }
 
 fn list_iterator_from_values(items: Vec<Value>) -> Value {

@@ -11251,8 +11251,9 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_itertools_tee_subset` and `cpython_itertools_tee_diff_subset`,
   extending the pure in-memory `itertools` surface with `tee()` shared-buffer
   clone iterators, interleaved consumption, `n=0` / `n=1` / multi-clone
-  behavior, `n` via `__index__`, huge-`n` CPython overflow diagnostics,
-  generator-backed inputs, and public
+  behavior, `_tee` input flattening with fresh clone identities starting from
+  the source tee's current position, `n` via `__index__`, huge-`n` CPython
+  overflow diagnostics, generator-backed inputs, and public
   TypeError/ValueError classes. Cache compaction, pickle, and exact repr
   details remain outside the sandbox subset.
 - Added `cpython_itertools_batched_subset` and
