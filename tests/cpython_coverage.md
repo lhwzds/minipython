@@ -4552,10 +4552,11 @@ without adding general custom encoder/decoder class support.
   `cpython_array_one_byte_public_mutation_methods_subset`, covering the
   supported public `array.array('B')` / `array.array('b')` mutable sequence
   methods: `append()`, `insert()`, `extend()`, `pop()`, `reverse()`,
-  `count()`, `index()`, `remove()`, `fromlist()`, `frombytes()`, and
-  `clear()`, including one-byte overflow errors, empty-pop errors, cross-kind
-  `extend()` rejection, type checks for `fromlist()` / `frombytes()`, and
-  CPython's empty-array `repr()` shape. Direct CPython diff evidence is in
+  `count()`, `index()` with public `start` / `stop` bounds, `remove()`,
+  `fromlist()`, `frombytes()`, and `clear()`, including one-byte overflow
+  errors, empty-pop errors, cross-kind `extend()` rejection, type checks for
+  `fromlist()` / `frombytes()`, and CPython's empty-array `repr()` shape.
+  Direct CPython diff evidence is in
   `cpython_array_one_byte_public_mutation_methods_diff_subset`, with
   `array.clear()` additionally pinned by focused
   `cpython_array_one_byte_public_clear_subset` and gated

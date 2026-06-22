@@ -1234,10 +1234,11 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   capability-gated `cpython_array_one_byte_public_clear_diff_subset`, extending
   the same one-byte `array.array('B')` / `array.array('b')` storage to public
   mutable sequence methods: `append()`, `insert()`, `extend()`, `pop()`,
-  `reverse()`, `count()`, `index()`, `remove()`, `fromlist()`, `frombytes()`,
-  and `clear()`. The tests pin CPython's signed/unsigned one-byte overflow
-  errors, same-kind-only array `extend()`, `fromlist()` list-only validation,
-  bytes-like `frombytes()` validation, and empty-array `repr()`. The clear
+  `reverse()`, `count()`, `index()` with public `start` / `stop` bounds,
+  `remove()`, `fromlist()`, `frombytes()`, and `clear()`. The tests pin
+  CPython's signed/unsigned one-byte overflow errors, same-kind-only array
+  `extend()`, `fromlist()` list-only validation, bytes-like `frombytes()`
+  validation, and empty-array `repr()`. The clear
   differential is gated because older local `python3` oracles do not expose
   `array.clear()`. The later short, int, long, float, and unicode-array
   slices supersede the original one-byte-only scope; real file descriptors,

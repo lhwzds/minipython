@@ -25830,9 +25830,8 @@ for tc in {typecodes}:
 
 #[test]
 fn cpython_array_one_byte_public_mutation_methods_diff_subset() {
-    // CPython oracle text: array.index() takes exactly one argument (0 given);
-    // array.index() takes exactly one argument (2 given);
-    // array.index() takes exactly one argument (3 given);
+    // CPython oracle text: index expected at least 1 argument, got 0;
+    // index-arity2-B 3; index-arity3-B 0; index-arity2-b 3; index-arity3-b 0;
     // insert expected 2 arguments, got 0;
     // insert expected 2 arguments, got 1;
     // insert expected 2 arguments, got 3;

@@ -24180,13 +24180,27 @@ impl Vm {
                 ))
             }
             "array.array.index" => {
-                let [receiver, needle] = args.as_slice() else {
-                    return Err(format!(
-                        "TypeError: array.index() takes exactly one argument ({} given)",
-                        method_arg_count(&args)
-                    ));
+                let [receiver, rest @ ..] = args.as_slice() else {
+                    return Err(
+                        "TypeError: unbound method array.array.index() needs an argument"
+                            .to_string(),
+                    );
                 };
-                let index = self.array_array_index_value(receiver, needle.clone(), None, None)?;
+                if rest.is_empty() {
+                    return Err("TypeError: index expected at least 1 argument, got 0".to_string());
+                }
+                if rest.len() > 3 {
+                    return Err(format!(
+                        "TypeError: index expected at most 3 arguments, got {}",
+                        rest.len()
+                    ));
+                }
+                let index = self.array_array_index_value(
+                    receiver,
+                    rest[0].clone(),
+                    rest.get(1).cloned(),
+                    rest.get(2).cloned(),
+                )?;
                 Ok(Value::Number(index))
             }
             "array.array.__contains__" => {
