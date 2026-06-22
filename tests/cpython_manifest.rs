@@ -1936,6 +1936,14 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         CPYTHON_SUBSET.contains("order must be 'C', 'F' or 'A'"),
         "memoryview method/release subset evidence must contain tobytes order ValueError text"
     );
+    assert!(
+        CPYTHON_SUBSET.contains("tobytes() argument 'order' must be str or None"),
+        "memoryview method/release subset evidence must contain tobytes order TypeError text"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains("tobytes() got an unexpected keyword argument 'bad'"),
+        "memoryview method/release subset evidence must contain tobytes unexpected keyword text"
+    );
     for required in [
         "memoryview.tolist() takes no arguments",
         "memoryview.toreadonly() takes no arguments",
@@ -1945,7 +1953,7 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "memoryview.release() takes no keyword arguments",
         "memoryview.__enter__() takes no arguments",
         "memoryview.__enter__() takes no keyword arguments",
-        "__exit__() takes no keyword arguments",
+        "memoryview.__exit__() takes no keyword arguments",
         "exit-args 4 None True",
         "expected 0 arguments, got 1",
         "wrapper __len__() takes no keyword arguments",
@@ -1953,9 +1961,9 @@ fn cpython_memoryview_methods_release_diff_covers_basic_methods_runtime_subset()
         "expected 1 argument, got 2",
         "wrapper __getitem__() takes no keyword arguments",
         "wrapper __delitem__() takes no keyword arguments",
-        " expected 2 arguments, got 0",
-        " expected 2 arguments, got 1",
-        " expected 2 arguments, got 3",
+        "__setitem__ expected 2 arguments, got 0",
+        "__setitem__ expected 2 arguments, got 1",
+        "__setitem__ expected 2 arguments, got 3",
         "wrapper __setitem__() takes no keyword arguments",
     ] {
         assert!(

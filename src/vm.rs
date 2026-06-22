@@ -685,7 +685,7 @@ fn validate_memoryview_tobytes_order(order: Option<&Value>) -> Result<(), String
             }
         }
         value => Err(format!(
-            "TypeError: argument 1 must be str or None, not {}",
+            "TypeError: tobytes() argument 'order' must be str or None, not {}",
             type_name(value)
         )),
     }
@@ -19785,7 +19785,7 @@ impl Vm {
             "memoryview.__setitem__" => {
                 let [receiver @ Value::MemoryView(_), index, value] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError:  expected 2 arguments, got {}",
+                        "TypeError: __setitem__ expected 2 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
@@ -19868,7 +19868,7 @@ impl Vm {
         for (keyword, value) in keywords {
             if keyword != "order" {
                 return Err(format!(
-                    "TypeError: '{keyword}' is an invalid keyword argument for this function"
+                    "TypeError: tobytes() got an unexpected keyword argument '{keyword}'"
                 ));
             }
             if order.is_some() {
@@ -74065,7 +74065,7 @@ fn reject_memoryview_method_keywords(
     ) {
         Err(format!("TypeError: {name}() takes no keyword arguments"))
     } else if name == "memoryview.__exit__" {
-        Err("TypeError: __exit__() takes no keyword arguments".to_string())
+        Err("TypeError: memoryview.__exit__() takes no keyword arguments".to_string())
     } else if name == "memoryview.__len__" {
         Err("TypeError: wrapper __len__() takes no keyword arguments".to_string())
     } else if name == "memoryview.__getitem__" {

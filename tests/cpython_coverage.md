@@ -4381,14 +4381,16 @@ without adding general custom encoder/decoder class support.
   attributes, deleted-binding, display-container, augmented-assignment,
   comprehension-frame/target, and expression-temporary exported-view release,
   and direct method-level evidence for
-  `test_tobytes` including public `order='C'/'F'/'A'` handling,
+  `test_tobytes` including public `order='C'/'F'/'A'` handling and
+  CPython-style invalid `order` / unexpected keyword TypeErrors,
   `test_tolist`, including public no-argument and no-keyword diagnostics for
   `tolist()`, `toreadonly()`, and `release()`, `test_attributes_readonly`,
   `test_attributes_writable`, `test_contextmanager`, `test_release`, and
   `test_toreadonly`. It also covers `hex()`, `count()`, and `index()`, the
   public `release()` lifecycle, direct `__enter__()`, `__len__()`,
   `__getitem__()`, `__setitem__()`, and `__delitem__()` diagnostics, direct
-  variadic `__exit__()` release behavior and keyword rejection,
+  variadic `__exit__()` release behavior and keyword rejection, and
+  CPython-style `__setitem__()` arity diagnostics,
   context-manager entry/exit behavior,
   released-object `ValueError` checks for supported operations, released
   `str()` / `repr()`, same-object identity through `with ... as`,
@@ -4431,7 +4433,8 @@ without adding general custom encoder/decoder class support.
   `cpython_memoryview_minimal_runtime_diff_subset` and the supported
   method/attribute/release/context-manager surface in
   `cpython_memoryview_methods_release_diff_subset`, including `str` subclass
-  order arguments for `memoryview.tobytes()`.
+  order arguments plus invalid-order and unexpected-keyword diagnostics for
+  `memoryview.tobytes()`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_memoryview_array_b_buffer_subset`, covering the CPython public
   one-byte `array.array('B')` exporter surface for `memoryview()`: writable
