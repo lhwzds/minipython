@@ -66,7 +66,8 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_collections_deque_error_messages_diff_subset` for the supported
   deque `maxlen` integer acceptance and rejection boundary plus
   deque constructor arity TypeError text,
-  deque public method arity TypeError text and
+  deque public method arity TypeError text, including CPython `expected` /
+  `got` wording for `index`, `insert`, and `rotate`, and
   no-argument deque method TypeError text, without expanding into full deque
   construction/mutation APIs.
 - Added `cpython_collections_deque_mutating_eq_subset` and

@@ -79630,7 +79630,7 @@ fn deque_exact_one_arg_error(method: &str, given: usize) -> String {
 }
 
 fn deque_exact_args_error(method: &str, expected: usize, given: usize) -> String {
-    format!("TypeError: {method}() takes exactly {expected} arguments ({given} given)")
+    format!("TypeError: {method} expected {expected} arguments, got {given}")
 }
 
 fn deque_at_least_args_error(method: &str, expected: usize, given: usize) -> String {
@@ -79639,7 +79639,7 @@ fn deque_at_least_args_error(method: &str, expected: usize, given: usize) -> Str
     } else {
         "arguments"
     };
-    format!("TypeError: {method}() takes at least {expected} {noun} ({given} given)")
+    format!("TypeError: {method} expected at least {expected} {noun}, got {given}")
 }
 
 fn deque_at_most_args_error(method: &str, expected: usize, given: usize) -> String {
@@ -79648,7 +79648,7 @@ fn deque_at_most_args_error(method: &str, expected: usize, given: usize) -> Stri
     } else {
         "arguments"
     };
-    format!("TypeError: {method}() takes at most {expected} {noun} ({given} given)")
+    format!("TypeError: {method} expected at most {expected} {noun}, got {given}")
 }
 
 fn deque_maxlen_value(value: Value) -> Result<usize, String> {
