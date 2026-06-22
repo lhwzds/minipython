@@ -1974,7 +1974,8 @@ Completed in the differential parity harness pass:
   from CPython `test_operator.py::OperatorTestCase` signature assertions for
   `attrgetter`, `itemgetter`, and `methodcaller`. MiniPython now exposes a
   minimal `inspect.signature()` path for those operator helper constructors and
-  helper instances, with the supported public surface limited to
+  helper instances, plus the supported `operator.add` builtin signature
+  `(a, b, /)`, with the supported public surface limited to
   `str(inspect.signature(...))`; it does not claim full `inspect.Signature`
   behavior or broad callable signature introspection. Direct CPython evidence
   is in `cpython_operator_signature_helper_diff_subset`, gated for CPython

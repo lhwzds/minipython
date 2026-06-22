@@ -2140,7 +2140,8 @@ without adding general custom encoder/decoder class support.
   `cpython_operator_signature_helper_subset`, covering CPython
   `test_operator.py` signature assertions for `operator.attrgetter`,
   `itemgetter`, and `methodcaller` constructors plus their helper instances via
-  the public `str(inspect.signature(...))` surface, without claiming full
+  the public `str(inspect.signature(...))` surface, and the supported
+  `operator.add` builtin signature `(a, b, /)`, without claiming full
   `inspect.Signature` or broad callable signature introspection support. Direct
   CPython diff evidence is in `cpython_operator_signature_helper_diff_subset`,
   gated for CPython oracles where `inspect.signature(operator.attrgetter)` is

@@ -14593,6 +14593,7 @@ print(str(inspect.signature(operator.itemgetter)))
 print(str(inspect.signature(operator.itemgetter(2, 3, 5))))
 print(str(inspect.signature(operator.methodcaller)))
 print(str(inspect.signature(operator.methodcaller('foo', 2, y=3))))
+print(str(inspect.signature(operator.add)))
 for expr in [lambda: inspect.signature(), lambda: inspect.signature(1), lambda: inspect.signature(operator.add)]:
     try:
         expr()

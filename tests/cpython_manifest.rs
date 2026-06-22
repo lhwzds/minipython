@@ -9965,9 +9965,9 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
     for required in [
         "fn cpython_operator_signature_helper_subset(",
         "OperatorTestCase",
-        "signature coverage for attrgetter, itemgetter, and methodcaller",
+        "signature coverage for attrgetter, itemgetter, methodcaller, and a supported",
         "public string form",
-        "operator helpers rather",
+        "this slice rather",
         "than a full inspect.Signature implementation",
         "str(inspect.signature(operator.attrgetter))",
         "str(inspect.signature(operator.attrgetter('x', 'z', 'y')))",
@@ -9975,12 +9975,14 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
         "str(inspect.signature(operator.itemgetter(2, 3, 5)))",
         "str(inspect.signature(operator.methodcaller))",
         "str(inspect.signature(operator.methodcaller('foo', 2, y=3)))",
+        "str(inspect.signature(operator.add))",
         "lambda: inspect.signature()",
         "lambda: inspect.signature(1)",
         "lambda: inspect.signature(operator.add)",
         "(attr, /, *attrs)",
         "(item, /, *items)",
         "(name, /, *args, **kwargs)",
+        "(a, b, /)",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -10003,6 +10005,7 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
         "str(inspect.signature(operator.itemgetter(2, 3, 5)))",
         "str(inspect.signature(operator.methodcaller))",
         "str(inspect.signature(operator.methodcaller('foo', 2, y=3)))",
+        "str(inspect.signature(operator.add))",
         "lambda: inspect.signature()",
         "lambda: inspect.signature(1)",
         "lambda: inspect.signature(operator.add)",
@@ -10063,6 +10066,8 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
             && CPYTHON_COVERAGE.contains("attrgetter")
             && CPYTHON_COVERAGE.contains("itemgetter")
             && CPYTHON_COVERAGE.contains("methodcaller")
+            && CPYTHON_COVERAGE.contains("operator.add")
+            && CPYTHON_COVERAGE.contains("(a, b, /)")
             && CPYTHON_COVERAGE.contains("str(inspect.signature(...))")
             && CPYTHON_COVERAGE.contains("without claiming full")
             && CPYTHON_COVERAGE.contains("gated for CPython oracles")
@@ -10077,6 +10082,8 @@ fn operator_signature_repr_helpers_have_focused_diff_evidence() {
     assert!(
         CPYTHON_MIGRATION.contains("cpython_operator_signature_helper_subset")
             && CPYTHON_MIGRATION.contains("cpython_operator_signature_helper_diff_subset")
+            && CPYTHON_MIGRATION.contains("operator.add")
+            && CPYTHON_MIGRATION.contains("(a, b, /)")
             && CPYTHON_MIGRATION.contains("str(inspect.signature(...))")
             && CPYTHON_MIGRATION.contains("does not claim full `inspect.Signature`")
             && CPYTHON_MIGRATION.contains("gated for CPython")

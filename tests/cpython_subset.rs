@@ -42514,9 +42514,9 @@ fn cpython_operator_helper_instance_module_metadata_subset() {
 }
 
 // Adapted from CPython Lib/test/test_operator.py::OperatorTestCase
-// signature coverage for attrgetter, itemgetter, and methodcaller. MiniPython
-// exposes only the public string form needed for these operator helpers rather
-// than a full inspect.Signature implementation.
+// signature coverage for attrgetter, itemgetter, methodcaller, and a supported
+// builtin operator. MiniPython exposes only the public string form needed for
+// this slice rather than a full inspect.Signature implementation.
 #[test]
 fn cpython_operator_signature_helper_subset() {
     assert_output(
@@ -42528,6 +42528,7 @@ fn cpython_operator_signature_helper_subset() {
             "print(str(inspect.signature(operator.itemgetter(2, 3, 5))))\n",
             "print(str(inspect.signature(operator.methodcaller)))\n",
             "print(str(inspect.signature(operator.methodcaller('foo', 2, y=3))))\n",
+            "print(str(inspect.signature(operator.add)))\n",
             "for expr in [lambda: inspect.signature(), lambda: inspect.signature(1), lambda: inspect.signature(operator.add)]:\n",
             "    try:\n",
             "        expr()\n",
@@ -42541,7 +42542,7 @@ fn cpython_operator_signature_helper_subset() {
             "(obj, /)",
             "(name, /, *args, **kwargs)",
             "(obj, /)",
-            "TypeError",
+            "(a, b, /)",
             "TypeError",
             "TypeError",
         ],
