@@ -2081,7 +2081,8 @@ fn cpython_memoryview_cast_diff_covers_one_byte_shape_boundaries() {
 
     assert!(
         CPYTHON_SUBSET.contains("shape must be a list or a tuple")
-            && CPYTHON_SUBSET.contains("memoryview: format argument must be a string")
+            && CPYTHON_SUBSET.contains("cast() argument 'format' must be str, not int")
+            && CPYTHON_SUBSET.contains("cast() argument 'format' must be str, not FormatBytes")
             && CPYTHON_SUBSET.contains("memoryview.cast(): elements of shape must be integers > 0"),
         "memoryview cast subset must contain invalid format and shape error text"
     );

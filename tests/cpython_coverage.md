@@ -4604,7 +4604,8 @@ without adding general custom encoder/decoder class support.
   public one-byte `memoryview.cast()` surface from CPython
   `test_memoryview.py`: `B` / `b` / `c` formats, positional and keyword
   `format` / one-dimensional `shape` binding, `str` subclass format and tuple
-  subclass shape inputs, CPython invalid format type error text, invalid
+  subclass shape inputs, CPython invalid format type error text for `int` and
+  bytes-subclass inputs, invalid
   `shape` boundary errors including explicit `None` rejection and rejection of
   non-`int` objects with `__index__`,
   format preservation through `memoryview(m)`, slicing, and `toreadonly()`,

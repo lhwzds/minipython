@@ -19934,8 +19934,11 @@ impl Vm {
             value if str_subclass_string(&value).is_some() => {
                 str_subclass_string(&value).expect("str subclass storage exists after guard")
             }
-            _ => {
-                return Err("TypeError: memoryview: format argument must be a string".to_string());
+            value => {
+                return Err(format!(
+                    "TypeError: cast() argument 'format' must be str, not {}",
+                    type_name(&value)
+                ));
             }
         };
         let target_itemsize = memoryview_cast_target_itemsize(&format)?;

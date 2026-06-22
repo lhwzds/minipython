@@ -1428,7 +1428,8 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   supports `memoryview.cast()` for one-byte `B`, `b`, and `c` formats, including
   positional and keyword `format` / one-dimensional `shape` arguments,
   `str` subclass format and tuple subclass shape arguments, CPython invalid
-  format type error text, invalid `shape` boundary errors including explicit
+  format type error text for `int` and bytes-subclass inputs, invalid `shape`
+  boundary errors including explicit
   `None` rejection and rejection of non-`int` objects with `__index__`,
   zero-dimensional single-element casts with CPython-compatible `ndim`,
   `shape`, `strides`, `suboffsets`, `nbytes`, `tolist()`, `tobytes()`,
