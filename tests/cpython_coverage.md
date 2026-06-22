@@ -60,18 +60,19 @@ Recent runtime migration notes:
 - `cpython_runtime_exception_capture_subset`, backed by
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
   no-keyword TypeError text for public generator, coroutine, and async
-  generator methods plus `staticmethod()` / `classmethod()` constructor keyword
-  rejection; the same evidence now covers representative public builtin and
-  descriptor entry points including `object.__repr__`, `object.__str__`,
+  generator methods including `generator.throw()`, `coroutine.throw()`, and
+  `async_generator.athrow()`, plus `staticmethod()` / `classmethod()`
+  constructor keyword rejection; the same evidence now covers representative
+  public builtin and descriptor entry points including `object.__repr__`, `object.__str__`,
   `object.__getattribute__`, `object.__setattr__`, `object.__delattr__`,
   `object.__format__`, `object.__dir__`, `object.__init__`, `object.__hash__`,
   object rich-comparison wrappers, `slice.indices`, `dict.fromkeys`,
   `str.maketrans`, `super()`, `isinstance()`, `issubclass()`, `vars()`,
   `globals()`, `locals()`, `range()`, `iter()`, `next()`, `filter()`,
   `reversed()`, `dict.__class_getitem__`, `str.format_map`, `sys._getframe`,
-  `math.gcd()`, `math.lcm()`, `BaseException.with_traceback()`, inherited
-  exception type `with_traceback()` descriptors, concrete exception
-  `with_traceback()` bound methods, and common
+  `math.gcd()`, `math.lcm()`, `BaseException.with_traceback()` keyword
+  rejection for base, inherited, concrete, and custom exception bound methods,
+  and common
   stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.

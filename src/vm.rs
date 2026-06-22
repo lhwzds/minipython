@@ -10103,7 +10103,10 @@ impl Vm {
             }
             Value::Builtin(name) if name.ends_with(".with_traceback") => {
                 if !keywords.is_empty() {
-                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
+                    return Err(
+                        "TypeError: BaseException.with_traceback() takes no keyword arguments"
+                            .to_string(),
+                    );
                 }
 
                 call_exception_with_traceback(args)
@@ -74042,12 +74045,7 @@ fn reject_generator_like_method_keywords(
     if keywords.is_empty() {
         Ok(())
     } else {
-        let display = match name {
-            "generator.throw" | "coroutine.throw" | "async_generator.athrow" => {
-                method_display_name(name).to_string()
-            }
-            _ => method_keyword_error_name(name),
-        };
+        let display = method_keyword_error_name(name);
         Err(format!("TypeError: {display}() takes no keyword arguments"))
     }
 }

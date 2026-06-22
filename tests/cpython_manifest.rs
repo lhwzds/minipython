@@ -13758,6 +13758,10 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "descriptor.deleter()",
         "staticmethod(descriptor_function)",
         "classmethod(descriptor_function)",
+        "BaseException.with_traceback() takes no keyword arguments",
+        "generator.throw() takes no keyword arguments",
+        "coroutine.throw() takes no keyword arguments",
+        "async_generator.athrow() takes no keyword arguments",
         "get-none-none",
     ] {
         assert!(
@@ -13787,6 +13791,11 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "property.deleter() takes no keyword arguments",
         "staticmethod(descriptor_function)",
         "classmethod(descriptor_function)",
+        "BaseException().with_traceback(tb=None)",
+        "KeywordTracebackError().with_traceback(tb=None)",
+        "generator_object.throw(typ=ValueError)",
+        "coroutine_object.throw(typ=ValueError)",
+        "async_generator_object.athrow(typ=ValueError)",
         "get-bad-keyword",
         "get-none-none",
     ] {
@@ -13799,7 +13808,11 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains("cpython_runtime_exception_capture_subset")
-                && document.contains("cpython_runtime_exception_capture_diff_subset"),
+                && document.contains("cpython_runtime_exception_capture_diff_subset")
+                && document.contains("generator.throw()")
+                && document.contains("coroutine.throw()")
+                && document.contains("async_generator.athrow()")
+                && document.contains("BaseException.with_traceback()"),
             "focused runtime exception capture evidence must be documented in coverage and migration notes"
         );
     }
