@@ -1793,10 +1793,12 @@ Completed in the differential parity harness pass:
   `__index__`-supplied out-of-range base diagnostics.
   `cpython_int_constructor_error_message_subset` covers CPython's string-float
   rejection, non-ASCII string diagnostics, embedded whitespace, embedded-NUL
-  explicit-base variants, and non-UTF-8 bytes invalid-literal diagnostics by
-  preserving or escaping the original repr. The lone-surrogate exact-message
-  rows remain future string-model work because MiniPython does not carry lone
-  surrogate code points in executable Rust strings yet.
+  explicit-base variants, non-UTF-8 bytes invalid-literal diagnostics, and the
+  current `int expected at most 2 arguments, got 3` positional-argument
+  diagnostic plus the `int() got an unexpected keyword argument 'x'` keyword
+  rejection by preserving or escaping the original repr. The lone-surrogate
+  exact-message rows remain future string-model work because MiniPython does
+  not carry lone surrogate code points in executable Rust strings yet.
 - Migrated first-pass `iter()` and `next()` coverage from
   `Lib/test/test_builtin.py` and `Lib/test/test_iter.py`. Ordinary iterators are
   now shared heap values, so `it = iter(seq); next(it); next(it)` advances the

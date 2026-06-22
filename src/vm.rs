@@ -20983,6 +20983,12 @@ impl Vm {
     ) -> Result<Value, String> {
         let total_arg_count = args.len() + keywords.len();
         if total_arg_count > 2 {
+            if keywords.is_empty() {
+                return Err(format!(
+                    "TypeError: int expected at most 2 arguments, got {}",
+                    total_arg_count
+                ));
+            }
             return Err(format!(
                 "TypeError: int() takes at most 2 arguments ({} given)",
                 total_arg_count
@@ -21004,7 +21010,7 @@ impl Vm {
                 }
                 _ => {
                     return Err(format!(
-                        "TypeError: '{keyword}' is an invalid keyword argument for int()"
+                        "TypeError: int() got an unexpected keyword argument '{keyword}'"
                     ));
                 }
             }

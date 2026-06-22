@@ -29858,7 +29858,7 @@ fn cpython_runtime_error_message_parity_diff_subset() {
             origin: "Lib/test/test_int.py int constructor argument clinic errors",
             name: "int-base-rejects-too-many-positional-args-message",
             source: "int('10', 2, 3)",
-            expected_message: "TypeError: int() takes at most 2 arguments (3 given)",
+            expected_message: "TypeError: int expected at most 2 arguments, got 3",
         },
         ErrorMessageCase {
             origin: "Lib/test/test_int.py int constructor argument clinic errors",
@@ -29960,7 +29960,7 @@ fn cpython_runtime_error_message_parity_diff_subset() {
             origin: "Lib/test/test_int.py::IntTestCases::test_keyword_args",
             name: "int-rejects-invalid-x-keyword-message",
             source: "int(x=1.2)",
-            expected_message: "TypeError: 'x' is an invalid keyword argument for int()",
+            expected_message: "TypeError: int() got an unexpected keyword argument 'x'",
         },
         ErrorMessageCase {
             origin: "Lib/test/test_int.py::IntTestCases::test_unicode invalid base",

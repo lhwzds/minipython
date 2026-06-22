@@ -38279,6 +38279,27 @@ check("bytes-nonutf8-base10", b"123\xbd", 10)"#,
             "bytes-nonutf8-base10 ValueError True",
         ],
     );
+
+    assert_output(
+        r#"for label, expr in [
+    ("many-pos", lambda: int("10", 2, 3)),
+    ("pos-base-kw", lambda: int("10", 2, base=10)),
+    ("extra-kw", lambda: int("10", base=2, other=3)),
+    ("bad-x-kw", lambda: int(x=1.2)),
+    ("bad-y-kw", lambda: int("1", y=2)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
+        &[
+            "many-pos int expected at most 2 arguments, got 3",
+            "pos-base-kw int() takes at most 2 arguments (3 given)",
+            "extra-kw int() takes at most 2 arguments (3 given)",
+            "bad-x-kw int() got an unexpected keyword argument 'x'",
+            "bad-y-kw int() got an unexpected keyword argument 'y'",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_int.py::IntStrDigitLimitsTests.

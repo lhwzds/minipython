@@ -5606,3 +5606,7 @@ they imply file-like write dispatch.
 `cpython_stop_iteration_value_subset` cover public `StopIteration.value`
 behavior for direct exception construction, generator return values, and
 `StopIteration` subclasses.
+`cpython_int_constructor_error_message_subset` also covers the current
+`int expected at most 2 arguments, got 3` positional-argument diagnostic for
+too many positional arguments and the
+`int() got an unexpected keyword argument 'x'` keyword rejection.

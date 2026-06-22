@@ -13087,6 +13087,43 @@ fn number_integer_bit_methods_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn number_int_constructor_error_messages_cover_runtime_subset() {
+    assert!(
+        CPYTHON_SUBSET.contains("fn cpython_int_constructor_error_message_subset("),
+        "int constructor error-message runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_runtime_error_message_parity_diff_subset("),
+        "int constructor error-message direct CPython diff evidence must exist"
+    );
+
+    for required in [
+        "int(\"10\", 2, 3)",
+        "int('10', 2, 3)",
+        "int(x=1.2)",
+        "int expected at most 2 arguments, got 3",
+        "int() takes at most 2 arguments (3 given)",
+        "int() got an unexpected keyword argument 'x'",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required) || CPYTHON_DIFF.contains(required),
+            "int constructor error-message evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "cpython_int_constructor_error_message_subset",
+        "int expected at most 2 arguments, got 3",
+        "int() got an unexpected keyword argument 'x'",
+    ] {
+        assert!(
+            CPYTHON_COVERAGE.contains(required) || CPYTHON_MIGRATION.contains(required),
+            "int constructor error-message docs must mention `{required}`"
+        );
+    }
+}
+
+#[test]
 fn sys_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "sys",
