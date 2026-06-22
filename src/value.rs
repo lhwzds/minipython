@@ -4204,10 +4204,10 @@ fn format_ordered_dict(entries: &[(Value, Value)]) -> String {
 
     let items = entries
         .iter()
-        .map(|(key, value)| format!("({}, {})", format_value_repr(key), format_value_repr(value)))
+        .map(|(key, value)| format!("{}: {}", format_value_repr(key), format_value_repr(value)))
         .collect::<Vec<_>>()
         .join(", ");
-    format!("OrderedDict([{items}])")
+    format!("OrderedDict({{{items}}})")
 }
 
 fn format_counter(entries: &[(Value, Value)]) -> String {

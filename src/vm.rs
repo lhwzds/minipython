@@ -1909,7 +1909,7 @@ fn repr_ordered_dict_entries_checked(
         .iter()
         .map(|(key, value)| {
             Ok(format!(
-                "({}, {})",
+                "{}: {}",
                 repr_value_inner_checked(key, active)?,
                 repr_value_inner_checked(value, active)?
             ))
@@ -1917,7 +1917,7 @@ fn repr_ordered_dict_entries_checked(
         .collect::<Result<Vec<_>, String>>()?
         .join(", ");
     active.remove(&ptr);
-    Ok(format!("OrderedDict([{rendered}])"))
+    Ok(format!("OrderedDict({{{rendered}}})"))
 }
 
 fn repr_simple_namespace_checked(
@@ -2287,7 +2287,7 @@ fn repr_ordered_dict_entries(entries: &DictRef, active: &mut HashSet<usize>) -> 
         .iter()
         .map(|(key, value)| {
             format!(
-                "({}, {})",
+                "{}: {}",
                 repr_value_inner(key, active),
                 repr_value_inner(value, active)
             )
@@ -2295,7 +2295,7 @@ fn repr_ordered_dict_entries(entries: &DictRef, active: &mut HashSet<usize>) -> 
         .collect::<Vec<_>>()
         .join(", ");
     active.remove(&ptr);
-    format!("OrderedDict([{rendered}])")
+    format!("OrderedDict({{{rendered}}})")
 }
 
 fn repr_tuple(items: &[Value], active: &mut HashSet<usize>) -> String {

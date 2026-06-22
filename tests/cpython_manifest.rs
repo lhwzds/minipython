@@ -14348,6 +14348,48 @@ fn descriptor_get_method_wrapper_arity_errors_have_modern_diff_evidence() {
 }
 
 #[test]
+fn ordered_dict_modern_repr_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_type_namespace_order_subset");
+    let diff_body =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_ordered_dict_modern_repr_diff_subset");
+
+    for required in [
+        "OrderedDict({'a': 1})",
+        "OrderedDict({'self': ...})",
+        "OrderedDict({'a': 1, 'b': 2})",
+        "OrderedDict({'z': 0, 'a': 1, 'b': 2})",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "OrderedDict subset evidence must pin modern dict-style repr text `{required}`"
+        );
+    }
+
+    for required in [
+        "repr(value), str(value), format(value, '')",
+        "OrderedDict.__repr__(single)",
+        "repr(pair.copy())",
+        "repr(OrderedDict.fromkeys(['b', 'a'], 3))",
+        "repr(pair | {'c': 3})",
+        "repr({'z': 0} | pair)",
+        "repr(OrderedDict.__or__(pair, {'d': 4}))",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "OrderedDict CPython diff evidence must exercise `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("dict-style `OrderedDict({...})` repr")
+                && document.contains("cpython_ordered_dict_modern_repr_diff_subset"),
+            "docs must link modern OrderedDict repr to focused diff evidence"
+        );
+    }
+}
+
+#[test]
 fn await_non_awaitable_errors_have_modern_diff_evidence() {
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_grammar_async_await_subset");
     let diff_body = extract_rust_test_body(

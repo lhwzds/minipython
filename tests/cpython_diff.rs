@@ -17362,6 +17362,30 @@ fn cpython_dict_numeric_key_equivalence_diff_subset() {
 }
 
 #[test]
+fn cpython_ordered_dict_modern_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::TestType::test_namespace_order OrderedDict display subset",
+        name: "ordered-dict-modern-repr",
+        source: r#"from collections import OrderedDict
+
+empty = OrderedDict()
+single = OrderedDict([('a', 1)])
+pair = OrderedDict([('a', 1), ('b', 2)])
+recursive = OrderedDict()
+recursive['self'] = recursive
+for value in [empty, single, pair, recursive]:
+    print(repr(value), str(value), format(value, ''))
+print(OrderedDict.__repr__(single), OrderedDict.__str__(single), OrderedDict.__format__(single, ''))
+print(type(pair.copy()).__name__, repr(pair.copy()))
+print(type(OrderedDict.copy(pair)).__name__, repr(OrderedDict.copy(pair)))
+print(repr(OrderedDict.fromkeys(['b', 'a'], 3)))
+print(repr(pair | {'c': 3}))
+print(repr({'z': 0} | pair))
+print(repr(OrderedDict.__or__(pair, {'d': 4})))"#,
+    });
+}
+
+#[test]
 fn cpython_program_output_parity_smoke_diff_subset() {
     for case in [
         DiffCase {

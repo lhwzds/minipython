@@ -6249,8 +6249,10 @@ Completed in the type builtin pass:
   `TestType::test_namespace_order`, covering minimal `OrderedDict`
   construction/update, public type/instance `__doc__` plus type `__module__` /
   `__qualname__` metadata, direct display/empty-format methods including
-  recursive display, generic alias repr/module metadata, mapping mutation/iteration
-  helpers, `copy()` preserving the `OrderedDict` result type, direct equality methods, type/instance `fromkeys()`,
+  recursive display with dict-style `OrderedDict({...})` repr and
+  `cpython_ordered_dict_modern_repr_diff_subset` evidence, generic alias
+  repr/module metadata, mapping mutation/iteration helpers, `copy()`
+  preserving the `OrderedDict` result type, direct equality methods, type/instance `fromkeys()`,
   `popitem(last=...)`, direct `__reversed__()`, mapping union operators
   including in-place identity preservation, `move_to_end()`, and preservation
   of ordered namespace entries in a dynamic class `__dict__`.
