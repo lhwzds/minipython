@@ -6588,10 +6588,11 @@ Completed in the pow builtin pass:
   `attrname`, wrapped-function/name mismatch, rejecting reuse under different
   names, allowing reuse under the same name across classes, explicit
   post-class assignment before `__set_name__`, slot-only instances without
-  `__dict__`, and user-descriptor `__set_name__` calls plus CPython-style
-  `RuntimeError`
-  wrapping for descriptor failures during both class statements and `type()`
-  dynamic class creation.
+  `__dict__`, CPython's direct `TypeError` for cached-property reuse under
+  different names, qualified `cached_property.__init__` / `__get__` /
+  `__set_name__` public TypeError text, and user-descriptor `__set_name__`
+  calls plus CPython-style `RuntimeError` wrapping for descriptor failures
+  during both class statements and `type()` dynamic class creation.
 - Added `cpython_functools_cached_property_module_metadata_subset` and gated
   `cpython_functools_cached_property_module_metadata_diff_subset` for newer
   CPython cached_property `__module__` metadata initialized from the wrapped

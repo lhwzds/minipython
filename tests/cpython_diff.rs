@@ -15662,7 +15662,7 @@ print(callable(partialmethod(capture)), type(partialmethod(capture)).__name__)"#
 
 #[test]
 fn cpython_functools_cached_property_diff_subset() {
-    // CPython oracle text: __init__() missing 1 required positional argument: 'func'
+    // CPython oracle text: cached_property.__init__() missing 1 required positional argument: 'func'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cached_property public subset",
         name: "functools-cached-property",
@@ -15747,7 +15747,11 @@ for label, maker in [
                     return 9
             Slots().cost
     except (TypeError, RuntimeError) as error:
-        print(label, type(error).__name__, str(error))
+        if label == 'reuse-different':
+            expected = "Cannot assign the same cached_property to two different names ('a' and 'b')."
+            print(label, type(error).__name__, str(error), str(error) == expected)
+        else:
+            print(label, type(error).__name__, str(error))
 
 counter = 0
 @cached_property
@@ -15784,17 +15788,18 @@ print(descriptor.__get__(instance=CachedCostItem()))
 try:
     cached_property()
 except TypeError as error:
-    print('missing-func', type(error).__name__, str(error))
+    expected = "cached_property.__init__() missing 1 required positional argument: 'func'"
+    print('missing-func', type(error).__name__, str(error), str(error) == expected)
 for label, expected, expr in [
-    ('get-missing', "__get__() missing 1 required positional argument: 'instance'", lambda: descriptor.__get__()),
-    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(CachedCostItem(), CachedCostItem, 1)),
-    ('get-duplicate', "__get__() got multiple values for argument 'instance'", lambda: descriptor.__get__(CachedCostItem(), instance=CachedCostItem())),
-    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
-    ('set-missing', "__set_name__() missing 2 required positional arguments: 'owner' and 'name'", lambda: descriptor.__set_name__()),
-    ('set-missing-name', "__set_name__() missing 1 required positional argument: 'name'", lambda: descriptor.__set_name__(CachedCostItem)),
-    ('set-too-many', '__set_name__() takes 3 positional arguments but 4 were given', lambda: descriptor.__set_name__(CachedCostItem, 'other', 1)),
-    ('set-duplicate', "__set_name__() got multiple values for argument 'owner'", lambda: descriptor.__set_name__(CachedCostItem, 'cost', owner=CachedCostItem)),
-    ('set-unknown', "__set_name__() got an unexpected keyword argument 'bad'", lambda: descriptor.__set_name__(bad=1)),
+    ('get-missing', "cached_property.__get__() missing 1 required positional argument: 'instance'", lambda: descriptor.__get__()),
+    ('get-too-many', 'cached_property.__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(CachedCostItem(), CachedCostItem, 1)),
+    ('get-duplicate', "cached_property.__get__() got multiple values for argument 'instance'", lambda: descriptor.__get__(CachedCostItem(), instance=CachedCostItem())),
+    ('get-unknown', "cached_property.__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+    ('set-missing', "cached_property.__set_name__() missing 2 required positional arguments: 'owner' and 'name'", lambda: descriptor.__set_name__()),
+    ('set-missing-name', "cached_property.__set_name__() missing 1 required positional argument: 'name'", lambda: descriptor.__set_name__(CachedCostItem)),
+    ('set-too-many', 'cached_property.__set_name__() takes 3 positional arguments but 4 were given', lambda: descriptor.__set_name__(CachedCostItem, 'other', 1)),
+    ('set-duplicate', "cached_property.__set_name__() got multiple values for argument 'owner'", lambda: descriptor.__set_name__(CachedCostItem, 'cost', owner=CachedCostItem)),
+    ('set-unknown', "cached_property.__set_name__() got an unexpected keyword argument 'bad'", lambda: descriptor.__set_name__(bad=1)),
 ]:
     try:
         expr()

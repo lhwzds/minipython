@@ -1633,8 +1633,10 @@ without adding general custom encoder/decoder class support.
   string/`None` `attrname`, attributes whose names differ from the wrapped
   function, reuse rejection under different names, reuse under the same name
   across classes, explicit post-class assignment before `__set_name__`,
-  slot-only instances without `__dict__`, and the shared user-descriptor
-  `__set_name__` hook plus CPython-style
+  slot-only instances without `__dict__`, CPython's direct `TypeError` for
+  cached-property reuse under different names, qualified
+  `cached_property.__init__` / `__get__` / `__set_name__` public TypeError
+  text, and the shared user-descriptor `__set_name__` hook plus CPython-style
   `RuntimeError` wrapping for descriptor failures during both class statements
   and `type()` dynamic class creation.
   `cpython_functools_cached_property_module_metadata_subset` and gated

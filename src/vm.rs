@@ -7371,8 +7371,7 @@ impl Vm {
                     == "TypeError: cached_property() missing required argument 'func' (pos 1)"
                     || message == "TypeError: cached_property() missing required argument 'func'"
                 {
-                    "TypeError: __init__() missing 1 required positional argument: 'func'"
-                        .to_string()
+                    "TypeError: cached_property.__init__() missing 1 required positional argument: 'func'".to_string()
                 } else {
                     message
                 }
@@ -12318,8 +12317,7 @@ impl Vm {
                         descriptor.clone(),
                         class_value.clone(),
                         Value::String(name.clone()),
-                    )
-                    .map_err(|_| class_set_name_error(&descriptor, class_value, &name))?;
+                    )?;
                 }
                 descriptor @ Value::Property { .. } => {
                     property_set_name(descriptor.clone(), Value::String(name.clone()))
@@ -16504,7 +16502,7 @@ impl Vm {
             "cached_property.__get__" => {
                 if rest.len() > 2 {
                     return Err(format!(
-                        "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                        "TypeError: cached_property.__get__() takes from 2 to 3 positional arguments but {} were given",
                         rest.len() + 1
                     ));
                 }
@@ -16515,7 +16513,7 @@ impl Vm {
                         "instance" => {
                             if instance.is_some() {
                                 return Err(
-                                    "TypeError: __get__() got multiple values for argument 'instance'"
+                                    "TypeError: cached_property.__get__() got multiple values for argument 'instance'"
                                         .to_string(),
                                 );
                             }
@@ -16524,7 +16522,7 @@ impl Vm {
                         "owner" => {
                             if owner.is_some() {
                                 return Err(
-                                    "TypeError: __get__() got multiple values for argument 'owner'"
+                                    "TypeError: cached_property.__get__() got multiple values for argument 'owner'"
                                         .to_string(),
                                 );
                             }
@@ -16532,14 +16530,14 @@ impl Vm {
                         }
                         _ => {
                             return Err(format!(
-                                "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                                "TypeError: cached_property.__get__() got an unexpected keyword argument '{keyword}'"
                             ));
                         }
                     }
                 }
                 let Some(instance) = instance else {
                     return Err(
-                        "TypeError: __get__() missing 1 required positional argument: 'instance'"
+                        "TypeError: cached_property.__get__() missing 1 required positional argument: 'instance'"
                             .to_string(),
                     );
                 };
@@ -16549,7 +16547,7 @@ impl Vm {
             "cached_property.__set_name__" => {
                 if rest.len() > 2 {
                     return Err(format!(
-                        "TypeError: __set_name__() takes 3 positional arguments but {} were given",
+                        "TypeError: cached_property.__set_name__() takes 3 positional arguments but {} were given",
                         rest.len() + 1
                     ));
                 }
@@ -16560,7 +16558,7 @@ impl Vm {
                         "owner" => {
                             if owner.is_some() {
                                 return Err(
-                                    "TypeError: __set_name__() got multiple values for argument 'owner'"
+                                    "TypeError: cached_property.__set_name__() got multiple values for argument 'owner'"
                                         .to_string(),
                                 );
                             }
@@ -16569,7 +16567,7 @@ impl Vm {
                         "name" => {
                             if attrname.is_some() {
                                 return Err(
-                                    "TypeError: __set_name__() got multiple values for argument 'name'"
+                                    "TypeError: cached_property.__set_name__() got multiple values for argument 'name'"
                                         .to_string(),
                                 );
                             }
@@ -16577,7 +16575,7 @@ impl Vm {
                         }
                         _ => {
                             return Err(format!(
-                                "TypeError: __set_name__() got an unexpected keyword argument '{keyword}'"
+                                "TypeError: cached_property.__set_name__() got an unexpected keyword argument '{keyword}'"
                             ));
                         }
                     }
@@ -16587,15 +16585,15 @@ impl Vm {
                         self.cached_property_set_name(descriptor, owner, attrname)
                     }
                     (None, None) => Err(
-                        "TypeError: __set_name__() missing 2 required positional arguments: 'owner' and 'name'"
+                        "TypeError: cached_property.__set_name__() missing 2 required positional arguments: 'owner' and 'name'"
                             .to_string(),
                     ),
                     (Some(_), None) => Err(
-                        "TypeError: __set_name__() missing 1 required positional argument: 'name'"
+                        "TypeError: cached_property.__set_name__() missing 1 required positional argument: 'name'"
                             .to_string(),
                     ),
                     (None, Some(_)) => Err(
-                        "TypeError: __set_name__() missing 1 required positional argument: 'owner'"
+                        "TypeError: cached_property.__set_name__() missing 1 required positional argument: 'owner'"
                             .to_string(),
                     ),
                 }
