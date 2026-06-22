@@ -27389,12 +27389,12 @@ impl Vm {
                 for (keyword, value) in keywords {
                     if keyword != "n" {
                         return Err(format!(
-                            "TypeError: most_common() got an unexpected keyword argument '{keyword}'"
+                            "TypeError: Counter.most_common() got an unexpected keyword argument '{keyword}'"
                         ));
                     }
                     if !rest.is_empty() || keyword_limit.is_some() {
                         return Err(
-                            "TypeError: most_common() got multiple values for argument 'n'"
+                            "TypeError: Counter.most_common() got multiple values for argument 'n'"
                                 .to_string(),
                         );
                     }

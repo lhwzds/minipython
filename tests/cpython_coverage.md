@@ -5352,7 +5352,8 @@ and runtime coverage for `Counter.fromkeys()` and instance `fromkeys()` raising
 `cpython_collections_counter_most_common_diff_subset` and
 `cpython_collections_counter_most_common_subset` add direct CPython output
 parity and runtime coverage for `most_common()` full output, zero limit,
-positive limit, `None` limit, and increasing limit slices.
+positive limit, `None` limit, increasing limit slices, and CPython-style
+`Counter.most_common()` keyword binding errors.
 `cpython_collections_counter_mapping_mutation_diff_subset` and
 `cpython_collections_counter_mapping_mutation_subset` add direct CPython output
 parity and runtime coverage for `pop()`, missing-key `pop(default)`,

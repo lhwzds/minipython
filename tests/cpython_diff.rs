@@ -12528,8 +12528,8 @@ for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]
 
 #[test]
 fn cpython_collections_counter_most_common_diff_subset() {
-    // CPython oracle text: most_common() got multiple values for argument 'n';
-    // most_common() got an unexpected keyword argument 'x'
+    // CPython oracle text: Counter.most_common() got multiple values for argument 'n';
+    // Counter.most_common() got an unexpected keyword argument 'x'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter most_common subset",
         name: "collections-counter-most-common",

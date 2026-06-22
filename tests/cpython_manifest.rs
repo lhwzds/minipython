@@ -11250,8 +11250,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "c.most_common(n=1)",
         "c.most_common(n=None)",
         "c.most_common(1, n=2)",
-        "most_common() got multiple values for argument 'n'",
-        "most_common() got an unexpected keyword argument 'x'",
+        "Counter.most_common() got multiple values for argument 'n'",
+        "Counter.most_common() got an unexpected keyword argument 'x'",
     ] {
         assert!(
             most_common_diff_body.contains(required) && most_common_subset_body.contains(required),
