@@ -38748,12 +38748,20 @@ fn cpython_bad_iterable_exception_identity_subset() {
 #[test]
 fn cpython_builtin_sorted_exact_subset() {
     assert_output(
-        "copy = [7, 0, 3, 1, 8, 2, 9, 4, 6, 5]\nprint(sorted(copy))\nprint(copy)\nprint(sorted(copy, key=lambda x: -x))\nprint(sorted(copy, reverse=True))\nprint(sorted([], key=None))\nletters = sorted('abracadabra')\nprint(len(letters), letters[0], letters[1], letters[-1])\nunique = 'abcdr'\nfor T in [list, tuple, str, set, frozenset, dict.fromkeys]:\n    print(sorted(T(unique)) == ['a', 'b', 'c', 'd', 'r'])\nfor expr in [lambda: sorted(iterable=[]), lambda: sorted([], None), lambda: sorted('The quick Brown fox'.split(), None, lambda x, y: 0)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
+        "copy = [7, 0, 3, 1, 8, 2, 9, 4, 6, 5]\nprint(sorted(copy))\nprint(copy)\nprint(sorted(copy, key=lambda x: -x))\nprint(sorted(copy, reverse=True))\nprint(sorted([1, 2], reverse=[]))\nprint(sorted([1, 2], reverse=[1]))\nclass ReverseFlag:\n    def __init__(self, value):\n        self.value = value\n    def __bool__(self):\n        print('bool', self.value)\n        return self.value\nprint(sorted([1, 2], reverse=ReverseFlag(True)))\nprint(sorted([1, 2], reverse=ReverseFlag(False)))\nitems = [1, 0]\nprint(items.sort(reverse=[]), items)\nitems = [1, 0]\nprint(items.sort(reverse=[1]), items)\nprint(sorted([], key=None))\nletters = sorted('abracadabra')\nprint(len(letters), letters[0], letters[1], letters[-1])\nunique = 'abcdr'\nfor T in [list, tuple, str, set, frozenset, dict.fromkeys]:\n    print(sorted(T(unique)) == ['a', 'b', 'c', 'd', 'r'])\nfor expr in [lambda: sorted(iterable=[]), lambda: sorted([], None), lambda: sorted('The quick Brown fox'.split(), None, lambda x, y: 0)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
             "[7, 0, 3, 1, 8, 2, 9, 4, 6, 5]",
             "[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]",
             "[9, 8, 7, 6, 5, 4, 3, 2, 1, 0]",
+            "[1, 2]",
+            "[2, 1]",
+            "bool True",
+            "[2, 1]",
+            "bool False",
+            "[1, 2]",
+            "None [0, 1]",
+            "None [1, 0]",
             "[]",
             "11 a a r",
             "True",

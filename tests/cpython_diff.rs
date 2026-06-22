@@ -9129,6 +9129,16 @@ print(sorted(copy))
 print(copy)
 print(sorted(copy, key=lambda x: -x))
 print(sorted(copy, reverse=True))
+print(sorted([1, 2], reverse=[]))
+print(sorted([1, 2], reverse=[1]))
+class ReverseFlag:
+    def __init__(self, value):
+        self.value = value
+    def __bool__(self):
+        print('bool', self.value)
+        return self.value
+print(sorted([1, 2], reverse=ReverseFlag(True)))
+print(sorted([1, 2], reverse=ReverseFlag(False)))
 print(sorted([], key=None))
 letters = sorted('abracadabra')
 print(len(letters), letters[0], letters[1], letters[-1])
@@ -20925,7 +20935,7 @@ except ValueError as error:
         DiffCase {
             origin: "Lib/test/list_tests.py::CommonTest::test_reverse / ::test_sort and Lib/test/test_sort.py::TestDecorateSortUndecorate::test_reverse",
             name: "list-reverse-and-sort-methods",
-            source: "u = [-2, -1, 0, 1, 2]\noriginal = u.copy()\nprint(u.reverse(), u)\nprint(u.reverse(), u == original)\nu = [1, 0]\nprint(u.sort(), u)\nu = [2, 1, 0, -1, -2]\nu.sort()\nprint(u)\nu.sort(key=lambda x: -x)\nprint(u)\nu = [3, 1, 2]\nu.sort(reverse=True)\nprint(u)\nu = [(1, 10), (1, 20), (0, 30)]\nu.sort(key=lambda item: item[0], reverse=True)\nprint(u)\nnums = [2, 1]\nalias = nums\nprint(nums.sort(key=None), alias is nums, alias)",
+            source: "u = [-2, -1, 0, 1, 2]\noriginal = u.copy()\nprint(u.reverse(), u)\nprint(u.reverse(), u == original)\nu = [1, 0]\nprint(u.sort(), u)\nu = [2, 1, 0, -1, -2]\nu.sort()\nprint(u)\nu.sort(key=lambda x: -x)\nprint(u)\nu = [3, 1, 2]\nu.sort(reverse=True)\nprint(u)\nu = [1, 0]\nprint(u.sort(reverse=[]), u)\nu = [1, 0]\nprint(u.sort(reverse=[1]), u)\nclass ReverseFlag:\n    def __init__(self, value):\n        self.value = value\n    def __bool__(self):\n        print('bool', self.value)\n        return self.value\nu = [1, 0]\nprint(u.sort(reverse=ReverseFlag(False)), u)\nu = [1, 0]\nprint(u.sort(reverse=ReverseFlag(True)), u)\nu = [(1, 10), (1, 20), (0, 30)]\nu.sort(key=lambda item: item[0], reverse=True)\nprint(u)\nnums = [2, 1]\nalias = nums\nprint(nums.sort(key=None), alias is nums, alias)",
         },
         DiffCase {
             origin: "Lib/test/list_tests.py::CommonTest::test_insert / ::test_remove / ::test_index and Lib/test/seq_tests.py::CommonTest::test_count / ::test_index",
@@ -28698,11 +28708,6 @@ fn cpython_rejection_parity_smoke_diff_subset() {
             source: "sorted([1], bad=2)",
         },
         DiffCase {
-            origin: "Lib/test/test_builtin.py::TestSorted reverse argument validation",
-            name: "sorted-rejects-non-integer-reverse",
-            source: "sorted([1], reverse=[])",
-        },
-        DiffCase {
             origin: "Lib/test/test_sort.py::TestBase::test_not_all_tuples",
             name: "sorted-rejects-incomparable-items",
             source: "sorted([1, 'a'])",
@@ -28726,11 +28731,6 @@ fn cpython_rejection_parity_smoke_diff_subset() {
             origin: "Lib/test/list_tests.py::CommonTest::test_sort",
             name: "list-sort-rejects-unknown-keyword",
             source: "u = [1, 0]\nu.sort(bad=2)",
-        },
-        DiffCase {
-            origin: "Lib/test/list_tests.py::CommonTest::test_sort",
-            name: "list-sort-rejects-non-integer-reverse",
-            source: "u = [1, 0]\nu.sort(reverse=[])",
         },
         DiffCase {
             origin: "Lib/test/test_sort.py::TestBase::test_not_all_tuples",

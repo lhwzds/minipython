@@ -30660,7 +30660,7 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        let options = sorted_options(args.len(), keywords)?;
+        let options = sorted_options(self, args.len(), keywords)?;
         let [iterable] = args.as_slice() else {
             return Err(format!(
                 "TypeError: sorted expected 1 argument, got {}",
@@ -31571,7 +31571,7 @@ impl Vm {
             return Err("sort() takes no positional arguments".to_string());
         }
 
-        let options = list_sort_options(keywords)?;
+        let options = list_sort_options(self, keywords)?;
         let values = items.borrow().clone();
         let mut sorted = Vec::new();
         for value in values {
@@ -63266,6 +63266,7 @@ struct SortItem {
 }
 
 fn sorted_options(
+    vm: &mut Vm,
     positional_count: usize,
     keywords: Vec<(String, Value)>,
 ) -> Result<SortedOptions, String> {
@@ -63286,7 +63287,7 @@ fn sorted_options(
                         "sorted() got multiple values for keyword argument 'reverse'".to_string(),
                     );
                 }
-                options.reverse = Some(sorted_reverse_option(value)?);
+                options.reverse = Some(sorted_reverse_option(vm, value)?);
             }
             "iterable" if positional_count == 0 => {
                 return Err("TypeError: sorted expected 1 argument, got 0".to_string());
@@ -63301,7 +63302,7 @@ fn sorted_options(
     Ok(options)
 }
 
-fn list_sort_options(keywords: Vec<(String, Value)>) -> Result<SortedOptions, String> {
+fn list_sort_options(vm: &mut Vm, keywords: Vec<(String, Value)>) -> Result<SortedOptions, String> {
     let mut options = SortedOptions::default();
     for (keyword, value) in keywords {
         match keyword.as_str() {
@@ -63317,7 +63318,7 @@ fn list_sort_options(keywords: Vec<(String, Value)>) -> Result<SortedOptions, St
                         "sort() got multiple values for keyword argument 'reverse'".to_string()
                     );
                 }
-                options.reverse = Some(sorted_reverse_option(value)?);
+                options.reverse = Some(sorted_reverse_option(vm, value)?);
             }
             _ => {
                 return Err(format!(
@@ -63329,17 +63330,8 @@ fn list_sort_options(keywords: Vec<(String, Value)>) -> Result<SortedOptions, St
     Ok(options)
 }
 
-fn sorted_reverse_option(value: Value) -> Result<bool, String> {
-    match value {
-        Value::Bool(value) => Ok(value),
-        Value::Number(value) => Ok(value != 0),
-        Value::BigInt(value) => Ok(!value.is_zero()),
-        Value::Float(_) => Err("integer argument expected, got float".to_string()),
-        value => Err(format!(
-            "an integer is required (got type {})",
-            type_name(&value)
-        )),
-    }
+fn sorted_reverse_option(vm: &mut Vm, value: Value) -> Result<bool, String> {
+    vm.truth_value(value)
 }
 
 fn divmod_error_message(message: &str, left: Value, right: Value) -> String {

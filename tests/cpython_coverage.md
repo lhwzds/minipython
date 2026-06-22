@@ -4271,8 +4271,9 @@ without adding general custom encoder/decoder class support.
   `cpython_builtin_sorted_exact_subset` and
   `cpython_builtin_sorted_exact_diff_subset`, covering all current CPython
   `Lib/test/test_builtin.py::TestSorted` methods through deterministic sorted
-  input, source-list preservation, `key=`, `reverse=`, iterable input type
-  coverage, and positional/keyword argument rejection.
+  input, source-list preservation, `key=`, truth-tested `reverse=`, iterable input type
+  coverage, and positional/keyword argument rejection. The shared
+  list sorting path also covers truth-tested `list.sort(reverse=...)`.
 - `RUNTIME_BUILTINS` also includes
   `cpython_builtin_none_ne_direct_subset` with direct CPython output parity in
   `cpython_builtin_none_ne_direct_diff_subset`, covering CPython

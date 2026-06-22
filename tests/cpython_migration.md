@@ -10062,7 +10062,8 @@ Completed in the direct TestSorted migration pass:
   CPython `Lib/test/test_builtin.py::TestSorted` methods into direct
   method-level Rust evidence.
 - The test covers deterministic basic ordering without mutating the input list,
-  `key=`, `reverse=`, `key=None`, accepted list/tuple/str/set/frozenset/dict-key
+  `key=`, truth-tested `reverse=` for `sorted()` and the shared
+  `list.sort(reverse=...)` path, `key=None`, accepted list/tuple/str/set/frozenset/dict-key
   iterable inputs, positional-only `iterable` rejection, second positional
   argument rejection, and the legacy third positional comparison-function
   rejection.

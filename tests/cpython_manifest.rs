@@ -15403,6 +15403,11 @@ fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
         "print(copy)",
         "sorted(copy, key=lambda x: -x)",
         "sorted(copy, reverse=True)",
+        "sorted([1, 2], reverse=[])",
+        "sorted([1, 2], reverse=[1])",
+        "class ReverseFlag",
+        "items.sort(reverse=[])",
+        "items.sort(reverse=[1])",
         "sorted([], key=None)",
         "letters = sorted('abracadabra')",
         "len(letters), letters[0], letters[1], letters[-1]",
@@ -15430,6 +15435,9 @@ fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
         "print(copy)",
         "sorted(copy, key=lambda x: -x)",
         "sorted(copy, reverse=True)",
+        "sorted([1, 2], reverse=[])",
+        "sorted([1, 2], reverse=[1])",
+        "class ReverseFlag",
         "sorted([], key=None)",
         "letters = sorted('abracadabra')",
         "len(letters), letters[0], letters[1], letters[-1]",
@@ -15442,6 +15450,19 @@ fn sorted_exact_builtin_subset_has_focused_diff_evidence() {
         assert!(
             body.contains(required),
             "focused sorted exact CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "list-reverse-and-sort-methods",
+        "u.sort(reverse=[])",
+        "u.sort(reverse=[1])",
+        "u.sort(reverse=ReverseFlag(False))",
+        "u.sort(reverse=ReverseFlag(True))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "focused list.sort CPython diff evidence must cover reverse truthiness `{required}`"
         );
     }
 
