@@ -31087,7 +31087,7 @@ impl Vm {
 
     fn deque_mutated_iteration_error(method: &str) -> String {
         if method == "remove" {
-            "IndexError: deque mutated during remove().".to_string()
+            "IndexError: deque mutated during iteration".to_string()
         } else {
             "RuntimeError: deque mutated during iteration".to_string()
         }

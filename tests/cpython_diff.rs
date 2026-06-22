@@ -4408,6 +4408,8 @@ for label, callback in [
 
 #[test]
 fn cpython_collections_deque_mutating_eq_diff_subset() {
+    // CPython oracle text: remove keeps IndexError classification while using
+    // `deque mutated during iteration` for mutation during comparison.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_deque.py mutation during comparison public subset",
         name: "collections-deque-mutating-eq",

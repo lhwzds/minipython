@@ -11126,12 +11126,13 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     }
     for required in [
         "\"clear contains RuntimeError deque mutated during iteration 0\"",
-        "\"clear remove IndexError deque mutated during remove(). 0\"",
+        "\"clear remove IndexError deque mutated during iteration 0\"",
+        "\"append remove IndexError deque mutated during iteration 2 needle\"",
         "\"append index-stop RuntimeError deque mutated during iteration 2 needle\"",
         "\"true-clear contains True 0\"",
         "\"true-clear count RuntimeError deque mutated during iteration 0\"",
         "\"true-clear index 0 0\"",
-        "\"true-clear remove IndexError deque mutated during remove(). 0\"",
+        "\"true-clear remove IndexError deque mutated during iteration 0\"",
     ] {
         assert!(
             deque_mutating_subset_body.contains(required),

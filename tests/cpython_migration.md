@@ -8093,8 +8093,8 @@ Completed in the collections ABC mutable-sequence registration pass:
   `cpython_collections_deque_mutating_eq_diff_subset`, for mutation during
   comparison in deque membership, `__contains__`, `count`, `index`, and
   `remove`; this prevents Rust panics on re-entrant `remove()` and preserves
-  CPython's public mutated-iteration exception classes for the supported
-  pure-memory deque search APIs.
+  CPython's public mutated-iteration exception classes and `remove()` message
+  text for the supported pure-memory deque search APIs.
 - Promoted the strict method audit row for `test_MutableSequence` from
   `partial` to `ported`; at that point, `test_issue26915` NaN object identity
   and `test_Set_hash_matches_frozenset` range-stress hashing still remained for

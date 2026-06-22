@@ -126,7 +126,8 @@ Recent runtime migration notes:
   for membership, `__contains__`, `count`, `index`, and
   `remove`: mutation after a non-match raises CPython's public mutated-iteration
   errors, true-match `contains` / `index` returns before the mutation check, and
-  `remove` keeps CPython's `IndexError` classification.
+  `remove` keeps CPython's `IndexError` classification with CPython's
+  `deque mutated during iteration` message.
 - Bytes literal runtime behavior has direct CPython output parity evidence in
   `cpython_bytes_literal_runtime_diff_subset`; adjacent mixed bytes/non-bytes
   literal rejection now has direct CPython rejection parity evidence in
