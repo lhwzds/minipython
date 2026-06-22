@@ -3893,7 +3893,8 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_userstring_protocol_and_userdict_missing_subset`,
   covering the remaining CPython `TestUserObjects` public behavior for
   `dir(UserString)` protocol coverage against `str` plus `UserDict` subclass
-  `__missing__` dispatch for subscript lookup and `.get()`.
+  `__missing__` dispatch for subscript lookup while `.get()` keeps CPython's
+  missing-key default behavior without invoking `__missing__`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_public_methods_subset`, covering CPython
   `TestChainMap` public behavior for construction, truthiness, first-map

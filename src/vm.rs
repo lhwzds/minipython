@@ -70728,11 +70728,8 @@ fn call_user_dict_method(
             ));
         }
         let default = rest.first().cloned().unwrap_or(Value::None);
-        return match vm.load_user_dict_subclass_subscript(receiver.clone(), data, key.clone()) {
-            Ok(value) => Ok(value),
-            Err(message) if message.starts_with("KeyError:") => Ok(default),
-            Err(message) => Err(message),
-        };
+        ensure_hashable_key(key)?;
+        return Ok(dict_lookup(&data.borrow().entries, key).unwrap_or(default));
     }
 
     let dict_receiver = Value::Dict(data.clone());

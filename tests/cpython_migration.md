@@ -10129,7 +10129,8 @@ Completed in the CPython collections manifest expansion pass:
   The final slice adds
   `cpython_collections_userstring_protocol_and_userdict_missing_diff_subset`,
   `collections.UserString` protocol visibility, and `UserDict` subclass
-  `__missing__` dispatch for subscript lookup and `.get()`.
+  `__missing__` dispatch for subscript lookup while `.get()` returns
+  CPython-style missing-key defaults without invoking `__missing__`.
 - Added `cpython_collections_chainmap_public_methods_subset`, adapted from
   CPython `Lib/test/test_collections.py::TestChainMap`, covering constructor,
   bool, first-map assignment/deletion, `maps`, `parents`, `new_child()`,

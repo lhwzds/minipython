@@ -11435,6 +11435,31 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             );
         }
     }
+    let userstring_userdict_missing_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_userstring_protocol_and_userdict_missing_diff_subset",
+    );
+    let userstring_userdict_missing_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_userstring_protocol_and_userdict_missing_subset",
+    );
+    for required in [
+        "set(dir(UserString)) >= set(dir(str))",
+        "A().get(123) is None",
+        "obj.get(999, 'fallback')",
+    ] {
+        assert!(
+            userstring_userdict_missing_diff_body.contains(required)
+                && userstring_userdict_missing_subset_body.contains(required),
+            "UserString/UserDict missing subset evidence must cover `{required}`"
+        );
+    }
+    for required in ["\"True\"", "\"2 fallback {1: 2}\""] {
+        assert!(
+            userstring_userdict_missing_subset_body.contains(required),
+            "UserString/UserDict missing subset output must pin `{required}`"
+        );
+    }
 
     assert!(
         LANGUAGE_TESTS.contains("collections_sandbox_subset_keeps_export_surface_explicit")

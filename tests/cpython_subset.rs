@@ -49363,7 +49363,7 @@ fn cpython_collections_userstring_protocol_and_userdict_missing_subset() {
             "print(obj[1], obj.get(999, 'fallback'), obj.data)\n",
             "print(obj.__getitem__(123))"
         ),
-        &["True", "456", "False", "2 456 {1: 2}", "456"],
+        &["True", "456", "True", "2 fallback {1: 2}", "456"],
     );
 }
 
