@@ -2053,9 +2053,10 @@ without adding general custom encoder/decoder class support.
   stubs, type `__name__` / `__module__` / `__qualname__` / `__doc__`
   metadata, instance `__dict__` and custom attribute set/delete behavior,
   `close()`, `closed`, supported method visibility through `dir()`,
-  `None` initial-value empty-buffer construction, closed-stream `ValueError`,
-  context-manager entry/exit lifecycle behavior, and representative
-  constructor/method TypeError/ValueError/OSError classification. Real files,
+  `None` initial-value empty-buffer construction, CPython-style constructor
+  unknown-keyword diagnostics, closed-stream `ValueError`, context-manager
+  entry/exit lifecycle behavior, and representative
+  method TypeError/ValueError/OSError classification. Real files,
   buffering layers, text I/O, file descriptors, and OS-backed stream semantics
   remain outside the sandbox `io.BytesIO` subset.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_length_hint_subset`,

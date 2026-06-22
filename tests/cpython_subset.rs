@@ -22526,7 +22526,7 @@ fn cpython_io_bytesio_public_subset() {
             "seek-arity0-text TypeError seek expected at least 1 argument, got 0",
             "seek-arity3-text TypeError seek expected at most 2 arguments, got 3",
             "writelines-noniter-text TypeError 'int' object is not iterable",
-            "ctor-kw-unknown TypeError 'foo' is an invalid keyword argument for BytesIO()",
+            "ctor-kw-unknown TypeError BytesIO() got an unexpected keyword argument 'foo'",
             "read-kw TypeError BytesIO.read() takes no keyword arguments",
             "read1-kw TypeError BytesIO.read1() takes no keyword arguments",
             "readline-kw TypeError BytesIO.readline() takes no keyword arguments",

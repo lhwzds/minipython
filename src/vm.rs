@@ -19105,7 +19105,7 @@ impl Vm {
         for (keyword, value) in keywords {
             if keyword != "initial_bytes" {
                 return Err(format!(
-                    "TypeError: '{keyword}' is an invalid keyword argument for BytesIO()"
+                    "TypeError: BytesIO() got an unexpected keyword argument '{keyword}'"
                 ));
             }
             source = Some(value);

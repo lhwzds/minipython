@@ -12275,7 +12275,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
         );
     }
     for required in [
-        "'foo' is an invalid keyword argument for BytesIO()",
+        "BytesIO() got an unexpected keyword argument 'foo'",
         "BytesIO.read() takes no keyword arguments",
         "BytesIO.read1() takes no keyword arguments",
         "BytesIO.readline() takes no keyword arguments",
@@ -12339,6 +12339,7 @@ fn io_bytesio_sandbox_manifest_lists_public_subset_evidence() {
             "line iteration",
             "None",
             "bytes-like",
+            "unknown-keyword",
         ] {
             assert!(
                 document.contains(required),
