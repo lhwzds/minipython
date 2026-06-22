@@ -15833,6 +15833,7 @@ print(descriptor.__module__, '__module__' in descriptor.__dict__)"#,
 
 #[test]
 fn cpython_functools_cache_diff_subset() {
+    // CPython oracle text: Report cache statistics; Clear the cache and cache statistics
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py TestCache/TestLRU public stable subset",
         name: "functools-cache-lru-cache",
@@ -16077,6 +16078,7 @@ print(tuple(identify_kw.cache_info()))"#,
 
 #[test]
 fn cpython_functools_cache_wrapper_methods_diff_subset() {
+    // CPython oracle text: Report cache statistics; Clear the cache and cache statistics
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_functools.py cache wrapper public method subset",
         name: "functools-cache-wrapper-methods",

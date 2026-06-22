@@ -6559,9 +6559,10 @@ Completed in the pow builtin pass:
   `Lib/test/test_functools.py::TestCache` plus public `TestLRU` behavior. The
   migrated slice covers recursive cache hits, `CacheInfo` tuple/field access,
   `cache_clear`, `cache_parameters`, `cache_info` / `cache_clear` bound-method
-  metadata, `__wrapped__`, wrapper instance attributes, direct `@lru_cache`
-  decoration, zero, negative, and bool `maxsize` behavior including
-  `cache_parameters()` metadata, user-function exceptions not being cached,
+  name/qualname/module/doc/self metadata, `__wrapped__`, wrapper instance
+  attributes, direct `@lru_cache` decoration, zero, negative, and bool
+  `maxsize` behavior including `cache_parameters()` metadata, user-function
+  exceptions not being cached,
   `typed=True` top-level
   key separation, non-recursive typed tuple behavior, keyword-order-sensitive
   cache keys, full keyword-recursive `maxsize=None` statistics and clearing,

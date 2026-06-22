@@ -56938,7 +56938,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__doc__" && is_lru_cache_builtin_method(&function_name) =>
         {
-            Ok(Value::None)
+            Ok(Value::String(
+                lru_cache_builtin_method_doc(&function_name).to_string(),
+            ))
         }
         Value::Builtin(function_name)
             if name == "__module__" && is_math_builtin(&function_name) =>
@@ -57183,6 +57185,14 @@ fn is_lru_cache_builtin_method(name: &str) -> bool {
         name,
         "functools.lru_cache.cache_info" | "functools.lru_cache.cache_clear"
     )
+}
+
+fn lru_cache_builtin_method_doc(name: &str) -> &'static str {
+    match name {
+        "functools.lru_cache.cache_info" => "Report cache statistics",
+        "functools.lru_cache.cache_clear" => "Clear the cache and cache statistics",
+        _ => unreachable!("lru_cache builtin method guard checked by caller"),
+    }
 }
 
 fn builtin_type_doc(name: &str) -> Option<&'static str> {

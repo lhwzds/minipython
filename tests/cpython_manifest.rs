@@ -5315,6 +5315,8 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "_lru_cache_wrapper.cache_info() takes no keyword arguments",
         "_lru_cache_wrapper.cache_clear() takes no arguments (1 given)",
         "_lru_cache_wrapper.cache_clear() takes no keyword arguments",
+        "Report cache statistics",
+        "Clear the cache and cache statistics",
     ] {
         assert!(
             cache_wrapper_methods_diff.contains(required),
@@ -5335,6 +5337,8 @@ fn functools_sandbox_manifest_lists_public_subset_evidence() {
         "false_cached.cache_parameters()",
         "true_cached.cache_parameters()",
         "subclass_cached.cache_parameters()",
+        "Report cache statistics",
+        "Clear the cache and cache statistics",
     ] {
         assert!(
             cache_diff.contains(required),
