@@ -10277,7 +10277,7 @@ for left, right in ((Ints.A, 0), (Ints.B, False), (Ints.C, 1), (Ints.D, True), (
 #[test]
 fn cpython_types_names_public_surface_diff_subset() {
     let probe = run_cpython(
-        "import types\nexpected = {'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases'}\nprint(set(types.__all__) == expected)",
+        "import types\nexpected = {'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType', 'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType', 'CoroutineType', 'DynamicClassAttribute', 'EllipsisType', 'FrameType', 'FunctionType', 'GeneratorType', 'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType', 'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType', 'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType', 'WrapperDescriptorType', 'coroutine', 'get_original_bases', 'new_class', 'prepare_class', 'resolve_bases'}\nprint(set(types.__all__) == expected)",
     )
     .expect("failed to probe CPython types public name surface");
     if String::from_utf8_lossy(&probe.stdout).trim() != "True" {
@@ -10295,8 +10295,8 @@ expected = {
     'AsyncGeneratorType', 'BuiltinFunctionType', 'BuiltinMethodType',
     'CapsuleType', 'CellType', 'ClassMethodDescriptorType', 'CodeType',
     'CoroutineType', 'DynamicClassAttribute', 'EllipsisType',
-    'FrameLocalsProxyType', 'FrameType', 'FunctionType', 'GeneratorType',
-    'GenericAlias', 'GetSetDescriptorType', 'LambdaType', 'LazyImportType',
+    'FrameType', 'FunctionType', 'GeneratorType',
+    'GenericAlias', 'GetSetDescriptorType', 'LambdaType',
     'MappingProxyType', 'MemberDescriptorType', 'MethodDescriptorType',
     'MethodType', 'MethodWrapperType', 'ModuleType', 'NoneType',
     'NotImplementedType', 'SimpleNamespace', 'TracebackType', 'UnionType',
@@ -10308,7 +10308,7 @@ print(len(types.__all__), actual == expected, sorted(expected - actual), sorted(
 print(all(hasattr(types, name) for name in expected))
 print(types.FunctionType is types.LambdaType, types.BuiltinFunctionType is types.BuiltinMethodType)
 print(type(types.WrapperDescriptorType).__name__, type(types.DynamicClassAttribute).__name__, type(types.CapsuleType).__name__)
-print(type(types.LazyImportType).__name__, type(types.FrameLocalsProxyType).__name__)
+print(hasattr(types, 'LazyImportType'), hasattr(types, 'FrameLocalsProxyType'))
 print(types.NoneType is type(None), types.EllipsisType is type(Ellipsis), types.NotImplementedType is type(NotImplemented))"#,
     });
 }
@@ -11807,12 +11807,14 @@ fn cpython_types_frame_locals_proxy_type_diff_subset() {
         origin: "Lib/test/test_types.py::TypesTests::test_frame_locals_proxy_type",
         name: "types-frame-locals-proxy-currentframe-direct",
         source: r#"import inspect, types
+print(hasattr(types, 'FrameLocalsProxyType'), 'FrameLocalsProxyType' in dir(types), 'FrameLocalsProxyType' in types.__all__)
 def probe():
     marker = 42
     frame = inspect.currentframe()
     proxy_type = getattr(types, 'FrameLocalsProxyType', dict)
     print(frame is not None, isinstance(frame.f_locals, proxy_type))
     print(type(frame.f_locals).__name__ in ('dict', 'FrameLocalsProxy'))
+    print(type(frame.f_locals).__module__, type(frame.f_locals).__name__, isinstance(frame.f_locals, dict))
     print('marker' in frame.f_locals, frame.f_locals['marker'])
     print(sorted(k for k in frame.f_locals if k in ('frame', 'marker')))
 probe()"#,

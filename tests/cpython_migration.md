@@ -10782,17 +10782,19 @@ Completed in the CPython collections manifest expansion pass:
   hashability, truthiness, and the absence of namespace-style `__dict__`.
 - Added `cpython_types_names_public_surface_subset`, adapted from CPython
   `TypesTests::test_names`. The `types` module now exposes the current local
-  CPython `types.__all__` name set, including descriptor, capsule, lazy-import,
-  and frame-locals-proxy aliases as type objects. The VM now also exposes a
+  CPython `types.__all__` name set, including descriptor and capsule aliases as
+  type objects. The current CPython `types.__all__` omits `LazyImportType` and
+  `FrameLocalsProxyType`; `frame.f_locals` still returns a
+  `FrameLocalsProxy` mapping. The VM now also exposes a
   lightweight `_types` accelerator module sharing the same public type aliases
   as `types`, so `TypesTests::test_names` is covered for the public module-name
   and accelerator-alias surface. CPython's forced pure-Python fallback import
   path remains outside MiniPython's runtime contract.
 - Added `cpython_types_frame_locals_proxy_type_subset`, adapted from
-  `TypesTests::test_frame_locals_proxy_type`. The runtime now exposes
-  `types.FrameLocalsProxyType` as the public `FrameLocalsProxy` builtin type,
-  implements `inspect.currentframe()`, and returns a live frame-locals proxy
-  mapping from `frame.f_locals`.
+  `TypesTests::test_frame_locals_proxy_type`. The runtime implements
+  `inspect.currentframe()`, keeps `types.FrameLocalsProxyType` absent from the
+  public `types` surface, and returns a live frame-locals proxy mapping from
+  `frame.f_locals`.
 - Added `cpython_types_float_constructor_edges_subset`, adapted from
   `TypesTests::test_float_constructor`, covering `float()` `ValueError` for
   empty strings and embedded-NUL string inputs.

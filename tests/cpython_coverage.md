@@ -1868,8 +1868,10 @@ without adding general custom encoder/decoder class support.
   `TypesTests::test_names` public `types.__all__` name set, visible module
   attributes for every exported name, function/lambda and builtin
   function/method alias identity, `_types` accelerator alias identity, and
-  basic type-object shape for descriptor, capsule, lazy-import, and
-  frame-locals-proxy aliases. Concrete wrapper descriptor behavior is covered
+  basic type-object shape for descriptor and capsule aliases. The current
+  CPython `types.__all__` omits `LazyImportType` and
+  `FrameLocalsProxyType`; `frame.f_locals` still returns a
+  `FrameLocalsProxy` mapping. Concrete wrapper descriptor behavior is covered
   separately, capsule behavior is classified with the CPython-internal
   capsule test, and frame-locals-proxy behavior is covered by
   `cpython_types_frame_locals_proxy_type_subset`. Direct output parity is

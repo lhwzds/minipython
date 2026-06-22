@@ -13454,7 +13454,8 @@ fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
     let frame_source = &CPYTHON_SUBSET[frame_start..frame_end];
     for required in [
         "inspect.currentframe()",
-        "types.FrameLocalsProxyType",
+        "hasattr(types, 'FrameLocalsProxyType')",
+        "FrameLocalsProxy",
         "frame.f_locals",
     ] {
         assert!(
@@ -17173,6 +17174,64 @@ fn builtins_host_io_and_default_debugger_stop_line_stays_out_of_scope() {
             CPYTHON_MIGRATION.contains(required),
             "migration document must keep host/debugger out-of-scope term `{required}`"
         );
+    }
+}
+
+#[test]
+fn types_public_surface_omits_frame_locals_and_lazy_import_aliases() {
+    let names_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_types_names_public_surface_subset");
+    let names_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_names_public_surface_diff_subset",
+    );
+    for required in [
+        "hasattr(types, 'LazyImportType')",
+        "hasattr(types, 'FrameLocalsProxyType')",
+    ] {
+        assert!(
+            names_subset.contains(required) && names_diff.contains(required),
+            "types public surface subset/diff evidence must cover `{required}`"
+        );
+    }
+    for required in ["33 True [] []", "False False"] {
+        assert!(
+            names_subset.contains(required),
+            "types public surface subset expected output must cover `{required}`"
+        );
+    }
+
+    let frame_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_frame_locals_proxy_type_subset",
+    );
+    let frame_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_frame_locals_proxy_type_diff_subset",
+    );
+    for required in [
+        "'FrameLocalsProxyType' in dir(types)",
+        "'FrameLocalsProxyType' in types.__all__",
+        "FrameLocalsProxy",
+        "isinstance(frame.f_locals, dict)",
+    ] {
+        assert!(
+            frame_subset.contains(required) && frame_diff.contains(required),
+            "types frame-locals proxy subset/diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "CPython `types.__all__` omits `LazyImportType`",
+            "`FrameLocalsProxyType`; `frame.f_locals` still returns a",
+            "`FrameLocalsProxy` mapping",
+        ] {
+            assert!(
+                document.contains(required),
+                "types docs must describe public alias absence evidence `{required}`"
+            );
+        }
     }
 }
 
