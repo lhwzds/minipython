@@ -1937,7 +1937,7 @@ without adding general custom encoder/decoder class support.
   `TypesTests::test_dunder_get_signature` for public `__get__`
   method-wrapper exposure on `object.__init__`, `str.join`, and
   `int.__dict__['from_bytes']`, plus `inspect.signature(...)` returning
-  `(instance, owner, /)`. Direct output parity is guarded by
+  `(instance, owner=None, /)`. Direct output parity is guarded by
   `cpython_types_dunder_get_signature_diff_subset`.
 - The bundled `types` module also includes
   `cpython_types_slot_and_method_wrapper_types_subset`, covering CPython

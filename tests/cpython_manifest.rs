@@ -17236,6 +17236,32 @@ fn types_public_surface_omits_frame_locals_and_lazy_import_aliases() {
 }
 
 #[test]
+fn types_dunder_get_signature_keeps_owner_default() {
+    let subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_types_dunder_get_signature_subset");
+    let diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_dunder_get_signature_diff_subset",
+    );
+
+    assert!(
+        subset.matches("(instance, owner=None, /)").count() >= 3,
+        "types dunder-get signature subset must pin owner=None for all covered descriptor __get__ wrappers"
+    );
+    assert!(
+        diff.contains("inspect.signature(desc.__get__)"),
+        "types dunder-get signature diff must directly compare descriptor __get__ signatures"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("(instance, owner=None, /)"),
+            "types docs must record CPython descriptor __get__ owner default"
+        );
+    }
+}
+
+#[test]
 fn types_union_public_operator_subset_keeps_explicit_stack_guard() {
     let subset = extract_rust_test_body(
         CPYTHON_SUBSET,

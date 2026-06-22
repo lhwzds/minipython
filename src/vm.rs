@@ -62089,7 +62089,7 @@ fn call_inspect_signature(
         Value::Builtin(name) if name == "operator.itemgetter" => "(item, /, *items)",
         Value::Builtin(name) if name == "operator.methodcaller" => "(name, /, *args, **kwargs)",
         Value::BoundMethod { function, .. } if matches!(function.as_ref(), Value::Builtin(name) if is_descriptor_get_wrapper_name(name)) => {
-            "(instance, owner, /)"
+            "(instance, owner=None, /)"
         }
         Value::OperatorAttrGetter { .. }
         | Value::OperatorItemGetter { .. }

@@ -10867,7 +10867,7 @@ Completed in the CPython collections manifest expansion pass:
   from `blocked_by_runtime` to `ported`. Builtin wrapper, method, and
   classmethod descriptors now expose `__get__` as a public
   `types.MethodWrapperType` method-wrapper, and `inspect.signature()` reports
-  CPython's `(instance, owner, /)` signature for the supported descriptor
+  CPython's `(instance, owner=None, /)` signature for the supported descriptor
   `__get__` surface.
 - Added a method-level `Lib/test/test_types.py::TypesTests` audit covering all
   30 current methods: 24 ported, 0 partial, 3 blocked by runtime support, and
