@@ -17301,6 +17301,40 @@ fn types_union_public_operator_subset_keeps_explicit_stack_guard() {
 }
 
 #[test]
+fn types_union_forward_ref_pins_typevar_repr() {
+    let subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_types_union_forward_ref_subset");
+    let diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_types_union_forward_ref_diff_subset");
+    let forward_get_type_hints_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_union_forward_get_type_hints_diff_subset",
+    );
+
+    assert!(
+        subset.contains("('~T', \\\"ForwardRef('Forward')\\\")"),
+        "types union forward-ref subset must pin CPython TypeVar repr after string forward refs"
+    );
+    assert!(
+        subset.contains("(\\\"ForwardRef('Forward')\\\", '~T')"),
+        "types union forward-ref subset must pin CPython TypeVar repr before string forward refs"
+    );
+    assert!(
+        diff.contains("T | 'Forward'"),
+        "types union forward-ref diff must compare TypeVar/string union operands"
+    );
+    assert!(
+        forward_get_type_hints_diff.contains("('~T', \\\"ForwardRef('Forward')\\\")"),
+        "types union forward get_type_hints probe must use the modern CPython TypeVar repr"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("`~T` TypeVar `repr()`"),
+            "types docs must record CPython TypeVar repr inside union args"
+        );
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",

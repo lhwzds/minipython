@@ -9757,7 +9757,7 @@ fn cpython_types_union_forward_get_type_hints_diff_subset() {
         "import typing\nT = typing.TypeVar('T')\nForwardAfter = T | 'Forward'\nprint(tuple(repr(arg) for arg in ForwardAfter.__args__))",
     )
     .expect("failed to probe CPython forward get_type_hints union support");
-    if String::from_utf8_lossy(&probe.stdout).trim() != "('T', \"ForwardRef('Forward')\")" {
+    if String::from_utf8_lossy(&probe.stdout).trim() != "('~T', \"ForwardRef('Forward')\")" {
         eprintln!(
             "skipping types union forward get_type_hints diff: CPython oracle lacks PEP 604 TypeVar/string forward-ref union support"
         );

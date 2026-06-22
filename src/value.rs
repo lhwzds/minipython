@@ -1327,6 +1327,9 @@ impl fmt::Display for Value {
             }
             Value::AnextDefault { .. } => write!(f, "<anext_awaitable object>"),
             Value::Class { name, .. } => write!(f, "<class {name}>"),
+            Value::TypeParam { kind, name, .. } if kind == "TypeVar" || kind == "ParamSpec" => {
+                write!(f, "~{name}")
+            }
             Value::TypeParam { name, .. } => write!(f, "{name}"),
             Value::ParamSpecAccess { name, .. } => write!(f, "{name}"),
             Value::TypeAlias { name, .. } => write!(f, "<type alias {name}>"),

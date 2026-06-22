@@ -10591,7 +10591,8 @@ Completed in the CPython collections manifest expansion pass:
   Forward references now expose the supported public attributes, equality and
   hash behavior, participate in `typing.Union[...]`, `types.UnionType[...]`,
   `typing.Optional[...]`, and the CPython-supported TypeVar/string PEP 604
-  operand orders, while ordinary `int | "Forward"`-style operands still raise
+  operand orders, including CPython's `~T` TypeVar `repr()` inside union
+  `__args__`, while ordinary `int | "Forward"`-style operands still raise
   catchable `TypeError`.
 - Added `typing.get_type_hints()` function-annotation resolution and
   `cpython_types_union_forward_get_type_hints_subset`. The supported slice now

@@ -1700,8 +1700,9 @@ without adding general custom encoder/decoder class support.
   `cpython_types_union_forward_ref_subset`, covering public
   `typing.ForwardRef` construction, metadata attributes, equality/hash
   behavior, `typing.Union[int, "str"]`, `types.UnionType[int, "str"]`,
-  `typing.Optional["str"]`, TypeVar/string PEP 604 forward references, and
-  invalid string/type union operands. Direct output parity is guarded by
+  `typing.Optional["str"]`, TypeVar/string PEP 604 forward references with
+  CPython's `~T` TypeVar `repr()` inside union `__args__`, and invalid
+  string/type union operands. Direct output parity is guarded by
   `cpython_types_union_forward_ref_diff_subset`.
   `cpython_types_union_forward_get_type_hints_subset`
   covers `typing.get_type_hints()` resolving those forward references through
