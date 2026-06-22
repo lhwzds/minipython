@@ -11177,7 +11177,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.__pos__(Counter(a=2, b=-1, c=0))",
         "Counter.__neg__(Counter(a=2, b=-1, c=0))",
         "Counter.elements(Counter(a=2), 1)",
-        "elements() takes 1 positional argument but 2 were given",
+        "Counter.elements() takes 1 positional argument but 2 were given",
     ] {
         assert!(
             counter_public_diff_body.contains(required)

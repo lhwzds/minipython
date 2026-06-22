@@ -27339,7 +27339,7 @@ impl Vm {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "TypeError: elements() takes 1 positional argument but {} were given",
+                        "TypeError: Counter.elements() takes 1 positional argument but {} were given",
                         args.len()
                     ));
                 };

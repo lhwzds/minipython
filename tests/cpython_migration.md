@@ -10246,7 +10246,8 @@ Completed in the CPython collections manifest expansion pass:
 - Extended `cpython_collections_counter_public_diff_subset` and
   `cpython_collections_counter_public_subset` to cover supported
   `dir(Counter)` public method visibility and direct `Counter.__missing__()`
-  zero-default behavior for Counter and non-Counter receivers.
+  zero-default behavior for Counter and non-Counter receivers, plus the
+  qualified `Counter.elements()` public arity diagnostic.
 - Added `cpython_collections_counter_subtract_unary_subset`, adapted from
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
   count subtraction from keyword, Counter, and iterable sources plus unary

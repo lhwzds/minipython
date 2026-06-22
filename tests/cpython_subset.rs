@@ -49924,7 +49924,7 @@ fn cpython_collections_counter_public_subset() {
             "Counter({'a': 2})",
             "Counter({'b': 1})",
             "['a', 'a']",
-            "elements-extra TypeError elements() takes 1 positional argument but 2 were given",
+            "elements-extra TypeError Counter.elements() takes 1 positional argument but 2 were given",
             "[('a', 4), ('b', 2), ('c', 1), ('d', 1), ('r', 2), ('z', -1)]",
             "True",
         ],

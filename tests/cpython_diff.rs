@@ -12425,7 +12425,7 @@ for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: t
 
 #[test]
 fn cpython_collections_counter_public_diff_subset() {
-    // CPython oracle text: elements() takes 1 positional argument but 2 were given
+    // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
         name: "collections-counter-public",
