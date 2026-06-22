@@ -3247,10 +3247,10 @@ Completed in the match class-pattern runtime TypeError pass:
   match-self builtins such as `int` and `str` from zero-positional builtins such
   as `range`, `slice`, `object`, `type`, and exception classes.
 - Migrated CPython `Lib/test/test_patma.py` TypeError semantics for
-  `range(10)` including CPython's given-count suffix, non-tuple
-  `__match_args__` values such as `"XYZ"` and `["spam", "eggs"]` including
-  CPython's `(got type)` suffix, and verified these failed class-pattern matches leave
-  capture variables unbound.
+  `range(10)` and user-class positional-count errors, including CPython's
+  given-count suffix, non-tuple `__match_args__` values such as
+  `"XYZ"` and `["spam", "eggs"]` including CPython's `(got type)` suffix, and
+  verified these failed class-pattern matches leave capture variables unbound.
 
 Completed in the match class-pattern non-class-callee pass:
 
@@ -10556,7 +10556,12 @@ Completed in the CPython collections manifest expansion pass:
   order-insensitively, preserves CPython `__args__` ordering, rejects invalid
   operands and ordering comparisons with catchable `TypeError`, and dispatches
   union classinfo through `isinstance()` / `issubclass()` without treating unions
-  as ordinary classes elsewhere in the VM.
+  as ordinary classes elsewhere in the VM. Generic aliases backed by
+  `typing.List` and `typing.Tuple` preserve CPython `List` / `Tuple` `__name__`
+  spellings while their public `__origin__` remains `list` / `tuple`. The
+  aggregated subset source now runs
+  under an explicit 16 MiB test stack so the default Rust test harness can cover
+  the long CPython `UnionTests` matrix without stack-sensitive aborts.
 - Extended the same union slice for additional CPython `UnionTests` public
   behavior: union `repr()` / `str()` now use the PEP 604 `A | B` spelling with
   `None` instead of `NoneType` inside unions, `collections.abc.Mapping` unions

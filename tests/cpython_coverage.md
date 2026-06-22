@@ -1717,11 +1717,16 @@ without adding general custom encoder/decoder class support.
   `NoneType` normalization, nested union flattening, single-member
   simplification, invalid operands, ordering TypeErrors, union `__args__`, long
   builtin union chains, namedtuple type operands, `typing.get_origin()` /
-  `get_args()`, `repr()` / `str()` for supported union operands, and
+  `get_args()`, `repr()` / `str()` for supported union operands, CPython
+  `typing.List[int]` / `typing.Tuple[...]` `__name__` spellings inside union
+  arguments while `__origin__` remains `list` / `tuple`, and
   `isinstance()` / `issubclass()` classinfo dispatch including
   `collections.abc.Mapping`, plus GenericAlias union repr and invalid classinfo
   checks. Direct output parity is guarded by
-  `cpython_types_union_public_operator_and_classinfo_diff_subset`.
+  `cpython_types_union_public_operator_and_classinfo_diff_subset`. The
+  aggregated subset source uses an explicit 16 MiB test stack so the default
+  Rust test harness can execute the long CPython `UnionTests` matrix without
+  stack-sensitive aborts.
 - The bundled `types` module also includes
   `cpython_types_union_genericalias_subclass_bad_eq_subset`, covering
   `types.GenericAlias` subclasses, subclass alias attributes, payload
@@ -5172,7 +5177,7 @@ matching scope-backed namespace `__format__` lookup.
 | `key_value_pattern` | supported | Literal keys, dotted value keys, nested value patterns, and dynamic duplicate key checks are covered by `cpython_match_mapping_helper_rules_subset` / `cpython_match_mapping_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, `cpython_grammar_match_stmt_subset`, and `raises_value_error_for_dynamic_duplicate_match_mapping_keys` |
 | `double_star_pattern` | supported | Mapping rest patterns, optional trailing comma, and invalid `_` rest targets are covered by `cpython_match_mapping_helper_rules_subset` / `cpython_match_mapping_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, `cpython_grammar_match_stmt_subset`, and `runs_match_mapping_patterns` |
 | `class_pattern` | supported | Empty, positional-only, keyword-only, positional-plus-keyword, dotted-name, trailing-comma, builtin match-self classes, zero-positional builtin classes, non-class callees, and invalid keyword/positional ordering forms are covered by `cpython_match_class_helper_rules_subset` / `cpython_match_class_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, `cpython_grammar_match_stmt_subset`, and `runs_match_class_patterns` |
-| `positional_patterns` | supported | One-or-more positional class subpatterns with optional trailing commas, nested subpatterns, builtin positional-count errors with CPython given-count suffixes, and no-binding-on-TypeError behavior are covered by `cpython_match_class_helper_rules_subset` / `cpython_match_class_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, and `cpython_grammar_match_stmt_subset` |
+| `positional_patterns` | supported | One-or-more positional class subpatterns with optional trailing commas, nested subpatterns, builtin and user-class positional-count errors with CPython given-count suffixes, and no-binding-on-TypeError behavior are covered by `cpython_match_class_helper_rules_subset` / `cpython_match_class_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, and `cpython_grammar_match_stmt_subset` |
 | `keyword_patterns` | supported | One-or-more class keyword subpatterns, keyword-only forms, and mixed positional-plus-keyword forms are covered by `cpython_match_class_helper_rules_subset` / `cpython_match_class_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, and `cpython_grammar_match_stmt_subset` |
 | `keyword_pattern` | supported | Individual class keyword subpatterns with nested pattern values and duplicate-keyword rejection are covered by `cpython_match_class_helper_rules_subset` / `cpython_match_class_helper_rules_diff_subset`, `cpython_match_pattern_helper_rules_subset`, and `cpython_grammar_match_stmt_subset` |
 | `invalid_match_stmt` | supported | Missing match colons, missing match indentation, and top-level case blocks are rejected by `cpython_invalid_match_pattern_subset` |

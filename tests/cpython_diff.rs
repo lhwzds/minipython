@@ -21709,6 +21709,17 @@ try:
 except TypeError as error:
     print(error)
 print(y)
+class TooFew:
+    __match_args__ = ()
+subject = TooFew()
+z = None
+try:
+    match subject:
+        case TooFew(z):
+            pass
+except TypeError as error:
+    print(error)
+print(z)
 w = None
 try:
     match 1:

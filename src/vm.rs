@@ -4619,6 +4619,17 @@ fn typing_alias_origin_name(name: &str) -> Option<&'static str> {
     }
 }
 
+fn typing_alias_public_name(name: &str) -> Option<&'static str> {
+    match name {
+        "typing.Callable" => Some("Callable"),
+        "typing.Hashable" => Some("Hashable"),
+        "typing.IO" => Some("IO"),
+        "typing.List" => Some("List"),
+        "typing.Tuple" => Some("Tuple"),
+        _ => None,
+    }
+}
+
 fn generic_alias_public_origin(origin: &Value) -> Value {
     match origin {
         Value::Builtin(name) => typing_alias_origin_name(name)
@@ -29045,7 +29056,14 @@ impl Vm {
                 if matched[index] {
                     continue;
                 }
-                if self.rich_equal_values(left_arg, right_arg)? {
+                let equal = if is_identical(left_arg, right_arg) {
+                    true
+                } else if union_dedupe_uses_rich_equality(left_arg, right_arg) {
+                    self.rich_equal_values(left_arg, right_arg)?
+                } else {
+                    left_arg == right_arg
+                };
+                if equal {
                     matched[index] = true;
                     found = true;
                     break;
@@ -54753,7 +54771,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             "__origin__" => Ok(generic_alias_public_origin(&origin)),
             "__args__" => Ok(tuple_value(args)),
             "__parameters__" => Ok(tuple_value(generic_alias_parameters(&origin, &args))),
-            "__name__" => load_attribute(generic_alias_public_origin(&origin), "__name__"),
+            "__name__" => match origin.as_ref() {
+                Value::Builtin(origin_name) => {
+                    if let Some(public_name) = typing_alias_public_name(origin_name) {
+                        Ok(Value::String(public_name.to_string()))
+                    } else {
+                        load_attribute(generic_alias_public_origin(&origin), "__name__")
+                    }
+                }
+                _ => load_attribute(generic_alias_public_origin(&origin), "__name__"),
+            },
             _ => Err(format!(
                 "AttributeError: generic alias has no attribute '{name}'"
             )),
@@ -77491,9 +77518,10 @@ fn validate_match_class_arguments(
     };
 
     if positional_count > items.len() {
-        return Err(format!(
-            "{name}() accepts {} positional sub-patterns",
-            items.len()
+        return Err(match_class_positional_count_error(
+            name,
+            items.len(),
+            positional_count,
         ));
     }
 

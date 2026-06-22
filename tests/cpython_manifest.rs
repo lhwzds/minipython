@@ -17236,6 +17236,45 @@ fn types_public_surface_omits_frame_locals_and_lazy_import_aliases() {
 }
 
 #[test]
+fn types_union_public_operator_subset_keeps_explicit_stack_guard() {
+    let subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_union_public_operator_and_classinfo_subset",
+    );
+    for required in [
+        "assert_output_with_stack",
+        "16 * 1024 * 1024",
+        "typing.List[int] | typing.Tuple[int]",
+        "args-extra typing-list-int ('List', 'NoneType') ('NoneType', 'List') True True",
+        "args-extra typing-tuple-int-int ('Tuple', 'NoneType') ('NoneType', 'Tuple') True True",
+        "long-chain",
+        "ga-classinfo-error",
+    ] {
+        assert!(
+            subset.contains(required),
+            "types union public operator subset must keep stack-safe evidence `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "explicit 16 MiB test stack",
+            "long CPython `UnionTests` matrix",
+            "stack-sensitive aborts",
+            "`typing.List",
+            "`typing.Tuple",
+            "`__name__`",
+            "`__origin__` remains `list` / `tuple`",
+        ] {
+            assert!(
+                document.contains(required),
+                "types union public operator docs must describe stack guard `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn types_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "types",
@@ -19479,6 +19518,14 @@ fn cpython_match_class_helper_diff_covers_runtime_subset() {
         .map(|offset| diff_start + offset)
         .unwrap_or(CPYTHON_DIFF.len());
     let diff_source = &CPYTHON_DIFF[diff_start..diff_end];
+    let subset_start = CPYTHON_SUBSET
+        .find(&format!("fn {subset_name}("))
+        .expect("match class helper runtime subset evidence must exist");
+    let subset_end = CPYTHON_SUBSET[subset_start..]
+        .find("\n#[test]")
+        .map(|offset| subset_start + offset)
+        .unwrap_or(CPYTHON_SUBSET.len());
+    let subset_source = &CPYTHON_SUBSET[subset_start..subset_end];
 
     assert!(
         CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
@@ -19493,6 +19540,7 @@ fn cpython_match_class_helper_diff_covers_runtime_subset() {
         "case int(value,)",
         "case range()",
         "case range(10)",
+        "class TooFew",
         "case max(0, 1)",
         "__match_args__",
     ] {
@@ -19501,12 +19549,29 @@ fn cpython_match_class_helper_diff_covers_runtime_subset() {
             "match class helper diff evidence must cover `{required}`"
         );
     }
+    for required in [
+        "TooFew() accepts 0 positional sub-patterns (1 given)",
+        "Class.__match_args__ must be a tuple (got str)",
+    ] {
+        assert!(
+            subset_source.contains(required),
+            "match class helper subset evidence must cover `{required}`"
+        );
+    }
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
             document.contains(diff_name) && document.contains(subset_name),
             "match class helper docs must link `{diff_name}` to `{subset_name}`"
         );
+    }
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in ["user-class positional-count errors", "given-count suffix"] {
+            assert!(
+                document.contains(required),
+                "match class helper docs must describe `{required}`"
+            );
+        }
     }
 }
 

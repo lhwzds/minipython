@@ -28434,6 +28434,13 @@ fn cpython_match_class_helper_rules_subset() {
         ],
     );
     assert_output(
+        "class TooFew:\n    __match_args__ = ()\nsubject = TooFew()\nz = None\ntry:\n    match subject:\n        case TooFew(z):\n            pass\nexcept TypeError as error:\n    print(error)\nprint(z)",
+        &[
+            "TooFew() accepts 0 positional sub-patterns (1 given)",
+            "None",
+        ],
+    );
+    assert_output(
         "w = None\ntry:\n    match 1:\n        case max(0, 1):\n            w = 0\nexcept TypeError as error:\n    print(error)\nprint(w)",
         &["called match pattern must be a class", "None"],
     );
@@ -57487,7 +57494,7 @@ fn cpython_types_union_forward_get_type_hints_subset() {
 // operator, hash, classinfo, and `__args__` behavior.
 #[test]
 fn cpython_types_union_public_operator_and_classinfo_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "import collections.abc\n",
             "import types\n",
@@ -57576,8 +57583,8 @@ fn cpython_types_union_public_operator_and_classinfo_subset() {
             "args ('int', 'NoneType')",
             "args ('NoneType', 'int')",
             "args-extra list-int ('list', 'NoneType') ('NoneType', 'list') True True",
-            "args-extra typing-list-int ('list', 'NoneType') ('NoneType', 'list') True True",
-            "args-extra typing-tuple-int-int ('tuple', 'NoneType') ('NoneType', 'tuple') True True",
+            "args-extra typing-list-int ('List', 'NoneType') ('NoneType', 'List') True True",
+            "args-extra typing-tuple-int-int ('Tuple', 'NoneType') ('NoneType', 'Tuple') True True",
             "args-extra typing-callable ('Callable', 'NoneType') ('NoneType', 'Callable') True True",
             "args-extra typing-hashable ('Hashable', 'NoneType') ('NoneType', 'Hashable') True True",
             "checks True True True False True True True False",
@@ -57604,6 +57611,7 @@ fn cpython_types_union_public_operator_and_classinfo_subset() {
             "str int | list[int]",
             "types True True Union ('int', 'str')",
         ],
+        16 * 1024 * 1024,
     );
 }
 
@@ -57790,12 +57798,12 @@ fn cpython_types_union_parameter_substitution_subset() {
             "str True True ('int', 'str', 'bytes') ()",
             "list-int True True ('int', 'list', 'bytes') ()",
             "typing-list True True ('int', 'List', 'bytes') ()",
-            "typing-list-int True True ('int', 'list', 'bytes') ()",
+            "typing-list-int True True ('int', 'List', 'bytes') ()",
             "typing-hashable True True ('int', 'Hashable', 'bytes') ()",
             "abc-hashable True True ('int', 'Hashable', 'bytes') ()",
             "typing-callable True True ('int', 'Callable', 'bytes') ()",
             "abc-callable True True ('int', 'Callable', 'bytes') ()",
-            "typing-tuple True True ('int', 'tuple', 'bytes') ()",
+            "typing-tuple True True ('int', 'Tuple', 'bytes') ()",
             "typing-literal True True ('int', 'Literal', 'bytes') ()",
             "typing-newtype True True ('int', 'NT', 'bytes') ()",
             "nested-pep604 True True ('int', 'str', 'list', 'bytes') ()",
