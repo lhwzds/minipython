@@ -7452,6 +7452,24 @@ for singleton in [NotImplemented, Ellipsis]:
 }
 
 #[test]
+fn cpython_object_constructor_argument_error_diff_subset() {
+    // CPython oracle text: object() takes no arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_object constructor argument errors",
+        name: "object-constructor-argument-errors",
+        source: r#"for label, expr in [
+    ("positional", lambda: object(1)),
+    ("keyword", lambda: object(a=1)),
+    ("both", lambda: object(1, a=2)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

@@ -8960,11 +8960,8 @@ impl Vm {
                 Ok(Value::None)
             }
             Value::Builtin(name) if name == "object" => {
-                if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
-                }
-                if !args.is_empty() {
-                    return Err("object() takes no arguments".to_string());
+                if !args.is_empty() || !keywords.is_empty() {
+                    return Err("TypeError: object() takes no arguments".to_string());
                 }
 
                 Ok(Value::Instance {

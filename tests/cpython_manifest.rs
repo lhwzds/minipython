@@ -13791,6 +13791,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_doc_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
+            "cpython_object_constructor_argument_error_subset",
             "cpython_builtin_singleton_attribute_access_subset",
             "cpython_hash_builtin_subset",
             "cpython_id_builtin_subset",
@@ -13848,6 +13849,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_doc_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
+        "cpython_object_constructor_argument_error_diff_subset",
         "cpython_all_any_builtin_diff_subset",
         "cpython_len_builtin_diff_subset",
         "cpython_min_max_sum_builtin_diff_subset",
@@ -14993,6 +14995,48 @@ fn builtin_singleton_subset_has_focused_diff_evidence() {
                 && document
                     .contains("cpython_builtin_singleton_construction_and_attributes_diff_subset"),
             "focused singleton evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn object_constructor_argument_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_object_constructor_argument_error_subset(",
+        "lambda: object(1)",
+        "lambda: object(a=1)",
+        "lambda: object(1, a=2)",
+        "object() takes no arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused object constructor argument error subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_object_constructor_argument_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_object constructor argument errors",
+        "lambda: object(1)",
+        "lambda: object(a=1)",
+        "lambda: object(1, a=2)",
+        "object() takes no arguments",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused object constructor argument error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_object_constructor_argument_error_subset")
+                && document.contains("cpython_object_constructor_argument_error_diff_subset")
+                && document.contains("object() takes no arguments"),
+            "focused object constructor argument error evidence must be documented in coverage and migration notes"
         );
     }
 }

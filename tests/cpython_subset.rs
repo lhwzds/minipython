@@ -25589,6 +25589,19 @@ fn cpython_builtin_construct_singletons_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
+#[test]
+fn cpython_object_constructor_argument_error_subset() {
+    assert_output(
+        "for label, expr in [\n    ('positional', lambda: object(1)),\n    ('keyword', lambda: object(a=1)),\n    ('both', lambda: object(1, a=2)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "positional TypeError object() takes no arguments",
+            "keyword TypeError object() takes no arguments",
+            "both TypeError object() takes no arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_singleton_attribute_access`.
 #[test]
 fn cpython_builtin_singleton_attribute_access_subset() {

@@ -206,6 +206,7 @@ Recent runtime migration notes:
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
+  `cpython_object_constructor_argument_error_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
   `cpython_len_builtin_diff_subset`,
   `cpython_min_max_sum_builtin_diff_subset`,
@@ -5617,6 +5618,11 @@ for `NotImplemented` and `Ellipsis`, their type objects being instances of
 `type`, instance attribute read/write rejection, and class attribute assignment
 rejection for the singleton type objects. Direct CPython output parity for both
 methods is in `cpython_builtin_singleton_construction_and_attributes_diff_subset`.
+`cpython_object_constructor_argument_error_subset`, backed by
+`cpython_object_constructor_argument_error_diff_subset`, covers the
+`BuiltinTest::test_object` constructor-argument error subset where
+`object(1)`, `object(a=1)`, and `object(1, a=2)` are catchable `TypeError`s
+with CPython's public `object() takes no arguments` text.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
 `cpython_builtin_breakpoint_default_stub_subset`,
 `cpython_builtin_breakpoint_passthru_error_subset`,
