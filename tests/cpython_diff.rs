@@ -26221,11 +26221,13 @@ print('subnan', isinstance(hash(value), int), hash(value) == 42)
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields >= 0, sys.float_info.n_sequence_fields >= 0, sys.float_info.n_unnamed_fields >= 0)
 print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields >= 0, sys.hash_info.n_sequence_fields >= 0, sys.hash_info.n_unnamed_fields >= 0)
 sys_structseq_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
+sys_structseq_hidden_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__slots__']
 sys_structseq_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]:
     print('sys-' + label + '-shape', type(obj).__name__, len(obj), len(tuple(obj)) == obj.n_sequence_fields)
     print('sys-' + label + '-repr', repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == "<class 'sys." + type(obj).__name__ + "'>", type(obj).__module__)
     print('sys-' + label + '-doc', type(obj).__doc__.splitlines()[0])
+    print('sys-' + label + '-match-args', obj.__match_args__[:3], len(obj.__match_args__) == obj.n_sequence_fields, type(obj).__match_args__ == obj.__match_args__, not any(hasattr(obj, name) for name in sys_structseq_hidden_helpers), not any(hasattr(type(obj), name) for name in sys_structseq_hidden_helpers))
     print('sys-' + label + '-helpers', any(hasattr(obj, name) for name in sys_structseq_helpers), any(hasattr(type(obj), name) for name in sys_structseq_helpers))
     print('sys-' + label + '-dir', any(name in dir(obj) for name in sys_structseq_helpers), all(name in dir(obj) for name in sys_structseq_metadata), all(name in dir(type(obj)) for name in sys_structseq_metadata), '__repr__' in dir(type(obj)))
     print('sys-' + label + '-type-dict', type(type(obj).__dict__).__name__, all(name in type(obj).__dict__ for name in sys_structseq_metadata), any(name in type(obj).__dict__ for name in sys_structseq_helpers), type(obj).__name__ in repr(type(obj).__dict__), '__repr__' in type(obj).__dict__)
@@ -26259,14 +26261,20 @@ print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimiz
 print('sys-flags-quiet', type(sys.flags.quiet).__name__, sys.flags.quiet in (0, 1))
 print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode in (0, 1))
 print('sys-flags-verbose', type(sys.flags.verbose).__name__, sys.flags.verbose >= 0)
+print('sys-flags-warn-default-encoding', type(sys.flags.warn_default_encoding).__name__, sys.flags.warn_default_encoding in (0, 1))
+print('sys-flags-safe-path', type(sys.flags.safe_path).__name__, sys.flags.safe_path in (False, True))
+print('sys-flags-int-max-str-digits', type(sys.flags.int_max_str_digits).__name__, sys.flags.int_max_str_digits >= 0)
+print('sys-flags-match-args', sys.flags.__match_args__[:3], len(sys.flags.__match_args__) == sys.flags.n_sequence_fields, type(sys.flags).__match_args__ == sys.flags.__match_args__, not any(hasattr(sys.flags, name) for name in sys_structseq_hidden_helpers), not any(hasattr(type(sys.flags), name) for name in sys_structseq_hidden_helpers))
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, len(sys.version_info), type(sys.version_info.major).__name__, type(sys.version_info.releaselevel).__name__, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields >= 0, sys.version_info.n_sequence_fields >= 0, sys.version_info.n_unnamed_fields >= 0)
 print('sys-version-info-type-metadata', type(sys.version_info).n_fields >= 0, type(sys.version_info).n_sequence_fields >= 0, type(sys.version_info).n_unnamed_fields >= 0)
 version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
+version_hidden_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__slots__']
 version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 print('sys-version-info-repr', repr(sys.version_info).startswith('sys.version_info('), repr(type(sys.version_info)) == "<class 'sys.version_info'>", type(sys.version_info).__module__)
 print('sys-version-info-doc', type(sys.version_info).__doc__.splitlines()[0])
+print('sys-version-info-match-args', sys.version_info.__match_args__[:3], len(sys.version_info.__match_args__) == sys.version_info.n_sequence_fields, type(sys.version_info).__match_args__ == sys.version_info.__match_args__, not any(hasattr(sys.version_info, name) for name in version_hidden_helpers), not any(hasattr(type(sys.version_info), name) for name in version_hidden_helpers))
 print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
 print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata), '__repr__' in dir(type(sys.version_info)))
 print('sys-version-info-type-dict', type(type(sys.version_info).__dict__).__name__, all(name in type(sys.version_info).__dict__ for name in version_metadata), any(name in type(sys.version_info).__dict__ for name in version_helpers), 'major' in type(sys.version_info).__dict__, '__repr__' in type(sys.version_info).__dict__)

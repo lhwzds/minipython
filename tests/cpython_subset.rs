@@ -5472,11 +5472,13 @@ print('subnan', hash(value) == object.__hash__(value), isinstance(hash(value), i
 print('sys-float-info', sys.float_info.mant_dig, sys.float_info.radix, sys.float_info.rounds, type(sys.float_info.n_fields).__name__, sys.float_info.n_fields, sys.float_info.n_sequence_fields, sys.float_info.n_unnamed_fields)
 print('sys-hash-info', sys.hash_info.inf, sys.hash_info.nan, sys.hash_info.imag, type(sys.hash_info.n_fields).__name__, sys.hash_info.n_fields, sys.hash_info.n_sequence_fields, sys.hash_info.n_unnamed_fields)
 sys_structseq_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
+sys_structseq_hidden_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__slots__']
 sys_structseq_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 for label, obj in [('float-info', sys.float_info), ('hash-info', sys.hash_info)]:
     print('sys-' + label + '-shape', type(obj).__name__, len(obj), tuple(obj)[:3], len(tuple(obj)) == obj.n_sequence_fields)
     print('sys-' + label + '-repr', repr(obj).startswith('sys.' + type(obj).__name__ + '('), repr(type(obj)) == "<class 'sys." + type(obj).__name__ + "'>", type(obj).__module__)
     print('sys-' + label + '-doc', type(obj).__doc__.splitlines()[0])
+    print('sys-' + label + '-match-args', obj.__match_args__[:3], len(obj.__match_args__) == obj.n_sequence_fields, type(obj).__match_args__ == obj.__match_args__, not any(hasattr(obj, name) for name in sys_structseq_hidden_helpers), not any(hasattr(type(obj), name) for name in sys_structseq_hidden_helpers))
     print('sys-' + label + '-helpers', any(hasattr(obj, name) for name in sys_structseq_helpers), any(hasattr(type(obj), name) for name in sys_structseq_helpers))
     print('sys-' + label + '-dir', any(name in dir(obj) for name in sys_structseq_helpers), all(name in dir(obj) for name in sys_structseq_metadata), all(name in dir(type(obj)) for name in sys_structseq_metadata), '__repr__' in dir(type(obj)))
     print('sys-' + label + '-type-dict', type(type(obj).__dict__).__name__, all(name in type(obj).__dict__ for name in sys_structseq_metadata), any(name in type(obj).__dict__ for name in sys_structseq_helpers), type(obj).__name__ in repr(type(obj).__dict__), '__repr__' in type(obj).__dict__)
@@ -5510,14 +5512,20 @@ print('sys-flags-optimize', type(sys.flags.optimize).__name__, sys.flags.optimiz
 print('sys-flags-quiet', type(sys.flags.quiet).__name__, sys.flags.quiet)
 print('sys-flags-utf8-mode', type(sys.flags.utf8_mode).__name__, sys.flags.utf8_mode)
 print('sys-flags-verbose', type(sys.flags.verbose).__name__, sys.flags.verbose)
+print('sys-flags-warn-default-encoding', type(sys.flags.warn_default_encoding).__name__, sys.flags.warn_default_encoding)
+print('sys-flags-safe-path', type(sys.flags.safe_path).__name__, sys.flags.safe_path)
+print('sys-flags-int-max-str-digits', type(sys.flags.int_max_str_digits).__name__, sys.flags.int_max_str_digits)
+print('sys-flags-match-args', sys.flags.__match_args__[:3], len(sys.flags.__match_args__) == sys.flags.n_sequence_fields, type(sys.flags).__match_args__ == sys.flags.__match_args__, not any(hasattr(sys.flags, name) for name in sys_structseq_hidden_helpers), not any(hasattr(type(sys.flags), name) for name in sys_structseq_hidden_helpers))
 print('sys-byteorder', type(sys.byteorder).__name__, sys.byteorder in ('little', 'big'))
 print('sys-getdefaultencoding', sys.getdefaultencoding())
 print('sys-version-info', type(sys.version_info).__name__, tuple(sys.version_info), sys.version_info.major, sys.version_info.releaselevel, type(sys.version_info.n_fields).__name__, sys.version_info.n_fields, sys.version_info.n_sequence_fields, sys.version_info.n_unnamed_fields)
 print('sys-version-info-type-metadata', type(sys.version_info).n_fields, type(sys.version_info).n_sequence_fields, type(sys.version_info).n_unnamed_fields)
 version_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__', '__slots__']
+version_hidden_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__slots__']
 version_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']
 print('sys-version-info-repr', repr(sys.version_info).startswith('sys.version_info('), repr(type(sys.version_info)) == "<class 'sys.version_info'>", type(sys.version_info).__module__)
 print('sys-version-info-doc', type(sys.version_info).__doc__.splitlines()[0])
+print('sys-version-info-match-args', sys.version_info.__match_args__[:3], len(sys.version_info.__match_args__) == sys.version_info.n_sequence_fields, type(sys.version_info).__match_args__ == sys.version_info.__match_args__, not any(hasattr(sys.version_info, name) for name in version_hidden_helpers), not any(hasattr(type(sys.version_info), name) for name in version_hidden_helpers))
 print('sys-version-info-namedtuple-helpers', any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))
 print('sys-version-info-dir-helpers', any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata), '__repr__' in dir(type(sys.version_info)))
 print('sys-version-info-type-dict', type(type(sys.version_info).__dict__).__name__, all(name in type(sys.version_info).__dict__ for name in version_metadata), any(name in type(sys.version_info).__dict__ for name in version_helpers), 'major' in type(sys.version_info).__dict__, '__repr__' in type(sys.version_info).__dict__)
@@ -5561,17 +5569,19 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-float-info-shape float_info 11 (1.7976931348623157e+308, 1024, 308) True",
             "sys-float-info-repr True True sys",
             "sys-float-info-doc sys.float_info",
-            "sys-float-info-helpers False False",
-            "sys-float-info-dir False True True True",
-            "sys-float-info-type-dict mappingproxy True False True True",
+            "sys-float-info-match-args ('max', 'max_exp', 'max_10_exp') True True True True",
+            "sys-float-info-helpers True True",
+            "sys-float-info-dir True True True True",
+            "sys-float-info-type-dict mappingproxy True True True True",
             "sys-float-info-type-repr-call True",
             "sys-float-info-getnewargs True True",
             "sys-hash-info-shape hash_info 9 (64, 2305843009213693951, 314159) True",
             "sys-hash-info-repr True True sys",
             "sys-hash-info-doc hash_info",
-            "sys-hash-info-helpers False False",
-            "sys-hash-info-dir False True True True",
-            "sys-hash-info-type-dict mappingproxy True False True True",
+            "sys-hash-info-match-args ('width', 'modulus', 'inf') True True True True",
+            "sys-hash-info-helpers True True",
+            "sys-hash-info-dir True True True True",
+            "sys-hash-info-type-dict mappingproxy True True True True",
             "sys-hash-info-type-repr-call True",
             "sys-hash-info-getnewargs True True",
             "sys-builtin-module-names tuple True",
@@ -5586,13 +5596,13 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-ignore-environment int 0",
             "sys-flags-inspect int 0",
             "sys-flags-interactive int 0",
-            "sys-flags-struct-metadata int 15 15 0",
-            "sys-flags-shape flags 15 (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False, 0) True",
+            "sys-flags-struct-metadata int 21 18 0",
+            "sys-flags-shape flags 18 (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False, 0, 0, False, 4300) True",
             "sys-flags-repr True True sys",
             "sys-flags-doc sys.flags",
-            "sys-flags-helpers False False",
-            "sys-flags-dir False True True True",
-            "sys-flags-type-dict mappingproxy True False True True",
+            "sys-flags-helpers True True",
+            "sys-flags-dir True True True True",
+            "sys-flags-type-dict mappingproxy True True True True",
             "sys-flags-type-repr-call True",
             "sys-flags-getnewargs True True",
             "sys-flags-no-user-site int 0",
@@ -5602,15 +5612,20 @@ for label, call in [('exc-info-extra', lambda: sys.exc_info(1)), ('exc-info-keyw
             "sys-flags-quiet int 0",
             "sys-flags-utf8-mode int 0",
             "sys-flags-verbose int 0",
+            "sys-flags-warn-default-encoding int 0",
+            "sys-flags-safe-path bool False",
+            "sys-flags-int-max-str-digits int 4300",
+            "sys-flags-match-args ('debug', 'inspect', 'interactive') True True True True",
             "sys-byteorder str True",
             "sys-getdefaultencoding utf-8",
             "sys-version-info version_info (0, 1, 0, 'final', 0) 0 final int 5 5 0",
             "sys-version-info-type-metadata 5 5 0",
             "sys-version-info-repr True True sys",
             "sys-version-info-doc sys.version_info",
-            "sys-version-info-namedtuple-helpers False False",
-            "sys-version-info-dir-helpers False False True True True",
-            "sys-version-info-type-dict mappingproxy True False True True",
+            "sys-version-info-match-args ('major', 'minor', 'micro') True True True True",
+            "sys-version-info-namedtuple-helpers True True",
+            "sys-version-info-dir-helpers True True True True True",
+            "sys-version-info-type-dict mappingproxy True True True True",
             "sys-version-info-type-repr-call True",
             "sys-version-info-getnewargs True True",
             "sys-implementation SimpleNamespace minipython True int str",

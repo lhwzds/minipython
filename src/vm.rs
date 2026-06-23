@@ -74231,11 +74231,19 @@ fn sys_structseq_attr(typ: &NamedTupleType, name: &str) -> Option<Value> {
     if !is_sys_structseq(typ) {
         return None;
     }
-    let field_count = typ.fields.len() as i64;
     match name {
-        "n_fields" | "n_sequence_fields" => Some(Value::Number(field_count)),
+        "n_fields" => Some(Value::Number(sys_structseq_field_count(typ))),
+        "n_sequence_fields" => Some(Value::Number(typ.fields.len() as i64)),
         "n_unnamed_fields" => Some(Value::Number(0)),
         _ => None,
+    }
+}
+
+fn sys_structseq_field_count(typ: &NamedTupleType) -> i64 {
+    if typ.name == "flags" {
+        21
+    } else {
+        typ.fields.len() as i64
     }
 }
 
@@ -74250,13 +74258,7 @@ fn is_sys_structseq_hidden_namedtuple_attr(typ: &NamedTupleType, name: &str) -> 
     is_sys_structseq(typ)
         && matches!(
             name,
-            "__match_args__"
-                | "__slots__"
-                | "_asdict"
-                | "_field_defaults"
-                | "_fields"
-                | "_make"
-                | "_replace"
+            "__slots__" | "_asdict" | "_field_defaults" | "_fields" | "_make" | "_replace"
         )
 }
 
@@ -74275,19 +74277,22 @@ fn sys_structseq_getnewargs(instance: &Value) -> Result<Value, String> {
 }
 
 fn sys_structseq_type_dict(typ: &NamedTupleTypeRef) -> Value {
-    let field_count = typ.fields.len() as i64;
     let mut entries = vec![
         (
             Value::String("n_fields".to_string()),
-            Value::Number(field_count),
+            Value::Number(sys_structseq_field_count(typ)),
         ),
         (
             Value::String("n_sequence_fields".to_string()),
-            Value::Number(field_count),
+            Value::Number(typ.fields.len() as i64),
         ),
         (
             Value::String("n_unnamed_fields".to_string()),
             Value::Number(0),
+        ),
+        (
+            Value::String("__match_args__".to_string()),
+            namedtuple_fields_value(typ),
         ),
         (
             Value::String("__doc__".to_string()),
@@ -74316,6 +74321,7 @@ fn sys_structseq_names() -> impl Iterator<Item = String> {
         "n_sequence_fields",
         "n_unnamed_fields",
         "__getnewargs__",
+        "__match_args__",
         "__repr__",
     ]
     .into_iter()

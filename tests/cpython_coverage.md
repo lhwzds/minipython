@@ -589,7 +589,9 @@ Recent runtime migration notes:
   `test_float.py::GeneralFloatCases::test_hash` and `::test_hash_nan` through
   `cpython_float_hash_and_sys_info_subset`, covering public `sys.float_info`
   including `sys.float_info` and `sys.hash_info` tuple-like structure metadata,
-  structseq-style helper absence, and `__getnewargs__()` shape plus
+  CPython-visible `__match_args__` plus hidden `_fields`, `_asdict()`,
+  `_replace()`, `_make()`, `_field_defaults`, and `__slots__` helpers, and
+  `__getnewargs__()` shape plus
   `sys.hash_info` attributes used by the float tests, integer-valued float
   hash equality with `int`, the `-1` hash sentinel rule, inf hash constants,
   NaN identity hashing, float-subclass NaN hash inheritance, public
@@ -601,17 +603,20 @@ Recent runtime migration notes:
   `sys.flags.n_sequence_fields`, `sys.flags.n_unnamed_fields`,
   `sys.flags.no_user_site`, `sys.flags.no_site`, `sys.flags.isolated`,
   `sys.flags.optimize`, `sys.flags.quiet`,
-  `sys.flags.utf8_mode`, `sys.flags.verbose`, `sys.flags` tuple-like
+  `sys.flags.utf8_mode`, `sys.flags.verbose`,
+  `sys.flags.warn_default_encoding`, `sys.flags.safe_path`,
+  `sys.flags.int_max_str_digits`, `sys.flags` tuple-like
   structure metadata, `sys.flags` / `sys.float_info` / `sys.hash_info` /
   `sys.version_info` `repr()` prefixes, type `repr()` module-qualified names,
   type `__module__ == "sys"`, public type `__doc__` first lines,
-  type `__dict__` mappingproxy metadata with namedtuple helper entries
-  including `__slots__` hidden, public type-level `__repr__` descriptors,
-  and `__getnewargs__()` shape,
+  type `__dict__` mappingproxy metadata with CPython-visible
+  `__match_args__` while keeping `_fields`, `_asdict()`, `_replace()`,
+  `_make()`, `_field_defaults`, and `__slots__` hidden, public type-level
+  `__repr__` descriptors, and `__getnewargs__()` shape,
   `sys.hexversion`, `sys.warnoptions`,
   `sys.getdefaultencoding()`, `sys.version_info` structure metadata,
-  `sys.version_info` structseq-style absence of namedtuple helper attributes
-  plus `__getnewargs__()` shape, `sys.implementation`,
+  `sys.version_info` CPython-visible `__match_args__`, hidden namedtuple-only
+  helper attributes, and `__getnewargs__()` shape, `sys.implementation`,
   `sys.implementation.version` structure metadata, and the
   sandbox runtime-state query
   `sys.is_finalizing()`. The same evidence covers `sys.exc_info()` over the

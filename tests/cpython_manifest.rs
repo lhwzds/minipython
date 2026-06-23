@@ -13375,6 +13375,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
             && STDLIB_SOURCE.contains("\"implementation\"")
             && STDLIB_SOURCE.contains("\"warnoptions\"")
             && STDLIB_SOURCE.contains("\"version_info\"")
+            && STDLIB_SOURCE.contains("\"warn_default_encoding\"")
+            && STDLIB_SOURCE.contains("\"safe_path\"")
+            && STDLIB_SOURCE.contains("\"int_max_str_digits\"")
+            && VM_SOURCE.contains("sys_structseq_field_count")
             && VM_SOURCE.contains("call_sys_exc_info")
             && STDLIB_SOURCE.contains("call_sys_is_finalizing")
             && STDLIB_SOURCE.contains("sys_version_info_value()")
@@ -13427,6 +13431,15 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.flags.quiet",
         "sys.flags.utf8_mode",
         "sys.flags.verbose",
+        "sys.flags.warn_default_encoding",
+        "sys.flags.safe_path",
+        "sys.flags.int_max_str_digits",
+        "sys-flags-warn-default-encoding",
+        "sys-flags-safe-path",
+        "sys-flags-int-max-str-digits",
+        "sys-flags-match-args",
+        "sys.flags.__match_args__",
+        "type(sys.flags).__match_args__",
         "sys.float_info.n_fields",
         "sys.float_info.n_sequence_fields",
         "sys.float_info.n_unnamed_fields",
@@ -13434,8 +13447,12 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.hash_info.n_sequence_fields",
         "sys.hash_info.n_unnamed_fields",
         "sys_structseq_helpers",
+        "sys_structseq_hidden_helpers",
         "__slots__",
         "sys_structseq_metadata",
+        "obj.__match_args__",
+        "type(obj).__match_args__",
+        "sys-' + label + '-match-args",
         "repr(obj).startswith('sys.' + type(obj).__name__ + '(')",
         "repr(type(obj)) == \"<class 'sys.\" + type(obj).__name__ + \"'>\"",
         "type(obj).__module__",
@@ -13475,10 +13492,14 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
         "sys.version_info.n_fields",
         "sys.version_info.n_sequence_fields",
         "sys.version_info.n_unnamed_fields",
+        "sys.version_info.__match_args__",
+        "type(sys.version_info).__match_args__",
         "type(sys.version_info).n_fields",
         "type(sys.version_info).n_sequence_fields",
         "type(sys.version_info).n_unnamed_fields",
         "version_helpers",
+        "version_hidden_helpers",
+        "sys-version-info-match-args",
         "repr(sys.version_info).startswith('sys.version_info(')",
         "repr(type(sys.version_info)) == \"<class 'sys.version_info'>\"",
         "type(sys.version_info).__module__",
@@ -13526,6 +13547,10 @@ fn sys_sandbox_manifest_lists_public_subset_evidence() {
                 && document.contains("is_finalizing")
                 && document.contains("implementation")
                 && document.contains("warnoptions")
+                && document.contains("warn_default_encoding")
+                && document.contains("safe_path")
+                && document.contains("int_max_str_digits")
+                && document.contains("__match_args__")
                 && document.contains("version_info")
                 && document.contains("filesystem encoding"),
             "sys docs must describe sys metadata and filesystem encoding stop-line"

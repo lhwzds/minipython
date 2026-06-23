@@ -1508,29 +1508,29 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
         ),
         Ok(output_lines(&[
             "True True sys",
-            "mappingproxy True False True True True",
+            "mappingproxy True True True True True",
             "True True sys",
-            "mappingproxy True False True True True",
+            "mappingproxy True True True True True",
             "True True sys",
-            "mappingproxy True False True True True",
+            "mappingproxy True True True True True",
             "True True sys",
-            "mappingproxy True False True True True",
+            "mappingproxy True True True True True",
         ]))
     );
     assert_eq!(
         run_source(
             "import sys\nprint(type(sys.flags.n_fields).__name__, sys.flags.n_fields, sys.flags.n_sequence_fields, sys.flags.n_unnamed_fields)"
         ),
-        Ok(output_lines(&["int 15 15 0"]))
+        Ok(output_lines(&["int 21 18 0"]))
     );
     assert_eq!(
         run_source(
             "import sys\nhelpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nmetadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nprint(type(sys.flags).__name__, len(sys.flags), len(tuple(sys.flags)) == sys.flags.n_sequence_fields)\nprint(any(hasattr(sys.flags, name) for name in helpers), any(hasattr(type(sys.flags), name) for name in helpers))\nprint(any(name in dir(sys.flags) for name in helpers), all(name in dir(sys.flags) for name in metadata), all(name in dir(type(sys.flags)) for name in metadata))\nprint(sys.flags.__getnewargs__() == (tuple(sys.flags),), type(sys.flags).__getnewargs__(sys.flags) == (tuple(sys.flags),))"
         ),
         Ok(output_lines(&[
-            "flags 15 True",
-            "False False",
-            "False True True",
+            "flags 18 True",
+            "True True",
+            "True True True",
             "True True",
         ]))
     );
@@ -1552,12 +1552,12 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
         ),
         Ok(output_lines(&[
             "float_info 11 True",
-            "False False",
-            "False True True",
+            "True True",
+            "True True True",
             "True True",
             "hash_info 9 True",
-            "False False",
-            "False True True",
+            "True True",
+            "True True True",
             "True True",
         ]))
     );
@@ -1566,8 +1566,8 @@ fn sys_sandbox_subset_keeps_export_surface_explicit() {
             "import sys\nversion_helpers = ['_fields', '_field_defaults', '_asdict', '_replace', '_make', '__match_args__']\nversion_metadata = ['n_fields', 'n_sequence_fields', 'n_unnamed_fields']\nprint(any(hasattr(sys.version_info, name) for name in version_helpers), any(hasattr(type(sys.version_info), name) for name in version_helpers))\nprint(any(name in dir(sys.version_info) for name in version_helpers), any(name in dir(type(sys.version_info)) for name in version_helpers), all(name in dir(sys.version_info) for name in version_metadata), all(name in dir(type(sys.version_info)) for name in version_metadata))\nprint(sys.version_info.__getnewargs__() == (tuple(sys.version_info),), type(sys.version_info).__getnewargs__(sys.version_info) == (tuple(sys.version_info),))"
         ),
         Ok(output_lines(&[
-            "False False",
-            "False False True True",
+            "True True",
+            "True True True True",
             "True True",
         ]))
     );
