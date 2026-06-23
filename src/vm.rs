@@ -15845,7 +15845,7 @@ impl Vm {
     ) -> Result<Value, String> {
         if args.len() > 4 {
             return Err(format!(
-                "property() expected at most 4 arguments, got {}",
+                "TypeError: property() takes at most 4 arguments ({} given)",
                 args.len()
             ));
         }

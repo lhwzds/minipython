@@ -76,6 +76,11 @@ Recent runtime migration notes:
   stdlib-backed builtins such as
   `id()`, `any()`, `all()`, `abs()`, `hash()`, `repr()`, `ascii()`, `bool()`,
   `len()`, `callable()`, `bin()`, `oct()`, and `hex()`.
+- `cpython_descriptor_constructor_arity_errors_subset` and direct CPython
+  evidence in `cpython_descriptor_constructor_arity_errors_diff_subset` cover
+  descriptor constructor arity diagnostics for `staticmethod`, `classmethod`,
+  and `property`, including CPython's `staticmethod expected 1 argument`
+  wording and `property() takes at most 4 arguments (5 given)` shape.
 - The same runtime exception-capture evidence pins unexpected-keyword text for
   the exposed type/introspection helpers `typing.get_args()`,
   `typing.get_origin()`, `typing.get_type_hints()`, and `inspect.signature()`.
@@ -188,6 +193,7 @@ Recent runtime migration notes:
   `cpython_attribute_error_keyword_attributes_diff_subset`,
   `cpython_object_repr_str_direct_diff_subset`,
   `cpython_str_builtin_custom_dunder_diff_subset`,
+  `cpython_descriptor_constructor_arity_errors_diff_subset`,
   `cpython_staticmethod_callable_diff_subset`,
   `cpython_staticmethod_metadata_diff_subset`,
   `cpython_classmethod_metadata_diff_subset`,

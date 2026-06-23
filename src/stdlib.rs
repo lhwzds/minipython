@@ -2028,7 +2028,7 @@ pub(crate) fn call_staticmethod_constructor(
     }
     let [function] = args.as_slice() else {
         return Err(format!(
-            "staticmethod() expected 1 argument, got {}",
+            "staticmethod expected 1 argument, got {}",
             args.len()
         ));
     };
@@ -2047,7 +2047,7 @@ pub(crate) fn call_classmethod_constructor(
     }
     let [function] = args.as_slice() else {
         return Err(format!(
-            "classmethod() expected 1 argument, got {}",
+            "classmethod expected 1 argument, got {}",
             args.len()
         ));
     };

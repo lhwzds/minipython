@@ -7162,6 +7162,27 @@ print([name in dir(cm) for name in ['__isabstractmethod__', '__func__']])"#,
 }
 
 #[test]
+fn cpython_descriptor_constructor_arity_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public descriptor constructor positional arity diagnostics",
+        name: "descriptor-constructor-arity-errors",
+        source: r#"def sample():
+    pass
+for label, expr in [
+    ('staticmethod-zero', lambda: staticmethod()),
+    ('staticmethod-two', lambda: staticmethod(sample, 1)),
+    ('classmethod-zero', lambda: classmethod()),
+    ('classmethod-two', lambda: classmethod(sample, 1)),
+    ('property-five', lambda: property(sample, None, None, None, 1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_property_abstractmethod_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property __isabstractmethod__ behavior",

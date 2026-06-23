@@ -25367,6 +25367,22 @@ fn cpython_builtin_bool_notimplemented_subset() {
     assert_error("not NotImplemented", expected);
 }
 
+// Mirrors CPython's public descriptor constructor positional arity diagnostics.
+// Keyword rejection remains covered by the runtime exception capture slice.
+#[test]
+fn cpython_descriptor_constructor_arity_errors_subset() {
+    assert_output(
+        "def sample():\n    pass\nfor label, expr in [\n    ('staticmethod-zero', lambda: staticmethod()),\n    ('staticmethod-two', lambda: staticmethod(sample, 1)),\n    ('classmethod-zero', lambda: classmethod()),\n    ('classmethod-two', lambda: classmethod(sample, 1)),\n    ('property-five', lambda: property(sample, None, None, None, 1)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "staticmethod-zero TypeError staticmethod expected 1 argument, got 0",
+            "staticmethod-two TypeError staticmethod expected 1 argument, got 2",
+            "classmethod-zero TypeError classmethod expected 1 argument, got 0",
+            "classmethod-two TypeError classmethod expected 1 argument, got 2",
+            "property-five TypeError property() takes at most 4 arguments (5 given)",
+        ],
+    );
+}
+
 // Mirrors CPython's public callable `staticmethod` object behavior while
 // keeping the normal descriptor binding path covered in language tests.
 #[test]

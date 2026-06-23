@@ -13778,6 +13778,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_attribute_error_keyword_attributes_subset",
             "cpython_object_repr_str_direct_subset",
             "cpython_str_builtin_custom_dunder_subset",
+            "cpython_descriptor_constructor_arity_errors_subset",
             "cpython_staticmethod_callable_subset",
             "cpython_staticmethod_metadata_subset",
             "cpython_classmethod_metadata_subset",
@@ -13834,6 +13835,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_attribute_error_keyword_attributes_diff_subset",
         "cpython_object_repr_str_direct_diff_subset",
         "cpython_str_builtin_custom_dunder_diff_subset",
+        "cpython_descriptor_constructor_arity_errors_diff_subset",
         "cpython_staticmethod_callable_diff_subset",
         "cpython_staticmethod_metadata_diff_subset",
         "cpython_classmethod_metadata_diff_subset",
@@ -14056,6 +14058,54 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("async_generator.athrow()")
                 && document.contains("BaseException.with_traceback()"),
             "focused runtime exception capture evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn descriptor_constructor_arity_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_descriptor_constructor_arity_errors_subset(",
+        "staticmethod()",
+        "staticmethod(sample, 1)",
+        "classmethod()",
+        "classmethod(sample, 1)",
+        "property(sample, None, None, None, 1)",
+        "staticmethod expected 1 argument, got 0",
+        "classmethod expected 1 argument, got 2",
+        "property() takes at most 4 arguments (5 given)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "descriptor constructor arity subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_descriptor_constructor_arity_errors_diff_subset",
+    );
+    for required in [
+        "CPython public descriptor constructor positional arity diagnostics",
+        "staticmethod()",
+        "staticmethod(sample, 1)",
+        "classmethod()",
+        "classmethod(sample, 1)",
+        "property(sample, None, None, None, 1)",
+    ] {
+        assert!(
+            body.contains(required),
+            "descriptor constructor arity CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_descriptor_constructor_arity_errors_subset")
+                && document.contains("cpython_descriptor_constructor_arity_errors_diff_subset")
+                && document.contains("descriptor constructor arity")
+                && document.contains("staticmethod expected 1 argument"),
+            "descriptor constructor arity evidence must be documented in coverage and migration notes"
         );
     }
 }
