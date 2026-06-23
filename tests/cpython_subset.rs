@@ -25650,6 +25650,19 @@ fn cpython_frozenset_constructor_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_slice.py` constructor keyword rejection.
+#[test]
+fn cpython_slice_constructor_keyword_error_subset() {
+    assert_output(
+        "for label, callback in [\n    ('stop', lambda: slice(stop=3)),\n    ('start-stop', lambda: slice(start=1, stop=3)),\n    ('pos-stop', lambda: slice(1, stop=3)),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "stop TypeError slice() takes no keyword arguments",
+            "start-stop TypeError slice() takes no keyword arguments",
+            "pos-stop TypeError slice() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

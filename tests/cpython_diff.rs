@@ -7557,6 +7557,24 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_slice_constructor_keyword_error_diff_subset() {
+    // CPython oracle text: slice() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_slice.py constructor keyword argument errors",
+        name: "slice-constructor-keyword-errors",
+        source: r#"for label, callback in [
+    ("stop", lambda: slice(stop=3)),
+    ("start-stop", lambda: slice(start=1, stop=3)),
+    ("pos-stop", lambda: slice(1, stop=3)),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

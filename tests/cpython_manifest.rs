@@ -13798,6 +13798,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_tuple_constructor_keyword_error_subset",
             "cpython_set_constructor_keyword_error_subset",
             "cpython_frozenset_constructor_keyword_error_subset",
+            "cpython_slice_constructor_keyword_error_subset",
             "cpython_builtin_singleton_attribute_access_subset",
             "cpython_hash_builtin_subset",
             "cpython_id_builtin_subset",
@@ -13860,6 +13861,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_tuple_constructor_keyword_error_diff_subset",
         "cpython_set_constructor_keyword_error_diff_subset",
         "cpython_frozenset_constructor_keyword_error_diff_subset",
+        "cpython_slice_constructor_keyword_error_diff_subset",
         "cpython_all_any_builtin_diff_subset",
         "cpython_len_builtin_diff_subset",
         "cpython_min_max_sum_builtin_diff_subset",
@@ -15235,6 +15237,48 @@ fn frozenset_constructor_keyword_error_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_frozenset_constructor_keyword_error_diff_subset")
                 && document.contains("frozenset() takes no keyword arguments"),
             "focused frozenset constructor keyword error evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn slice_constructor_keyword_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_slice_constructor_keyword_error_subset(",
+        "lambda: slice(stop=3)",
+        "lambda: slice(start=1, stop=3)",
+        "lambda: slice(1, stop=3)",
+        "slice() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused slice constructor keyword error subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_slice_constructor_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_slice.py constructor keyword argument errors",
+        "lambda: slice(stop=3)",
+        "lambda: slice(start=1, stop=3)",
+        "lambda: slice(1, stop=3)",
+        "slice() takes no keyword arguments",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused slice constructor keyword error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_slice_constructor_keyword_error_subset")
+                && document.contains("cpython_slice_constructor_keyword_error_diff_subset")
+                && document.contains("slice() takes no keyword arguments"),
+            "focused slice constructor keyword error evidence must be documented in coverage and migration notes"
         );
     }
 }

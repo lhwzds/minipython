@@ -9607,7 +9607,7 @@ impl Vm {
             Value::Builtin(name) if name == "str.__new__" => self.call_str_new(args, keywords),
             Value::Builtin(name) if name == "slice" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 call_slice(args)

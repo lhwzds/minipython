@@ -211,6 +211,7 @@ Recent runtime migration notes:
   `cpython_tuple_constructor_keyword_error_diff_subset`,
   `cpython_set_constructor_keyword_error_diff_subset`,
   `cpython_frozenset_constructor_keyword_error_diff_subset`,
+  `cpython_slice_constructor_keyword_error_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
   `cpython_len_builtin_diff_subset`,
   `cpython_min_max_sum_builtin_diff_subset`,
@@ -5658,6 +5659,12 @@ text.
 frozenset constructor keyword-rejection subset where `frozenset(...)` and plain
 `frozenset` subclasses reject constructor keywords with CPython's public
 `frozenset() takes no keyword arguments` text.
+`cpython_slice_constructor_keyword_error_subset`, backed by
+`cpython_slice_constructor_keyword_error_diff_subset`, covers the
+`test_slice.py` slice-constructor keyword-rejection subset where
+`slice(stop=3)`, `slice(start=1, stop=3)`, and `slice(1, stop=3)` reject
+constructor keywords with CPython's public `slice() takes no keyword arguments`
+text.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
 `cpython_builtin_breakpoint_default_stub_subset`,
 `cpython_builtin_breakpoint_passthru_error_subset`,
