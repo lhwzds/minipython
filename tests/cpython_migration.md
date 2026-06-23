@@ -6627,12 +6627,14 @@ Completed in the pow builtin pass:
   raw descriptor `func` / `dispatcher` / `register` attributes, registration
   through raw descriptors plus class-bound and instance-bound callables,
   `staticmethod` and `classmethod` implementations, method metadata including
-  descriptor `__module__` override and deletion fallback to `functools`, direct
-  class access dispatch behavior, annotation-inferred registration, PEP 604 and
-  `typing.Union` registration, and public TypeError paths. Private cache
-  invalidation, weakrefs, and C-specific paths remain classified for later
-  runtime work. Direct CPython output parity for the union-registration surface
-  is now in the CPython-version-gated
+  descriptor `__module__` override and deletion fallback to `functools`, CPython
+  repr/str shapes for raw descriptors plus class-bound and instance-bound
+  callables, direct class access dispatch behavior, annotation-inferred
+  registration, PEP 604 and `typing.Union` registration, and qualified
+  descriptor `__get__` public TypeError paths. Private cache invalidation,
+  weakrefs, and C-specific paths remain classified for later runtime work.
+  Direct CPython output parity for the union-registration surface is now in the
+  CPython-version-gated
   `cpython_functools_singledispatch_union_diff_subset`.
 - Added a CPython/MiniPython differential parity case for the supported
   `test_pow` subset.

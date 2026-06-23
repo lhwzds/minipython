@@ -1437,20 +1437,18 @@ impl fmt::Display for Value {
             Value::SingleDispatchRegister { .. } => {
                 write!(f, "<function singledispatch register>")
             }
-            Value::SingleDispatchMethod { identity, .. } => {
-                write!(f, "{}", format_singledispatchmethod(identity))
+            descriptor @ Value::SingleDispatchMethod { .. } => {
+                write!(f, "{}", format_singledispatchmethod(descriptor))
             }
             Value::SingleDispatchMethodCallable {
                 descriptor,
-                identity,
+                receiver,
                 ..
-            } => {
-                write!(
-                    f,
-                    "{}",
-                    format_singledispatchmethod_callable(descriptor, identity)
-                )
-            }
+            } => write!(
+                f,
+                "{}",
+                format_singledispatchmethod_callable(descriptor, receiver.as_deref())
+            ),
             Value::CachedProperty { identity, .. } => {
                 write!(f, "{}", format_cached_property(identity))
             }
@@ -1600,10 +1598,33 @@ fn format_singledispatch(function: &Value, attrs: &Scope, identity: &Rc<()>) -> 
     format_function_object_repr(&name, identity)
 }
 
-fn format_singledispatchmethod(identity: &Rc<()>) -> String {
+fn singledispatchmethod_display_name(descriptor: &Value) -> String {
+    let Value::SingleDispatchMethod {
+        dispatcher, func, ..
+    } = descriptor
+    else {
+        return "singledispatchmethod".to_string();
+    };
+    if let Value::SingleDispatch {
+        function, attrs, ..
+    } = dispatcher.as_ref()
+    {
+        let fallback = match function.as_ref() {
+            Value::Function { name, .. } => name.as_str(),
+            _ => "singledispatchmethod",
+        };
+        return function_like_name_from_attrs(attrs, fallback);
+    }
+    match func.as_ref() {
+        Value::Function { name, .. } => name.clone(),
+        _ => "singledispatchmethod".to_string(),
+    }
+}
+
+fn format_singledispatchmethod(descriptor: &Value) -> String {
     format!(
-        "<functools.singledispatchmethod object at 0x{:x}>",
-        Rc::as_ptr(identity) as usize
+        "<single dispatch method descriptor {}>",
+        singledispatchmethod_display_name(descriptor)
     )
 }
 
@@ -1621,23 +1642,15 @@ fn format_cmp_to_key(identity: &Rc<()>) -> String {
     )
 }
 
-fn format_singledispatchmethod_callable(descriptor: &Value, identity: &Rc<()>) -> String {
-    let name = match descriptor {
-        Value::SingleDispatchMethod { dispatcher, .. } => match dispatcher.as_ref() {
-            Value::SingleDispatch {
-                function, attrs, ..
-            } => {
-                let fallback = match function.as_ref() {
-                    Value::Function { name, .. } => name.as_str(),
-                    _ => "singledispatchmethod wrapper",
-                };
-                function_like_name_from_attrs(attrs, fallback)
-            }
-            _ => "singledispatchmethod wrapper".to_string(),
-        },
-        _ => "singledispatchmethod wrapper".to_string(),
-    };
-    format_function_object_repr(&name, identity)
+fn format_singledispatchmethod_callable(descriptor: &Value, receiver: Option<&Value>) -> String {
+    let name = singledispatchmethod_display_name(descriptor);
+    match receiver {
+        Some(receiver) => format!(
+            "<bound single dispatch method {name} of {}>",
+            format_value_repr(receiver)
+        ),
+        None => format!("<single dispatch method {name}>"),
+    }
 }
 
 fn function_like_name_from_attrs(attrs: &Scope, fallback: &str) -> String {
@@ -1983,12 +1996,12 @@ fn format_value_repr(value: &Value) -> String {
             ..
         } => format_singledispatch(function, attrs, identity),
         Value::SingleDispatchRegister { .. } => "<function singledispatch register>".to_string(),
-        Value::SingleDispatchMethod { identity, .. } => format_singledispatchmethod(identity),
+        descriptor @ Value::SingleDispatchMethod { .. } => format_singledispatchmethod(descriptor),
         Value::SingleDispatchMethodCallable {
             descriptor,
-            identity,
+            receiver,
             ..
-        } => format_singledispatchmethod_callable(descriptor, identity),
+        } => format_singledispatchmethod_callable(descriptor, receiver.as_deref()),
         Value::CachedProperty { identity, .. } => format_cached_property(identity),
         Value::CmpToKey { identity, .. } | Value::CmpToKeyObject { identity, .. } => {
             format_cmp_to_key(identity)

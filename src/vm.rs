@@ -7957,7 +7957,7 @@ impl Vm {
         };
         if rest.len() > 2 {
             return Err(format!(
-                "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                "TypeError: singledispatchmethod.__get__() takes from 2 to 3 positional arguments but {} were given",
                 rest.len() + 1
             ));
         }
@@ -7968,7 +7968,7 @@ impl Vm {
                 "obj" => {
                     if object.is_some() {
                         return Err(
-                            "TypeError: __get__() got multiple values for argument 'obj'"
+                            "TypeError: singledispatchmethod.__get__() got multiple values for argument 'obj'"
                                 .to_string(),
                         );
                     }
@@ -7977,7 +7977,7 @@ impl Vm {
                 "cls" => {
                     if owner.is_some() {
                         return Err(
-                            "TypeError: __get__() got multiple values for argument 'cls'"
+                            "TypeError: singledispatchmethod.__get__() got multiple values for argument 'cls'"
                                 .to_string(),
                         );
                     }
@@ -7985,15 +7985,13 @@ impl Vm {
                 }
                 _ => {
                     return Err(format!(
-                        "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                        "TypeError: singledispatchmethod.__get__() got an unexpected keyword argument '{keyword}'"
                     ));
                 }
             }
         }
         let Some(object) = object else {
-            return Err(
-                "TypeError: __get__() missing 1 required positional argument: 'obj'".to_string(),
-            );
+            return Err("TypeError: singledispatchmethod.__get__() missing 1 required positional argument: 'obj'".to_string());
         };
         let owner = owner.unwrap_or(Value::None);
         self.singledispatchmethod_get(descriptor, object, owner)

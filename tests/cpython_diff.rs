@@ -16257,7 +16257,7 @@ print(descriptor.__module__, descriptor.__dict__['__module__'])
 del descriptor.__module__
 print(descriptor.__module__, '__module__' in descriptor.__dict__)
 descriptor_repr = repr(descriptor)
-print(descriptor_repr.startswith('<functools.singledispatchmethod object at 0x'), descriptor_repr.endswith('>'))
+print(descriptor_repr == '<single dispatch method descriptor C.m>', descriptor_repr.endswith('>'))
 
 def c_float(self, arg):
     return 'float:' + str(arg)
@@ -16272,13 +16272,14 @@ def _(self, arg):
 print(c.m((1, 2)), c.m(b'abc'))
 print(C.m.__name__, c.m.__name__)
 rendered = repr(c.m)
-print(rendered.startswith('<function C.m at 0x'), rendered.endswith('>'), str(c.m).startswith('<function C.m at 0x'))
+print(rendered.startswith('<bound single dispatch method C.m of '), rendered.endswith('>'), str(c.m).startswith('<bound single dispatch method C.m of '))
+print(repr(C.m) == '<single dispatch method C.m>', str(C.m) == '<single dispatch method C.m>')
 print(descriptor.__get__(obj=c, cls=C)(1))
 for label, expected, expr in [
-    ('get-missing', "__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
-    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(c, C, 1)),
-    ('get-duplicate', "__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(c, obj=c)),
-    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+    ('get-missing', "singledispatchmethod.__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
+    ('get-too-many', 'singledispatchmethod.__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(c, C, 1)),
+    ('get-duplicate', "singledispatchmethod.__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(c, obj=c)),
+    ('get-unknown', "singledispatchmethod.__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
 ]:
     try:
         expr()
