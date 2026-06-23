@@ -13786,6 +13786,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_name_metadata_subset",
             "cpython_property_set_name_metadata_subset",
             "cpython_property_no_getter_error_subset",
+            "cpython_property_no_setter_deleter_error_subset",
             "cpython_property_doc_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
@@ -13841,6 +13842,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_name_metadata_diff_subset",
         "cpython_property_set_name_metadata_diff_subset",
         "cpython_property_no_getter_error_diff_subset",
+        "cpython_property_no_setter_deleter_error_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
@@ -14459,6 +14461,58 @@ fn property_no_getter_error_subset_has_focused_diff_evidence() {
                 && document.contains("property no-getter")
                 && document.contains("AttributeError"),
             "property no-getter evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_no_setter_deleter_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_no_setter_deleter_error_subset(",
+        "setattr(ReadOnly(), 'x', 2)",
+        "delattr(ReadOnly(), 'x')",
+        "property 'x' of 'ReadOnly' object has no setter",
+        "property 'x' of 'ReadOnly' object has no deleter",
+        "property '<lambda>' of 'object' object has no setter",
+        "property of 'object' object has no deleter",
+        "p.__name__ = 123",
+        "manual-int-del",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property no-setter/no-deleter subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_property_no_setter_deleter_error_diff_subset",
+    );
+    for required in [
+        "CPython public property no-setter/no-deleter AttributeError behavior",
+        "setattr(ReadOnly(), 'x', 2)",
+        "delattr(ReadOnly(), 'x')",
+        "ReadOnly.__dict__['x'].__set__(ReadOnly(), 2)",
+        "ReadOnly.__dict__['x'].__delete__(ReadOnly())",
+        "p = property(lambda self: 1)",
+        "p = property()",
+        "p.__name__ = 123",
+        "manual-int-set",
+        "manual-int-del",
+    ] {
+        assert!(
+            body.contains(required),
+            "property no-setter/no-deleter CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_no_setter_deleter_error_subset")
+                && document.contains("cpython_property_no_setter_deleter_error_diff_subset")
+                && document.contains("property no-setter/no-deleter")
+                && document.contains("AttributeError"),
+            "property no-setter/no-deleter evidence must be documented in coverage and migration notes"
         );
     }
 }

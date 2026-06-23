@@ -25507,6 +25507,28 @@ fn cpython_property_no_getter_error_subset() {
     );
 }
 
+// Mirrors CPython's public AttributeError text for property descriptors without
+// a setter or deleter, including fget.__name__ fallback and explicit
+// property.__name__ metadata.
+#[test]
+fn cpython_property_no_setter_deleter_error_subset() {
+    assert_output(
+        "class ReadOnly:\n    def get(self):\n        return 1\n    x = property(get)\n\nfor label, expr in [\n    ('attr-set', lambda: setattr(ReadOnly(), 'x', 2)),\n    ('direct-set', lambda: ReadOnly.__dict__['x'].__set__(ReadOnly(), 2)),\n    ('attr-del', lambda: delattr(ReadOnly(), 'x')),\n    ('direct-del', lambda: ReadOnly.__dict__['x'].__delete__(ReadOnly())),\n]:\n    try:\n        expr()\n    except AttributeError as error:\n        print(label, type(error).__name__, str(error))\n\np = property(lambda self: 1)\nfor label, expr in [\n    ('lambda-set', lambda: p.__set__(object(), 2)),\n    ('lambda-del', lambda: p.__delete__(object())),\n]:\n    try:\n        expr()\n    except AttributeError as error:\n        print(label, type(error).__name__, str(error))\n\np = property()\nfor label, expr in [\n    ('empty-set', lambda: p.__set__(object(), 2)),\n    ('empty-del', lambda: p.__delete__(object())),\n]:\n    try:\n        expr()\n    except AttributeError as error:\n        print(label, type(error).__name__, str(error))\n\np = property(lambda self: 1)\np.__name__ = 123\nfor label, expr in [\n    ('manual-int-set', lambda: p.__set__(object(), 2)),\n    ('manual-int-del', lambda: p.__delete__(object())),\n]:\n    try:\n        expr()\n    except AttributeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "attr-set AttributeError property 'x' of 'ReadOnly' object has no setter",
+            "direct-set AttributeError property 'x' of 'ReadOnly' object has no setter",
+            "attr-del AttributeError property 'x' of 'ReadOnly' object has no deleter",
+            "direct-del AttributeError property 'x' of 'ReadOnly' object has no deleter",
+            "lambda-set AttributeError property '<lambda>' of 'object' object has no setter",
+            "lambda-del AttributeError property '<lambda>' of 'object' object has no deleter",
+            "empty-set AttributeError property of 'object' object has no setter",
+            "empty-del AttributeError property of 'object' object has no deleter",
+            "manual-int-set AttributeError property 123 of 'object' object has no setter",
+            "manual-int-del AttributeError property 123 of 'object' object has no deleter",
+        ],
+    );
+}
+
 // Mirrors CPython's public property.__doc__ metadata. Default and doc=None
 // values are getter-derived, assigned values are arbitrary, deletion resets the
 // readable slot to None, and derived properties recompute getter docs only when

@@ -7314,6 +7314,60 @@ except AttributeError as error:
 }
 
 #[test]
+fn cpython_property_no_setter_deleter_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property no-setter/no-deleter AttributeError behavior",
+        name: "property-no-setter-deleter-errors",
+        source: r#"class ReadOnly:
+    def get(self):
+        return 1
+    x = property(get)
+
+for label, expr in [
+    ('attr-set', lambda: setattr(ReadOnly(), 'x', 2)),
+    ('direct-set', lambda: ReadOnly.__dict__['x'].__set__(ReadOnly(), 2)),
+    ('attr-del', lambda: delattr(ReadOnly(), 'x')),
+    ('direct-del', lambda: ReadOnly.__dict__['x'].__delete__(ReadOnly())),
+]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+p = property(lambda self: 1)
+for label, expr in [
+    ('lambda-set', lambda: p.__set__(object(), 2)),
+    ('lambda-del', lambda: p.__delete__(object())),
+]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+p = property()
+for label, expr in [
+    ('empty-set', lambda: p.__set__(object(), 2)),
+    ('empty-del', lambda: p.__delete__(object())),
+]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+
+p = property(lambda self: 1)
+p.__name__ = 123
+for label, expr in [
+    ('manual-int-set', lambda: p.__set__(object(), 2)),
+    ('manual-int-del', lambda: p.__delete__(object())),
+]:
+    try:
+        expr()
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_property_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property __doc__ metadata behavior",

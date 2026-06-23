@@ -16262,22 +16262,34 @@ impl Vm {
     }
 
     fn property_set(&mut self, property: Value, object: Value, value: Value) -> Result<(), String> {
-        let Value::Property { fset, .. } = property else {
+        let Value::Property {
+            fget, fset, name, ..
+        } = property
+        else {
             unreachable!("property_set is only called with property values");
         };
         let Some(fset) = fset else {
-            return Err("AttributeError: can't set attribute".to_string());
+            return Err(format!(
+                "AttributeError: {}",
+                property_missing_accessor_error(&fget, &name, &object, "setter")?
+            ));
         };
         self.call_value(*fset, vec![object, value])?;
         Ok(())
     }
 
     fn property_delete(&mut self, property: Value, object: Value) -> Result<(), String> {
-        let Value::Property { fdel, .. } = property else {
+        let Value::Property {
+            fget, fdel, name, ..
+        } = property
+        else {
             unreachable!("property_delete is only called with property values");
         };
         let Some(fdel) = fdel else {
-            return Err("AttributeError: can't delete attribute".to_string());
+            return Err(format!(
+                "AttributeError: {}",
+                property_missing_accessor_error(&fget, &name, &object, "deleter")?
+            ));
         };
         self.call_value(*fdel, vec![object])?;
         Ok(())
@@ -53987,6 +53999,25 @@ fn property_no_getter_error(property_name: &Rc<RefCell<Option<Value>>>, object: 
             repr_value(name)
         ),
         None => format!("property of '{owner}' object has no getter"),
+    }
+}
+
+fn property_missing_accessor_error(
+    fget: &Option<Box<Value>>,
+    property_name: &Rc<RefCell<Option<Value>>>,
+    object: &Value,
+    accessor: &str,
+) -> Result<String, String> {
+    let owner = type_name(object);
+    match property_name_value(fget, property_name) {
+        Ok(name) => Ok(format!(
+            "property {} of '{owner}' object has no {accessor}",
+            repr_value(&name)
+        )),
+        Err(message) if message.starts_with("AttributeError:") => {
+            Ok(format!("property of '{owner}' object has no {accessor}"))
+        }
+        Err(message) => Err(message),
     }
 }
 
