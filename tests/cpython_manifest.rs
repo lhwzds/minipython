@@ -13765,6 +13765,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_pow_builtin_subset",
             "cpython_chr_ord_builtin_subset",
             "cpython_format_builtin_and_custom_dunder_format_subset",
+            "cpython_format_builtin_keyword_error_subset",
             "cpython_ascii_builtin_subset",
             "cpython_builtin_cmp_absent_subset",
             "cpython_builtin_none_ne_direct_subset",
@@ -13867,6 +13868,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_builtin_print_keyword_diff_subset",
         "cpython_round_builtin_diff_subset",
         "cpython_format_builtin_and_custom_dunder_format_diff_subset",
+        "cpython_format_builtin_keyword_error_diff_subset",
         "cpython_hash_id_builtins_diff_subset",
         "cpython_builtin_breakpoint_custom_hook_diff_subset",
         "cpython_builtin_breakpoint_passthru_error_diff_subset",
@@ -15037,6 +15039,48 @@ fn object_constructor_argument_error_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_object_constructor_argument_error_diff_subset")
                 && document.contains("object() takes no arguments"),
             "focused object constructor argument error evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn format_builtin_keyword_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_format_builtin_keyword_error_subset(",
+        "lambda: format(value=1)",
+        "lambda: format(value=1, format_spec='')",
+        "lambda: format(format_spec='', value=1)",
+        "format() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused format builtin keyword error subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_format_builtin_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_format keyword argument errors",
+        "lambda: format(value=1)",
+        "lambda: format(value=1, format_spec=\"\")",
+        "lambda: format(format_spec=\"\", value=1)",
+        "format() takes no keyword arguments",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused format builtin keyword error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_format_builtin_keyword_error_subset")
+                && document.contains("cpython_format_builtin_keyword_error_diff_subset")
+                && document.contains("format() takes no keyword arguments"),
+            "focused format builtin keyword error evidence must be documented in coverage and migration notes"
         );
     }
 }

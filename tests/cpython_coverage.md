@@ -224,6 +224,7 @@ Recent runtime migration notes:
   `cpython_builtin_print_keyword_diff_subset`,
   `cpython_round_builtin_diff_subset`,
   `cpython_format_builtin_and_custom_dunder_format_diff_subset`,
+  `cpython_format_builtin_keyword_error_diff_subset`,
   `cpython_hash_id_builtins_diff_subset`,
   `cpython_builtin_breakpoint_custom_hook_diff_subset`,
   `cpython_builtin_breakpoint_passthru_error_diff_subset`,
@@ -5599,6 +5600,11 @@ explicit doc values, arbitrary assigned values, deletion to `None`, derived
 `getter()` / `setter()` / `deleter()` doc recomputation for getter-derived
 properties, explicit-doc preservation through `getter()`, and `dir()`
 visibility.
+
+Builtin format note: `cpython_format_builtin_keyword_error_subset`, backed by
+`cpython_format_builtin_keyword_error_diff_subset`, covers CPython's public
+`format() takes no keyword arguments` `TypeError` text for keyword attempts
+including `format(value=1)` and `format(value=1, format_spec='')`.
 
 Builtin async-iterator note: `cpython_aiter_anext_builtin_subset` and
 `cpython_aiter_anext_builtin_diff_subset` cover the public `aiter()` builtin

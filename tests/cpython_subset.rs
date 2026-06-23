@@ -37121,6 +37121,19 @@ fn cpython_format_builtin_and_custom_dunder_format_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_format`.
+#[test]
+fn cpython_format_builtin_keyword_error_subset() {
+    assert_output(
+        "for label, expr in [\n    ('value', lambda: format(value=1)),\n    ('both', lambda: format(value=1, format_spec='')),\n    ('reversed', lambda: format(format_spec='', value=1)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "value TypeError format() takes no keyword arguments",
+            "both TypeError format() takes no keyword arguments",
+            "reversed TypeError format() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_builtin.py::test_chr and ::test_ord.
 // MiniPython keeps this slice to Unicode scalar values because its string
 // storage is UTF-8 rather than CPython's wider internal code-point model.

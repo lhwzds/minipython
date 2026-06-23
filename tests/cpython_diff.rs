@@ -9547,6 +9547,24 @@ for expr in [lambda: format(BadFormatResult(), ''), lambda: format(object(), 4),
 }
 
 #[test]
+fn cpython_format_builtin_keyword_error_diff_subset() {
+    // CPython oracle text: format() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_format keyword argument errors",
+        name: "format-builtin-keyword-errors",
+        source: r#"for label, expr in [
+    ("value", lambda: format(value=1)),
+    ("both", lambda: format(value=1, format_spec="")),
+    ("reversed", lambda: format(format_spec="", value=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_hash_id_builtins_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_hash / ::test_invalid_hash_typeerror / ::test_id",

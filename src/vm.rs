@@ -8980,7 +8980,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "format" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_format(args)
