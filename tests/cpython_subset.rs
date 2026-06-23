@@ -35992,8 +35992,12 @@ fn cpython_bytes_bytearray_index_error_and_hash_subset() {
 #[test]
 fn cpython_bytes_bytearray_subclass_repr_and_compare_subset() {
     assert_output(
-        "class B(bytes):\n    pass\nclass B2(bytes):\n    pass\nclass BA(bytearray):\n    class Nested(bytearray):\n        pass\nb = B(b'abc')\nprint(str(b), repr(b), B(B2(b'abc')) == B(b'abc'))\nprint(b == b'abc', b == bytearray(b'abc'), b == memoryview(b'abc'))\nba = BA(b'abc')\nprint(str(ba), repr(ba), BA.Nested(b'abc'))\nprint(ba == BA(b'abc'), ba == bytearray(b'abc'), ba == b'abc', ba == memoryview(b'abc'))\nprint(B(b'a') < b'b', BA(b'a') < b'b')",
+        "class B(bytes):\n    pass\nclass B2(bytes):\n    pass\nclass BA(bytearray):\n    class Nested(bytearray):\n        pass\nsamples = [bytes([97, 39, 98]), bytes([97, 34, 98]), bytes([97, 39, 34, 98])]\nprint(repr(samples[0]), repr(samples[1]), repr(samples[2]))\nprint(repr(bytearray(samples[0])), repr(bytearray(samples[1])), repr(bytearray(samples[2])))\nprint(str(B(samples[0])), repr(B(samples[0])))\nprint(str(BA(samples[0])), repr(BA(samples[0])))\nb = B(b'abc')\nprint(str(b), repr(b), B(B2(b'abc')) == B(b'abc'))\nprint(b == b'abc', b == bytearray(b'abc'), b == memoryview(b'abc'))\nba = BA(b'abc')\nprint(str(ba), repr(ba), BA.Nested(b'abc'))\nprint(ba == BA(b'abc'), ba == bytearray(b'abc'), ba == b'abc', ba == memoryview(b'abc'))\nprint(B(b'a') < b'b', BA(b'a') < b'b')",
         &[
+            r#"b"a'b" b'a"b' b'a\'"b'"#,
+            r#"bytearray(b"a\'b") bytearray(b'a"b') bytearray(b'a\'"b')"#,
+            r#"b"a'b" b"a'b""#,
+            r#"BA(b"a\'b") BA(b"a\'b")"#,
             "b'abc' b'abc' True",
             "True True True",
             "BA(b'abc') BA(b'abc') Nested(b'abc')",

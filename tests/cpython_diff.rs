@@ -23046,6 +23046,11 @@ class B2(bytes):
 class BA(bytearray):
     class Nested(bytearray):
         pass
+samples = [bytes([97, 39, 98]), bytes([97, 34, 98]), bytes([97, 39, 34, 98])]
+print(repr(samples[0]), repr(samples[1]), repr(samples[2]))
+print(repr(bytearray(samples[0])), repr(bytearray(samples[1])), repr(bytearray(samples[2])))
+print(str(B(samples[0])), repr(B(samples[0])))
+print(str(BA(samples[0])), repr(BA(samples[0])))
 b = B(b'abc')
 print(str(b), repr(b), B(B2(b'abc')) == B(b'abc'))
 print(b == b'abc', b == bytearray(b'abc'), b == memoryview(b'abc'))

@@ -3176,6 +3176,44 @@ fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_bytes_bytearray_repr_quote_selection_diff_covers_runtime_subset() {
+    let diff_name = "cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset";
+    let subset_name = "cpython_bytes_bytearray_subclass_repr_and_compare_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "bytes/bytearray repr quote-selection direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "bytes/bytearray repr quote-selection runtime subset evidence must exist"
+    );
+
+    for required in [
+        "bytes([97, 39, 98])",
+        "repr(bytearray(samples[0]))",
+        "repr(B(samples[0]))",
+        "repr(BA(samples[0]))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "bytes/bytearray repr quote-selection evidence must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "bytes/bytearray repr docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains("quote-selection"),
+            "bytes/bytearray repr docs must mention quote-selection behavior"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_warning_compare_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_warning_compare_diff_subset";
     let subset_name = "cpython_bytes_warning_compare_subset";

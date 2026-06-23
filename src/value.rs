@@ -1152,7 +1152,7 @@ impl fmt::Display for Value {
             Value::Complex { real, imag, .. } => write!(f, "{}", format_complex(*real, *imag)),
             Value::String(value) | Value::IdentityString { value, .. } => write!(f, "{value}"),
             Value::Bytes(value) => write!(f, "{}", repr_bytes(value)),
-            Value::ByteArray(value) => write!(f, "bytearray({})", repr_bytes(&value.borrow())),
+            Value::ByteArray(value) => write!(f, "{}", repr_bytearray(&value.borrow())),
             Value::MemoryView(view) if view.borrow().released => {
                 write!(f, "<released memory at 0x0>")
             }
@@ -1816,7 +1816,7 @@ fn format_value_repr(value: &Value) -> String {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
         Value::Bytes(value) => repr_bytes(value),
-        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(&value.borrow())),
+        Value::ByteArray(value) => repr_bytearray(&value.borrow()),
         Value::MemoryView(view) if view.borrow().released => "<released memory at 0x0>".to_string(),
         Value::MemoryView(_) => "<memory at 0x0>".to_string(),
         Value::BytesIO(_) => "<_io.BytesIO object at 0x0>".to_string(),
@@ -4124,11 +4124,31 @@ fn format_template_interpolation_value(value: &Value) -> String {
 }
 
 fn repr_bytes(value: &[u8]) -> String {
-    let mut result = String::from("b'");
+    repr_bytes_inner(value, false)
+}
+
+fn repr_bytearray(value: &[u8]) -> String {
+    format!("bytearray({})", repr_bytearray_bytes(value))
+}
+
+fn repr_bytearray_bytes(value: &[u8]) -> String {
+    repr_bytes_inner(value, true)
+}
+
+fn repr_bytes_inner(value: &[u8], escape_single_quote_always: bool) -> String {
+    let quote = if value.contains(&b'\'') && !value.contains(&b'"') {
+        b'"'
+    } else {
+        b'\''
+    };
+    let mut result = String::from("b");
+    result.push(quote as char);
     for byte in value {
         match *byte {
             b'\\' => result.push_str("\\\\"),
-            b'\'' => result.push_str("\\'"),
+            b'\'' if escape_single_quote_always || quote == b'\'' => result.push_str("\\'"),
+            b'\'' => result.push('\''),
+            b'"' if quote == b'"' => result.push_str("\\\""),
             b'\n' => result.push_str("\\n"),
             b'\r' => result.push_str("\\r"),
             b'\t' => result.push_str("\\t"),
@@ -4136,7 +4156,7 @@ fn repr_bytes(value: &[u8]) -> String {
             byte => result.push_str(&format!("\\x{byte:02x}")),
         }
     }
-    result.push('\'');
+    result.push(quote as char);
     result
 }
 

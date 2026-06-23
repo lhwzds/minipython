@@ -229,7 +229,7 @@ to `B`, and CPython-compatible non-byte-to-non-byte / `u` / `w` rejection.
 `cpython_bytes_constructor_concat_repeat_contains_subset` now includes direct
 evidence for sandbox `MemoryError` handling on address-space-sized
 bytes/bytearray repeats.
-| `Lib/test/test_bytes.py` | `AssortedBytesTest` | 13 | `ported` | Existing evidence ports `test_bytes_repr`, `test_bytearray_repr`, `test_bytes_str`, `test_bytearray_str`, `test_format`, `test_compare_bytes_to_bytearray`, `test_doc`, `test_from_bytearray`, `test_literal`, `test_split_bytearray`, `test_rsplit_bytearray`, and `test_return_self` public behavior through bytes literal/runtime, repr/str, format, docs, bytes-like split, and bytearray copy tests; `cpython_bytes_warning_compare_subset` with direct `cpython_bytes_warning_compare_diff_subset` evidence ports `test_compare` with `sys.flags.bytes_warning`, `BytesWarning` capture, and `-bb` warning-as-error behavior. |
+| `Lib/test/test_bytes.py` | `AssortedBytesTest` | 13 | `ported` | Existing evidence ports `test_bytes_repr`, `test_bytearray_repr`, `test_bytes_str`, `test_bytearray_str`, `test_format`, `test_compare_bytes_to_bytearray`, `test_doc`, `test_from_bytearray`, `test_literal`, `test_split_bytearray`, `test_rsplit_bytearray`, and `test_return_self` public behavior through bytes literal/runtime, repr/str including quote-selection for bytes and bytearray/subclass reprs, format, docs, bytes-like split, and bytearray copy tests; `cpython_bytes_warning_compare_subset` with direct `cpython_bytes_warning_compare_diff_subset` evidence ports `test_compare` with `sys.flags.bytes_warning`, `BytesWarning` capture, and `-bb` warning-as-error behavior. |
 | `Lib/test/test_bytes.py` | `BytearrayPEP3137Test` | 1 | `ported` | `cpython_bytearray_pep3137_returns_new_copy_subset` ports `test_returns_new_copy`, covering value-equal but distinct mutable bytearray results for no-op string-like methods and one-item joins. |
 | `Lib/test/test_bytes.py` | `SubclassTest` | 5 | `ported` | `cpython_bytes_bytearray_subclass_ops_and_join_subset`, `cpython_bytes_bytearray_subclass_fromhex_subset`, `cpython_bytes_bytearray_subclass_copy_subset`, and `cpython_bytes_bytearray_subclass_pickle_subset` port all current methods for supported bytes and bytearray subclasses. CPython binary pickle byte compatibility remains outside this public subset. |
 | `Lib/test/test_bytes.py` | `ByteArraySubclassTest` | 1 | `ported` | The inherited `SubclassTest` methods are tracked through the shared `SubclassTest` row; `cpython_bytearray_subclass_init_override_subset` ports direct `test_init_override`, covering bytearray subclass `__init__` override behavior with positional and keyword `source` construction. |
@@ -1217,9 +1217,10 @@ repeat operations.
 `test_setitem_error`, and `test_nohash`, covering public invalid-index
 TypeError messages and bytearray's unhashable `TypeError`.
 `cpython_bytes_bytearray_subclass_repr_and_compare_subset` extends that slice to
-bytes subclass `repr()` / `str()`, bytearray subclass class-name repr, bytes-like
-equality against builtin `bytes`, `bytearray`, and `memoryview`, plus bytewise
-ordering for supported bytes-like values.
+bytes subclass `repr()` / `str()`, bytearray subclass class-name repr, CPython
+quote-selection for bytes and bytearray/subclass reprs containing single and
+double quote bytes, bytes-like equality against builtin `bytes`, `bytearray`,
+and `memoryview`, plus bytewise ordering for supported bytes-like values.
 `cpython_bytes_bytearray_assorted_public_subset` ports
 `AssortedBytesTest::test_from_bytearray` and
 `test_compare_bytes_to_bytearray`, covering bytearray construction from a

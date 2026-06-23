@@ -651,8 +651,10 @@ Completed in the `test_bytes.py` bytes/bytearray subclass safety pass:
   `cpython_bytes_bytearray_index_error_and_hash_diff_subset`.
 - Added `cpython_bytes_bytearray_subclass_repr_and_compare_subset`, extending
   that CPython slice to bytes subclass `repr()` / `str()`, bytearray subclass
-  class-name repr, bytes-like equality against builtin `bytes`, `bytearray`,
-  and `memoryview`, and bytewise ordering for supported bytes-like values.
+  class-name repr, CPython quote-selection for bytes and bytearray/subclass
+  reprs containing single and double quote bytes, bytes-like equality against
+  builtin `bytes`, `bytearray`, and `memoryview`, and bytewise ordering for
+  supported bytes-like values.
   Direct CPython diff evidence is in
   `cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset`.
 - Added `cpython_bytearray_hex_reentrant_separator_buffererror_subset`, migrating

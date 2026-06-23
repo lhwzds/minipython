@@ -2710,9 +2710,10 @@ without adding general custom encoder/decoder class support.
   Direct CPython diff evidence is in
   `cpython_bytes_bytearray_type_doc_diff_subset`.
   `cpython_bytes_bytearray_subclass_repr_and_compare_subset` covers repr/str
-  rendering, bytes-like equality against builtin bytes, bytearray, and
-  memoryview values, bytewise ordering for supported bytes-like values. Direct
-  CPython diff evidence is in
+  rendering, CPython quote-selection for bytes and bytearray/subclass reprs
+  containing single and double quote bytes, bytes-like equality against builtin
+  bytes, bytearray, and memoryview values, bytewise ordering for supported
+  bytes-like values. Direct CPython diff evidence is in
   `cpython_bytes_bytearray_subclass_repr_and_compare_diff_subset`.
   `cpython_bytes_bytearray_assorted_public_subset` covers CPython
   `AssortedBytesTest::test_from_bytearray` and

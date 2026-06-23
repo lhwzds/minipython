@@ -1618,7 +1618,7 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             &str_subclass_string(value).expect("str subclass storage exists after guard"),
         )),
         Value::Bytes(value) => Ok(repr_bytes(value)),
-        Value::ByteArray(value) => Ok(format!("bytearray({})", repr_bytes(&value.borrow()))),
+        Value::ByteArray(value) => Ok(repr_bytearray(&value.borrow())),
         value if bytes_subclass_bytes(value).is_some() => Ok(repr_bytes(
             &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
         )),
@@ -1977,7 +1977,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
     match value {
         Value::String(value) | Value::IdentityString { value, .. } => repr_string(value),
         Value::Bytes(value) => repr_bytes(value),
-        Value::ByteArray(value) => format!("bytearray({})", repr_bytes(&value.borrow())),
+        Value::ByteArray(value) => repr_bytearray(&value.borrow()),
         value if bytes_subclass_bytes(value).is_some() => repr_bytes(
             &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
         ),
@@ -2378,11 +2378,31 @@ fn repr_string(value: &str) -> String {
 }
 
 fn repr_bytes(value: &[u8]) -> String {
-    let mut result = String::from("b'");
+    repr_bytes_inner(value, false)
+}
+
+fn repr_bytearray(value: &[u8]) -> String {
+    format!("bytearray({})", repr_bytearray_bytes(value))
+}
+
+fn repr_bytearray_bytes(value: &[u8]) -> String {
+    repr_bytes_inner(value, true)
+}
+
+fn repr_bytes_inner(value: &[u8], escape_single_quote_always: bool) -> String {
+    let quote = if value.contains(&b'\'') && !value.contains(&b'"') {
+        b'"'
+    } else {
+        b'\''
+    };
+    let mut result = String::from("b");
+    result.push(quote as char);
     for byte in value {
         match *byte {
             b'\\' => result.push_str("\\\\"),
-            b'\'' => result.push_str("\\'"),
+            b'\'' if escape_single_quote_always || quote == b'\'' => result.push_str("\\'"),
+            b'\'' => result.push('\''),
+            b'"' if quote == b'"' => result.push_str("\\\""),
             b'\n' => result.push_str("\\n"),
             b'\r' => result.push_str("\\r"),
             b'\t' => result.push_str("\\t"),
@@ -2390,7 +2410,7 @@ fn repr_bytes(value: &[u8]) -> String {
             byte => result.push_str(&format!("\\x{byte:02x}")),
         }
     }
-    result.push('\'');
+    result.push(quote as char);
     result
 }
 
@@ -21142,10 +21162,7 @@ impl Vm {
             Value::Bytes(value) => float_value_from_bytes_like_text(&value, repr_bytes(&value)),
             Value::ByteArray(value) => {
                 let bytes = value.borrow();
-                float_value_from_bytes_like_text(
-                    &bytes,
-                    format!("bytearray({})", repr_bytes(&bytes)),
-                )
+                float_value_from_bytes_like_text(&bytes, repr_bytearray(&bytes))
             }
             value => {
                 if let Some(value) = float_subclass_value(&value) {
@@ -50454,7 +50471,10 @@ fn bytearray_subclass_repr(value: &Value) -> Option<String> {
         return None;
     };
     let bytes = bytearray_subclass_storage(value)?;
-    Some(format!("{class_name}({})", repr_bytes(&bytes.borrow())))
+    Some(format!(
+        "{class_name}({})",
+        repr_bytearray_bytes(&bytes.borrow())
+    ))
 }
 
 fn array_array_instance(typecode: Option<&str>, storage: Option<Vec<u8>>) -> Value {
