@@ -22831,7 +22831,7 @@ impl Vm {
                 }
                 _ => {
                     return Err(format!(
-                        "TypeError: '{name}' is an invalid keyword argument for deque()"
+                        "TypeError: deque() got an unexpected keyword argument '{name}'"
                     ));
                 }
             }
@@ -47547,6 +47547,7 @@ fn getset_descriptor_dir_names() -> Vec<String> {
         "__ge__",
         "__get__",
         "__getattribute__",
+        "__getstate__",
         "__gt__",
         "__hash__",
         "__init__",
@@ -57207,11 +57208,7 @@ bytearray(bytes_or_buffer) -> mutable copy of bytes_or_buffer\n\
 bytearray(int) -> bytes object of size given by the parameter initialized with null bytes\n\
 bytearray() -> empty bytes object",
         ),
-        "deque" => Some(
-            "deque([iterable[, maxlen]]) --> deque object\n\
-\n\
-A list-like sequence optimized for data accesses near its endpoints.",
-        ),
+        "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
         "OrderedDict" => Some("Dictionary that remembers insertion order."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
         _ => None,
@@ -57640,7 +57637,7 @@ fn store_attribute(object: Value, name: &str, value: Value) -> Result<(), String
             "TypeError: cannot set '{name}' attribute of immutable type '{function_name}'"
         )),
         Value::Builtin(function_name) if function_name == "deque" => {
-            Err(deque_type_attribute_assignment_error())
+            Err(deque_type_attribute_assignment_error(name))
         }
         Value::Builtin(function_name)
             if name == "_fields" && ast_builtin_kind(&function_name).is_some() =>
@@ -57920,7 +57917,7 @@ fn delete_attribute(object: Value, name: &str) -> Result<(), String> {
             }
         }
         Value::Builtin(function_name) if function_name == "deque" => {
-            Err(deque_type_attribute_assignment_error())
+            Err(deque_type_attribute_assignment_error(name))
         }
         Value::NamedTupleType(typ) if name == "__doc__" => {
             *typ.doc.borrow_mut() = String::new();
@@ -57941,12 +57938,14 @@ fn deque_attribute_assignment_error(name: &str) -> String {
         "AttributeError: attribute 'maxlen' of 'collections.deque' objects is not writable"
             .to_string()
     } else {
-        format!("AttributeError: 'collections.deque' object has no attribute '{name}'")
+        format!(
+            "AttributeError: 'collections.deque' object has no attribute '{name}' and no __dict__ for setting new attributes"
+        )
     }
 }
 
-fn deque_type_attribute_assignment_error() -> String {
-    "TypeError: can't set attributes of built-in/extension type 'collections.deque'".to_string()
+fn deque_type_attribute_assignment_error(name: &str) -> String {
+    format!("TypeError: cannot set '{name}' attribute of immutable type 'collections.deque'")
 }
 
 fn bind_method(value: Value, receiver: Value) -> Value {

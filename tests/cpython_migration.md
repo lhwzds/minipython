@@ -11352,13 +11352,15 @@ Completed in the CPython collections manifest expansion pass:
   readonly `__set__` / `__delete__`, `__objclass__`, `__class__`, and
   `__doc__` public behavior.
 - Extended the same `collections.deque` public surface with CPython parity for
-  `dir(deque.maxlen)` inherited object-dunder names, keeping object-dunder
-  callable behavior outside this descriptor-only step.
+  `dir(deque.maxlen)` inherited object-dunder names including `__getstate__`,
+  keeping object-dunder callable behavior outside this descriptor-only step.
 - Extended the same `collections.deque` public surface with CPython parity for
-  instance-level `maxlen` assignment/deletion rejection and non-dynamic deque
-  instance attribute rejection.
+  the current public deque docstring first line, instance-level `maxlen`
+  assignment/deletion rejection, and non-dynamic deque instance attribute
+  rejection with no-`__dict__` wording.
 - Extended the same `collections.deque` public surface with CPython parity for
-  class-level deque attribute assignment/deletion rejection.
+  class-level deque attribute assignment/deletion rejection and constructor
+  unexpected-keyword wording.
 - Extended the same `collections.deque` public surface with deque-to-deque rich
   comparison for equality and ordering, plus direct dunder `NotImplemented`
   results for non-deque operands, without expanding deque concatenation,

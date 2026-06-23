@@ -98,9 +98,11 @@ Recent runtime migration notes:
   `dir()` visibility, class-level `maxlen` getset descriptor shape including
   `__get__`, readonly `__set__` / `__delete__`, `__name__`, `__qualname__`,
   `__objclass__`, `__doc__`, and CPython's inherited object-dunder `dir()`
-  names for the descriptor object, instance-level `maxlen` assignment/deletion
-  rejection, non-dynamic instance attribute rejection, and type-object
-  attribute mutation rejection,
+  names for the descriptor object including `__getstate__`, CPython's current
+  deque docstring first line, instance-level `maxlen` assignment/deletion
+  rejection, non-dynamic instance attribute rejection with no-`__dict__`
+  wording, type-object immutable-attribute mutation rejection, and constructor
+  unexpected-keyword wording,
   generic-alias repr, direct type-level public method calls, basic `append` /
   `appendleft` / `extend` / `extendleft` / `insert` / `remove` / `pop` /
   `popleft` / `count` / `index` / `rotate` / `reverse` / `clear` / `copy`,

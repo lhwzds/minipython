@@ -4166,7 +4166,7 @@ print(descriptor.__get__(deque([1], maxlen=3), deque), descriptor.__get__(deque(
 print(type(descriptor.__get__).__name__, '__get__' in dir(descriptor))
 print(descriptor.__name__, descriptor.__qualname__, descriptor.__objclass__ is deque, descriptor.__class__ is types.GetSetDescriptorType)
 print(descriptor.__doc__)
-descriptor_dir_dunders = ['__class__', '__delattr__', '__delete__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__get__', '__getattribute__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__name__', '__ne__', '__new__', '__objclass__', '__qualname__', '__reduce__', '__reduce_ex__', '__repr__', '__set__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__']
+descriptor_dir_dunders = ['__class__', '__delattr__', '__delete__', '__dir__', '__doc__', '__eq__', '__format__', '__ge__', '__get__', '__getattribute__', '__getstate__', '__gt__', '__hash__', '__init__', '__init_subclass__', '__le__', '__lt__', '__name__', '__ne__', '__new__', '__objclass__', '__qualname__', '__reduce__', '__reduce_ex__', '__repr__', '__set__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__']
 print([name for name in dir(descriptor) if name.startswith('__') and name.endswith('__')] == descriptor_dir_dunders)
 for label, callback in [
     ('descriptor-wrong', lambda: descriptor.__get__([], deque)),
