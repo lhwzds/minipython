@@ -22064,11 +22064,30 @@ impl Vm {
 
     fn call_mapping_proxy_constructor(
         &mut self,
-        args: Vec<Value>,
+        mut args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
         if !keywords.is_empty() {
-            return Err("TypeError: mappingproxy() does not accept keyword arguments".to_string());
+            if !args.is_empty() {
+                return Err(format!(
+                    "TypeError: mappingproxy() takes at most 1 argument ({} given)",
+                    args.len() + keywords.len()
+                ));
+            }
+            if keywords.len() > 1 {
+                return Err(format!(
+                    "TypeError: mappingproxy() takes at most 1 keyword argument ({} given)",
+                    keywords.len()
+                ));
+            }
+            let (keyword, value) = keywords.into_iter().next().expect("keyword is present");
+            if keyword != "mapping" {
+                return Err(
+                    "TypeError: mappingproxy() missing required argument 'mapping' (pos 1)"
+                        .to_string(),
+                );
+            }
+            args.push(value);
         }
 
         match args.as_slice() {
@@ -22081,10 +22100,12 @@ impl Vm {
             [source] if is_mapping_proxy_source(source) => Ok(Value::MappingProxyObject {
                 mapping: Box::new(source.clone()),
             }),
-            [] => Err("TypeError: mappingproxy expected 1 argument, got 0".to_string()),
+            [] => Err(
+                "TypeError: mappingproxy() missing required argument 'mapping' (pos 1)".to_string(),
+            ),
             [_] => Err("TypeError: mappingproxy() argument must be a mapping".to_string()),
             values => Err(format!(
-                "TypeError: mappingproxy expected 1 argument, got {}",
+                "TypeError: mappingproxy() takes at most 1 argument ({} given)",
                 values.len()
             )),
         }

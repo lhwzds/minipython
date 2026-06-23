@@ -18160,6 +18160,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_union_bad_classinfo_checks_subset",
             "cpython_types_union_newtype_subset",
             "cpython_types_mappingproxy_exact_dict_subset",
+            "cpython_types_mappingproxy_keyword_constructor_subset",
             "cpython_types_mappingproxy_method_surface_subset",
             "cpython_types_mappingproxy_custom_mapping_subset",
             "cpython_types_mappingproxy_union_subset",
@@ -18266,6 +18267,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_normal_integers_diff_subset",
         "cpython_types_format_spec_errors_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
+        "cpython_types_mappingproxy_keyword_constructor_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
         "cpython_types_mappingproxy_hash_diff_subset",
@@ -18372,6 +18374,53 @@ fn types_celltype_keyword_error_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_celltype_keyword_error_diff_subset")
                 && document.contains("cell() takes no keyword arguments"),
             "types CellType keyword-error evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_keyword_constructor_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_keyword_constructor_subset",
+    );
+    for required in [
+        "MappingProxyType(mapping={'a': 1})",
+        "MappingProxyType({'a': 1}, mapping={'b': 2})",
+        "MappingProxyType(object={'a': 1})",
+        "MappingProxyType(mapping={}, other={})",
+        "mappingproxy() missing required argument 'mapping' (pos 1)",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types MappingProxyType keyword-constructor subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_keyword_constructor_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests constructor keyword binding",
+        "MappingProxyType(mapping={'a': 1})",
+        "MappingProxyType({'a': 1}, mapping={'b': 2})",
+        "MappingProxyType(object={'a': 1})",
+        "MappingProxyType(mapping={}, other={})",
+        "mappingproxy() missing required argument 'mapping' (pos 1)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types MappingProxyType keyword-constructor CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_keyword_constructor_subset")
+                && document.contains("cpython_types_mappingproxy_keyword_constructor_diff_subset")
+                && document.contains("MappingProxyType(mapping={'a': 1})"),
+            "types MappingProxyType keyword-constructor evidence must be documented in coverage and migration notes"
         );
     }
 }

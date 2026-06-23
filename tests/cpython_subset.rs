@@ -49151,6 +49151,36 @@ fn cpython_types_mappingproxy_exact_dict_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
+// binding behavior for the public `mapping` keyword.
+#[test]
+fn cpython_types_mappingproxy_keyword_constructor_subset() {
+    assert_output(
+        concat!(
+            "from types import MappingProxyType\n",
+            "view = MappingProxyType(mapping={'a': 1})\n",
+            "print(type(view).__name__, view['a'], list(view.items()))\n",
+            "for label, callback in [\n",
+            "    ('mixed', lambda: MappingProxyType({'a': 1}, mapping={'b': 2})),\n",
+            "    ('bad-keyword', lambda: MappingProxyType(object={'a': 1})),\n",
+            "    ('two-keywords', lambda: MappingProxyType(mapping={}, other={})),\n",
+            "    ('missing', lambda: MappingProxyType()),\n",
+            "]:\n",
+            "    try:\n",
+            "        callback()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "mappingproxy 1 [('a', 1)]",
+            "mixed TypeError mappingproxy() takes at most 1 argument (2 given)",
+            "bad-keyword TypeError mappingproxy() missing required argument 'mapping' (pos 1)",
+            "two-keywords TypeError mappingproxy() takes at most 1 keyword argument (2 given)",
+            "missing TypeError mappingproxy() missing required argument 'mapping' (pos 1)",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests::test_missing.
 // This covers a dict subclass used through MappingProxyType: `__getitem__`
 // delegates missing keys to `__missing__`, while `get` and membership do not.

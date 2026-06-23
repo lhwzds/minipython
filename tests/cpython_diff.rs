@@ -12194,6 +12194,29 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_keyword_constructor_diff_subset() {
+    // CPython oracle text includes:
+    // mappingproxy() missing required argument 'mapping' (pos 1).
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests constructor keyword binding",
+        name: "types-mappingproxy-keyword-constructor",
+        source: r#"from types import MappingProxyType
+view = MappingProxyType(mapping={'a': 1})
+print(type(view).__name__, view['a'], list(view.items()))
+for label, callback in [
+    ("mixed", lambda: MappingProxyType({'a': 1}, mapping={'b': 2})),
+    ("bad-keyword", lambda: MappingProxyType(object={'a': 1})),
+    ("two-keywords", lambda: MappingProxyType(mapping={}, other={})),
+    ("missing", lambda: MappingProxyType()),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_method_surface_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::MappingProxyTests method surface subset",
