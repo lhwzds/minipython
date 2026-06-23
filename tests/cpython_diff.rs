@@ -8292,6 +8292,7 @@ fn cpython_compile_source_positions_public_invariants_diff_subset() {
 
 co = compile("x = 1", "test_compile.py", "exec")
 positions = list(co.co_positions())
+print((0, 1, 0, 0) in positions)
 print(any(line == 1 and end_line == 1 and col == 0 and end_col == len("x = 1") for line, end_line, col, end_col in positions))
 print(all(line == end_line for line, end_line, col, end_col in positions if line is not None and end_line is not None))
 print(all(bounded(pos) for pos in positions))

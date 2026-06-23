@@ -1205,7 +1205,7 @@ pub(crate) fn call_code_positions(
         .map(|span| {
             tuple_value(vec![
                 Value::Number(span.line),
-                Value::Number(span.line),
+                Value::Number(span.end_line),
                 span.column.map(Value::Number).unwrap_or(Value::None),
                 span.end_column.map(Value::Number).unwrap_or(Value::None),
             ])

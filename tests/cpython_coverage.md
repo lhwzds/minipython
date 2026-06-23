@@ -3154,11 +3154,13 @@ without adding general custom encoder/decoder class support.
   `ast.fix_missing_locations()`, and compile from public AST.
   `cpython_compile_source_positions_code_positions_first_pass_subset` adds the
   first public `code.co_positions()` iterator surface for a simple assignment,
-  exposing the real assignment line plus statement-aligned column bounds that
-  satisfy CPython's AST-offset membership invariant.
+  exposing CPython's artificial module-start span plus assignment value-token
+  column bounds that satisfy the public AST-offset membership invariant without
+  claiming exact opcode-position parity.
   `cpython_compile_source_positions_public_invariants_diff_subset` provides
   gated direct CPython output parity for public `co_positions()` and
-  `co_lines()` invariants without asserting opcode-count or exact opcode-level
+  `co_lines()` invariants, including the absence of a whole-line assignment
+  position for `x = 1`, without asserting opcode-count or exact opcode-level
   position identity.
   `cpython_compile_source_positions_lambda_return_position_subset` ports
   CPython's public lambda-return position invariant for the representative
@@ -3172,7 +3174,7 @@ without adding general custom encoder/decoder class support.
   `cpython_compile_source_positions_multistatement_code_lines_subset` extends
   that first-pass line-span model so runtime `compile(..., "exec")` code
   objects expose every statement-leading source line through both `co_lines()`
-  and `co_positions()`.
+  and `co_positions()` while keeping module-start columns non-`None`.
   `cpython_compile_specifics_lineno_after_no_code_first_pass_subset` starts the
   function `__code__` line-table surface for no-code function bodies, exposing
   source-token-derived `co_firstlineno`, one public `co_lines()` span whose line

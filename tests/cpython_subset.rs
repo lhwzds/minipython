@@ -56827,7 +56827,8 @@ print("ok")"#,
 // Adapted from CPython Lib/test/test_compile.py::TestSourcePositions::
 // test_simple_assignment. CPython checks that every non-artificial
 // `co_positions()` line/column value belongs to one of the public AST offsets
-// for the same source; `x = 1` exposes the assignment's statement span.
+// for the same source; `x = 1` exposes CPython's artificial module-start span
+// plus the assignment value token rather than the whole physical line.
 #[test]
 fn cpython_compile_source_positions_code_positions_first_pass_subset() {
     assert_output(
@@ -56837,14 +56838,14 @@ print(positions)
 print([line for line, end_line, col, end_col in positions])
 print([line == end_line for line, end_line, col, end_col in positions])
 print([
-    line == 0
-    or (line == 1 and end_line == 1 and col == 0 and end_col == len("x = 1"))
+    (line, end_line, col, end_col) == (0, 1, 0, 0)
+    or (line == 1 and end_line == 1 and col == 4 and end_col == 5)
     for line, end_line, col, end_col in positions
 ])"#,
         &[
-            "[(0, 0, None, None), (1, 1, 0, 5)]",
+            "[(0, 1, 0, 0), (1, 1, 4, 5)]",
             "[0, 1]",
-            "[True, True]",
+            "[False, True]",
             "[True, True]",
         ],
     );
@@ -56937,7 +56938,7 @@ co = compile(source, "test_compile.py", "exec")
 print([line for start, end, line in co.co_lines()])
 print([line for line, end_line, col, end_col in co.co_positions()])
 print([col is not None and end_col is not None for line, end_line, col, end_col in co.co_positions()])"#,
-        &["[0, 1, 2, 5]", "[0, 1, 2, 5]", "[False, True, True, True]"],
+        &["[0, 1, 2, 5]", "[0, 1, 2, 5]", "[True, True, True, True]"],
     );
 }
 

@@ -36465,8 +36465,9 @@ fn default_code_line_spans() -> Vec<CodeLineSpan> {
         start: 0,
         end: 1,
         line: 0,
-        column: None,
-        end_column: None,
+        end_line: 1,
+        column: Some(0),
+        end_column: Some(0),
     }]
 }
 
@@ -36490,6 +36491,7 @@ fn code_line_spans_from_lines(lines: Vec<(usize, Option<(usize, usize)>)>) -> Ve
             start,
             end: start + 1,
             line: line as i64,
+            end_line: line as i64,
             column,
             end_column,
         });
@@ -36521,7 +36523,7 @@ fn executable_source_line_spans(
 
     let (tokens, _warnings) = lex_with_spans_for_parse(source).ok()?;
     let mut lines = Vec::new();
-    let mut current = None;
+    let mut current = Vec::new();
     let mut at_statement_start = true;
 
     for token in tokens {
@@ -36544,19 +36546,11 @@ fn executable_source_line_spans(
                 break;
             }
             _ if at_statement_start => {
-                current = Some((
-                    token.line,
-                    token.column.saturating_sub(1),
-                    token.end_column.saturating_sub(1),
-                ));
+                current.push(token);
                 at_statement_start = false;
             }
             _ => {
-                if let Some((line, _, end_column)) = &mut current
-                    && *line == token.line
-                {
-                    *end_column = token.end_column.saturating_sub(1);
-                }
+                current.push(token);
             }
         }
     }
@@ -36566,11 +36560,88 @@ fn executable_source_line_spans(
 
 fn finish_executable_source_line_span(
     lines: &mut Vec<(usize, Option<(usize, usize)>)>,
-    current: &mut Option<(usize, usize, usize)>,
+    current: &mut Vec<SpannedToken>,
 ) {
-    if let Some((line, start_column, end_column)) = current.take() {
-        lines.push((line, Some((start_column, end_column))));
+    if let Some(span) = executable_statement_source_span(current) {
+        lines.push(span);
     }
+    current.clear();
+}
+
+fn executable_statement_source_span(
+    tokens: &[SpannedToken],
+) -> Option<(usize, Option<(usize, usize)>)> {
+    let tokens = tokens
+        .iter()
+        .filter(|token| !is_code_position_ignorable_token(&token.token))
+        .collect::<Vec<_>>();
+    let first = tokens.first()?;
+    if let Some(index) = top_level_code_position_assignment_operator_index(&tokens) {
+        if let Some(rhs_first) = tokens[index + 1..].first() {
+            let line = rhs_first.line;
+            return Some((
+                line,
+                code_position_columns_for_line(&tokens[index + 1..], line),
+            ));
+        }
+    }
+    let line = first.line;
+    Some((line, code_position_columns_for_line(&tokens, line)))
+}
+
+fn code_position_columns_for_line(tokens: &[&SpannedToken], line: usize) -> Option<(usize, usize)> {
+    let mut start = None;
+    let mut end = None;
+    for token in tokens.iter().copied().filter(|token| token.line == line) {
+        start.get_or_insert(token.column.saturating_sub(1));
+        end = Some(token.end_column.saturating_sub(1));
+    }
+    start.zip(end)
+}
+
+fn is_code_position_ignorable_token(token: &Token) -> bool {
+    matches!(
+        token,
+        Token::Encoding(_)
+            | Token::TypeComment(_)
+            | Token::TypeIgnore(_)
+            | Token::Indent
+            | Token::Dedent
+            | Token::Newline
+            | Token::Eof
+    )
+}
+
+fn top_level_code_position_assignment_operator_index(tokens: &[&SpannedToken]) -> Option<usize> {
+    let mut depth = 0usize;
+    for (index, token) in tokens.iter().enumerate() {
+        match token.token {
+            Token::LeftParen | Token::LeftBracket | Token::LeftBrace => depth += 1,
+            Token::RightParen | Token::RightBracket | Token::RightBrace => {
+                depth = depth.saturating_sub(1);
+            }
+            Token::Equal
+            | Token::PlusEqual
+            | Token::MinusEqual
+            | Token::StarEqual
+            | Token::SlashEqual
+            | Token::DoubleSlashEqual
+            | Token::PercentEqual
+            | Token::AtEqual
+            | Token::DoubleStarEqual
+            | Token::AmpersandEqual
+            | Token::PipeEqual
+            | Token::CaretEqual
+            | Token::LeftShiftEqual
+            | Token::RightShiftEqual
+                if depth == 0 =>
+            {
+                return Some(index);
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn first_executable_source_line(source: &str, mode: CodeMode) -> Option<usize> {
@@ -53005,6 +53076,7 @@ fn function_code_line_spans_with_columns(
             start,
             end,
             line: *line as i64,
+            end_line: *line as i64,
             column,
             end_column,
         });

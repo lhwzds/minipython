@@ -766,8 +766,8 @@ Started in the `test_compile.py` source-positions direct-method pass:
   porting CPython `TestSourcePositions::test_simple_assignment` for the public
   AST-offset membership invariant. MiniPython now returns iterable
   `(line, end_line, col, end_col)` tuples for compiled code objects and derives
-  statement-aligned column bounds for executable module lines while keeping the
-  artificial module-start line at `None` columns.
+  CPython's artificial `(0, 1, 0, 0)` module-start span plus assignment
+  value-token column bounds instead of a whole-line assignment span.
 - Added `cpython_compile_source_positions_multistatement_code_lines_subset`,
   extending that first-pass runtime code-object location model across multiple
   statement-leading source lines for `compile(..., "exec")`, with matching
@@ -10466,9 +10466,10 @@ Completed in the CPython collections manifest expansion pass:
   runtime `compile()` objects, and pinned it with
   `cpython_compile_source_positions_code_positions_first_pass_subset`.
 - Extended module-level runtime-compiled code-object line spans with
-  statement-aligned column bounds for executable source lines, promoting CPython
+  assignment value-token column bounds for executable source lines plus
+  CPython's artificial module-start `(0, 1, 0, 0)` span, promoting CPython
   `TestSourcePositions::test_simple_assignment` to a direct public-invariant
-  port.
+  port without claiming exact opcode-position parity.
 - Extended runtime-compiled code-object line spans beyond the first executable
   line by deriving statement-leading source lines from parse-mode lexer spans,
   pinned by `cpython_compile_source_positions_multistatement_code_lines_subset`.
@@ -11320,9 +11321,10 @@ Completed in the CPython collections manifest expansion pass:
   gated direct CPython diff for public `code.co_positions()` /
   `code.co_lines()` source-position invariants from
   `Lib/test/test_compile.py::TestSourcePositions`. The diff checks assignment
-  span membership, lambda body bounds, multi-statement source-line coverage,
-  and ordered multiline attribute-chain bounds while deliberately avoiding
-  opcode-count, opcode identity, specialization, or `co_stacksize` parity.
+  span membership including the absence of a whole-line `x = 1` position,
+  lambda body bounds, multi-statement source-line coverage, and ordered
+  multiline attribute-chain bounds while deliberately avoiding opcode-count,
+  opcode identity, specialization, or `co_stacksize` parity.
 - Added `cpython_compile_specifics_lineno_public_invariants_diff_subset`, a
   gated direct CPython diff for public `code.co_lines()` / frame line-number
   invariants from `Lib/test/test_compile.py::TestSpecifics`. The diff covers

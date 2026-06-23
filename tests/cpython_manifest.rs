@@ -19985,6 +19985,7 @@ fn cpython_compile_source_positions_diff_covers_public_invariants() {
         "TestSourcePositions public co_positions invariants",
         "code.co_positions",
         "co.co_lines()",
+        "(0, 1, 0, 0) in positions",
         "f = lambda: x",
         "f = lambda: 1 + 2",
         "z = 3",
@@ -19993,6 +19994,13 @@ fn cpython_compile_source_positions_diff_covers_public_invariants() {
         assert!(
             diff_source.contains(required),
             "compile source-position diff must cover `{required}`"
+        );
+    }
+
+    for required in ["(0, 1, 0, 0)", "col == 4 and end_col == 5"] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "compile source-position subset must pin module assignment position detail `{required}`"
         );
     }
 

@@ -238,6 +238,7 @@ pub struct CodeLineSpan {
     pub start: usize,
     pub end: usize,
     pub line: i64,
+    pub end_line: i64,
     pub column: Option<i64>,
     pub end_column: Option<i64>,
 }
