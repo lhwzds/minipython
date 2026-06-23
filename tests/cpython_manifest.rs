@@ -10871,6 +10871,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_inplace_operations_subset",
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
+            "cpython_collections_chainmap_keyword_error_subset",
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
             "cpython_collections_namedtuple_public_subset",
@@ -11240,6 +11241,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_public_methods_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap public methods"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_keyword_error_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap keyword errors"
     );
     assert!(
         row.diff_evidence
@@ -11938,6 +11944,51 @@ fn collections_abc_generator_coroutine_diff_covers_runtime_subsets() {
         assert!(
             coroutine_mixin_diff.contains(required),
             "collections.abc Coroutine mixin diff evidence must cover `{required}`"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_keyword_error_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_keyword_error_subset",
+    );
+    for required in [
+        "ChainMap(mapping={'a': 1})",
+        "ChainMap(a={'a': 1}, b={'b': 2})",
+        "ChainMap({'a': 1}, mapping={'b': 2})",
+        "ChainMap.__init__() got an unexpected keyword argument 'mapping'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap keyword-error subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap constructor keyword rejection",
+        "ChainMap(mapping={'a': 1})",
+        "ChainMap(a={'a': 1}, b={'b': 2})",
+        "ChainMap({'a': 1}, mapping={'b': 2})",
+        "ChainMap.__init__() got an unexpected keyword",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap keyword-error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_keyword_error_subset")
+                && document.contains("cpython_collections_chainmap_keyword_error_diff_subset")
+                && document.contains("ChainMap.__init__() got an unexpected keyword argument"),
+            "collections ChainMap keyword-error evidence must be documented in coverage and migration notes"
         );
     }
 }

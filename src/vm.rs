@@ -22116,8 +22116,10 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
-        if !keywords.is_empty() {
-            return Err("TypeError: ChainMap() does not accept keyword arguments".to_string());
+        if let Some((keyword, _)) = keywords.first() {
+            return Err(format!(
+                "TypeError: ChainMap.__init__() got an unexpected keyword argument '{keyword}'"
+            ));
         }
 
         let maps = if args.is_empty() {

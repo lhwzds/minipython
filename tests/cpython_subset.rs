@@ -50233,6 +50233,31 @@ fn cpython_collections_chainmap_public_methods_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap constructor
+// keyword rejection.
+#[test]
+fn cpython_collections_chainmap_keyword_error_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "for label, callback in [\n",
+            "    ('mapping', lambda: ChainMap(mapping={'a': 1})),\n",
+            "    ('first-keyword', lambda: ChainMap(a={'a': 1}, b={'b': 2})),\n",
+            "    ('pos-keyword', lambda: ChainMap({'a': 1}, mapping={'b': 2})),\n",
+            "]:\n",
+            "    try:\n",
+            "        callback()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "mapping TypeError ChainMap.__init__() got an unexpected keyword argument 'mapping'",
+            "first-keyword TypeError ChainMap.__init__() got an unexpected keyword argument 'a'",
+            "pos-keyword TypeError ChainMap.__init__() got an unexpected keyword argument 'mapping'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {

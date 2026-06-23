@@ -13455,6 +13455,26 @@ print(child.maps[0], child.get('d', 'missing'))"#,
 }
 
 #[test]
+fn cpython_collections_chainmap_keyword_error_diff_subset() {
+    // CPython oracle text: ChainMap.__init__() got an unexpected keyword
+    // argument '<name>'.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor keyword rejection",
+        name: "collections-chainmap-keyword-errors",
+        source: r#"from collections import ChainMap
+for label, callback in [
+    ("mapping", lambda: ChainMap(mapping={'a': 1})),
+    ("first-keyword", lambda: ChainMap(a={'a': 1}, b={'b': 2})),
+    ("pos-keyword", lambda: ChainMap({'a': 1}, mapping={'b': 2})),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",
