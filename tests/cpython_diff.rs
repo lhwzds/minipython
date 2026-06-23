@@ -13522,6 +13522,35 @@ for label, value in cases:
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_source_len_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor source length",
+        name: "collections-chainmap-constructor-source-len",
+        source: r#"from collections import ChainMap
+cases = [
+    ('empty', ChainMap()),
+    ('empty-dict', ChainMap({})),
+    ('dict-second', ChainMap({}, {'x': 1})),
+    ('list-empty', ChainMap([])),
+    ('list-value', ChainMap([1, 1, 2])),
+    ('tuple-value', ChainMap((1, 2, 1))),
+    ('str-value', ChainMap('abca')),
+    ('method-list', ChainMap([1, 1, 2])),
+    ('int-one', ChainMap(1)),
+    ('none', ChainMap(None)),
+]
+for label, value in cases:
+    try:
+        if label == 'method-list':
+            print(label, ChainMap.__len__(value))
+        else:
+            print(label, len(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

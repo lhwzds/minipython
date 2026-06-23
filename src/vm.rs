@@ -17751,7 +17751,7 @@ impl Vm {
             value if array_array_storage(&value).is_some() => {
                 Ok(array_array_len(&value).expect("array storage exists after guard"))
             }
-            Value::ChainMap { maps } => Ok(chain_map_entries(&maps)?.len()),
+            Value::ChainMap { maps } => chain_map_key_count(&maps),
             Value::UserList { data, .. } => Ok(data.borrow().len()),
             Value::Deque { data, .. } => Ok(data.borrow().len()),
             Value::UserDict { data, .. } => Ok(data.borrow().len()),
@@ -26859,7 +26859,7 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                let len = i64::try_from(chain_map_entries(&maps)?.len())
+                let len = i64::try_from(chain_map_key_count(&maps)?)
                     .map_err(|_| "len() result is too large".to_string())?;
                 Ok(Value::Number(len))
             }
@@ -72207,6 +72207,21 @@ fn chain_map_entries(maps: &[Value]) -> Result<Vec<(Value, Value)>, String> {
     Ok(entries)
 }
 
+fn chain_map_key_count(maps: &[Value]) -> Result<usize, String> {
+    let mut entries = Vec::new();
+    for map in maps {
+        for key in chain_map_source_keys(map)? {
+            insert_dict_entry(&mut entries, key, Value::None)?;
+        }
+    }
+    Ok(entries.len())
+}
+
+fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
+    sequence_values(map.clone())
+        .map_err(|_| format!("TypeError: '{}' object is not iterable", type_name(map)))
+}
+
 fn chain_map_get_item_optional(maps: &[Value], key: &Value) -> Result<Option<Value>, String> {
     ensure_hashable_key(key)?;
     for map in maps {
@@ -74759,11 +74774,11 @@ fn value_len(value: &Value) -> Result<usize, String> {
             .expect("Counter subclass entries exist after guard")
             .borrow()
             .len()),
-        Value::ChainMap { maps } => Ok(chain_map_entries(maps)?.len()),
+        Value::ChainMap { maps } => chain_map_key_count(maps),
         value if chain_map_subclass_maps(value).is_some() => {
             let maps =
                 chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
-            Ok(chain_map_entries(&maps)?.len())
+            chain_map_key_count(&maps)
         }
         Value::UserDict { data, .. } => Ok(data.borrow().len()),
         Value::ScopeDict(scope) => Ok(scope.borrow().len()),

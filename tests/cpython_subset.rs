@@ -50335,6 +50335,49 @@ fn cpython_collections_chainmap_constructor_source_truthiness_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap length:
+// ChainMap len uses the unique keys produced by each stored source.
+#[test]
+fn cpython_collections_chainmap_constructor_source_len_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "cases = [\n",
+            "    ('empty', ChainMap()),\n",
+            "    ('empty-dict', ChainMap({})),\n",
+            "    ('dict-second', ChainMap({}, {'x': 1})),\n",
+            "    ('list-empty', ChainMap([])),\n",
+            "    ('list-value', ChainMap([1, 1, 2])),\n",
+            "    ('tuple-value', ChainMap((1, 2, 1))),\n",
+            "    ('str-value', ChainMap('abca')),\n",
+            "    ('method-list', ChainMap([1, 1, 2])),\n",
+            "    ('int-one', ChainMap(1)),\n",
+            "    ('none', ChainMap(None)),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    try:\n",
+            "        if label == 'method-list':\n",
+            "            print(label, ChainMap.__len__(value))\n",
+            "        else:\n",
+            "            print(label, len(value))\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "empty 0",
+            "empty-dict 0",
+            "dict-second 1",
+            "list-empty 0",
+            "list-value 2",
+            "tuple-value 2",
+            "str-value 3",
+            "method-list 2",
+            "int-one TypeError 'int' object is not iterable",
+            "none TypeError 'NoneType' object is not iterable",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {
