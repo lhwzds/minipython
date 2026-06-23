@@ -1548,20 +1548,15 @@ fn format_partial(function: &Value, args: &[Value], keywords: &DictRef) -> Strin
 }
 
 fn format_partialmethod(function: &Value, args: &[Value], keywords: &[(String, Value)]) -> String {
-    let args = args
-        .iter()
-        .map(format_value_repr)
-        .collect::<Vec<_>>()
-        .join(", ");
-    let keywords = keywords
-        .iter()
-        .map(|(name, value)| format!("{name}={}", format_value_repr(value)))
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!(
-        "functools.partialmethod({}, {args}, {keywords})",
-        format_value_repr(function)
-    )
+    let mut parts = Vec::with_capacity(1 + args.len() + keywords.len());
+    parts.push(format_value_repr(function));
+    parts.extend(args.iter().map(format_value_repr));
+    parts.extend(
+        keywords
+            .iter()
+            .map(|(name, value)| format!("{name}={}", format_value_repr(value))),
+    );
+    format!("functools.partialmethod({})", parts.join(", "))
 }
 
 fn format_partialmethod_call(

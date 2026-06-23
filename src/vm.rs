@@ -16324,7 +16324,7 @@ impl Vm {
             "partialmethod.__get__" => {
                 if rest.len() > 2 {
                     return Err(format!(
-                        "TypeError: __get__() takes from 2 to 3 positional arguments but {} were given",
+                        "TypeError: partialmethod.__get__() takes from 2 to 3 positional arguments but {} were given",
                         rest.len() + 1
                     ));
                 }
@@ -16335,7 +16335,7 @@ impl Vm {
                         "obj" => {
                             if object.is_some() {
                                 return Err(
-                                    "TypeError: __get__() got multiple values for argument 'obj'"
+                                    "TypeError: partialmethod.__get__() got multiple values for argument 'obj'"
                                         .to_string(),
                                 );
                             }
@@ -16344,7 +16344,7 @@ impl Vm {
                         "cls" => {
                             if owner.is_some() {
                                 return Err(
-                                    "TypeError: __get__() got multiple values for argument 'cls'"
+                                    "TypeError: partialmethod.__get__() got multiple values for argument 'cls'"
                                         .to_string(),
                                 );
                             }
@@ -16352,14 +16352,14 @@ impl Vm {
                         }
                         _ => {
                             return Err(format!(
-                                "TypeError: __get__() got an unexpected keyword argument '{keyword}'"
+                                "TypeError: partialmethod.__get__() got an unexpected keyword argument '{keyword}'"
                             ));
                         }
                     }
                 }
                 let Some(object) = object else {
                     return Err(
-                        "TypeError: __get__() missing 1 required positional argument: 'obj'"
+                        "TypeError: partialmethod.__get__() missing 1 required positional argument: 'obj'"
                             .to_string(),
                     );
                 };

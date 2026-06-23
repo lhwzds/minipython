@@ -15612,10 +15612,10 @@ print(A.__dict__['both'].__module__)
 descriptor = A.__dict__['both']
 print(descriptor.__get__(obj=a, cls=A)())
 for label, expected, expr in [
-    ('get-missing', "__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
-    ('get-too-many', '__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(a, A, 1)),
-    ('get-duplicate', "__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(a, obj=a)),
-    ('get-unknown', "__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
+    ('get-missing', "partialmethod.__get__() missing 1 required positional argument: 'obj'", lambda: descriptor.__get__()),
+    ('get-too-many', 'partialmethod.__get__() takes from 2 to 3 positional arguments but 4 were given', lambda: descriptor.__get__(a, A, 1)),
+    ('get-duplicate', "partialmethod.__get__() got multiple values for argument 'obj'", lambda: descriptor.__get__(a, obj=a)),
+    ('get-unknown', "partialmethod.__get__() got an unexpected keyword argument 'bad'", lambda: descriptor.__get__(bad=1)),
 ]:
     try:
         expr()

@@ -6516,10 +6516,12 @@ Completed in the pow builtin pass:
   behavior, bound and unbound `__self__` visibility, descriptor `__dict__`
   entries for `func`, `args`, and `keywords` including override/delete
   behavior, descriptor `__module__` / `__doc__` metadata including instance
-  overrides, invalid constructor forms, and raw descriptor non-callability/type
-  reporting while leaving exact repr
-  formatting, abstract-method metadata, subclass optimizer paths, weakref,
-  pickle, and C accelerator internals for later slices.
+  overrides, CPython repr formatting for empty, positional/keyword, and
+  partial-over-partial descriptors, qualified `partialmethod.__get__` public
+  TypeError text, invalid constructor forms, and raw descriptor
+  non-callability/type reporting while leaving abstract-method metadata,
+  subclass optimizer paths, weakref, pickle, and C accelerator internals for
+  later slices.
 - Added `functools.reduce` and `cpython_functools_reduce_subset`, adapted from
   CPython `Lib/test/test_functools.py::TestReduce`. The migrated slice covers
   built-in iterables, sequence-protocol iterables, dictionaries, optional

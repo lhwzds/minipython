@@ -5517,11 +5517,13 @@ fn functools_descriptor_helpers_diff_cover_runtime_subsets() {
         "A.both(a, 5, c=6)",
         "hasattr(a.both, '__self__')",
         "descriptor.__get__(obj=a, cls=A)",
-        "__get__() missing 1 required positional argument: 'obj'",
-        "__get__() got multiple values for argument 'obj'",
+        "partialmethod.__get__() missing 1 required positional argument: 'obj'",
+        "partialmethod.__get__() got multiple values for argument 'obj'",
         "state = descriptor_state.__dict__",
         "descriptor_state.func = 'custom-func'",
         "del descriptor_state.func",
+        "rendered.endswith(', , )')",
+        "rendered.endswith(', 7, )')",
     ] {
         assert!(
             partialmethod_diff.contains(required),

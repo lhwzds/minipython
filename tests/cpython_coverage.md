@@ -1561,8 +1561,9 @@ without adding general custom encoder/decoder class support.
   override/delete behavior, descriptor `__module__` / `__doc__` metadata
   including instance overrides, class-access `_method` function metadata, public
   `repr()` shape for empty, positional/keyword, and partial-over-partial
-  descriptors plus instance-bound partialmethod calls, invalid constructor
-  forms, and raw descriptor non-callability/type reporting.
+  descriptors plus instance-bound partialmethod calls, qualified
+  `partialmethod.__get__` public TypeError text, invalid constructor forms, and
+  raw descriptor non-callability/type reporting.
 - The bundled `functools` module also includes
   `cpython_functools_cmp_to_key_diff_subset` and
   `cpython_functools_cmp_to_key_subset`, covering CPython
