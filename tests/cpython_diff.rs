@@ -7470,6 +7470,24 @@ fn cpython_object_constructor_argument_error_diff_subset() {
 }
 
 #[test]
+fn cpython_list_constructor_keyword_error_diff_subset() {
+    // CPython oracle text: list() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py::BuiltinTest::test_list keyword argument errors",
+        name: "list-constructor-keyword-errors",
+        source: r#"for label, callback in [
+    ("iterable", lambda: list(iterable=())),
+    ("object", lambda: list(object=())),
+    ("both", lambda: list((), iterable=())),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

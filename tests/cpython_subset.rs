@@ -25589,6 +25589,19 @@ fn cpython_builtin_construct_singletons_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_list`.
+#[test]
+fn cpython_list_constructor_keyword_error_subset() {
+    assert_output(
+        "for label, callback in [\n    ('iterable', lambda: list(iterable=())),\n    ('object', lambda: list(object=())),\n    ('both', lambda: list((), iterable=())),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "iterable TypeError list() takes no keyword arguments",
+            "object TypeError list() takes no keyword arguments",
+            "both TypeError list() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {
