@@ -284,6 +284,7 @@ Recent runtime migration notes:
   `cpython_types_code_traceback_type_aliases_diff_subset`,
   `cpython_types_frame_type_alias_diff_subset`,
   `cpython_types_runtime_type_aliases_diff_subset`,
+  `cpython_types_celltype_keyword_error_diff_subset`,
   `cpython_types_float_constructor_edges_diff_subset`,
   `cpython_types_float_to_string_diff_subset`,
   `cpython_types_normal_integers_diff_subset`,
@@ -2002,6 +2003,12 @@ without adding general custom encoder/decoder class support.
   `AsyncGeneratorType`, `BuiltinFunctionType`, `BuiltinMethodType`, and
   `MethodType`, plus `types.__all__` membership for the exported names and
   the public `types.MethodType(function, instance)` constructor shape.
+- The bundled `types` module also includes
+  `cpython_types_celltype_keyword_error_subset`, backed by
+  `cpython_types_celltype_keyword_error_diff_subset`, covering
+  `types.CellType(x=1)`, `types.CellType(value=1)`, and
+  `types.CellType(1, x=2)` keyword rejection with CPython's public
+  `cell() takes no keyword arguments` text.
   `Lib/test/test_types.py::TypesTests` is classified as `ported_public` for
   the default sandbox `types` contract because the remaining locale,
   C-extension descriptor-crash, object-layout, capsule, and specialization

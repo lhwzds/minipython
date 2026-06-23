@@ -59256,6 +59256,31 @@ fn cpython_types_runtime_type_aliases_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_types.py::TypesTests` CellType public
+// constructor behavior.
+#[test]
+fn cpython_types_celltype_keyword_error_subset() {
+    assert_output(
+        concat!(
+            "import types\n",
+            "for label, callback in [\n",
+            "    ('module-keyword', lambda: types.CellType(x=1)),\n",
+            "    ('value-keyword', lambda: types.CellType(value=1)),\n",
+            "    ('mixed', lambda: types.CellType(1, x=2)),\n",
+            "]:\n",
+            "    try:\n",
+            "        callback()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))",
+        ),
+        &[
+            "module-keyword TypeError cell() takes no keyword arguments",
+            "value-keyword TypeError cell() takes no keyword arguments",
+            "mixed TypeError cell() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython's `type_alias` grammar rule and PEP 695 soft-keyword
 // behavior. `type` starts a type alias only in the statement form
 // `type NAME [type_params] = expression`; otherwise it remains an ordinary name.

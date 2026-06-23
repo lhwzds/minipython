@@ -18197,6 +18197,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_function_type_subset",
             "cpython_types_code_traceback_type_aliases_subset",
             "cpython_types_frame_type_alias_subset",
+            "cpython_types_celltype_keyword_error_subset",
             "cpython_types_slot_and_method_wrapper_types_subset",
             "cpython_types_frame_locals_proxy_type_subset",
         ],
@@ -18259,6 +18260,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_code_traceback_type_aliases_diff_subset",
         "cpython_types_frame_type_alias_diff_subset",
         "cpython_types_runtime_type_aliases_diff_subset",
+        "cpython_types_celltype_keyword_error_diff_subset",
         "cpython_types_float_constructor_edges_diff_subset",
         "cpython_types_float_to_string_diff_subset",
         "cpython_types_normal_integers_diff_subset",
@@ -18325,6 +18327,51 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             CPYTHON_COVERAGE.contains(required),
             "types coverage notes must document sandbox boundary `{required}`"
+        );
+    }
+}
+
+#[test]
+fn types_celltype_keyword_error_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_celltype_keyword_error_subset",
+    );
+    for required in [
+        "types.CellType(x=1)",
+        "types.CellType(value=1)",
+        "types.CellType(1, x=2)",
+        "cell() takes no keyword arguments",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types CellType keyword-error subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_celltype_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::TypesTests CellType keyword argument errors",
+        "types.CellType(x=1)",
+        "types.CellType(value=1)",
+        "types.CellType(1, x=2)",
+        "cell() takes no keyword arguments",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types CellType keyword-error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_celltype_keyword_error_subset")
+                && document.contains("cpython_types_celltype_keyword_error_diff_subset")
+                && document.contains("cell() takes no keyword arguments"),
+            "types CellType keyword-error evidence must be documented in coverage and migration notes"
         );
     }
 }

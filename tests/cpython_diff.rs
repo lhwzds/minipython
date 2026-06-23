@@ -12038,6 +12038,25 @@ for expr in [lambda: types.MethodType(), lambda: types.MethodType(f), lambda: ty
 }
 
 #[test]
+fn cpython_types_celltype_keyword_error_diff_subset() {
+    // CPython oracle text: cell() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::TypesTests CellType keyword argument errors",
+        name: "types-celltype-keyword-errors",
+        source: r#"import types
+for label, callback in [
+    ("module-keyword", lambda: types.CellType(x=1)),
+    ("value-keyword", lambda: types.CellType(value=1)),
+    ("mixed", lambda: types.CellType(1, x=2)),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_types_method_descriptor_types_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_types.py::TypesTests::test_method_descriptor_types",

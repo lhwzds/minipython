@@ -4594,7 +4594,7 @@ fn call_cell_type_constructor(
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
     if !keywords.is_empty() {
-        return Err("TypeError: CellType() does not accept keyword arguments".to_string());
+        return Err("TypeError: cell() takes no keyword arguments".to_string());
     }
     if args.len() > 1 {
         return Err(format!(
