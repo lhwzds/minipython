@@ -7534,6 +7534,29 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_frozenset_constructor_keyword_error_diff_subset() {
+    // CPython oracle text: frozenset() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_set.py::TestFrozenSet constructor keyword argument errors",
+        name: "frozenset-constructor-keyword-errors",
+        source: r#"class FrozenSetSubclass(frozenset):
+    pass
+for label, callback in [
+    ("iterable", lambda: frozenset(iterable=())),
+    ("object", lambda: frozenset(object=())),
+    ("both", lambda: frozenset((), iterable=())),
+    ("sub-iterable", lambda: FrozenSetSubclass(iterable=())),
+    ("sub-sequence", lambda: FrozenSetSubclass(sequence=())),
+    ("sub-both", lambda: FrozenSetSubclass((), iterable=())),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

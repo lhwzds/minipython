@@ -25634,6 +25634,22 @@ fn cpython_set_constructor_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_set.py::TestFrozenSet` constructor coverage.
+#[test]
+fn cpython_frozenset_constructor_keyword_error_subset() {
+    assert_output(
+        "class FrozenSetSubclass(frozenset):\n    pass\nfor label, callback in [\n    ('iterable', lambda: frozenset(iterable=())),\n    ('object', lambda: frozenset(object=())),\n    ('both', lambda: frozenset((), iterable=())),\n    ('sub-iterable', lambda: FrozenSetSubclass(iterable=())),\n    ('sub-sequence', lambda: FrozenSetSubclass(sequence=())),\n    ('sub-both', lambda: FrozenSetSubclass((), iterable=())),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "iterable TypeError frozenset() takes no keyword arguments",
+            "object TypeError frozenset() takes no keyword arguments",
+            "both TypeError frozenset() takes no keyword arguments",
+            "sub-iterable TypeError frozenset() takes no keyword arguments",
+            "sub-sequence TypeError frozenset() takes no keyword arguments",
+            "sub-both TypeError frozenset() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

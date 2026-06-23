@@ -9504,7 +9504,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "frozenset" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_frozen_set(args)
@@ -13078,7 +13078,7 @@ impl Vm {
 
         let has_own_init = attrs.borrow().contains_key("__init__");
         if !has_own_init && !keywords.is_empty() {
-            return Err(format!("{name}() does not accept keyword arguments"));
+            return Err("TypeError: frozenset() takes no keyword arguments".to_string());
         }
 
         let fields = new_scope();
