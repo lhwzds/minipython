@@ -25602,6 +25602,22 @@ fn cpython_list_constructor_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_tuple.py::TupleTest::test_constructors`.
+#[test]
+fn cpython_tuple_constructor_keyword_error_subset() {
+    assert_output(
+        "class TupleSubclass(tuple):\n    pass\nfor label, callback in [\n    ('iterable', lambda: tuple(iterable=())),\n    ('object', lambda: tuple(object=())),\n    ('both', lambda: tuple((), iterable=())),\n    ('sub-iterable', lambda: TupleSubclass(iterable=())),\n    ('sub-sequence', lambda: TupleSubclass(sequence=())),\n    ('sub-both', lambda: TupleSubclass((), iterable=())),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "iterable TypeError tuple() takes no keyword arguments",
+            "object TypeError tuple() takes no keyword arguments",
+            "both TypeError tuple() takes no keyword arguments",
+            "sub-iterable TypeError tuple() takes no keyword arguments",
+            "sub-sequence TypeError tuple() takes no keyword arguments",
+            "sub-both TypeError tuple() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

@@ -9289,7 +9289,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "tuple" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_tuple(args)
@@ -12911,7 +12911,7 @@ impl Vm {
                 return Err("__init__() should return None".to_string());
             }
         } else if !keywords.is_empty() {
-            return Err("tuple() does not accept keyword arguments".to_string());
+            return Err("TypeError: tuple() takes no keyword arguments".to_string());
         }
 
         Ok(instance)

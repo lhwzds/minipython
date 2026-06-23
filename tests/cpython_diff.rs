@@ -7488,6 +7488,29 @@ fn cpython_list_constructor_keyword_error_diff_subset() {
 }
 
 #[test]
+fn cpython_tuple_constructor_keyword_error_diff_subset() {
+    // CPython oracle text: tuple() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_tuple.py::TupleTest::test_constructors keyword argument errors",
+        name: "tuple-constructor-keyword-errors",
+        source: r#"class TupleSubclass(tuple):
+    pass
+for label, callback in [
+    ("iterable", lambda: tuple(iterable=())),
+    ("object", lambda: tuple(object=())),
+    ("both", lambda: tuple((), iterable=())),
+    ("sub-iterable", lambda: TupleSubclass(iterable=())),
+    ("sub-sequence", lambda: TupleSubclass(sequence=())),
+    ("sub-both", lambda: TupleSubclass((), iterable=())),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",

@@ -208,6 +208,7 @@ Recent runtime migration notes:
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
   `cpython_object_constructor_argument_error_diff_subset`,
   `cpython_list_constructor_keyword_error_diff_subset`,
+  `cpython_tuple_constructor_keyword_error_diff_subset`,
   `cpython_all_any_builtin_diff_subset`,
   `cpython_len_builtin_diff_subset`,
   `cpython_min_max_sum_builtin_diff_subset`,
@@ -5640,6 +5641,11 @@ with CPython's public `object() takes no arguments` text.
 `BuiltinTest::test_list` keyword-rejection subset where `list(iterable=())`,
 `list(object=())`, and `list((), iterable=())` raise catchable `TypeError`s
 with CPython's public `list() takes no keyword arguments` text.
+`cpython_tuple_constructor_keyword_error_subset`, backed by
+`cpython_tuple_constructor_keyword_error_diff_subset`, covers the
+`TupleTest::test_constructors` keyword-rejection subset where `tuple(...)` and
+plain `tuple` subclasses reject constructor keywords with CPython's public
+`tuple() takes no keyword arguments` text.
 Builtin breakpoint note: `cpython_builtin_breakpoint_custom_hook_subset`,
 `cpython_builtin_breakpoint_default_stub_subset`,
 `cpython_builtin_breakpoint_passthru_error_subset`,
