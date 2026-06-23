@@ -338,6 +338,7 @@ Recent runtime migration notes:
   `cpython_collections_counter_inplace_operations_matrix_diff_subset`,
   `cpython_collections_chainmap_public_methods_diff_subset`,
   `cpython_collections_chainmap_keyword_error_diff_subset`,
+  `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
@@ -3956,6 +3957,12 @@ without adding general custom encoder/decoder class support.
   `ChainMap(mapping={'a': 1})`, multi-keyword, and positional-plus-keyword
   constructor rejection with CPython's public
   `ChainMap.__init__() got an unexpected keyword argument` text.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_constructor_lazy_mapping_subset`, backed by
+  `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
+  covering CPython's ChainMap constructor lazy map-source storage: non-mapping
+  sources such as `1`, `[]`, `None`, and `(1, 2)` are preserved in `.maps`
+  instead of being rejected during construction.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_copy_pickle_eval_identity_subset`, covering
   the remaining CPython `TestChainMap::test_basics` copy and identity

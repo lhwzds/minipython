@@ -50258,6 +50258,26 @@ fn cpython_collections_chainmap_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap constructor
+// storage behavior: maps are not validated until mapping operations need them.
+#[test]
+fn cpython_collections_chainmap_constructor_lazy_mapping_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "for label, source in [('int', 1), ('list', []), ('none', None), ('tuple', (1, 2))]:\n",
+            "    chain = ChainMap(source)\n",
+            "    print(label, type(chain).__name__, repr(chain.maps))"
+        ),
+        &[
+            "int ChainMap [1]",
+            "list ChainMap [[]]",
+            "none ChainMap [None]",
+            "tuple ChainMap [(1, 2)]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {

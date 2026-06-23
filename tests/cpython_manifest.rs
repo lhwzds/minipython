@@ -10872,6 +10872,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_counter_inplace_operations_matrix_subset",
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_chainmap_keyword_error_subset",
+            "cpython_collections_chainmap_constructor_lazy_mapping_subset",
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
             "cpython_collections_namedtuple_public_subset",
@@ -11246,6 +11247,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_keyword_error_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap keyword errors"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_constructor_lazy_mapping_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor lazy map storage"
     );
     assert!(
         row.diff_evidence
@@ -11989,6 +11995,71 @@ fn collections_chainmap_keyword_error_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_collections_chainmap_keyword_error_diff_subset")
                 && document.contains("ChainMap.__init__() got an unexpected keyword argument"),
             "collections ChainMap keyword-error evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_constructor_lazy_mapping_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_constructor_lazy_mapping_subset",
+    );
+    for required in [
+        "ChainMap(source)",
+        "repr(chain.maps)",
+        "('int', 1)",
+        "('list', [])",
+        "('none', None)",
+        "('tuple', (1, 2))",
+        "int ChainMap [1]",
+        "list ChainMap [[]]",
+        "none ChainMap [None]",
+        "tuple ChainMap [(1, 2)]",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap constructor lazy-mapping subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_constructor_lazy_mapping_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap constructor map storage",
+        "ChainMap(source)",
+        "repr(chain.maps)",
+        "('int', 1)",
+        "('list', [])",
+        "('none', None)",
+        "('tuple', (1, 2))",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap constructor lazy-mapping CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let call_chain_map_body = VM_SOURCE
+        .split("fn call_chain_map(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn call_counter(").next())
+        .expect("VM call_chain_map implementation must be extractable");
+    assert!(
+        !call_chain_map_body.contains("is_mapping_abc_value")
+            && !call_chain_map_body.contains("TypeError: ChainMap expected mapping, got"),
+        "ChainMap constructor must not eagerly reject non-mapping map sources"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_constructor_lazy_mapping_subset")
+                && document
+                    .contains("cpython_collections_chainmap_constructor_lazy_mapping_diff_subset")
+                && document.contains("ChainMap constructor lazy map-source storage"),
+            "collections ChainMap constructor lazy-mapping evidence must be documented in coverage and migration notes"
         );
     }
 }

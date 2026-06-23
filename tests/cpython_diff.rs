@@ -13475,6 +13475,18 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_lazy_mapping_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor map storage",
+        name: "collections-chainmap-constructor-lazy-mapping",
+        source: r#"from collections import ChainMap
+for label, source in [('int', 1), ('list', []), ('none', None), ('tuple', (1, 2))]:
+    chain = ChainMap(source)
+    print(label, type(chain).__name__, repr(chain.maps))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

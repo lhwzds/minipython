@@ -22125,14 +22125,6 @@ impl Vm {
         let maps = if args.is_empty() {
             vec![build_dict(Vec::new())?]
         } else {
-            for map in &args {
-                if !is_mapping_abc_value(map) {
-                    return Err(format!(
-                        "TypeError: ChainMap expected mapping, got {}",
-                        type_name(map)
-                    ));
-                }
-            }
             args
         };
 
