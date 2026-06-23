@@ -13499,6 +13499,29 @@ for label, source in [('str', 'abc'), ('tuple', (1, 2)), ('dict', {'a': 1})]:
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_source_truthiness_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor source truthiness",
+        name: "collections-chainmap-constructor-source-truthiness",
+        source: r#"from collections import ChainMap
+cases = [
+    ('empty', ChainMap()),
+    ('empty-dict', ChainMap({})),
+    ('dict-second', ChainMap({}, {'x': 1})),
+    ('int-one', ChainMap(1)),
+    ('int-zero', ChainMap(0)),
+    ('list-empty', ChainMap([])),
+    ('list-value', ChainMap([1])),
+    ('str-empty', ChainMap('')),
+    ('str-value', ChainMap('abc')),
+    ('none', ChainMap(None)),
+]
+for label, value in cases:
+    print(label, bool(value))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

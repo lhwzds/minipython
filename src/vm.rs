@@ -17670,7 +17670,14 @@ impl Vm {
                 Ok(self.len_value(value)? != 0)
             }
             value if array_array_storage(&value).is_some() => Ok(self.len_value(value)? != 0),
-            Value::ChainMap { maps } => Ok(!chain_map_entries(&maps)?.is_empty()),
+            Value::ChainMap { maps } => {
+                for map in maps {
+                    if self.truth_value(map)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
             Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
             Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
             Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
@@ -83269,7 +83276,14 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::MappingView { .. } => Ok(true),
         Value::MappingProxy { entries } => Ok(!entries.borrow().is_empty()),
         Value::MappingProxyObject { .. } => Ok(true),
-        Value::ChainMap { maps } => Ok(!chain_map_entries(maps)?.is_empty()),
+        Value::ChainMap { maps } => {
+            for map in maps {
+                if is_truthy(map)? {
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
         Value::Counter { entries } => Ok(!entries.borrow().is_empty()),
         Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
         Value::NamedTupleType(_) => Ok(true),

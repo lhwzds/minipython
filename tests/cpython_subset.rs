@@ -50297,6 +50297,44 @@ fn cpython_collections_chainmap_constructor_source_repr_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap truthiness:
+// ChainMap bool uses the stored source truthiness instead of eager mapping
+// validation.
+#[test]
+fn cpython_collections_chainmap_constructor_source_truthiness_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "cases = [\n",
+            "    ('empty', ChainMap()),\n",
+            "    ('empty-dict', ChainMap({})),\n",
+            "    ('dict-second', ChainMap({}, {'x': 1})),\n",
+            "    ('int-one', ChainMap(1)),\n",
+            "    ('int-zero', ChainMap(0)),\n",
+            "    ('list-empty', ChainMap([])),\n",
+            "    ('list-value', ChainMap([1])),\n",
+            "    ('str-empty', ChainMap('')),\n",
+            "    ('str-value', ChainMap('abc')),\n",
+            "    ('none', ChainMap(None)),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    print(label, bool(value))"
+        ),
+        &[
+            "empty False",
+            "empty-dict False",
+            "dict-second True",
+            "int-one True",
+            "int-zero False",
+            "list-empty False",
+            "list-value True",
+            "str-empty False",
+            "str-value True",
+            "none False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {
