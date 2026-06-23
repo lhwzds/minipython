@@ -25618,6 +25618,22 @@ fn cpython_tuple_constructor_keyword_error_subset() {
     );
 }
 
+// Adapted from CPython `Lib/test/test_set.py::TestSet` constructor coverage.
+#[test]
+fn cpython_set_constructor_keyword_error_subset() {
+    assert_output(
+        "class SetSubclass(set):\n    pass\nfor label, callback in [\n    ('iterable', lambda: set(iterable=())),\n    ('object', lambda: set(object=())),\n    ('both', lambda: set((), iterable=())),\n    ('sub-iterable', lambda: SetSubclass(iterable=())),\n    ('sub-sequence', lambda: SetSubclass(sequence=())),\n    ('sub-both', lambda: SetSubclass((), iterable=())),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "iterable TypeError set() takes no keyword arguments",
+            "object TypeError set() takes no keyword arguments",
+            "both TypeError set() takes no keyword arguments",
+            "sub-iterable TypeError set() takes no keyword arguments",
+            "sub-sequence TypeError set() takes no keyword arguments",
+            "sub-both TypeError set() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython `Lib/test/test_builtin.py::BuiltinTest::test_object`.
 #[test]
 fn cpython_object_constructor_argument_error_subset() {

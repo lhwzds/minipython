@@ -9497,7 +9497,7 @@ impl Vm {
             }
             Value::Builtin(name) if name == "set" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_set(args)
@@ -13014,7 +13014,7 @@ impl Vm {
             self.build_set(Vec::new())?
         } else {
             if !keywords.is_empty() {
-                return Err(format!("{name}() does not accept keyword arguments"));
+                return Err("TypeError: set() takes no keyword arguments".to_string());
             }
             self.call_set(args.clone())?
         };

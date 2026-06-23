@@ -7511,6 +7511,29 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_set_constructor_keyword_error_diff_subset() {
+    // CPython oracle text: set() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_set.py::TestSet constructor keyword argument errors",
+        name: "set-constructor-keyword-errors",
+        source: r#"class SetSubclass(set):
+    pass
+for label, callback in [
+    ("iterable", lambda: set(iterable=())),
+    ("object", lambda: set(object=())),
+    ("both", lambda: set((), iterable=())),
+    ("sub-iterable", lambda: SetSubclass(iterable=())),
+    ("sub-sequence", lambda: SetSubclass(sequence=())),
+    ("sub-both", lambda: SetSubclass((), iterable=())),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_issubclass_builtin_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_issubclass",
