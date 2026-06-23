@@ -195,6 +195,7 @@ Recent runtime migration notes:
   `cpython_property_abstractmethod_diff_subset`,
   `cpython_property_name_metadata_diff_subset`,
   `cpython_property_set_name_metadata_diff_subset`,
+  `cpython_property_no_getter_error_diff_subset`,
   `cpython_property_doc_metadata_diff_subset`,
   `cpython_builtin_bool_notimplemented_diff_subset`,
   `cpython_builtin_singleton_construction_and_attributes_diff_subset`,
@@ -5574,6 +5575,10 @@ in `cpython_property_set_name_metadata_diff_subset` cover public
 class creation auto-sets the descriptor name, arbitrary name values are
 accepted, keywords are rejected, arity errors match the supported method
 wrapper surface, and `dir()` exposes the hook.
+`cpython_property_no_getter_error_subset` and direct CPython evidence in
+`cpython_property_no_getter_error_diff_subset` cover public property no-getter
+`AttributeError` text for anonymous descriptors, class-bound descriptor access,
+normal attribute access, and arbitrary `property.__name__` values.
 `cpython_property_doc_metadata_subset` and direct CPython evidence in
 `cpython_property_doc_metadata_diff_subset` cover public `property.__doc__`
 metadata: getter-derived default docs for omitted and `None` doc arguments,

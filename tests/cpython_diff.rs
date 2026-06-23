@@ -7277,6 +7277,43 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_property_no_getter_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public property no-getter AttributeError behavior",
+        name: "property-no-getter-errors",
+        source: r#"class EmptyGetter:
+    value = property()
+
+checks = [
+    ('anonymous-object', property(), object(), object),
+    ('anonymous-list', property(), [], list),
+    ('anonymous-int', property(), 1, int),
+    ('named-direct', EmptyGetter.__dict__['value'], EmptyGetter(), EmptyGetter),
+]
+for label, descriptor, obj, owner in checks:
+    try:
+        descriptor.__get__(obj, owner)
+    except AttributeError as error:
+        print(label, type(error).__name__, str(error))
+try:
+    EmptyGetter().value
+except AttributeError as error:
+    print('named-attribute', type(error).__name__, str(error))
+p = property()
+p.__name__ = 123
+try:
+    p.__get__(object(), object)
+except AttributeError as error:
+    print('manual-int-name', type(error).__name__, str(error))
+p.__name__ = None
+try:
+    p.__get__(object(), object)
+except AttributeError as error:
+    print('manual-none-name', type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_property_doc_metadata_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public property __doc__ metadata behavior",

@@ -16245,7 +16245,7 @@ impl Vm {
     }
 
     fn property_get(&mut self, property: Value, object: Value) -> Result<Value, String> {
-        let Value::Property { fget, .. } = property.clone() else {
+        let Value::Property { fget, name, .. } = property.clone() else {
             unreachable!("property_get is only called with property values");
         };
         if matches!(object, Value::None) {
@@ -16253,7 +16253,10 @@ impl Vm {
         }
 
         let Some(fget) = fget else {
-            return Err("AttributeError: unreadable attribute".to_string());
+            return Err(format!(
+                "AttributeError: {}",
+                property_no_getter_error(&name, &object)
+            ));
         };
         self.call_value(*fget, vec![object])
     }
@@ -53974,6 +53977,17 @@ fn property_set_name(property: Value, name: Value) -> Result<Value, String> {
     };
     *property_name.borrow_mut() = Some(name);
     Ok(Value::None)
+}
+
+fn property_no_getter_error(property_name: &Rc<RefCell<Option<Value>>>, object: &Value) -> String {
+    let owner = type_name(object);
+    match property_name.borrow().as_ref() {
+        Some(name) => format!(
+            "property {} of '{owner}' object has no getter",
+            repr_value(name)
+        ),
+        None => format!("property of '{owner}' object has no getter"),
+    }
 }
 
 fn property_is_abstract_method(

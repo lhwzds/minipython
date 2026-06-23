@@ -25489,6 +25489,24 @@ fn cpython_property_set_name_metadata_subset() {
     );
 }
 
+// Mirrors CPython's public AttributeError text for property descriptors without
+// a getter, including anonymous properties and __set_name__/__name__ metadata.
+#[test]
+fn cpython_property_no_getter_error_subset() {
+    assert_output(
+        "class EmptyGetter:\n    value = property()\n\nchecks = [\n    ('anonymous-object', property(), object(), object),\n    ('anonymous-list', property(), [], list),\n    ('anonymous-int', property(), 1, int),\n    ('named-direct', EmptyGetter.__dict__['value'], EmptyGetter(), EmptyGetter),\n]\nfor label, descriptor, obj, owner in checks:\n    try:\n        descriptor.__get__(obj, owner)\n    except AttributeError as error:\n        print(label, type(error).__name__, str(error))\ntry:\n    EmptyGetter().value\nexcept AttributeError as error:\n    print('named-attribute', type(error).__name__, str(error))\np = property()\np.__name__ = 123\ntry:\n    p.__get__(object(), object)\nexcept AttributeError as error:\n    print('manual-int-name', type(error).__name__, str(error))\np.__name__ = None\ntry:\n    p.__get__(object(), object)\nexcept AttributeError as error:\n    print('manual-none-name', type(error).__name__, str(error))",
+        &[
+            "anonymous-object AttributeError property of 'object' object has no getter",
+            "anonymous-list AttributeError property of 'list' object has no getter",
+            "anonymous-int AttributeError property of 'int' object has no getter",
+            "named-direct AttributeError property 'value' of 'EmptyGetter' object has no getter",
+            "named-attribute AttributeError property 'value' of 'EmptyGetter' object has no getter",
+            "manual-int-name AttributeError property 123 of 'object' object has no getter",
+            "manual-none-name AttributeError property None of 'object' object has no getter",
+        ],
+    );
+}
+
 // Mirrors CPython's public property.__doc__ metadata. Default and doc=None
 // values are getter-derived, assigned values are arbitrary, deletion resets the
 // readable slot to None, and derived properties recompute getter docs only when

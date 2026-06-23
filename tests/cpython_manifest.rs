@@ -13785,6 +13785,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_property_abstractmethod_subset",
             "cpython_property_name_metadata_subset",
             "cpython_property_set_name_metadata_subset",
+            "cpython_property_no_getter_error_subset",
             "cpython_property_doc_metadata_subset",
             "cpython_builtin_bool_notimplemented_subset",
             "cpython_builtin_construct_singletons_subset",
@@ -13839,6 +13840,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_property_abstractmethod_diff_subset",
         "cpython_property_name_metadata_diff_subset",
         "cpython_property_set_name_metadata_diff_subset",
+        "cpython_property_no_getter_error_diff_subset",
         "cpython_property_doc_metadata_diff_subset",
         "cpython_builtin_bool_notimplemented_diff_subset",
         "cpython_builtin_singleton_construction_and_attributes_diff_subset",
@@ -14410,6 +14412,53 @@ fn property_set_name_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("class creation")
                 && document.contains("arbitrary"),
             "property __set_name__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn property_no_getter_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_property_no_getter_error_subset(",
+        "EmptyGetter.__dict__['value']",
+        "EmptyGetter().value",
+        "property of 'object' object has no getter",
+        "property 'value' of 'EmptyGetter' object has no getter",
+        "p.__name__ = 123",
+        "p.__name__ = None",
+        "manual-int-name",
+        "manual-none-name",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "property no-getter subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_property_no_getter_error_diff_subset");
+    for required in [
+        "CPython public property no-getter AttributeError behavior",
+        "EmptyGetter.__dict__['value']",
+        "EmptyGetter().value",
+        "('anonymous-object', property(), object(), object)",
+        "p.__name__ = 123",
+        "p.__name__ = None",
+        "manual-int-name",
+        "manual-none-name",
+    ] {
+        assert!(
+            body.contains(required),
+            "property no-getter CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_property_no_getter_error_subset")
+                && document.contains("cpython_property_no_getter_error_diff_subset")
+                && document.contains("property no-getter")
+                && document.contains("AttributeError"),
+            "property no-getter evidence must be documented in coverage and migration notes"
         );
     }
 }
