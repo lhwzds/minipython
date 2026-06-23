@@ -50278,6 +50278,25 @@ fn cpython_collections_chainmap_constructor_lazy_mapping_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap constructor
+// repr behavior: ChainMap renders each stored source with repr().
+#[test]
+fn cpython_collections_chainmap_constructor_source_repr_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "for label, source in [('str', 'abc'), ('tuple', (1, 2)), ('dict', {'a': 1})]:\n",
+            "    chain = ChainMap(source)\n",
+            "    print(label, repr(chain), str(chain))"
+        ),
+        &[
+            "str ChainMap('abc') ChainMap('abc')",
+            "tuple ChainMap((1, 2)) ChainMap((1, 2))",
+            "dict ChainMap({'a': 1}) ChainMap({'a': 1})",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {

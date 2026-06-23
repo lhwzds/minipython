@@ -13487,6 +13487,18 @@ for label, source in [('int', 1), ('list', []), ('none', None), ('tuple', (1, 2)
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_source_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor source repr",
+        name: "collections-chainmap-constructor-source-repr",
+        source: r#"from collections import ChainMap
+for label, source in [('str', 'abc'), ('tuple', (1, 2)), ('dict', {'a': 1})]:
+    chain = ChainMap(source)
+    print(label, repr(chain), str(chain))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

@@ -1190,7 +1190,7 @@ impl fmt::Display for Value {
             Value::ChainMap { maps } => {
                 let rendered = maps
                     .iter()
-                    .map(|map| map.to_string())
+                    .map(format_value_repr)
                     .collect::<Vec<_>>()
                     .join(", ");
                 write!(f, "ChainMap({rendered})")

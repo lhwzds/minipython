@@ -339,6 +339,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_public_methods_diff_subset`,
   `cpython_collections_chainmap_keyword_error_diff_subset`,
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
+  `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
@@ -3963,6 +3964,12 @@ without adding general custom encoder/decoder class support.
   covering CPython's ChainMap constructor lazy map-source storage: non-mapping
   sources such as `1`, `[]`, `None`, and `(1, 2)` are preserved in `.maps`
   instead of being rejected during construction.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_constructor_source_repr_subset`, backed by
+  `cpython_collections_chainmap_constructor_source_repr_diff_subset`, covering
+  ChainMap constructor source repr display for stored string, tuple, and dict
+  map sources so `repr(ChainMap('abc'))` and `str(ChainMap('abc'))` retain the
+  CPython string quotes.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_copy_pickle_eval_identity_subset`, covering
   the remaining CPython `TestChainMap::test_basics` copy and identity

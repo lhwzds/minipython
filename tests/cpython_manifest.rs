@@ -12,6 +12,7 @@ const README: &str = include_str!("../README.md");
 const README_CN: &str = include_str!("../README_CN.md");
 const STDLIB_SOURCE: &str = include_str!("../src/stdlib.rs");
 const VM_SOURCE: &str = include_str!("../src/vm.rs");
+const VALUE_SOURCE: &str = include_str!("../src/value.rs");
 const CPYTHON_TEST_AST_SOURCE: &str =
     "/Volumes/samsung/GitHub/cpython/Lib/test/test_ast/test_ast.py";
 const CPYTHON_TEST_BUILTIN_SOURCE: &str =
@@ -10873,6 +10874,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_public_methods_subset",
             "cpython_collections_chainmap_keyword_error_subset",
             "cpython_collections_chainmap_constructor_lazy_mapping_subset",
+            "cpython_collections_chainmap_constructor_source_repr_subset",
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
             "cpython_collections_namedtuple_public_subset",
@@ -11252,6 +11254,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_lazy_mapping_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor lazy map storage"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_constructor_source_repr_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source repr"
     );
     assert!(
         row.diff_evidence
@@ -12060,6 +12067,70 @@ fn collections_chainmap_constructor_lazy_mapping_subset_has_focused_diff_evidenc
                     .contains("cpython_collections_chainmap_constructor_lazy_mapping_diff_subset")
                 && document.contains("ChainMap constructor lazy map-source storage"),
             "collections ChainMap constructor lazy-mapping evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_constructor_source_repr_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_constructor_source_repr_subset",
+    );
+    for required in [
+        "ChainMap(source)",
+        "repr(chain)",
+        "str(chain)",
+        "('str', 'abc')",
+        "('tuple', (1, 2))",
+        "('dict', {'a': 1})",
+        "str ChainMap('abc') ChainMap('abc')",
+        "tuple ChainMap((1, 2)) ChainMap((1, 2))",
+        "dict ChainMap({'a': 1}) ChainMap({'a': 1})",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap constructor source-repr subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_constructor_source_repr_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap constructor source repr",
+        "ChainMap(source)",
+        "repr(chain)",
+        "str(chain)",
+        "('str', 'abc')",
+        "('tuple', (1, 2))",
+        "('dict', {'a': 1})",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap constructor source-repr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let chain_map_display_body = VALUE_SOURCE
+        .split("Value::ChainMap { maps } => {")
+        .nth(1)
+        .and_then(|tail| tail.split("Value::Counter").next())
+        .expect("Value ChainMap display implementation must be extractable");
+    assert!(
+        chain_map_display_body.contains(".map(format_value_repr)")
+            && !chain_map_display_body.contains(".map(|map| map.to_string())"),
+        "ChainMap display must render stored sources with repr-style formatting"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_constructor_source_repr_subset")
+                && document
+                    .contains("cpython_collections_chainmap_constructor_source_repr_diff_subset")
+                && document.contains("ChainMap constructor source repr"),
+            "collections ChainMap constructor source-repr evidence must be documented in coverage and migration notes"
         );
     }
 }
