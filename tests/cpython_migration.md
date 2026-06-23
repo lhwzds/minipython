@@ -6123,6 +6123,9 @@ Completed in the string/bytes codec method pass:
 - Extended the same codec argument path to accept `str` subclass
   `encoding` / `errors` values across `str.encode()`, `bytes.decode()`,
   `bytearray.decode()`, and `str` / `bytes` / `bytearray` constructors.
+- Extended the same codec method slice with CPython-style keyword binding
+  diagnostics for unknown keywords, positional/name duplicates, two positional
+  arguments plus any keyword, and more than two keyword-only arguments.
 - Added `cpython_bytes_check_encoding_errors_devmode_subset`, adapted from
   `Lib/test/test_bytes.py::BaseBytesTest::test_check_encoding_errors`, covering
   the CPython `-X dev` public behavior where invalid codec `encoding` /

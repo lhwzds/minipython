@@ -67409,6 +67409,18 @@ fn codec_options(
             args.len()
         ));
     }
+    let total_args = args.len() + keywords.len();
+    if args.is_empty() && keywords.len() > 2 {
+        return Err(format!(
+            "TypeError: {method}() takes at most 2 keyword arguments ({} given)",
+            keywords.len()
+        ));
+    }
+    if total_args > 2 {
+        return Err(format!(
+            "TypeError: {method}() takes at most 2 arguments ({total_args} given)"
+        ));
+    }
 
     let mut encoding = args
         .first()
@@ -67424,7 +67436,7 @@ fn codec_options(
             "encoding" => {
                 if encoding.is_some() {
                     return Err(format!(
-                        "TypeError: {method}() got multiple values for argument 'encoding'"
+                        "TypeError: argument for {method}() given by name ('encoding') and position (1)"
                     ));
                 }
                 encoding = Some(codec_string_arg(&value, "encoding")?);
@@ -67432,14 +67444,14 @@ fn codec_options(
             "errors" => {
                 if errors.is_some() {
                     return Err(format!(
-                        "TypeError: {method}() got multiple values for argument 'errors'"
+                        "TypeError: argument for {method}() given by name ('errors') and position (2)"
                     ));
                 }
                 errors = Some(codec_string_arg(&value, "errors")?);
             }
             _ => {
                 return Err(format!(
-                    "TypeError: '{keyword}' is an invalid keyword argument for {method}()"
+                    "TypeError: {method}() got an unexpected keyword argument '{keyword}'"
                 ));
             }
         }

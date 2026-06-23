@@ -19190,6 +19190,9 @@ fn cpython_string_bytes_codec_evidence_covers_str_subclass_args() {
             "decode('utf-32')",
             "utf-32-le",
             "utf-32-be",
+            "str-unknown",
+            "bytes-duplicate-encoding",
+            "bytearray-too-many-keywords",
         ] {
             assert!(
                 document.contains(required),

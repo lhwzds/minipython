@@ -6970,7 +6970,22 @@ for ctor in [bytes, bytearray]:
         print(ctor.__name__, 'utf8-decode', error.__class__.__name__)
     print(ctor.__name__, 'utf8-ignore', b.decode('utf-8', 'ignore'))
     print(ctor.__name__, 'utf8-ignore-kw', b.decode(errors='ignore', encoding='utf-8'))
-    print(ctor.__name__, 'default-decode', ctor(b'\xe2\x98\x83').decode())"#,
+    print(ctor.__name__, 'default-decode', ctor(b'\xe2\x98\x83').decode())
+for label, expr in [
+    ('str-unknown', lambda: 'x'.encode(foo=1)),
+    ('bytes-unknown', lambda: b'x'.decode(foo=1)),
+    ('bytearray-unknown', lambda: bytearray(b'x').decode(foo=1)),
+    ('str-duplicate-encoding', lambda: 'x'.encode('utf-8', encoding='latin-1')),
+    ('bytes-duplicate-encoding', lambda: b'x'.decode('utf-8', encoding='latin-1')),
+    ('str-too-many-with-keyword', lambda: 'x'.encode('utf-8', 'strict', foo=1)),
+    ('bytes-too-many-with-keyword', lambda: b'x'.decode('utf-8', 'strict', foo=1)),
+    ('str-too-many-keywords', lambda: 'x'.encode(encoding='utf-8', errors='strict', foo=1)),
+    ('bytearray-too-many-keywords', lambda: bytearray(b'x').decode(encoding='utf-8', errors='strict', foo=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
     });
 }
 

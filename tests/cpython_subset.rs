@@ -32370,6 +32370,20 @@ fn cpython_string_bytes_codec_subset() {
             "bytearray default-decode ☃",
         ],
     );
+    assert_output(
+        "for label, expr in [\n    ('str-unknown', lambda: 'x'.encode(foo=1)),\n    ('bytes-unknown', lambda: b'x'.decode(foo=1)),\n    ('bytearray-unknown', lambda: bytearray(b'x').decode(foo=1)),\n    ('str-duplicate-encoding', lambda: 'x'.encode('utf-8', encoding='latin-1')),\n    ('bytes-duplicate-encoding', lambda: b'x'.decode('utf-8', encoding='latin-1')),\n    ('str-too-many-with-keyword', lambda: 'x'.encode('utf-8', 'strict', foo=1)),\n    ('bytes-too-many-with-keyword', lambda: b'x'.decode('utf-8', 'strict', foo=1)),\n    ('str-too-many-keywords', lambda: 'x'.encode(encoding='utf-8', errors='strict', foo=1)),\n    ('bytearray-too-many-keywords', lambda: bytearray(b'x').decode(encoding='utf-8', errors='strict', foo=1)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "str-unknown TypeError encode() got an unexpected keyword argument 'foo'",
+            "bytes-unknown TypeError decode() got an unexpected keyword argument 'foo'",
+            "bytearray-unknown TypeError decode() got an unexpected keyword argument 'foo'",
+            "str-duplicate-encoding TypeError argument for encode() given by name ('encoding') and position (1)",
+            "bytes-duplicate-encoding TypeError argument for decode() given by name ('encoding') and position (1)",
+            "str-too-many-with-keyword TypeError encode() takes at most 2 arguments (3 given)",
+            "bytes-too-many-with-keyword TypeError decode() takes at most 2 arguments (3 given)",
+            "str-too-many-keywords TypeError encode() takes at most 2 keyword arguments (3 given)",
+            "bytearray-too-many-keywords TypeError decode() takes at most 2 keyword arguments (3 given)",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::

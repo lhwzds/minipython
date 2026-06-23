@@ -2613,7 +2613,9 @@ without adding general custom encoder/decoder class support.
   `test_decode`: UTF-8/UTF-16/UTF-32 text constructors, Latin-1 strict encode failure
   and `ignore`, UTF-8 strict decode failure and `ignore` through positional and
   keyword arguments including `str` subclass `encoding` / `errors` values,
-  direct `bytearray.decode()` success/error paths, and default UTF-8 decode.
+  direct `bytearray.decode()` success/error paths, default UTF-8 decode, and
+  CPython-style codec keyword diagnostics for unknown keywords, positional/name
+  duplicates, and too many positional-or-keyword / keyword-only arguments.
 - `STRING_RUNTIME` also includes `cpython_bytes_iterable_constructor_subset`,
   covering CPython `BaseBytesTest::test_from_iterable`, `test_from_tuple`,
   `test_from_list`, and `test_from_index` public bytes/bytearray construction
