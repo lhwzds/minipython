@@ -9200,14 +9200,14 @@ impl Vm {
             }
             Value::Builtin(name) if name == "aiter" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_aiter(args)
             }
             Value::Builtin(name) if name == "anext" => {
                 if !keywords.is_empty() {
-                    return Err(format!("{name}() does not accept keyword arguments"));
+                    return Err(format!("TypeError: {name}() takes no keyword arguments"));
                 }
 
                 self.call_anext(args)

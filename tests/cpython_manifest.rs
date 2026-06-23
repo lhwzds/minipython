@@ -13752,6 +13752,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_min_max_sum_builtin_subset",
             "cpython_iter_next_builtin_subset",
             "cpython_aiter_anext_builtin_subset",
+            "cpython_aiter_anext_keyword_error_subset",
             "cpython_stop_iteration_value_subset",
             "cpython_enumerate_zip_sorted_builtin_subset",
             "cpython_builtin_sorted_exact_subset",
@@ -13856,6 +13857,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_min_max_sum_builtin_diff_subset",
         "cpython_iter_next_builtin_diff_subset",
         "cpython_aiter_anext_builtin_diff_subset",
+        "cpython_aiter_anext_keyword_error_diff_subset",
         "cpython_stop_iteration_value_diff_subset",
         "cpython_map_filter_builtin_diff_subset",
         "cpython_map_strict_builtin_diff_subset",
@@ -15693,6 +15695,55 @@ fn stop_iteration_value_subset_has_focused_diff_evidence() {
             && CPYTHON_MIGRATION.contains("cpython_stop_iteration_value_diff_subset"),
         "focused StopIteration.value evidence must be listed in the migration manifest"
     );
+}
+
+#[test]
+fn aiter_anext_keyword_error_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_aiter_anext_keyword_error_subset(",
+        "lambda: aiter(async_iterable=object())",
+        "lambda: aiter(object=object())",
+        "lambda: anext(async_iterator=object())",
+        "lambda: anext(async_iterator=object(), default=1)",
+        "lambda: anext(object=object())",
+        "aiter() takes no keyword arguments",
+        "anext() takes no keyword arguments",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused aiter/anext keyword error subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_aiter_anext_keyword_error_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py aiter()/anext() keyword argument errors",
+        "lambda: aiter(async_iterable=object())",
+        "lambda: aiter(object=object())",
+        "lambda: anext(async_iterator=object())",
+        "lambda: anext(async_iterator=object(), default=1)",
+        "lambda: anext(object=object())",
+        "aiter() takes no keyword arguments",
+        "anext() takes no keyword arguments",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused aiter/anext keyword error CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_aiter_anext_keyword_error_subset")
+                && document.contains("cpython_aiter_anext_keyword_error_diff_subset")
+                && document.contains("aiter() takes no keyword arguments")
+                && document.contains("anext() takes no keyword arguments"),
+            "focused aiter/anext keyword error evidence must be documented in coverage and migration notes"
+        );
+    }
 }
 
 #[test]

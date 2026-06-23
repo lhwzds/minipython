@@ -9087,6 +9087,34 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_aiter_anext_keyword_error_diff_subset() {
+    let probe = run_cpython("import builtins; print(hasattr(builtins, 'aiter'))")
+        .expect("failed to probe CPython aiter support");
+    if !probe.status.success() || probe.stdout.as_slice() != b"True\n" {
+        eprintln!("skipping aiter/anext keyword diff: CPython oracle lacks builtins.aiter");
+        return;
+    }
+
+    // CPython oracle text: aiter() takes no keyword arguments /
+    // anext() takes no keyword arguments.
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_builtin.py aiter()/anext() keyword argument errors",
+        name: "aiter-anext-keyword-errors",
+        source: r#"for label, callback in [
+    ("aiter-object", lambda: aiter(async_iterable=object())),
+    ("aiter-bad", lambda: aiter(object=object())),
+    ("anext-object", lambda: anext(async_iterator=object())),
+    ("anext-default", lambda: anext(async_iterator=object(), default=1)),
+    ("anext-bad", lambda: anext(object=object())),
+]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_stop_iteration_value_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_generator.py public StopIteration.value behavior",

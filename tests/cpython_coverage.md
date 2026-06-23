@@ -212,6 +212,7 @@ Recent runtime migration notes:
   `cpython_min_max_sum_builtin_diff_subset`,
   `cpython_iter_next_builtin_diff_subset`,
   `cpython_aiter_anext_builtin_diff_subset`,
+  `cpython_aiter_anext_keyword_error_diff_subset`,
   `cpython_stop_iteration_value_diff_subset`,
   `cpython_map_filter_builtin_diff_subset`,
   `cpython_map_strict_builtin_diff_subset`,
@@ -5612,6 +5613,10 @@ alongside existing `anext()` async-generator coverage: one-argument arity,
 `__aiter__` dispatch, async-iterator return validation through `__anext__`,
 missing-protocol `TypeError`s, and propagation of exceptions raised by
 `__aiter__`.
+`cpython_aiter_anext_keyword_error_subset`, backed by
+`cpython_aiter_anext_keyword_error_diff_subset`, covers CPython's public
+`aiter() takes no keyword arguments` and `anext() takes no keyword arguments`
+`TypeError` text for keyword attempts.
 
 Builtin singleton note: `cpython_builtin_construct_singletons_subset` now ports
 `BuiltinTest::test_construct_singletons`, covering zero-argument construction of

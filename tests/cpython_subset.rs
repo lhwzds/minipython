@@ -30403,6 +30403,22 @@ for label, callback in [
     );
 }
 
+// Adapted from CPython `Lib/test/test_builtin.py` aiter()/anext() keyword
+// rejection behavior.
+#[test]
+fn cpython_aiter_anext_keyword_error_subset() {
+    assert_output(
+        "for label, callback in [\n    ('aiter-object', lambda: aiter(async_iterable=object())),\n    ('aiter-bad', lambda: aiter(object=object())),\n    ('anext-object', lambda: anext(async_iterator=object())),\n    ('anext-default', lambda: anext(async_iterator=object(), default=1)),\n    ('anext-bad', lambda: anext(object=object())),\n]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, type(error).__name__, str(error))",
+        &[
+            "aiter-object TypeError aiter() takes no keyword arguments",
+            "aiter-bad TypeError aiter() takes no keyword arguments",
+            "anext-object TypeError anext() takes no keyword arguments",
+            "anext-default TypeError anext() takes no keyword arguments",
+            "anext-bad TypeError anext() takes no keyword arguments",
+        ],
+    );
+}
+
 // Adapted from CPython
 // Lib/test/test_grammar.py::GrammarTests.test_comprehension_specials.
 #[test]
