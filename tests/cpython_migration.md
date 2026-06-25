@@ -7548,6 +7548,10 @@ Completed in the collections ABC sequence-mixins pass:
 - Implemented the remaining supported `Sequence` mixins: `count`,
   `__contains__`, `__iter__`, and `__reversed__`, including membership fallback
   for user instances that expose the sequence protocol.
+- Added `cpython_collections_abc_sequence_contains_rich_compare_subset`, backed
+  by `cpython_collections_abc_sequence_contains_rich_compare_diff_subset`, for
+  CPython's `Sequence.__contains__()` rich comparison and propagated equality
+  exceptions on explicit `Sequence` subclasses.
 - Added keyword-call support for Python-defined mixin methods such as
   `wrapped.index(value='b')` and `wrapped.count(value='a')`.
 

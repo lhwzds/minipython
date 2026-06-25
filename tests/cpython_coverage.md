@@ -3664,6 +3664,11 @@ without adding general custom encoder/decoder class support.
   binding. Direct CPython diff evidence is in
   `cpython_collections_abc_sequence_mixins_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
+  `cpython_collections_abc_sequence_contains_rich_compare_subset`, backed by
+  `cpython_collections_abc_sequence_contains_rich_compare_diff_subset`, covering
+  `Sequence.__contains__()` rich comparison and propagated equality exceptions
+  for explicit `Sequence` subclasses.
+- `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_mapping_subset`, covering `Mapping` and
   `MutableMapping` for registered `dict`, ABC inheritance, direct subclassing,
   and CPython's non-structural mapping behavior. Direct CPython diff evidence

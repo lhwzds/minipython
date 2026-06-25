@@ -21882,6 +21882,9 @@ impl Vm {
             if let Some(maps) = chain_map_subclass_maps(&haystack) {
                 return self.chain_map_contains_key_in_maps(&maps, &needle);
             }
+            if is_sequence_abc_value(&haystack) {
+                return self.sequence_abc_contains(haystack, needle);
+            }
             if tuple_subclass_items(&haystack).is_some() {
                 return self.sequence_abc_contains(haystack, needle);
             }
@@ -26366,7 +26369,7 @@ impl Vm {
             "__contains__" => {
                 let (receiver, value) =
                     sequence_abc_bind_one_value_arg("__contains__", args, keywords)?;
-                Ok(Value::Bool(self.iterable_contains_value(receiver, value)?))
+                Ok(Value::Bool(self.sequence_abc_contains(receiver, value)?))
             }
             "__reversed__" => {
                 if !keywords.is_empty() {

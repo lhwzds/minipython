@@ -472,6 +472,62 @@ fn immutable_sequence_contains_rich_compare_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn collections_abc_sequence_contains_rich_compare_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_collections_abc_sequence_contains_rich_compare_subset(",
+        "from collections.abc import Sequence",
+        "print(\"contains\", Probe(\"b\") in items)",
+        "print(\"dunder\", items.__contains__(Probe(\"b\")))",
+        "(\"contains-error\", lambda: 1 in SequenceSubclass([Boom()]))",
+        "(\"dunder-error\", lambda: SequenceSubclass([Boom()]).__contains__(1))",
+        "\"contains-error ValueError boom ('boom',)\"",
+        "\"dunder-error ValueError boom ('boom',)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused collections.abc Sequence.__contains__ rich-compare subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_abc_sequence_contains_rich_compare_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py Sequence.__contains__ rich comparison subset",
+        "name: \"collections-abc-sequence-contains-rich-compare\"",
+        "from collections.abc import Sequence",
+        "print(\"contains\", Probe(\"b\") in items)",
+        "print(\"dunder\", items.__contains__(Probe(\"b\")))",
+        "(\"contains-error\", lambda: 1 in SequenceSubclass([Boom()]))",
+        "(\"dunder-error\", lambda: SequenceSubclass([Boom()]).__contains__(1))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused collections.abc Sequence.__contains__ rich-compare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("\"__contains__\" => {")
+            && VM_SOURCE.contains("self.sequence_abc_contains(receiver, value)?")
+            && VM_SOURCE.contains("if is_sequence_abc_value(&haystack)"),
+        "Sequence.__contains__ implementation must route through sequence_abc_contains"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_abc_sequence_contains_rich_compare_subset")
+                && document
+                    .contains("cpython_collections_abc_sequence_contains_rich_compare_diff_subset")
+                && document.contains("Sequence.__contains__")
+                && document.contains("rich comparison"),
+            "focused collections.abc Sequence.__contains__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";

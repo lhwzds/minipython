@@ -4800,6 +4800,42 @@ except ValueError as error:
 }
 
 #[test]
+fn cpython_collections_abc_sequence_contains_rich_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py Sequence.__contains__ rich comparison subset",
+        name: "collections-abc-sequence-contains-rich-compare",
+        source: r#"from collections.abc import Sequence
+class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("seq-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+class SequenceSubclass(Sequence):
+    def __init__(self, values):
+        self.values = values
+    def __len__(self):
+        return len(self.values)
+    def __getitem__(self, index):
+        return self.values[index]
+items = SequenceSubclass([Probe("a"), Probe("b"), Probe("a")])
+print("contains", Probe("b") in items)
+print("dunder", items.__contains__(Probe("b")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+for label, expr in [
+    ("contains-error", lambda: 1 in SequenceSubclass([Boom()])),
+    ("dunder-error", lambda: SequenceSubclass([Boom()]).__contains__(1)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_abc_mapping_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py Mapping/MutableMapping ABC public runtime subset",

@@ -54082,6 +54082,51 @@ fn cpython_collections_abc_sequence_mixins_subset() {
     );
 }
 
+#[test]
+fn cpython_collections_abc_sequence_contains_rich_compare_subset() {
+    assert_output_with_stack(
+        r#"from collections.abc import Sequence
+class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("seq-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+class SequenceSubclass(Sequence):
+    def __init__(self, values):
+        self.values = values
+    def __len__(self):
+        return len(self.values)
+    def __getitem__(self, index):
+        return self.values[index]
+items = SequenceSubclass([Probe("a"), Probe("b"), Probe("a")])
+print("contains", Probe("b") in items)
+print("dunder", items.__contains__(Probe("b")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+for label, expr in [
+    ("contains-error", lambda: 1 in SequenceSubclass([Boom()])),
+    ("dunder-error", lambda: SequenceSubclass([Boom()]).__contains__(1)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "seq-eq a b",
+            "seq-eq b b",
+            "contains True",
+            "seq-eq a b",
+            "seq-eq b b",
+            "dunder True",
+            "contains-error ValueError boom ('boom',)",
+            "dunder-error ValueError boom ('boom',)",
+        ],
+        32 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::test_ByteString and
 // ::test_Buffer. MiniPython does not yet have full memoryview/buffer protocol
 // parity, so this pins the supported ABC relationships and structural checks.
