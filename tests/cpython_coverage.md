@@ -2069,8 +2069,10 @@ without adding general custom encoder/decoder class support.
   covering CPython `BuiltinTest` filter/map/zip iterator pickle round trips,
   strict map/zip round trips, and strict-length failure preservation over
   MiniPython's internal pickle payload surface.
-- `cpython_map_strict_builtin_subset` also pins modern `map()` unexpected-keyword diagnostics
-  for unsupported keyword names while preserving strict-length iterator-consumption behavior.
+- `cpython_map_strict_builtin_subset` also covers strict `map()` length
+  checks, modern `map()` unexpected-keyword diagnostics and multi-keyword
+  arity text, iterator-consumption side effects, and strict-mode
+  `StopIteration` conversion.
 - The `BuiltinTest Iterator Builtins Method Audit` maps the current CPython
   filter/map/zip/iter methods to direct Rust evidence and explicitly classifies
   CPython's filter deallocation and zip GC-tracking regressions as
@@ -4585,8 +4587,9 @@ without adding general custom encoder/decoder class support.
   CPython TypeError text for missing iterable, excess positional/keyword
   arity, and positional `iterable=` rejection, strict zip including modern
   `zip()` unexpected keyword diagnostics, map/filter bad-argument diagnostics
-  including `map()` too-few-argument `TypeError` text, and absolute-value
-  behavior used by the sandbox builtin surface. Direct CPython output parity for
+  including `map()` too-few-argument `TypeError` text and strict `map()`
+  multi-keyword `TypeError` text, and absolute-value behavior used by the
+  sandbox builtin surface. Direct CPython output parity for
   the supported `globals()` / `locals()` subset is tracked by
   `cpython_globals_locals_builtin_diff_subset`; class/type relationship checks are tracked by
   `cpython_isinstance_builtin_diff_subset` and

@@ -43425,12 +43425,14 @@ fn cpython_map_strict_builtin_subset() {
         &["[(1, 'a'), (2, 'b'), (3, 'c')]", "[(1, 'a'), (2, 'b')]"],
     );
     assert_output(
-        "def pack(*values):\n    return values\nfor expr in [lambda: list(map(pack, (1, 2, 3, 4), 'abc', strict=True)), lambda: list(map(pack, (1, 2), 'abc', strict=True)), lambda: list(map(pack, (1, 2), (1, 2), 'abc', strict=True)), lambda: map(pack, [1], bad=True)]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, error)",
+        "def pack(*values):\n    return values\nfor expr in [lambda: list(map(pack, (1, 2, 3, 4), 'abc', strict=True)), lambda: list(map(pack, (1, 2), 'abc', strict=True)), lambda: list(map(pack, (1, 2), (1, 2), 'abc', strict=True)), lambda: map(pack, [1], bad=True), lambda: map(pack, [1], strict=True, bad=True), lambda: map(function=pack, iterable=[1])]:\n    try:\n        expr()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__, error)",
         &[
             "ValueError map() argument 2 is shorter than argument 1",
             "ValueError map() argument 2 is longer than argument 1",
             "ValueError map() argument 3 is longer than arguments 1-2",
             "TypeError map() got an unexpected keyword argument 'bad'",
+            "TypeError map() takes at most 1 keyword argument (2 given)",
+            "TypeError map() takes at most 1 keyword argument (2 given)",
         ],
     );
     assert_output(

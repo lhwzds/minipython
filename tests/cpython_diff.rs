@@ -9580,7 +9580,7 @@ fn cpython_map_strict_builtin_diff_subset() {
     return values
 print(list(map(pack, (1, 2, 3), 'abc', strict=True)))
 print(list(map(pack, (1, 2), 'abc', strict=False)))
-for expr in [lambda: list(map(pack, (1, 2, 3, 4), 'abc', strict=True)), lambda: list(map(pack, (1, 2), 'abc', strict=True)), lambda: list(map(pack, (1, 2), (1, 2), 'abc', strict=True)), lambda: map(pack, [1], bad=True)]:
+for expr in [lambda: list(map(pack, (1, 2, 3, 4), 'abc', strict=True)), lambda: list(map(pack, (1, 2), 'abc', strict=True)), lambda: list(map(pack, (1, 2), (1, 2), 'abc', strict=True)), lambda: map(pack, [1], bad=True), lambda: map(pack, [1], strict=True, bad=True), lambda: map(function=pack, iterable=[1])]:
     try:
         expr()
     except (TypeError, ValueError) as error:

@@ -30973,6 +30973,13 @@ impl Vm {
         args: Vec<Value>,
         keywords: Vec<(String, Value)>,
     ) -> Result<Value, String> {
+        if keywords.len() > 1 {
+            return Err(format!(
+                "TypeError: map() takes at most 1 keyword argument ({} given)",
+                keywords.len()
+            ));
+        }
+
         let mut strict = false;
         for (keyword, value) in keywords {
             match keyword.as_str() {
