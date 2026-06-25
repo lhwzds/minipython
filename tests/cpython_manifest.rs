@@ -800,6 +800,74 @@ fn dict_view_direct_richcompare_methods_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_direct_display_methods_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_direct_display_methods_subset(",
+        "hasattr(view, \"__str__\")",
+        "hasattr(view, \"__format__\")",
+        "view.__str__()",
+        "view.__format__(\"\")",
+        "view.__format__(\"\") == view.__str__()",
+        "v.__str__(1)",
+        "v.__format__()",
+        "v.__format__(\"\", \"x\")",
+        "v.__format__(1)",
+        "v.__format__(\"x\")",
+        "\"oditems\", OrderedDict([(1, 2)]).items()",
+        "\"odvalues\", OrderedDict([(1, 2)]).values()",
+        "\"keys format-x TypeError False True True False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view direct display method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_direct_display_methods_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view direct display methods subset",
+        "name: \"dict-view-direct-display-methods\"",
+        "hasattr(view, \"__str__\")",
+        "view.__format__(\"\") == view.__str__()",
+        "v.__format__(1)",
+        "v.__format__(\"x\")",
+        "\"unsupported format\" in message",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view direct display method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__format__\" | \"__iter__\" | \"__len__\" | \"__repr__\" | \"__reversed__\"",
+        "| \"__str__\" =>",
+        "\"__format__\" =>",
+        "\"__str__\" =>",
+        "dunder_format_spec_string(format_spec)",
+        "repr_value_checked(view)?",
+        "unsupported format string passed to {}.__format__",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view direct display method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_direct_display_methods_subset")
+                && document.contains("cpython_dict_view_direct_display_methods_diff_subset")
+                && document.contains("dict view direct display methods"),
+            "focused dict view direct display method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

@@ -30516,6 +30516,37 @@ show("items-le-error", lambda: left.__le__(right))"#,
 }
 
 #[test]
+fn cpython_dict_view_direct_display_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view direct display methods subset",
+        name: "dict-view-direct-display-methods",
+        source: r#"from collections import OrderedDict
+views = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in views:
+    print(label, hasattr(view, "__str__"), hasattr(view, "__format__"), view.__str__(), view.__format__(""), view.__format__("") == view.__str__())
+    for err_label, expr in [
+        ("str-arg", lambda v=view: v.__str__(1)),
+        ("format-missing", lambda v=view: v.__format__()),
+        ("format-extra", lambda v=view: v.__format__("", "x")),
+        ("format-nonstr", lambda v=view: v.__format__(1)),
+        ("format-x", lambda v=view: v.__format__("x")),
+    ]:
+        try:
+            expr()
+        except Exception as error:
+            message = str(error)
+            print(label, err_label, type(error).__name__, "argument" in message, "__format__" in message, "unsupported format" in message, "str, not int" in message)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

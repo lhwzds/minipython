@@ -56047,16 +56047,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
-                "__iter__" | "__len__" | "__repr__" | "__reversed__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::DictView {
-                        kind,
-                        entries,
-                        ordered,
-                        identity: view_identity,
-                    }),
-                    identity: Rc::new(()),
-                }),
+                "__format__" | "__iter__" | "__len__" | "__repr__" | "__reversed__" | "__str__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::DictView {
+                            kind,
+                            entries,
+                            ordered,
+                            identity: view_identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!(
                     "AttributeError: {type_name} has no attribute '{name}'"
                 )),
@@ -56133,15 +56135,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
-                "__iter__" | "__len__" | "__repr__" | "__reversed__" => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::MappingView {
-                        kind,
-                        mapping,
-                        identity,
-                    }),
-                    identity: Rc::new(()),
-                }),
+                "__format__" | "__iter__" | "__len__" | "__repr__" | "__reversed__" | "__str__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::MappingView {
+                            kind,
+                            mapping,
+                            identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
                 _ => Err(format!(
                     "AttributeError: {type_name} has no attribute '{name}'"
                 )),
@@ -71588,6 +71592,25 @@ fn call_dict_view_method(
                 .map_err(|_| "OverflowError: len() result is too large".to_string())?;
             Ok(Value::Number(len))
         }
+        "__format__" => {
+            let [view, format_spec] = args.as_slice() else {
+                return Err(format!(
+                    "__format__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__format__() expected a dict view receiver".to_string());
+            }
+            let format_spec = dunder_format_spec_string(format_spec)?;
+            if format_spec.is_empty() {
+                return Ok(Value::String(repr_value_checked(view)?));
+            }
+            Err(format!(
+                "TypeError: unsupported format string passed to {}.__format__",
+                type_name(view)
+            ))
+        }
         "__repr__" => {
             let [view] = args.as_slice() else {
                 return Err(format!(
@@ -71597,6 +71620,18 @@ fn call_dict_view_method(
             };
             if dict_view_method_kind(view).is_none() {
                 return Err("__repr__() expected a dict view receiver".to_string());
+            }
+            Ok(Value::String(repr_value_checked(view)?))
+        }
+        "__str__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__str__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__str__() expected a dict view receiver".to_string());
             }
             Ok(Value::String(repr_value_checked(view)?))
         }

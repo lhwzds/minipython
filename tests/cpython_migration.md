@@ -7782,6 +7782,10 @@ Completed in the dict view rich-comparison pass:
   `cpython_dict_view_direct_richcompare_methods_diff_subset`, covering dict view direct rich comparison methods
   for key/item and values-view dunder calls, including `NotImplemented`
   boundaries.
+- Added `cpython_dict_view_direct_display_methods_subset`, backed by
+  `cpython_dict_view_direct_display_methods_diff_subset`, covering dict view direct display methods
+  for `__str__()` and `__format__()` across built-in dict and `OrderedDict`
+  views.
 - Added `cpython_dict_view_isdisjoint_subset`, backed by
   `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

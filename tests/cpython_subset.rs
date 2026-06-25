@@ -49186,6 +49186,76 @@ show("items-le-error", lambda: left.__le__(right))"#,
     );
 }
 
+// Adapted from CPython public dict view display methods. Dict and OrderedDict
+// views expose direct __str__ and __format__ methods matching their repr for an
+// empty format spec.
+#[test]
+fn cpython_dict_view_direct_display_methods_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+views = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in views:
+    print(label, hasattr(view, "__str__"), hasattr(view, "__format__"), view.__str__(), view.__format__(""), view.__format__("") == view.__str__())
+    for err_label, expr in [
+        ("str-arg", lambda v=view: v.__str__(1)),
+        ("format-missing", lambda v=view: v.__format__()),
+        ("format-extra", lambda v=view: v.__format__("", "x")),
+        ("format-nonstr", lambda v=view: v.__format__(1)),
+        ("format-x", lambda v=view: v.__format__("x")),
+    ]:
+        try:
+            expr()
+        except Exception as error:
+            message = str(error)
+            print(label, err_label, type(error).__name__, "argument" in message, "__format__" in message, "unsupported format" in message, "str, not int" in message)"#,
+        &[
+            "keys True True dict_keys([1]) dict_keys([1]) True",
+            "keys str-arg TypeError True False False False",
+            "keys format-missing TypeError True True False False",
+            "keys format-extra TypeError True True False False",
+            "keys format-nonstr TypeError True True False True",
+            "keys format-x TypeError False True True False",
+            "items True True dict_items([(1, 2)]) dict_items([(1, 2)]) True",
+            "items str-arg TypeError True False False False",
+            "items format-missing TypeError True True False False",
+            "items format-extra TypeError True True False False",
+            "items format-nonstr TypeError True True False True",
+            "items format-x TypeError False True True False",
+            "values True True dict_values([2]) dict_values([2]) True",
+            "values str-arg TypeError True False False False",
+            "values format-missing TypeError True True False False",
+            "values format-extra TypeError True True False False",
+            "values format-nonstr TypeError True True False True",
+            "values format-x TypeError False True True False",
+            "odkeys True True odict_keys([1]) odict_keys([1]) True",
+            "odkeys str-arg TypeError True False False False",
+            "odkeys format-missing TypeError True True False False",
+            "odkeys format-extra TypeError True True False False",
+            "odkeys format-nonstr TypeError True True False True",
+            "odkeys format-x TypeError False True True False",
+            "oditems True True odict_items([(1, 2)]) odict_items([(1, 2)]) True",
+            "oditems str-arg TypeError True False False False",
+            "oditems format-missing TypeError True True False False",
+            "oditems format-extra TypeError True True False False",
+            "oditems format-nonstr TypeError True True False True",
+            "oditems format-x TypeError False True True False",
+            "odvalues True True odict_values([2]) odict_values([2]) True",
+            "odvalues str-arg TypeError True False False False",
+            "odvalues format-missing TypeError True True False False",
+            "odvalues format-extra TypeError True True False False",
+            "odvalues format-nonstr TypeError True True False True",
+            "odvalues format-x TypeError False True True False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.
