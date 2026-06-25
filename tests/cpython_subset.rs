@@ -50297,6 +50297,39 @@ fn cpython_collections_chainmap_constructor_source_repr_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap repr
+// behavior: ChainMap subclass display uses the subclass name while rendering
+// stored sources with repr().
+#[test]
+fn cpython_collections_chainmap_subclass_source_repr_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "class Sub(ChainMap):\n",
+            "    pass\n",
+            "for label, value in [('str', Sub('abc')), ('tuple', Sub((1, 2))), ('dict', Sub({'a': 1}))]:\n",
+            "    print(label, repr(value), str(value), format(value, ''))\n",
+            "value = Sub('abc')\n",
+            "print('method-repr', ChainMap.__repr__(value))\n",
+            "print('method-str', ChainMap.__str__(value))\n",
+            "print('method-format', ChainMap.__format__(value, ''))\n",
+            "try:\n",
+            "    print(format(value, 'x'))\n",
+            "except TypeError as error:\n",
+            "    print('nonempty-format', type(error).__name__, str(error))"
+        ),
+        &[
+            "str Sub('abc') Sub('abc') Sub('abc')",
+            "tuple Sub((1, 2)) Sub((1, 2)) Sub((1, 2))",
+            "dict Sub({'a': 1}) Sub({'a': 1}) Sub({'a': 1})",
+            "method-repr Sub('abc')",
+            "method-str Sub('abc')",
+            "method-format Sub('abc')",
+            "nonempty-format TypeError unsupported format string passed to Sub.__format__",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap truthiness:
 // ChainMap bool uses the stored source truthiness instead of eager mapping
 // validation.

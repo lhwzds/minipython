@@ -13499,6 +13499,27 @@ for label, source in [('str', 'abc'), ('tuple', (1, 2)), ('dict', {'a': 1})]:
 }
 
 #[test]
+fn cpython_collections_chainmap_subclass_source_repr_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap subclass source repr",
+        name: "collections-chainmap-subclass-source-repr",
+        source: r#"from collections import ChainMap
+class Sub(ChainMap):
+    pass
+for label, value in [('str', Sub('abc')), ('tuple', Sub((1, 2))), ('dict', Sub({'a': 1}))]:
+    print(label, repr(value), str(value), format(value, ''))
+value = Sub('abc')
+print('method-repr', ChainMap.__repr__(value))
+print('method-str', ChainMap.__str__(value))
+print('method-format', ChainMap.__format__(value, ''))
+try:
+    print(format(value, 'x'))
+except TypeError as error:
+    print('nonempty-format', type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_constructor_source_truthiness_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestChainMap constructor source truthiness",

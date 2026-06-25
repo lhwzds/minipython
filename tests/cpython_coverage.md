@@ -340,6 +340,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_keyword_error_diff_subset`,
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
+  `cpython_collections_chainmap_subclass_source_repr_diff_subset`,
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_subclass_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_constructor_source_len_diff_subset`,
@@ -3975,6 +3976,11 @@ without adding general custom encoder/decoder class support.
   ChainMap constructor source repr display for stored string, tuple, and dict
   map sources so `repr(ChainMap('abc'))` and `str(ChainMap('abc'))` retain the
   CPython string quotes.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_subclass_source_repr_subset`, backed by
+  `cpython_collections_chainmap_subclass_source_repr_diff_subset`, covering
+  ChainMap subclass source repr, string, and empty-format display for stored
+  string, tuple, and dict sources using the subclass name.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_constructor_source_truthiness_subset`, backed by
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,

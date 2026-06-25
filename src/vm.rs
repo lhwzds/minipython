@@ -1566,6 +1566,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
                 || set_subclass_items(value).is_some()
                 || frozen_set_subclass_items(value).is_some()
                 || dict_subclass_entries(value).is_some()
+                || chain_map_subclass_maps(value).is_some()
                 || array_array_bytes(value).is_some() =>
         {
             repr_value_checked(value)
@@ -1702,6 +1703,11 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             let entries =
                 dict_subclass_entries(value).expect("dict subclass entries exist after guard");
             repr_dict_entries_checked(&entries, active)
+        }
+        value if chain_map_subclass_maps(value).is_some() => {
+            let maps =
+                chain_map_subclass_maps(value).expect("ChainMap subclass maps exist after guard");
+            chain_map_receiver_repr(value, &maps)
         }
         Value::Dict(entries) => repr_dict_entries_checked(entries, active),
         Value::OrderedDict(entries) => repr_ordered_dict_entries_checked(entries, active),
@@ -26897,8 +26903,8 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                chain_map_receiver_maps(receiver)?;
-                Ok(Value::String(repr_value_checked(receiver)?))
+                let maps = chain_map_receiver_maps(receiver)?;
+                Ok(Value::String(chain_map_receiver_repr(receiver, &maps)?))
             }
             "__str__" => {
                 reject_method_keywords(name, &keywords)?;
@@ -26908,8 +26914,8 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                chain_map_receiver_maps(receiver)?;
-                Ok(Value::String(repr_value_checked(receiver)?))
+                let maps = chain_map_receiver_maps(receiver)?;
+                Ok(Value::String(chain_map_receiver_repr(receiver, &maps)?))
             }
             "__format__" => {
                 reject_method_keywords(name, &keywords)?;
@@ -72273,6 +72279,15 @@ fn chain_map_get_item(maps: &[Value], key: Value) -> Result<Value, String> {
 
 fn chain_map_contains_key(maps: &[Value], key: &Value) -> Result<bool, String> {
     Ok(chain_map_get_item_optional(maps, key)?.is_some())
+}
+
+fn chain_map_receiver_repr(receiver: &Value, maps: &[Value]) -> Result<String, String> {
+    let rendered = maps
+        .iter()
+        .map(repr_value_checked)
+        .collect::<Result<Vec<_>, _>>()?
+        .join(", ");
+    Ok(format!("{}({rendered})", type_name(receiver)))
 }
 
 fn chain_map_receiver_maps(receiver: &Value) -> Result<Vec<Value>, String> {

@@ -10875,6 +10875,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_keyword_error_subset",
             "cpython_collections_chainmap_constructor_lazy_mapping_subset",
             "cpython_collections_chainmap_constructor_source_repr_subset",
+            "cpython_collections_chainmap_subclass_source_repr_subset",
             "cpython_collections_chainmap_constructor_source_truthiness_subset",
             "cpython_collections_chainmap_subclass_source_truthiness_subset",
             "cpython_collections_chainmap_constructor_source_len_subset",
@@ -11264,6 +11265,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_source_repr_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source repr"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_subclass_source_repr_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap subclass source repr"
     );
     assert!(
         row.diff_evidence
@@ -12161,6 +12167,94 @@ fn collections_chainmap_constructor_source_repr_subset_has_focused_diff_evidence
                     .contains("cpython_collections_chainmap_constructor_source_repr_diff_subset")
                 && document.contains("ChainMap constructor source repr"),
             "collections ChainMap constructor source-repr evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_subclass_source_repr_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_subclass_source_repr_subset",
+    );
+    for required in [
+        "class Sub(ChainMap):",
+        "('str', Sub('abc'))",
+        "('tuple', Sub((1, 2)))",
+        "('dict', Sub({'a': 1}))",
+        "repr(value)",
+        "str(value)",
+        "format(value, '')",
+        "ChainMap.__repr__(value)",
+        "ChainMap.__str__(value)",
+        "ChainMap.__format__(value, '')",
+        "str Sub('abc') Sub('abc') Sub('abc')",
+        "tuple Sub((1, 2)) Sub((1, 2)) Sub((1, 2))",
+        "dict Sub({'a': 1}) Sub({'a': 1}) Sub({'a': 1})",
+        "method-repr Sub('abc')",
+        "method-str Sub('abc')",
+        "method-format Sub('abc')",
+        "nonempty-format TypeError unsupported format string passed to Sub.__format__",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap subclass source-repr subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_subclass_source_repr_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap subclass source repr",
+        "class Sub(ChainMap):",
+        "('str', Sub('abc'))",
+        "('tuple', Sub((1, 2)))",
+        "('dict', Sub({'a': 1}))",
+        "repr(value)",
+        "str(value)",
+        "format(value, '')",
+        "ChainMap.__repr__(value)",
+        "ChainMap.__str__(value)",
+        "ChainMap.__format__(value, '')",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap subclass source-repr CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "|| chain_map_subclass_maps(value).is_some()",
+        "value if chain_map_subclass_maps(value).is_some()",
+        "fn chain_map_receiver_repr(",
+        ".map(repr_value_checked)",
+        "format!(\"{}({rendered})\", type_name(receiver))",
+        "Ok(Value::String(chain_map_receiver_repr(receiver, &maps)?))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap subclass source-repr VM implementation must contain `{required}`"
+        );
+    }
+    let chain_map_method_body = VM_SOURCE
+        .split("fn call_chain_map_method(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn call_counter_method(").next())
+        .expect("ChainMap method dispatch implementation must be extractable");
+    assert!(
+        !chain_map_method_body.contains("Ok(Value::String(repr_value_checked(receiver)?))"),
+        "ChainMap subclass repr must not fall back to generic instance repr"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_subclass_source_repr_subset")
+                && document
+                    .contains("cpython_collections_chainmap_subclass_source_repr_diff_subset")
+                && document.contains("ChainMap subclass source repr"),
+            "collections ChainMap subclass source-repr evidence must be documented in coverage and migration notes"
         );
     }
 }
