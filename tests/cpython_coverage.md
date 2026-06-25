@@ -1254,7 +1254,7 @@ without adding alternate encoders or unpaired surrogate storage.
 `cpython_json_loads_dumps_basic_subset`, backed by
 `cpython_json_loads_dumps_diff_subset` and `cpython_json_loads_dumps_basic_diff_subset`, keeps
 `loads()` / `dumps()` core pure-memory data model behavior for function metadata and keyword-default shape,
-`str`, `bytes`, and `bytearray` input values and subclasses, UTF-8 BOM, UTF-16, and UTF-32 encoded byte input,
+`str`, `bytes`, and `bytearray` input values and subclasses, UTF-8 BOM, UTF-16, and UTF-32 encoded byte input including short UTF-16 byte input,
 `str`, `int`, `float`, list, tuple, dict, `IntEnum`, and namedtuple output paths,
 standard bool/null/list/dict/scalar round trips, 200-level nested list encoding, and default non-finite float spelling,
 without adding file APIs, module `__all__` exports beyond the sandbox `loads` / `dumps` surface,

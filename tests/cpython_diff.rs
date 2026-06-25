@@ -580,6 +580,8 @@ for label, data in [
     ('utf8-bom', b'\xef\xbb\xbf{"enc": "utf8-bom"}'),
     ('utf16-le', u16le('{"enc": "utf16-le"}')),
     ('utf16-be', u16be('{"enc": "utf16-be"}')),
+    ('utf16-short-le', bytes([ord('1'), 0])),
+    ('utf16-short-be', bytearray([0, ord('1')])),
     ('utf16', u16le('{"enc": "utf16"}', True)),
     ('utf32-le', u32le('{"enc": "utf32-le"}')),
     ('utf32-be', u32be('{"enc": "utf32-be"}')),
