@@ -48826,6 +48826,58 @@ fn cpython_dict_values_view_identity_equality_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view operator behavior.
+// `dict_values` is not set-like for ordering or binary set operators; key and
+// item views must keep their set-like operator behavior.
+#[test]
+fn cpython_dict_values_view_non_setlike_operator_errors_subset() {
+    assert_output(
+        r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("lt-self", lambda: values < values),
+    ("le-self", lambda: values <= values),
+    ("gt-self", lambda: values > values),
+    ("ge-self", lambda: values >= values),
+    ("lt-fresh", lambda: d.values() < d.values()),
+    ("values-keys", lambda: values < keys),
+    ("keys-values", lambda: keys < values),
+    ("or-set", lambda: d.values() | set()),
+    ("and-set", lambda: d.values() & set()),
+    ("xor-set", lambda: d.values() ^ set()),
+    ("set-or-values", lambda: set() | d.values()),
+    ("set-and-values", lambda: set() & d.values()),
+]:
+    show(label, expr)
+
+print("setlike-ok", keys <= keys, items >= items, bool(keys | {3}), bool(items & {(1, 2)}), set() < keys, keys < set())"#,
+        &[
+            "lt-self TypeError '<' not supported between instances of 'dict_values' and 'dict_values'",
+            "le-self TypeError '<=' not supported between instances of 'dict_values' and 'dict_values'",
+            "gt-self TypeError '>' not supported between instances of 'dict_values' and 'dict_values'",
+            "ge-self TypeError '>=' not supported between instances of 'dict_values' and 'dict_values'",
+            "lt-fresh TypeError '<' not supported between instances of 'dict_values' and 'dict_values'",
+            "values-keys TypeError '<' not supported between instances of 'dict_values' and 'dict_keys'",
+            "keys-values TypeError '<' not supported between instances of 'dict_keys' and 'dict_values'",
+            "or-set TypeError unsupported operand type(s) for |: 'dict_values' and 'set'",
+            "and-set TypeError unsupported operand type(s) for &: 'dict_values' and 'set'",
+            "xor-set TypeError unsupported operand type(s) for ^: 'dict_values' and 'set'",
+            "set-or-values TypeError unsupported operand type(s) for |: 'set' and 'dict_values'",
+            "set-and-values TypeError unsupported operand type(s) for &: 'set' and 'dict_values'",
+            "setlike-ok True True True True True False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

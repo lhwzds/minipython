@@ -28194,7 +28194,7 @@ impl Vm {
         {
             return Ok(value);
         }
-        if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
+        if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "|")?;
             let right = self.set_operator_values(right, "|")?;
@@ -28288,7 +28288,7 @@ impl Vm {
         {
             return Ok(value);
         }
-        if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
+        if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "^")?;
             let right = self.set_operator_values(right, "^")?;
@@ -28313,7 +28313,7 @@ impl Vm {
         {
             return Ok(value);
         }
-        if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
+        if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "&")?;
             let right = self.set_operator_values(right, "&")?;
@@ -28643,23 +28643,6 @@ impl Vm {
                 let right = self.set_operator_values(right, "<")?;
                 return self.set_is_proper_subset(&left, &right);
             }
-            if !left_is_set {
-                if let Some(value) =
-                    self.call_order_special(left.clone(), right.clone(), "__lt__")?
-                {
-                    return Ok(value);
-                }
-            }
-            if !right_is_set {
-                if let Some(value) =
-                    self.call_order_special(right.clone(), left.clone(), "__gt__")?
-                {
-                    return Ok(value);
-                }
-            }
-            let left = self.set_operator_values(left, "<")?;
-            let right = self.set_operator_values(right, "<")?;
-            return self.set_is_proper_subset(&left, &right);
         }
         if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__lt__")? {
             return Ok(value);
@@ -28704,23 +28687,6 @@ impl Vm {
                 let right = self.set_operator_values(right, "<=")?;
                 return self.set_is_subset(&left, &right);
             }
-            if !left_is_set {
-                if let Some(value) =
-                    self.call_order_special(left.clone(), right.clone(), "__le__")?
-                {
-                    return Ok(value);
-                }
-            }
-            if !right_is_set {
-                if let Some(value) =
-                    self.call_order_special(right.clone(), left.clone(), "__ge__")?
-                {
-                    return Ok(value);
-                }
-            }
-            let left = self.set_operator_values(left, "<=")?;
-            let right = self.set_operator_values(right, "<=")?;
-            return self.set_is_subset(&left, &right);
         }
         if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__le__")? {
             return Ok(value);
@@ -28763,23 +28729,6 @@ impl Vm {
                 let right = self.set_operator_values(right, ">")?;
                 return self.set_is_proper_superset(&left, &right);
             }
-            if !left_is_set {
-                if let Some(value) =
-                    self.call_order_special(left.clone(), right.clone(), "__gt__")?
-                {
-                    return Ok(value);
-                }
-            }
-            if !right_is_set {
-                if let Some(value) =
-                    self.call_order_special(right.clone(), left.clone(), "__lt__")?
-                {
-                    return Ok(value);
-                }
-            }
-            let left = self.set_operator_values(left, ">")?;
-            let right = self.set_operator_values(right, ">")?;
-            return self.set_is_proper_superset(&left, &right);
         }
         if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__gt__")? {
             return Ok(value);
@@ -28824,23 +28773,6 @@ impl Vm {
                 let right = self.set_operator_values(right, ">=")?;
                 return self.set_is_superset(&left, &right);
             }
-            if !left_is_set {
-                if let Some(value) =
-                    self.call_order_special(left.clone(), right.clone(), "__ge__")?
-                {
-                    return Ok(value);
-                }
-            }
-            if !right_is_set {
-                if let Some(value) =
-                    self.call_order_special(right.clone(), left.clone(), "__le__")?
-                {
-                    return Ok(value);
-                }
-            }
-            let left = self.set_operator_values(left, ">=")?;
-            let right = self.set_operator_values(right, ">=")?;
-            return self.set_is_superset(&left, &right);
         }
         if let Some(value) = self.call_order_special(left.clone(), right.clone(), "__ge__")? {
             return Ok(value);
@@ -28858,14 +28790,15 @@ impl Vm {
     }
 
     fn is_set_operator_value(&self, value: &Value) -> bool {
-        matches!(
-            value,
-            Value::Set(_)
-                | Value::FrozenSet(_)
-                | Value::DictView { .. }
-                | Value::MappingView { .. }
-        ) || set_subclass_items(value).is_some()
-            || frozen_set_subclass_items(value).is_some()
+        match value {
+            Value::Set(_) | Value::FrozenSet(_) => true,
+            Value::DictView { kind, .. } | Value::MappingView { kind, .. } => {
+                dict_view_is_set_like(*kind)
+            }
+            value => {
+                set_subclass_items(value).is_some() || frozen_set_subclass_items(value).is_some()
+            }
+        }
     }
 
     fn is_set_like_equality_operand(&self, value: &Value) -> bool {
@@ -28894,7 +28827,7 @@ impl Vm {
                 self.mapping_view_values(kind, *mapping)
             }
             value => Err(format!(
-                "unsupported operand type(s) for {op}: set and {}",
+                "TypeError: unsupported operand type(s) for {op}: 'set' and '{}'",
                 type_name(&value)
             )),
         }
@@ -72475,18 +72408,18 @@ fn set_operator_operand(value: Value, op: &str) -> Result<Vec<Value>, String> {
             Ok(dict_view_values(kind, &entries))
         }
         value => Err(format!(
-            "unsupported operand type(s) for {op}: set and {}",
+            "TypeError: unsupported operand type(s) for {op}: 'set' and '{}'",
             type_name(&value)
         )),
     }
 }
 
 fn is_set_operator_value(value: &Value) -> bool {
-    matches!(
-        value,
-        Value::Set(_) | Value::FrozenSet(_) | Value::DictView { .. }
-    ) || set_subclass_items(value).is_some()
-        || frozen_set_subclass_items(value).is_some()
+    match value {
+        Value::Set(_) | Value::FrozenSet(_) => true,
+        Value::DictView { kind, .. } => dict_view_is_set_like(*kind),
+        value => set_subclass_items(value).is_some() || frozen_set_subclass_items(value).is_some(),
+    }
 }
 
 fn set_contains_value(items: &[Value], value: &Value) -> bool {
@@ -82504,7 +82437,7 @@ fn pow_mod_type_error() -> String {
 }
 
 fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "|")?;
         let right = set_operator_operand(right, "|")?;
@@ -82763,12 +82696,12 @@ fn bit_or_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left | BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left | right)),
-        (left, right) => Err(format!("cannot bitwise-or {left} and {right}")),
+        (left, right) => Err(unsupported_binary_operand_message("|", &left, &right)),
     }
 }
 
 fn bit_xor_values(left: Value, right: Value) -> Result<Value, String> {
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "^")?;
         let right = set_operator_operand(right, "^")?;
@@ -82796,12 +82729,12 @@ fn bit_xor_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left ^ BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left ^ right)),
-        (left, right) => Err(format!("cannot bitwise-xor {left} and {right}")),
+        (left, right) => Err(unsupported_binary_operand_message("^", &left, &right)),
     }
 }
 
 fn bit_and_values(left: Value, right: Value) -> Result<Value, String> {
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "&")?;
         let right = set_operator_operand(right, "&")?;
@@ -82829,8 +82762,16 @@ fn bit_and_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left & BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left & right)),
-        (left, right) => Err(format!("cannot bitwise-and {left} and {right}")),
+        (left, right) => Err(unsupported_binary_operand_message("&", &left, &right)),
     }
+}
+
+fn unsupported_binary_operand_message(op: &str, left: &Value, right: &Value) -> String {
+    format!(
+        "TypeError: unsupported operand type(s) for {op}: '{}' and '{}'",
+        type_name(left),
+        type_name(right)
+    )
 }
 
 fn left_shift_values(left: Value, right: Value) -> Result<Value, String> {
@@ -83154,7 +83095,7 @@ fn less_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(result);
     }
 
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) && is_set_operator_value(&right) {
         let left = set_operator_operand(left, "<")?;
         let right = set_operator_operand(right, "<")?;
         return Ok(set_is_proper_subset(&left, &right));
@@ -83174,7 +83115,7 @@ fn less_equal_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(result);
     }
 
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) && is_set_operator_value(&right) {
         let left = set_operator_operand(left, "<=")?;
         let right = set_operator_operand(right, "<=")?;
         return Ok(set_is_subset(&left, &right));
@@ -83195,7 +83136,7 @@ fn greater_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(result);
     }
 
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) && is_set_operator_value(&right) {
         let left = set_operator_operand(left, ">")?;
         let right = set_operator_operand(right, ">")?;
         return Ok(set_is_proper_superset(&left, &right));
@@ -83215,7 +83156,7 @@ fn greater_equal_values(left: Value, right: Value) -> Result<bool, String> {
         return Ok(result);
     }
 
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if is_set_operator_value(&left) && is_set_operator_value(&right) {
         let left = set_operator_operand(left, ">=")?;
         let right = set_operator_operand(right, ">=")?;
         return Ok(set_is_superset(&left, &right));

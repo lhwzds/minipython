@@ -3931,6 +3931,12 @@ without adding general custom encoder/decoder class support.
   `cpython_dict_values_view_identity_equality_diff_subset`, covering
   dict values-view identity equality for fresh/live views while preserving
   set-like equality for key/item views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_values_view_non_setlike_operator_errors_subset`, backed by
+  `cpython_dict_values_view_non_setlike_operator_errors_diff_subset`, covering
+  dict values-view non-set-like operator errors for ordering and binary
+  `|` / `&` / `^` set operators while preserving set-like key/item view
+  operators.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment

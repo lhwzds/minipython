@@ -417,6 +417,76 @@ fn dict_values_view_identity_equality_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_values_view_non_setlike_operator_errors_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_values_view_non_setlike_operator_errors_subset(",
+        "values < values",
+        "values <= values",
+        "values > values",
+        "values >= values",
+        "d.values() < d.values()",
+        "values < keys",
+        "keys < values",
+        "d.values() | set()",
+        "d.values() & set()",
+        "d.values() ^ set()",
+        "set() | d.values()",
+        "set() & d.values()",
+        "setlike-ok",
+        "\"or-set TypeError unsupported operand type(s) for |: 'dict_values' and 'set'\"",
+        "\"set-or-values TypeError unsupported operand type(s) for |: 'set' and 'dict_values'\"",
+        "\"setlike-ok True True True True True False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict values-view non-set-like operator subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_values_view_non_setlike_operator_errors_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict values-view non-set-like operator errors subset",
+        "name: \"dict-values-view-non-setlike-operator-errors\"",
+        "values < values",
+        "values < keys",
+        "d.values() | set()",
+        "d.values() & set()",
+        "d.values() ^ set()",
+        "set() | d.values()",
+        "setlike-ok",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict values-view non-set-like operator CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.matches("dict_view_is_set_like(*kind)").count() >= 2
+            && VM_SOURCE.contains("Value::DictView { kind, .. } | Value::MappingView { kind, .. }")
+            && VM_SOURCE.contains("Value::DictView { kind, .. } => dict_view_is_set_like(*kind)")
+            && VM_SOURCE
+                .contains("Value::DictView { kind, entries, .. } if dict_view_is_set_like(kind)")
+            && VM_SOURCE.contains("fn unsupported_binary_operand_message(")
+            && VM_SOURCE.contains("TypeError: unsupported operand type(s) for {op}: '{}' and '{}'"),
+        "dict values-view non-set-like operator implementation must keep values views out of set-operator dispatch"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_values_view_non_setlike_operator_errors_subset")
+                && document
+                    .contains("cpython_dict_values_view_non_setlike_operator_errors_diff_subset")
+                && document.contains("dict values-view non-set-like operator errors"),
+            "focused dict values-view non-set-like operator evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",

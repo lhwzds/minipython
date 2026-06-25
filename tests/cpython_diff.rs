@@ -30271,6 +30271,42 @@ print('setlike-is', d.keys() is d.keys(), d.items() is d.items())"#,
 }
 
 #[test]
+fn cpython_dict_values_view_non_setlike_operator_errors_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict values-view non-set-like operator errors subset",
+        name: "dict-values-view-non-setlike-operator-errors",
+        source: r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("lt-self", lambda: values < values),
+    ("le-self", lambda: values <= values),
+    ("gt-self", lambda: values > values),
+    ("ge-self", lambda: values >= values),
+    ("lt-fresh", lambda: d.values() < d.values()),
+    ("values-keys", lambda: values < keys),
+    ("keys-values", lambda: keys < values),
+    ("or-set", lambda: d.values() | set()),
+    ("and-set", lambda: d.values() & set()),
+    ("xor-set", lambda: d.values() ^ set()),
+    ("set-or-values", lambda: set() | d.values()),
+    ("set-and-values", lambda: set() & d.values()),
+]:
+    show(label, expr)
+
+print("setlike-ok", keys <= keys, items >= items, bool(keys | {3}), bool(items & {(1, 2)}), set() < keys, keys < set())"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

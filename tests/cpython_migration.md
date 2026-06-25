@@ -7759,6 +7759,11 @@ Completed in the dict view rich-comparison pass:
   `cpython_dict_values_view_identity_equality_diff_subset`, covering
   dict values-view identity equality for fresh/live views while preserving
   set-like equality for key/item views.
+- Added `cpython_dict_values_view_non_setlike_operator_errors_subset`, backed
+  by `cpython_dict_values_view_non_setlike_operator_errors_diff_subset`,
+  covering dict values-view non-set-like operator errors for ordering and
+  binary `|` / `&` / `^` set operators while preserving set-like key/item view
+  operators.
 - Preserved snapshot-based set-like behavior for existing dict and mapping view
   operators while moving view comparisons closer to CPython's error propagation.
 
