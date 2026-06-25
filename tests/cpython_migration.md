@@ -986,6 +986,10 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   `compile()` filename TypeError text: unsupported filename objects now use
   `expected str, bytes or os.PathLike object`, and invalid path-like return
   values name the failing `FakePath.__fspath__()` method.
+- Expanded `cpython_compile_specifics_compile_filename_subset` with bytes
+  subclass filename support, including path-like `__fspath__()` results that
+  return a bytes subclass. Non-UTF-8 filename bytes remain outside this slice
+  because CPython exposes surrogateescape characters in `co_filename`.
 - Added `cpython_compile_specifics_compile_argument_conversion_subset`, porting
   the public argument-conversion behavior covered by CPython
   `test_compile_filename_refleak`: non-string `mode` rejects with `TypeError`,

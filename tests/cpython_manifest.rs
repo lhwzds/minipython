@@ -14539,9 +14539,12 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
         "cpython_compile_specifics_compile_filename_subset",
     );
     for required in [
+        "class B(bytes):",
+        "bytes_subclass.py str",
         "bytearray TypeError expected str, bytes or os.PathLike object, not bytearray",
         "memoryview TypeError expected str, bytes or os.PathLike object, not memoryview",
         "list TypeError expected str, bytes or os.PathLike object, not list",
+        "FakePath(B(b'path_subclass.py'))",
         "object TypeError expected str, bytes or os.PathLike object, not object",
         "path-result TypeError expected FakePath.__fspath__() to return str or bytes, not bytearray",
         "ValueError bad path",
@@ -14558,8 +14561,12 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
     );
     for required in [
         "Lib/test/test_compile.py::TestSpecifics compile filename public behavior",
+        "class B(bytes):",
+        "B(b'bytes_subclass.py')",
         "FakePath('test_compile_pathlike')",
         "FakePath(b'bytes_path.py')",
+        "FakePath(B(b'path_subclass.py'))",
+        "type(code.co_filename).__name__",
         "memoryview(b'file.py')",
         "FakePath(bytearray(b'bad.py'))",
         "str(error)",
@@ -14572,6 +14579,7 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
 
     for required in [
         "fn compile_filename_type_error(",
+        "value if bytes_subclass_bytes(&value).is_some()",
         "expected str, bytes or os.PathLike object, not {}",
         "let path_type = type_name(&value).to_string();",
         "expected {path_type}.__fspath__() to return str or bytes, not {}",

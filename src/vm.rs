@@ -17948,6 +17948,9 @@ impl Vm {
                 value: filename, ..
             } => Ok(filename),
             Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone()),
+            value if bytes_subclass_bytes(&value).is_some() => compile_filename_from_bytes(
+                bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
+            ),
             value @ Value::Instance { .. } => {
                 let path_type = type_name(&value).to_string();
                 let Some(method) = instance_special_method(&value, "__fspath__") else {
@@ -17962,6 +17965,12 @@ impl Vm {
                         },
                     ) => Ok(filename),
                     Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone()),
+                    Ok(result) if bytes_subclass_bytes(&result).is_some() => {
+                        compile_filename_from_bytes(
+                            bytes_subclass_bytes(&result)
+                                .expect("bytes subclass storage exists after guard"),
+                        )
+                    }
                     Ok(result) => Err(format!(
                         "TypeError: expected {path_type}.__fspath__() to return str or bytes, not {}",
                         type_name(&result)
