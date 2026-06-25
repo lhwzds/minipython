@@ -21664,6 +21664,9 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "class FakePath:",
         "filename=filename",
         "BadPath.__fspath__",
+        "error.filename",
+        "error.args[1][0] is error.filename",
+        "path-str-subclass '<psfile>' S True",
     ] {
         assert!(
             parse_subset.contains(required),
@@ -21703,6 +21706,9 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "class FakePath:",
         "filename=filename",
         "BadPath.__fspath__",
+        "error.filename",
+        "error.args[1][0] is error.filename",
+        "path-str-subclass",
         "legacy ast.dump default-field rendering",
     ] {
         assert!(
@@ -21713,10 +21719,13 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
 
     for required in [
         "fn ast_parse_filename_argument(",
+        "fn raise_ast_parse_syntax_error(",
+        "fn syntax_error_exception_with_location_value(",
         "fn parse_ast_node(",
         "fn emit_ast_parse_warnings(",
         "fn compile_mode_argument(",
         "value if str_subclass_string(&value).is_some()",
+        "public_value",
         "value if bytes_subclass_bytes(&value).is_some()",
         "value if bytearray_subclass_bytes(&value).is_some()",
         "\"__fspath__\"",
@@ -21737,6 +21746,7 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
                 && document.contains("source subclass")
                 && document.contains("mode subclass")
                 && document.contains("filename")
+                && document.contains("SyntaxError.filename")
                 && document.contains("path-like"),
             "ast.parse docs must link `{diff_name}` to exec/eval/single/func_type coverage"
         );

@@ -8826,6 +8826,11 @@ class FakePath:
 for filename in [S('<afile>'), B(b'<bfile>'), FakePath(S('<apath>')), FakePath(B(b'<bpath>'))]:
     node = ast.parse('x = 1', filename=filename)
     print(type(filename).__name__, type(node).__name__, type(node.body[0]).__name__)
+for label, filename in [('str-subclass', S('<sfile>')), ('path-str-subclass', FakePath(S('<psfile>')))]:
+    try:
+        ast.parse('x =', filename=filename)
+    except SyntaxError as error:
+        print(label, repr(error.filename), type(error.filename).__name__, error.args[1][0] is error.filename)
 class BadPath:
     def __fspath__(self):
         return 123

@@ -13096,6 +13096,13 @@ fn cpython_ast_module_parse_dump_first_pass_subset() {
             "TypeError True True",
         ],
     );
+    assert_output(
+        "import ast\nclass S(str):\n    pass\nclass FakePath:\n    def __init__(self, path):\n        self.path = path\n    def __fspath__(self):\n        return self.path\nfor label, filename in [('str-subclass', S('<sfile>')), ('path-str-subclass', FakePath(S('<psfile>')),)]:\n    try:\n        ast.parse('x =', filename=filename)\n    except SyntaxError as error:\n        print(label, repr(error.filename), type(error.filename).__name__, error.args[1][0] is error.filename)",
+        &[
+            "str-subclass '<sfile>' S True",
+            "path-str-subclass '<psfile>' S True",
+        ],
+    );
 }
 
 // Adapted from CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_null_bytes`.

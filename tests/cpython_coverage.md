@@ -2949,7 +2949,9 @@ without adding general custom encoder/decoder class support.
   surface, including `str` / `bytes` / `bytearray` source subclass handling,
   `str` mode subclass handling, and `filename` handling for `str` / `bytes`
   subclasses plus path-like `__fspath__` results when the oracle has current
-  default-field `ast.dump()` behavior.
+  default-field `ast.dump()` behavior. The same diff also covers
+  `SyntaxError.filename` preserving `str` subclass filename objects for direct
+  filenames and path-like results.
   `cpython_ast_parse_null_bytes_subset` ports
   CPython `AST_Tests::test_null_bytes`, requiring `ast.parse()` over source
   strings containing NUL bytes to raise `SyntaxError` with CPython's public

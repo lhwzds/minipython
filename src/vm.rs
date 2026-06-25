@@ -36451,51 +36451,8 @@ fn compile_filename_type_error(value: &Value) -> String {
     )
 }
 
-fn ast_parse_filename_argument(vm: &mut Vm, value: Value) -> Result<String, String> {
-    match value {
-        Value::String(filename)
-        | Value::IdentityString {
-            value: filename, ..
-        } => Ok(filename),
-        value if str_subclass_string(&value).is_some() => {
-            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
-        }
-        Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone()),
-        value if bytes_subclass_bytes(&value).is_some() => compile_filename_from_bytes(
-            bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
-        ),
-        value @ Value::Instance { .. } => {
-            let path_type = type_name(&value).to_string();
-            let Some(method) = instance_special_method(&value, "__fspath__") else {
-                return Err(compile_filename_type_error(&value));
-            };
-            match vm.call_value_catching(method, Vec::new())? {
-                Err(exception) => Err(format_exception_error(&exception)),
-                Ok(
-                    Value::String(filename)
-                    | Value::IdentityString {
-                        value: filename, ..
-                    },
-                ) => Ok(filename),
-                Ok(result) if str_subclass_string(&result).is_some() => {
-                    Ok(str_subclass_string(&result)
-                        .expect("str subclass storage exists after guard"))
-                }
-                Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone()),
-                Ok(result) if bytes_subclass_bytes(&result).is_some() => {
-                    compile_filename_from_bytes(
-                        bytes_subclass_bytes(&result)
-                            .expect("bytes subclass storage exists after guard"),
-                    )
-                }
-                Ok(result) => Err(format!(
-                    "TypeError: expected {path_type}.__fspath__() to return str or bytes, not {}",
-                    type_name(&result)
-                )),
-            }
-        }
-        value => Err(compile_filename_type_error(&value)),
-    }
+fn ast_parse_filename_argument(vm: &mut Vm, value: Value) -> Result<CompileFilename, String> {
+    vm.compile_filename_argument(value)
 }
 
 fn code_mode_from_string(mode: &str) -> Result<CodeMode, String> {
@@ -41730,6 +41687,8 @@ fn call_ast_parse(
         .take()
         .unwrap_or_else(|| Value::String("<unknown>".to_string()));
     let filename = ast_parse_filename_argument(vm, filename)?;
+    let filename_text = filename.text.clone();
+    let filename_value = filename.public_value.clone();
     let mode = values[2]
         .take()
         .unwrap_or_else(|| Value::String("exec".to_string()));
@@ -41768,14 +41727,76 @@ fn call_ast_parse(
     };
 
     let source_for_warnings = source.clone();
-    let node = parse_ast_node(source, &mode, type_comments, ast_optimize, feature_version)?;
+    let node = match parse_ast_node(source, &mode, type_comments, ast_optimize, feature_version) {
+        Ok(node) => node,
+        Err(message) => {
+            return raise_ast_parse_syntax_error(vm, message, filename_value, &source_for_warnings);
+        }
+    };
     emit_ast_parse_warnings(
         vm,
         &source_for_warnings,
-        &filename,
+        &filename_text,
         warning_module.as_deref(),
     )?;
     Ok(node)
+}
+
+fn raise_ast_parse_syntax_error(
+    vm: &mut Vm,
+    message: String,
+    filename: Value,
+    source: &Value,
+) -> Result<Value, String> {
+    let Some((type_name, message)) = ast_parse_syntax_error_parts(&message) else {
+        return Err(message);
+    };
+    let source = ast_parse_source_text_for_error(source).unwrap_or_default();
+    let line = source_line_text(&source, 1);
+    let exception = syntax_error_exception_with_location_value(
+        type_name.to_string(),
+        message,
+        filename,
+        1,
+        0,
+        line,
+        1,
+        0,
+    );
+    vm.raise_exception(exception, true)?;
+    Ok(Value::None)
+}
+
+fn ast_parse_syntax_error_parts(message: &str) -> Option<(&str, String)> {
+    if let Some(message) = message.strip_prefix("SyntaxError: ") {
+        Some(("SyntaxError", message.to_string()))
+    } else if let Some(message) = message.strip_prefix("IndentationError: ") {
+        Some(("IndentationError", message.to_string()))
+    } else {
+        None
+    }
+}
+
+fn ast_parse_source_text_for_error(source: &Value) -> Option<String> {
+    match source {
+        Value::String(source) | Value::IdentityString { value: source, .. } => Some(source.clone()),
+        value if str_subclass_string(value).is_some() => str_subclass_string(value),
+        Value::Bytes(bytes) => decode_source_for_parse(bytes).ok(),
+        value if bytes_subclass_bytes(value).is_some() => decode_source_for_parse(
+            &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+        )
+        .ok(),
+        Value::ByteArray(bytes) => decode_source_for_parse(&bytes.borrow()).ok(),
+        value if bytearray_subclass_bytes(value).is_some() => decode_source_for_parse(
+            &bytearray_subclass_bytes(value)
+                .expect("bytearray subclass storage exists after guard"),
+        )
+        .ok(),
+        Value::MemoryView(view) => memoryview_bytes(view)
+            .ok()
+            .and_then(|bytes| decode_source_for_parse(&bytes).ok()),
+        _ => None,
+    }
 }
 
 fn emit_ast_parse_warnings(
@@ -60535,8 +60556,30 @@ fn syntax_error_exception_with_location(
     end_lineno: i64,
     end_offset: i64,
 ) -> MiniException {
-    let location = tuple_value(vec![
+    syntax_error_exception_with_location_value(
+        "SyntaxError".to_string(),
+        message,
         Value::String(filename),
+        lineno,
+        offset,
+        text,
+        end_lineno,
+        end_offset,
+    )
+}
+
+fn syntax_error_exception_with_location_value(
+    type_name: String,
+    message: String,
+    filename: Value,
+    lineno: i64,
+    offset: i64,
+    text: String,
+    end_lineno: i64,
+    end_offset: i64,
+) -> MiniException {
+    let location = tuple_value(vec![
+        filename,
         Value::Number(lineno),
         Value::Number(offset),
         Value::String(text),
@@ -60545,8 +60588,8 @@ fn syntax_error_exception_with_location(
     ]);
     let args = vec![Value::String(message.clone()), location];
     MiniException {
-        type_name: "SyntaxError".to_string(),
-        type_hierarchy: builtin_exception_type_hierarchy("SyntaxError"),
+        type_hierarchy: builtin_exception_type_hierarchy(&type_name),
+        type_name,
         type_object: None,
         message: Some(message),
         attrs: syntax_error_attrs(&args),
