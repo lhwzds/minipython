@@ -1985,7 +1985,9 @@ Completed in the differential parity harness pass:
   error messages now classify as `TypeError` or `ValueError` where Python
   `try/except` depends on the public exception type, and unsupported shift
   operands use CPython's public `unsupported operand type(s)` text while
-  preserving `bool` operand type names. Direct CPython diff evidence is in
+  preserving `bool` operand type names. Unsupported unary `+`, `-`, and `~`
+  operands now use CPython's public `bad operand type for unary` text across
+  direct syntax and operator aliases. Direct CPython diff evidence is in
   `cpython_operator_arithmetic_bitwise_diff_subset`.
 - Added `cpython_operator_sequence_member_subset`, migrating public behavior
   from CPython `test_operator.py::OperatorTestCase` sequence/member helper

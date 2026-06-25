@@ -83684,6 +83684,13 @@ fn unsupported_binary_operand_message(op: &str, left: &Value, right: &Value) -> 
     )
 }
 
+fn unsupported_unary_operand_message(op: &str, value: &Value) -> String {
+    format!(
+        "TypeError: bad operand type for unary {op}: '{}'",
+        type_name(value)
+    )
+}
+
 fn left_shift_values(left: Value, right: Value) -> Result<Value, String> {
     let original_left = left.clone();
     let original_right = right.clone();
@@ -83791,7 +83798,7 @@ fn positive_value(value: Value) -> Result<Value, String> {
         Value::Float(value) => Ok(Value::Float(value)),
         value @ Value::Complex { .. } => Ok(value),
         Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Positive),
-        value => Err(format!("cannot apply unary plus to {value}")),
+        value => Err(unsupported_unary_operand_message("+", &value)),
     }
 }
 
@@ -83806,7 +83813,7 @@ fn negate_value(value: Value) -> Result<Value, String> {
         Value::Float(value) => Ok(float_value(-*value)),
         Value::Complex { real, imag, .. } => Ok(complex_value(-real, -imag)),
         Value::Counter { entries } => counter_unary_value(&entries, CounterUnaryOp::Negative),
-        value => Err(format!("cannot negate {value}")),
+        value => Err(unsupported_unary_operand_message("-", &value)),
     }
 }
 
@@ -83833,7 +83840,7 @@ fn invert_value(value: Value) -> Result<Value, String> {
         Value::Bool(value) => Ok(Value::Number(!bool_as_i64(value))),
         Value::Number(value) => Ok(normalize_big_int(!BigInt::from(value))),
         Value::BigInt(value) => Ok(normalize_big_int(!value)),
-        value => Err(format!("cannot invert {value}")),
+        value => Err(unsupported_unary_operand_message("~", &value)),
     }
 }
 
