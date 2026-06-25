@@ -81474,37 +81474,61 @@ fn repeat_bytes(value: Vec<u8>, count: i64) -> Result<Vec<u8>, String> {
 }
 
 fn true_divide_values(left: Value, right: Value) -> Result<Value, String> {
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     if matches!(left, Value::Complex { .. }) || matches!(right, Value::Complex { .. }) {
-        let left_display = left.to_string();
-        let right_display = right.to_string();
         let left_is_complex = matches!(left, Value::Complex { .. });
         let right_is_complex = matches!(right, Value::Complex { .. });
         return match (left_is_complex, right_is_complex) {
             (true, true) => {
                 let Some((left_real, left_imag)) = number_as_complex_parts(left)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 let Some((right_real, right_imag)) = number_as_complex_parts(right)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 complex_divide_values(left_real, left_imag, right_real, right_imag)
             }
             (true, false) => {
                 let Some((left_real, left_imag)) = number_as_complex_parts(left)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 let Some(right) = number_as_real_for_complex_division(right)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 complex_divide_by_real_value(left_real, left_imag, right)
             }
             (false, true) => {
                 let Some(left) = number_as_real_for_complex_division(left)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 let Some((right_real, right_imag)) = number_as_complex_parts(right)? else {
-                    return Err(format!("cannot divide {left_display} and {right_display}"));
+                    return Err(unsupported_binary_operand_message(
+                        "/",
+                        &original_left,
+                        &original_right,
+                    ));
                 };
                 real_divide_by_complex_value(left, right_real, right_imag)
             }
@@ -81512,11 +81536,14 @@ fn true_divide_values(left: Value, right: Value) -> Result<Value, String> {
         };
     }
 
-    let (left_display, right_display) = (left.to_string(), right.to_string());
     match (number_as_f64(left), number_as_f64(right)) {
         (Some(_), Some(0.0)) => Err("division by zero".to_string()),
         (Some(left), Some(right)) => Ok(float_value(left / right)),
-        _ => Err(format!("cannot divide {left_display} and {right_display}")),
+        _ => Err(unsupported_binary_operand_message(
+            "/",
+            &original_left,
+            &original_right,
+        )),
     }
 }
 
@@ -81714,6 +81741,8 @@ fn real_divide_by_complex_value(
 }
 
 fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(_), Value::Number(0)) => Err("division by zero".to_string()),
@@ -81736,16 +81765,15 @@ fn floor_divide_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::BigInt(left), Value::BigInt(right)) => {
             Ok(normalize_big_int(left.div_floor(&right)))
         }
-        (left, right) => {
-            let (left_display, right_display) = (left.to_string(), right.to_string());
-            match (number_as_f64(left), number_as_f64(right)) {
-                (Some(_), Some(0.0)) => Err("float floor division by zero".to_string()),
-                (Some(left), Some(right)) => Ok(float_value((left / right).floor())),
-                _ => Err(format!(
-                    "cannot floor divide {left_display} and {right_display}"
-                )),
-            }
-        }
+        (left, right) => match (number_as_f64(left), number_as_f64(right)) {
+            (Some(_), Some(0.0)) => Err("float floor division by zero".to_string()),
+            (Some(left), Some(right)) => Ok(float_value((left / right).floor())),
+            _ => Err(unsupported_binary_operand_message(
+                "//",
+                &original_left,
+                &original_right,
+            )),
+        },
     }
 }
 

@@ -15484,6 +15484,12 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // CPython oracle text: bad operand type for unary -: 'str';
     // bad operand type for unary +: 'str';
     // bad operand type for unary ~: 'str'
+    // CPython oracle text: unsupported operand type(s) for /: 'str' and 'int';
+    // unsupported operand type(s) for /: 'bool' and 'str';
+    // unsupported operand type(s) for //: 'str' and 'int';
+    // unsupported operand type(s) for //: 'bool' and 'str';
+    // unsupported operand type(s) for /: 'complex' and 'str';
+    // unsupported operand type(s) for //: 'complex' and 'int'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15532,6 +15538,11 @@ try:
 except TypeError as error:
     print(str(error))
 for label, callback in [('neg-type', lambda: -'a'), ('pos-type', lambda: +'a'), ('invert-type', lambda: ~'a'), ('operator-neg-type', lambda: operator.neg('a')), ('operator-pos-type', lambda: operator.pos('a')), ('operator-invert-type', lambda: operator.invert('a')), ('operator-inv-type', lambda: operator.inv('a'))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, callback in [('truediv-type', lambda: 'a' / 1), ('truediv-bool-type', lambda: True / 'a'), ('floordiv-type', lambda: 'a' // 1), ('floordiv-bool-type', lambda: True // 'a'), ('truediv-complex-type', lambda: (1+2j) / 'a'), ('floordiv-complex-type', lambda: (1+2j) // 1), ('operator-truediv-type', lambda: operator.truediv('a', 1)), ('operator-floordiv-type', lambda: operator.floordiv('a', 1))]:
     try:
         callback()
     except TypeError as error:

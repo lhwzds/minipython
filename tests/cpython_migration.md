@@ -1983,11 +1983,13 @@ Completed in the differential parity harness pass:
   `neg`/`pos`/`inv`/`invert`, `matmul`, and `index` by reusing the VM's existing
   arithmetic, bitwise, rich `__matmul__`, and `__index__` paths. Related runtime
   error messages now classify as `TypeError` or `ValueError` where Python
-  `try/except` depends on the public exception type, and unsupported shift
-  operands use CPython's public `unsupported operand type(s)` text while
-  preserving `bool` operand type names. Unsupported unary `+`, `-`, and `~`
-  operands now use CPython's public `bad operand type for unary` text across
-  direct syntax and operator aliases. Direct CPython diff evidence is in
+  `try/except` depends on the public exception type, and unsupported division,
+  floor-division, and shift operands use CPython's public `unsupported operand
+  type(s)` text while preserving `bool` operand type names for `/`, `//`, and
+  `<<`. Unsupported complex division/floor-division operands now use the same
+  public text. Unsupported unary `+`, `-`, and `~` operands now use CPython's
+  public `bad operand type for unary` text across direct syntax and operator
+  aliases. Direct CPython diff evidence is in
   `cpython_operator_arithmetic_bitwise_diff_subset`.
 - Added `cpython_operator_sequence_member_subset`, migrating public behavior
   from CPython `test_operator.py::OperatorTestCase` sequence/member helper
