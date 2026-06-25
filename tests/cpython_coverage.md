@@ -527,6 +527,7 @@ Recent runtime migration notes:
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
+  `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
@@ -2135,6 +2136,7 @@ without adding general custom encoder/decoder class support.
 - The bundled `copy` module includes `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
+  `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_copy_public_subset`, and
   `cpython_copy_replace_custom_hook_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
@@ -2154,7 +2156,8 @@ without adding general custom encoder/decoder class support.
   `staticmethod` / `classmethod` forms and ignoring instance shadowing, and
   unsupported-object `TypeError` text (`replace() does not support T objects`)
   for values outside the supported replacement protocol, plus representative
-  arity/memo TypeError classification. Full pickle dispatch-table contents,
+  arity/memo TypeError classification and class-qualified `__replace__()` unexpected-keyword `TypeError`
+  text for bad custom hook signatures. Full pickle dispatch-table contents,
   pickle protocol byte compatibility, arbitrary extension-object copy hooks
   outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
   remain outside the sandbox `copy` subset.
@@ -4516,6 +4519,12 @@ without adding general custom encoder/decoder class support.
   public message shape is `replace() does not support T objects`. Direct
   CPython output parity is tracked by
   `cpython_copy_replace_unsupported_type_error_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_copy_replace_hook_unexpected_keyword_error_subset`, covering CPython
+  `copy.replace()` class-qualified `__replace__()` unexpected-keyword `TypeError`
+  text for custom hooks whose signatures do not accept replacement keywords.
+  Direct CPython output parity is tracked by
+  `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_simple_namespace_remaining_public_subset`, covering additional
   CPython `SimpleNamespaceTests` public behavior: constructor insertion order,

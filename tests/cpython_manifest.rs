@@ -15575,6 +15575,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_public_subset",
             "cpython_copy_replace_custom_hook_subset",
             "cpython_copy_replace_unsupported_type_error_subset",
+            "cpython_copy_replace_hook_unexpected_keyword_error_subset",
         ],
         &["pickle protocol"],
     );
@@ -15587,6 +15588,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_public_diff_subset",
         "cpython_copy_replace_custom_hook_diff_subset",
         "cpython_copy_replace_unsupported_type_error_diff_subset",
+        "cpython_copy_replace_hook_unexpected_keyword_error_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
     ] {
         assert!(
@@ -15632,12 +15634,24 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy.replace unsupported TypeError CPython diff evidence must exist"
     );
     assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_replace_hook_unexpected_keyword_error_subset("),
+        "copy.replace hook unexpected-keyword runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_replace_hook_unexpected_keyword_error_diff_subset("),
+        "copy.replace hook unexpected-keyword CPython diff evidence must exist"
+    );
+    assert!(
         CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_diff_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_unsupported_type_error_subset")
-            && CPYTHON_COVERAGE.contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_unsupported_type_error_diff_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
         "coverage document must link copy runtime and diff evidence"
     );
     assert!(
@@ -15647,7 +15661,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
             && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_diff_subset")
             && CPYTHON_MIGRATION.contains("cpython_copy_replace_unsupported_type_error_subset")
             && CPYTHON_MIGRATION
-                .contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
+                .contains("cpython_copy_replace_unsupported_type_error_diff_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
         "migration document must link copy runtime and diff evidence"
     );
 
@@ -15673,6 +15691,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
         row.diff_evidence
             .contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
         "copy sandbox manifest must cite copy.replace unsupported TypeError CPython diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
+        "copy sandbox manifest must cite copy.replace hook unexpected-keyword CPython diff evidence"
     );
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
@@ -15805,14 +15828,52 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "Value::StaticMethod { function } => *function",
         "Value::ClassMethod { function } => Value::BoundMethod",
         "self.call_value_with_keywords(method, vec![value.clone()], keywords)",
+        "qualify_copy_replace_hook_error(&message, class_name)",
         "fn copy_replace_unsupported_type_error(value: &Value) -> String",
         "\"TypeError: replace() does not support {} objects\"",
+        "fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String",
+        "\"__replace__() got an unexpected keyword argument \"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
             "copy.replace hook implementation must contain `{required}`"
         );
     }
+
+    let unexpected_keyword_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_replace_hook_unexpected_keyword_error_diff_subset",
+    );
+    let unexpected_keyword_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_replace_hook_unexpected_keyword_error_subset",
+    );
+    assert!(
+        unexpected_keyword_diff.contains(
+            "Lib/copy.py public copy.replace custom __replace__ unexpected-keyword TypeError subset"
+        ),
+        "copy.replace hook unexpected-keyword diff evidence must identify its CPython origin"
+    );
+    for required in [
+        "class BadKeyword:",
+        "def __replace__(self):",
+        "copy.replace(BadKeyword(), x=1)",
+        "str(error)",
+    ] {
+        assert!(
+            unexpected_keyword_diff.contains(required),
+            "copy.replace hook unexpected-keyword CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            unexpected_keyword_subset.contains(required),
+            "copy.replace hook unexpected-keyword runtime subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        unexpected_keyword_subset
+            .contains("BadKeyword.__replace__() got an unexpected keyword argument 'x'"),
+        "copy.replace hook unexpected-keyword runtime subset must assert class-qualified TypeError text"
+    );
 
     let unsupported_diff = extract_rust_test_body(
         CPYTHON_DIFF,
@@ -15880,6 +15941,7 @@ fn copy_public_diff_covers_pure_memory_subset() {
             "classmethod",
             "unsupported-object `TypeError`",
             "`replace() does not support T objects`",
+            "class-qualified `__replace__()` unexpected-keyword `TypeError`",
         ] {
             assert!(
                 document.contains(required),

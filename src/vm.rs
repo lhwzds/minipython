@@ -24850,6 +24850,7 @@ impl Vm {
         };
         self.call_value_with_keywords(method, vec![value.clone()], keywords)
             .map(Some)
+            .map_err(|message| qualify_copy_replace_hook_error(&message, class_name))
     }
 
     fn call_pickle_dumps(
@@ -60435,6 +60436,14 @@ fn copy_replace_unsupported_type_error(value: &Value) -> String {
         "TypeError: replace() does not support {} objects",
         type_name(value)
     )
+}
+
+fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String {
+    let Some(argument) = message.strip_prefix("__replace__() got an unexpected keyword argument ")
+    else {
+        return message.to_string();
+    };
+    format!("{class_name}.__replace__() got an unexpected keyword argument {argument}")
 }
 
 fn type_name(value: &Value) -> &str {

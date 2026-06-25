@@ -22319,6 +22319,23 @@ for label, expr in [
     );
 }
 
+// Adapted from CPython Lib/copy.py public copy.replace() custom hook
+// bad-signature diagnostics.
+#[test]
+fn cpython_copy_replace_hook_unexpected_keyword_error_subset() {
+    assert_output(
+        r#"import copy
+class BadKeyword:
+    def __replace__(self):
+        return 'bad'
+try:
+    copy.replace(BadKeyword(), x=1)
+except TypeError as error:
+    print(type(error).__name__, str(error))"#,
+        &["TypeError BadKeyword.__replace__() got an unexpected keyword argument 'x'"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]

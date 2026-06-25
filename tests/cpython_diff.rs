@@ -16070,6 +16070,22 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_copy_replace_hook_unexpected_keyword_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public copy.replace custom __replace__ unexpected-keyword TypeError subset",
+        name: "copy-replace-hook-unexpected-keyword-error",
+        source: r#"import copy
+class BadKeyword:
+    def __replace__(self):
+        return 'bad'
+try:
+    copy.replace(BadKeyword(), x=1)
+except TypeError as error:
+    print(type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
