@@ -49802,6 +49802,9 @@ fn is_builtin_type_object_name(name: &str) -> bool {
                 | "dict_keys"
                 | "dict_values"
                 | "dict_items"
+                | "odict_keys"
+                | "odict_values"
+                | "odict_items"
                 | "mappingproxy"
                 | "CellType"
                 | "PyCapsule"
@@ -63871,6 +63874,9 @@ fn is_builtin_sized_type_name(name: &str) -> bool {
             | "dict_keys"
             | "dict_values"
             | "dict_items"
+            | "odict_keys"
+            | "odict_values"
+            | "odict_items"
             | "mappingproxy"
             | "ChainMap"
             | "Counter"
@@ -63896,6 +63902,9 @@ fn is_builtin_container_type_name(name: &str) -> bool {
             | "dict_keys"
             | "dict_values"
             | "dict_items"
+            | "odict_keys"
+            | "odict_values"
+            | "odict_items"
             | "mappingproxy"
             | "ChainMap"
             | "Counter"
@@ -63956,23 +63965,29 @@ fn is_builtin_mutable_mapping_type_name(name: &str) -> bool {
 }
 
 fn is_builtin_mapping_view_type_name(name: &str) -> bool {
-    matches!(name, "dict_keys" | "dict_items" | "dict_values")
+    matches!(
+        name,
+        "dict_keys" | "dict_items" | "dict_values" | "odict_keys" | "odict_items" | "odict_values"
+    )
 }
 
 fn is_builtin_keys_view_type_name(name: &str) -> bool {
-    matches!(name, "dict_keys")
+    matches!(name, "dict_keys" | "odict_keys")
 }
 
 fn is_builtin_items_view_type_name(name: &str) -> bool {
-    matches!(name, "dict_items")
+    matches!(name, "dict_items" | "odict_items")
 }
 
 fn is_builtin_values_view_type_name(name: &str) -> bool {
-    matches!(name, "dict_values")
+    matches!(name, "dict_values" | "odict_values")
 }
 
 fn is_builtin_set_type_name(name: &str) -> bool {
-    matches!(name, "set" | "frozenset" | "dict_keys" | "dict_items")
+    matches!(
+        name,
+        "set" | "frozenset" | "dict_keys" | "dict_items" | "odict_keys" | "odict_items"
+    )
 }
 
 fn is_builtin_mutable_set_type_name(name: &str) -> bool {
@@ -63995,6 +64010,9 @@ fn is_builtin_reversible_type_name(name: &str) -> bool {
             | "dict_keys"
             | "dict_values"
             | "dict_items"
+            | "odict_keys"
+            | "odict_values"
+            | "odict_items"
             | "mappingproxy"
             | "Counter"
             | "UserList"
@@ -64075,6 +64093,9 @@ fn is_builtin_iterable_type_name(name: &str) -> bool {
             | "dict_keys"
             | "dict_values"
             | "dict_items"
+            | "odict_keys"
+            | "odict_values"
+            | "odict_items"
             | "mappingproxy"
             | "ChainMap"
             | "Counter"

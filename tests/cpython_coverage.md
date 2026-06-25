@@ -3990,6 +3990,12 @@ without adding general custom encoder/decoder class support.
   `cpython_dict_view_doc_attribute_subset`, backed by
   `cpython_dict_view_doc_attribute_diff_subset`, covering dict view doc attribute
   exposure as `None` across built-in dict and `OrderedDict` views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_class_attribute_subset`, backed by
+  `cpython_dict_view_class_attribute_diff_subset`, covering dict view class attribute
+  exposure as concrete type objects across built-in dict and `OrderedDict`
+  views, including `isinstance(view, view.__class__)`, class `repr()`, and
+  `collections.abc` relationships for key/item/value view types.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

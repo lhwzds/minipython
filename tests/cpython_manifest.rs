@@ -1174,6 +1174,86 @@ fn dict_view_doc_attribute_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_class_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_class_attribute_subset(",
+        "cls = view.__class__",
+        "typ = type(view)",
+        "repr(cls)",
+        "type(cls).__name__",
+        "cls is typ",
+        "isinstance(view, cls)",
+        "issubclass(cls, MappingView)",
+        "issubclass(cls, Set)",
+        "\"odkeys <class 'odict_keys'> type odict_keys odict_keys True True True\"",
+        "\"odvalues True False False True False True True True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view class attribute subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_class_attribute_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view class attribute subset",
+        "name: \"dict-view-class-attribute\"",
+        "cls = view.__class__",
+        "repr(cls)",
+        "isinstance(view, cls)",
+        "issubclass(cls, MappingView)",
+        "issubclass(cls, ValuesView)",
+        "OrderedDict([(1, 2)]).values()",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view class attribute CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"odict_keys\"",
+        "\"odict_values\"",
+        "\"odict_items\"",
+        "fn is_builtin_mapping_view_type_name(name: &str) -> bool",
+        "fn is_builtin_keys_view_type_name(name: &str) -> bool",
+        "fn is_builtin_items_view_type_name(name: &str) -> bool",
+        "fn is_builtin_values_view_type_name(name: &str) -> bool",
+        "fn is_builtin_set_type_name(name: &str) -> bool",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view class attribute implementation must keep VM type classification `{required}`"
+        );
+    }
+    for required in [
+        "\"dict_keys\"",
+        "\"dict_items\"",
+        "\"dict_values\"",
+        "\"odict_keys\"",
+        "\"odict_items\"",
+        "\"odict_values\"",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "dict view class attribute implementation must keep value display classification `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_class_attribute_subset")
+                && document.contains("cpython_dict_view_class_attribute_diff_subset")
+                && document.contains("dict view class attribute"),
+            "focused dict view class attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

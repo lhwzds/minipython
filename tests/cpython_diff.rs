@@ -30700,6 +30700,29 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_class_attribute_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view class attribute subset",
+        name: "dict-view-class-attribute",
+        source: r#"from collections import OrderedDict
+from collections.abc import MappingView, KeysView, ItemsView, ValuesView, Set, Collection, Reversible, Iterable, Sized, Container
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    typ = type(view)
+    print(label, repr(cls), type(cls).__name__, cls.__name__, typ.__name__, cls is typ, isinstance(view, cls), issubclass(cls, object))
+    print(label, issubclass(cls, MappingView), issubclass(cls, KeysView), issubclass(cls, ItemsView), issubclass(cls, ValuesView), issubclass(cls, Set), issubclass(cls, Collection), issubclass(cls, Reversible), issubclass(cls, Iterable), issubclass(cls, Sized), issubclass(cls, Container))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

@@ -49543,6 +49543,44 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view type metadata. Dict and OrderedDict
+// views expose concrete view types through __class__, and those types keep
+// the same collections.abc relationships as the corresponding instances.
+#[test]
+fn cpython_dict_view_class_attribute_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+from collections.abc import MappingView, KeysView, ItemsView, ValuesView, Set, Collection, Reversible, Iterable, Sized, Container
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    typ = type(view)
+    print(label, repr(cls), type(cls).__name__, cls.__name__, typ.__name__, cls is typ, isinstance(view, cls), issubclass(cls, object))
+    print(label, issubclass(cls, MappingView), issubclass(cls, KeysView), issubclass(cls, ItemsView), issubclass(cls, ValuesView), issubclass(cls, Set), issubclass(cls, Collection), issubclass(cls, Reversible), issubclass(cls, Iterable), issubclass(cls, Sized), issubclass(cls, Container))"#,
+        &[
+            "keys <class 'dict_keys'> type dict_keys dict_keys True True True",
+            "keys True True False False True True True True True True",
+            "items <class 'dict_items'> type dict_items dict_items True True True",
+            "items True False True False True True True True True True",
+            "values <class 'dict_values'> type dict_values dict_values True True True",
+            "values True False False True False True True True True True",
+            "odkeys <class 'odict_keys'> type odict_keys odict_keys True True True",
+            "odkeys True True False False True True True True True True",
+            "oditems <class 'odict_items'> type odict_items odict_items True True True",
+            "oditems True False True False True True True True True True",
+            "odvalues <class 'odict_values'> type odict_values odict_values True True True",
+            "odvalues True False False True False True True True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.
