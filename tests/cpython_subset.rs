@@ -37980,6 +37980,23 @@ print('file-none', file=None, flush=True)
 class S(str):
     pass
 print('sub', 'class', sep=S('|'), end=S(' END\n'))
+events = []
+class Sep(str):
+    def __str__(self):
+        events.append('sep')
+        return '|'
+class End(str):
+    def __str__(self):
+        events.append('end')
+        return '!\n'
+print('A', 'B', sep=Sep('-'), end=End('?\n'))
+print(events)
+events.clear()
+print('C', sep=Sep('-'))
+print(events)
+events.clear()
+print(end=End('\n'))
+print(events)
 for label, expr in [
     ('bad-sep', lambda: print('a', sep=1)),
     ('bad-end', lambda: print('a', end=1)),
@@ -37996,6 +38013,12 @@ for label, expr in [
             "solo",
             "file-none",
             "sub|class END",
+            "A|B!",
+            "['sep', 'end']",
+            "C",
+            "[]",
+            "!",
+            "['end']",
             "bad-sep TypeError True",
             "bad-end TypeError True",
             "unknown TypeError True",

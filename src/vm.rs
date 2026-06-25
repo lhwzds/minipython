@@ -1339,17 +1339,36 @@ fn bytes_io_getbuffer(bytes_io: &BytesIORef) -> Result<Value, String> {
     ))
 }
 
-fn print_separator_or_end(name: &str, value: Value) -> Result<String, String> {
+enum PrintSeparatorOrEnd {
+    Text(String),
+    StrSubclass(Value),
+}
+
+fn print_separator_or_end(name: &str, value: Value) -> Result<PrintSeparatorOrEnd, String> {
     match value {
-        Value::None => Ok(if name == "sep" { " " } else { "\n" }.to_string()),
-        Value::String(value) | Value::IdentityString { value, .. } => Ok(value.clone()),
+        Value::None => Ok(PrintSeparatorOrEnd::Text(
+            if name == "sep" { " " } else { "\n" }.to_string(),
+        )),
+        Value::String(value) | Value::IdentityString { value, .. } => {
+            Ok(PrintSeparatorOrEnd::Text(value.clone()))
+        }
         value if str_subclass_string(&value).is_some() => {
-            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+            Ok(PrintSeparatorOrEnd::StrSubclass(value))
         }
         value => Err(format!(
             "TypeError: {name} must be None or a string, not {}",
             type_name(&value)
         )),
+    }
+}
+
+fn resolve_print_separator_or_end(
+    vm: &mut Vm,
+    value: PrintSeparatorOrEnd,
+) -> Result<String, String> {
+    match value {
+        PrintSeparatorOrEnd::Text(value) => Ok(value),
+        PrintSeparatorOrEnd::StrSubclass(value) => vm.str_value(&value),
     }
 }
 
@@ -8899,8 +8918,8 @@ impl Vm {
                 ..
             } => self.call_operator_methodcaller(name, bound_args, bound_keywords, args, keywords),
             Value::Builtin(name) if name == "print" => {
-                let mut sep = " ".to_string();
-                let mut end = "\n".to_string();
+                let mut sep = PrintSeparatorOrEnd::Text(" ".to_string());
+                let mut end = PrintSeparatorOrEnd::Text("\n".to_string());
                 let mut seen_sep = false;
                 let mut seen_end = false;
                 let mut seen_file = false;
@@ -8963,6 +8982,12 @@ impl Vm {
                 for arg in &args {
                     parts.push(self.str_value(arg)?);
                 }
+                let sep = if args.len() > 1 {
+                    resolve_print_separator_or_end(self, sep)?
+                } else {
+                    String::new()
+                };
+                let end = resolve_print_separator_or_end(self, end)?;
                 let text = parts.join(&sep);
                 self.emit_print_output(&text, &end);
                 Ok(Value::None)

@@ -11613,6 +11613,12 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_collections_abc_set_hash_matches_frozenset_diff_subset` now verify
   equality against the Homebrew CPython oracle for the supported hashable sample
   matrix.
+- Aligned sandbox-safe `print()` keyword handling with CPython for str subclass
+  `sep` / `end`: successful multi-argument output dispatches public `__str__`,
+  one-argument `print()` still validates `sep` but does not call the unused
+  `sep.__str__`, `end` is resolved even without positional arguments, and
+  non-`None` `file` remains outside the sandbox because it implies file-like
+  write dispatch.
 
 Next:
 

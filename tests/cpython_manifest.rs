@@ -15042,6 +15042,60 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
 }
 
 #[test]
+fn builtin_print_keyword_subset_has_str_subclass_dunder_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_builtin_print_keyword_subset");
+    let diff_body =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_builtin_print_keyword_diff_subset");
+
+    for required in [
+        "class Sep(str):",
+        "events.append('sep')",
+        "class End(str):",
+        "events.append('end')",
+        "print('A', 'B', sep=Sep('-'), end=End('?\\n'))",
+        "print('C', sep=Sep('-'))",
+        "print(end=End('\\n'))",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "builtin print keyword subset and diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["\"A|B!\"", "\"['sep', 'end']\"", "\"[]\"", "\"['end']\""] {
+        assert!(
+            subset_body.contains(required),
+            "builtin print keyword subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "PrintSeparatorOrEnd::StrSubclass",
+        "resolve_print_separator_or_end(self, sep)?",
+        "args.len() > 1",
+        "String::new()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "builtin print keyword VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("str subclass")
+                && document.contains("`sep` / `end`")
+                && document.contains("public `__str__`")
+                && document.contains("one-argument `print()`")
+                && (document.contains("Non-`None` `file`")
+                    || document.contains("non-`None` `file`")),
+            "builtin print keyword docs must describe str-subclass __str__ dispatch, the one-argument sep no-call, and the file= stop line"
+        );
+    }
+}
+
+#[test]
 fn runtime_exception_capture_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_runtime_exception_capture_subset(",

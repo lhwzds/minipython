@@ -5788,10 +5788,11 @@ and `set` when used around generator expressions.
 `throw()` resume paths, plus restoration to `False` after yield and close.
 `cpython_builtin_print_keyword_diff_subset` and
 `cpython_builtin_print_keyword_subset` cover the sandbox-safe `print()` keyword
-surface: `sep`, `end`, `file=None`, `flush`, string-subclass separators/endings,
-partial-line output joining for `end=''`, and representative keyword/type
-errors. Non-`None` `file` targets remain outside the sandbox subset because
-they imply file-like write dispatch.
+surface: `sep`, `end`, `file=None`, `flush`, str subclass `sep` / `end`
+dispatch through public `__str__`, one-argument `print()` validation that does
+not call the unused `sep.__str__`, partial-line output joining for `end=''`,
+and representative keyword/type errors. Non-`None` `file` targets remain
+outside the sandbox subset because they imply file-like write dispatch.
 `cpython_stop_iteration_value_diff_subset` and
 `cpython_stop_iteration_value_subset` cover public `StopIteration.value`
 behavior for direct exception construction, generator return values, and
