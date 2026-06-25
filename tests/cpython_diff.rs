@@ -14400,6 +14400,22 @@ print(UserDict.pop(class_obj, 'b'), class_obj)
 print(UserDict.setdefault(class_obj, 'd', 4), class_obj)
 print(UserDict.update(class_obj, {'e': 5}), class_obj)
 print(UserDict.__delitem__(class_obj, 'c'), class_obj)
+def show_missing(label, action):
+    try:
+        action()
+    except KeyError as error:
+        print(label, error.args[0] == 'missing', type(error.args[0]).__name__, str(error))
+def delete_missing_userdict():
+    del class_obj['missing']
+show_missing('delitem-missing', lambda: UserDict.__delitem__(class_obj, 'missing'))
+show_missing('del-syntax-missing', delete_missing_userdict)
+class UDSub(UserDict):
+    pass
+sub_obj = UDSub({'a': 1})
+def delete_missing_userdict_subclass():
+    del sub_obj['missing']
+show_missing('subclass-delitem-missing', lambda: UserDict.__delitem__(sub_obj, 'missing'))
+show_missing('subclass-del-syntax-missing', delete_missing_userdict_subclass)
 class_copy = UserDict.copy(class_obj)
 print(class_copy, type(class_copy).__name__, class_copy.data is class_obj.data)
 print(UserDict.clear(class_obj), class_obj)"#,

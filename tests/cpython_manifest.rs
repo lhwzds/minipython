@@ -11674,6 +11674,13 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "UserDict.setdefault(class_obj, 'd', 4)",
         "UserDict.update(class_obj, {'e': 5})",
         "UserDict.__delitem__(class_obj, 'c')",
+        "def delete_missing_userdict():",
+        "UserDict.__delitem__(class_obj, 'missing')",
+        "del class_obj['missing']",
+        "class UDSub(UserDict):",
+        "def delete_missing_userdict_subclass():",
+        "UserDict.__delitem__(sub_obj, 'missing')",
+        "del sub_obj['missing']",
         "UserDict.copy(class_obj)",
         "UserDict.clear(class_obj)",
     ] {
@@ -11681,6 +11688,32 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             userdict_public_diff_body.contains(required)
                 && userdict_public_subset_body.contains(required),
             "UserDict public diff and subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "delitem-missing True str 'missing'",
+        "del-syntax-missing True str 'missing'",
+        "subclass-delitem-missing True str 'missing'",
+        "subclass-del-syntax-missing True str 'missing'",
+    ] {
+        assert!(
+            userdict_public_subset_body.contains(required),
+            "UserDict public subset output must pin `{required}`"
+        );
+    }
+    let delete_subscript_value_body = VM_SOURCE
+        .split("fn delete_subscript_value(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn sequence_subscript_index(").next())
+        .expect("VM delete-subscript implementation must be extractable");
+    for required in [
+        "Value::UserDict { data, attrs }",
+        "object if user_dict_subclass_data(&object).is_some()",
+        "raise_key_error_value(self, index)?",
+    ] {
+        assert!(
+            delete_subscript_value_body.contains(required),
+            "UserDict delete-subscript implementation must contain `{required}`"
         );
     }
     let userlist_public_diff_body = extract_rust_test_body(

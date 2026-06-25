@@ -17490,6 +17490,24 @@ impl Vm {
                 raise_key_error_value(self, index)?;
                 Ok(object)
             }
+            Value::UserDict { data, attrs } => {
+                ensure_hashable_key(&index)?;
+                if remove_mapping_entry(&data, &index)? {
+                    return Ok(Value::UserDict { data, attrs });
+                }
+                raise_key_error_value(self, index)?;
+                Ok(Value::UserDict { data, attrs })
+            }
+            object if user_dict_subclass_data(&object).is_some() => {
+                ensure_hashable_key(&index)?;
+                let data = user_dict_subclass_data(&object)
+                    .expect("UserDict subclass data exists after guard");
+                if remove_mapping_entry(&data, &index)? {
+                    return Ok(object);
+                }
+                raise_key_error_value(self, index)?;
+                Ok(object)
+            }
             object => delete_subscript(object, index),
         }
     }
