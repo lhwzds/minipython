@@ -15478,6 +15478,9 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // _operator.abs() takes no keyword arguments;
     // _operator.neg() takes exactly one argument (0 given);
     // _operator.neg() takes exactly one argument (2 given)
+    // CPython oracle text: unsupported operand type(s) for <<: 'int' and 'str';
+    // unsupported operand type(s) for >>: 'str' and 'int';
+    // unsupported operand type(s) for <<: 'bool' and 'str'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15525,6 +15528,11 @@ try:
     operator.matmul([], [])
 except TypeError as error:
     print(str(error))
+for label, callback in [('lshift-type', lambda: operator.lshift(1, 'a')), ('rshift-type', lambda: operator.rshift('a', 1)), ('lshift-bool-type', lambda: operator.lshift(True, 'a'))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 for expr in [lambda: operator.lshift(2, -1), lambda: operator.rshift(2, -1)]:
     try:
         expr()

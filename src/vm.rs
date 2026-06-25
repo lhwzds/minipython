@@ -83685,6 +83685,8 @@ fn unsupported_binary_operand_message(op: &str, left: &Value, right: &Value) -> 
 }
 
 fn left_shift_values(left: Value, right: Value) -> Result<Value, String> {
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(_), Value::Number(right)) if right < 0 => {
@@ -83719,11 +83721,17 @@ fn left_shift_values(left: Value, right: Value) -> Result<Value, String> {
                 .ok_or_else(|| "shift count is too large".to_string())?;
             Ok(normalize_big_int(left << shift))
         }
-        (left, right) => Err(format!("cannot left-shift {left} and {right}")),
+        _ => Err(unsupported_binary_operand_message(
+            "<<",
+            &original_left,
+            &original_right,
+        )),
     }
 }
 
 fn right_shift_values(left: Value, right: Value) -> Result<Value, String> {
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(_), Value::Number(right)) if right < 0 => {
@@ -83758,7 +83766,11 @@ fn right_shift_values(left: Value, right: Value) -> Result<Value, String> {
                 .ok_or_else(|| "shift count is too large".to_string())?;
             Ok(normalize_big_int(left >> shift))
         }
-        (left, right) => Err(format!("cannot right-shift {left} and {right}")),
+        _ => Err(unsupported_binary_operand_message(
+            ">>",
+            &original_left,
+            &original_right,
+        )),
     }
 }
 
