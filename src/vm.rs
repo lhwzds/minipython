@@ -49255,6 +49255,9 @@ fn builtin_class_bases(name: &str) -> Vec<Value> {
     match name {
         "object" => Vec::new(),
         "bool" => vec![builtin_type_value("int")],
+        _ if is_dict_view_type_object_name(name) => {
+            vec![builtin_type_value(dict_view_type_object_base_name(name))]
+        }
         _ if is_class_like_builtin(name) => vec![builtin_type_value("object")],
         _ => Vec::new(),
     }
@@ -49838,6 +49841,15 @@ fn is_dict_view_type_object_name(name: &str) -> bool {
         name,
         "dict_keys" | "dict_values" | "dict_items" | "odict_keys" | "odict_values" | "odict_items"
     )
+}
+
+fn dict_view_type_object_base_name(name: &str) -> &'static str {
+    match name {
+        "odict_keys" => "dict_keys",
+        "odict_values" => "dict_values",
+        "odict_items" => "dict_items",
+        _ => "object",
+    }
 }
 
 fn is_data_descriptor(value: &Value) -> bool {
@@ -57044,6 +57056,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             class_mro(&Value::Builtin(function_name)).map(tuple_value)
         }
         Value::Builtin(function_name)
+            if name == "__mro__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            class_mro(&Value::Builtin(function_name)).map(tuple_value)
+        }
+        Value::Builtin(function_name)
             if function_name == "object"
                 && matches!(
                     name,
@@ -57164,12 +57181,26 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(tuple_value(vec![base]))
         }
         Value::Builtin(function_name)
+            if name == "__bases__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(tuple_value(vec![Value::Builtin(
+                dict_view_type_object_base_name(&function_name).to_string(),
+            )]))
+        }
+        Value::Builtin(function_name)
             if name == "__base__" && ast_builtin_kind(&function_name).is_some() =>
         {
             let kind = ast_builtin_kind(&function_name).expect("guard checked AST builtin kind");
             Ok(ast_base_kind(kind)
                 .map(ast_builtin_value_for_kind)
                 .unwrap_or_else(|| Value::Builtin("object".to_string())))
+        }
+        Value::Builtin(function_name)
+            if name == "__base__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::Builtin(
+                dict_view_type_object_base_name(&function_name).to_string(),
+            ))
         }
         Value::Builtin(function_name)
             if name == "__module__" && is_templatelib_type_name(&function_name) =>

@@ -30743,6 +30743,27 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_type_hierarchy_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view type hierarchy subset",
+        name: "dict-view-type-hierarchy",
+        source: r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    base = cls.__base__
+    print(label, base.__name__, tuple(base.__name__ for base in cls.__bases__), tuple(base.__name__ for base in cls.__mro__), cls.__bases__ == (base,), cls.__mro__[0] is cls, cls.__mro__[-1] is object)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

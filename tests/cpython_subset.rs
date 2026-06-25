@@ -49610,6 +49610,36 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view type hierarchy metadata. OrderedDict
+// view classes derive from the corresponding built-in dict view classes while
+// built-in dict view classes derive directly from object.
+#[test]
+fn cpython_dict_view_type_hierarchy_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    base = cls.__base__
+    print(label, base.__name__, tuple(base.__name__ for base in cls.__bases__), tuple(base.__name__ for base in cls.__mro__), cls.__bases__ == (base,), cls.__mro__[0] is cls, cls.__mro__[-1] is object)"#,
+        &[
+            "keys object ('object',) ('dict_keys', 'object') True True True",
+            "items object ('object',) ('dict_items', 'object') True True True",
+            "values object ('object',) ('dict_values', 'object') True True True",
+            "odkeys dict_keys ('dict_keys',) ('odict_keys', 'dict_keys', 'object') True True True",
+            "oditems dict_items ('dict_items',) ('odict_items', 'dict_items', 'object') True True True",
+            "odvalues dict_values ('dict_values',) ('odict_values', 'dict_values', 'object') True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

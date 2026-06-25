@@ -1314,6 +1314,68 @@ fn dict_view_type_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_hierarchy_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_type_hierarchy_subset(",
+        "base = cls.__base__",
+        "cls.__bases__",
+        "cls.__mro__",
+        "cls.__bases__ == (base,)",
+        "cls.__mro__[0] is cls",
+        "cls.__mro__[-1] is object",
+        "\"keys object ('object',) ('dict_keys', 'object') True True True\"",
+        "\"odkeys dict_keys ('dict_keys',) ('odict_keys', 'dict_keys', 'object') True True True\"",
+        "\"odvalues dict_values ('dict_values',) ('odict_values', 'dict_values', 'object') True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type hierarchy subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_type_hierarchy_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view type hierarchy subset",
+        "name: \"dict-view-type-hierarchy\"",
+        "base = cls.__base__",
+        "cls.__bases__",
+        "cls.__mro__",
+        "OrderedDict([(1, 2)]).keys()",
+        "cls.__mro__[-1] is object",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type hierarchy CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_view_type_object_base_name(name: &str) -> &'static str",
+        "\"odict_keys\" => \"dict_keys\"",
+        "\"odict_values\" => \"dict_values\"",
+        "\"odict_items\" => \"dict_items\"",
+        "name == \"__base__\" && is_dict_view_type_object_name",
+        "name == \"__bases__\" && is_dict_view_type_object_name",
+        "name == \"__mro__\" && is_dict_view_type_object_name",
+        "builtin_type_value(dict_view_type_object_base_name(name))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type hierarchy implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_type_hierarchy_subset")
+                && document.contains("cpython_dict_view_type_hierarchy_diff_subset")
+                && document.contains("dict view type hierarchy"),
+            "focused dict view type hierarchy evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",
