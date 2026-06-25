@@ -11339,6 +11339,73 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap missing-key behavior"
+    );
+    let chainmap_missing_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset",
+    );
+    let chainmap_missing_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
+    );
+    for required in [
+        "plain = ChainMap(dict(a=1), dict(b=2))",
+        "plain['missing']",
+        "ChainMap.__getitem__(plain, 'missing')",
+        "error.args[0] == 'missing'",
+        "type(error.args[0]).__name__",
+    ] {
+        assert!(
+            chainmap_missing_diff_body.contains(required)
+                && chainmap_missing_subset_body.contains(required),
+            "ChainMap missing-key diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        chainmap_missing_subset_body.contains("True str 'missing'"),
+        "ChainMap missing-key subset evidence must cover the expected KeyError payload output"
+    );
+    let chain_map_get_for_receiver_body = VM_SOURCE
+        .split("fn chain_map_get_item_for_receiver(")
+        .nth(1)
+        .and_then(|tail| {
+            tail.split("fn chain_map_get_item_optional_from_maps(")
+                .next()
+        })
+        .expect("ChainMap receiver lookup implementation must be extractable");
+    assert!(
+        chain_map_get_for_receiver_body.contains("raise_key_error_value(self, key)"),
+        "ChainMap receiver lookup must raise KeyError with the original missing key payload"
+    );
+    let load_subscript_value_body = VM_SOURCE
+        .split("fn load_subscript_value(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn load_attribute_value(").next())
+        .expect("VM subscript implementation must be extractable");
+    assert!(
+        load_subscript_value_body.contains("if let Value::ChainMap { maps } = &object")
+            && load_subscript_value_body
+                .contains("self.chain_map_get_item_for_receiver(&object, &maps, index)"),
+        "plain ChainMap subscript lookup must use the receiver-aware missing-key path"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset",
+            "cpython_collections_chainmap_missing_and_first_map_mutation_subset",
+            "plain ChainMap missing-key",
+            "`__getitem__()`",
+            "`KeyError.args[0]`",
+        ] {
+            assert!(
+                document.contains(required),
+                "ChainMap missing-key docs must contain `{required}`"
+            );
+        }
+    }
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_lazy_mapping_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor lazy map storage"
     );

@@ -14595,6 +14595,12 @@ print(type(d).__name__, d.maps)
 print([d[k] for k in ['a', 'b', 'c', 'd']])
 print([d.get(k, 77) for k in ['a', 'b', 'c', 'd']])
 print([k in d for k in ['a', 'b', 'c', 'd']])
+plain = ChainMap(dict(a=1), dict(b=2))
+for lookup in (lambda: plain['missing'], lambda: ChainMap.__getitem__(plain, 'missing')):
+    try:
+        lookup()
+    except KeyError as error:
+        print(error.args[0] == 'missing', type(error.args[0]).__name__, str(error))
 print(d.pop('a', 1001), d.maps)
 print(d.pop('a', 1002), d.maps)
 print(d.popitem(), d.maps)

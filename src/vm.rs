@@ -27650,7 +27650,7 @@ impl Vm {
         if let Some(missing) = instance_special_method(receiver, "__missing__") {
             return self.call_value(missing, vec![key]);
         }
-        Err(format!("KeyError: {}", format_key_error(&key)))
+        raise_key_error_value(self, key)
     }
 
     fn chain_map_get_item_optional_from_maps(
