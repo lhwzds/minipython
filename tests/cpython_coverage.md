@@ -44,6 +44,12 @@ Recent runtime migration notes:
   `cpython_tuple_index_missing_valueerror_message_diff_subset`, now pins
   CPython's fixed `tuple.index(x): x not in tuple` message for missing instance
   and tuple-subclass `index()` calls.
+- `cpython_immutable_sequence_index_rich_compare_subset`, backed by
+  `cpython_immutable_sequence_index_rich_compare_diff_subset`, now pins
+  tuple and range `index()` rich comparison, propagated equality exceptions,
+  int-subclass matches, and CPython's range-specific
+  `range.index(x): x not in range` versus generic
+  `sequence.index(x): x not in sequence` missing-value messages.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

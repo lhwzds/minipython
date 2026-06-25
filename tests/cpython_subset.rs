@@ -40686,6 +40686,70 @@ for label, expr in [
     );
 }
 
+#[test]
+fn cpython_immutable_sequence_index_rich_compare_subset() {
+    assert_output_with_stack(
+        r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("tuple-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+items = (Probe("a"), Probe("b"), Probe("a"))
+class T(tuple):
+    pass
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+show("tuple-match", lambda: items.index(Probe("b")))
+show("tuple-window", lambda: items.index(Probe("a"), 1))
+show("tuple-subclass", lambda: T(items).index(Probe("b")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+show("tuple-error", lambda: (Boom(),).index(1))
+class I(int):
+    pass
+for label, value in [
+    ("range-int-missing", 5),
+    ("range-float-match", 2.0),
+    ("range-float-missing", 5.0),
+    ("range-subint-match", I(2)),
+    ("range-subint-missing", I(5)),
+]:
+    show(label, lambda value=value: range(3).index(value))
+class RangeProbe:
+    def __eq__(self, other):
+        print("range-eq", other)
+        return False
+show("range-object-missing", lambda: range(3).index(RangeProbe()))"#,
+        &[
+            "tuple-eq a b",
+            "tuple-eq b b",
+            "tuple-match 1",
+            "tuple-eq b a",
+            "tuple-eq a a",
+            "tuple-window 2",
+            "tuple-eq a b",
+            "tuple-eq b b",
+            "tuple-subclass 1",
+            "tuple-error ValueError boom ('boom',)",
+            "range-int-missing ValueError range.index(x): x not in range ('range.index(x): x not in range',)",
+            "range-float-match 2",
+            "range-float-missing ValueError sequence.index(x): x not in sequence ('sequence.index(x): x not in sequence',)",
+            "range-subint-match 2",
+            "range-subint-missing ValueError sequence.index(x): x not in sequence ('sequence.index(x): x not in sequence',)",
+            "range-eq 0",
+            "range-eq 1",
+            "range-eq 2",
+            "range-object-missing ValueError sequence.index(x): x not in sequence ('sequence.index(x): x not in sequence',)",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython public dict-subclass behavior used across
 // Lib/test/test_builtin.py and Lib/test/test_types.py mapping-protocol cases.
 // This pins the supported mutable mapping protocol without depending on

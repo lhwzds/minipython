@@ -26421,6 +26421,13 @@ impl Vm {
         }
     }
 
+    fn sequence_abc_item_matches(&mut self, item: &Value, needle: &Value) -> Result<bool, String> {
+        if sequence_items_match(item, needle) {
+            return Ok(true);
+        }
+        self.equal_values(item.clone(), needle.clone())
+    }
+
     fn sequence_abc_index(
         &mut self,
         receiver: Value,
@@ -26458,7 +26465,7 @@ impl Vm {
             let Some(value) = self.sequence_abc_get_item(receiver.clone(), index)? else {
                 break;
             };
-            if sequence_items_match(&value, &needle) {
+            if self.sequence_abc_item_matches(&value, &needle)? {
                 return Ok(Value::Number(index));
             }
             index = index
@@ -52402,6 +52409,13 @@ fn immutable_sequence_method(
     }
 }
 
+fn range_index_missing_value_error(needle: &Value) -> &'static str {
+    match needle {
+        Value::Bool(_) | Value::Number(_) | Value::BigInt(_) => "range.index(x): x not in range",
+        _ => "sequence.index(x): x not in sequence",
+    }
+}
+
 fn is_immutable_sequence_type_method(type_name: &str, name: &str) -> bool {
     matches!(
         name,
@@ -66485,7 +66499,7 @@ fn call_immutable_sequence_method(
             let stop = rest.get(1).cloned();
             let missing_value_error = match name {
                 "tuple.index" => Some("tuple.index(x): x not in tuple"),
-                "range.index" => Some("range.index(x): x not in range"),
+                "range.index" => Some(range_index_missing_value_error(needle)),
                 _ => None,
             };
             vm.sequence_abc_index(

@@ -10973,6 +10973,50 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_immutable_sequence_index_rich_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/seq_tests.py immutable sequence index rich comparison subset",
+        name: "immutable-sequence-index-rich-compare",
+        source: r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("tuple-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+items = (Probe("a"), Probe("b"), Probe("a"))
+class T(tuple):
+    pass
+def show(label, expr):
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+show("tuple-match", lambda: items.index(Probe("b")))
+show("tuple-window", lambda: items.index(Probe("a"), 1))
+show("tuple-subclass", lambda: T(items).index(Probe("b")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+show("tuple-error", lambda: (Boom(),).index(1))
+class I(int):
+    pass
+for label, value in [
+    ("range-int-missing", 5),
+    ("range-float-match", 2.0),
+    ("range-float-missing", 5.0),
+    ("range-subint-match", I(2)),
+    ("range-subint-missing", I(5)),
+]:
+    show(label, lambda value=value: range(3).index(value))
+class RangeProbe:
+    def __eq__(self, other):
+        print("range-eq", other)
+        return False
+show("range-object-missing", lambda: range(3).index(RangeProbe()))"#,
+    });
+}
+
+#[test]
 fn cpython_list_search_mutating_eq_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py mutation during rich comparison list search public subset",

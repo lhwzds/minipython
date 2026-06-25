@@ -284,6 +284,72 @@ fn tuple_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_immutable_sequence_index_rich_compare_subset(",
+        "show(\"tuple-match\", lambda: items.index(Probe(\"b\")))",
+        "show(\"tuple-window\", lambda: items.index(Probe(\"a\"), 1))",
+        "show(\"tuple-subclass\", lambda: T(items).index(Probe(\"b\")))",
+        "show(\"tuple-error\", lambda: (Boom(),).index(1))",
+        "(\"range-float-missing\", 5.0)",
+        "(\"range-subint-match\", I(2))",
+        "(\"range-subint-missing\", I(5))",
+        "show(\"range-object-missing\", lambda: range(3).index(RangeProbe()))",
+        "\"range-object-missing ValueError sequence.index(x): x not in sequence ('sequence.index(x): x not in sequence',)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused immutable sequence index rich-compare subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_immutable_sequence_index_rich_compare_diff_subset",
+    );
+    for required in [
+        "Lib/test/seq_tests.py immutable sequence index rich comparison subset",
+        "name: \"immutable-sequence-index-rich-compare\"",
+        "show(\"tuple-match\", lambda: items.index(Probe(\"b\")))",
+        "show(\"tuple-window\", lambda: items.index(Probe(\"a\"), 1))",
+        "show(\"tuple-subclass\", lambda: T(items).index(Probe(\"b\")))",
+        "show(\"tuple-error\", lambda: (Boom(),).index(1))",
+        "(\"range-float-missing\", 5.0)",
+        "(\"range-subint-match\", I(2))",
+        "(\"range-subint-missing\", I(5))",
+        "show(\"range-object-missing\", lambda: range(3).index(RangeProbe()))",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused immutable sequence index rich-compare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn sequence_abc_item_matches(",
+        "self.equal_values(item.clone(), needle.clone())",
+        "fn range_index_missing_value_error(",
+        "\"range.index(x): x not in range\"",
+        "\"sequence.index(x): x not in sequence\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "immutable sequence index implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_immutable_sequence_index_rich_compare_subset")
+                && document.contains("cpython_immutable_sequence_index_rich_compare_diff_subset")
+                && document.contains("range.index(x): x not in range")
+                && document.contains("sequence.index(x): x not in sequence"),
+            "focused immutable sequence index rich-compare evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";
