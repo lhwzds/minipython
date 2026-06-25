@@ -37418,6 +37418,16 @@ fn cpython_divmod_builtin_subset() {
             "TypeError",
         ],
     );
+    assert_output(
+        "for label, callback in [('list-int', lambda: divmod([], 1)), ('int-list', lambda: divmod(1, [])), ('bool-list', lambda: divmod(True, [])), ('complex-int', lambda: divmod(1+2j, 1)), ('str-int', lambda: divmod('x', 2))]:\n    try:\n        callback()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "list-int unsupported operand type(s) for divmod(): 'list' and 'int'",
+            "int-list unsupported operand type(s) for divmod(): 'int' and 'list'",
+            "bool-list unsupported operand type(s) for divmod(): 'bool' and 'list'",
+            "complex-int unsupported operand type(s) for divmod(): 'complex' and 'int'",
+            "str-int unsupported operand type(s) for divmod(): 'str' and 'int'",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_builtin.py::test_round,

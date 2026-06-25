@@ -64503,7 +64503,13 @@ fn sorted_reverse_option(vm: &mut Vm, value: Value) -> Result<bool, String> {
 }
 
 fn divmod_error_message(message: &str, left: Value, right: Value) -> String {
-    if is_zero_division_error_message(message) || message.starts_with("TypeError: ") {
+    if is_zero_division_error_message(message) {
+        return message.to_string();
+    }
+    if message.starts_with("TypeError: ")
+        && !message.starts_with("TypeError: unsupported operand type(s) for //")
+        && !message.starts_with("TypeError: unsupported operand type(s) for %")
+    {
         return message.to_string();
     }
     format!(

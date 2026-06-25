@@ -73,6 +73,10 @@ Recent runtime migration notes:
   now pins exact CPython unsupported power operand `TypeError` text across
   `pow()`, `**`, and `operator.pow()`, including bool and complex/None
   operands.
+- `cpython_divmod_builtin_subset`, backed by
+  `cpython_divmod_builtin_diff_subset`, now pins exact CPython
+  `unsupported operand type(s) for divmod()` text for representative unsupported
+  builtin, bool, complex, and string operands.
 - `cpython_sequence_index_typeerror_message_subset`, backed by
   `cpython_sequence_index_typeerror_message_diff_subset`, now pins CPython
   public TypeError text for non-integer list, tuple, and string subscript

@@ -6316,6 +6316,10 @@ Completed in the divmod builtin pass:
   and remainder sign rules stay aligned with `//` and `%`.
 - Added CPython-style rejection for the covered arity, keyword, zero-division,
   and unsupported-operand paths.
+- The unsupported-operand path now pins exact
+  `unsupported operand type(s) for divmod()` text for representative list, bool,
+  complex, and string operands instead of leaking the underlying `//` / `%`
+  helper diagnostics.
 - Added a CPython/MiniPython differential parity case for the supported
   `test_divmod` subset.
 

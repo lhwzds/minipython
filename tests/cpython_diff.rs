@@ -9804,6 +9804,7 @@ print(next(x), next(z))"#,
 
 #[test]
 fn cpython_divmod_builtin_diff_subset() {
+    // CPython oracle text: unsupported operand type(s) for divmod():
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_builtin.py::BuiltinTest::test_divmod",
         name: "divmod-builtin",
@@ -9816,7 +9817,12 @@ for expr in [lambda: divmod(), lambda: divmod(1), lambda: divmod(1, 2, 3), lambd
     try:
         expr()
     except (TypeError, ZeroDivisionError) as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+for label, callback in [('list-int', lambda: divmod([], 1)), ('int-list', lambda: divmod(1, [])), ('bool-list', lambda: divmod(True, [])), ('complex-int', lambda: divmod(1+2j, 1)), ('str-int', lambda: divmod('x', 2))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, str(error))"#,
     });
 }
 

@@ -17244,6 +17244,65 @@ fn exec_general_mapping_locals_subset_has_direct_diff_and_stack_evidence() {
 }
 
 #[test]
+fn divmod_builtin_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_divmod_builtin_subset");
+    for required in [
+        "divmod([], 1)",
+        "divmod(1, [])",
+        "divmod(True, [])",
+        "divmod(1+2j, 1)",
+        "divmod('x', 2)",
+        "unsupported operand type(s) for divmod(): 'list' and 'int'",
+        "unsupported operand type(s) for divmod(): 'int' and 'list'",
+        "unsupported operand type(s) for divmod(): 'bool' and 'list'",
+        "unsupported operand type(s) for divmod(): 'complex' and 'int'",
+        "unsupported operand type(s) for divmod(): 'str' and 'int'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused divmod builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_divmod_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_divmod",
+        "divmod([], 1)",
+        "divmod(1, [])",
+        "divmod(True, [])",
+        "divmod(1+2j, 1)",
+        "divmod('x', 2)",
+        "unsupported operand type(s) for divmod():",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused divmod builtin CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn divmod_error_message(",
+        "unsupported operand type(s) for divmod():",
+        "unsupported operand type(s) for //",
+        "unsupported operand type(s) for %",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "divmod unsupported operand VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_divmod_builtin_subset")
+                && document.contains("cpython_divmod_builtin_diff_subset")
+                && document.contains("unsupported operand type(s) for divmod()"),
+            "focused divmod unsupported operand evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn pow_builtin_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_pow_builtin_subset");
     for required in [
