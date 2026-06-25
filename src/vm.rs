@@ -81123,6 +81123,8 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     if let Some(value) = bytes_repeat_values(&left, &right)? {
         return Ok(value);
@@ -81215,8 +81217,37 @@ fn multiply_values(left: Value, right: Value) -> Result<Value, String> {
         | (Value::BigInt(count), Value::IdentityString { value, .. }) => Ok(Value::String(
             repeat_string(value, big_int_repeat_count(&count)?)?,
         )),
-        (left, right) => Err(format!("cannot multiply {left} and {right}")),
+        (left, _) if is_sequence_repeat_operand(&left) => {
+            Err(sequence_repeat_non_int_message(&original_right))
+        }
+        (_, right) if is_sequence_repeat_operand(&right) => {
+            Err(sequence_repeat_non_int_message(&original_left))
+        }
+        _ => Err(unsupported_binary_operand_message(
+            "*",
+            &original_left,
+            &original_right,
+        )),
     }
+}
+
+fn is_sequence_repeat_operand(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::List(_)
+            | Value::Tuple(_)
+            | Value::String(_)
+            | Value::IdentityString { .. }
+            | Value::Bytes(_)
+            | Value::ByteArray(_)
+    )
+}
+
+fn sequence_repeat_non_int_message(value: &Value) -> String {
+    format!(
+        "TypeError: can't multiply sequence by non-int of type '{}'",
+        type_name(value)
+    )
 }
 
 fn bytes_concat_values(left: &Value, right: &Value) -> Option<Result<Value, String>> {

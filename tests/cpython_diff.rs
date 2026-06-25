@@ -15513,6 +15513,9 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // can't concat bool to bytearray;
     // can only concatenate list (not "bool") to list;
     // can only concatenate tuple (not "bool") to tuple
+    // CPython oracle text: unsupported operand type(s) for *: 'bool' and 'NoneType';
+    // unsupported operand type(s) for *: 'NoneType' and 'bool';
+    // can't multiply sequence by non-int of type 'NoneType'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15552,6 +15555,11 @@ for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lamb
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 for label, callback in [('add-bool-type', lambda: True + 'a'), ('add-right-bool-type', lambda: 'a' + True), ('operator-add-bool-type', lambda: operator.add(True, 'a')), ('operator-add-right-bool-type', lambda: operator.add('a', True)), ('bytes-add-bool-type', lambda: b'a' + True), ('bytearray-add-bool-type', lambda: bytearray(b'a') + True), ('list-add-bool-type', lambda: [] + True), ('tuple-add-bool-type', lambda: () + True)]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, callback in [('mul-bool-none', lambda: True * None), ('mul-none-bool', lambda: None * True), ('operator-mul-bool-none', lambda: operator.mul(True, None)), ('operator-mul-none-bool', lambda: operator.mul(None, True)), ('list-mul-none', lambda: [] * None), ('list-rmul-none', lambda: None * []), ('tuple-mul-none', lambda: () * None), ('str-mul-none', lambda: 'a' * None), ('bytes-mul-none', lambda: b'a' * None), ('bytearray-mul-none', lambda: bytearray(b'a') * None)]:
     try:
         callback()
     except TypeError as error:

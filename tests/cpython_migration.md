@@ -1984,15 +1984,16 @@ Completed in the differential parity harness pass:
   arithmetic, bitwise, rich `__matmul__`, and `__index__` paths. Related runtime
   error messages now classify as `TypeError` or `ValueError` where Python
   `try/except` depends on the public exception type, and unsupported addition,
-  bitwise, subtraction, division, floor-division, modulo, and shift operands use
-  CPython's public `unsupported operand type(s)` text while preserving `bool`
-  operand type names for `+`, `&`, `|`, `^`, `-`, `/`, `//`, `%`, and `<<`.
-  Builtin `str`, `bytes`, `bytearray`, `list`, and `tuple` addition now also
-  uses CPython's public concatenation error text for representative `bool`
-  right operands. Unsupported complex division/floor-division/modulo operands
-  now use the same public text. Unsupported unary `+`, `-`, and `~` operands now
-  use CPython's public `bad operand type for unary` text across direct syntax
-  and operator aliases. Direct CPython diff evidence is in
+  multiplication, bitwise, subtraction, division, floor-division, modulo, and
+  shift operands use CPython's public `unsupported operand type(s)` text while
+  preserving `bool` operand type names for `+`, `*`, `&`, `|`, `^`, `-`, `/`,
+  `//`, `%`, and `<<`. Builtin `str`, `bytes`, `bytearray`, `list`, and `tuple`
+  addition and multiplication now also use CPython's public concatenation and
+  repeat error text for representative unsupported operands. Unsupported
+  complex division/floor-division/modulo operands now use the same public text.
+  Unsupported unary `+`, `-`, and `~` operands now use CPython's public
+  `bad operand type for unary` text across direct syntax and operator aliases.
+  Direct CPython diff evidence is in
   `cpython_operator_arithmetic_bitwise_diff_subset`.
 - Added `cpython_operator_sequence_member_subset`, migrating public behavior
   from CPython `test_operator.py::OperatorTestCase` sequence/member helper
