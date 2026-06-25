@@ -868,6 +868,73 @@ fn dict_view_direct_display_methods_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_hash_methods_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_hash_methods_subset(",
+        "from collections.abc import Hashable",
+        "isinstance(view, Hashable)",
+        "hasattr(view, \"__hash__\")",
+        "view.__hash__ is None",
+        "callable(view.__hash__)",
+        "(\"hash\", lambda v=view: hash(v))",
+        "(\"dunder\", lambda v=view: v.__hash__())",
+        "(\"tuple-hash\", lambda v=view: hash((v,)))",
+        "\"keys False True True False\"",
+        "\"values True True False True\"",
+        "\"values hash-eq True True\"",
+        "\"odvalues hash-eq True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view hash method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_hash_methods_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view hash behavior subset",
+        "name: \"dict-view-hash-methods\"",
+        "from collections.abc import Hashable",
+        "view.__hash__ is None",
+        "(\"tuple-hash\", lambda v=view: hash((v,)))",
+        "\"unhashable\" in str(error)",
+        "\"NoneType\" in str(error)",
+        "hash(view) == view.__hash__()",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view hash method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "if dict_view_is_values_hashable_value(value)",
+        "\"__hash__\" if kind == DictViewKind::Values =>",
+        "\"__hash__\" => Ok(Value::None)",
+        "\"__hash__\" => {",
+        "__hash__() expected a dict values view receiver",
+        "Ok(identity_hash_value(view))",
+        "fn dict_view_is_values_hashable_value(value: &Value) -> bool",
+        "hash_value_into(&identity_hash_value(value), hasher)?",
+        "value if dict_view_is_values_hashable_value(value) => true",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view hash method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_hash_methods_subset")
+                && document.contains("cpython_dict_view_hash_methods_diff_subset")
+                && document.contains("dict view hash methods"),
+            "focused dict view hash method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

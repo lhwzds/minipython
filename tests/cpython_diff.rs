@@ -30547,6 +30547,38 @@ for label, view in views:
 }
 
 #[test]
+fn cpython_dict_view_hash_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view hash behavior subset",
+        name: "dict-view-hash-methods",
+        source: r#"from collections import OrderedDict
+from collections.abc import Hashable
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, isinstance(view, Hashable), hasattr(view, "__hash__"), view.__hash__ is None, callable(view.__hash__))
+    for op, expr in [
+        ("hash", lambda v=view: hash(v)),
+        ("dunder", lambda v=view: v.__hash__()),
+        ("tuple-hash", lambda v=view: hash((v,))),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__, isinstance(value, int))
+        except Exception as error:
+            print(label, op, type(error).__name__, "unhashable" in str(error), "NoneType" in str(error))
+    if callable(view.__hash__):
+        print(label, "hash-eq", hash(view) == view.__hash__(), isinstance(hash((view,)), int))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

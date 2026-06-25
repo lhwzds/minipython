@@ -3964,6 +3964,11 @@ without adding general custom encoder/decoder class support.
   `cpython_dict_view_direct_display_methods_diff_subset`, covering dict view direct display methods
   for `__str__()` and `__format__()` across built-in dict and `OrderedDict`
   views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_hash_methods_subset`, backed by
+  `cpython_dict_view_hash_methods_diff_subset`, covering dict view hash methods
+  for unhashable key/item views and identity-hashable values views across
+  built-in dict and `OrderedDict` views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

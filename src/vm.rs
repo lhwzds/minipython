@@ -15216,6 +15216,10 @@ impl Vm {
             return self.hash_union_alias_value(args, *union_unhashable_count);
         }
 
+        if dict_view_is_values_hashable_value(value) {
+            return Ok(identity_hash_value(value));
+        }
+
         if let Some(method) = instance_hash_method(value)? {
             let result = match self.call_value_catching(method, Vec::new())? {
                 Ok(value) => value,
@@ -56020,6 +56024,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     mapping: Box::new(Value::OrderedDict(entries)),
                 }),
                 "mapping" => Ok(mapping_proxy_value(entries)),
+                "__hash__" if kind == DictViewKind::Values => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::DictView {
+                        kind,
+                        entries,
+                        ordered,
+                        identity: view_identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
+                "__hash__" => Ok(Value::None),
                 "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
                 | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
                     if dict_view_is_set_like(kind) =>
@@ -56110,6 +56125,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => {
             let type_name = dict_view_type_name(kind);
             match name {
+                "__hash__" if kind == DictViewKind::Values => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::MappingView {
+                        kind,
+                        mapping,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
+                "__hash__" => Ok(Value::None),
                 "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
                 | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
                     if dict_view_is_set_like(kind) =>
@@ -71578,6 +71603,18 @@ fn call_dict_view_method(
         "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
             call_dict_view_richcompare_method(vm, name, args)
         }
+        "__hash__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__hash__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if !dict_view_is_values_hashable_value(view) {
+                return Err("__hash__() expected a dict values view receiver".to_string());
+            }
+            Ok(identity_hash_value(view))
+        }
         "__len__" => {
             let [view] = args.as_slice() else {
                 return Err(format!(
@@ -72917,6 +72954,19 @@ fn set_iterable_lookup_values(iterable: Value) -> Result<Vec<Value>, String> {
 
 fn dict_view_is_set_like(kind: DictViewKind) -> bool {
     matches!(kind, DictViewKind::Keys | DictViewKind::Items)
+}
+
+fn dict_view_is_values_hashable_value(value: &Value) -> bool {
+    matches!(
+        value,
+        Value::DictView {
+            kind: DictViewKind::Values,
+            ..
+        } | Value::MappingView {
+            kind: DictViewKind::Values,
+            ..
+        }
+    )
 }
 
 fn dict_view_type_name(kind: DictViewKind) -> &'static str {
@@ -77406,6 +77456,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
         Value::NotImplemented => "NotImplemented".hash(hasher),
         Value::Ellipsis => "Ellipsis".hash(hasher),
         Value::MappingProxyObject { mapping } => hash_value_into(mapping, hasher)?,
+        value if dict_view_is_values_hashable_value(value) => {
+            hash_value_into(&identity_hash_value(value), hasher)?
+        }
         Value::List(_)
         | Value::UserList { .. }
         | Value::Deque { .. }
@@ -77628,6 +77681,7 @@ fn is_hashable_key(value: &Value) -> bool {
                 && optional_slice_part_is_hashable(step)
         }
         Value::MappingProxyObject { mapping } => is_hashable_key(mapping),
+        value if dict_view_is_values_hashable_value(value) => true,
         Value::CmpToKey { .. }
         | Value::CmpToKeyObject { .. }
         | Value::WeakProxy { .. }

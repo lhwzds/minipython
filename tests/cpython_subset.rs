@@ -49256,6 +49256,66 @@ for label, view in views:
     );
 }
 
+// Adapted from CPython public dict view hash behavior. Key/item views expose
+// __hash__ as None, while values views inherit identity hashing.
+#[test]
+fn cpython_dict_view_hash_methods_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+from collections.abc import Hashable
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, isinstance(view, Hashable), hasattr(view, "__hash__"), view.__hash__ is None, callable(view.__hash__))
+    for op, expr in [
+        ("hash", lambda v=view: hash(v)),
+        ("dunder", lambda v=view: v.__hash__()),
+        ("tuple-hash", lambda v=view: hash((v,))),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__, isinstance(value, int))
+        except Exception as error:
+            print(label, op, type(error).__name__, "unhashable" in str(error), "NoneType" in str(error))
+    if callable(view.__hash__):
+        print(label, "hash-eq", hash(view) == view.__hash__(), isinstance(hash((view,)), int))"#,
+        &[
+            "keys False True True False",
+            "keys hash TypeError True False",
+            "keys dunder TypeError False True",
+            "keys tuple-hash TypeError True False",
+            "items False True True False",
+            "items hash TypeError True False",
+            "items dunder TypeError False True",
+            "items tuple-hash TypeError True False",
+            "values True True False True",
+            "values hash int True",
+            "values dunder int True",
+            "values tuple-hash int True",
+            "values hash-eq True True",
+            "odkeys False True True False",
+            "odkeys hash TypeError True False",
+            "odkeys dunder TypeError False True",
+            "odkeys tuple-hash TypeError True False",
+            "oditems False True True False",
+            "oditems hash TypeError True False",
+            "oditems dunder TypeError False True",
+            "oditems tuple-hash TypeError True False",
+            "odvalues True True False True",
+            "odvalues hash int True",
+            "odvalues dunder int True",
+            "odvalues tuple-hash int True",
+            "odvalues hash-eq True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.
