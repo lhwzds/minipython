@@ -5492,6 +5492,8 @@ fn cpython_bytearray_inplace_concat_repeat_diff_covers_runtime_subset() {
         "b.__iadd__(value)",
         "b.__imul__(3)",
         "b.__imul__(I())",
+        "b *= None",
+        "operator.imul(bytearray(b'a'), None)",
         "__iadd__",
         "__imul__",
     ] {
@@ -5508,6 +5510,7 @@ fn cpython_bytearray_inplace_concat_repeat_diff_covers_runtime_subset() {
         "memoryview(b'b')",
         "__index__",
         "TypeError",
+        "can't multiply sequence by non-int of type 'NoneType'",
     ] {
         assert!(
             diff_body.contains(required) || subset_body.contains(required),

@@ -14031,12 +14031,22 @@ impl Vm {
 
         match left {
             Value::ByteArray(bytes) => {
-                let count = self.index_integer_value(right)?;
+                let count = self.sequence_repeat_count_operator(right)?;
                 let count = repeat_count_from_integer_value(count)?;
                 bytearray_repeat_in_place(&bytes, count)?;
                 Ok(Value::ByteArray(bytes))
             }
             left => multiply_values(left, right),
+        }
+    }
+
+    fn sequence_repeat_count_operator(&mut self, count: Value) -> Result<Value, String> {
+        match self.index_integer_value(count.clone()) {
+            Ok(value) => Ok(value),
+            Err(error) if error.contains("object cannot be interpreted as an integer") => {
+                Err(sequence_repeat_non_int_message(&count))
+            }
+            Err(error) => Err(error),
         }
     }
 

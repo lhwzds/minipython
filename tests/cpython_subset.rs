@@ -36387,7 +36387,7 @@ fn cpython_bytearray_extended_slice_assignment_subset() {
 #[test]
 fn cpython_bytearray_inplace_concat_repeat_subset() {
     assert_output(
-        "class I:\n    def __index__(self):\n        return 2\nb = bytearray(b'abc')\nb1 = b\nb += b'def'\nprint(b, b == b1, b is b1)\nb += bytearray(b'xyz')\nprint(b, b == b1, b is b1)\nb += memoryview(b'!')\nprint(b, b is b1)\ntry:\n    b += ''\nexcept TypeError as error:\n    print(error.__class__.__name__)\nb = bytearray(b'abc')\nb1 = b\nb *= 3\nprint(b, b == b1, b is b1)\nb = bytearray(b'x')\nb1 = b\nb *= 100\nprint(len(b), b[:5], b is b1)\nfor count in [0, -1, False, True]:\n    b = bytearray(b'ab')\n    alias = b\n    b *= count\n    print(count, b, b is alias)\nfor value in [b'b', bytearray(b'b'), memoryview(b'b')]:\n    b = bytearray(b'a')\n    result = b.__iadd__(value)\n    print(b, result is b)\nb = bytearray(b'a')\nresult = b.__imul__(3)\nprint(b, result is b)\nb = bytearray(b'a')\nresult = b.__imul__(I())\nprint(b, result is b)\nfor expr in [lambda: bytearray(b'a').__iadd__('b'), lambda: bytearray(b'a').__iadd__([98]), lambda: bytearray(b'a').__imul__('3'), lambda: bytearray(b'a').__imul__(None), lambda: bytearray(b'a').__iadd__(), lambda: bytearray(b'a').__imul__()]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)\nprint('__iadd__' in dir(bytearray), '__imul__' in dir(bytearray))",
+        "import operator\nclass I:\n    def __index__(self):\n        return 2\nb = bytearray(b'abc')\nb1 = b\nb += b'def'\nprint(b, b == b1, b is b1)\nb += bytearray(b'xyz')\nprint(b, b == b1, b is b1)\nb += memoryview(b'!')\nprint(b, b is b1)\ntry:\n    b += ''\nexcept TypeError as error:\n    print(error.__class__.__name__)\nb = bytearray(b'abc')\nb1 = b\nb *= 3\nprint(b, b == b1, b is b1)\nb = bytearray(b'x')\nb1 = b\nb *= 100\nprint(len(b), b[:5], b is b1)\nfor count in [0, -1, False, True]:\n    b = bytearray(b'ab')\n    alias = b\n    b *= count\n    print(count, b, b is alias)\nfor value in [b'b', bytearray(b'b'), memoryview(b'b')]:\n    b = bytearray(b'a')\n    result = b.__iadd__(value)\n    print(b, result is b)\nb = bytearray(b'a')\nresult = b.__imul__(3)\nprint(b, result is b)\nb = bytearray(b'a')\nresult = b.__imul__(I())\nprint(b, result is b)\ndef imul_none():\n    b = bytearray(b'a')\n    b *= None\nfor label, expr in [('imul-op-none', imul_none), ('operator-imul-none', lambda: operator.imul(bytearray(b'a'), None))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\nfor expr in [lambda: bytearray(b'a').__iadd__('b'), lambda: bytearray(b'a').__iadd__([98]), lambda: bytearray(b'a').__imul__('3'), lambda: bytearray(b'a').__imul__(None), lambda: bytearray(b'a').__iadd__(), lambda: bytearray(b'a').__imul__()]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)\nprint('__iadd__' in dir(bytearray), '__imul__' in dir(bytearray))",
         &[
             "bytearray(b'abcdef') True True",
             "bytearray(b'abcdefxyz') True True",
@@ -36404,6 +36404,8 @@ fn cpython_bytearray_inplace_concat_repeat_subset() {
             "bytearray(b'ab') True",
             "bytearray(b'aaa') True",
             "bytearray(b'aa') True",
+            "imul-op-none TypeError can't multiply sequence by non-int of type 'NoneType'",
+            "operator-imul-none TypeError can't multiply sequence by non-int of type 'NoneType'",
             "TypeError",
             "TypeError",
             "TypeError",

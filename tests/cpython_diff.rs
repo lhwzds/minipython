@@ -24762,10 +24762,12 @@ print(type(s * 1).__name__, s * 1 == b'qwerty()')"#,
 
 #[test]
 fn cpython_bytearray_inplace_concat_repeat_diff_subset() {
+    // CPython oracle text: can't multiply sequence by non-int of type 'NoneType'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::ByteArrayTest::test_iconcat, ::test_irepeat, and ::test_irepeat_1char",
         name: "bytearray-inplace-concat-repeat",
-        source: r#"class I:
+        source: r#"import operator
+class I:
     def __index__(self):
         return 2
 b = bytearray(b'abc')
@@ -24803,6 +24805,14 @@ print(b, result is b)
 b = bytearray(b'a')
 result = b.__imul__(I())
 print(b, result is b)
+def imul_none():
+    b = bytearray(b'a')
+    b *= None
+for label, expr in [('imul-op-none', imul_none), ('operator-imul-none', lambda: operator.imul(bytearray(b'a'), None))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 for expr in [lambda: bytearray(b'a').__iadd__('b'), lambda: bytearray(b'a').__iadd__([98]), lambda: bytearray(b'a').__imul__('3'), lambda: bytearray(b'a').__imul__(None), lambda: bytearray(b'a').__iadd__(), lambda: bytearray(b'a').__imul__()]:
     try:
         expr()
