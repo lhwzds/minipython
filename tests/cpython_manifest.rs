@@ -16228,15 +16228,23 @@ fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
         "move-missing-payload",
         "error.args[0] == 'x'",
         "type(error.args[0]).__name__",
+        "OrderedDict().popitem()",
+        "pop-empty-payload",
+        "error.args[0] == 'dictionary is empty'",
+        "str(error) == repr(error.args[0])",
     ] {
         assert!(
             subset_body.contains(required) || diff_body.contains(required),
-            "OrderedDict move_to_end missing-key evidence must cover `{required}`"
+            "OrderedDict move/pop error evidence must cover `{required}`"
         );
     }
     assert!(
         subset_body.contains("move-missing-payload True str 'x'"),
         "OrderedDict move_to_end subset output must preserve the original missing key payload"
+    );
+    assert!(
+        subset_body.contains("pop-empty-payload True str True"),
+        "OrderedDict popitem subset output must preserve CPython empty-pop KeyError display"
     );
 
     let move_to_end_body = VM_SOURCE
@@ -16248,6 +16256,16 @@ fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
         move_to_end_body.contains("return raise_key_error_value(vm, key.clone());"),
         "OrderedDict.move_to_end missing keys must raise KeyError with the original key payload"
     );
+    let popitem_body = VM_SOURCE
+        .split("if name == \"OrderedDict.popitem\"")
+        .nth(1)
+        .and_then(|tail| tail.split("if name == \"OrderedDict.__reversed__\"").next())
+        .expect("OrderedDict.popitem implementation must be extractable");
+    assert!(
+        popitem_body
+            .contains("return raise_key_error_string(vm, \"dictionary is empty\".to_string());"),
+        "OrderedDict.popitem empty maps must raise KeyError with CPython's message payload"
+    );
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -16255,10 +16273,12 @@ fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
             "missing-key",
             "`move_to_end()`",
             "`KeyError.args[0]`",
+            "empty `popitem()`",
+            "`KeyError(message)` string display",
         ] {
             assert!(
                 document.contains(required),
-                "OrderedDict move_to_end missing-key docs must contain `{required}`"
+                "OrderedDict move/pop error docs must contain `{required}`"
             );
         }
     }

@@ -20764,7 +20764,11 @@ for label, expr in [
     try:
         eval(expr)
     except Exception as error:
-        print(label, error.__class__.__name__)"#,
+        print(label, error.__class__.__name__)
+try:
+    OrderedDict().popitem()
+except KeyError as error:
+    print('pop-empty-payload', error.args[0] == 'dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))"#,
         },
         DiffCase {
             origin: "Lib/test/test_ordered_dict.py public view display subset",

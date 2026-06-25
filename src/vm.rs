@@ -70701,7 +70701,8 @@ fn call_dict_method(
             Some(entries.remove(0))
         };
         let Some((key, value)) = item else {
-            return Err("KeyError: popitem(): dictionary is empty".to_string());
+            drop(entries);
+            return raise_key_error_string(vm, "dictionary is empty".to_string());
         };
         mark_dict_changed(&mut entries);
         return Ok(tuple_value(vec![key, value]));

@@ -4086,8 +4086,9 @@ without adding general custom encoder/decoder class support.
   `ordered-dict-move-pop-keyword-subset` case, covering `move_to_end()` and
   `popitem()` `last=` keyword binding, type-level method calls, missing-key
   `move_to_end()` preserving the original key in `KeyError.args[0]`,
-  empty-pop errors, unexpected-keyword errors, and duplicate-argument errors
-  without promoting the full OrderedDict runtime surface.
+  empty `popitem()` errors preserving CPython's `KeyError(message)` string
+  display, unexpected-keyword errors, and duplicate-argument errors without
+  promoting the full OrderedDict runtime surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_view_display_subset`, backed by
   `cpython_program_output_parity_smoke_diff_subset` through the

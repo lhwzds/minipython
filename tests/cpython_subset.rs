@@ -37721,6 +37721,10 @@ fn cpython_ordered_dict_move_pop_keyword_subset() {
             "pop-dup-last TypeError",
         ],
     );
+    assert_output(
+        "from collections import OrderedDict\ntry:\n    OrderedDict().popitem()\nexcept KeyError as error:\n    print('pop-empty-payload', error.args[0] == 'dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))",
+        &["pop-empty-payload True str True"],
+    );
 }
 
 // Adapted from CPython public OrderedDict view behavior. The supported
