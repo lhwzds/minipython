@@ -50378,6 +50378,46 @@ fn cpython_collections_chainmap_constructor_source_len_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap length:
+// ChainMap subclass len uses the same unique keys from stored sources.
+#[test]
+fn cpython_collections_chainmap_subclass_source_len_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "class Sub(ChainMap):\n",
+            "    pass\n",
+            "cases = [\n",
+            "    ('empty', Sub()),\n",
+            "    ('empty-dict', Sub({})),\n",
+            "    ('dict-second', Sub({}, {'x': 1})),\n",
+            "    ('list-empty', Sub([])),\n",
+            "    ('list-value', Sub([1, 1, 2])),\n",
+            "    ('tuple-value', Sub((1, 2, 1))),\n",
+            "    ('str-value', Sub('abca')),\n",
+            "    ('int-one', Sub(1)),\n",
+            "    ('none', Sub(None)),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    try:\n",
+            "        print(label, len(value))\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "empty 0",
+            "empty-dict 0",
+            "dict-second 1",
+            "list-empty 0",
+            "list-value 2",
+            "tuple-value 2",
+            "str-value 3",
+            "int-one TypeError 'int' object is not iterable",
+            "none TypeError 'NoneType' object is not iterable",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap iteration:
 // ChainMap iterates the unique keys produced by each stored source.
 #[test]

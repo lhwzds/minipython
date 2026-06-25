@@ -10877,6 +10877,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_constructor_source_repr_subset",
             "cpython_collections_chainmap_constructor_source_truthiness_subset",
             "cpython_collections_chainmap_constructor_source_len_subset",
+            "cpython_collections_chainmap_subclass_source_len_subset",
             "cpython_collections_chainmap_constructor_source_iter_subset",
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
@@ -11272,6 +11273,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_source_len_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source len"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_subclass_source_len_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap subclass source len"
     );
     assert!(
         row.diff_evidence
@@ -12299,6 +12305,83 @@ fn collections_chainmap_constructor_source_len_subset_has_focused_diff_evidence(
                     .contains("cpython_collections_chainmap_constructor_source_len_diff_subset")
                 && document.contains("ChainMap constructor source length"),
             "collections ChainMap constructor source-len evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_subclass_source_len_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_subclass_source_len_subset",
+    );
+    for required in [
+        "class Sub(ChainMap):",
+        "('empty', Sub())",
+        "('empty-dict', Sub({}))",
+        "('dict-second', Sub({}, {'x': 1}))",
+        "('list-empty', Sub([]))",
+        "('list-value', Sub([1, 1, 2]))",
+        "('tuple-value', Sub((1, 2, 1)))",
+        "('str-value', Sub('abca'))",
+        "('int-one', Sub(1))",
+        "('none', Sub(None))",
+        "print(label, len(value))",
+        "list-value 2",
+        "tuple-value 2",
+        "str-value 3",
+        "int-one TypeError 'int' object is not iterable",
+        "none TypeError 'NoneType' object is not iterable",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap subclass source-len subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_subclass_source_len_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap subclass source length",
+        "class Sub(ChainMap):",
+        "('dict-second', Sub({}, {'x': 1}))",
+        "('list-value', Sub([1, 1, 2]))",
+        "('str-value', Sub('abca'))",
+        "('int-one', Sub(1))",
+        "len(value)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap subclass source-len CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "value if chain_map_subclass_maps(&value).is_some()",
+        "chain_map_key_count(&maps)",
+        "fn chain_map_key_count(",
+        "fn chain_map_source_keys(",
+        "\"TypeError: '{}' object is not iterable\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap subclass source-len VM implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        !VM_SOURCE.contains("Ok(chain_map_entries(&maps)?.len())"),
+        "ChainMap subclass length must use source key-counting instead of eager mapping-entry expansion"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_subclass_source_len_subset")
+                && document
+                    .contains("cpython_collections_chainmap_subclass_source_len_diff_subset")
+                && document.contains("ChainMap subclass source length"),
+            "collections ChainMap subclass source-len evidence must be documented in coverage and migration notes"
         );
     }
 }

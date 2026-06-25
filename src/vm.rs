@@ -17724,7 +17724,7 @@ impl Vm {
             value if chain_map_subclass_maps(&value).is_some() => {
                 let maps = chain_map_subclass_maps(&value)
                     .expect("ChainMap subclass maps exist after guard");
-                Ok(chain_map_entries(&maps)?.len())
+                chain_map_key_count(&maps)
             }
             value if set_subclass_items(&value).is_some() => Ok(set_subclass_items(&value)
                 .expect("set subclass items exist after guard")
