@@ -15499,6 +15499,8 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // CPython oracle text: unsupported operand type(s) for %: 'bool' and 'list';
     // unsupported operand type(s) for %: 'list' and 'int';
     // unsupported operand type(s) for %: 'complex' and 'int'
+    // CPython oracle text: unsupported operand type(s) for -: 'bool' and 'str';
+    // unsupported operand type(s) for -: 'str' and 'bool'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15546,6 +15548,11 @@ try:
     operator.matmul([], [])
 except TypeError as error:
     print(str(error))
+for label, callback in [('sub-bool-type', lambda: True - 'a'), ('sub-right-bool-type', lambda: 'a' - True), ('operator-sub-bool-type', lambda: operator.sub(True, 'a')), ('operator-sub-right-bool-type', lambda: operator.sub('a', True))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 for label, callback in [('neg-type', lambda: -'a'), ('pos-type', lambda: +'a'), ('invert-type', lambda: ~'a'), ('operator-neg-type', lambda: operator.neg('a')), ('operator-pos-type', lambda: operator.pos('a')), ('operator-invert-type', lambda: operator.invert('a')), ('operator-inv-type', lambda: operator.inv('a'))]:
     try:
         callback()

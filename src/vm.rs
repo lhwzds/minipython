@@ -81043,6 +81043,8 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
         return set_difference_from_iterables_with_kind(kind, left, &[set_value(right)]);
     }
 
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
@@ -81097,7 +81099,11 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::Float(value), Value::Complex { real, imag, .. }) => {
             Ok(complex_value(*value - real, -imag))
         }
-        (left, right) => Err(unsupported_binary_operand_message("-", &left, &right)),
+        _ => Err(unsupported_binary_operand_message(
+            "-",
+            &original_left,
+            &original_right,
+        )),
     }
 }
 
