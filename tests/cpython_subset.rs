@@ -24732,7 +24732,7 @@ fn cpython_runtime_exception_capture_subset() {
     );
     assert_output(
         "try:\n    for item in 1:\n        pass\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
-        &["TypeError 1 is not iterable"],
+        &["TypeError 'int' object is not iterable"],
     );
     assert_output(
         "try:\n    1(2)\nexcept TypeError as error:\n    print(error.__class__.__name__, error)",
@@ -38828,6 +38828,16 @@ fn cpython_iter_next_builtin_subset() {
             "int TypeError iter(v, w): v must be callable",
             "none TypeError iter(v, w): v must be callable",
             "list TypeError iter(v, w): v must be callable",
+        ],
+        8 * 1024 * 1024,
+    );
+    assert_output_with_stack(
+        "for label, expr in [('int', lambda: iter(42)), ('none', lambda: iter(None)), ('float', lambda: iter(1.5)), ('object', lambda: iter(object()))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "int TypeError 'int' object is not iterable",
+            "none TypeError 'NoneType' object is not iterable",
+            "float TypeError 'float' object is not iterable",
+            "object TypeError 'object' object is not iterable",
         ],
         8 * 1024 * 1024,
     );

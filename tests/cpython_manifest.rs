@@ -19406,6 +19406,10 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "iter expected at least 1 argument, got 0",
         "iter expected at most 2 arguments, got 3",
         "iter(v, w): v must be callable",
+        "'int' object is not iterable",
+        "'NoneType' object is not iterable",
+        "'float' object is not iterable",
+        "'object' object is not iterable",
         "iterator = iter(range(2))",
         "next(iterator, 42)",
         "next expected at least 1 argument, got 0",
@@ -19491,6 +19495,10 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "iter expected at least 1 argument, got 0",
         "iter expected at most 2 arguments, got 3",
         "iter(v, w): v must be callable",
+        "'int' object is not iterable",
+        "'NoneType' object is not iterable",
+        "'float' object is not iterable",
+        "'object' object is not iterable",
         "lambda: next()",
         "lambda: next(42)",
         "next expected at least 1 argument, got 0",
@@ -19510,6 +19518,7 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
             document.contains("cpython_iter_next_builtin_subset")
                 && document.contains("cpython_iter_next_builtin_diff_subset")
                 && document.contains("callable-sentinel")
+                && document.contains("iter(non_iterable)")
                 && document.contains("non-iterator")
                 && document.contains("sink-state"),
             "focused iter/next evidence must be documented in coverage and migration notes"

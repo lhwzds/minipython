@@ -1882,8 +1882,8 @@ Completed in the differential parity harness pass:
   behavior from `test_iter_function_concealing_reentrant_exhaustion`: if the
   callable exhausts its own iterator before returning a non-sentinel value, the
   outer `next()` still stops instead of yielding that stale value. Public
-  `next(non_iterator)` failures now also preserve CPython's type-name
-  `TypeError` text for builtin int, list, and None inputs, including the
+  `iter(non_iterable)` and `next(non_iterator)` failures now also preserve
+  CPython's type-name `TypeError` text for common builtin inputs, including the
   `next(value, default)` path.
 - Migrated first-pass `all()`/`any()` coverage from `Lib/test/test_builtin.py`.
   The VM now exposes both builtins through the same iterator/generator path,
@@ -7086,8 +7086,9 @@ Completed in the iter/next builtin pass:
   `next(iterator, default)`.
 - Tightened `iter()` and `next()` arity/protocol failures so they become
   catchable CPython-style `TypeError` exceptions in the supported subset,
-  including exact CPython `iter` and `next` arity `TypeError` text and
-  `next(non_iterator)` type-name diagnostics.
+  including exact CPython `iter` and `next` arity `TypeError` text,
+  `iter(non_iterable)` type-name diagnostics, and `next(non_iterator)`
+  type-name diagnostics.
 - Isolated custom `__iter__` calls so exceptions raised there do not consume the
   caller's active exception handler.
 - Extended `iter(callable, sentinel)` with CPython

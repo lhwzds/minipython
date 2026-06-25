@@ -9422,6 +9422,14 @@ for label, expr in [('int', lambda: iter(1, 2)), ('none', lambda: iter(None, 2))
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error))
+# CPython oracle text: 'int' object is not iterable;
+# 'NoneType' object is not iterable; 'float' object is not iterable;
+# 'object' object is not iterable
+for label, expr in [('int', lambda: iter(42)), ('none', lambda: iter(None)), ('float', lambda: iter(1.5)), ('object', lambda: iter(object()))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 # CPython oracle text: next expected at least 1 argument, got 0;
 # next expected at most 2 arguments, got 3
 for label, expr in [('missing', lambda: next()), ('too-many', lambda: next(iter([]), 1, 2))]:

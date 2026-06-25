@@ -79,6 +79,10 @@ Recent runtime migration notes:
   `TypeError` text.
 - `cpython_iter_next_builtin_subset` now pins exact CPython `iter` arity
   `TypeError` text for missing and excess positional arguments.
+- `cpython_iter_next_builtin_subset`, backed by
+  `cpython_iter_next_builtin_diff_subset`, now pins exact CPython
+  `iter(non_iterable)` `TypeError` text for builtin int, None, float, and
+  object inputs.
 - `cpython_iter_next_builtin_subset` now also pins exact CPython `next` arity
   `TypeError` text for missing and excess positional arguments.
 - `cpython_iter_next_builtin_subset`, backed by

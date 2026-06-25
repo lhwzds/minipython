@@ -78749,7 +78749,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
         wrapper @ Value::GeneratorWrapper { .. } => generator_wrapper_iter_value(&wrapper),
         Value::CoroutineAwait(state) => Ok(Value::CoroutineAwait(state)),
         Value::AwaitIterator(iterator) => Ok(Value::AwaitIterator(iterator)),
-        value => Err(format!("{value} is not iterable")),
+        value => Err(format!("'{}' object is not iterable", type_name(&value))),
     }
 }
 
