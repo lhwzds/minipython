@@ -26376,7 +26376,7 @@ impl Vm {
             }
             "index" => {
                 let (receiver, value, start, stop) = sequence_abc_bind_index_args(args, keywords)?;
-                self.sequence_abc_index(receiver, value, start, stop)
+                self.sequence_abc_index(receiver, value, start, stop, None)
             }
             "count" => {
                 let (receiver, value) = sequence_abc_bind_one_value_arg("count", args, keywords)?;
@@ -26427,6 +26427,7 @@ impl Vm {
         needle: Value,
         start: Value,
         stop: Option<Value>,
+        missing_value_error: Option<&'static str>,
     ) -> Result<Value, String> {
         let mut start = self.index_i64(start, "index start")?;
         let mut stop = match stop {
@@ -26465,7 +26466,10 @@ impl Vm {
                 .ok_or_else(|| "sequence index overflow".to_string())?;
         }
 
-        Err("ValueError".to_string())
+        Err(match missing_value_error {
+            Some(message) => format!("ValueError: {message}"),
+            None => "ValueError".to_string(),
+        })
     }
 
     fn sequence_abc_len_i64(&mut self, receiver: Value) -> Result<i64, String> {
@@ -26601,7 +26605,8 @@ impl Vm {
         receiver: Value,
         value: Value,
     ) -> Result<Value, String> {
-        let index = self.sequence_abc_index(receiver.clone(), value, Value::Number(0), None)?;
+        let index =
+            self.sequence_abc_index(receiver.clone(), value, Value::Number(0), None, None)?;
         self.delete_subscript_value(receiver, index)?;
         Ok(Value::None)
     }
@@ -66478,7 +66483,18 @@ fn call_immutable_sequence_method(
             }
             let start = rest.first().cloned().unwrap_or(Value::Number(0));
             let stop = rest.get(1).cloned();
-            vm.sequence_abc_index(receiver.clone(), needle.clone(), start, stop)
+            let missing_value_error = match name {
+                "tuple.index" => Some("tuple.index(x): x not in tuple"),
+                "range.index" => Some("range.index(x): x not in range"),
+                _ => None,
+            };
+            vm.sequence_abc_index(
+                receiver.clone(),
+                needle.clone(),
+                start,
+                stop,
+                missing_value_error,
+            )
         }
         "__eq__" | "__ne__" => {
             let [receiver, other] = args.as_slice() else {

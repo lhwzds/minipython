@@ -40654,6 +40654,38 @@ fn cpython_tuple_subclass_core_sequence_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/seq_tests.py tuple index missing-value
+// ValueError message behavior for supported instance calls.
+#[test]
+fn cpython_tuple_index_missing_valueerror_message_subset() {
+    assert_output(
+        r#"class T(tuple):
+    pass
+class Needle:
+    def __repr__(self):
+        return '<needle-repr>'
+    def __str__(self):
+        return '<needle-str>'
+
+for label, expr in [
+    ('tuple', lambda: (1, 2).index(3)),
+    ('subclass', lambda: T((1, 2)).index(3)),
+    ('repr-needle', lambda: (1, 2).index(Needle())),
+    ('window', lambda: (1, 2, 3).index(3, 0, 2)),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "tuple ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)",
+            "subclass ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)",
+            "repr-needle ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)",
+            "window ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)",
+        ],
+    );
+}
+
 // Adapted from CPython public dict-subclass behavior used across
 // Lib/test/test_builtin.py and Lib/test/test_types.py mapping-protocol cases.
 // This pins the supported mutable mapping protocol without depending on

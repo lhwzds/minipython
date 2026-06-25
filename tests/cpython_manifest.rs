@@ -228,6 +228,62 @@ fn list_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn tuple_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_tuple_index_missing_valueerror_message_subset(",
+        "lambda: (1, 2).index(3)",
+        "lambda: T((1, 2)).index(3)",
+        "lambda: (1, 2).index(Needle())",
+        "lambda: (1, 2, 3).index(3, 0, 2)",
+        "tuple.index(x): x not in tuple",
+        "\"repr-needle ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)\"",
+        "\"window ValueError tuple.index(x): x not in tuple ('tuple.index(x): x not in tuple',)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused tuple.index missing ValueError subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_tuple_index_missing_valueerror_message_diff_subset",
+    );
+    for required in [
+        "Lib/test/seq_tests.py tuple.index missing value ValueError message subset",
+        "name: \"tuple-index-missing-valueerror-message\"",
+        "lambda: (1, 2).index(3)",
+        "lambda: T((1, 2)).index(3)",
+        "lambda: (1, 2).index(Needle())",
+        "lambda: (1, 2, 3).index(3, 0, 2)",
+        "print(label, type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused tuple.index missing ValueError CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("tuple.index(x): x not in tuple"),
+        "tuple.index missing value implementation must keep CPython's fixed public message"
+    );
+    assert!(
+        VM_SOURCE.contains("sequence.index(x): x not in sequence"),
+        "operator.indexOf missing value implementation must keep its generic sequence message"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_tuple_index_missing_valueerror_message_subset")
+                && document.contains("cpython_tuple_index_missing_valueerror_message_diff_subset")
+                && document.contains("tuple.index(x): x not in tuple"),
+            "focused tuple.index missing ValueError evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";
