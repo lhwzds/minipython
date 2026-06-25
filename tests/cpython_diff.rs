@@ -9644,6 +9644,21 @@ for expr in [lambda: enumerate(), lambda: enumerate(1), lambda: enumerate('abc',
         expr()
     except TypeError as error:
         print(error.__class__.__name__)
+# CPython oracle text: enumerate() missing required argument 'iterable';
+# enumerate() takes at most 2 arguments (3 given);
+# 'iterable' is an invalid keyword argument for enumerate()
+for label, expr in [
+    ('missing', lambda: enumerate()),
+    ('pos-start-bad', lambda: enumerate(['a'], start=2, bad=3)),
+    ('pos2-bad', lambda: enumerate(['a'], 2, bad=3)),
+    ('pos3', lambda: enumerate('abc', 2, 3)),
+    ('dup-iterable', lambda: enumerate([], iterable=[])),
+    ('dup-start', lambda: enumerate([], 0, start=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 a = (1, 2, 3)
 b = (4, 5, 6)
 print(list(zip(a, b)))

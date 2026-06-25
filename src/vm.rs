@@ -30875,16 +30875,29 @@ impl Vm {
             }
             values => {
                 return Err(format!(
-                    "TypeError: enumerate() expected at most 2 arguments, got {}",
+                    "TypeError: enumerate() takes at most 2 arguments ({} given)",
                     values.len()
                 ));
             }
+        }
+
+        let total_args = args.len() + keywords.len();
+        if !args.is_empty() && total_args > 2 {
+            return Err(format!(
+                "TypeError: enumerate() takes at most 2 arguments ({total_args} given)"
+            ));
         }
 
         for (keyword, value) in keywords {
             match keyword.as_str() {
                 "iterable" => {
                     if iterable.is_some() {
+                        if !args.is_empty() {
+                            return Err(
+                                "TypeError: 'iterable' is an invalid keyword argument for enumerate()"
+                                    .to_string(),
+                            );
+                        }
                         return Err(
                             "TypeError: enumerate() got multiple values for argument 'iterable'"
                                 .to_string(),
@@ -30909,8 +30922,9 @@ impl Vm {
             }
         }
 
-        let iterable =
-            iterable.ok_or_else(|| "TypeError: enumerate() missing iterable".to_string())?;
+        let iterable = iterable.ok_or_else(|| {
+            "TypeError: enumerate() missing required argument 'iterable'".to_string()
+        })?;
         let Some(iterator) = self.get_iter_or_raise(iterable)? else {
             return Ok(Value::None);
         };

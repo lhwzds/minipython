@@ -39087,6 +39087,17 @@ fn cpython_enumerate_zip_sorted_builtin_subset() {
         ],
     );
     assert_output(
+        "for label, expr in [\n    ('missing', lambda: enumerate()),\n    ('pos-start-bad', lambda: enumerate(['a'], start=2, bad=3)),\n    ('pos2-bad', lambda: enumerate(['a'], 2, bad=3)),\n    ('pos3', lambda: enumerate('abc', 2, 3)),\n    ('dup-iterable', lambda: enumerate([], iterable=[])),\n    ('dup-start', lambda: enumerate([], 0, start=1)),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "missing TypeError enumerate() missing required argument 'iterable'",
+            "pos-start-bad TypeError enumerate() takes at most 2 arguments (3 given)",
+            "pos2-bad TypeError enumerate() takes at most 2 arguments (3 given)",
+            "pos3 TypeError enumerate() takes at most 2 arguments (3 given)",
+            "dup-iterable TypeError 'iterable' is an invalid keyword argument for enumerate()",
+            "dup-start TypeError enumerate() takes at most 2 arguments (3 given)",
+        ],
+    );
+    assert_output(
         "a = (1, 2, 3)\nb = (4, 5, 6)\nprint(list(zip(a, b)))\nprint(list(zip(a, [4, 5, 6])))\nprint(list(zip(a, (4, 5, 6, 7))))\nclass I:\n    def __getitem__(self, index):\n        if index < 0 or index > 2:\n            raise IndexError\n        return index + 4\nprint(list(zip(a, I())))\nprint(list(zip()), list(zip(*[])))\nprint(list(zip(range(5), range(10))))\nprint(sorted([3, 1, 2]))\nprint(sorted([1, 2, 3], key=lambda x: -x))\nprint(sorted([3, 1, 2], reverse=True))\nclass G:\n    pass\nfor expr in [lambda: zip(None), lambda: zip(a, G()), lambda: sorted(), lambda: sorted([], bad=True)]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
         &[
             "[(1, 4), (2, 5), (3, 6)]",

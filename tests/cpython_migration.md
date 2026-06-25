@@ -7115,8 +7115,10 @@ Completed in the enumerate/zip/map/filter/sorted builtin pass:
 - Added `cpython_map_filter_builtin_subset`, adapted from
   `Lib/test/test_builtin.py::BuiltinTest::test_map` and `::test_filter`.
 - Covered iterator identity, sequence `__getitem__` fallback, custom
-  `__iter__` / `__next__` objects, generator-backed iteration, keyword
-  arguments, short zip termination, sorted `key` / `reverse`, and map/filter
+  `__iter__` / `__next__` objects, generator-backed iteration, `enumerate()`
+  keyword arguments including exact CPython TypeError ordering for missing
+  iterable, excess positional/keyword arity, and positional `iterable=`
+  rejection, short zip termination, sorted `key` / `reverse`, and map/filter
   iterator consumption.
 - Tightened arity and keyword failures for these builtins into catchable
   `TypeError` exceptions in the supported subset.
