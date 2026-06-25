@@ -71301,6 +71301,23 @@ fn call_user_dict_method(
         return Ok(dict_lookup(&data.borrow().entries, key).unwrap_or(default));
     }
 
+    if method == "popitem" {
+        reject_method_keywords(name, &keywords)?;
+        if !rest.is_empty() {
+            return Err(format!(
+                "popitem() expected 0 arguments, got {}",
+                method_arg_count(&args)
+            ));
+        }
+        let mut data = data.borrow_mut();
+        let Some((key, value)) = data.entries.pop() else {
+            drop(data);
+            return raise_key_error_empty(vm);
+        };
+        mark_dict_changed(&mut data);
+        return Ok(tuple_value(vec![key, value]));
+    }
+
     let dict_receiver = Value::Dict(data.clone());
     let mut dict_args = Vec::with_capacity(args.len());
     dict_args.push(dict_receiver);
@@ -77280,6 +77297,22 @@ fn key_error_exception(key: Value) -> MiniException {
     }
 }
 
+fn key_error_empty_exception() -> MiniException {
+    MiniException {
+        type_name: "KeyError".to_string(),
+        type_hierarchy: builtin_exception_type_hierarchy("KeyError"),
+        type_object: None,
+        message: None,
+        args: Vec::new(),
+        attrs: Vec::new(),
+        cause: None,
+        context: None,
+        suppress_context: false,
+        exceptions: None,
+        identity: Rc::new(()),
+    }
+}
+
 fn chain_map_first_mapping_key_error_payload(message: &str) -> Option<String> {
     message
         .strip_prefix("KeyError: ")
@@ -77296,6 +77329,11 @@ fn raise_key_error_string(vm: &mut Vm, message: String) -> Result<Value, String>
 
 fn raise_key_error_value(vm: &mut Vm, key: Value) -> Result<Value, String> {
     vm.raise_exception(key_error_exception(key), true)?;
+    Ok(Value::None)
+}
+
+fn raise_key_error_empty(vm: &mut Vm) -> Result<Value, String> {
+    vm.raise_exception(key_error_empty_exception(), true)?;
     Ok(Value::None)
 }
 

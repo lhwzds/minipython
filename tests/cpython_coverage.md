@@ -953,7 +953,8 @@ Recent runtime migration notes:
   CPython public `UserDict` method subset, including direct display and
   empty-format behavior plus class-level direct public method calls such as
   `UserDict.get(obj, key)`, and exact/subclass missing-key deletion preserving
-  the original key in `KeyError.args[0]`, with direct output parity evidence.
+  the original key in `KeyError.args[0]`, plus exact/direct/subclass empty
+  `popitem()` no-arg `KeyError`, with direct output parity evidence.
 - The bundled `collections` module also includes
   `cpython_collections_userlist_public_methods_diff_subset`, covering the
   CPython public `UserList` method subset, including direct display,

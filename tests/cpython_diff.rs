@@ -14416,6 +14416,19 @@ def delete_missing_userdict_subclass():
     del sub_obj['missing']
 show_missing('subclass-delitem-missing', lambda: UserDict.__delitem__(sub_obj, 'missing'))
 show_missing('subclass-del-syntax-missing', delete_missing_userdict_subclass)
+popitem_obj = UserDict({'z': 9})
+print('popitem-direct', UserDict.popitem(popitem_obj), popitem_obj)
+sub_popitem_obj = UDSub({'z': 9})
+print('subclass-popitem', sub_popitem_obj.popitem(), list(sub_popitem_obj.items()))
+def show_empty_popitem(label, action):
+    try:
+        action()
+    except KeyError as error:
+        print(label, len(error.args), str(error) == '')
+show_empty_popitem('popitem-empty', lambda: UserDict().popitem())
+show_empty_popitem('popitem-direct-empty', lambda: UserDict.popitem(UserDict()))
+show_empty_popitem('subclass-popitem-empty', lambda: UDSub().popitem())
+show_empty_popitem('subclass-direct-popitem-empty', lambda: UserDict.popitem(UDSub()))
 class_copy = UserDict.copy(class_obj)
 print(class_copy, type(class_copy).__name__, class_copy.data is class_obj.data)
 print(UserDict.clear(class_obj), class_obj)"#,

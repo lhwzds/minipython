@@ -11681,6 +11681,13 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "def delete_missing_userdict_subclass():",
         "UserDict.__delitem__(sub_obj, 'missing')",
         "del sub_obj['missing']",
+        "UserDict.popitem(popitem_obj)",
+        "sub_popitem_obj.popitem()",
+        "def show_empty_popitem(",
+        "UserDict().popitem()",
+        "UserDict.popitem(UserDict())",
+        "UDSub().popitem()",
+        "UserDict.popitem(UDSub())",
         "UserDict.copy(class_obj)",
         "UserDict.clear(class_obj)",
     ] {
@@ -11695,6 +11702,12 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "del-syntax-missing True str 'missing'",
         "subclass-delitem-missing True str 'missing'",
         "subclass-del-syntax-missing True str 'missing'",
+        "popitem-direct ('z', 9) {}",
+        "subclass-popitem ('z', 9) []",
+        "popitem-empty 0 True",
+        "popitem-direct-empty 0 True",
+        "subclass-popitem-empty 0 True",
+        "subclass-direct-popitem-empty 0 True",
     ] {
         assert!(
             userdict_public_subset_body.contains(required),
@@ -11716,6 +11729,26 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "UserDict delete-subscript implementation must contain `{required}`"
         );
     }
+    let user_dict_method_body = VM_SOURCE
+        .split("fn call_user_dict_method(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn call_dict_view_method(").next())
+        .expect("UserDict method implementation must be extractable");
+    for required in [
+        "if method == \"popitem\"",
+        "return raise_key_error_empty(vm);",
+        "mark_dict_changed(&mut data);",
+    ] {
+        assert!(
+            user_dict_method_body.contains(required),
+            "UserDict popitem implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains("fn key_error_empty_exception()")
+            && VM_SOURCE.contains("fn raise_key_error_empty("),
+        "UserDict empty popitem must be backed by a no-arg KeyError helper"
+    );
     let userlist_public_diff_body = extract_rust_test_body(
         CPYTHON_DIFF,
         "cpython_collections_userlist_public_methods_diff_subset",
