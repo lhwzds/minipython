@@ -8558,7 +8558,9 @@ fn cpython_compile_specifics_compile_filename_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_compile.py::TestSpecifics compile filename public behavior",
         name: "compile-specifics-compile-filename",
-        source: r#"class B(bytes):
+        source: r#"class S(str):
+    pass
+class B(bytes):
     pass
 class FakePath:
     def __init__(self, path):
@@ -8569,7 +8571,7 @@ class EvilPath:
     def __fspath__(self):
         raise ValueError('bad path')
 
-for filename in ['file.py', b'file.py', B(b'bytes_subclass.py'), FakePath('test_compile_pathlike'), FakePath(b'bytes_path.py'), FakePath(B(b'path_subclass.py'))]:
+for filename in ['file.py', b'file.py', S('str_subclass.py'), B(b'bytes_subclass.py'), FakePath('test_compile_pathlike'), FakePath(S('path_str_subclass.py')), FakePath(b'bytes_path.py'), FakePath(B(b'path_subclass.py'))]:
     code = compile('42', filename, 'single')
     print(type(filename).__name__, code.co_filename, type(code.co_filename).__name__)
 

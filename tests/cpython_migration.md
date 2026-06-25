@@ -990,6 +990,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   subclass filename support, including path-like `__fspath__()` results that
   return a bytes subclass. Non-UTF-8 filename bytes remain outside this slice
   because CPython exposes surrogateescape characters in `co_filename`.
+- Expanded the same compile filename subset and direct diff with `str` subclass
+  filename support, including path-like `__fspath__()` results that return a
+  `str` subclass and preserve the public `code.co_filename` type.
 - Added `cpython_compile_specifics_compile_argument_conversion_subset`, porting
   the public argument-conversion behavior covered by CPython
   `test_compile_filename_refleak`: non-string `mode` rejects with `TypeError`,

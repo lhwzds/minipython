@@ -627,6 +627,7 @@ pub enum Value {
     CodeObject {
         mode: CodeMode,
         filename: String,
+        public_filename: Box<Value>,
         instructions: Vec<Instruction>,
         line_spans: Vec<CodeLineSpan>,
         varnames: Vec<String>,

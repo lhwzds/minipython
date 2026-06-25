@@ -4495,8 +4495,9 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_specifics_compile_filename_subset`, covering first-pass
   CPython `compile()` filename behavior for string, bytes, and path-like
-  filename objects, bytes subclass filenames and path-like bytes subclass
-  results, memoryview filename rejection, CPython public
+  filename objects, `str` subclass filenames that preserve their public
+  `code.co_filename` type, bytes subclass filenames, path-like `str` subclass
+  results, and path-like bytes subclass results, memoryview filename rejection, CPython public
   `expected str, bytes or os.PathLike object` and
   `FakePath.__fspath__()` TypeError text via
   `cpython_compile_specifics_compile_filename_diff_subset`, and the public

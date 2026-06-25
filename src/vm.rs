@@ -4993,13 +4993,15 @@ impl Vm {
                 fields: frame.fields.clone(),
             })
             .unwrap_or(Value::None);
+        let filename = if self.is_module {
+            "<module>".to_string()
+        } else {
+            "<function>".to_string()
+        };
         let code = Value::CodeObject {
             mode: CodeMode::Exec,
-            filename: if self.is_module {
-                "<module>".to_string()
-            } else {
-                "<function>".to_string()
-            },
+            public_filename: Box::new(Value::String(filename.clone())),
+            filename,
             instructions: self.instructions.clone(),
             line_spans: self.frame_line_spans.clone(),
             varnames: Vec::new(),
@@ -17933,16 +17935,22 @@ impl Vm {
         self.call_value_with_keywords(hook, args, keywords)
     }
 
-    fn compile_filename_argument(&mut self, value: Value) -> Result<String, String> {
+    fn compile_filename_argument(&mut self, value: Value) -> Result<CompileFilename, String> {
         match value {
             Value::String(filename)
             | Value::IdentityString {
                 value: filename, ..
-            } => Ok(filename),
-            Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone()),
+            } => Ok(CompileFilename::from_string(filename)),
+            value if str_subclass_string(&value).is_some() => Ok(CompileFilename {
+                text: str_subclass_string(&value).expect("str subclass storage exists after guard"),
+                public_value: value,
+            }),
+            Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone())
+                .map(CompileFilename::from_string),
             value if bytes_subclass_bytes(&value).is_some() => compile_filename_from_bytes(
                 bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
-            ),
+            )
+            .map(CompileFilename::from_string),
             value @ Value::Instance { .. } => {
                 let path_type = type_name(&value).to_string();
                 let Some(method) = instance_special_method(&value, "__fspath__") else {
@@ -17955,13 +17963,20 @@ impl Vm {
                         | Value::IdentityString {
                             value: filename, ..
                         },
-                    ) => Ok(filename),
-                    Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone()),
+                    ) => Ok(CompileFilename::from_string(filename)),
+                    Ok(result) if str_subclass_string(&result).is_some() => Ok(CompileFilename {
+                        text: str_subclass_string(&result)
+                            .expect("str subclass storage exists after guard"),
+                        public_value: result,
+                    }),
+                    Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone())
+                        .map(CompileFilename::from_string),
                     Ok(result) if bytes_subclass_bytes(&result).is_some() => {
                         compile_filename_from_bytes(
                             bytes_subclass_bytes(&result)
                                 .expect("bytes subclass storage exists after guard"),
                         )
+                        .map(CompileFilename::from_string)
                     }
                     Ok(result) => Err(format!(
                         "TypeError: expected {path_type}.__fspath__() to return str or bytes, not {}",
@@ -17976,7 +17991,7 @@ impl Vm {
     fn compile_code_object_with_warnings(
         &mut self,
         source: Value,
-        filename: String,
+        filename: CompileFilename,
         mode: &str,
         optimize: i64,
         warning_module: Option<String>,
@@ -17985,12 +18000,14 @@ impl Vm {
         let mode = code_mode_from_string(mode)?;
         let options =
             CompileOptions::optimized(optimize).with_allow_top_level_await(allow_top_level_await);
+        let filename_text = filename.text;
+        let public_filename = filename.public_value;
         let (instructions, line_spans, flags) = match source {
             Value::AstNode { .. } => {
                 let (instructions, flags) = self.compile_ast_code_object_with_warnings(
                     &source,
                     mode,
-                    &filename,
+                    &filename_text,
                     options,
                     warning_module.as_deref(),
                 )?;
@@ -18001,7 +18018,7 @@ impl Vm {
                     .compile_source_code_object_with_warnings(
                         source,
                         mode,
-                        &filename,
+                        &filename_text,
                         options,
                         warning_module.as_deref(),
                     )?;
@@ -18011,7 +18028,8 @@ impl Vm {
 
         Ok(Value::CodeObject {
             mode,
-            filename,
+            filename: filename_text,
+            public_filename: Box::new(public_filename),
             consts: function_code_constants(&instructions),
             instructions,
             line_spans,
@@ -18309,7 +18327,7 @@ impl Vm {
             Value::String(source) | Value::IdentityString { value: source, .. } => self
                 .compile_code_object_with_warnings(
                     Value::String(source),
-                    "<string>".to_string(),
+                    CompileFilename::from_string("<string>".to_string()),
                     "exec",
                     -1,
                     warning_module,
@@ -18321,7 +18339,7 @@ impl Vm {
                         str_subclass_string(&value)
                             .expect("str subclass storage exists after guard"),
                     ),
-                    "<string>".to_string(),
+                    CompileFilename::from_string("<string>".to_string()),
                     "exec",
                     -1,
                     warning_module,
@@ -18329,7 +18347,7 @@ impl Vm {
                 ),
             Value::Bytes(bytes) => self.compile_code_object_with_warnings(
                 Value::Bytes(bytes),
-                "<string>".to_string(),
+                CompileFilename::from_string("<string>".to_string()),
                 "exec",
                 -1,
                 warning_module,
@@ -18341,7 +18359,7 @@ impl Vm {
                         bytes_subclass_bytes(&value)
                             .expect("bytes subclass storage exists after guard"),
                     ),
-                    "<string>".to_string(),
+                    CompileFilename::from_string("<string>".to_string()),
                     "exec",
                     -1,
                     warning_module,
@@ -18349,7 +18367,7 @@ impl Vm {
                 ),
             Value::ByteArray(bytes) => self.compile_code_object_with_warnings(
                 Value::ByteArray(bytes),
-                "<string>".to_string(),
+                CompileFilename::from_string("<string>".to_string()),
                 "exec",
                 -1,
                 warning_module,
@@ -18361,7 +18379,7 @@ impl Vm {
                         bytearray_subclass_bytes(&value)
                             .expect("bytearray subclass storage exists after guard"),
                     ),
-                    "<string>".to_string(),
+                    CompileFilename::from_string("<string>".to_string()),
                     "exec",
                     -1,
                     warning_module,
@@ -18369,7 +18387,7 @@ impl Vm {
                 ),
             Value::MemoryView(view) => self.compile_code_object_with_warnings(
                 Value::MemoryView(view),
-                "<string>".to_string(),
+                CompileFilename::from_string("<string>".to_string()),
                 "exec",
                 -1,
                 warning_module,
@@ -36407,6 +36425,20 @@ fn compile_source_text(source: Value) -> Result<String, String> {
     }
 }
 
+struct CompileFilename {
+    text: String,
+    public_value: Value,
+}
+
+impl CompileFilename {
+    fn from_string(text: String) -> Self {
+        Self {
+            public_value: Value::String(text.clone()),
+            text,
+        }
+    }
+}
+
 fn compile_filename_from_bytes(bytes: Vec<u8>) -> Result<String, String> {
     String::from_utf8(bytes)
         .map_err(|_| "TypeError: compile() arg 2 contains non-UTF-8 bytes".to_string())
@@ -36489,6 +36521,7 @@ fn compile_code_object(source: Value, filename: String, mode: &str) -> Result<Va
 
     Ok(Value::CodeObject {
         mode,
+        public_filename: Box::new(Value::String(filename.clone())),
         filename,
         consts: function_code_constants(&instructions),
         instructions,
@@ -52866,6 +52899,7 @@ fn set_cell_contents(name: &str, scope: &Scope, value: Value) {
 fn load_code_object_attribute(code: Value, name: &str) -> Result<Value, String> {
     let Value::CodeObject {
         filename,
+        public_filename,
         line_spans,
         varnames,
         consts,
@@ -52880,7 +52914,7 @@ fn load_code_object_attribute(code: Value, name: &str) -> Result<Value, String> 
     match name {
         "__class__" => Ok(Value::Builtin("code".to_string())),
         "co_name" => Ok(Value::String(code_name.clone())),
-        "co_filename" => Ok(Value::String(filename.clone())),
+        "co_filename" => Ok(public_filename.as_ref().clone()),
         "co_varnames" => Ok(tuple_value(
             varnames.iter().cloned().map(Value::String).collect(),
         )),
@@ -52904,6 +52938,7 @@ fn generator_code_object_value(state: &GeneratorState) -> Value {
 
     Value::CodeObject {
         mode: CodeMode::Exec,
+        public_filename: Box::new(Value::String("<function>".to_string())),
         filename: "<function>".to_string(),
         instructions: state.instructions.clone(),
         line_spans: function_code_line_spans(
@@ -53000,6 +53035,7 @@ fn coroutine_code_object_value(state: &CoroutineState) -> Value {
 
     Value::CodeObject {
         mode: CodeMode::Exec,
+        public_filename: Box::new(Value::String("<function>".to_string())),
         filename: "<function>".to_string(),
         instructions: state.instructions.clone(),
         line_spans: function_code_line_spans(
@@ -53235,6 +53271,7 @@ fn function_metadata_code_object_with_identity(
     let consts = function_code_constants(body);
     Value::CodeObject {
         mode: CodeMode::Exec,
+        public_filename: Box::new(Value::String("<function>".to_string())),
         filename: "<function>".to_string(),
         instructions,
         line_spans: function_code_line_spans_with_columns(

@@ -14681,11 +14681,15 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
         "cpython_compile_specifics_compile_filename_subset",
     );
     for required in [
+        "class S(str):",
         "class B(bytes):",
+        "str_subclass.py S",
         "bytes_subclass.py str",
         "bytearray TypeError expected str, bytes or os.PathLike object, not bytearray",
         "memoryview TypeError expected str, bytes or os.PathLike object, not memoryview",
         "list TypeError expected str, bytes or os.PathLike object, not list",
+        "FakePath(S('path_str_subclass.py'))",
+        "path_str_subclass.py S",
         "FakePath(B(b'path_subclass.py'))",
         "object TypeError expected str, bytes or os.PathLike object, not object",
         "path-result TypeError expected FakePath.__fspath__() to return str or bytes, not bytearray",
@@ -14703,9 +14707,12 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
     );
     for required in [
         "Lib/test/test_compile.py::TestSpecifics compile filename public behavior",
+        "class S(str):",
         "class B(bytes):",
+        "S('str_subclass.py')",
         "B(b'bytes_subclass.py')",
         "FakePath('test_compile_pathlike')",
+        "FakePath(S('path_str_subclass.py'))",
         "FakePath(b'bytes_path.py')",
         "FakePath(B(b'path_subclass.py'))",
         "type(code.co_filename).__name__",
@@ -14720,6 +14727,9 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
     }
 
     for required in [
+        "struct CompileFilename",
+        "public_filename: Box::new",
+        "value if str_subclass_string(&value).is_some()",
         "fn compile_filename_type_error(",
         "value if bytes_subclass_bytes(&value).is_some()",
         "expected str, bytes or os.PathLike object, not {}",
@@ -14731,6 +14741,10 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
             "compile filename VM implementation must contain `{required}`"
         );
     }
+    assert!(
+        VALUE_SOURCE.contains("public_filename: Box<Value>"),
+        "compile filename code object storage must preserve a public co_filename value"
+    );
 
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         assert!(
