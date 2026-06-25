@@ -7804,6 +7804,9 @@ Completed in the dict view rich-comparison pass:
   exposure and positive size-like integer results across built-in dict and
   `OrderedDict` views without adding exact CPython allocation-size accounting
   or `sys.getsizeof()`.
+- Added `cpython_dict_view_doc_attribute_subset`, backed by
+  `cpython_dict_view_doc_attribute_diff_subset`, covering dict view doc attribute
+  exposure as `None` across built-in dict and `OrderedDict` views.
 - Added `cpython_dict_view_isdisjoint_subset`, backed by
   `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

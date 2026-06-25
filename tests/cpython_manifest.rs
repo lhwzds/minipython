@@ -1124,6 +1124,56 @@ fn dict_view_sizeof_method_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_doc_attribute_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_doc_attribute_subset(",
+        "hasattr(view, \"__doc__\")",
+        "value = view.__doc__",
+        "type(value).__name__",
+        "value is None",
+        "\"keys True NoneType True\"",
+        "\"values True NoneType True\"",
+        "\"odvalues True NoneType True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view doc attribute subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_doc_attribute_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view doc attribute subset",
+        "name: \"dict-view-doc-attribute\"",
+        "hasattr(view, \"__doc__\")",
+        "value = view.__doc__",
+        "type(value).__name__",
+        "value is None",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view doc attribute CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in ["\"__doc__\" => Ok(Value::None)"] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view doc attribute implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_doc_attribute_subset")
+                && document.contains("cpython_dict_view_doc_attribute_diff_subset")
+                && document.contains("dict view doc attribute"),
+            "focused dict view doc attribute evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

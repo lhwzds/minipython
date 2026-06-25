@@ -56035,6 +56035,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 }),
                 "__hash__" => Ok(Value::None),
+                "__doc__" => Ok(Value::None),
                 "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
                 | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
                     if dict_view_is_set_like(kind) =>
@@ -56165,6 +56166,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     identity: Rc::new(()),
                 }),
                 "__hash__" => Ok(Value::None),
+                "__doc__" => Ok(Value::None),
                 "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
                 | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
                     if dict_view_is_set_like(kind) =>

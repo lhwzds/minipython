@@ -49515,6 +49515,34 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view metadata. Dict and OrderedDict views
+// expose a __doc__ attribute with no instance-specific docstring.
+#[test]
+fn cpython_dict_view_doc_attribute_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    value = view.__doc__
+    print(label, hasattr(view, "__doc__"), type(value).__name__, value is None)"#,
+        &[
+            "keys True NoneType True",
+            "items True NoneType True",
+            "values True NoneType True",
+            "odkeys True NoneType True",
+            "oditems True NoneType True",
+            "odvalues True NoneType True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

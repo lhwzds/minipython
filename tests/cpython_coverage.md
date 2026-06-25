@@ -3986,6 +3986,10 @@ without adding general custom encoder/decoder class support.
   exposure and positive size-like integer results across built-in dict and
   `OrderedDict` views without adding exact CPython allocation-size accounting
   or `sys.getsizeof()`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_doc_attribute_subset`, backed by
+  `cpython_dict_view_doc_attribute_diff_subset`, covering dict view doc attribute
+  exposure as `None` across built-in dict and `OrderedDict` views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the
