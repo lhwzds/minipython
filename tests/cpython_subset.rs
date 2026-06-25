@@ -49043,6 +49043,38 @@ print({1: []}.items().isdisjoint([(1, [])]), {1: []}.items().isdisjoint([(2, [])
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view reverse iteration.
+// `reversed(view)` and direct `view.__reversed__()` are both public behavior.
+#[test]
+fn cpython_dict_view_direct_reversed_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+d = {"a": 1, "b": 2}
+for label, view in [("keys", d.keys()), ("items", d.items()), ("values", d.values())]:
+    print(label, hasattr(view, "__reversed__"), list(view.__reversed__()))
+    try:
+        view.__reversed__(1)
+    except Exception as error:
+        print(label + "-arg", type(error).__name__, "argument" in str(error))
+
+od = OrderedDict([("x", 3), ("y", 4)])
+print(type(od.keys()).__name__, list(od.keys().__reversed__()))
+print(type(od.items()).__name__, list(od.items().__reversed__()))
+print(type(od.values()).__name__, list(od.values().__reversed__()))"#,
+        &[
+            "keys True ['b', 'a']",
+            "keys-arg TypeError True",
+            "items True [('b', 2), ('a', 1)]",
+            "items-arg TypeError True",
+            "values True [2, 1]",
+            "values-arg TypeError True",
+            "odict_keys ['y', 'x']",
+            "odict_items [('y', 4), ('x', 3)]",
+            "odict_values [4, 3]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

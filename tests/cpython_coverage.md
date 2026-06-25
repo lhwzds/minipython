@@ -3953,6 +3953,9 @@ without adding general custom encoder/decoder class support.
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the
   method on values views.
+- `CONTAINER_RUNTIME` also includes `cpython_dict_view_direct_reversed_subset`,
+  backed by `cpython_dict_view_direct_reversed_diff_subset`, covering dict view direct __reversed__ calls
+  for built-in dict and `OrderedDict` key/item/value views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment

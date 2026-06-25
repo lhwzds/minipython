@@ -707,6 +707,68 @@ fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_direct_reversed_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_direct_reversed_subset(",
+        "hasattr(view, \"__reversed__\")",
+        "list(view.__reversed__())",
+        "view.__reversed__(1)",
+        "type(od.keys()).__name__",
+        "list(od.keys().__reversed__())",
+        "type(od.items()).__name__",
+        "list(od.items().__reversed__())",
+        "type(od.values()).__name__",
+        "list(od.values().__reversed__())",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view direct __reversed__ subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_direct_reversed_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view direct __reversed__ subset",
+        "name: \"dict-view-direct-reversed\"",
+        "hasattr(view, \"__reversed__\")",
+        "view.__reversed__(1)",
+        "list(od.keys().__reversed__())",
+        "list(od.items().__reversed__())",
+        "list(od.values().__reversed__())",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view direct __reversed__ CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name.starts_with(\"odict_keys.\")",
+        "\"__iter__\" | \"__len__\" | \"__repr__\" | \"__reversed__\"",
+        "\"__reversed__\" =>",
+        "vm.reversed_value(view.clone())",
+        "__reversed__() expected a dict view receiver",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view direct __reversed__ implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_direct_reversed_subset")
+                && document.contains("cpython_dict_view_direct_reversed_diff_subset")
+                && document.contains("dict view direct __reversed__"),
+            "focused dict view direct __reversed__ evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",

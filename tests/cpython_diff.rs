@@ -30417,6 +30417,27 @@ print({1: []}.items().isdisjoint([(1, [])]), {1: []}.items().isdisjoint([(2, [])
 }
 
 #[test]
+fn cpython_dict_view_direct_reversed_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view direct __reversed__ subset",
+        name: "dict-view-direct-reversed",
+        source: r#"from collections import OrderedDict
+d = {"a": 1, "b": 2}
+for label, view in [("keys", d.keys()), ("items", d.items()), ("values", d.values())]:
+    print(label, hasattr(view, "__reversed__"), list(view.__reversed__()))
+    try:
+        view.__reversed__(1)
+    except Exception as error:
+        print(label + "-arg", type(error).__name__, "argument" in str(error))
+
+od = OrderedDict([("x", 3), ("y", 4)])
+print(type(od.keys()).__name__, list(od.keys().__reversed__()))
+print(type(od.items()).__name__, list(od.items().__reversed__()))
+print(type(od.values()).__name__, list(od.values().__reversed__()))"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

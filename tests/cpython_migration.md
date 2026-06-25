@@ -7778,6 +7778,9 @@ Completed in the dict view rich-comparison pass:
   `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the
   method on values views.
+- Added `cpython_dict_view_direct_reversed_subset`, backed by
+  `cpython_dict_view_direct_reversed_diff_subset`, covering dict view direct __reversed__ calls
+  for built-in dict and `OrderedDict` key/item/value views.
 - Preserved snapshot-based set-like behavior for existing dict and mapping view
   operators while moving view comparisons closer to CPython's error propagation.
 

@@ -9967,7 +9967,10 @@ impl Vm {
             Value::Builtin(name)
                 if name.starts_with("dict_keys.")
                     || name.starts_with("dict_items.")
-                    || name.starts_with("dict_values.") =>
+                    || name.starts_with("dict_values.")
+                    || name.starts_with("odict_keys.")
+                    || name.starts_with("odict_items.")
+                    || name.starts_with("odict_values.") =>
             {
                 call_dict_view_method(self, &name, args, keywords)
             }
@@ -56029,7 +56032,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
-                "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
+                "__iter__" | "__len__" | "__repr__" | "__reversed__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::DictView {
                         kind,
@@ -56101,7 +56104,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
-                "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
+                "__iter__" | "__len__" | "__repr__" | "__reversed__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::MappingView {
                         kind,
@@ -71562,6 +71565,18 @@ fn call_dict_view_method(
                 return Err("__repr__() expected a dict view receiver".to_string());
             }
             Ok(Value::String(repr_value_checked(view)?))
+        }
+        "__reversed__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__reversed__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__reversed__() expected a dict view receiver".to_string());
+            }
+            vm.reversed_value(view.clone())
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
