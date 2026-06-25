@@ -16047,6 +16047,29 @@ print(copy.replace(ShadowReplace(), x=5))"#,
 }
 
 #[test]
+fn cpython_copy_replace_unsupported_type_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public copy.replace unsupported-object TypeError subset",
+        name: "copy-replace-unsupported-type-error",
+        source: r#"import copy
+class MissingReplace:
+    pass
+class NoneReplace:
+    __replace__ = None
+for label, expr in [
+    ('object', lambda: copy.replace(object(), x=1)),
+    ('custom-missing', lambda: copy.replace(MissingReplace(), x=1)),
+    ('custom-none', lambda: copy.replace(NoneReplace(), x=1)),
+    ('int', lambda: copy.replace(1, x=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

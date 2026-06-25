@@ -24807,10 +24807,7 @@ impl Vm {
                 if let Some(replaced) = self.call_copy_replace_hook(&value, keywords)? {
                     return Ok(replaced);
                 }
-                Err(format!(
-                    "TypeError: copy.replace() does not support '{}'",
-                    type_name(&value)
-                ))
+                Err(copy_replace_unsupported_type_error(&value))
             }
         }
     }
@@ -26046,10 +26043,7 @@ impl Vm {
             } if class_bases_include_builtin(&class_bases, "AST") => {
                 self.replace_ast_subclass(class_name, fields, class_attrs, class_bases, keywords)
             }
-            value => Err(format!(
-                "TypeError: copy.replace() does not support '{}'",
-                type_name(&value)
-            )),
+            value => Err(copy_replace_unsupported_type_error(&value)),
         }
     }
 
@@ -60434,6 +60428,13 @@ fn exception_message_from_type_args(
 
 fn exception_args_from_message(message: &str) -> Vec<Value> {
     vec![Value::String(message.to_string())]
+}
+
+fn copy_replace_unsupported_type_error(value: &Value) -> String {
+    format!(
+        "TypeError: replace() does not support {} objects",
+        type_name(value)
+    )
 }
 
 fn type_name(value: &Value) -> &str {

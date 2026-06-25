@@ -526,6 +526,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_file_methods_diff_subset`,
   `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
+  `cpython_copy_replace_unsupported_type_error_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
@@ -2133,8 +2134,10 @@ without adding general custom encoder/decoder class support.
   promoted with direct public-behavior evidence.
 - The bundled `copy` module includes `cpython_copy_public_diff_subset`,
   `cpython_copy_replace_custom_hook_diff_subset`,
+  `cpython_copy_replace_unsupported_type_error_diff_subset`,
   `cpython_copy_public_subset`, and
-  `cpython_copy_replace_custom_hook_subset`,
+  `cpython_copy_replace_custom_hook_subset`, and
+  `cpython_copy_replace_unsupported_type_error_subset`,
   covering CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
@@ -2149,7 +2152,9 @@ without adding general custom encoder/decoder class support.
   bytearray copy buffers, dictionary copy independence, `copy.replace()` custom
   `__replace__` hook dispatch through class-level lookup, including
   `staticmethod` / `classmethod` forms and ignoring instance shadowing, and
-  representative arity/memo TypeError classification. Full pickle dispatch-table contents,
+  unsupported-object `TypeError` text (`replace() does not support T objects`)
+  for values outside the supported replacement protocol, plus representative
+  arity/memo TypeError classification. Full pickle dispatch-table contents,
   pickle protocol byte compatibility, arbitrary extension-object copy hooks
   outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
   remain outside the sandbox `copy` subset.
@@ -4503,6 +4508,14 @@ without adding general custom encoder/decoder class support.
   ignores instance shadowing, and `staticmethod` / `classmethod` hook forms.
   Direct CPython output parity is tracked by
   `cpython_copy_replace_custom_hook_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_copy_replace_unsupported_type_error_subset`, covering CPython
+  `copy.replace()` unsupported-object `TypeError` messages for values without a
+  supported replacement protocol, including `object()`, user classes missing
+  `__replace__`, user classes with `__replace__ = None`, and `int` values. The
+  public message shape is `replace() does not support T objects`. Direct
+  CPython output parity is tracked by
+  `cpython_copy_replace_unsupported_type_error_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_simple_namespace_remaining_public_subset`, covering additional
   CPython `SimpleNamespaceTests` public behavior: constructor insertion order,

@@ -15574,6 +15574,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         &[
             "cpython_copy_public_subset",
             "cpython_copy_replace_custom_hook_subset",
+            "cpython_copy_replace_unsupported_type_error_subset",
         ],
         &["pickle protocol"],
     );
@@ -15585,6 +15586,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
     for evidence in [
         "cpython_copy_public_diff_subset",
         "cpython_copy_replace_custom_hook_diff_subset",
+        "cpython_copy_replace_unsupported_type_error_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
     ] {
         assert!(
@@ -15622,17 +15624,30 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy.replace custom hook CPython diff evidence must exist"
     );
     assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_replace_unsupported_type_error_subset("),
+        "copy.replace unsupported TypeError runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_replace_unsupported_type_error_diff_subset("),
+        "copy.replace unsupported TypeError CPython diff evidence must exist"
+    );
+    assert!(
         CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_subset")
-            && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_diff_subset"),
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_diff_subset")
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_unsupported_type_error_subset")
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
         "coverage document must link copy runtime and diff evidence"
     );
     assert!(
         CPYTHON_MIGRATION.contains("cpython_copy_public_subset")
             && CPYTHON_MIGRATION.contains("cpython_copy_public_diff_subset")
             && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_subset")
-            && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_diff_subset"),
+            && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_diff_subset")
+            && CPYTHON_MIGRATION.contains("cpython_copy_replace_unsupported_type_error_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
         "migration document must link copy runtime and diff evidence"
     );
 
@@ -15653,6 +15668,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
         row.diff_evidence
             .contains("cpython_copy_replace_custom_hook_diff_subset"),
         "copy sandbox manifest must cite copy.replace custom hook CPython diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_replace_unsupported_type_error_diff_subset"),
+        "copy sandbox manifest must cite copy.replace unsupported TypeError CPython diff evidence"
     );
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
@@ -15785,10 +15805,56 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "Value::StaticMethod { function } => *function",
         "Value::ClassMethod { function } => Value::BoundMethod",
         "self.call_value_with_keywords(method, vec![value.clone()], keywords)",
+        "fn copy_replace_unsupported_type_error(value: &Value) -> String",
+        "\"TypeError: replace() does not support {} objects\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
             "copy.replace hook implementation must contain `{required}`"
+        );
+    }
+
+    let unsupported_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_replace_unsupported_type_error_diff_subset",
+    );
+    let unsupported_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_replace_unsupported_type_error_subset",
+    );
+    assert!(
+        unsupported_diff
+            .contains("Lib/copy.py public copy.replace unsupported-object TypeError subset"),
+        "copy.replace unsupported TypeError diff evidence must identify its CPython origin"
+    );
+    for required in [
+        "class MissingReplace:",
+        "class NoneReplace:",
+        "__replace__ = None",
+        "copy.replace(object(), x=1)",
+        "copy.replace(MissingReplace(), x=1)",
+        "copy.replace(NoneReplace(), x=1)",
+        "copy.replace(1, x=1)",
+        "str(error)",
+    ] {
+        assert!(
+            unsupported_diff.contains(required),
+            "copy.replace unsupported TypeError CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            unsupported_subset.contains(required),
+            "copy.replace unsupported TypeError runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "replace() does not support object objects",
+        "replace() does not support MissingReplace objects",
+        "replace() does not support NoneReplace objects",
+        "replace() does not support int objects",
+    ] {
+        assert!(
+            unsupported_subset.contains(required),
+            "copy.replace unsupported TypeError runtime subset must assert `{required}`"
         );
     }
 
@@ -15812,6 +15878,8 @@ fn copy_public_diff_covers_pure_memory_subset() {
             "class-level lookup",
             "staticmethod",
             "classmethod",
+            "unsupported-object `TypeError`",
+            "`replace() does not support T objects`",
         ] {
             assert!(
                 document.contains(required),
