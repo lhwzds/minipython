@@ -7552,7 +7552,9 @@ Completed in the collections ABC set/mutable-set mixins pass:
   `Lib/test/test_collections.py::test_Set_interoperability_with_real_sets`,
   covering custom `Set` subclasses with real `set` and list operands across
   binary operators, ordering, equality, inequality, and non-Set ordering
-  `TypeError` paths.
+  `TypeError` paths. The subset now runs with an explicit Rust test stack so
+  the supported Python-level ABC mixin dispatch matrix remains runnable under
+  `cargo test` without changing the sandbox runtime surface.
 - Added `cpython_collections_abc_set_hash_matches_frozenset_subset`, adapted
   from CPython
   `Lib/test/test_collections.py::test_Set_hash_matches_frozenset`, covering

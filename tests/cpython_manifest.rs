@@ -11723,6 +11723,44 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_abc_set_real_set_interoperability_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Set real-set interoperability"
     );
+    let set_real_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_abc_set_real_set_interoperability_subset",
+    );
+    let set_real_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_abc_set_real_set_interoperability_diff_subset",
+    );
+    for required in [
+        "class ListSet(Set):",
+        "r1 = set('abc')",
+        "f1 = ListSet('abc')",
+        "f1 & r2",
+        "r2 & f1",
+        "r1 - f2",
+        "r2 ^ f1",
+        "f1 < l3",
+        "r1 == f1",
+        "f1 != r1",
+    ] {
+        assert!(
+            set_real_subset_body.contains(required) && set_real_diff_body.contains(required),
+            "Set real-set interoperability subset and diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        set_real_subset_body.contains("assert_output_with_stack")
+            && set_real_subset_body.contains("32 * 1024 * 1024"),
+        "Set real-set interoperability subset must keep an explicit Rust test stack"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_abc_set_real_set_interoperability_subset")
+                && document.contains("explicit Rust test stack")
+                && document.contains("ABC mixin dispatch"),
+            "Set real-set interoperability docs must mention the explicit stack requirement"
+        );
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_abc_set_hash_matches_frozenset_diff_subset"),

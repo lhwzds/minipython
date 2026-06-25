@@ -3667,8 +3667,10 @@ without adding general custom encoder/decoder class support.
   CPython `test_Set_interoperability_with_real_sets` for custom `Set`
   subclasses interacting with built-in `set` and plain iterables across `&`,
   `|`, `-`, `^`, ordering, equality, inequality, and TypeError paths for
-  non-Set ordering operands. Direct CPython diff evidence is in
-  `cpython_collections_abc_set_real_set_interoperability_diff_subset`.
+  non-Set ordering operands. The subset runs with an explicit Rust test stack
+  because the supported ABC mixin dispatch path is intentionally Python-level
+  and stack-heavy under the default test harness. Direct CPython diff evidence
+  is in `cpython_collections_abc_set_real_set_interoperability_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_set_hash_matches_frozenset_subset`, covering CPython
   `test_Set_hash_matches_frozenset` for the current public `Set._hash()` mixin

@@ -54000,7 +54000,7 @@ fn cpython_collections_abc_set_from_iterable_operator_subset() {
 // with built-in set values and plain iterables.
 #[test]
 fn cpython_collections_abc_set_real_set_interoperability_subset() {
-    assert_output(
+    assert_output_with_stack(
         concat!(
             "from collections.abc import Set\n",
             "class ListSet(Set):\n",
@@ -54076,6 +54076,7 @@ fn cpython_collections_abc_set_real_set_interoperability_subset() {
             "True True True False False False False",
             "False False False True True True True",
         ],
+        32 * 1024 * 1024,
     );
 }
 
