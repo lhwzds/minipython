@@ -23189,6 +23189,10 @@ fn cpython_compile_builtin_code_object_subset() {
         &["6", "None"],
     );
     assert_output(
+        "class S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 11'), B(b'x = 12'), BA(b'x = 13')]:\n    namespace = {}\n    exec(compile(source, '<mini>', 'exec'), namespace)\n    print(type(source).__name__, namespace['x'])",
+        &["S 11", "B 12", "BA 13"],
+    );
+    assert_output(
         "print(exec(compile('2 + 3', '<mini>', 'single')))\nprint(eval(compile('z = 9', '<mini>', 'exec')))\nprint(z)",
         &["5", "None", "None", "9"],
     );

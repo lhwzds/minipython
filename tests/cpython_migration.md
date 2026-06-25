@@ -7288,6 +7288,10 @@ Completed in the compile builtin code-object pass:
   and bytes sources in `exec`, `eval`, and `single` modes, including positional
   and keyword argument binding plus catchable `TypeError`, `ValueError`, and
   `SyntaxError` paths.
+- Expanded `cpython_compile_builtin_code_object_subset` and
+  `cpython_compile_builtin_code_object_diff_subset` with CPython's public
+  `compile()` source subclass behavior for `str`, `bytes`, and `bytearray`
+  subclasses.
 - Added a minimal `code` runtime value that carries register bytecode and can
   be fed back into `eval()` and `exec()`. `exec()` now preserves output from
   compiled `exec` and `single` code objects, while `eval()` returns values for

@@ -14533,6 +14533,63 @@ fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
 }
 
 #[test]
+fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
+    let subset_body =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_compile_builtin_code_object_subset");
+    for required in [
+        "class S(str):",
+        "class B(bytes):",
+        "class BA(bytearray):",
+        "S 11",
+        "B 12",
+        "BA 13",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "compile code-object subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_compile_builtin_code_object_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_compile",
+        "class S(str):",
+        "class B(bytes):",
+        "class BA(bytearray):",
+        "compile(source, '<mini>', 'exec')",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "compile code-object CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn compile_source_text(",
+        "value if str_subclass_string(&value).is_some()",
+        "value if bytes_subclass_bytes(&value).is_some()",
+        "value if bytearray_subclass_bytes(&value).is_some()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "compile source VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_compile_builtin_code_object_subset")
+                && document.contains("cpython_compile_builtin_code_object_diff_subset")
+                && document.contains("source subclass"),
+            "compile source subclass evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
     let subset_body = extract_rust_test_body(
         CPYTHON_SUBSET,

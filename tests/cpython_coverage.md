@@ -4385,8 +4385,10 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_builtin_code_object_subset`, covering first-pass
   `compile(source, filename, mode)` for string and bytes sources in `exec`,
-  `eval`, and `single` modes, plus feeding the resulting `code` objects through
-  `eval()` and `exec()` with dict-backed globals/locals.
+  `eval`, and `single` modes, `str` / `bytes` / `bytearray` source subclass
+  handling via `cpython_compile_builtin_code_object_diff_subset`, plus feeding
+  the resulting `code` objects through `eval()` and `exec()` with dict-backed
+  globals/locals.
 - `RUNTIME_BUILTINS` also includes
   `cpython_builtin_sorted_exact_subset` and
   `cpython_builtin_sorted_exact_diff_subset`, covering all current CPython

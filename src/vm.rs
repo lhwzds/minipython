@@ -36338,11 +36338,23 @@ fn compile_int_argument(value: Value, name: &str) -> Result<i64, String> {
 fn compile_source_text(source: Value) -> Result<String, String> {
     match source {
         Value::String(source) | Value::IdentityString { value: source, .. } => Ok(source),
+        value if str_subclass_string(&value).is_some() => {
+            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+        }
         Value::Bytes(bytes) => {
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))
         }
+        value if bytes_subclass_bytes(&value).is_some() => decode_source_for_parse(
+            &bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
+        )
+        .map_err(|message| format!("SyntaxError: {message}")),
         Value::ByteArray(bytes) => decode_source_for_parse(&bytes.borrow())
             .map_err(|message| format!("SyntaxError: {message}")),
+        value if bytearray_subclass_bytes(&value).is_some() => decode_source_for_parse(
+            &bytearray_subclass_bytes(&value)
+                .expect("bytearray subclass storage exists after guard"),
+        )
+        .map_err(|message| format!("SyntaxError: {message}")),
         Value::MemoryView(view) => {
             let bytes = memoryview_bytes(&view)?;
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))

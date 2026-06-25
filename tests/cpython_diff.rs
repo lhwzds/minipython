@@ -8508,6 +8508,16 @@ print(eval(code))
 code = compile('value = 4\nprint(value)', '<mini>', 'exec')
 print(exec(code))
 print(exec(compile(b'\xef\xbb\xbfprint(6)\n', '<mini>', 'exec')))
+class S(str):
+    pass
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for source in [S('x = 11'), B(b'x = 12'), BA(b'x = 13')]:
+    namespace = {}
+    exec(compile(source, '<mini>', 'exec'), namespace)
+    print(type(source).__name__, namespace['x'])
 print(exec(compile('2 + 3', '<mini>', 'single')))
 print(eval(compile('z = 9', '<mini>', 'exec')))
 print(z)
