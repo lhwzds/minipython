@@ -7872,6 +7872,12 @@ Completed in the dict view mappingproxy pass:
   `__complex__` providers but still accepts actual complex and complex-subclass
   values through the compatibility path.
 - Extended the CPython
+  `Lib/test/test_complex.py::ComplexTest::test_constructor` protocol rejection
+  subset with `cpython_complex_bad_complex_return_typeerror_subset` and
+  `cpython_complex_bad_complex_return_typeerror_diff_subset`. `complex()` now
+  preserves CPython's unqualified `__complex__ returned non-complex (type int)`
+  public `TypeError` text when `__complex__` returns a non-complex value.
+- Extended the CPython
   `Lib/test/test_complex.py::ComplexTest::test_constructor` protocol subset to
   the constructor deprecation-warning rows. `complex()` now emits catchable
   `DeprecationWarning` records for two-argument complex compatibility in `real`

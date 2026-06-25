@@ -28100,6 +28100,29 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_complex_bad_complex_return_typeerror_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_complex.py::ComplexTest::test_constructor __complex__ non-complex return TypeError rows",
+        name: "complex-bad-complex-return-typeerror",
+        source: r#"class BadComplex:
+    def __complex__(self):
+        return 1
+class BadBool:
+    def __complex__(self):
+        return True
+
+for label, expr in [
+    ('int', lambda: complex(BadComplex())),
+    ('bool', lambda: complex(BadBool())),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, error)"#,
+    });
+}
+
+#[test]
 fn cpython_complex_subclass_constructor_special_numbers_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_complex.py::ComplexTest::test_constructor custom subclass __complex__ rows and ::test_constructor_special_numbers subclass rows",

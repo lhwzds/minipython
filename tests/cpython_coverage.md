@@ -2270,7 +2270,11 @@ without adding general custom encoder/decoder class support.
   signed-zero preservation, `__float__` / `__index__` protocol conversion,
   `__complex__` / `__float__` / `__index__` rejection paths, custom exception
   propagation from `__complex__`, and representative public TypeError
-  diagnostics, plus CPython's two-argument compatibility distinction where
+  diagnostics, including
+  `cpython_complex_bad_complex_return_typeerror_subset` /
+  `cpython_complex_bad_complex_return_typeerror_diff_subset` coverage for the
+  unqualified `__complex__ returned non-complex (type int)` message, plus
+  CPython's two-argument compatibility distinction where
   `real` may use `__complex__` providers but `imag` rejects arbitrary
   `__complex__` providers while still accepting actual complex and
   complex-subclass values, including the associated `DeprecationWarning`

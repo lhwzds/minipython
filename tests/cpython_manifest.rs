@@ -1427,6 +1427,61 @@ fn cpython_test_manifest_complex_method_audit_is_tracked() {
 }
 
 #[test]
+fn complex_bad_complex_return_typeerror_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_complex_bad_complex_return_typeerror_subset(",
+        "class BadComplex",
+        "return 1",
+        "class BadBool",
+        "return True",
+        "__complex__ returned non-complex (type int)",
+        "__complex__ returned non-complex (type bool)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused complex bad __complex__ return subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_complex_bad_complex_return_typeerror_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_complex.py::ComplexTest::test_constructor __complex__ non-complex return TypeError rows",
+        "name: \"complex-bad-complex-return-typeerror\"",
+        "class BadComplex",
+        "return 1",
+        "class BadBool",
+        "return True",
+        "print(label, error.__class__.__name__, error)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused complex bad __complex__ return CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("TypeError: __complex__ returned non-complex (type {})"),
+        "complex protocol implementation must keep CPython's unqualified bad __complex__ return TypeError"
+    );
+    assert!(
+        !VM_SOURCE.contains(".__complex__ returned non-complex (type {})"),
+        "complex protocol implementation must not prefix bad __complex__ return TypeError with the receiver type"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_complex_bad_complex_return_typeerror_subset")
+                && document.contains("cpython_complex_bad_complex_return_typeerror_diff_subset")
+                && document.contains("__complex__ returned non-complex (type int)"),
+            "focused complex bad __complex__ return evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn cpython_test_manifest_float_group_counts_match_current_source() {
     let source = cpython_source_or_skip!(CPYTHON_TEST_FLOAT_SOURCE);
     let class_counts = python_test_class_method_counts(&source);

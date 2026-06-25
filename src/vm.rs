@@ -50574,7 +50574,7 @@ fn complex_compatible_numeric_type(value: &Value) -> Option<String> {
     }
 }
 
-fn complex_protocol_result_parts(receiver: &Value, result: Value) -> Result<ComplexParts, String> {
+fn complex_protocol_result_parts(_receiver: &Value, result: Value) -> Result<ComplexParts, String> {
     if let Some((real, imag)) = complex_subclass_parts(&result) {
         let mut parts = ComplexParts::new(real, imag);
         parts.strict_complex_subclass_result_type = Some(type_name(&result).to_string());
@@ -50583,8 +50583,7 @@ fn complex_protocol_result_parts(receiver: &Value, result: Value) -> Result<Comp
     match result {
         Value::Complex { real, imag, .. } => Ok(ComplexParts::new(real, imag)),
         result => Err(format!(
-            "TypeError: {}.__complex__ returned non-complex (type {})",
-            type_name(receiver),
+            "TypeError: __complex__ returned non-complex (type {})",
             type_name(&result)
         )),
     }

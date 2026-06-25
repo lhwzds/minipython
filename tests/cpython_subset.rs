@@ -46407,6 +46407,34 @@ show('pos-self-subclass', lambda: complex(complex1(1j)))"#,
 }
 
 // Adapted from CPython Lib/test/test_complex.py::ComplexTest::
+// test_constructor protocol rejection rows for non-complex __complex__ results.
+#[test]
+fn cpython_complex_bad_complex_return_typeerror_subset() {
+    assert_output_with_stack(
+        r#"class BadComplex:
+    def __complex__(self):
+        return 1
+class BadBool:
+    def __complex__(self):
+        return True
+
+for label, expr in [
+    ('int', lambda: complex(BadComplex())),
+    ('bool', lambda: complex(BadBool())),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, error)"#,
+        &[
+            "int TypeError __complex__ returned non-complex (type int)",
+            "bool TypeError __complex__ returned non-complex (type bool)",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
+// Adapted from CPython Lib/test/test_complex.py::ComplexTest::
 // test_from_number for the exact built-in complex type. Complex subclass
 // construction is covered below.
 #[test]
