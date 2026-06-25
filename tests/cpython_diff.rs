@@ -15507,6 +15507,12 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // unsupported operand type(s) for |: 'str' and 'bool';
     // unsupported operand type(s) for ^: 'bool' and 'str';
     // unsupported operand type(s) for ^: 'str' and 'bool'
+    // CPython oracle text: unsupported operand type(s) for +: 'bool' and 'str';
+    // can only concatenate str (not "bool") to str;
+    // can't concat bool to bytes;
+    // can't concat bool to bytearray;
+    // can only concatenate list (not "bool") to list;
+    // can only concatenate tuple (not "bool") to tuple
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15541,6 +15547,11 @@ for label, callback in [('index-noargs', lambda: operator.index()), ('index-many
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 for label, callback in [('add-noargs', lambda: operator.add()), ('add-one', lambda: operator.add(1)), ('add-many', lambda: operator.add(1, 2, 3)), ('add-kw', lambda: operator.add(1, 2, z=3))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, callback in [('add-bool-type', lambda: True + 'a'), ('add-right-bool-type', lambda: 'a' + True), ('operator-add-bool-type', lambda: operator.add(True, 'a')), ('operator-add-right-bool-type', lambda: operator.add('a', True)), ('bytes-add-bool-type', lambda: b'a' + True), ('bytearray-add-bool-type', lambda: bytearray(b'a') + True), ('list-add-bool-type', lambda: [] + True), ('tuple-add-bool-type', lambda: () + True)]:
     try:
         callback()
     except TypeError as error:

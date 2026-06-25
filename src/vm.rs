@@ -80817,6 +80817,8 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
         return Ok(value);
     }
 
+    let original_left = left.clone();
+    let original_right = right.clone();
     let (left, right) = numeric_bool_operands(left, right);
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
@@ -80886,9 +80888,9 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             right_strings,
             right_interpolations,
         )),
-        (Value::Template { .. }, right) => Err(format!(
+        (Value::Template { .. }, _) => Err(format!(
             "TypeError: can only concatenate string.templatelib.Template (not \"{}\") to string.templatelib.Template",
-            type_name(&right)
+            type_name(&original_right)
         )),
         (Value::String(left), Value::String(right))
         | (Value::String(left), Value::IdentityString { value: right, .. })
@@ -80900,14 +80902,19 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             "TypeError: can only concatenate str (not \"string.templatelib.Template\") to str"
                 .to_string(),
         ),
+        (Value::String(_), _) | (Value::IdentityString { .. }, _) => Err(format!(
+            "TypeError: can only concatenate str (not \"{}\") to str",
+            type_name(&original_right)
+        )),
         (left, right) if bytes_base_value_bytes(&left).is_some() => {
             if let Some(result) = bytes_concat_values(&left, &right) {
                 result
             } else {
                 Err(format!(
-                    "TypeError: unsupported operand type(s) for +: '{}' and '{}'",
-                    type_name(&left),
-                    type_name(&right)
+                    "TypeError: can't concat {} to {}",
+                    type_name(&original_right),
+                    bytes_concat_target_name(&original_left)
+                        .expect("bytes concat guard only matches bytes-like left operands")
                 ))
             }
         }
@@ -80916,6 +80923,10 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             items.extend(right.borrow().iter().cloned());
             Ok(list_value(items))
         }
+        (Value::List(_), _) => Err(format!(
+            "TypeError: can only concatenate list (not \"{}\") to list",
+            type_name(&original_right)
+        )),
         (Value::UserList { data, .. }, right) => {
             let mut items = data.borrow().clone();
             items.extend(sequence_values(right)?);
@@ -80931,10 +80942,14 @@ fn add_values(left: Value, right: Value) -> Result<Value, String> {
             items.extend(right.iter().cloned());
             Ok(tuple_value(items))
         }
-        (left, right) => Err(format!(
-            "TypeError: unsupported operand type(s) for +: '{}' and '{}'",
-            type_name(&left),
-            type_name(&right)
+        (Value::Tuple(_), _) => Err(format!(
+            "TypeError: can only concatenate tuple (not \"{}\") to tuple",
+            type_name(&original_right)
+        )),
+        _ => Err(unsupported_binary_operand_message(
+            "+",
+            &original_left,
+            &original_right,
         )),
     }
 }
@@ -81224,6 +81239,14 @@ fn bytes_concat_values(left: &Value, right: &Value) -> Option<Result<Value, Stri
     };
     left_bytes.extend(right_bytes);
     Some(Ok(bytes_result_value(kind, left_bytes)))
+}
+
+fn bytes_concat_target_name(left: &Value) -> Option<&'static str> {
+    let (_, kind) = bytes_base_value_bytes(left)?;
+    Some(match kind {
+        BytesResultKind::Bytes => "bytes",
+        BytesResultKind::ByteArray => "bytearray",
+    })
 }
 
 fn bytes_repeat_values(left: &Value, right: &Value) -> Result<Option<Value>, String> {
