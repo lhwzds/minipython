@@ -4895,8 +4895,9 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes expanded `cpython_eval_builtin_subset` and
   `cpython_exec_builtin_subset` coverage for `source`, `globals`, and `locals`
   keyword binding, bytes-source execution through the same decoding path as
-  `compile()`, CPython-style globals preparation before source compile/type
-  errors, and exec writeback of assignments that happen before runtime
+  `compile()`, `str` / `bytes` / `bytearray` source subclass handling,
+  CPython-style globals preparation before source compile/type errors, and exec
+  writeback of assignments that happen before runtime
   exceptions. It also covers same-mapping globals/locals behavior for
   `eval(source, g, g)` named-expression writes and `exec(source, g, g)`
   ordinary/global assignment writes, the supported public

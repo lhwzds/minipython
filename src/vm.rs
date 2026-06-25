@@ -18323,6 +18323,18 @@ impl Vm {
                     warning_module,
                     false,
                 ),
+            value if str_subclass_string(&value).is_some() => self
+                .compile_code_object_with_warnings(
+                    Value::String(
+                        str_subclass_string(&value)
+                            .expect("str subclass storage exists after guard"),
+                    ),
+                    "<string>".to_string(),
+                    "exec",
+                    -1,
+                    warning_module,
+                    false,
+                ),
             Value::Bytes(bytes) => self.compile_code_object_with_warnings(
                 Value::Bytes(bytes),
                 "<string>".to_string(),
@@ -18331,6 +18343,18 @@ impl Vm {
                 warning_module,
                 false,
             ),
+            value if bytes_subclass_bytes(&value).is_some() => self
+                .compile_code_object_with_warnings(
+                    bytes_value(
+                        bytes_subclass_bytes(&value)
+                            .expect("bytes subclass storage exists after guard"),
+                    ),
+                    "<string>".to_string(),
+                    "exec",
+                    -1,
+                    warning_module,
+                    false,
+                ),
             Value::ByteArray(bytes) => self.compile_code_object_with_warnings(
                 Value::ByteArray(bytes),
                 "<string>".to_string(),
@@ -18339,6 +18363,18 @@ impl Vm {
                 warning_module,
                 false,
             ),
+            value if bytearray_subclass_bytes(&value).is_some() => self
+                .compile_code_object_with_warnings(
+                    byte_array_value(
+                        bytearray_subclass_bytes(&value)
+                            .expect("bytearray subclass storage exists after guard"),
+                    ),
+                    "<string>".to_string(),
+                    "exec",
+                    -1,
+                    warning_module,
+                    false,
+                ),
             Value::MemoryView(view) => self.compile_code_object_with_warnings(
                 Value::MemoryView(view),
                 "<string>".to_string(),
@@ -46385,12 +46421,34 @@ fn compile_eval_argument(value: Value) -> Result<Value, String> {
         Value::String(source) | Value::IdentityString { value: source, .. } => {
             compile_code_object(Value::String(source), "<string>".to_string(), "eval")
         }
+        value if str_subclass_string(&value).is_some() => compile_code_object(
+            Value::String(
+                str_subclass_string(&value).expect("str subclass storage exists after guard"),
+            ),
+            "<string>".to_string(),
+            "eval",
+        ),
         Value::Bytes(bytes) => {
             compile_code_object(Value::Bytes(bytes), "<string>".to_string(), "eval")
         }
+        value if bytes_subclass_bytes(&value).is_some() => compile_code_object(
+            bytes_value(
+                bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
+            ),
+            "<string>".to_string(),
+            "eval",
+        ),
         Value::ByteArray(bytes) => {
             compile_code_object(Value::ByteArray(bytes), "<string>".to_string(), "eval")
         }
+        value if bytearray_subclass_bytes(&value).is_some() => compile_code_object(
+            byte_array_value(
+                bytearray_subclass_bytes(&value)
+                    .expect("bytearray subclass storage exists after guard"),
+            ),
+            "<string>".to_string(),
+            "eval",
+        ),
         Value::MemoryView(view) => {
             compile_code_object(Value::MemoryView(view), "<string>".to_string(), "eval")
         }

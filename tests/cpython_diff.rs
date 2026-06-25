@@ -8399,6 +8399,15 @@ local = {'b': 200, 'c': 300}
 print(eval('a', data), eval('a', data, local))
 print(eval('b', data, local), eval('c', data, local))
 print(eval('globals()["a"]', data, local), eval('locals()["c"]', data, local))
+class S(str):
+    pass
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+print(eval(S('1 + 2')))
+print(eval(B(b'1 + 3')))
+print(eval(BA(b'1 + 4')))
 print(eval("print('inside')"))
 for expr in [lambda: eval(), lambda: eval((), data), lambda: eval('1+'), lambda: eval('a', ()), lambda: eval('a', data, ())]:
     try:
@@ -8431,6 +8440,16 @@ g = {}
 l = {}
 exec('global a\na = 1\nb = 2', g, l)
 print(g['a'], 'b' in g, l['b'])
+class S(str):
+    pass
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for source in [S('x = 5'), B(b'x = 6'), BA(b'x = 7')]:
+    namespace = {}
+    exec(source, namespace)
+    print(type(source).__name__, namespace['x'])
 for expr in [lambda: exec(), lambda: exec((), g), lambda: exec('x ='), lambda: exec('x = 1', ())]:
     try:
         expr()

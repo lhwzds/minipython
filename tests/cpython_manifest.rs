@@ -14533,6 +14533,86 @@ fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
 }
 
 #[test]
+fn eval_exec_source_subclass_subset_has_focused_diff_evidence() {
+    let eval_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_eval_builtin_subset");
+    for required in [
+        "class S(str):",
+        "class B(bytes):",
+        "class BA(bytearray):",
+        "eval(S('1 + 2'))",
+        "eval(B(b'1 + 3'))",
+        "eval(BA(b'1 + 4'))",
+    ] {
+        assert!(
+            eval_subset.contains(required),
+            "eval source subclass subset evidence must cover `{required}`"
+        );
+    }
+
+    let exec_subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_exec_builtin_subset");
+    for required in [
+        "class S(str):",
+        "class B(bytes):",
+        "class BA(bytearray):",
+        "S 5",
+        "B 6",
+        "BA 7",
+    ] {
+        assert!(
+            exec_subset.contains(required),
+            "exec source subclass subset evidence must cover `{required}`"
+        );
+    }
+
+    let eval_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_eval_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_eval",
+        "print(eval(S('1 + 2')))",
+        "print(eval(B(b'1 + 3')))",
+        "print(eval(BA(b'1 + 4')))",
+    ] {
+        assert!(
+            eval_diff.contains(required),
+            "eval source subclass CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let exec_diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_exec_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_exec",
+        "for source in [S('x = 5'), B(b'x = 6'), BA(b'x = 7')]",
+        "exec(source, namespace)",
+    ] {
+        assert!(
+            exec_diff.contains(required),
+            "exec source subclass CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn compile_eval_argument(",
+        "fn compile_exec_argument(",
+        "value if str_subclass_string(&value).is_some()",
+        "value if bytes_subclass_bytes(&value).is_some()",
+        "value if bytearray_subclass_bytes(&value).is_some()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "eval/exec source subclass VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_eval_builtin_subset")
+                && document.contains("cpython_exec_builtin_subset")
+                && document.contains("source subclass"),
+            "eval/exec source subclass evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
     let subset_body =
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_compile_builtin_code_object_subset");

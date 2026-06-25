@@ -7307,6 +7307,8 @@ Completed in the eval/exec keyword and bytes-source pass:
   `source`, `globals`, and `locals`.
 - Reused the compile-source decoding path so `eval()` and `exec()` accept
   bytes and bytearray sources in the supported encoding subset.
+- Expanded the eval/exec source subset with CPython's public source subclass
+  behavior for `str`, `bytes`, and `bytearray` subclasses.
 - Added keyword-only locals handling for `eval()` and `exec()`: default globals
   are preserved while the supplied locals mapping is used for local name
   resolution or local writes.

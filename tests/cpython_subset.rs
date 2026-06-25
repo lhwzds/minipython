@@ -19046,6 +19046,10 @@ fn cpython_eval_builtin_subset() {
         &["1"],
     );
     assert_output(
+        "class S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nprint(eval(S('1 + 2')))\nprint(eval(B(b'1 + 3')))\nprint(eval(BA(b'1 + 4')))",
+        &["3", "4", "5"],
+    );
+    assert_output(
         "A_GLOBAL_VALUE = 123\ndata = {'A_GLOBAL_VALUE': 456}\nprint(eval(\"globals()['A_GLOBAL_VALUE']\", globals=data))\nprint(eval(\"globals()['A_GLOBAL_VALUE']\", locals=data))\nprint(eval(source=\"A_GLOBAL_VALUE\", globals=data))",
         &["456", "123", "456"],
     );
@@ -19113,6 +19117,10 @@ fn cpython_exec_builtin_subset() {
     assert_output(
         "print(exec(b'byte_exec = 9'))\nprint(byte_exec)",
         &["None", "9"],
+    );
+    assert_output(
+        "class S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 5'), B(b'x = 6'), BA(b'x = 7')]:\n    namespace = {}\n    exec(source, namespace)\n    print(type(source).__name__, namespace['x'])",
+        &["S 5", "B 6", "BA 7"],
     );
     assert_output(
         "g = {}\nfor expr in [lambda: exec(), lambda: exec((), g), lambda: exec('x ='), lambda: exec('x = 1', ())]:\n    try:\n        expr()\n    except (TypeError, SyntaxError) as error:\n        print(error.__class__.__name__)",
