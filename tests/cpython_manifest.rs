@@ -19204,6 +19204,11 @@ fn min_max_sum_builtins_subset_has_focused_diff_evidence() {
         "lambda: sum(['a', 'b', 'c'])",
         "lambda: sum([b'a', b'c'], b'')",
         "lambda: sum(values, bytearray(b''))",
+        "sum(iterable=[1, 2], start=3)",
+        "sum([1], 2, start=3)",
+        "sum([1], start=2, bad=3)",
+        "sum() takes at most 2 arguments (3 given)",
+        "sum() got multiple values for keyword argument 'start'",
         "lambda: sum([1.0, 10**1000])",
         "complex(1, -0.0)",
         "\"(2-0j)\"",
@@ -19239,6 +19244,11 @@ fn min_max_sum_builtins_subset_has_focused_diff_evidence() {
         "sum([], False) is False",
         "lambda: sum(['a', 'b', 'c'])",
         "lambda: sum([b'a', b'c'], b'')",
+        "sum(iterable=[1, 2], start=3)",
+        "sum([1], 2, start=3)",
+        "sum([1], start=2, bad=3)",
+        "sum() takes at most 2 arguments (3 given)",
+        "sum() got multiple values for keyword argument 'start'",
     ] {
         assert!(
             body.contains(required),

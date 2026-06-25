@@ -1501,12 +1501,17 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
     args: Vec<Value>,
     keywords: Vec<(String, Value)>,
 ) -> Result<Value, String> {
+    if args.is_empty() {
+        return Err("TypeError: sum() takes at least 1 positional argument (0 given)".to_string());
+    }
+
+    let keyword_count = keywords.len();
     let mut start_keyword = None;
+    let mut unexpected_keyword = None;
     for (keyword, value) in keywords {
         if keyword != "start" {
-            return Err(format!(
-                "TypeError: sum() got an unexpected keyword argument '{keyword}'"
-            ));
+            unexpected_keyword.get_or_insert(keyword);
+            continue;
         }
         if start_keyword.is_some() {
             return Err(
@@ -1516,24 +1521,25 @@ pub(crate) fn call_sum_builtin<C: StdlibContext + ?Sized>(
         start_keyword = Some(value);
     }
 
+    let supplied_count = args.len() + keyword_count;
+    if supplied_count > 2 {
+        return Err(format!(
+            "TypeError: sum() takes at most 2 arguments ({supplied_count} given)"
+        ));
+    }
+
+    if let Some(keyword) = unexpected_keyword {
+        return Err(format!(
+            "TypeError: sum() got an unexpected keyword argument '{keyword}'"
+        ));
+    }
+
     let (iterable, start) = match args.as_slice() {
-        [] => {
-            return Err(
-                "TypeError: sum() takes at least 1 positional argument (0 given)".to_string(),
-            );
-        }
         [iterable] => (iterable.clone(), start_keyword.unwrap_or(Value::Number(0))),
-        [iterable, start] => {
-            if start_keyword.is_some() {
-                return Err(
-                    "TypeError: sum() got multiple values for keyword argument 'start'".to_string(),
-                );
-            }
-            (iterable.clone(), start.clone())
-        }
+        [iterable, start] => (iterable.clone(), start.clone()),
         values => {
             return Err(format!(
-                "TypeError: sum() takes at most 2 positional arguments ({} given)",
+                "TypeError: sum() takes at most 2 arguments ({} given)",
                 values.len()
             ));
         }

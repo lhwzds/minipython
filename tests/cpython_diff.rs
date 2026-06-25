@@ -9245,7 +9245,25 @@ for expr in [lambda: sum(), lambda: sum(42), lambda: sum(['a', 'b', 'c']), lambd
     try:
         expr()
     except TypeError as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+# CPython oracle text: sum() takes at least 1 positional argument (0 given);
+# sum() takes at most 2 arguments (3 given);
+# sum() got multiple values for keyword argument 'start'
+for label, expr in [
+    ('missing', lambda: sum()),
+    ('keyword-missing', lambda: sum(iterable=[1, 2], start=3)),
+    ('bad-missing', lambda: sum(bad=3)),
+    ('bad-with-pos', lambda: sum([1], bad=3)),
+    ('pos3', lambda: sum([1], 2, 3)),
+    ('pos2-bad', lambda: sum([1], 2, bad=3)),
+    ('pos2-start', lambda: sum([1], 2, start=3)),
+    ('start-bad', lambda: sum([1], start=2, bad=3)),
+    ('dup-start', lambda: sum([1], **{'start': 2}, **{'start': 3})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
     });
 }
 

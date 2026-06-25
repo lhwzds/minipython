@@ -38178,6 +38178,20 @@ fn cpython_min_max_sum_builtin_subset() {
         ],
     );
     assert_output(
+        "for label, expr in [\n    ('missing', lambda: sum()),\n    ('keyword-missing', lambda: sum(iterable=[1, 2], start=3)),\n    ('bad-missing', lambda: sum(bad=3)),\n    ('bad-with-pos', lambda: sum([1], bad=3)),\n    ('pos3', lambda: sum([1], 2, 3)),\n    ('pos2-bad', lambda: sum([1], 2, bad=3)),\n    ('pos2-start', lambda: sum([1], 2, start=3)),\n    ('start-bad', lambda: sum([1], start=2, bad=3)),\n    ('dup-start', lambda: sum([1], **{'start': 2}, **{'start': 3})),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "missing TypeError sum() takes at least 1 positional argument (0 given)",
+            "keyword-missing TypeError sum() takes at least 1 positional argument (0 given)",
+            "bad-missing TypeError sum() takes at least 1 positional argument (0 given)",
+            "bad-with-pos TypeError sum() got an unexpected keyword argument 'bad'",
+            "pos3 TypeError sum() takes at most 2 arguments (3 given)",
+            "pos2-bad TypeError sum() takes at most 2 arguments (3 given)",
+            "pos2-start TypeError sum() takes at most 2 arguments (3 given)",
+            "start-bad TypeError sum() takes at most 2 arguments (3 given)",
+            "dup-start TypeError sum() got multiple values for keyword argument 'start'",
+        ],
+    );
+    assert_output(
         "for expr in [lambda: sum([1.0, 10**1000]), lambda: sum([1j, 10**1000])]:\n    try:\n        expr()\n    except OverflowError as error:\n        print(error.__class__.__name__)",
         &["OverflowError", "OverflowError"],
     );

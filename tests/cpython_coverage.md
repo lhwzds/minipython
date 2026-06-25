@@ -4508,8 +4508,10 @@ without adding general custom encoder/decoder class support.
   totals, negative-zero float rendering, infinity results checked through
   `math.isinf()`, huge-integer float/complex `OverflowError`,
   complex-constructor summation, complex signed-zero preservation, BadSeq
-  exception propagation, and catchable TypeError/ValueError paths for invalid
-  arguments and string/bytes/bytearray sum starts. CPython's
+  exception propagation, exact `sum()` keyword/arity TypeError text for missing
+  positional iterables and excess `start`/unknown keyword combinations, and
+  catchable TypeError/ValueError paths for invalid arguments and
+  string/bytes/bytearray sum starts. CPython's
   `test_sum_accuracy`
   compensated-floating algorithm remains treated as implementation-specific
   rather than a MiniPython portability requirement.
