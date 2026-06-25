@@ -40,6 +40,11 @@ Recent runtime migration notes:
   `cpython_list_index_missing_valueerror_message_diff_subset`, now pins
   CPython's fixed `list.index(x): x not in list` message for missing instance
   and list-subclass `index()` calls.
+- `cpython_list_index_bounds_index_subset`, backed by
+  `cpython_list_index_bounds_index_diff_subset`, now pins `list.index()` start/stop bounds
+  using the public `__index__` protocol, including
+  CPython's `slice indices must be integers or have an __index__ method`
+  TypeError text for non-index bounds.
 - `cpython_tuple_index_missing_valueerror_message_subset`, backed by
   `cpython_tuple_index_missing_valueerror_message_diff_subset`, now pins
   CPython's fixed `tuple.index(x): x not in tuple` message for missing instance

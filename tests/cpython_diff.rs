@@ -11087,6 +11087,49 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_list_index_bounds_index_diff_subset() {
+    // CPython oracle text for non-index bounds:
+    // slice indices must be integers or have an __index__ method
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/list_tests.py list.index start/stop __index__ subset",
+        name: "list-index-bounds-index",
+        source: r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class Big:
+    def __index__(self):
+        return 10 ** 100
+class NegBig:
+    def __index__(self):
+        return -(10 ** 100)
+class Bad:
+    def __index__(self):
+        return 'x'
+class Boom:
+    def __index__(self):
+        raise ValueError('boom')
+for label, expr in [
+    ('start-index', lambda: [1, 2, 3].index(2, Indexable(1))),
+    ('stop-index', lambda: [1, 2, 3].index(3, 0, Indexable(1))),
+    ('negative-start', lambda: [1, 2, 3].index(1, Indexable(-100))),
+    ('big-start', lambda: [1, 2, 3].index(1, Big())),
+    ('negative-big-start', lambda: [1, 2, 3].index(1, NegBig())),
+    ('bad-index', lambda: [1, 2, 3].index(1, Bad())),
+    ('boom-index', lambda: [1, 2, 3].index(1, Boom())),
+    ('string-bound', lambda: [1, 2, 3].index(1, 'x')),
+    ('none-bound', lambda: [1, 2, 3].index(1, None)),
+    ('float-bound', lambda: [1, 2, 3].index(1, 1.0)),
+]:
+    try:
+        print(label, expr())
+    except (TypeError, ValueError) as error:
+        print(label, error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_tuple_index_missing_valueerror_message_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/seq_tests.py tuple.index missing value ValueError message subset",

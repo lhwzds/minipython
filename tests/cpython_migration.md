@@ -52,6 +52,11 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   `cpython_list_index_missing_valueerror_message_diff_subset` for CPython's
   fixed `list.index(x): x not in list` missing-value message on supported
   instance and list-subclass `index()` calls.
+- Added `cpython_list_index_bounds_index_subset` and
+  `cpython_list_index_bounds_index_diff_subset` for `list.index()` start/stop
+  bounds using the public `__index__` protocol, including CPython's
+  `slice indices must be integers or have an __index__ method` TypeError text
+  for non-index bounds.
 - Added `cpython_tuple_index_missing_valueerror_message_subset` and
   `cpython_tuple_index_missing_valueerror_message_diff_subset` for CPython's
   fixed `tuple.index(x): x not in tuple` missing-value message on supported
@@ -2233,7 +2238,12 @@ Completed in the differential parity harness pass:
   `cpython_list_index_missing_valueerror_message_subset`, backed by
   `cpython_list_index_missing_valueerror_message_diff_subset`, pins CPython's
   fixed `list.index(x): x not in list` message for supported missing-value
-  `index()` calls. `cpython_tuple_index_missing_valueerror_message_subset`,
+  `index()` calls. `cpython_list_index_bounds_index_subset`, backed by
+  `cpython_list_index_bounds_index_diff_subset`, pins `list.index()` start/stop bounds
+  through public `__index__`, oversized bound clamping,
+  propagated `__index__` exceptions, and CPython's
+  `slice indices must be integers or have an __index__ method` TypeError text
+  for non-index bounds. `cpython_tuple_index_missing_valueerror_message_subset`,
   backed by `cpython_tuple_index_missing_valueerror_message_diff_subset`, pins
   CPython's fixed `tuple.index(x): x not in tuple` message for supported
   missing-value `index()` calls.

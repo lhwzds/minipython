@@ -228,6 +228,80 @@ fn list_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn list_index_bounds_index_subset_has_focused_diff_evidence() {
+    let subset = extract_rust_test_body(CPYTHON_SUBSET, "cpython_list_index_bounds_index_subset");
+    let diff = extract_rust_test_body(CPYTHON_DIFF, "cpython_list_index_bounds_index_diff_subset");
+
+    for required in [
+        "class Indexable:",
+        "def __index__(self):",
+        "class Big:",
+        "class NegBig:",
+        "class Bad:",
+        "class Boom:",
+        "[1, 2, 3].index(2, Indexable(1))",
+        "[1, 2, 3].index(3, 0, Indexable(1))",
+        "[1, 2, 3].index(1, Big())",
+        "[1, 2, 3].index(1, NegBig())",
+        "[1, 2, 3].index(1, Bad())",
+        "[1, 2, 3].index(1, Boom())",
+        "[1, 2, 3].index(1, 'x')",
+        "slice indices must be integers or have an __index__ method",
+    ] {
+        assert!(
+            subset.contains(required) && diff.contains(required),
+            "list.index bound __index__ subset and diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        diff.contains("Lib/test/list_tests.py list.index start/stop __index__ subset"),
+        "list.index bound __index__ diff evidence must cite the CPython origin"
+    );
+    for required in [
+        "\"start-index 1\"",
+        "\"stop-index ValueError list.index(x): x not in list\"",
+        "\"negative-start 0\"",
+        "\"big-start ValueError list.index(x): x not in list\"",
+        "\"negative-big-start 0\"",
+        "\"bad-index TypeError __index__ returned non-int (type str)\"",
+        "\"boom-index ValueError boom\"",
+        "\"string-bound TypeError slice indices must be integers or have an __index__ method\"",
+    ] {
+        assert!(
+            subset.contains(required),
+            "list.index bound __index__ runtime evidence must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "fn list_search_bound_argument(",
+        "self.list_search_bound_argument(value)?",
+        "slice indices must be integers or have an __index__ method",
+        "integer_dunder_result(\"__index__\", result)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "list.index bound implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_list_index_bounds_index_subset",
+            "cpython_list_index_bounds_index_diff_subset",
+            "`list.index()` start/stop bounds",
+            "`__index__`",
+            "slice indices must be integers or have an __index__ method",
+        ] {
+            assert!(
+                document.contains(required),
+                "list.index bound __index__ docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn tuple_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_tuple_index_missing_valueerror_message_subset(",

@@ -31173,18 +31173,19 @@ impl Vm {
     }
 
     fn list_search_bounds_for_dynamic_list(
+        &mut self,
         args: &[Value],
         len: usize,
     ) -> Result<(usize, Option<usize>), String> {
         let len = i64::try_from(len).map_err(|_| "list is too large".to_string())?;
         let start = match args.first() {
-            Some(value) => list_bound_argument(value, "list index")?,
+            Some(value) => self.list_search_bound_argument(value)?,
             None => 0,
         };
         let start = normalize_positive_slice_bound(start, len);
         let stop = match args.get(1) {
             Some(value) => {
-                let stop = list_bound_argument(value, "list index")?;
+                let stop = self.list_search_bound_argument(value)?;
                 Some(normalize_positive_slice_bound(stop, len).max(start))
             }
             None => None,
@@ -31194,6 +31195,45 @@ impl Vm {
             .map(|stop| usize::try_from(stop).map_err(|_| "list index out of range".to_string()))
             .transpose()?;
         Ok((start, stop))
+    }
+
+    fn list_search_bound_argument(&mut self, value: &Value) -> Result<i64, String> {
+        if let Value::WeakProxy { target, .. } = value {
+            return self.list_search_bound_argument(target);
+        }
+        let integer = if let Some(value) = int_subclass_integer(value) {
+            value
+        } else {
+            match numeric_bool_value(value.clone()) {
+                value @ (Value::Number(_) | Value::BigInt(_)) => value,
+                value => {
+                    let Some(method) = instance_special_method(&value, "__index__") else {
+                        return Err(
+                            "TypeError: slice indices must be integers or have an __index__ method"
+                                .to_string(),
+                        );
+                    };
+                    let result = match self.call_value_catching(method, Vec::new())? {
+                        Ok(result) => result,
+                        Err(exception) => {
+                            return Err(self.remember_runtime_exception_error(exception));
+                        }
+                    };
+                    integer_dunder_result("__index__", result)?
+                }
+            }
+        };
+        match integer {
+            Value::Number(value) => Ok(value),
+            Value::BigInt(value) => Ok(value.to_i64().unwrap_or_else(|| {
+                if value.is_negative() {
+                    i64::MIN
+                } else {
+                    i64::MAX
+                }
+            })),
+            _ => unreachable!("list search bound conversion returns an integer"),
+        }
     }
 
     fn list_find_rich(
@@ -31270,7 +31310,7 @@ impl Vm {
                 }
 
                 let len = items.borrow().len();
-                let (start, stop) = Self::list_search_bounds_for_dynamic_list(rest, len)?;
+                let (start, stop) = self.list_search_bounds_for_dynamic_list(rest, len)?;
                 match self.list_find_rich(items, needle, start, stop)? {
                     Some(index) => {
                         let index = i64::try_from(index)

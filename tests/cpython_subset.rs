@@ -35079,6 +35079,59 @@ for label, expr in [
     );
 }
 
+// Adapted from CPython Lib/test/list_tests.py index start/stop bounds:
+// list.index() uses the public __index__ protocol for start and stop.
+#[test]
+fn cpython_list_index_bounds_index_subset() {
+    assert_output(
+        r#"class Indexable:
+    def __init__(self, value):
+        self.value = value
+    def __index__(self):
+        return self.value
+class Big:
+    def __index__(self):
+        return 10 ** 100
+class NegBig:
+    def __index__(self):
+        return -(10 ** 100)
+class Bad:
+    def __index__(self):
+        return 'x'
+class Boom:
+    def __index__(self):
+        raise ValueError('boom')
+for label, expr in [
+    ('start-index', lambda: [1, 2, 3].index(2, Indexable(1))),
+    ('stop-index', lambda: [1, 2, 3].index(3, 0, Indexable(1))),
+    ('negative-start', lambda: [1, 2, 3].index(1, Indexable(-100))),
+    ('big-start', lambda: [1, 2, 3].index(1, Big())),
+    ('negative-big-start', lambda: [1, 2, 3].index(1, NegBig())),
+    ('bad-index', lambda: [1, 2, 3].index(1, Bad())),
+    ('boom-index', lambda: [1, 2, 3].index(1, Boom())),
+    ('string-bound', lambda: [1, 2, 3].index(1, 'x')),
+    ('none-bound', lambda: [1, 2, 3].index(1, None)),
+    ('float-bound', lambda: [1, 2, 3].index(1, 1.0)),
+]:
+    try:
+        print(label, expr())
+    except (TypeError, ValueError) as error:
+        print(label, error.__class__.__name__, str(error))"#,
+        &[
+            "start-index 1",
+            "stop-index ValueError list.index(x): x not in list",
+            "negative-start 0",
+            "big-start ValueError list.index(x): x not in list",
+            "negative-big-start 0",
+            "bad-index TypeError __index__ returned non-int (type str)",
+            "boom-index ValueError boom",
+            "string-bound TypeError slice indices must be integers or have an __index__ method",
+            "none-bound TypeError slice indices must be integers or have an __index__ method",
+            "float-bound TypeError slice indices must be integers or have an __index__ method",
+        ],
+    );
+}
+
 #[test]
 fn cpython_list_search_mutating_eq_subset() {
     assert_output_with_stack(
