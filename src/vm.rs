@@ -70650,7 +70650,8 @@ fn call_dict_method(
             .iter()
             .position(|(existing_key, _)| dict_keys_equal(existing_key, key))
         else {
-            return Err(format!("KeyError: {}", format_key_error(key)));
+            drop(entries);
+            return raise_key_error_value(vm, key.clone());
         };
         let item = entries.remove(position);
         if last {

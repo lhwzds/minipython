@@ -20746,6 +20746,10 @@ for label, expr in [
         eval(expr)
     except Exception as error:
         print(label, error.__class__.__name__)
+try:
+    OrderedDict([('a', 1)]).move_to_end('x')
+except KeyError as error:
+    print('move-missing-payload', error.args[0] == 'x', type(error.args[0]).__name__, str(error))
 od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])
 print('pop-last-false', (od.popitem(last=False), list(od.items())))
 od = OrderedDict([('a', 1), ('b', 2), ('c', 3)])

@@ -16212,6 +16212,59 @@ fn ordered_dict_modern_repr_has_focused_diff_evidence() {
 }
 
 #[test]
+fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_ordered_dict_move_pop_keyword_subset",
+    );
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_program_output_parity_smoke_diff_subset",
+    );
+
+    for required in [
+        "ordered-dict-move-pop-keyword-subset",
+        "OrderedDict([('a', 1)]).move_to_end('x')",
+        "move-missing-payload",
+        "error.args[0] == 'x'",
+        "type(error.args[0]).__name__",
+    ] {
+        assert!(
+            subset_body.contains(required) || diff_body.contains(required),
+            "OrderedDict move_to_end missing-key evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        subset_body.contains("move-missing-payload True str 'x'"),
+        "OrderedDict move_to_end subset output must preserve the original missing key payload"
+    );
+
+    let move_to_end_body = VM_SOURCE
+        .split("if name == \"OrderedDict.move_to_end\"")
+        .nth(1)
+        .and_then(|tail| tail.split("if name == \"OrderedDict.popitem\"").next())
+        .expect("OrderedDict.move_to_end implementation must be extractable");
+    assert!(
+        move_to_end_body.contains("return raise_key_error_value(vm, key.clone());"),
+        "OrderedDict.move_to_end missing keys must raise KeyError with the original key payload"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "ordered-dict-move-pop-keyword-subset",
+            "missing-key",
+            "`move_to_end()`",
+            "`KeyError.args[0]`",
+        ] {
+            assert!(
+                document.contains(required),
+                "OrderedDict move_to_end missing-key docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn await_non_awaitable_errors_have_modern_diff_evidence() {
     let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_grammar_async_await_subset");
     let diff_body = extract_rust_test_body(

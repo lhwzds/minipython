@@ -10416,7 +10416,8 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by the
   `ordered-dict-move-pop-keyword-subset` diff case, separately covers
   `move_to_end()` / `popitem()` `last=` keyword binding, type-level method
-  calls, and public error classes for missing keys, empty pops, unexpected
+  calls, missing-key `move_to_end()` preserving the original key in
+  `KeyError.args[0]`, and public error classes for empty pops, unexpected
   keywords, and duplicate `last` arguments.
   `cpython_ordered_dict_view_display_subset`, backed by the
   `ordered-dict-view-display-subset` diff case plus gated
