@@ -2144,13 +2144,15 @@ Completed in the differential parity harness pass:
   `Lib/test/test_builtin.py`. The VM now supports numeric and complex absolute
   values, instance-level `__abs__`, multi-argument and single-iterable
   `min()`/`max()`, keyword-only `key` and `default`, empty-iterable default
-  returns, and catchable argument/key/default TypeError paths. `sum()` now
-  covers ordinary iterables, generators, iterator objects, list-concat starts,
-  keyword `start=`, CPython keyword/arity TypeError ordering for missing
-  positional iterables and excess keyword/positional `start` combinations,
-  boolean starts, large integer starts, float totals, and CPython's
-  string/bytes/bytearray rejection paths. Precise decimal/fraction semantics,
-  the CPython-only compensated-floating `test_sum_accuracy`
+  returns, CPython keyword TypeError ordering for missing positional
+  `min()`/`max()` inputs and unexpected keywords, and catchable
+  argument/key/default TypeError paths. `sum()` now covers ordinary iterables,
+  generators, iterator objects, list-concat starts, keyword `start=`, CPython
+  keyword/arity TypeError ordering for missing positional iterables and excess
+  keyword/positional `start` combinations, boolean starts, large integer starts,
+  float totals, and CPython's string/bytes/bytearray rejection paths. Precise
+  decimal/fraction semantics, the CPython-only compensated-floating
+  `test_sum_accuracy`
   algorithm, and the remaining custom numeric protocol hooks remain future
   runtime-model work.
 - Added `cpython_builtin_negation_sys_maxsize_subset`, adapted from

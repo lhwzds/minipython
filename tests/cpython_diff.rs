@@ -9235,6 +9235,23 @@ for expr in [lambda: max(), lambda: max(42), lambda: max(()), lambda: max(key=in
         expr()
     except (TypeError, ValueError) as error:
         print(error.__class__.__name__)
+# CPython oracle text: min expected at least 1 argument, got 0;
+# max expected at least 1 argument, got 0;
+# min() got an unexpected keyword argument 'bad';
+# max() got an unexpected keyword argument 'bad'
+for fn in [min, max]:
+    for label, expr in [
+        ('iterable-missing', lambda fn=fn: fn(iterable=[1, 2])),
+        ('bad-missing', lambda fn=fn: fn(bad=3)),
+        ('pos1-bad', lambda fn=fn: fn([1, 2], bad=3)),
+        ('pos2-default', lambda fn=fn: fn(1, 2, default=0)),
+        ('pos2-default-bad', lambda fn=fn: fn(1, 2, default=0, bad=3)),
+        ('dup-key-missing', lambda fn=fn: fn(**{'key': None}, **{'key': None})),
+    ]:
+        try:
+            expr()
+        except TypeError as error:
+            print(fn.__name__, label, error.__class__.__name__, str(error))
 print(sum([]), sum(list(range(2, 8))), sum(iter(list(range(2, 8)))))
 print(sum([[1], [2], [3]], []))
 print(sum(range(10), 1000), sum(range(10), start=1000))

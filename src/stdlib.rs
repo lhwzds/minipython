@@ -1350,10 +1350,16 @@ fn call_minmax_builtin<C: StdlibContext + ?Sized>(
     keywords: Vec<(String, Value)>,
     choose_max: bool,
 ) -> Result<Value, String> {
-    let options = minmax_options(name, keywords)?;
+    let (options, unexpected_keyword) = minmax_options(name, keywords)?;
     if args.is_empty() {
         return Err(format!(
             "TypeError: {name} expected at least 1 argument, got 0"
+        ));
+    }
+
+    if let Some(keyword) = unexpected_keyword {
+        return Err(format!(
+            "TypeError: {name}() got an unexpected keyword argument '{keyword}'"
         ));
     }
 
@@ -1378,8 +1384,12 @@ struct MinMaxOptions {
     default: Option<Value>,
 }
 
-fn minmax_options(name: &str, keywords: Vec<(String, Value)>) -> Result<MinMaxOptions, String> {
+fn minmax_options(
+    name: &str,
+    keywords: Vec<(String, Value)>,
+) -> Result<(MinMaxOptions, Option<String>), String> {
     let mut options = MinMaxOptions::default();
+    let mut unexpected_keyword = None;
     for (keyword, value) in keywords {
         match keyword.as_str() {
             "key" => {
@@ -1399,13 +1409,11 @@ fn minmax_options(name: &str, keywords: Vec<(String, Value)>) -> Result<MinMaxOp
                 options.default = Some(value);
             }
             _ => {
-                return Err(format!(
-                    "TypeError: '{keyword}' is an invalid keyword argument for {name}()"
-                ));
+                unexpected_keyword.get_or_insert(keyword);
             }
         }
     }
-    Ok(options)
+    Ok((options, unexpected_keyword))
 }
 
 fn minmax_iterable<C: StdlibContext + ?Sized>(

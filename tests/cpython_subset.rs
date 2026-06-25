@@ -38138,6 +38138,23 @@ fn cpython_min_max_sum_builtin_subset() {
         ],
     );
     assert_output(
+        "for fn in [min, max]:\n    for label, expr in [\n        ('iterable-missing', lambda fn=fn: fn(iterable=[1, 2])),\n        ('bad-missing', lambda fn=fn: fn(bad=3)),\n        ('pos1-bad', lambda fn=fn: fn([1, 2], bad=3)),\n        ('pos2-default', lambda fn=fn: fn(1, 2, default=0)),\n        ('pos2-default-bad', lambda fn=fn: fn(1, 2, default=0, bad=3)),\n        ('dup-key-missing', lambda fn=fn: fn(**{'key': None}, **{'key': None})),\n    ]:\n        try:\n            expr()\n        except TypeError as error:\n            print(fn.__name__, label, error.__class__.__name__, str(error))",
+        &[
+            "min iterable-missing TypeError min expected at least 1 argument, got 0",
+            "min bad-missing TypeError min expected at least 1 argument, got 0",
+            "min pos1-bad TypeError min() got an unexpected keyword argument 'bad'",
+            "min pos2-default TypeError Cannot specify a default for min() with multiple positional arguments",
+            "min pos2-default-bad TypeError min() got an unexpected keyword argument 'bad'",
+            "min dup-key-missing TypeError min() got multiple values for keyword argument 'key'",
+            "max iterable-missing TypeError max expected at least 1 argument, got 0",
+            "max bad-missing TypeError max expected at least 1 argument, got 0",
+            "max pos1-bad TypeError max() got an unexpected keyword argument 'bad'",
+            "max pos2-default TypeError Cannot specify a default for max() with multiple positional arguments",
+            "max pos2-default-bad TypeError max() got an unexpected keyword argument 'bad'",
+            "max dup-key-missing TypeError max() got multiple values for keyword argument 'key'",
+        ],
+    );
+    assert_output(
         "class Squares:\n    def __init__(self, stop):\n        self.stop = stop\n    def __getitem__(self, index):\n        if index < 0 or index >= self.stop:\n            raise IndexError\n        return index * index\nprint(sum([]), sum(list(range(2, 8))), sum(iter(list(range(2, 8)))))\nprint(sum(Squares(10)), sum(iter(Squares(10))))\nprint(sum([[1], [2], [3]], []))\nprint(sum(range(10), 1000), sum(range(10), start=1000))\nprint(sum(range(10), 2**31 - 5), sum(range(10), 2**63 - 5))\nprint(sum(i % 2 != 0 for i in range(10)))\nprint(sum((i % 2 != 0 for i in range(10)), 2**31 - 3))\nprint(sum((i % 2 != 0 for i in range(10)), 2**63 - 3))\nprint(sum([], False) is False)\nprint(sum(i / 2 for i in range(10)))\nprint(sum((i / 2 for i in range(10)), 1000), sum((i / 2 for i in range(10)), 1000.25))\nprint(sum([0.5, 1]), sum([1, 0.5]))",
         &[
             "0 27 27",

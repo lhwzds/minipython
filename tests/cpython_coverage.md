@@ -4504,14 +4504,15 @@ without adding general custom encoder/decoder class support.
   `cpython_min_max_sum_builtin_subset`, covering CPython
   `BuiltinTest::test_max`, `::test_min`, and `::test_sum` public aggregate
   semantics for positional and iterable inputs, `key=None`, callable `key=`,
-  `default=`, `sum(start=...)`, boolean starts, large integer starts, float
-  totals, negative-zero float rendering, infinity results checked through
-  `math.isinf()`, huge-integer float/complex `OverflowError`,
-  complex-constructor summation, complex signed-zero preservation, BadSeq
-  exception propagation, exact `sum()` keyword/arity TypeError text for missing
-  positional iterables and excess `start`/unknown keyword combinations, and
-  catchable TypeError/ValueError paths for invalid arguments and
-  string/bytes/bytearray sum starts. CPython's
+  `default=`, exact `min()` / `max()` keyword TypeError ordering for missing
+  positional inputs and unexpected keywords, `sum(start=...)`, boolean starts,
+  large integer starts, float totals, negative-zero float rendering, infinity
+  results checked through `math.isinf()`, huge-integer float/complex
+  `OverflowError`, complex-constructor summation, complex signed-zero
+  preservation, BadSeq exception propagation, exact `sum()` keyword/arity
+  TypeError text for missing positional iterables and excess `start`/unknown
+  keyword combinations, and catchable TypeError/ValueError paths for invalid
+  arguments and string/bytes/bytearray sum starts. CPython's
   `test_sum_accuracy`
   compensated-floating algorithm remains treated as implementation-specific
   rather than a MiniPython portability requirement.
