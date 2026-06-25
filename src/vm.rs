@@ -71831,7 +71831,8 @@ fn call_set_method(vm: &mut Vm, name: &str, args: Vec<Value>) -> Result<Value, S
             };
             let mut items = items.borrow_mut();
             if items.is_empty() {
-                return Err("KeyError: pop from an empty set".to_string());
+                drop(items);
+                return raise_key_error_string(vm, "pop from an empty set".to_string());
             }
             Ok(items.remove(0))
         }

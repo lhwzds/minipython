@@ -7130,6 +7130,11 @@ Completed in the container constructor/reversed pass:
   `remove`, `discard`, `pop`, and `update`, including duplicate-add no-op,
   unhashable argument errors, missing-key `KeyError`, nested set/frozenset
   lookup equivalence, pop-until-empty behavior, and update result/error paths.
+- Added `cpython_set_empty_pop_keyerror_display_subset` and
+  `cpython_set_empty_pop_keyerror_display_diff_subset` for CPython
+  `TestSet` empty `pop()` behavior. Exact sets, direct `set.pop()` calls, and
+  set subclasses now preserve the `KeyError.args[0]` string payload and
+  CPython's `KeyError(message)` string display for `pop from an empty set`.
 - Added `cpython_set_direct_lookup_and_keyerror_payload_subset`, adapted from
   CPython `TestSet` remove `KeyError` payload and direct set-key membership
   cases, including preserving the original missing key in `KeyError.args[0]`.

@@ -17085,6 +17085,69 @@ fn set_constructor_keyword_error_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn set_empty_pop_keyerror_display_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_set_empty_pop_keyerror_display_subset(",
+        "lambda: set().pop()",
+        "lambda: set.pop(set())",
+        "lambda: S().pop()",
+        "lambda: set.pop(S())",
+        "error.args[0] == 'pop from an empty set'",
+        "str(error) == repr(error.args[0])",
+        "\"pop-empty True str True 'pop from an empty set'\"",
+        "\"direct-pop-empty True str True 'pop from an empty set'\"",
+        "\"subclass-pop-empty True str True 'pop from an empty set'\"",
+        "\"subclass-direct-pop-empty True str True 'pop from an empty set'\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused set empty pop KeyError display subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_set_empty_pop_keyerror_display_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_set.py::TestSet pop-empty KeyError display",
+        "name: \"set-empty-pop-keyerror-display\"",
+        "lambda: set().pop()",
+        "lambda: set.pop(set())",
+        "lambda: S().pop()",
+        "lambda: set.pop(S())",
+        "error.args[0] == 'pop from an empty set'",
+        "str(error) == repr(error.args[0])",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused set empty pop KeyError display CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let set_pop_body = VM_SOURCE
+        .split("\"set.pop\" =>")
+        .nth(1)
+        .and_then(|tail| tail.split("\"set.remove\" =>").next())
+        .expect("set.pop implementation must be extractable");
+    assert!(
+        set_pop_body
+            .contains("return raise_key_error_string(vm, \"pop from an empty set\".to_string());"),
+        "set.pop empty sets must raise KeyError with CPython's string payload display"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_set_empty_pop_keyerror_display_subset")
+                && document.contains("cpython_set_empty_pop_keyerror_display_diff_subset")
+                && document.contains("`KeyError.args[0]`")
+                && document.contains("`KeyError(message)` string display"),
+            "focused set empty pop KeyError display evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn frozenset_constructor_keyword_error_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_frozenset_constructor_keyword_error_subset(",

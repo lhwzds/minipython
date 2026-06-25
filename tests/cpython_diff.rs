@@ -7579,6 +7579,26 @@ for label, callback in [
 }
 
 #[test]
+fn cpython_set_empty_pop_keyerror_display_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_set.py::TestSet pop-empty KeyError display",
+        name: "set-empty-pop-keyerror-display",
+        source: r#"class S(set):
+    pass
+for label, expr in [
+    ('pop-empty', lambda: set().pop()),
+    ('direct-pop-empty', lambda: set.pop(set())),
+    ('subclass-pop-empty', lambda: S().pop()),
+    ('subclass-direct-pop-empty', lambda: set.pop(S())),
+]:
+    try:
+        expr()
+    except KeyError as error:
+        print(label, error.args[0] == 'pop from an empty set', type(error.args[0]).__name__, str(error) == repr(error.args[0]), str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_frozenset_constructor_keyword_error_diff_subset() {
     // CPython oracle text: frozenset() takes no keyword arguments.
     assert_cpython_output_parity(&DiffCase {

@@ -41135,6 +41135,21 @@ fn cpython_set_mutation_methods_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_set.py::TestSet pop-empty KeyError
+// behavior, including direct calls and set subclasses.
+#[test]
+fn cpython_set_empty_pop_keyerror_display_subset() {
+    assert_output(
+        "class S(set):\n    pass\nfor label, expr in [('pop-empty', lambda: set().pop()), ('direct-pop-empty', lambda: set.pop(set())), ('subclass-pop-empty', lambda: S().pop()), ('subclass-direct-pop-empty', lambda: set.pop(S()))]:\n    try:\n        expr()\n    except KeyError as error:\n        print(label, error.args[0] == 'pop from an empty set', type(error.args[0]).__name__, str(error) == repr(error.args[0]), str(error))",
+        &[
+            "pop-empty True str True 'pop from an empty set'",
+            "direct-pop-empty True str True 'pop from an empty set'",
+            "subclass-pop-empty True str True 'pop from an empty set'",
+            "subclass-direct-pop-empty True str True 'pop from an empty set'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_set.py::TestSet remove KeyError payload
 // and direct set-key membership cases.
 #[test]
