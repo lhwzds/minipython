@@ -49008,6 +49008,97 @@ for label, expr in [
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view set operations. The
+// operator dunders are public methods on key/item views, not values views.
+#[test]
+fn cpython_dict_view_direct_set_operator_methods_subset() {
+    assert_output_with_stack(
+        r#"from collections import OrderedDict
+
+d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+method_names = ["__or__", "__ror__", "__and__", "__rand__", "__sub__", "__rsub__", "__xor__", "__rxor__"]
+
+def render(value):
+    return type(value).__name__, sorted([repr(item) for item in value])
+
+def show(label, expr):
+    try:
+        print(label, *render(expr()))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+print("keys-methods", [hasattr(keys, name) for name in method_names])
+print("items-methods", [hasattr(items, name) for name in method_names])
+print("values-methods", [hasattr(values, name) for name in method_names])
+
+for label, expr in [
+    ("keys-or-list", lambda: keys.__or__([2])),
+    ("keys-ror-list", lambda: keys.__ror__([2])),
+    ("keys-and-list", lambda: keys.__and__([1, 2])),
+    ("keys-rand-list", lambda: keys.__rand__([1, 2])),
+    ("keys-sub-list", lambda: keys.__sub__([1])),
+    ("keys-rsub-list", lambda: keys.__rsub__([1, 2])),
+    ("keys-xor-list", lambda: keys.__xor__([1, 2])),
+    ("keys-rxor-list", lambda: keys.__rxor__([1, 2])),
+    ("items-or-list", lambda: items.__or__([(3, 4)])),
+    ("items-ror-list", lambda: items.__ror__([(3, 4)])),
+    ("items-and-list", lambda: items.__and__([(1, 2), 3])),
+    ("items-rand-list", lambda: items.__rand__([(1, 2), 3])),
+    ("items-sub-list", lambda: items.__sub__([(1, 2)])),
+    ("items-rsub-list", lambda: items.__rsub__([(1, 2), 3])),
+    ("items-xor-list", lambda: items.__xor__([(1, 2), 3])),
+    ("items-rxor-list", lambda: items.__rxor__([(1, 2), 3])),
+]:
+    show(label, expr)
+
+for label, expr in [
+    ("keys-or-int", lambda: keys.__or__(1)),
+    ("keys-or-missing", lambda: keys.__or__()),
+    ("items-unhashable", lambda: items.__or__([(2, [])])),
+]:
+    try:
+        expr()
+    except Exception as error:
+        print(label, type(error).__name__, "iterable" in str(error), "argument" in str(error), "unhashable" in str(error))
+
+od = OrderedDict([(1, 3), (2, 4)])
+show("odict-keys-or", lambda: od.keys().__or__([3]))
+show("odict-items-and", lambda: od.items().__and__([(2, 4), 5]))
+print("odict-values-method", hasattr(od.values(), "__or__"))"#,
+        &[
+            "keys-methods [True, True, True, True, True, True, True, True]",
+            "items-methods [True, True, True, True, True, True, True, True]",
+            "values-methods [False, False, False, False, False, False, False, False]",
+            "keys-or-list set ['1', '2']",
+            "keys-ror-list set ['1', '2']",
+            "keys-and-list set ['1']",
+            "keys-rand-list set ['1']",
+            "keys-sub-list set []",
+            "keys-rsub-list set ['2']",
+            "keys-xor-list set ['2']",
+            "keys-rxor-list set ['2']",
+            "items-or-list set ['(1, 2)', '(3, 4)']",
+            "items-ror-list set ['(1, 2)', '(3, 4)']",
+            "items-and-list set ['(1, 2)']",
+            "items-rand-list set ['(1, 2)']",
+            "items-sub-list set []",
+            "items-rsub-list set ['3']",
+            "items-xor-list set ['3']",
+            "items-rxor-list set ['3']",
+            "keys-or-int TypeError True False False",
+            "keys-or-missing TypeError False True False",
+            "items-unhashable TypeError False False True",
+            "odict-keys-or set ['1', '2', '3']",
+            "odict-items-and set ['(2, 4)']",
+            "odict-values-method False",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

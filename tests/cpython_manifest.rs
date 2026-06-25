@@ -645,6 +645,83 @@ fn dict_view_iterable_set_operators_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_direct_set_operator_methods_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_direct_set_operator_methods_subset(",
+        "method_names = [\"__or__\", \"__ror__\", \"__and__\", \"__rand__\", \"__sub__\", \"__rsub__\", \"__xor__\", \"__rxor__\"]",
+        "keys.__or__([2])",
+        "keys.__ror__([2])",
+        "keys.__and__([1, 2])",
+        "keys.__rand__([1, 2])",
+        "keys.__sub__([1])",
+        "keys.__rsub__([1, 2])",
+        "keys.__xor__([1, 2])",
+        "keys.__rxor__([1, 2])",
+        "items.__or__([(3, 4)])",
+        "items.__rsub__([(1, 2), 3])",
+        "keys.__or__(1)",
+        "keys.__or__()",
+        "items.__or__([(2, [])])",
+        "od.keys().__or__([3])",
+        "od.items().__and__([(2, 4), 5])",
+        "hasattr(od.values(), \"__or__\")",
+        "\"values-methods [False, False, False, False, False, False, False, False]\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view direct set-operator method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_direct_set_operator_methods_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view direct set operator methods subset",
+        "name: \"dict-view-direct-set-operator-methods\"",
+        "keys.__or__([2])",
+        "keys.__rsub__([1, 2])",
+        "items.__rxor__([(1, 2), 3])",
+        "keys.__or__(1)",
+        "items.__or__([(2, [])])",
+        "od.keys().__or__([3])",
+        "hasattr(od.values(), \"__or__\")",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view direct set-operator method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_dict_view_set_operator_method(",
+        "call_dict_view_set_operator_method(vm, name, args)",
+        "matches!(method, \"__ror__\" | \"__rand__\" | \"__rsub__\" | \"__rxor__\")",
+        "DictViewSetOperator::Union",
+        "DictViewSetOperator::Intersection",
+        "DictViewSetOperator::SymmetricDifference",
+        "vm.dict_view_difference_values(&left, &right)",
+        "\"__rsub__\"",
+        "\"__rxor__\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view direct set-operator method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_direct_set_operator_methods_subset")
+                && document.contains("cpython_dict_view_direct_set_operator_methods_diff_subset")
+                && document.contains("dict view direct set operator methods"),
+            "focused dict view direct set-operator method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",
@@ -684,7 +761,8 @@ fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     }
 
     for required in [
-        "\"isdisjoint\" if dict_view_is_set_like(kind)",
+        "\"__rxor__\" | \"__sub__\" | \"__xor__\" | \"isdisjoint\"",
+        "if dict_view_is_set_like(kind) =>",
         "\"isdisjoint\" =>",
         "collect_iterable_values_propagating(iterable.clone())",
         "vm.contains_value(value, view.clone())",

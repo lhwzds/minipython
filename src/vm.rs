@@ -56020,7 +56020,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     mapping: Box::new(Value::OrderedDict(entries)),
                 }),
                 "mapping" => Ok(mapping_proxy_value(entries)),
-                "__contains__" | "isdisjoint" if dict_view_is_set_like(kind) => {
+                "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
+                | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
+                    if dict_view_is_set_like(kind) =>
+                {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                         receiver: Box::new(Value::DictView {
@@ -56093,7 +56096,10 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => {
             let type_name = dict_view_type_name(kind);
             match name {
-                "__contains__" | "isdisjoint" if dict_view_is_set_like(kind) => {
+                "__and__" | "__contains__" | "__or__" | "__rand__" | "__ror__" | "__rsub__"
+                | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
+                    if dict_view_is_set_like(kind) =>
+                {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                         receiver: Box::new(Value::MappingView {
@@ -71540,6 +71546,8 @@ fn call_dict_view_method(
             }
             Ok(Value::Bool(true))
         }
+        "__or__" | "__ror__" | "__and__" | "__rand__" | "__sub__" | "__rsub__" | "__xor__"
+        | "__rxor__" => call_dict_view_set_operator_method(vm, name, args),
         "__len__" => {
             let [view] = args.as_slice() else {
                 return Err(format!(
@@ -71580,6 +71588,53 @@ fn call_dict_view_method(
         }
         _ => Err(format!("unknown builtin: {name}")),
     }
+}
+
+fn call_dict_view_set_operator_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [view, other] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(kind) = dict_view_method_kind(view) else {
+        return Err(format!("{method}() expected a dict view receiver"));
+    };
+    if !dict_view_is_set_like(kind) {
+        return Err(format!(
+            "{method}() expected a dict keys/items view receiver"
+        ));
+    }
+
+    let reflected = matches!(method, "__ror__" | "__rand__" | "__rsub__" | "__rxor__");
+    let (left, right) = if reflected {
+        (other.clone(), view.clone())
+    } else {
+        (view.clone(), other.clone())
+    };
+    let result = match method {
+        "__or__" | "__ror__" => {
+            vm.dict_view_iterable_set_operator_values(&left, &right, DictViewSetOperator::Union)?
+        }
+        "__and__" | "__rand__" => vm.dict_view_iterable_set_operator_values(
+            &left,
+            &right,
+            DictViewSetOperator::Intersection,
+        )?,
+        "__sub__" | "__rsub__" => vm.dict_view_difference_values(&left, &right)?,
+        "__xor__" | "__rxor__" => vm.dict_view_iterable_set_operator_values(
+            &left,
+            &right,
+            DictViewSetOperator::SymmetricDifference,
+        )?,
+        _ => None,
+    };
+    result.ok_or_else(|| format!("unknown builtin: {name}"))
 }
 
 fn dict_view_method_kind(value: &Value) -> Option<DictViewKind> {
