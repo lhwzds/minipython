@@ -49459,6 +49459,62 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view size method behavior. This keeps the
+// public __sizeof__ method shape without asserting CPython allocation sizes.
+#[test]
+fn cpython_dict_view_sizeof_method_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, hasattr(view, "__sizeof__"))
+    for op, expr in [
+        ("sizeof", lambda v=view: v.__sizeof__()),
+        ("sizeof-arg", lambda v=view: v.__sizeof__(1)),
+        ("sizeof-kw", lambda v=view: v.__sizeof__(x=1)),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__, isinstance(value, int), value > 0, value % 8 == 0)
+        except Exception as error:
+            message = str(error)
+            print(label, op, type(error).__name__, "argument" in message, "keyword" in message)"#,
+        &[
+            "keys True",
+            "keys sizeof int True True True",
+            "keys sizeof-arg TypeError True False",
+            "keys sizeof-kw TypeError True True",
+            "items True",
+            "items sizeof int True True True",
+            "items sizeof-arg TypeError True False",
+            "items sizeof-kw TypeError True True",
+            "values True",
+            "values sizeof int True True True",
+            "values sizeof-arg TypeError True False",
+            "values sizeof-kw TypeError True True",
+            "odkeys True",
+            "odkeys sizeof int True True True",
+            "odkeys sizeof-arg TypeError True False",
+            "odkeys sizeof-kw TypeError True True",
+            "oditems True",
+            "oditems sizeof int True True True",
+            "oditems sizeof-arg TypeError True False",
+            "oditems sizeof-kw TypeError True True",
+            "odvalues True",
+            "odvalues sizeof int True True True",
+            "odvalues sizeof-arg TypeError True False",
+            "odvalues sizeof-kw TypeError True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

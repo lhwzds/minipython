@@ -1064,6 +1064,66 @@ fn dict_view_getstate_method_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_sizeof_method_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_sizeof_method_subset(",
+        "hasattr(view, \"__sizeof__\")",
+        "(\"sizeof\", lambda v=view: v.__sizeof__())",
+        "(\"sizeof-arg\", lambda v=view: v.__sizeof__(1))",
+        "(\"sizeof-kw\", lambda v=view: v.__sizeof__(x=1))",
+        "value > 0",
+        "value % 8 == 0",
+        "\"keys sizeof int True True True\"",
+        "\"values sizeof-kw TypeError True True\"",
+        "\"odvalues sizeof int True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view sizeof method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_sizeof_method_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view sizeof behavior subset",
+        "name: \"dict-view-sizeof-method\"",
+        "hasattr(view, \"__sizeof__\")",
+        "v.__sizeof__()",
+        "v.__sizeof__(1)",
+        "v.__sizeof__(x=1)",
+        "value % 8 == 0",
+        "\"keyword\" in message",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view sizeof method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__sizeof__\" => Ok(Value::BoundMethod",
+        "\"__sizeof__\" => {",
+        "__sizeof__() expected 0 arguments",
+        "__sizeof__() expected a dict view receiver",
+        "Ok(Value::Number(24))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view sizeof method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_sizeof_method_subset")
+                && document.contains("cpython_dict_view_sizeof_method_diff_subset")
+                && document.contains("dict view sizeof method"),
+            "focused dict view sizeof method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",
