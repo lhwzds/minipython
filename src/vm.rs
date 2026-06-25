@@ -26251,8 +26251,9 @@ impl Vm {
                     done: false,
                 }))
             }
+            [] => Err("TypeError: iter expected at least 1 argument, got 0".to_string()),
             values => Err(format!(
-                "TypeError: iter() expected 1 or 2 arguments, got {}",
+                "TypeError: iter expected at most 2 arguments, got {}",
                 values.len()
             )),
         }

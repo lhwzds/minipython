@@ -1862,9 +1862,10 @@ Completed in the differential parity harness pass:
   now shared heap values, so `it = iter(seq); next(it); next(it)` advances the
   same iterator object, `iter(it) is it` holds, `next(it, default)` handles
   exhaustion, and non-iterable/non-iterator rejection is covered by CPython
-  differential tests. Direct `__iter__()` and `__next__()` calls are now exposed
-  for the supported builtin iterables, iterators, and generators, including
-  arity/attribute rejection parity for common bad calls. Two-argument sentinel
+  differential tests, including exact CPython `iter` arity `TypeError` text.
+  Direct `__iter__()` and `__next__()` calls are now exposed for the supported
+  builtin iterables, iterators, and generators, including arity/attribute
+  rejection parity for common bad calls. Two-argument sentinel
   `iter(callable, sentinel)` now produces a shared callable iterator that stops
   before yielding the sentinel and supports direct iterator dunders. Rich
   callable equality hooks, including non-symmetric sentinel comparison and
@@ -7079,7 +7080,8 @@ Completed in the iter/next builtin pass:
   and generators, including repeated exhaustion, `StopIteration`, and
   `next(iterator, default)`.
 - Tightened `iter()` and `next()` arity/protocol failures so they become
-  catchable CPython-style `TypeError` exceptions in the supported subset.
+  catchable CPython-style `TypeError` exceptions in the supported subset,
+  including exact CPython `iter` arity `TypeError` text.
 - Isolated custom `__iter__` calls so exceptions raised there do not consume the
   caller's active exception handler.
 - Extended `iter(callable, sentinel)` with CPython

@@ -38815,6 +38815,14 @@ fn cpython_iter_next_builtin_subset() {
         8 * 1024 * 1024,
     );
     assert_output_with_stack(
+        "for label, expr in [('missing', lambda: iter()), ('too-many', lambda: iter(1, 2, 3))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "missing TypeError iter expected at least 1 argument, got 0",
+            "too-many TypeError iter expected at most 2 arguments, got 3",
+        ],
+        8 * 1024 * 1024,
+    );
+    assert_output_with_stack(
         "iterator = iter(range(2))\nprint(next(iterator))\nprint(next(iterator))\nfor _ in [0, 1]:\n    try:\n        next(iterator)\n    except StopIteration:\n        print('stopped')\nprint(next(iterator, 42))\nclass Iter:\n    def __iter__(self):\n        return self\n    def __next__(self):\n        raise StopIteration\niterator = iter(Iter())\nprint(next(iterator, 42))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\ndef gen():\n    yield 1\n    return\niterator = gen()\nprint(next(iterator))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\nprint(next(iterator, 42))",
         &[
             "0", "1", "stopped", "stopped", "42", "42", "stopped", "1", "stopped", "42",

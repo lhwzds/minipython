@@ -19403,6 +19403,8 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "except StopIteration",
         "lambda: iter()",
         "lambda: iter(42, 42)",
+        "iter expected at least 1 argument, got 0",
+        "iter expected at most 2 arguments, got 3",
         "iterator = iter(range(2))",
         "next(iterator, 42)",
         "class Iter",
@@ -19480,6 +19482,8 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "print('inner', list(state['it']))",
         "lambda: iter()",
         "lambda: iter(42, 42)",
+        "iter expected at least 1 argument, got 0",
+        "iter expected at most 2 arguments, got 3",
         "lambda: next()",
         "lambda: next(42)",
     ] {
