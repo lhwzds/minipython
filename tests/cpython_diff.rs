@@ -15501,6 +15501,12 @@ fn cpython_operator_arithmetic_bitwise_diff_subset() {
     // unsupported operand type(s) for %: 'complex' and 'int'
     // CPython oracle text: unsupported operand type(s) for -: 'bool' and 'str';
     // unsupported operand type(s) for -: 'str' and 'bool'
+    // CPython oracle text: unsupported operand type(s) for &: 'bool' and 'str';
+    // unsupported operand type(s) for &: 'str' and 'bool';
+    // unsupported operand type(s) for |: 'bool' and 'str';
+    // unsupported operand type(s) for |: 'str' and 'bool';
+    // unsupported operand type(s) for ^: 'bool' and 'str';
+    // unsupported operand type(s) for ^: 'str' and 'bool'
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_operator.py::OperatorTestCase arithmetic and bitwise helper public subset",
         name: "operator-arithmetic-bitwise",
@@ -15549,6 +15555,11 @@ try:
 except TypeError as error:
     print(str(error))
 for label, callback in [('sub-bool-type', lambda: True - 'a'), ('sub-right-bool-type', lambda: 'a' - True), ('operator-sub-bool-type', lambda: operator.sub(True, 'a')), ('operator-sub-right-bool-type', lambda: operator.sub('a', True))]:
+    try:
+        callback()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+for label, callback in [('and-bool-type', lambda: True & 'a'), ('and-right-bool-type', lambda: 'a' & True), ('or-bool-type', lambda: True | 'a'), ('or-right-bool-type', lambda: 'a' | True), ('xor-bool-type', lambda: True ^ 'a'), ('xor-right-bool-type', lambda: 'a' ^ True), ('operator-and-bool-type', lambda: operator.and_(True, 'a')), ('operator-or-bool-type', lambda: operator.or_(True, 'a')), ('operator-xor-bool-type', lambda: operator.xor(True, 'a'))]:
     try:
         callback()
     except TypeError as error:

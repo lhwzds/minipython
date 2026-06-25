@@ -2200,11 +2200,11 @@ without adding general custom encoder/decoder class support.
   `rshift`, unary `neg`/`pos`/`invert` aliases, `matmul`, and `index`, including
   `NotImplemented` matrix-multiply reflected-method fallback plus
   representative TypeError/ValueError classification and CPython-style
-  unsupported-operand text for unsupported `matmul`, subtraction, division,
-  floor-division, modulo, and shift operands, bool-preserving `-`, `/`, `//`,
-  `%`, and `<<` type names, complex division/modulo unsupported-operand text,
-  and CPython public unary bad-operand text for direct `+`/`-`/`~` syntax plus
-  the operator aliases. Direct CPython diff evidence is in
+  unsupported-operand text for unsupported `matmul`, bitwise, subtraction,
+  division, floor-division, modulo, and shift operands, bool-preserving `&`,
+  `|`, `^`, `-`, `/`, `//`, `%`, and `<<` type names, complex division/modulo
+  unsupported-operand text, and CPython public unary bad-operand text for direct
+  `+`/`-`/`~` syntax plus the operator aliases. Direct CPython diff evidence is in
   `cpython_operator_arithmetic_bitwise_diff_subset`.
 - `RUNTIME_BUILTINS` also includes `cpython_operator_sequence_member_subset`,
   covering CPython `test_operator.py` sequence and member helpers `concat`,

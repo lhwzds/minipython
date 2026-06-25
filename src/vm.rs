@@ -83452,8 +83452,10 @@ fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
             type_name(&left)
         )),
         (left, right) => {
+            let original_left = left.clone();
+            let original_right = right.clone();
             let (left, right) = numeric_bool_operands(left, right);
-            bit_or_numbers(left, right)
+            bit_or_numbers(left, right, &original_left, &original_right)
         }
     }
 }
@@ -83627,7 +83629,12 @@ fn in_place_bit_or_values(left: Value, right: Value) -> Result<Value, String> {
     }
 }
 
-fn bit_or_numbers(left: Value, right: Value) -> Result<Value, String> {
+fn bit_or_numbers(
+    left: Value,
+    right: Value,
+    original_left: &Value,
+    original_right: &Value,
+) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
             Ok(normalize_big_int(BigInt::from(left) | BigInt::from(right)))
@@ -83639,7 +83646,11 @@ fn bit_or_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left | BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left | right)),
-        (left, right) => Err(unsupported_binary_operand_message("|", &left, &right)),
+        _ => Err(unsupported_binary_operand_message(
+            "|",
+            original_left,
+            original_right,
+        )),
     }
 }
 
@@ -83661,13 +83672,20 @@ fn bit_xor_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
         (Value::Bool(left), Value::Bool(right)) => Ok(Value::Bool(left ^ right)),
         (left, right) => {
+            let original_left = left.clone();
+            let original_right = right.clone();
             let (left, right) = numeric_bool_operands(left, right);
-            bit_xor_numbers(left, right)
+            bit_xor_numbers(left, right, &original_left, &original_right)
         }
     }
 }
 
-fn bit_xor_numbers(left: Value, right: Value) -> Result<Value, String> {
+fn bit_xor_numbers(
+    left: Value,
+    right: Value,
+    original_left: &Value,
+    original_right: &Value,
+) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
             Ok(normalize_big_int(BigInt::from(left) ^ BigInt::from(right)))
@@ -83679,7 +83697,11 @@ fn bit_xor_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left ^ BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left ^ right)),
-        (left, right) => Err(unsupported_binary_operand_message("^", &left, &right)),
+        _ => Err(unsupported_binary_operand_message(
+            "^",
+            original_left,
+            original_right,
+        )),
     }
 }
 
@@ -83699,13 +83721,20 @@ fn bit_and_values(left: Value, right: Value) -> Result<Value, String> {
     match (left, right) {
         (Value::Bool(left), Value::Bool(right)) => Ok(Value::Bool(left & right)),
         (left, right) => {
+            let original_left = left.clone();
+            let original_right = right.clone();
             let (left, right) = numeric_bool_operands(left, right);
-            bit_and_numbers(left, right)
+            bit_and_numbers(left, right, &original_left, &original_right)
         }
     }
 }
 
-fn bit_and_numbers(left: Value, right: Value) -> Result<Value, String> {
+fn bit_and_numbers(
+    left: Value,
+    right: Value,
+    original_left: &Value,
+    original_right: &Value,
+) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(left), Value::Number(right)) => {
             Ok(normalize_big_int(BigInt::from(left) & BigInt::from(right)))
@@ -83717,7 +83746,11 @@ fn bit_and_numbers(left: Value, right: Value) -> Result<Value, String> {
             Ok(normalize_big_int(left & BigInt::from(right)))
         }
         (Value::BigInt(left), Value::BigInt(right)) => Ok(normalize_big_int(left & right)),
-        (left, right) => Err(unsupported_binary_operand_message("&", &left, &right)),
+        _ => Err(unsupported_binary_operand_message(
+            "&",
+            original_left,
+            original_right,
+        )),
     }
 }
 
