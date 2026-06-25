@@ -336,6 +336,7 @@ without adding `parse_constant` customization beyond the documented hook subset.
 `cpython_json_loads_dumps_error_boundary_diff_subset`, keeps the `loads()` / `dumps()` first-pass error boundary for
 argument count and unknown keyword `TypeError` classification, unsupported `loads()` input types such as `memoryview`,
 invalid UTF-8 byte input and string-input UTF-8 BOM rejection, structural JSON parse failures including trailing data and trailing commas,
+odd-length NUL-containing byte input falls through to JSON parser errors,
 unsupported `dumps()` values including arbitrary objects, bytes, bytearray, and memoryview,
 and circular-reference rejection for list, dict, tuple, list/dict subclasses, and namedtuple containers.
 `cpython_json_loads_string_error_boundary_subset`, backed by

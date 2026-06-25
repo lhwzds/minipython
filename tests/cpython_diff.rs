@@ -2123,6 +2123,14 @@ try:
     json.loads(chr(65279) + '{}')
 except Exception as error:
     print('loads-string-bom', isinstance(error, ValueError), 'Unexpected UTF-8 BOM' in str(error))
+for label, data, text in [
+    ('loads-odd-leading-nul', bytes([0, ord('1'), 0]), 'Expecting value'),
+    ('loads-odd-trailing-nul', bytes([ord('1'), 0, 0]), 'Extra data'),
+]:
+    try:
+        json.loads(data)
+    except Exception as error:
+        print(label, isinstance(error, ValueError), isinstance(error, UnicodeDecodeError), text in str(error))
 show('loads-trailing-data', lambda: json.loads('{} []'))
 show('loads-array-trailing-comma', lambda: json.loads('[1,]'))
 show('loads-object-trailing-comma', lambda: json.loads('{"a": 1,}'))

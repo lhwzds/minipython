@@ -61256,7 +61256,7 @@ fn json_loads_decode_bytes_inner(bytes: &[u8]) -> Result<String, String> {
             return decode_utf16_bytes(bytes, Some(TextEndian::Little), CodecErrorMode::Strict);
         }
     }
-    if bytes.len() >= 2 {
+    if bytes.len() == 2 {
         if bytes[0] == 0 {
             return decode_utf16_bytes(bytes, Some(TextEndian::Big), CodecErrorMode::Strict);
         }
