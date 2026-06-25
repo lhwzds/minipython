@@ -322,6 +322,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_type_hierarchy_diff_subset`,
   `cpython_types_mappingproxy_type_subclasses_diff_subset`,
   `cpython_types_mappingproxy_type_dict_diff_subset`,
+  `cpython_types_mappingproxy_type_richcompare_diff_subset`,
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
@@ -4070,6 +4071,11 @@ without adding general custom encoder/decoder class support.
   `cpython_types_mappingproxy_type_dict_diff_subset`, covering mappingproxy type `__dict__`
   shape for supported public methods and `__doc__` without broadening into
   CPython's complete slot-wrapper descriptor table.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_mappingproxy_type_richcompare_subset`, backed by
+  `cpython_types_mappingproxy_type_richcompare_diff_subset`, covering mappingproxy type richcompare
+  methods for public `__eq__` and `__ne__` call behavior without broadening
+  into CPython's complete wrapper-descriptor type surface.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_keyword_constructor_subset`, backed by
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`, covering

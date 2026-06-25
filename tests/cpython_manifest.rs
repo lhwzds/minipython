@@ -21867,6 +21867,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_mappingproxy_type_hierarchy_subset",
             "cpython_types_mappingproxy_type_subclasses_subset",
             "cpython_types_mappingproxy_type_dict_subset",
+            "cpython_types_mappingproxy_type_richcompare_subset",
             "cpython_types_mappingproxy_keyword_constructor_subset",
             "cpython_types_mappingproxy_method_surface_subset",
             "cpython_types_mappingproxy_custom_mapping_subset",
@@ -21978,6 +21979,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_type_hierarchy_diff_subset",
         "cpython_types_mappingproxy_type_subclasses_diff_subset",
         "cpython_types_mappingproxy_type_dict_diff_subset",
+        "cpython_types_mappingproxy_type_richcompare_diff_subset",
         "cpython_types_mappingproxy_keyword_constructor_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
@@ -22382,6 +22384,75 @@ fn types_mappingproxy_type_dict_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_mappingproxy_type_dict_diff_subset")
                 && document.contains("mappingproxy type `__dict__`"),
             "types mappingproxy type dict evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_type_richcompare_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_type_richcompare_subset",
+    );
+    for required in [
+        "eq = cls.__eq__",
+        "ne = cls.__ne__",
+        "eq.__name__",
+        "ne.__name__",
+        "eq(a, b)",
+        "eq(a, c)",
+        "eq(a, {'a': 1})",
+        "ne(a, b)",
+        "ne(a, c)",
+        "ne(a, {'a': 1})",
+        "cls.__dict__['__eq__'].__name__",
+        "cls.__dict__['__ne__'].__name__",
+        "\"__eq__ True False True\"",
+        "\"__ne__ False True False\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types mappingproxy type richcompare subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_type_richcompare_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests type richcompare subset",
+        "name: \"types-mappingproxy-type-richcompare\"",
+        "eq = cls.__eq__",
+        "ne = cls.__ne__",
+        "cls.__dict__['__eq__'].__name__",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types mappingproxy type richcompare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::String(\"__eq__\".to_string())",
+        "Value::Builtin(\"mappingproxy.__eq__\".to_string())",
+        "Value::String(\"__ne__\".to_string())",
+        "Value::Builtin(\"mappingproxy.__ne__\".to_string())",
+        "\"__eq__\" | \"__ne__\"",
+        "self.equal_values(receiver.clone(), other.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types mappingproxy type richcompare implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_type_richcompare_subset")
+                && document.contains("cpython_types_mappingproxy_type_richcompare_diff_subset")
+                && document.contains("mappingproxy type richcompare"),
+            "types mappingproxy type richcompare evidence must be documented in coverage and migration notes"
         );
     }
 }

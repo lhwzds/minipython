@@ -12682,6 +12682,24 @@ print(type({1: 2}.keys().mapping).__dict__['items'].__name__)"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_type_richcompare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests type richcompare subset",
+        name: "types-mappingproxy-type-richcompare",
+        source: r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+a = MappingProxyType({'a': 1})
+b = MappingProxyType({'a': 1})
+c = MappingProxyType({'a': 2})
+eq = cls.__eq__
+ne = cls.__ne__
+print(eq.__name__, eq(a, b), eq(a, c), eq(a, {'a': 1}))
+print(ne.__name__, ne(a, b), ne(a, c), ne(a, {'a': 1}))
+print(cls.__dict__['__eq__'].__name__, cls.__dict__['__ne__'].__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_keyword_constructor_diff_subset() {
     // CPython oracle text includes:
     // mappingproxy() missing required argument 'mapping' (pos 1).

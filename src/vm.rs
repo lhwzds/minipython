@@ -26786,6 +26786,30 @@ impl Vm {
                     }
                 }
             }
+            "__eq__" | "__ne__" => {
+                let [receiver, other] = args.as_slice() else {
+                    return Err(format!(
+                        "{}() expected 1 argument, got {}",
+                        method_display_name(name),
+                        method_arg_count(&args)
+                    ));
+                };
+                match receiver {
+                    receiver @ Value::MappingProxy { .. }
+                    | receiver @ Value::MappingProxyObject { .. } => {
+                        let equal = self.equal_values(receiver.clone(), other.clone())?;
+                        Ok(Value::Bool(if method_display_name(name) == "__ne__" {
+                            !equal
+                        } else {
+                            equal
+                        }))
+                    }
+                    _ => Err(format!(
+                        "mappingproxy.{} expected a mappingproxy receiver",
+                        method_display_name(name)
+                    )),
+                }
+            }
             "__repr__" => {
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
@@ -36610,6 +36634,14 @@ fn mappingproxy_type_dict_value() -> Value {
         (
             Value::String("__str__".to_string()),
             Value::Builtin("mappingproxy.__str__".to_string()),
+        ),
+        (
+            Value::String("__eq__".to_string()),
+            Value::Builtin("mappingproxy.__eq__".to_string()),
+        ),
+        (
+            Value::String("__ne__".to_string()),
+            Value::Builtin("mappingproxy.__ne__".to_string()),
         ),
         (
             Value::String("__iter__".to_string()),
@@ -51686,11 +51718,13 @@ fn is_builtin_mappingproxy_type_method(name: &str) -> bool {
             | "values"
             | "__class_getitem__"
             | "__contains__"
+            | "__eq__"
             | "__format__"
             | "__getitem__"
             | "__ior__"
             | "__iter__"
             | "__len__"
+            | "__ne__"
             | "__or__"
             | "__repr__"
             | "__reversed__"

@@ -50735,6 +50735,30 @@ print(type({1: 2}.keys().mapping).__dict__['items'].__name__)"#,
     );
 }
 
+// CPython exposes equality and inequality as public mappingproxy type methods.
+// MiniPython checks the callable behavior without depending on CPython's exact
+// wrapper_descriptor implementation type.
+#[test]
+fn cpython_types_mappingproxy_type_richcompare_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+a = MappingProxyType({'a': 1})
+b = MappingProxyType({'a': 1})
+c = MappingProxyType({'a': 2})
+eq = cls.__eq__
+ne = cls.__ne__
+print(eq.__name__, eq(a, b), eq(a, c), eq(a, {'a': 1}))
+print(ne.__name__, ne(a, b), ne(a, c), ne(a, {'a': 1}))
+print(cls.__dict__['__eq__'].__name__, cls.__dict__['__ne__'].__name__)"#,
+        &[
+            "__eq__ True False True",
+            "__ne__ False True False",
+            "__eq__ __ne__",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
 // binding behavior for the public `mapping` keyword.
 #[test]
