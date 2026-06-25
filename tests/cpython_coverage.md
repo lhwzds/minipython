@@ -78,6 +78,8 @@ Recent runtime migration notes:
   non-symmetric `__eq__` implementations.
 - `cpython_iter_next_builtin_subset` now pins exact CPython `iter` arity
   `TypeError` text for missing and excess positional arguments.
+- `cpython_iter_next_builtin_subset` now also pins exact CPython `next` arity
+  `TypeError` text for missing and excess positional arguments.
 - Sequence-protocol fallback iterators in `cpython_iter_next_builtin_subset`
   now match CPython exhaustion behavior for `IndexError` subclasses and
   `StopIteration` raised by `__getitem__`, including reverse iteration.

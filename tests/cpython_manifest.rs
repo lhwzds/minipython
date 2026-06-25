@@ -19407,6 +19407,8 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "iter expected at most 2 arguments, got 3",
         "iterator = iter(range(2))",
         "next(iterator, 42)",
+        "next expected at least 1 argument, got 0",
+        "next expected at most 2 arguments, got 3",
         "class Iter",
         "def __next__(self):",
         "def gen():",
@@ -19486,6 +19488,8 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "iter expected at most 2 arguments, got 3",
         "lambda: next()",
         "lambda: next(42)",
+        "next expected at least 1 argument, got 0",
+        "next expected at most 2 arguments, got 3",
     ] {
         assert!(
             body.contains(required),

@@ -9416,6 +9416,13 @@ for label, expr in [('missing', lambda: iter()), ('too-many', lambda: iter(1, 2,
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error))
+# CPython oracle text: next expected at least 1 argument, got 0;
+# next expected at most 2 arguments, got 3
+for label, expr in [('missing', lambda: next()), ('too-many', lambda: next(iter([]), 1, 2))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(42)]:
     try:
         expr()

@@ -22058,9 +22058,12 @@ impl Vm {
         let (value, default) = match args.as_slice() {
             [value] => (value, None),
             [value, default] => (value, Some(default)),
+            [] => {
+                return Err("TypeError: next expected at least 1 argument, got 0".to_string());
+            }
             values => {
                 return Err(format!(
-                    "TypeError: next() expected 1 or 2 arguments, got {}",
+                    "TypeError: next expected at most 2 arguments, got {}",
                     values.len()
                 ));
             }
