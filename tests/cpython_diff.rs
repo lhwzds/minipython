@@ -13079,6 +13079,10 @@ fn cpython_collections_counter_mapping_mutation_diff_subset() {
 c = Counter(a=4, b=0, c=-2)
 print(c.pop('a'), 'a' in c, c['a'])
 print(c.pop('missing', 99))
+try:
+    c.pop('missing')
+except KeyError as error:
+    print(error.args[0] == 'missing', type(error.args[0]).__name__, str(error))
 print(c.setdefault('d', 5), c['d'])
 print(c.setdefault('b', 7), c['b'])
 key, value = c.popitem()

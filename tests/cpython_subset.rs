@@ -51782,6 +51782,10 @@ fn cpython_collections_counter_mapping_mutation_subset() {
             "c = Counter(a=4, b=0, c=-2)\n",
             "print(c.pop('a'), 'a' in c, c['a'])\n",
             "print(c.pop('missing', 99))\n",
+            "try:\n",
+            "    c.pop('missing')\n",
+            "except KeyError as error:\n",
+            "    print(error.args[0] == 'missing', type(error.args[0]).__name__, str(error))\n",
             "print(c.setdefault('d', 5), c['d'])\n",
             "print(c.setdefault('b', 7), c['b'])\n",
             "key, value = c.popitem()\n",
@@ -51789,7 +51793,15 @@ fn cpython_collections_counter_mapping_mutation_subset() {
             "c.clear()\n",
             "print(c, list(c.items()))\n",
         ),
-        &["4 False 0", "99", "5 5", "0 0", "False 5", "Counter() []"],
+        &[
+            "4 False 0",
+            "99",
+            "True str 'missing'",
+            "5 5",
+            "0 0",
+            "False 5",
+            "Counter() []",
+        ],
     );
 }
 

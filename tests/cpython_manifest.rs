@@ -11457,6 +11457,47 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             .contains("cpython_collections_counter_mapping_mutation_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter mapping mutation behavior"
     );
+    let counter_mapping_mutation_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_mapping_mutation_diff_subset",
+    );
+    let counter_mapping_mutation_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_mapping_mutation_subset",
+    );
+    for required in [
+        "c.pop('missing')",
+        "error.args[0] == 'missing'",
+        "type(error.args[0]).__name__",
+    ] {
+        assert!(
+            counter_mapping_mutation_diff_body.contains(required)
+                && counter_mapping_mutation_subset_body.contains(required),
+            "Counter mapping mutation diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        counter_mapping_mutation_subset_body.contains("True str 'missing'"),
+        "Counter mapping mutation subset evidence must cover the expected missing-key pop output"
+    );
+    assert!(
+        VM_SOURCE.contains("raise_key_error_value(self, key.clone())"),
+        "Counter pop must raise KeyError with the original missing key payload"
+    );
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_collections_counter_mapping_mutation_diff_subset",
+            "cpython_collections_counter_mapping_mutation_subset",
+            "missing-key",
+            "`pop()`",
+            "`KeyError.args[0]`",
+        ] {
+            assert!(
+                document.contains(required),
+                "Counter mapping mutation docs must contain `{required}`"
+            );
+        }
+    }
     assert!(
         row.diff_evidence
             .contains("cpython_collections_counter_comparison_diff_subset"),

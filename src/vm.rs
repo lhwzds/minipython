@@ -27573,7 +27573,7 @@ impl Vm {
                 if let Some(default) = rest.first() {
                     return Ok(default.clone());
                 }
-                Err(format!("KeyError: {}", format_key_error(key)))
+                raise_key_error_value(self, key.clone())
             }
             "popitem" => {
                 reject_method_keywords(name, &keywords)?;
