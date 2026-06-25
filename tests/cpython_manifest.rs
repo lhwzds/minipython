@@ -10877,6 +10877,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_constructor_source_repr_subset",
             "cpython_collections_chainmap_constructor_source_truthiness_subset",
             "cpython_collections_chainmap_constructor_source_len_subset",
+            "cpython_collections_chainmap_constructor_source_iter_subset",
             "cpython_collections_chainmap_copy_sharing_subset",
             "cpython_collections_namedtuple_factory_instance_subset",
             "cpython_collections_namedtuple_public_subset",
@@ -11271,6 +11272,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_source_len_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source len"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_constructor_source_iter_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source iteration"
     );
     assert!(
         row.diff_evidence
@@ -12293,6 +12299,104 @@ fn collections_chainmap_constructor_source_len_subset_has_focused_diff_evidence(
                     .contains("cpython_collections_chainmap_constructor_source_len_diff_subset")
                 && document.contains("ChainMap constructor source length"),
             "collections ChainMap constructor source-len evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_constructor_source_iter_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_constructor_source_iter_subset",
+    );
+    for required in [
+        "('empty', ChainMap())",
+        "('empty-dict', ChainMap({}))",
+        "('dict-second', ChainMap({}, {'x': 1}))",
+        "from collections import ChainMap, OrderedDict, UserDict",
+        "class DictWithGetItem(UserDict):",
+        "('ordered-source', ChainMap(OrderedDict([('b', 2), ('a', 1)])))",
+        "('userdict-subclass', ChainMap(d))",
+        "('list-empty', ChainMap([]))",
+        "('list-value', ChainMap([1, 1, 2]))",
+        "('tuple-value', ChainMap((1, 2, 1)))",
+        "('str-value', ChainMap('abca'))",
+        "('method-list', ChainMap([1, 1, 2]))",
+        "('keys-list', ChainMap([1, 1, 2]))",
+        "('mixed-list', ChainMap([2, 1], [1, 3]))",
+        "('mixed-map-list', ChainMap({'a': 1, 'b': 2}, ['b', 'c']))",
+        "ChainMap.__iter__(value)",
+        "list(value.keys())",
+        "d.called = False",
+        "ordered-source ['b', 'a']",
+        "userdict-subclass ['a'] False",
+        "list-value [1, 2]",
+        "tuple-value [1, 2]",
+        "str-value ['a', 'b', 'c']",
+        "mixed-list [1, 3, 2]",
+        "mixed-map-list ['b', 'c', 'a']",
+        "int-one TypeError 'int' object is not iterable",
+        "none TypeError 'NoneType' object is not iterable",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap constructor source-iter subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_constructor_source_iter_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap constructor source iteration",
+        "('dict-second', ChainMap({}, {'x': 1}))",
+        "from collections import ChainMap, OrderedDict, UserDict",
+        "class DictWithGetItem(UserDict):",
+        "('ordered-source', ChainMap(OrderedDict([('b', 2), ('a', 1)])))",
+        "('userdict-subclass', ChainMap(d))",
+        "('list-value', ChainMap([1, 1, 2]))",
+        "('str-value', ChainMap('abca'))",
+        "('mixed-list', ChainMap([2, 1], [1, 3]))",
+        "('mixed-map-list', ChainMap({'a': 1, 'b': 2}, ['b', 'c']))",
+        "ChainMap.__iter__(value)",
+        "list(value.keys())",
+        "list(value)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap constructor source-iter CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn chain_map_keys(",
+        "for map in maps.iter().rev()",
+        "Value::OrderedDict(entries)",
+        "value if user_dict_subclass_data(value).is_some()",
+        "chain_map_keys(&maps)",
+        "chain_map_keys(maps)",
+        "Ok(list_value(chain_map_keys(&maps)?))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap source-iter VM implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        !VM_SOURCE.contains("chain_map_entries(&maps)?\n                        .into_iter()\n                        .map(|(key, _)| key)")
+            && !VM_SOURCE
+                .contains("chain_map_entries(&maps)?\n                    .into_iter()\n                    .map(|(key, _)| key)"),
+        "ChainMap key iteration must use source key-counting instead of eager mapping-entry expansion"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_constructor_source_iter_subset")
+                && document
+                    .contains("cpython_collections_chainmap_constructor_source_iter_diff_subset")
+                && document.contains("ChainMap constructor source iteration"),
+            "collections ChainMap constructor source-iter evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -342,6 +342,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_constructor_source_len_diff_subset`,
+  `cpython_collections_chainmap_constructor_source_iter_diff_subset`,
   `cpython_collections_chainmap_copy_sharing_diff_subset`,
   `cpython_collections_namedtuple_factory_instance_diff_subset`,
   `cpython_collections_namedtuple_public_diff_subset`,
@@ -3983,6 +3984,13 @@ without adding general custom encoder/decoder class support.
   ChainMap constructor source length for mapping, list, tuple, string, integer,
   and `None` sources, including direct `ChainMap.__len__()` dispatch and
   CPython's non-iterable source TypeError text.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_constructor_source_iter_subset`, backed by
+  `cpython_collections_chainmap_constructor_source_iter_diff_subset`, covering
+  ChainMap constructor source iteration for dict, `OrderedDict`, `UserDict`
+  subclass, list, tuple, string, integer, and `None` sources, including direct
+  `ChainMap.__iter__()`, `keys()`, CPython's reversed-map unique-key ordering,
+  and mapping-source key iteration without `__getitem__`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_copy_pickle_eval_identity_subset`, covering
   the remaining CPython `TestChainMap::test_basics` copy and identity

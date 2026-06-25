@@ -13551,6 +13551,53 @@ for label, value in cases:
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_source_iter_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor source iteration",
+        name: "collections-chainmap-constructor-source-iter",
+        source: r#"from collections import ChainMap, OrderedDict, UserDict
+class DictWithGetItem(UserDict):
+    def __init__(self, *args, **kwds):
+        self.called = False
+        UserDict.__init__(self, *args, **kwds)
+    def __getitem__(self, item):
+        self.called = True
+        return UserDict.__getitem__(self, item)
+d = DictWithGetItem(a=1)
+cases = [
+    ('empty', ChainMap()),
+    ('empty-dict', ChainMap({})),
+    ('dict-second', ChainMap({}, {'x': 1})),
+    ('ordered-source', ChainMap(OrderedDict([('b', 2), ('a', 1)]))),
+    ('userdict-subclass', ChainMap(d)),
+    ('list-empty', ChainMap([])),
+    ('list-value', ChainMap([1, 1, 2])),
+    ('tuple-value', ChainMap((1, 2, 1))),
+    ('str-value', ChainMap('abca')),
+    ('method-list', ChainMap([1, 1, 2])),
+    ('keys-list', ChainMap([1, 1, 2])),
+    ('mixed-list', ChainMap([2, 1], [1, 3])),
+    ('mixed-map-list', ChainMap({'a': 1, 'b': 2}, ['b', 'c'])),
+    ('int-one', ChainMap(1)),
+    ('none', ChainMap(None)),
+]
+for label, value in cases:
+    try:
+        if label == 'method-list':
+            print(label, list(ChainMap.__iter__(value)))
+        elif label == 'keys-list':
+            print(label, list(value.keys()))
+        elif label == 'userdict-subclass':
+            d.called = False
+            print(label, list(value), d.called)
+        else:
+            print(label, list(value))
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

@@ -21853,21 +21853,11 @@ impl Vm {
         }
 
         if let Some(maps) = chain_map_subclass_maps(&value) {
-            return Ok(Ok(list_iterator_from_values(
-                chain_map_entries(&maps)?
-                    .into_iter()
-                    .map(|(key, _)| key)
-                    .collect(),
-            )));
+            return Ok(Ok(list_iterator_from_values(chain_map_keys(&maps)?)));
         }
 
         match value {
-            Value::ChainMap { maps } => Ok(Ok(list_iterator_from_values(
-                chain_map_entries(&maps)?
-                    .into_iter()
-                    .map(|(key, _)| key)
-                    .collect(),
-            ))),
+            Value::ChainMap { maps } => Ok(Ok(list_iterator_from_values(chain_map_keys(&maps)?))),
             Value::UserDict { data, .. } => {
                 self.call_with_exception_capture(|_| get_iter(Value::Dict(data)))
             }
@@ -26843,12 +26833,7 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                Ok(list_iterator_from_values(
-                    chain_map_entries(&maps)?
-                        .into_iter()
-                        .map(|(key, _)| key)
-                        .collect(),
-                ))
+                Ok(list_iterator_from_values(chain_map_keys(&maps)?))
             }
             "__len__" => {
                 reject_method_keywords(name, &keywords)?;
@@ -27013,12 +26998,7 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                Ok(list_value(
-                    chain_map_entries(&maps)?
-                        .into_iter()
-                        .map(|(key, _)| key)
-                        .collect(),
-                ))
+                Ok(list_value(chain_map_keys(&maps)?))
             }
             "new_child" => {
                 let [receiver, rest @ ..] = args.as_slice() else {
@@ -72208,18 +72188,64 @@ fn chain_map_entries(maps: &[Value]) -> Result<Vec<(Value, Value)>, String> {
 }
 
 fn chain_map_key_count(maps: &[Value]) -> Result<usize, String> {
+    Ok(chain_map_keys(maps)?.len())
+}
+
+fn chain_map_keys(maps: &[Value]) -> Result<Vec<Value>, String> {
     let mut entries = Vec::new();
-    for map in maps {
+    for map in maps.iter().rev() {
         for key in chain_map_source_keys(map)? {
             insert_dict_entry(&mut entries, key, Value::None)?;
         }
     }
-    Ok(entries.len())
+    Ok(entries.into_iter().map(|(key, _)| key).collect())
 }
 
 fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
-    sequence_values(map.clone())
-        .map_err(|_| format!("TypeError: '{}' object is not iterable", type_name(map)))
+    match map {
+        Value::Dict(entries)
+        | Value::OrderedDict(entries)
+        | Value::MappingProxy { entries }
+        | Value::Counter { entries } => Ok(entries
+            .borrow()
+            .iter()
+            .map(|(key, _)| key.clone())
+            .collect()),
+        Value::ScopeDict(scope) => Ok(scope_dict_keys(scope)),
+        Value::FrameLocalsProxy { locals } => Ok(scope_dict_keys(locals)),
+        Value::UserDict { data, .. } => {
+            Ok(data.borrow().iter().map(|(key, _)| key.clone()).collect())
+        }
+        value if dict_subclass_entries(value).is_some() => {
+            let entries =
+                dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+            Ok(entries
+                .borrow()
+                .iter()
+                .map(|(key, _)| key.clone())
+                .collect())
+        }
+        value if counter_subclass_entries(value).is_some() => {
+            let entries = counter_subclass_entries(value)
+                .expect("Counter subclass entries exist after guard");
+            Ok(entries
+                .borrow()
+                .iter()
+                .map(|(key, _)| key.clone())
+                .collect())
+        }
+        value if user_dict_subclass_data(value).is_some() => {
+            let entries =
+                user_dict_subclass_data(value).expect("UserDict subclass data exists after guard");
+            Ok(entries
+                .borrow()
+                .iter()
+                .map(|(key, _)| key.clone())
+                .collect())
+        }
+        value => sequence_values(value.clone())
+            .map_err(|_| format!("TypeError: '{}' object is not iterable", type_name(value))),
+    }
 }
 
 fn chain_map_get_item_optional(maps: &[Value], key: &Value) -> Result<Option<Value>, String> {
@@ -76959,12 +76985,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 expected_version,
             }))
         }
-        Value::ChainMap { maps } => Ok(list_iterator_from_values(
-            chain_map_entries(&maps)?
-                .into_iter()
-                .map(|(key, _)| key)
-                .collect(),
-        )),
+        Value::ChainMap { maps } => Ok(list_iterator_from_values(chain_map_keys(&maps)?)),
         Value::ScopeDict(scope) => get_iter(scope_dict_snapshot(&scope)),
         Value::FrameLocalsProxy { locals } => get_iter(scope_dict_snapshot(&locals)),
         Value::DictView { kind, entries, .. } => {
@@ -77987,17 +78008,11 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
         Value::UserDict { data, .. } => {
             Ok(data.borrow().iter().map(|(key, _)| key.clone()).collect())
         }
-        Value::ChainMap { maps } => Ok(chain_map_entries(&maps)?
-            .into_iter()
-            .map(|(key, _)| key)
-            .collect()),
+        Value::ChainMap { maps } => Ok(chain_map_keys(&maps)?),
         value if chain_map_subclass_maps(&value).is_some() => {
             let maps =
                 chain_map_subclass_maps(&value).expect("ChainMap subclass maps exist after guard");
-            Ok(chain_map_entries(&maps)?
-                .into_iter()
-                .map(|(key, _)| key)
-                .collect())
+            Ok(chain_map_keys(&maps)?)
         }
         Value::ScopeDict(scope) => Ok(scope_dict_keys(&scope)),
         Value::DictView { kind, entries, .. } => Ok(dict_view_values(kind, &entries)),

@@ -50378,6 +50378,72 @@ fn cpython_collections_chainmap_constructor_source_len_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap iteration:
+// ChainMap iterates the unique keys produced by each stored source.
+#[test]
+fn cpython_collections_chainmap_constructor_source_iter_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap, OrderedDict, UserDict\n",
+            "class DictWithGetItem(UserDict):\n",
+            "    def __init__(self, *args, **kwds):\n",
+            "        self.called = False\n",
+            "        UserDict.__init__(self, *args, **kwds)\n",
+            "    def __getitem__(self, item):\n",
+            "        self.called = True\n",
+            "        return UserDict.__getitem__(self, item)\n",
+            "d = DictWithGetItem(a=1)\n",
+            "cases = [\n",
+            "    ('empty', ChainMap()),\n",
+            "    ('empty-dict', ChainMap({})),\n",
+            "    ('dict-second', ChainMap({}, {'x': 1})),\n",
+            "    ('ordered-source', ChainMap(OrderedDict([('b', 2), ('a', 1)]))),\n",
+            "    ('userdict-subclass', ChainMap(d)),\n",
+            "    ('list-empty', ChainMap([])),\n",
+            "    ('list-value', ChainMap([1, 1, 2])),\n",
+            "    ('tuple-value', ChainMap((1, 2, 1))),\n",
+            "    ('str-value', ChainMap('abca')),\n",
+            "    ('method-list', ChainMap([1, 1, 2])),\n",
+            "    ('keys-list', ChainMap([1, 1, 2])),\n",
+            "    ('mixed-list', ChainMap([2, 1], [1, 3])),\n",
+            "    ('mixed-map-list', ChainMap({'a': 1, 'b': 2}, ['b', 'c'])),\n",
+            "    ('int-one', ChainMap(1)),\n",
+            "    ('none', ChainMap(None)),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    try:\n",
+            "        if label == 'method-list':\n",
+            "            print(label, list(ChainMap.__iter__(value)))\n",
+            "        elif label == 'keys-list':\n",
+            "            print(label, list(value.keys()))\n",
+            "        elif label == 'userdict-subclass':\n",
+            "            d.called = False\n",
+            "            print(label, list(value), d.called)\n",
+            "        else:\n",
+            "            print(label, list(value))\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))"
+        ),
+        &[
+            "empty []",
+            "empty-dict []",
+            "dict-second ['x']",
+            "ordered-source ['b', 'a']",
+            "userdict-subclass ['a'] False",
+            "list-empty []",
+            "list-value [1, 2]",
+            "tuple-value [1, 2]",
+            "str-value ['a', 'b', 'c']",
+            "method-list [1, 2]",
+            "keys-list [1, 2]",
+            "mixed-list [1, 3, 2]",
+            "mixed-map-list ['b', 'c', 'a']",
+            "int-one TypeError 'int' object is not iterable",
+            "none TypeError 'NoneType' object is not iterable",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {
