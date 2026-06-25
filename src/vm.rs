@@ -28031,6 +28031,35 @@ impl Vm {
         ))
     }
 
+    fn dict_view_difference_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+    ) -> Result<Option<Value>, String> {
+        if dict_view_is_set_operator_value(left) {
+            let left_values = self.set_operator_values(left.clone(), "-")?;
+            return self
+                .set_difference_from_iterables_with_kind(
+                    SetResultKind::Set,
+                    left_values,
+                    &[right.clone()],
+                )
+                .map(Some);
+        }
+        if dict_view_is_set_operator_value(right) {
+            let left_values = self.set_iterable_lookup_values(left.clone())?;
+            let right_values = self.set_operator_values(right.clone(), "-")?;
+            return self
+                .set_difference_from_iterables_with_kind(
+                    SetResultKind::Set,
+                    left_values,
+                    &[set_value(right_values)],
+                )
+                .map(Some);
+        }
+        Ok(None)
+    }
+
     fn equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) = self.dict_item_view_equal(&left, &right)? {
             return Ok(result);
@@ -28142,7 +28171,6 @@ impl Vm {
     }
 
     fn subtract_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
-        let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
         if let Some(value) =
             self.call_binary_special_method(&left, &right, "__sub__", "__rsub__")?
         {
@@ -28153,7 +28181,11 @@ impl Vm {
         {
             return Ok(value);
         }
-        if self.is_set_operator_value(&left) || self.is_set_operator_value(&right) {
+        if let Some(value) = self.dict_view_difference_values(&left, &right)? {
+            return Ok(value);
+        }
+        let (left, right) = self.materialize_set_like_mapping_view_pair(left, right)?;
+        if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "-")?;
             let right = self.set_operator_values(right, "-")?;
@@ -72422,6 +72454,33 @@ fn is_set_operator_value(value: &Value) -> bool {
     }
 }
 
+fn dict_view_is_set_operator_value(value: &Value) -> bool {
+    matches!(value, Value::DictView { kind, .. } | Value::MappingView { kind, .. } if dict_view_is_set_like(*kind))
+}
+
+fn dict_view_difference_values(left: &Value, right: &Value) -> Result<Option<Value>, String> {
+    if dict_view_is_set_operator_value(left) {
+        let left_values = set_operator_operand(left.clone(), "-")?;
+        return set_difference_from_iterables_with_kind(
+            SetResultKind::Set,
+            left_values,
+            &[right.clone()],
+        )
+        .map(Some);
+    }
+    if dict_view_is_set_operator_value(right) {
+        let left_values = set_iterable_lookup_values(left.clone())?;
+        let right_values = set_operator_operand(right.clone(), "-")?;
+        return set_difference_from_iterables_with_kind(
+            SetResultKind::Set,
+            left_values,
+            &[set_value(right_values)],
+        )
+        .map(Some);
+    }
+    Ok(None)
+}
+
 fn set_contains_value(items: &[Value], value: &Value) -> bool {
     items
         .iter()
@@ -80144,7 +80203,10 @@ fn template_iter_values(
 }
 
 fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
-    if is_set_operator_value(&left) || is_set_operator_value(&right) {
+    if let Some(value) = dict_view_difference_values(&left, &right)? {
+        return Ok(value);
+    }
+    if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "-")?;
         let right = set_operator_operand(right, "-")?;
@@ -80205,7 +80267,7 @@ fn subtract_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::Float(value), Value::Complex { real, imag, .. }) => {
             Ok(complex_value(*value - real, -imag))
         }
-        (left, right) => Err(format!("cannot subtract {left} and {right}")),
+        (left, right) => Err(unsupported_binary_operand_message("-", &left, &right)),
     }
 }
 

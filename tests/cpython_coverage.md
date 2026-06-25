@@ -3937,6 +3937,12 @@ without adding general custom encoder/decoder class support.
   dict values-view non-set-like operator errors for ordering and binary
   `|` / `&` / `^` set operators while preserving set-like key/item view
   operators.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_difference_operator_subset`, backed by
+  `cpython_dict_view_difference_operator_diff_subset`, covering the dict view set-difference operator
+  for key/item views with arbitrary iterable operands
+  and reflected operands while keeping values-view subtraction unsupported
+  unless a key/item view handles the reflected operation.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment

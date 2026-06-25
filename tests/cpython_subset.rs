@@ -48878,6 +48878,66 @@ print("setlike-ok", keys <= keys, items >= items, bool(keys | {3}), bool(items &
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view set-difference
+// behavior. Key/item views accept arbitrary iterable difference operands and
+// reflected operands, while values views only participate when the other
+// operand's key/item view implementation handles the reflected operation.
+#[test]
+fn cpython_dict_view_difference_operator_subset() {
+    assert_output_with_stack(
+        r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def render(value):
+    return type(value).__name__, sorted([repr(item) for item in value])
+
+def show(label, expr):
+    try:
+        print(label, *render(expr()))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("values-set", lambda: values - set()),
+    ("set-values", lambda: set() - values),
+    ("values-values", lambda: values - values),
+    ("values-keys", lambda: values - keys),
+    ("keys-values", lambda: keys - values),
+    ("values-items", lambda: values - items),
+    ("items-values", lambda: items - values),
+    ("list-keys", lambda: [1, 2] - keys),
+    ("keys-list", lambda: keys - [1]),
+    ("list-items", lambda: [(1, 2), 3] - items),
+    ("items-list", lambda: items - [(1, 2)]),
+    ("frozenset-keys", lambda: frozenset([1, 2]) - keys),
+    ("keys-frozenset", lambda: keys - frozenset([1])),
+    ("list-set", lambda: [] - set()),
+    ("set-list", lambda: set() - []),
+]:
+    show(label, expr)"#,
+        &[
+            "values-set TypeError unsupported operand type(s) for -: 'dict_values' and 'set'",
+            "set-values TypeError unsupported operand type(s) for -: 'set' and 'dict_values'",
+            "values-values TypeError unsupported operand type(s) for -: 'dict_values' and 'dict_values'",
+            "values-keys set ['2']",
+            "keys-values set ['1']",
+            "values-items set ['2']",
+            "items-values set ['(1, 2)']",
+            "list-keys set ['2']",
+            "keys-list set []",
+            "list-items set ['3']",
+            "items-list set []",
+            "frozenset-keys set ['2']",
+            "keys-frozenset set []",
+            "list-set TypeError unsupported operand type(s) for -: 'list' and 'set'",
+            "set-list TypeError unsupported operand type(s) for -: 'set' and 'list'",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

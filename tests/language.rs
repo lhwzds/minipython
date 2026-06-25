@@ -5222,7 +5222,10 @@ fn reports_non_callable_value() {
 fn reports_arithmetic_type_errors() {
     assert_eq!(
         run_source("print(\"a\" - \"b\")"),
-        Err("runtime error: cannot subtract a and b".to_string())
+        Err(
+            "runtime error: TypeError: unsupported operand type(s) for -: 'str' and 'str'"
+                .to_string()
+        )
     );
     assert_eq!(
         run_source("print(1 @ 2)"),

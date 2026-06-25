@@ -30307,6 +30307,46 @@ print("setlike-ok", keys <= keys, items >= items, bool(keys | {3}), bool(items &
 }
 
 #[test]
+fn cpython_dict_view_difference_operator_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view set-difference operator subset",
+        name: "dict-view-difference-operator",
+        source: r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def render(value):
+    return type(value).__name__, sorted([repr(item) for item in value])
+
+def show(label, expr):
+    try:
+        print(label, *render(expr()))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("values-set", lambda: values - set()),
+    ("set-values", lambda: set() - values),
+    ("values-values", lambda: values - values),
+    ("values-keys", lambda: values - keys),
+    ("keys-values", lambda: keys - values),
+    ("values-items", lambda: values - items),
+    ("items-values", lambda: items - values),
+    ("list-keys", lambda: [1, 2] - keys),
+    ("keys-list", lambda: keys - [1]),
+    ("list-items", lambda: [(1, 2), 3] - items),
+    ("items-list", lambda: items - [(1, 2)]),
+    ("frozenset-keys", lambda: frozenset([1, 2]) - keys),
+    ("keys-frozenset", lambda: keys - frozenset([1])),
+    ("list-set", lambda: [] - set()),
+    ("set-list", lambda: set() - []),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

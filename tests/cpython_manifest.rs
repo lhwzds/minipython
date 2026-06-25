@@ -487,6 +487,80 @@ fn dict_values_view_non_setlike_operator_errors_subset_has_focused_diff_evidence
 }
 
 #[test]
+fn dict_view_difference_operator_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_difference_operator_subset(",
+        "values - set()",
+        "set() - values",
+        "values - values",
+        "values - keys",
+        "keys - values",
+        "values - items",
+        "items - values",
+        "[1, 2] - keys",
+        "keys - [1]",
+        "[(1, 2), 3] - items",
+        "items - [(1, 2)]",
+        "frozenset([1, 2]) - keys",
+        "keys - frozenset([1])",
+        "[] - set()",
+        "set() - []",
+        "\"values-set TypeError unsupported operand type(s) for -: 'dict_values' and 'set'\"",
+        "\"values-keys set ['2']\"",
+        "\"frozenset-keys set ['2']\"",
+        "\"list-set TypeError unsupported operand type(s) for -: 'list' and 'set'\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view difference operator subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_difference_operator_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view set-difference operator subset",
+        "name: \"dict-view-difference-operator\"",
+        "values - set()",
+        "set() - values",
+        "values - keys",
+        "keys - values",
+        "[1, 2] - keys",
+        "frozenset([1, 2]) - keys",
+        "set() - []",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view difference operator CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn dict_view_difference_values(",
+        "fn dict_view_is_set_operator_value(",
+        "set_iterable_lookup_values(left.clone())",
+        "unsupported_binary_operand_message(\"-\", &left, &right)",
+        "if self.is_set_operator_value(&left)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view difference operator implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_difference_operator_subset")
+                && document.contains("cpython_dict_view_difference_operator_diff_subset")
+                && document.contains("dict view set-difference operator"),
+            "focused dict view difference operator evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",
