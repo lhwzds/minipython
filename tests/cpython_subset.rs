@@ -49316,6 +49316,92 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view pickle-reduction methods. Dict and
+// OrderedDict views expose __reduce__ and __reduce_ex__, but both reject
+// pickling with the public view type name.
+#[test]
+fn cpython_dict_view_reduce_methods_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, hasattr(view, "__reduce__"), hasattr(view, "__reduce_ex__"))
+    expected = "cannot pickle '" + type(view).__name__ + "' object"
+    for op, expr in [
+        ("reduce", lambda v=view: v.__reduce__()),
+        ("reduce-arg", lambda v=view: v.__reduce__(1)),
+        ("reduce-kw", lambda v=view: v.__reduce__(protocol=4)),
+        ("reduce-ex", lambda v=view: v.__reduce_ex__(4)),
+        ("reduce-ex-missing", lambda v=view: v.__reduce_ex__()),
+        ("reduce-ex-extra", lambda v=view: v.__reduce_ex__(4, 5)),
+        ("reduce-ex-kw", lambda v=view: v.__reduce_ex__(protocol=4)),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__)
+        except Exception as error:
+            message = str(error)
+            print(label, op, type(error).__name__, message == expected, "cannot pickle" in message, "argument" in message, "keyword" in message)"#,
+        &[
+            "keys True True",
+            "keys reduce TypeError True True False False",
+            "keys reduce-arg TypeError False False True False",
+            "keys reduce-kw TypeError False False True True",
+            "keys reduce-ex TypeError True True False False",
+            "keys reduce-ex-missing TypeError False False True False",
+            "keys reduce-ex-extra TypeError False False True False",
+            "keys reduce-ex-kw TypeError False False True True",
+            "items True True",
+            "items reduce TypeError True True False False",
+            "items reduce-arg TypeError False False True False",
+            "items reduce-kw TypeError False False True True",
+            "items reduce-ex TypeError True True False False",
+            "items reduce-ex-missing TypeError False False True False",
+            "items reduce-ex-extra TypeError False False True False",
+            "items reduce-ex-kw TypeError False False True True",
+            "values True True",
+            "values reduce TypeError True True False False",
+            "values reduce-arg TypeError False False True False",
+            "values reduce-kw TypeError False False True True",
+            "values reduce-ex TypeError True True False False",
+            "values reduce-ex-missing TypeError False False True False",
+            "values reduce-ex-extra TypeError False False True False",
+            "values reduce-ex-kw TypeError False False True True",
+            "odkeys True True",
+            "odkeys reduce TypeError True True False False",
+            "odkeys reduce-arg TypeError False False True False",
+            "odkeys reduce-kw TypeError False False True True",
+            "odkeys reduce-ex TypeError True True False False",
+            "odkeys reduce-ex-missing TypeError False False True False",
+            "odkeys reduce-ex-extra TypeError False False True False",
+            "odkeys reduce-ex-kw TypeError False False True True",
+            "oditems True True",
+            "oditems reduce TypeError True True False False",
+            "oditems reduce-arg TypeError False False True False",
+            "oditems reduce-kw TypeError False False True True",
+            "oditems reduce-ex TypeError True True False False",
+            "oditems reduce-ex-missing TypeError False False True False",
+            "oditems reduce-ex-extra TypeError False False True False",
+            "oditems reduce-ex-kw TypeError False False True True",
+            "odvalues True True",
+            "odvalues reduce TypeError True True False False",
+            "odvalues reduce-arg TypeError False False True False",
+            "odvalues reduce-kw TypeError False False True True",
+            "odvalues reduce-ex TypeError True True False False",
+            "odvalues reduce-ex-missing TypeError False False True False",
+            "odvalues reduce-ex-extra TypeError False False True False",
+            "odvalues reduce-ex-kw TypeError False False True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

@@ -56074,6 +56074,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
+                "__reduce__" | "__reduce_ex__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::DictView {
+                        kind,
+                        entries,
+                        ordered,
+                        identity: view_identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!(
                     "AttributeError: {type_name} has no attribute '{name}'"
                 )),
@@ -56171,6 +56181,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
+                "__reduce__" | "__reduce_ex__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::MappingView {
+                        kind,
+                        mapping,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
                 _ => Err(format!(
                     "AttributeError: {type_name} has no attribute '{name}'"
                 )),
@@ -71615,6 +71634,36 @@ fn call_dict_view_method(
             }
             Ok(identity_hash_value(view))
         }
+        "__reduce__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__reduce__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__reduce__() expected a dict view receiver".to_string());
+            }
+            Err(format!(
+                "TypeError: cannot pickle '{}' object",
+                type_name(view)
+            ))
+        }
+        "__reduce_ex__" => {
+            let [view, _protocol] = args.as_slice() else {
+                return Err(format!(
+                    "__reduce_ex__() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__reduce_ex__() expected a dict view receiver".to_string());
+            }
+            Err(format!(
+                "TypeError: cannot pickle '{}' object",
+                type_name(view)
+            ))
+        }
         "__len__" => {
             let [view] = args.as_slice() else {
                 return Err(format!(
@@ -75687,10 +75736,23 @@ fn checked_bytearray_resize_length(length: usize) -> Result<usize, String> {
 }
 
 fn is_iterator_protocol_method(name: &str) -> bool {
+    if method_display_name(name) == "__reduce__" && is_dict_view_builtin_name(name) {
+        return false;
+    }
+
     matches!(
         method_display_name(name),
         "__iter__" | "__next__" | "__length_hint__" | "__reduce__"
     )
+}
+
+fn is_dict_view_builtin_name(name: &str) -> bool {
+    name.starts_with("dict_keys.")
+        || name.starts_with("dict_items.")
+        || name.starts_with("dict_values.")
+        || name.starts_with("odict_keys.")
+        || name.starts_with("odict_items.")
+        || name.starts_with("odict_values.")
 }
 
 fn method_display_name(name: &str) -> &str {

@@ -3969,6 +3969,12 @@ without adding general custom encoder/decoder class support.
   `cpython_dict_view_hash_methods_diff_subset`, covering dict view hash methods
   for unhashable key/item views and identity-hashable values views across
   built-in dict and `OrderedDict` views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_reduce_methods_subset`, backed by
+  `cpython_dict_view_reduce_methods_diff_subset`, covering dict view reduce methods
+  for exposed `__reduce__` / `__reduce_ex__` attributes and CPython-style
+  pickle rejection across built-in dict and `OrderedDict` views without adding
+  pickle protocol support for those views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

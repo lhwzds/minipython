@@ -30579,6 +30579,41 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_reduce_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view reduce behavior subset",
+        name: "dict-view-reduce-methods",
+        source: r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, hasattr(view, "__reduce__"), hasattr(view, "__reduce_ex__"))
+    expected = "cannot pickle '" + type(view).__name__ + "' object"
+    for op, expr in [
+        ("reduce", lambda v=view: v.__reduce__()),
+        ("reduce-arg", lambda v=view: v.__reduce__(1)),
+        ("reduce-kw", lambda v=view: v.__reduce__(protocol=4)),
+        ("reduce-ex", lambda v=view: v.__reduce_ex__(4)),
+        ("reduce-ex-missing", lambda v=view: v.__reduce_ex__()),
+        ("reduce-ex-extra", lambda v=view: v.__reduce_ex__(4, 5)),
+        ("reduce-ex-kw", lambda v=view: v.__reduce_ex__(protocol=4)),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__)
+        except Exception as error:
+            message = str(error)
+            print(label, op, type(error).__name__, message == expected, "cannot pickle" in message, "argument" in message, "keyword" in message)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

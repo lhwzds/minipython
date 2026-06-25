@@ -935,6 +935,73 @@ fn dict_view_hash_methods_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_reduce_methods_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_reduce_methods_subset(",
+        "hasattr(view, \"__reduce__\")",
+        "hasattr(view, \"__reduce_ex__\")",
+        "expected = \"cannot pickle '\" + type(view).__name__ + \"' object\"",
+        "(\"reduce\", lambda v=view: v.__reduce__())",
+        "(\"reduce-arg\", lambda v=view: v.__reduce__(1))",
+        "(\"reduce-kw\", lambda v=view: v.__reduce__(protocol=4))",
+        "(\"reduce-ex\", lambda v=view: v.__reduce_ex__(4))",
+        "(\"reduce-ex-missing\", lambda v=view: v.__reduce_ex__())",
+        "(\"reduce-ex-extra\", lambda v=view: v.__reduce_ex__(4, 5))",
+        "(\"reduce-ex-kw\", lambda v=view: v.__reduce_ex__(protocol=4))",
+        "\"keys reduce TypeError True True False False\"",
+        "\"values reduce-ex TypeError True True False False\"",
+        "\"odvalues reduce-ex-kw TypeError False False True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view reduce method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_reduce_methods_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view reduce behavior subset",
+        "name: \"dict-view-reduce-methods\"",
+        "hasattr(view, \"__reduce__\")",
+        "hasattr(view, \"__reduce_ex__\")",
+        "type(view).__name__",
+        "v.__reduce__(protocol=4)",
+        "v.__reduce_ex__(4, 5)",
+        "\"cannot pickle\" in message",
+        "\"keyword\" in message",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view reduce method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__reduce__\" | \"__reduce_ex__\"",
+        "\"__reduce__\" => {",
+        "__reduce__() expected 0 arguments",
+        "\"__reduce_ex__\" => {",
+        "__reduce_ex__() expected 1 argument",
+        "cannot pickle '{}' object",
+        "type_name(view)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view reduce method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_reduce_methods_subset")
+                && document.contains("cpython_dict_view_reduce_methods_diff_subset")
+                && document.contains("dict view reduce methods"),
+            "focused dict view reduce method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",
