@@ -42303,6 +42303,13 @@ fn cpython_reversed_builtin_subset() {
             "only 'BlockOnly' object is not reversible",
         ],
     );
+    assert_output(
+        "for label, expr in [('missing', lambda: reversed()), ('too-many', lambda: reversed([], []))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "missing TypeError reversed expected 1 argument, got 0",
+            "too-many TypeError reversed expected 1 argument, got 2",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_operator.py public helper smoke coverage.

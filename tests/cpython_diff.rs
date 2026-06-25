@@ -20610,7 +20610,14 @@ for label, expr in [('fallback', lambda: list(reversed(BlockReverse()))), ('only
     try:
         expr()
     except TypeError as error:
-        print(label, error)"#,
+        print(label, error)
+# CPython oracle text: reversed expected 1 argument, got 0;
+# reversed expected 1 argument, got 2
+for label, expr in [('missing', lambda: reversed()), ('too-many', lambda: reversed([], []))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
         },
         DiffCase {
             origin: "Lib/test/test_dict.py reverse iterator mutation behavior",

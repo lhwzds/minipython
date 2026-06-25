@@ -115,8 +115,9 @@ Recent runtime migration notes:
   `cpython_chr_ord_builtin_diff_subset`, now pins CPython no-keyword TypeError
   text for `chr()` and `ord()`.
 - `cpython_reversed_builtin_subset` now covers CPython's `__reversed__ = None`
-  blocking over otherwise sequence-like objects, keeping the public reverse
-  protocol distinct from sequence fallback.
+  blocking over otherwise sequence-like objects and exact `reversed` arity
+  `TypeError` text, keeping the public reverse protocol distinct from sequence
+  fallback.
 - `cpython_type_params_dynamic_new_class_subset`, backed by gated direct
   `cpython_type_params_dynamic_new_class_diff_subset` evidence, covers
   CPython's public `DynamicClassTest` behavior for `types.new_class()` over

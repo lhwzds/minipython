@@ -20264,6 +20264,8 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
         "lambda: list(reversed(BlockReverse()))",
         "class BlockOnly:",
         "lambda: reversed(BlockOnly())",
+        "reversed expected 1 argument, got 0",
+        "reversed expected 1 argument, got 2",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -20297,6 +20299,8 @@ fn reversed_builtin_subset_has_focused_diff_evidence() {
         "list(reversed(BlockReverse()))",
         "class BlockOnly:",
         "reversed(BlockOnly())",
+        "reversed expected 1 argument, got 0",
+        "reversed expected 1 argument, got 2",
         "for key in reversed(d):",
         "values = reversed(d.values())",
         "for item in reversed(d.items()):",

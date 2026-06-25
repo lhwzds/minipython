@@ -26262,7 +26262,7 @@ impl Vm {
         match args.as_slice() {
             [value] => self.reversed_value(value.clone()),
             values => Err(format!(
-                "TypeError: reversed() expected 1 argument, got {}",
+                "TypeError: reversed expected 1 argument, got {}",
                 values.len()
             )),
         }
