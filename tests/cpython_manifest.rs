@@ -21865,6 +21865,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_mappingproxy_exact_dict_subset",
             "cpython_types_mappingproxy_type_metadata_subset",
             "cpython_types_mappingproxy_type_hierarchy_subset",
+            "cpython_types_mappingproxy_type_subclasses_subset",
             "cpython_types_mappingproxy_keyword_constructor_subset",
             "cpython_types_mappingproxy_method_surface_subset",
             "cpython_types_mappingproxy_custom_mapping_subset",
@@ -21974,6 +21975,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_type_metadata_diff_subset",
         "cpython_types_mappingproxy_type_hierarchy_diff_subset",
+        "cpython_types_mappingproxy_type_subclasses_diff_subset",
         "cpython_types_mappingproxy_keyword_constructor_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
@@ -22250,6 +22252,68 @@ fn types_mappingproxy_type_hierarchy_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_mappingproxy_type_hierarchy_diff_subset")
                 && document.contains("mappingproxy type hierarchy"),
             "types mappingproxy type hierarchy evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_type_subclasses_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_type_subclasses_subset",
+    );
+    for required in [
+        "method = cls.__subclasses__",
+        "children = method()",
+        "[child.__name__ for child in children]",
+        "type(method).__name__",
+        "method() is method()",
+        "type({1: 2}.keys().mapping).__subclasses__()",
+        "\"builtin_function_or_method [] 0\"",
+        "\"False []\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types mappingproxy type subclasses subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_type_subclasses_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests type subclasses subset",
+        "name: \"types-mappingproxy-type-subclasses\"",
+        "method = cls.__subclasses__",
+        "children = method()",
+        "type({1: 2}.keys().mapping).__subclasses__()",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types mappingproxy type subclasses CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"mappingproxy.__subclasses__\"",
+        "fn call_mappingproxy_type_subclasses",
+        "name == \"__subclasses__\" && function_name == \"mappingproxy\"",
+        "Value::Builtin(\"mappingproxy.__subclasses__\".to_string())",
+        "Ok(list_value(Vec::new()))",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types mappingproxy type subclasses implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_type_subclasses_subset")
+                && document.contains("cpython_types_mappingproxy_type_subclasses_diff_subset")
+                && document.contains("mappingproxy type subclasses"),
+            "types mappingproxy type subclasses evidence must be documented in coverage and migration notes"
         );
     }
 }

@@ -9456,6 +9456,9 @@ impl Vm {
             Value::Builtin(name) if name == "dict_view.__subclasses__" => {
                 call_dict_view_type_subclasses(args, keywords)
             }
+            Value::Builtin(name) if name == "mappingproxy.__subclasses__" => {
+                call_mappingproxy_type_subclasses(args, keywords)
+            }
             Value::Builtin(name) if name == "pickle.dumps" => {
                 self.call_pickle_dumps(args, keywords)
             }
@@ -39854,6 +39857,30 @@ fn call_dict_view_type_subclasses(
     ))
 }
 
+fn call_mappingproxy_type_subclasses(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: __subclasses__() does not accept keyword arguments".to_string());
+    }
+    let [class] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: __subclasses__() expected 0 arguments, got {}",
+            args.len().saturating_sub(1)
+        ));
+    };
+    let Value::Builtin(name) = class else {
+        return Err("TypeError: descriptor '__subclasses__' requires a type".to_string());
+    };
+    if name != "mappingproxy" {
+        return Err(
+            "TypeError: descriptor '__subclasses__' requires a mappingproxy type".to_string(),
+        );
+    }
+    Ok(list_value(Vec::new()))
+}
+
 fn call_dict_view_type_constructor(type_name: &str) -> Result<Value, String> {
     Err(format!("TypeError: cannot create '{type_name}' instances"))
 }
@@ -57121,6 +57148,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         {
             Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("dict_view.__subclasses__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
+            if name == "__subclasses__" && function_name == "mappingproxy" =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("mappingproxy.__subclasses__".to_string())),
                 receiver: Box::new(Value::Builtin(function_name)),
                 identity: Rc::new(()),
             })

@@ -50698,6 +50698,21 @@ print(type({1: 2}.keys().mapping).__base__ is base)"#,
     );
 }
 
+// CPython exposes mappingproxy.__subclasses__ even though mappingproxy rejects
+// direct subclassing, so the public direct-subclass list is empty.
+#[test]
+fn cpython_types_mappingproxy_type_subclasses_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+method = cls.__subclasses__
+children = method()
+print(type(method).__name__, [child.__name__ for child in children], len(children))
+print(method() is method(), type({1: 2}.keys().mapping).__subclasses__())"#,
+        &["builtin_function_or_method [] 0", "False []"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
 // binding behavior for the public `mapping` keyword.
 #[test]

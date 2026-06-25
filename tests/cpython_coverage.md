@@ -320,6 +320,7 @@ Recent runtime migration notes:
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
   `cpython_types_mappingproxy_type_metadata_diff_subset`,
   `cpython_types_mappingproxy_type_hierarchy_diff_subset`,
+  `cpython_types_mappingproxy_type_subclasses_diff_subset`,
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
@@ -4058,6 +4059,11 @@ without adding general custom encoder/decoder class support.
   `cpython_types_mappingproxy_type_hierarchy_diff_subset`, covering mappingproxy type hierarchy
   metadata for `__base__` and `__bases__` without broadening into CPython
   object-layout internals.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_mappingproxy_type_subclasses_subset`, backed by
+  `cpython_types_mappingproxy_type_subclasses_diff_subset`, covering mappingproxy type subclasses
+  introspection with an empty direct-subclass list without broadening into
+  arbitrary builtin subclass registries.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_keyword_constructor_subset`, backed by
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`, covering

@@ -12653,6 +12653,20 @@ print(type({1: 2}.keys().mapping).__base__ is base)"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_type_subclasses_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests type subclasses subset",
+        name: "types-mappingproxy-type-subclasses",
+        source: r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+method = cls.__subclasses__
+children = method()
+print(type(method).__name__, [child.__name__ for child in children], len(children))
+print(method() is method(), type({1: 2}.keys().mapping).__subclasses__())"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_keyword_constructor_diff_subset() {
     // CPython oracle text includes:
     // mappingproxy() missing required argument 'mapping' (pos 1).
