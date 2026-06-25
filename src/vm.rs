@@ -1751,7 +1751,9 @@ fn repr_value_inner_checked(value: &Value, active: &mut HashSet<usize>) -> Resul
             active.remove(&ptr);
             Ok(format!("{{{rendered}}}"))
         }
-        Value::MappingView { kind, mapping } => repr_mapping_view_checked(*kind, mapping, active),
+        Value::MappingView { kind, mapping, .. } => {
+            repr_mapping_view_checked(*kind, mapping, active)
+        }
         Value::FrameLocalsProxy { .. } => Ok("<frame locals proxy object>".to_string()),
         Value::SimpleNamespace { fields } => repr_simple_namespace_checked(fields, active),
         Value::Iterator(state) => {
@@ -2126,7 +2128,7 @@ fn repr_value_inner(value: &Value, active: &mut HashSet<usize>) -> String {
             active.remove(&ptr);
             format!("{{{rendered}}}")
         }
-        Value::MappingView { kind, mapping } => repr_mapping_view(*kind, mapping, active),
+        Value::MappingView { kind, mapping, .. } => repr_mapping_view(*kind, mapping, active),
         Value::FrameLocalsProxy { .. } => "<frame locals proxy object>".to_string(),
         Value::SimpleNamespace { fields } => repr_simple_namespace(fields, active),
         Value::Exception {
@@ -21908,7 +21910,7 @@ impl Vm {
             }
             Value::FrozenSet(items) => Ok(self.set_lookup_position(&items, &needle)?.is_some()),
             Value::MappingProxyObject { mapping } => self.contains_value(needle, *mapping),
-            Value::MappingView { kind, mapping } => {
+            Value::MappingView { kind, mapping, .. } => {
                 self.mapping_view_contains(kind, *mapping, needle)
             }
             Value::DictView { kind, entries, .. } => {
@@ -22029,7 +22031,7 @@ impl Vm {
                 self.call_with_exception_capture(|_| get_iter(Value::Dict(data)))
             }
             Value::MappingProxyObject { mapping } => self.get_iter_capturing(*mapping),
-            Value::MappingView { kind, mapping } => Ok(Ok(list_iterator_from_values(
+            Value::MappingView { kind, mapping, .. } => Ok(Ok(list_iterator_from_values(
                 self.mapping_view_values(kind, *mapping)?,
             ))),
             value => self.call_with_exception_capture(|_| get_iter(value)),
@@ -26281,7 +26283,7 @@ impl Vm {
             ));
         }
 
-        if let Value::MappingView { kind, mapping } = value {
+        if let Value::MappingView { kind, mapping, .. } = value {
             let items = self.mapping_view_values(kind, *mapping)?;
             return Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }));
         }
@@ -28011,7 +28013,7 @@ impl Vm {
 
     fn materialize_set_like_mapping_view(&mut self, value: Value) -> Result<Value, String> {
         match value {
-            Value::MappingView { kind, mapping } if dict_view_is_set_like(kind) => {
+            Value::MappingView { kind, mapping, .. } if dict_view_is_set_like(kind) => {
                 Ok(set_value(self.mapping_view_values(kind, *mapping)?))
             }
             value => Ok(value),
@@ -28888,7 +28890,7 @@ impl Vm {
             Value::DictView { kind, entries, .. } if dict_view_is_set_like(kind) => {
                 Ok(dict_view_values(kind, &entries))
             }
-            Value::MappingView { kind, mapping } if dict_view_is_set_like(kind) => {
+            Value::MappingView { kind, mapping, .. } if dict_view_is_set_like(kind) => {
                 self.mapping_view_values(kind, *mapping)
             }
             value => Err(format!(
@@ -29110,6 +29112,7 @@ impl Vm {
             Value::MappingView {
                 kind: DictViewKind::Items,
                 mapping,
+                ..
             } => self.mapping_abc_entries(*mapping.clone()).map(Some),
             _ => Ok(None),
         }
@@ -55982,6 +55985,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             kind,
             entries,
             ordered,
+            identity: view_identity,
         } => {
             let type_name = dict_view_display_type_name(kind, ordered);
             match name {
@@ -55995,6 +55999,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         kind,
                         entries,
                         ordered,
+                        identity: view_identity,
                     }),
                     identity: Rc::new(()),
                 }),
@@ -56004,6 +56009,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         kind,
                         entries,
                         ordered,
+                        identity: view_identity,
                     }),
                     identity: Rc::new(()),
                 }),
@@ -56051,17 +56057,29 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 "AttributeError: ChainMap has no attribute '{name}'"
             )),
         },
-        Value::MappingView { kind, mapping } => {
+        Value::MappingView {
+            kind,
+            mapping,
+            identity,
+        } => {
             let type_name = dict_view_type_name(kind);
             match name {
                 "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::MappingView { kind, mapping }),
+                    receiver: Box::new(Value::MappingView {
+                        kind,
+                        mapping,
+                        identity,
+                    }),
                     identity: Rc::new(()),
                 }),
                 "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::MappingView { kind, mapping }),
+                    receiver: Box::new(Value::MappingView {
+                        kind,
+                        mapping,
+                        identity,
+                    }),
                     identity: Rc::new(()),
                 }),
                 _ => Err(format!(
@@ -76633,8 +76651,8 @@ fn identity_bits(value: &Value) -> u64 {
         Value::Counter { entries } => rc_identity_bits(entries),
         Value::ScopeDict(scope) => scope_identity_bits(scope),
         Value::FrameLocalsProxy { locals } => scope_identity_bits(locals),
-        Value::DictView { entries, .. } => rc_identity_bits(entries),
-        Value::MappingView { mapping, .. } => identity_bits(mapping),
+        Value::DictView { identity, .. } => rc_plain_identity_bits(identity),
+        Value::MappingView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingProxy { entries } => rc_identity_bits(entries),
         Value::ChainMap { maps } => maps.as_ptr() as usize as u64,
         Value::UserDict { data, .. } => rc_identity_bits(data),
@@ -83516,25 +83534,27 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         (
             Value::DictView {
                 kind: left_kind,
-                entries: left_entries,
+                identity: left_identity,
                 ..
             },
             Value::DictView {
                 kind: right_kind,
-                entries: right_entries,
+                identity: right_identity,
                 ..
             },
-        ) => left_kind == right_kind && Rc::ptr_eq(left_entries, right_entries),
+        ) => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),
         (
             Value::MappingView {
                 kind: left_kind,
-                mapping: left_mapping,
+                identity: left_identity,
+                ..
             },
             Value::MappingView {
                 kind: right_kind,
-                mapping: right_mapping,
+                identity: right_identity,
+                ..
             },
-        ) => left_kind == right_kind && is_identical(left_mapping, right_mapping),
+        ) => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),
         (
             Value::MappingProxy {
                 entries: left_entries,

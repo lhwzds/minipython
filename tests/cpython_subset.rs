@@ -48806,6 +48806,26 @@ show("items-error", lambda: ("x", 1) in {"x": Boom()}.items())"#,
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py view equality behavior.
+// `dict_values` is not set-like: equality is identity-only even when two live
+// views expose the same underlying values.
+#[test]
+fn cpython_dict_values_view_identity_equality_subset() {
+    assert_output(
+        "from collections import OrderedDict\n\nd = {1: 2}\nvalues = d.values()\nsame = values\nprint('values-same', values == same, values != same)\nprint('values-is', values is same, d.values() is d.values())\nprint('values-fresh', d.values() == d.values(), d.values() != d.values())\nother = {1: 2}\nprint('values-other', d.values() == other.values(), d.values() != other.values())\nleft = d.values()\nright = d.values()\nd[3] = 4\nprint('values-live-identity', left == right, left == left, list(left))\nod = OrderedDict([('a', 1)])\nod_values = od.values()\nprint('ordered-values-same', od_values == od_values, od.values() == od.values())\nprint('setlike', d.keys() == d.keys(), d.items() == d.items(), {}.keys() == {}.items())\nprint('setlike-is', d.keys() is d.keys(), d.items() is d.items())",
+        &[
+            "values-same True False",
+            "values-is True False",
+            "values-fresh False True",
+            "values-other False True",
+            "values-live-identity False True [2, 4]",
+            "ordered-values-same True False",
+            "setlike True True True",
+            "setlike-is False False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

@@ -419,6 +419,7 @@ pub fn dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
         kind,
         entries,
         ordered: false,
+        identity: Rc::new(()),
     }
 }
 
@@ -427,6 +428,7 @@ pub fn ordered_dict_view_value(kind: DictViewKind, entries: DictRef) -> Value {
         kind,
         entries,
         ordered: true,
+        identity: Rc::new(()),
     }
 }
 
@@ -434,6 +436,7 @@ pub fn mapping_view_value(kind: DictViewKind, mapping: Value) -> Value {
     Value::MappingView {
         kind,
         mapping: Box::new(mapping),
+        identity: Rc::new(()),
     }
 }
 
@@ -568,10 +571,12 @@ pub enum Value {
         kind: DictViewKind,
         entries: DictRef,
         ordered: bool,
+        identity: Rc<()>,
     },
     MappingView {
         kind: DictViewKind,
         mapping: Box<Value>,
+        identity: Rc<()>,
     },
     MappingProxy {
         entries: DictRef,
@@ -1175,13 +1180,14 @@ impl fmt::Display for Value {
                 kind,
                 entries,
                 ordered,
+                ..
             } => write!(
                 f,
                 "{}({})",
                 dict_view_type_name(*kind, *ordered),
                 format_dict_view_payload(*kind, entries)
             ),
-            Value::MappingView { kind, mapping } => {
+            Value::MappingView { kind, mapping, .. } => {
                 write!(f, "{}({mapping})", dict_view_type_name(*kind, false))
             }
             Value::MappingProxy { entries } => {
@@ -1835,6 +1841,7 @@ fn format_value_repr(value: &Value) -> String {
             kind,
             entries,
             ordered,
+            ..
         } => {
             format!(
                 "{}({})",
@@ -1842,7 +1849,7 @@ fn format_value_repr(value: &Value) -> String {
                 format_dict_view_payload(*kind, entries)
             )
         }
-        Value::MappingView { kind, mapping } => {
+        Value::MappingView { kind, mapping, .. } => {
             format!("{}({mapping})", dict_view_type_name(*kind, false))
         }
         Value::MappingProxy { entries } => {
@@ -2912,18 +2919,24 @@ impl PartialEq for Value {
                 Value::DictView {
                     kind: left_kind,
                     entries: left_entries,
+                    identity: left_identity,
                     ..
                 },
                 Value::DictView {
                     kind: right_kind,
                     entries: right_entries,
+                    identity: right_identity,
                     ..
                 },
-            ) if dict_view_is_set_like(*left_kind) && dict_view_is_set_like(*right_kind) => {
-                sets_equal(
-                    &dict_view_values(*left_kind, left_entries),
-                    &dict_view_values(*right_kind, right_entries),
-                )
+            ) => {
+                if dict_view_is_set_like(*left_kind) && dict_view_is_set_like(*right_kind) {
+                    sets_equal(
+                        &dict_view_values(*left_kind, left_entries),
+                        &dict_view_values(*right_kind, right_entries),
+                    )
+                } else {
+                    left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity)
+                }
             }
             (
                 Value::DictView {
@@ -2965,12 +2978,20 @@ impl PartialEq for Value {
                 Value::MappingView {
                     kind: left_kind,
                     mapping: left_mapping,
+                    identity: left_identity,
                 },
                 Value::MappingView {
                     kind: right_kind,
                     mapping: right_mapping,
+                    identity: right_identity,
                 },
-            ) => left_kind == right_kind && left_mapping == right_mapping,
+            ) => {
+                if dict_view_is_set_like(*left_kind) && dict_view_is_set_like(*right_kind) {
+                    left_mapping == right_mapping
+                } else {
+                    left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity)
+                }
+            }
             (
                 Value::MappingProxy {
                     entries: left_entries,

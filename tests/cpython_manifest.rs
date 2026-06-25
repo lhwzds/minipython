@@ -343,6 +343,80 @@ fn dict_view_membership_rich_compare_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_values_view_identity_equality_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_values_view_identity_equality_subset(",
+        "values == same",
+        "values is same",
+        "d.values() == d.values()",
+        "d.values() is d.values()",
+        "d.values() != d.values()",
+        "od.values() == od.values()",
+        "{}.keys() == {}.items()",
+        "d.keys() is d.keys()",
+        "\"values-fresh False True\"",
+        "\"values-is True False\"",
+        "\"ordered-values-same True False\"",
+        "\"setlike True True True\"",
+        "\"setlike-is False False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict values-view identity equality subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_values_view_identity_equality_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict values-view identity equality subset",
+        "name: \"dict-values-view-identity-equality\"",
+        "values == same",
+        "values is same",
+        "d.values() == d.values()",
+        "d.values() is d.values()",
+        "d.values() != d.values()",
+        "od.values() == od.values()",
+        "{}.keys() == {}.items()",
+        "d.keys() is d.keys()",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict values-view identity equality CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "identity: Rc<()>",
+        "Rc::ptr_eq(left_identity, right_identity)",
+        "dict_view_is_set_like(*left_kind)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required),
+            "dict values-view identity equality implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        VM_SOURCE.contains("Value::DictView { identity, .. } => rc_plain_identity_bits(identity)")
+            && VM_SOURCE.contains(
+                ") => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),"
+            ),
+        "dict values-view identity equality must be backed by view identity bits"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_values_view_identity_equality_subset")
+                && document.contains("cpython_dict_values_view_identity_equality_diff_subset")
+                && document.contains("dict values-view identity equality"),
+            "focused dict values-view identity equality evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",

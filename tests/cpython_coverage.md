@@ -3926,6 +3926,11 @@ without adding general custom encoder/decoder class support.
   dict view values/items membership through Python-level `__eq__` dispatch,
   propagated
   comparison errors, and CPython's tuple-only item-view containment shape.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_values_view_identity_equality_subset`, backed by
+  `cpython_dict_values_view_identity_equality_diff_subset`, covering
+  dict values-view identity equality for fresh/live views while preserving
+  set-like equality for key/item views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment

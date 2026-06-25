@@ -30244,6 +30244,33 @@ show("items-error", lambda: ("x", 1) in {"x": Boom()}.items())"#,
 }
 
 #[test]
+fn cpython_dict_values_view_identity_equality_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict values-view identity equality subset",
+        name: "dict-values-view-identity-equality",
+        source: r#"from collections import OrderedDict
+
+d = {1: 2}
+values = d.values()
+same = values
+print('values-same', values == same, values != same)
+print('values-is', values is same, d.values() is d.values())
+print('values-fresh', d.values() == d.values(), d.values() != d.values())
+other = {1: 2}
+print('values-other', d.values() == other.values(), d.values() != other.values())
+left = d.values()
+right = d.values()
+d[3] = 4
+print('values-live-identity', left == right, left == left, list(left))
+od = OrderedDict([('a', 1)])
+od_values = od.values()
+print('ordered-values-same', od_values == od_values, od.values() == od.values())
+print('setlike', d.keys() == d.keys(), d.items() == d.items(), {}.keys() == {}.items())
+print('setlike-is', d.keys() is d.keys(), d.items() is d.items())"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",
