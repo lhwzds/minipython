@@ -20291,16 +20291,22 @@ fn cpython_compile_specifics_dict_evaluation_order_subset() {
 #[test]
 fn cpython_compile_specifics_compile_filename_subset() {
     assert_output(
-        "for filename in ['file.py', b'file.py']:\n    code = compile('pass', filename, 'exec')\n    print(code.co_filename)\nfor expr in [lambda: compile('pass', bytearray(b'file.py'), 'exec'), lambda: compile('pass', memoryview(b'file.py'), 'exec'), lambda: compile('pass', [102, 105, 108, 101], 'exec')]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)",
-        &["file.py", "file.py", "TypeError", "TypeError", "TypeError"],
+        "for filename in ['file.py', b'file.py']:\n    code = compile('pass', filename, 'exec')\n    print(code.co_filename)\nfor label, expr in [('bytearray', lambda: compile('pass', bytearray(b'file.py'), 'exec')), ('memoryview', lambda: compile('pass', memoryview(b'file.py'), 'exec')), ('list', lambda: compile('pass', [102, 105, 108, 101], 'exec'))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "file.py",
+            "file.py",
+            "bytearray TypeError expected str, bytes or os.PathLike object, not bytearray",
+            "memoryview TypeError expected str, bytes or os.PathLike object, not memoryview",
+            "list TypeError expected str, bytes or os.PathLike object, not list",
+        ],
     );
     assert_output(
-        "class FakePath:\n    def __init__(self, path):\n        self.path = path\n    def __fspath__(self):\n        return self.path\nclass EvilPath:\n    def __fspath__(self):\n        raise ValueError('bad path')\nfor filename in [FakePath('test_compile_pathlike'), FakePath(b'bytes_path.py')]:\n    code = compile('42', filename, 'single')\n    print(code.co_filename)\nfor expr in [lambda: compile('42', object(), 'single'), lambda: compile('42', FakePath(bytearray(b'bad.py')), 'single')]:\n    try:\n        expr()\n    except TypeError as error:\n        print(error.__class__.__name__)\ntry:\n    compile('42', EvilPath(), 'single')\nexcept ValueError as error:\n    print(error.__class__.__name__, error)",
+        "class FakePath:\n    def __init__(self, path):\n        self.path = path\n    def __fspath__(self):\n        return self.path\nclass EvilPath:\n    def __fspath__(self):\n        raise ValueError('bad path')\nfor filename in [FakePath('test_compile_pathlike'), FakePath(b'bytes_path.py')]:\n    code = compile('42', filename, 'single')\n    print(code.co_filename)\nfor label, expr in [('object', lambda: compile('42', object(), 'single')), ('path-result', lambda: compile('42', FakePath(bytearray(b'bad.py')), 'single'))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))\ntry:\n    compile('42', EvilPath(), 'single')\nexcept ValueError as error:\n    print(error.__class__.__name__, error)",
         &[
             "test_compile_pathlike",
             "bytes_path.py",
-            "TypeError",
-            "TypeError",
+            "object TypeError expected str, bytes or os.PathLike object, not object",
+            "path-result TypeError expected FakePath.__fspath__() to return str or bytes, not bytearray",
             "ValueError bad path",
         ],
     );

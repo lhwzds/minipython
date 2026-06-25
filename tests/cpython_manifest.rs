@@ -14533,6 +14533,68 @@ fn sys_process_stdio_and_debug_api_stop_line_stays_sandbox_classified() {
 }
 
 #[test]
+fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_compile_specifics_compile_filename_subset",
+    );
+    for required in [
+        "bytearray TypeError expected str, bytes or os.PathLike object, not bytearray",
+        "memoryview TypeError expected str, bytes or os.PathLike object, not memoryview",
+        "list TypeError expected str, bytes or os.PathLike object, not list",
+        "object TypeError expected str, bytes or os.PathLike object, not object",
+        "path-result TypeError expected FakePath.__fspath__() to return str or bytes, not bytearray",
+        "ValueError bad path",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "compile filename subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_compile_specifics_compile_filename_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_compile.py::TestSpecifics compile filename public behavior",
+        "FakePath('test_compile_pathlike')",
+        "FakePath(b'bytes_path.py')",
+        "memoryview(b'file.py')",
+        "FakePath(bytearray(b'bad.py'))",
+        "str(error)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "compile filename CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn compile_filename_type_error(",
+        "expected str, bytes or os.PathLike object, not {}",
+        "let path_type = type_name(&value).to_string();",
+        "expected {path_type}.__fspath__() to return str or bytes, not {}",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "compile filename VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_compile_specifics_compile_filename_subset")
+                && document.contains("cpython_compile_specifics_compile_filename_diff_subset")
+                && document.contains("compile()` filename")
+                && document.contains("expected str, bytes or os.PathLike object")
+                && document.contains("FakePath.__fspath__()"),
+            "compile filename evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",
@@ -14542,6 +14604,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_exec_closure_subset",
             "cpython_eval_exec_builtins_mapping_subset",
             "cpython_compile_builtin_code_object_subset",
+            "cpython_compile_specifics_compile_filename_subset",
             "cpython_globals_locals_builtin_subset",
             "cpython_vars_dir_builtin_subset",
             "cpython_isinstance_builtin_subset",
@@ -14626,6 +14689,7 @@ fn builtins_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_exec_builtin_diff_subset",
         "cpython_eval_exec_builtins_mapping_diff_subset",
         "cpython_compile_builtin_code_object_diff_subset",
+        "cpython_compile_specifics_compile_filename_diff_subset",
         "cpython_isinstance_builtin_diff_subset",
         "cpython_issubclass_builtin_diff_subset",
         "cpython_attribute_introspection_builtins_diff_subset",

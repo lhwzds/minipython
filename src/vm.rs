@@ -17949,11 +17949,9 @@ impl Vm {
             } => Ok(filename),
             Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone()),
             value @ Value::Instance { .. } => {
+                let path_type = type_name(&value).to_string();
                 let Some(method) = instance_special_method(&value, "__fspath__") else {
-                    return Err(format!(
-                        "TypeError: compile() arg 2 must be a string, bytes or os.PathLike object, not {}",
-                        type_name(&value)
-                    ));
+                    return Err(compile_filename_type_error(&value));
                 };
                 match self.call_value_catching(method, Vec::new())? {
                     Err(exception) => Err(format_exception_error(&exception)),
@@ -17965,15 +17963,12 @@ impl Vm {
                     ) => Ok(filename),
                     Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone()),
                     Ok(result) => Err(format!(
-                        "TypeError: expected __fspath__() to return str or bytes, not {}",
+                        "TypeError: expected {path_type}.__fspath__() to return str or bytes, not {}",
                         type_name(&result)
                     )),
                 }
             }
-            value => Err(format!(
-                "TypeError: compile() arg 2 must be a string, bytes or os.PathLike object, not {}",
-                type_name(&value)
-            )),
+            value => Err(compile_filename_type_error(&value)),
         }
     }
 
@@ -36353,6 +36348,13 @@ fn compile_source_text(source: Value) -> Result<String, String> {
 fn compile_filename_from_bytes(bytes: Vec<u8>) -> Result<String, String> {
     String::from_utf8(bytes)
         .map_err(|_| "TypeError: compile() arg 2 contains non-UTF-8 bytes".to_string())
+}
+
+fn compile_filename_type_error(value: &Value) -> String {
+    format!(
+        "TypeError: expected str, bytes or os.PathLike object, not {}",
+        type_name(value)
+    )
 }
 
 fn code_mode_from_string(mode: &str) -> Result<CodeMode, String> {

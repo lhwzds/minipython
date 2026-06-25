@@ -176,6 +176,7 @@ Recent runtime migration notes:
   `cpython_exec_builtin_diff_subset`,
   `cpython_eval_exec_builtins_mapping_diff_subset`,
   `cpython_compile_builtin_code_object_diff_subset`,
+  `cpython_compile_specifics_compile_filename_diff_subset`,
   `cpython_isinstance_builtin_diff_subset`,
   `cpython_issubclass_builtin_diff_subset`,
   `cpython_attribute_introspection_builtins_diff_subset`,
@@ -4487,7 +4488,10 @@ without adding general custom encoder/decoder class support.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_specifics_compile_filename_subset`, covering first-pass
   CPython `compile()` filename behavior for string, bytes, and path-like
-  filename objects, memoryview filename rejection, and the public
+  filename objects, memoryview filename rejection, CPython public
+  `expected str, bytes or os.PathLike object` and
+  `FakePath.__fspath__()` TypeError text via
+  `cpython_compile_specifics_compile_filename_diff_subset`, and the public
   `code.co_filename` attribute.
 - `RUNTIME_BUILTINS` also includes
   `cpython_compile_specifics_null_terminated_memoryview_subset`, covering

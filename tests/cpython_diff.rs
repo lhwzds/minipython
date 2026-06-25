@@ -8523,6 +8523,43 @@ for expr in [lambda: compile(), lambda: compile('print(42)', '<string>', 'badmod
 }
 
 #[test]
+fn cpython_compile_specifics_compile_filename_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_compile.py::TestSpecifics compile filename public behavior",
+        name: "compile-specifics-compile-filename",
+        source: r#"class FakePath:
+    def __init__(self, path):
+        self.path = path
+    def __fspath__(self):
+        return self.path
+class EvilPath:
+    def __fspath__(self):
+        raise ValueError('bad path')
+
+for filename in ['file.py', b'file.py', FakePath('test_compile_pathlike'), FakePath(b'bytes_path.py')]:
+    code = compile('42', filename, 'single')
+    print(type(filename).__name__, code.co_filename)
+
+for label, expr in [
+    ('bytearray', lambda: compile('pass', bytearray(b'file.py'), 'exec')),
+    ('memoryview', lambda: compile('pass', memoryview(b'file.py'), 'exec')),
+    ('list', lambda: compile('pass', [102, 105, 108, 101], 'exec')),
+    ('object', lambda: compile('42', object(), 'single')),
+    ('path-result', lambda: compile('42', FakePath(bytearray(b'bad.py')), 'single')),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+
+try:
+    compile('42', EvilPath(), 'single')
+except ValueError as error:
+    print(error.__class__.__name__, error)"#,
+    });
+}
+
+#[test]
 fn cpython_compile_source_positions_public_invariants_diff_subset() {
     let probe = run_cpython("print(hasattr(compile('x = 1', '<test>', 'exec'), 'co_positions'))")
         .expect("failed to probe CPython co_positions support");
