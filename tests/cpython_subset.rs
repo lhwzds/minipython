@@ -38840,6 +38840,17 @@ fn cpython_iter_next_builtin_subset() {
         8 * 1024 * 1024,
     );
     assert_output_with_stack(
+        "for label, expr in [('int', lambda: next(42)), ('list', lambda: next([])), ('none', lambda: next(None)), ('int-default', lambda: next(42, 'x')), ('list-default', lambda: next([], 'x'))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "int TypeError 'int' object is not an iterator",
+            "list TypeError 'list' object is not an iterator",
+            "none TypeError 'NoneType' object is not an iterator",
+            "int-default TypeError 'int' object is not an iterator",
+            "list-default TypeError 'list' object is not an iterator",
+        ],
+        8 * 1024 * 1024,
+    );
+    assert_output_with_stack(
         "iterator = iter(range(2))\nprint(next(iterator))\nprint(next(iterator))\nfor _ in [0, 1]:\n    try:\n        next(iterator)\n    except StopIteration:\n        print('stopped')\nprint(next(iterator, 42))\nclass Iter:\n    def __iter__(self):\n        return self\n    def __next__(self):\n        raise StopIteration\niterator = iter(Iter())\nprint(next(iterator, 42))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\ndef gen():\n    yield 1\n    return\niterator = gen()\nprint(next(iterator))\ntry:\n    next(iterator)\nexcept StopIteration:\n    print('stopped')\nprint(next(iterator, 42))",
         &[
             "0", "1", "stopped", "stopped", "42", "42", "stopped", "1", "stopped", "42",

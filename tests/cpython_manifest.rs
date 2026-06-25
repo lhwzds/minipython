@@ -19410,6 +19410,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "next(iterator, 42)",
         "next expected at least 1 argument, got 0",
         "next expected at most 2 arguments, got 3",
+        "'int' object is not an iterator",
+        "'list' object is not an iterator",
+        "'NoneType' object is not an iterator",
         "class Iter",
         "def __next__(self):",
         "def gen():",
@@ -19492,6 +19495,9 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
         "lambda: next(42)",
         "next expected at least 1 argument, got 0",
         "next expected at most 2 arguments, got 3",
+        "'int' object is not an iterator",
+        "'list' object is not an iterator",
+        "'NoneType' object is not an iterator",
     ] {
         assert!(
             body.contains(required),
@@ -19504,6 +19510,7 @@ fn iter_next_builtins_subset_has_focused_diff_evidence() {
             document.contains("cpython_iter_next_builtin_subset")
                 && document.contains("cpython_iter_next_builtin_diff_subset")
                 && document.contains("callable-sentinel")
+                && document.contains("non-iterator")
                 && document.contains("sink-state"),
             "focused iter/next evidence must be documented in coverage and migration notes"
         );

@@ -81,6 +81,10 @@ Recent runtime migration notes:
   `TypeError` text for missing and excess positional arguments.
 - `cpython_iter_next_builtin_subset` now also pins exact CPython `next` arity
   `TypeError` text for missing and excess positional arguments.
+- `cpython_iter_next_builtin_subset`, backed by
+  `cpython_iter_next_builtin_diff_subset`, now pins exact CPython
+  `next(non_iterator)` `TypeError` text for builtin int, list, and None inputs,
+  including the `next(value, default)` path.
 - Sequence-protocol fallback iterators in `cpython_iter_next_builtin_subset`
   now match CPython exhaustion behavior for `IndexError` subclasses and
   `StopIteration` raised by `__getitem__`, including reverse iteration.

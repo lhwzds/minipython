@@ -22070,7 +22070,16 @@ impl Vm {
         };
 
         let mut iterator = value.clone();
-        let advance = self.advance_owned_iterator(&mut iterator)?;
+        let advance = match self.advance_owned_iterator(&mut iterator) {
+            Ok(advance) => advance,
+            Err(error) if error == format!("TypeError: {value} is not an iterator") => {
+                return Err(format!(
+                    "TypeError: '{}' object is not an iterator",
+                    type_name(value)
+                ));
+            }
+            Err(error) => return Err(error),
+        };
 
         match advance {
             IteratorAdvance::Yield(value) => Ok(value),

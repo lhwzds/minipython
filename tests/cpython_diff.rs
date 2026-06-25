@@ -9429,6 +9429,13 @@ for label, expr in [('missing', lambda: next()), ('too-many', lambda: next(iter(
         expr()
     except TypeError as error:
         print(label, error.__class__.__name__, str(error))
+# CPython oracle text: 'int' object is not an iterator;
+# 'list' object is not an iterator; 'NoneType' object is not an iterator
+for label, expr in [('int', lambda: next(42)), ('list', lambda: next([])), ('none', lambda: next(None)), ('int-default', lambda: next(42, 'x')), ('list-default', lambda: next([], 'x'))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
 for expr in [lambda: iter(), lambda: iter(42, 42), lambda: next(), lambda: next(42)]:
     try:
         expr()
