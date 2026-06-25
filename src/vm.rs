@@ -28060,6 +28060,46 @@ impl Vm {
         Ok(None)
     }
 
+    fn dict_view_iterable_set_operator_values(
+        &mut self,
+        left: &Value,
+        right: &Value,
+        op: DictViewSetOperator,
+    ) -> Result<Option<Value>, String> {
+        if dict_view_is_set_operator_value(left) {
+            let left_values = self.set_operator_values(left.clone(), op.symbol())?;
+            return self
+                .apply_dict_view_iterable_set_operator(left_values, right.clone(), op)
+                .map(Some);
+        }
+        if dict_view_is_set_operator_value(right) {
+            let left_values = self.set_iterable_lookup_values(left.clone())?;
+            let right_values = self.set_operator_values(right.clone(), op.symbol())?;
+            return self
+                .apply_dict_view_iterable_set_operator(left_values, set_value(right_values), op)
+                .map(Some);
+        }
+        Ok(None)
+    }
+
+    fn apply_dict_view_iterable_set_operator(
+        &mut self,
+        left: Vec<Value>,
+        right: Value,
+        op: DictViewSetOperator,
+    ) -> Result<Value, String> {
+        match op {
+            DictViewSetOperator::Union => {
+                self.set_union_from_iterables_with_kind(SetResultKind::Set, left, &[right])
+            }
+            DictViewSetOperator::Intersection => {
+                self.set_intersection_from_iterables_with_kind(SetResultKind::Set, left, &[right])
+            }
+            DictViewSetOperator::SymmetricDifference => self
+                .set_symmetric_difference_from_iterable_with_kind(SetResultKind::Set, left, &right),
+        }
+    }
+
     fn equal_values(&mut self, left: Value, right: Value) -> Result<bool, String> {
         if let Some(result) = self.dict_item_view_equal(&left, &right)? {
             return Ok(result);
@@ -28226,6 +28266,11 @@ impl Vm {
         {
             return Ok(value);
         }
+        if let Some(value) =
+            self.dict_view_iterable_set_operator_values(&left, &right, DictViewSetOperator::Union)?
+        {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "|")?;
@@ -28320,6 +28365,13 @@ impl Vm {
         {
             return Ok(value);
         }
+        if let Some(value) = self.dict_view_iterable_set_operator_values(
+            &left,
+            &right,
+            DictViewSetOperator::SymmetricDifference,
+        )? {
+            return Ok(value);
+        }
         if self.is_set_operator_value(&left) {
             let kind = set_result_kind(&left);
             let left = self.set_operator_values(left, "^")?;
@@ -28343,6 +28395,13 @@ impl Vm {
         if let Some(value) =
             counter_binary_value_from_operands(&left, &right, CounterBinaryOp::Intersection)?
         {
+            return Ok(value);
+        }
+        if let Some(value) = self.dict_view_iterable_set_operator_values(
+            &left,
+            &right,
+            DictViewSetOperator::Intersection,
+        )? {
             return Ok(value);
         }
         if self.is_set_operator_value(&left) {
@@ -72330,6 +72389,23 @@ enum SetResultKind {
     FrozenSet,
 }
 
+#[derive(Clone, Copy)]
+enum DictViewSetOperator {
+    Union,
+    Intersection,
+    SymmetricDifference,
+}
+
+impl DictViewSetOperator {
+    fn symbol(self) -> &'static str {
+        match self {
+            DictViewSetOperator::Union => "|",
+            DictViewSetOperator::Intersection => "&",
+            DictViewSetOperator::SymmetricDifference => "^",
+        }
+    }
+}
+
 fn set_result_kind(value: &Value) -> SetResultKind {
     if matches!(value, Value::FrozenSet(_)) || frozen_set_subclass_items(value).is_some() {
         SetResultKind::FrozenSet
@@ -72479,6 +72555,42 @@ fn dict_view_difference_values(left: &Value, right: &Value) -> Result<Option<Val
         .map(Some);
     }
     Ok(None)
+}
+
+fn dict_view_iterable_set_operator_values(
+    left: &Value,
+    right: &Value,
+    op: DictViewSetOperator,
+) -> Result<Option<Value>, String> {
+    if dict_view_is_set_operator_value(left) {
+        let left_values = set_operator_operand(left.clone(), op.symbol())?;
+        return apply_dict_view_iterable_set_operator(left_values, right.clone(), op).map(Some);
+    }
+    if dict_view_is_set_operator_value(right) {
+        let left_values = set_iterable_lookup_values(left.clone())?;
+        let right_values = set_operator_operand(right.clone(), op.symbol())?;
+        return apply_dict_view_iterable_set_operator(left_values, set_value(right_values), op)
+            .map(Some);
+    }
+    Ok(None)
+}
+
+fn apply_dict_view_iterable_set_operator(
+    left: Vec<Value>,
+    right: Value,
+    op: DictViewSetOperator,
+) -> Result<Value, String> {
+    match op {
+        DictViewSetOperator::Union => {
+            set_union_from_iterables_with_kind(SetResultKind::Set, left, &[right])
+        }
+        DictViewSetOperator::Intersection => {
+            set_intersection_from_iterables_with_kind(SetResultKind::Set, left, &[right])
+        }
+        DictViewSetOperator::SymmetricDifference => {
+            set_symmetric_difference_from_iterable_with_kind(SetResultKind::Set, left, &right)
+        }
+    }
 }
 
 fn set_contains_value(items: &[Value], value: &Value) -> bool {
@@ -82499,6 +82611,11 @@ fn pow_mod_type_error() -> String {
 }
 
 fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
+    if let Some(value) =
+        dict_view_iterable_set_operator_values(&left, &right, DictViewSetOperator::Union)?
+    {
+        return Ok(value);
+    }
     if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "|")?;
@@ -82763,6 +82880,13 @@ fn bit_or_numbers(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn bit_xor_values(left: Value, right: Value) -> Result<Value, String> {
+    if let Some(value) = dict_view_iterable_set_operator_values(
+        &left,
+        &right,
+        DictViewSetOperator::SymmetricDifference,
+    )? {
+        return Ok(value);
+    }
     if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "^")?;
@@ -82796,6 +82920,11 @@ fn bit_xor_numbers(left: Value, right: Value) -> Result<Value, String> {
 }
 
 fn bit_and_values(left: Value, right: Value) -> Result<Value, String> {
+    if let Some(value) =
+        dict_view_iterable_set_operator_values(&left, &right, DictViewSetOperator::Intersection)?
+    {
+        return Ok(value);
+    }
     if is_set_operator_value(&left) {
         let kind = set_result_kind(&left);
         let left = set_operator_operand(left, "&")?;

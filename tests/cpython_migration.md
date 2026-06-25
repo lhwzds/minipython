@@ -7769,6 +7769,11 @@ Completed in the dict view rich-comparison pass:
   for key/item views with arbitrary iterable operands
   and reflected operands while keeping values-view subtraction unsupported
   unless a key/item view handles the reflected operation.
+- Added `cpython_dict_view_iterable_set_operators_subset`, backed by
+  `cpython_dict_view_iterable_set_operators_diff_subset`, covering dict view iterable binary set operators
+  for key/item view `|` / `&` / `^` with arbitrary iterable operands and
+  reflected operands while keeping plain values-view iterable operators
+  unsupported unless a key/item view handles the opposite side.
 - Preserved snapshot-based set-like behavior for existing dict and mapping view
   operators while moving view comparisons closer to CPython's error propagation.
 

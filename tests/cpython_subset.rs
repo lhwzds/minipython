@@ -48938,6 +48938,76 @@ for label, expr in [
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view binary set operators.
+// Key/item views accept arbitrary iterable operands and reflected operands for
+// `|`, `&`, and `^`; values views participate only when a key/item view handles
+// the opposite side.
+#[test]
+fn cpython_dict_view_iterable_set_operators_subset() {
+    assert_output_with_stack(
+        r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def render(value):
+    return type(value).__name__, sorted([repr(item) for item in value])
+
+def show(label, expr):
+    try:
+        print(label, *render(expr()))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("keys-or-list", lambda: keys | [2]),
+    ("list-or-keys", lambda: [2] | keys),
+    ("items-or-list", lambda: items | [(3, 4)]),
+    ("list-or-items", lambda: [(3, 4)] | items),
+    ("values-or-list", lambda: values | [2]),
+    ("list-or-values", lambda: [2] | values),
+    ("keys-and-list", lambda: keys & [1, 2]),
+    ("list-and-keys", lambda: [1, 2] & keys),
+    ("items-and-list", lambda: items & [(1, 2), 3]),
+    ("list-and-items", lambda: [(1, 2), 3] & items),
+    ("keys-xor-list", lambda: keys ^ [1, 2]),
+    ("list-xor-keys", lambda: [1, 2] ^ keys),
+    ("items-xor-list", lambda: items ^ [(1, 2), 3]),
+    ("list-xor-items", lambda: [(1, 2), 3] ^ items),
+    ("values-or-keys", lambda: values | keys),
+    ("keys-or-values", lambda: keys | values),
+    ("values-and-items", lambda: values & items),
+    ("items-and-values", lambda: items & values),
+    ("values-xor-items", lambda: values ^ items),
+    ("items-xor-values", lambda: items ^ values),
+]:
+    show(label, expr)"#,
+        &[
+            "keys-or-list set ['1', '2']",
+            "list-or-keys set ['1', '2']",
+            "items-or-list set ['(1, 2)', '(3, 4)']",
+            "list-or-items set ['(1, 2)', '(3, 4)']",
+            "values-or-list TypeError unsupported operand type(s) for |: 'dict_values' and 'list'",
+            "list-or-values TypeError unsupported operand type(s) for |: 'list' and 'dict_values'",
+            "keys-and-list set ['1']",
+            "list-and-keys set ['1']",
+            "items-and-list set ['(1, 2)']",
+            "list-and-items set ['(1, 2)']",
+            "keys-xor-list set ['2']",
+            "list-xor-keys set ['2']",
+            "items-xor-list set ['3']",
+            "list-xor-items set ['3']",
+            "values-or-keys set ['1', '2']",
+            "keys-or-values set ['1', '2']",
+            "values-and-items set []",
+            "items-and-values set []",
+            "values-xor-items set ['(1, 2)', '2']",
+            "items-xor-values set ['(1, 2)', '2']",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

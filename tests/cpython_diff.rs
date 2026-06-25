@@ -30347,6 +30347,51 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_dict_view_iterable_set_operators_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view iterable binary set operators subset",
+        name: "dict-view-iterable-set-operators",
+        source: r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+
+def render(value):
+    return type(value).__name__, sorted([repr(item) for item in value])
+
+def show(label, expr):
+    try:
+        print(label, *render(expr()))
+    except Exception as error:
+        print(label, type(error).__name__, str(error))
+
+for label, expr in [
+    ("keys-or-list", lambda: keys | [2]),
+    ("list-or-keys", lambda: [2] | keys),
+    ("items-or-list", lambda: items | [(3, 4)]),
+    ("list-or-items", lambda: [(3, 4)] | items),
+    ("values-or-list", lambda: values | [2]),
+    ("list-or-values", lambda: [2] | values),
+    ("keys-and-list", lambda: keys & [1, 2]),
+    ("list-and-keys", lambda: [1, 2] & keys),
+    ("items-and-list", lambda: items & [(1, 2), 3]),
+    ("list-and-items", lambda: [(1, 2), 3] & items),
+    ("keys-xor-list", lambda: keys ^ [1, 2]),
+    ("list-xor-keys", lambda: [1, 2] ^ keys),
+    ("items-xor-list", lambda: items ^ [(1, 2), 3]),
+    ("list-xor-items", lambda: [(1, 2), 3] ^ items),
+    ("values-or-keys", lambda: values | keys),
+    ("keys-or-values", lambda: keys | values),
+    ("values-and-items", lambda: values & items),
+    ("items-and-values", lambda: items & values),
+    ("values-xor-items", lambda: values ^ items),
+    ("items-xor-values", lambda: items ^ values),
+]:
+    show(label, expr)"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

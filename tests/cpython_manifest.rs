@@ -561,6 +561,90 @@ fn dict_view_difference_operator_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_iterable_set_operators_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_iterable_set_operators_subset(",
+        "keys | [2]",
+        "[2] | keys",
+        "items | [(3, 4)]",
+        "[(3, 4)] | items",
+        "values | [2]",
+        "[2] | values",
+        "keys & [1, 2]",
+        "[1, 2] & keys",
+        "items & [(1, 2), 3]",
+        "[(1, 2), 3] & items",
+        "keys ^ [1, 2]",
+        "[1, 2] ^ keys",
+        "items ^ [(1, 2), 3]",
+        "[(1, 2), 3] ^ items",
+        "values | keys",
+        "keys | values",
+        "values & items",
+        "items & values",
+        "values ^ items",
+        "items ^ values",
+        "\"values-or-list TypeError unsupported operand type(s) for |: 'dict_values' and 'list'\"",
+        "\"values-xor-items set ['(1, 2)', '2']\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view iterable set-operator subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_iterable_set_operators_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view iterable binary set operators subset",
+        "name: \"dict-view-iterable-set-operators\"",
+        "keys | [2]",
+        "[2] | keys",
+        "items | [(3, 4)]",
+        "[(3, 4)] | items",
+        "values | [2]",
+        "[2] | values",
+        "keys & [1, 2]",
+        "[1, 2] & keys",
+        "keys ^ [1, 2]",
+        "[1, 2] ^ keys",
+        "values ^ items",
+        "items ^ values",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view iterable set-operator CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "enum DictViewSetOperator",
+        "fn dict_view_iterable_set_operator_values(",
+        "fn apply_dict_view_iterable_set_operator(",
+        "DictViewSetOperator::Union",
+        "DictViewSetOperator::Intersection",
+        "DictViewSetOperator::SymmetricDifference",
+        "set_iterable_lookup_values(left.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view iterable set-operator implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_iterable_set_operators_subset")
+                && document.contains("cpython_dict_view_iterable_set_operators_diff_subset")
+                && document.contains("dict view iterable binary set operators"),
+            "focused dict view iterable set-operator evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",
