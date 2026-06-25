@@ -27667,9 +27667,12 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                pop_mapping_entry_last(&counter_receiver_entries(receiver)?)?
-                    .map(|(key, value)| tuple_value(vec![key, value]))
-                    .ok_or_else(|| "KeyError: popitem(): dictionary is empty".to_string())
+                match pop_mapping_entry_last(&counter_receiver_entries(receiver)?)? {
+                    Some((key, value)) => Ok(tuple_value(vec![key, value])),
+                    None => {
+                        raise_key_error_string(self, "popitem(): dictionary is empty".to_string())
+                    }
+                }
             }
             "setdefault" => {
                 reject_method_keywords(name, &keywords)?;

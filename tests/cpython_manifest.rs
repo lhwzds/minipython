@@ -11654,6 +11654,12 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "c.pop('missing')",
         "error.args[0] == 'missing'",
         "type(error.args[0]).__name__",
+        "Counter().popitem()",
+        "Counter.popitem(Counter())",
+        "C().popitem()",
+        "Counter.popitem(C())",
+        "error.args[0] == 'popitem(): dictionary is empty'",
+        "str(error) == repr(error.args[0])",
     ] {
         assert!(
             counter_mapping_mutation_diff_body.contains(required)
@@ -11665,9 +11671,26 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         counter_mapping_mutation_subset_body.contains("True str 'missing'"),
         "Counter mapping mutation subset evidence must cover the expected missing-key pop output"
     );
+    for required in [
+        "popitem-empty True str True",
+        "direct-popitem-empty True str True",
+        "subclass-popitem-empty True str True",
+        "subclass-direct-popitem-empty True str True",
+    ] {
+        assert!(
+            counter_mapping_mutation_subset_body.contains(required),
+            "Counter mapping mutation subset output must pin `{required}`"
+        );
+    }
     assert!(
         VM_SOURCE.contains("raise_key_error_value(self, key.clone())"),
         "Counter pop must raise KeyError with the original missing key payload"
+    );
+    assert!(
+        VM_SOURCE.contains(
+            "raise_key_error_string(self, \"popitem(): dictionary is empty\".to_string())"
+        ),
+        "Counter empty popitem must raise KeyError with CPython's message payload"
     );
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
@@ -11676,6 +11699,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "missing-key",
             "`pop()`",
             "`KeyError.args[0]`",
+            "empty `popitem()`",
+            "`KeyError(message)` string display",
         ] {
             assert!(
                 document.contains(required),

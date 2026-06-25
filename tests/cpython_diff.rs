@@ -13098,7 +13098,19 @@ print(c.setdefault('b', 7), c['b'])
 key, value = c.popitem()
 print(key in c, value)
 c.clear()
-print(c, list(c.items()))"#,
+print(c, list(c.items()))
+class C(Counter):
+    pass
+def show_empty_popitem(label, action):
+    try:
+        action()
+    except KeyError as error:
+        print(label, error.args[0] == 'popitem(): dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))
+show_empty_popitem('popitem-empty', lambda: Counter().popitem())
+show_empty_popitem('direct-popitem-empty', lambda: Counter.popitem(Counter()))
+show_empty_popitem('subclass-popitem-empty', lambda: C().popitem())
+show_empty_popitem('subclass-direct-popitem-empty', lambda: Counter.popitem(C()))
+print('subclass-popitem-nonempty', C(a=1).popitem())"#,
     });
 }
 

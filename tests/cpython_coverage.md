@@ -5525,7 +5525,8 @@ positive limit, `None` limit, increasing limit slices, and CPython-style
 `cpython_collections_counter_mapping_mutation_subset` add direct CPython output
 parity and runtime coverage for `pop()`, missing-key `pop(default)`, missing-key
 `pop()` preserving the original key in `KeyError.args[0]`, `setdefault()`,
-`popitem()`, `clear()`, and zero lookup after deletion.
+`popitem()`, empty `popitem()` preserving CPython's `KeyError(message)` string
+display, `clear()`, and zero lookup after deletion.
 `cpython_collections_counter_comparison_diff_subset` and
 `cpython_collections_counter_comparison_subset` add method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,
