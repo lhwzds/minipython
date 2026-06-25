@@ -8537,6 +8537,8 @@ for source in [S('x = 11'), B(b'x = 12'), BA(b'x = 13')]:
     namespace = {}
     exec(compile(source, '<mini>', 'exec'), namespace)
     print(type(source).__name__, namespace['x'])
+code = compile('1 + 6', '<mini>', S('eval'))
+print(eval(code), type(code).__name__)
 print(exec(compile('2 + 3', '<mini>', 'single')))
 print(eval(compile('z = 9', '<mini>', 'exec')))
 print(z)
@@ -8812,6 +8814,8 @@ for source in [S('x = 1'), B(b'x = 2'), BA(b'x = 3')]:
 for source in [S('x = 4'), B(b'x = 5'), BA(b'x = 6')]:
     node = compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)
     print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)
+node = ast.parse('1 + 2', mode=S('eval'))
+print(type(node).__name__, type(node.body).__name__)
 for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.parse('1', mode='bad')]:
     try:
         call()

@@ -13082,6 +13082,10 @@ fn cpython_ast_module_parse_dump_first_pass_subset() {
         "import ast\nclass S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 1'), B(b'x = 2'), BA(b'x = 3')]:\n    node = ast.parse(source)\n    print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)",
         &["S Module Assign", "B Module Assign", "BA Module Assign"],
     );
+    assert_output(
+        "import ast\nclass S(str):\n    pass\nnode = ast.parse('1 + 2', mode=S('eval'))\nprint(type(node).__name__, type(node.body).__name__)",
+        &["Expression BinOp"],
+    );
 }
 
 // Adapted from CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_null_bytes`.
@@ -23207,6 +23211,10 @@ fn cpython_compile_builtin_code_object_subset() {
     assert_output(
         "class S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 11'), B(b'x = 12'), BA(b'x = 13')]:\n    namespace = {}\n    exec(compile(source, '<mini>', 'exec'), namespace)\n    print(type(source).__name__, namespace['x'])",
         &["S 11", "B 12", "BA 13"],
+    );
+    assert_output(
+        "class S(str):\n    pass\ncode = compile('1 + 6', '<mini>', S('eval'))\nprint(eval(code), type(code).__name__)",
+        &["7 code"],
     );
     assert_output(
         "print(exec(compile('2 + 3', '<mini>', 'single')))\nprint(eval(compile('z = 9', '<mini>', 'exec')))\nprint(z)",

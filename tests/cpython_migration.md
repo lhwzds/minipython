@@ -7292,6 +7292,8 @@ Completed in the compile builtin code-object pass:
   `cpython_compile_builtin_code_object_diff_subset` with CPython's public
   `compile()` source subclass behavior for `str`, `bytes`, and `bytearray`
   subclasses.
+- Expanded the same compile/code-object slice with CPython's public `str`
+  mode subclass behavior.
 - Added a minimal `code` runtime value that carries register bytecode and can
   be fed back into `eval()` and `exec()`. `exec()` now preserves output from
   compiled `exec` and `single` code objects, while `eval()` returns values for
@@ -11515,6 +11517,8 @@ Completed in the CPython collections manifest expansion pass:
   public `ast.dump()` output.
 - Expanded the AST parse / `PyCF_ONLY_AST` source subset with CPython's public
   source subclass behavior for `str`, `bytes`, and `bytearray` subclasses.
+- Expanded the same AST parse diff with CPython's public `str` mode subclass
+  behavior.
 - Added `cpython_compile_source_positions_public_invariants_diff_subset`, a
   gated direct CPython diff for public `code.co_positions()` /
   `code.co_lines()` source-position invariants from

@@ -17855,15 +17855,7 @@ impl Vm {
             .take()
             .ok_or_else(|| "TypeError: compile() missing required argument 'mode'".to_string())?;
         let filename = self.compile_filename_argument(filename)?;
-        let mode = match mode {
-            Value::String(mode) | Value::IdentityString { value: mode, .. } => mode,
-            value => {
-                return Err(format!(
-                    "TypeError: compile() arg 3 must be a string, not {}",
-                    type_name(&value)
-                ));
-            }
-        };
+        let mode = compile_mode_argument(mode)?;
         let flags = values[3]
             .take()
             .map(|value| compile_int_argument(value, "flags"))
@@ -36371,6 +36363,19 @@ fn compile_int_argument(value: Value, name: &str) -> Result<i64, String> {
     }
 }
 
+fn compile_mode_argument(value: Value) -> Result<String, String> {
+    match value {
+        Value::String(mode) | Value::IdentityString { value: mode, .. } => Ok(mode),
+        value if str_subclass_string(&value).is_some() => {
+            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+        }
+        value => Err(format!(
+            "TypeError: compile() arg 3 must be a string, not {}",
+            type_name(&value)
+        )),
+    }
+}
+
 fn compile_source_text(source: Value) -> Result<String, String> {
     match source {
         Value::String(source) | Value::IdentityString { value: source, .. } => Ok(source),
@@ -41656,15 +41661,7 @@ fn call_ast_parse(
     let mode = values[2]
         .take()
         .unwrap_or_else(|| Value::String("exec".to_string()));
-    let mode = match value_as_string(&mode) {
-        Some(mode) => mode.to_string(),
-        None => {
-            return Err(format!(
-                "TypeError: compile() arg 3 must be a string, not {}",
-                type_name(&mode)
-            ));
-        }
-    };
+    let mode = compile_mode_argument(mode)?;
 
     let type_comments = values[3]
         .as_ref()

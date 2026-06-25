@@ -14623,6 +14623,8 @@ fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
         "S 11",
         "B 12",
         "BA 13",
+        "compile('1 + 6', '<mini>', S('eval'))",
+        "7 code",
     ] {
         assert!(
             subset_body.contains(required),
@@ -14640,6 +14642,7 @@ fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
         "class B(bytes):",
         "class BA(bytearray):",
         "compile(source, '<mini>', 'exec')",
+        "compile('1 + 6', '<mini>', S('eval'))",
     ] {
         assert!(
             diff_body.contains(required),
@@ -14649,6 +14652,7 @@ fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
 
     for required in [
         "fn compile_source_text(",
+        "fn compile_mode_argument(",
         "value if str_subclass_string(&value).is_some()",
         "value if bytes_subclass_bytes(&value).is_some()",
         "value if bytearray_subclass_bytes(&value).is_some()",
@@ -14663,8 +14667,9 @@ fn compile_builtin_code_object_subset_has_focused_diff_evidence() {
         assert!(
             document.contains("cpython_compile_builtin_code_object_subset")
                 && document.contains("cpython_compile_builtin_code_object_diff_subset")
-                && document.contains("source subclass"),
-            "compile source subclass evidence must be documented in coverage and migration notes"
+                && document.contains("source subclass")
+                && document.contains("mode subclass"),
+            "compile source/mode subclass evidence must be documented in coverage and migration notes"
         );
     }
 }
@@ -21640,6 +21645,8 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "S Module Assign",
         "B Module Assign",
         "BA Module Assign",
+        "ast.parse('1 + 2', mode=S('eval'))",
+        "Expression BinOp",
     ] {
         assert!(
             parse_subset.contains(required),
@@ -21675,6 +21682,7 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "class S(str):",
         "ast.parse(source)",
         "compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)",
+        "mode=S('eval')",
         "legacy ast.dump default-field rendering",
     ] {
         assert!(
@@ -21686,6 +21694,7 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
     for required in [
         "fn parse_ast_node(",
         "fn emit_ast_parse_warnings(",
+        "fn compile_mode_argument(",
         "value if str_subclass_string(&value).is_some()",
         "value if bytes_subclass_bytes(&value).is_some()",
         "value if bytearray_subclass_bytes(&value).is_some()",
@@ -21703,7 +21712,8 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
                 && document.contains("exec")
                 && document.contains("eval")
                 && document.contains("func_type")
-                && document.contains("source subclass"),
+                && document.contains("source subclass")
+                && document.contains("mode subclass"),
             "ast.parse docs must link `{diff_name}` to exec/eval/single/func_type coverage"
         );
     }
