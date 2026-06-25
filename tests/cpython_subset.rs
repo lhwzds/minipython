@@ -36212,6 +36212,21 @@ fn cpython_bytes_bytearray_index_error_and_hash_subset() {
     );
 }
 
+// Adapted from CPython list, tuple, and string invalid-subscript diagnostics.
+// This pins the public TypeError messages for non-integer list/tuple/str
+// indices without relying on compile-time SyntaxWarning text.
+#[test]
+fn cpython_sequence_index_typeerror_message_subset() {
+    assert_output(
+        "key = 'a'\nfor label, expr in [\n    ('list', lambda: [1, 2][key]),\n    ('tuple', lambda: (1, 2)[key]),\n    ('string', lambda: 'python'[key]),\n]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "list TypeError list indices must be integers or slices, not str",
+            "tuple TypeError tuple indices must be integers or slices, not str",
+            "string TypeError string indices must be integers, not 'str'",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_bytes.py::BaseBytesTest::test_custom
 // and AssortedBytesTest::{test_bytes_repr,test_bytearray_repr}. This covers the
 // public repr/str and bytes-like comparison behavior that is visible for

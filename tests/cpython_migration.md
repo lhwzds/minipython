@@ -3582,6 +3582,13 @@ Completed in the bytes-literal pass:
   tokenizer string surface, including exact tokenizer token-stream modeling and
   remaining invalid-literal diagnostics.
 
+Completed in the sequence index TypeError diagnostics pass:
+
+- Added `cpython_sequence_index_typeerror_message_subset`, backed by
+  `cpython_sequence_index_typeerror_message_diff_subset`, covering CPython
+  public TypeError text for non-integer list, tuple, and string subscript
+  indices while avoiding compile-time SyntaxWarning text.
+
 Completed in the bytes iterable-constructor pass:
 
 - Added `cpython_bytes_basics_and_ord_subset`, adapted from CPython

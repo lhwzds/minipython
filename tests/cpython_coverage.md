@@ -46,6 +46,10 @@ Recent runtime migration notes:
   public delimiter-message substrings for `json.loads()` missing colon and
   missing comma errors while keeping full `JSONDecodeError` compatibility out
   of the sandbox `json` scope.
+- `cpython_sequence_index_typeerror_message_subset`, backed by
+  `cpython_sequence_index_typeerror_message_diff_subset`, now pins CPython
+  public TypeError text for non-integer list, tuple, and string subscript
+  indices without relying on compile-time SyntaxWarning diagnostics.
 - Callable-sentinel iterators in `cpython_iter_next_builtin_subset` now include
   CPython's sentinel-first equality dispatch (`sentinel == value`) for
   non-symmetric `__eq__` implementations.

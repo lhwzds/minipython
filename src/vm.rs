@@ -79755,6 +79755,14 @@ fn deque_index_error(error: String) -> String {
 
 fn sequence_index_type_error(sequence_type: &str, value: &Value) -> String {
     match sequence_type {
+        "list" | "tuple" => format!(
+            "{sequence_type} indices must be integers or slices, not {}",
+            type_name(value)
+        ),
+        "string" => format!(
+            "string indices must be integers, not '{}'",
+            type_name(value)
+        ),
         "bytes" => format!(
             "byte indices must be integers or slices, not {}",
             type_name(value)

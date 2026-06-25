@@ -3280,6 +3280,55 @@ fn cpython_bytes_bytearray_index_error_hash_diff_covers_runtime_subset() {
 }
 
 #[test]
+fn cpython_sequence_index_typeerror_message_diff_covers_runtime_subset() {
+    let diff_name = "cpython_sequence_index_typeerror_message_diff_subset";
+    let subset_name = "cpython_sequence_index_typeerror_message_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "sequence index TypeError direct CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "sequence index TypeError runtime subset evidence must exist"
+    );
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, diff_name);
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, subset_name);
+    for required in [
+        "list indices must be integers or slices, not str",
+        "tuple indices must be integers or slices, not str",
+        "string indices must be integers, not 'str'",
+    ] {
+        assert!(
+            diff_body.contains(required) || subset_body.contains(required),
+            "sequence index TypeError evidence must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "\"list\" | \"tuple\"",
+        "{sequence_type} indices must be integers or slices, not {}",
+        "\"string\" => format!",
+        "string indices must be integers, not '{}'",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "sequence index TypeError VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name)
+                && document.contains(subset_name)
+                && document.contains("non-integer list, tuple, and string subscript"),
+            "sequence index TypeError evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn cpython_bytes_dunder_bytes_dispatch_diff_covers_runtime_subset() {
     let diff_name = "cpython_bytes_dunder_bytes_dispatch_diff_subset";
     let subset_name = "cpython_bytes_dunder_bytes_and_blocking_subset";

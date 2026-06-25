@@ -23629,6 +23629,24 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_sequence_index_typeerror_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_list.py, test_tuple.py, and test_str.py invalid subscript TypeError messages",
+        name: "sequence-index-typeerror-message",
+        source: r#"key = 'a'
+for label, expr in [
+    ('list', lambda: [1, 2][key]),
+    ('tuple', lambda: (1, 2)[key]),
+    ('string', lambda: 'python'[key]),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_bytes_method_typeerror_messages_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_bytes.py::BaseBytesTest public method TypeError-message rows",
