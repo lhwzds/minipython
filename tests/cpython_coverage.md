@@ -4040,8 +4040,9 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_chainmap_missing_and_first_map_mutation_subset`, covering
   ChainMap subclass `__missing__`, missing-safe `get()` and membership,
   plain ChainMap missing-key `__getitem__()` preserving the original key in
-  `KeyError.args[0]`, first-map `pop()`, `popitem()`, `clear()`, and
-  subclass-backed item assignment/deletion.
+  `KeyError.args[0]`, first-map `pop()` / `__delitem__()` / subscript deletion
+  missing-key errors preserving CPython's `KeyError(message)` string display,
+  `popitem()`, `clear()`, and subclass-backed item assignment/deletion.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset` and
   `cpython_collections_chainmap_iter_does_not_call_getitem_subset`, covering

@@ -14601,6 +14601,14 @@ for lookup in (lambda: plain['missing'], lambda: ChainMap.__getitem__(plain, 'mi
         lookup()
     except KeyError as error:
         print(error.args[0] == 'missing', type(error.args[0]).__name__, str(error))
+def delete_plain():
+    del plain['missing']
+message = "Key not found in the first mapping: 'missing'"
+for label, expr in [('pop-missing', lambda: plain.pop('missing')), ('delitem-missing', lambda: ChainMap.__delitem__(plain, 'missing')), ('del-subscript-missing', delete_plain)]:
+    try:
+        expr()
+    except KeyError as error:
+        print(label, error.args[0] == message, type(error.args[0]).__name__, str(error) == repr(error.args[0]))
 print(d.pop('a', 1001), d.maps)
 print(d.pop('a', 1002), d.maps)
 print(d.popitem(), d.maps)

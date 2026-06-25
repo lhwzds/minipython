@@ -11367,6 +11367,21 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         chainmap_missing_subset_body.contains("True str 'missing'"),
         "ChainMap missing-key subset evidence must cover the expected KeyError payload output"
     );
+    for required in [
+        "def delete_plain():",
+        "plain.pop('missing')",
+        "ChainMap.__delitem__(plain, 'missing')",
+        "str(error) == repr(error.args[0])",
+        "pop-missing True str True",
+        "delitem-missing True str True",
+        "del-subscript-missing True str True",
+    ] {
+        assert!(
+            chainmap_missing_diff_body.contains(required)
+                || chainmap_missing_subset_body.contains(required),
+            "ChainMap first-map missing-key display evidence must cover `{required}`"
+        );
+    }
     let chain_map_get_for_receiver_body = VM_SOURCE
         .split("fn chain_map_get_item_for_receiver(")
         .nth(1)
@@ -11390,6 +11405,17 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
                 .contains("self.chain_map_get_item_for_receiver(&object, &maps, index)"),
         "plain ChainMap subscript lookup must use the receiver-aware missing-key path"
     );
+    for required in [
+        "fn chain_map_first_mapping_key_error_payload(",
+        "fn raise_key_error_string(",
+        "return raise_key_error_string(self, payload)",
+        "raise_key_error_string(self, payload)?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap first-map missing-key display implementation must contain `{required}`"
+        );
+    }
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "cpython_collections_chainmap_missing_and_first_map_mutation_diff_subset",
@@ -11397,6 +11423,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "plain ChainMap missing-key",
             "`__getitem__()`",
             "`KeyError.args[0]`",
+            "first-map",
+            "`pop()`",
+            "`__delitem__()`",
+            "subscript deletion",
+            "`KeyError(message)` string display",
         ] {
             assert!(
                 document.contains(required),

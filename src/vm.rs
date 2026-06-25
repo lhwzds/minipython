@@ -17432,7 +17432,24 @@ impl Vm {
         }
 
         if let Some(maps) = chain_map_subclass_maps(&object) {
-            chain_map_delete_item(&maps, index)?;
+            if let Err(message) = chain_map_delete_item(&maps, index) {
+                if let Some(payload) = chain_map_first_mapping_key_error_payload(&message) {
+                    raise_key_error_string(self, payload)?;
+                    return Ok(object);
+                }
+                return Err(message);
+            }
+            return Ok(object);
+        }
+
+        if let Value::ChainMap { maps } = &object {
+            if let Err(message) = chain_map_delete_item(maps, index) {
+                if let Some(payload) = chain_map_first_mapping_key_error_payload(&message) {
+                    raise_key_error_string(self, payload)?;
+                    return Ok(object);
+                }
+                return Err(message);
+            }
             return Ok(object);
         }
 
@@ -26902,7 +26919,12 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                chain_map_delete_item(&maps, key.clone())?;
+                if let Err(message) = chain_map_delete_item(&maps, key.clone()) {
+                    if let Some(payload) = chain_map_first_mapping_key_error_payload(&message) {
+                        return raise_key_error_string(self, payload);
+                    }
+                    return Err(message);
+                }
                 Ok(Value::None)
             }
             "__getitem__" => {
@@ -27117,7 +27139,15 @@ impl Vm {
                     ));
                 }
                 let maps = chain_map_receiver_maps(receiver)?;
-                chain_map_pop(&maps, key.clone(), rest.first().cloned())
+                match chain_map_pop(&maps, key.clone(), rest.first().cloned()) {
+                    Ok(value) => Ok(value),
+                    Err(message) => {
+                        if let Some(payload) = chain_map_first_mapping_key_error_payload(&message) {
+                            return raise_key_error_string(self, payload);
+                        }
+                        Err(message)
+                    }
+                }
             }
             "popitem" => {
                 reject_method_keywords(name, &keywords)?;
@@ -77180,6 +77210,17 @@ fn key_error_exception(key: Value) -> MiniException {
         exceptions: None,
         identity: Rc::new(()),
     }
+}
+
+fn chain_map_first_mapping_key_error_payload(message: &str) -> Option<String> {
+    message
+        .strip_prefix("KeyError: ")
+        .filter(|payload| payload.starts_with("Key not found in the first mapping: "))
+        .map(str::to_string)
+}
+
+fn raise_key_error_string(vm: &mut Vm, message: String) -> Result<Value, String> {
+    raise_key_error_value(vm, Value::String(message))
 }
 
 fn raise_key_error_value(vm: &mut Vm, key: Value) -> Result<Value, String> {
