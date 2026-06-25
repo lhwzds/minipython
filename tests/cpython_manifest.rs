@@ -14811,6 +14811,54 @@ fn compile_specifics_compile_filename_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn exec_general_mapping_locals_subset_has_direct_diff_and_stack_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_compile_specifics_exec_general_mapping_locals_subset",
+    );
+    for required in [
+        "assert_output_with_stack",
+        "32 * 1024 * 1024",
+        "class M:",
+        "exec('z = a', g, m)",
+        "exec('z = dir()', g, m)",
+        "exec('z = locals()', g, m)",
+        "globals-type-error",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "exec general mapping locals subset evidence must contain `{required}`"
+        );
+    }
+
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_program_output_parity_smoke_diff_subset()")
+            && CPYTHON_DIFF.contains("name: \"exec-eval-builtins-mapping\""),
+        "exec general mapping locals CPython diff case must stay in the program output parity smoke suite"
+    );
+    for required in [
+        "exec('z = a', g, m)",
+        "exec('z = b', g, m)",
+        "exec('z = dir()', g, m)",
+        "exec('z = locals()', g, m)",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required),
+            "exec general mapping locals CPython diff evidence must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_compile_specifics_exec_general_mapping_locals_subset")
+                && document.contains("explicit Rust test stack")
+                && document.contains("mapping locals"),
+            "exec general mapping locals stack evidence must be documented"
+        );
+    }
+}
+
+#[test]
 fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",

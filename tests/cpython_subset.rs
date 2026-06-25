@@ -19361,7 +19361,7 @@ show(wlog)"##,
 // original mapping through locals().
 #[test]
 fn cpython_compile_specifics_exec_general_mapping_locals_subset() {
-    assert_output(
+    assert_output_with_stack(
         "class M:\n    def __getitem__(self, key):\n        if key == 'a':\n            return 12\n        raise KeyError\n    def __setitem__(self, key, value):\n        self.results = (key, value)\n    def keys(self):\n        return list('xyz')\nm = M()\ng = globals()\nexec('z = a', g, m)\nprint(m.results)\ntry:\n    exec('z = b', g, m)\nexcept NameError:\n    print('name-error')\nexec('z = dir()', g, m)\nprint(m.results)\nexec('z = globals()', g, m)\nprint(m.results[0], m.results[1] is g)\nexec('z = locals()', g, m)\nprint(m.results[0], m.results[1] is m)\nclass A:\n    pass\ntry:\n    exec('z = a', g, A())\nexcept TypeError:\n    print('locals-type-error')\ntry:\n    exec('z = b', m)\nexcept TypeError:\n    print('globals-type-error')",
         &[
             "('z', 12)",
@@ -19372,6 +19372,7 @@ fn cpython_compile_specifics_exec_general_mapping_locals_subset() {
             "locals-type-error",
             "globals-type-error",
         ],
+        32 * 1024 * 1024,
     );
     assert_output(
         "class D(dict):\n    def __getitem__(self, key):\n        if key == 'a':\n            return 12\n        raise KeyError\nd = D()\ng = globals()\nexec('z = a', g, d)\nprint(d.get('z'))",

@@ -4917,7 +4917,11 @@ without adding general custom encoder/decoder class support.
   ordinary/global assignment writes, the supported public
   `BuiltinTest::test_general_eval` general-mapping locals behavior for
   `__getitem__`, `keys()` / `dir()`, `globals()`, `locals()`, nested lookups,
-  dict subclasses, and invalid mapping shapes, plus
+  dict subclasses, and invalid mapping shapes, and
+  `cpython_compile_specifics_exec_general_mapping_locals_subset` for explicit
+  `exec()` mapping locals; that subset uses an explicit Rust test stack because
+  Python-level mapping locals dispatch is stack-heavy under the default harness.
+  It also covers
   `BuiltinTest::test_exec_redirected` behavior where `sys.stdout = None` still
   leaves `exec('a')` raising a catchable `NameError`.
 - `RUNTIME_BUILTINS` also includes

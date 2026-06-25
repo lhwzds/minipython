@@ -1051,7 +1051,9 @@ Expanded in the `test_compile.py` TestSpecifics syntax/import pass:
   names through `__getitem__`, writes through `__setitem__`, treats mapping
   `KeyError` as a missing local name, uses `keys()` for zero-argument `dir()`,
   exposes the original mapping through `locals()`, and still rejects ordinary
-  mapping objects as `globals`.
+  mapping objects as `globals`. The subset runs with an explicit Rust test
+  stack because Python-level mapping locals dispatch is stack-heavy under the
+  default test harness.
 - Expanded `cpython_memoryview_minimal_runtime_subset`, migrating the first
   constructor/equality/hash/attribute/method slice from CPython
   `Lib/test/test_memoryview.py`: positional and `object=` construction across
