@@ -81799,13 +81799,20 @@ fn modulo_values_impl(vm: Option<&mut Vm>, left: Value, right: Value) -> Result<
             return percent_format_bytes(vm, &format, right, BytesResultKind::ByteArray);
         }
         left => {
+            let original_left = left.clone();
+            let original_right = right.clone();
             let (left, right) = numeric_bool_operands(left, right);
-            return modulo_numeric_values(left, right);
+            return modulo_numeric_values(left, right, &original_left, &original_right);
         }
     }
 }
 
-fn modulo_numeric_values(left: Value, right: Value) -> Result<Value, String> {
+fn modulo_numeric_values(
+    left: Value,
+    right: Value,
+    original_left: &Value,
+    original_right: &Value,
+) -> Result<Value, String> {
     match (left, right) {
         (Value::Number(_), Value::Number(0)) => Err("division by zero".to_string()),
         (Value::BigInt(_), Value::BigInt(ref right)) if right.is_zero() => {
@@ -81827,17 +81834,15 @@ fn modulo_numeric_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::BigInt(left), Value::BigInt(right)) => {
             Ok(normalize_big_int(left.mod_floor(&right)))
         }
-        (left, right) => {
-            let (left_type, right_type) =
-                (type_name(&left).to_string(), type_name(&right).to_string());
-            match (number_as_f64(left), number_as_f64(right)) {
-                (Some(_), Some(0.0)) => Err("float modulo".to_string()),
-                (Some(left), Some(right)) => Ok(float_value(float_modulo_value(left, right))),
-                _ => Err(format!(
-                    "TypeError: unsupported operand type(s) for %: '{left_type}' and '{right_type}'"
-                )),
-            }
-        }
+        (left, right) => match (number_as_f64(left), number_as_f64(right)) {
+            (Some(_), Some(0.0)) => Err("float modulo".to_string()),
+            (Some(left), Some(right)) => Ok(float_value(float_modulo_value(left, right))),
+            _ => Err(unsupported_binary_operand_message(
+                "%",
+                original_left,
+                original_right,
+            )),
+        },
     }
 }
 
