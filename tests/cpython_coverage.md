@@ -515,6 +515,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_subscript_mutation_diff_subset`,
   `cpython_array_one_byte_public_copy_byteswap_compare_diff_subset`,
   `cpython_array_one_byte_public_concat_repeat_diff_subset`,
+  `cpython_array_inplace_repeat_error_diff_subset`,
   `cpython_array_one_byte_public_buffer_info_diff_subset`,
   `cpython_array_one_byte_public_unicode_method_rejection_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
@@ -4951,8 +4952,12 @@ without adding general custom encoder/decoder class support.
   same-kind concatenation through `+` and `__add__()`, cross-kind and non-array
   rejection, repetition through `*`, reflected `*`, `__mul__()`, and
   `__rmul__()`, `__index__`-driven repeat counts, zero/negative repeat counts,
-  operator versus direct-dunder non-integer diagnostics, and identity-preserving
-  `+=`, `__iadd__()`, `*=`, and `__imul__()`.
+  operator/augmented versus direct-dunder non-integer diagnostics, and
+  identity-preserving `+=`, `__iadd__()`, `*=`, and `__imul__()`.
+- `RUNTIME_BUILTINS` also includes
+  `cpython_array_inplace_repeat_error_subset`, pinning CPython's public split
+  between augmented/operator in-place repeat TypeError text and direct
+  `array.__imul__()` TypeError text for non-index repeat counts.
 - `RUNTIME_BUILTINS` also includes
   `cpython_array_one_byte_public_buffer_info_subset`, covering the supported
   public `array.array('B')` / `array.array('b')` `buffer_info()` surface:

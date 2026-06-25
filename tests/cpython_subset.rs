@@ -21936,6 +21936,49 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
     );
 }
 
+// CPython distinguishes augmented/operator array repeat diagnostics from direct
+// `array.__imul__()` diagnostics for non-index counts.
+#[test]
+fn cpython_array_inplace_repeat_error_subset() {
+    assert_output_with_stack(
+        r#"import array, operator
+def show(label, expr):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+def aug_repeat(value):
+    a = array.array('B', [1])
+    a *= value
+class A(array.array):
+    def __imul__(self, other):
+        return 'custom'
+def sub_aug():
+    a = A('B', [1])
+    a *= None
+    return a
+show('aug-str', lambda: aug_repeat('x'))
+show('operator-str', lambda: operator.imul(array.array('B', [1]), 'x'))
+show('dunder-str', lambda: array.array('B', [1]).__imul__('x'))
+show('aug-none', lambda: aug_repeat(None))
+show('operator-none', lambda: operator.imul(array.array('B', [1]), None))
+show('dunder-none', lambda: array.array('B', [1]).__imul__(None))
+print('sub-aug', sub_aug())
+print('sub-operator', operator.imul(A('B', [1]), None))"#,
+        &[
+            "aug-str TypeError can't multiply sequence by non-int of type 'str'",
+            "operator-str TypeError can't multiply sequence by non-int of type 'str'",
+            "dunder-str TypeError 'str' object cannot be interpreted as an integer",
+            "aug-none TypeError can't multiply sequence by non-int of type 'NoneType'",
+            "operator-none TypeError can't multiply sequence by non-int of type 'NoneType'",
+            "dunder-none TypeError 'NoneType' object cannot be interpreted as an integer",
+            "sub-aug custom",
+            "sub-operator custom",
+        ],
+        8 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_array.py public buffer_info behavior for
 // the supported one-byte B/b typecodes. The raw address is implementation
 // specific, so this pins the portable tuple shape, integer address type, and

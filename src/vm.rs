@@ -13997,6 +13997,12 @@ impl Vm {
     }
 
     fn in_place_multiply_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if is_exact_array_array_instance(&left) {
+            let count = self.array_array_repeat_count_operator(right)?;
+            self.array_array_repeat_in_place(&left, count)?;
+            return Ok(left);
+        }
+
         if let Some(method) = instance_special_method(&left, "__imul__") {
             return self.call_value(method, vec![right]);
         }
@@ -51282,6 +51288,25 @@ fn array_array_storage(value: &Value) -> Option<ByteArrayRef> {
         Some(Value::ByteArray(bytes)) => Some(bytes),
         _ => None,
     }
+}
+
+fn is_exact_array_array_instance(value: &Value) -> bool {
+    let Value::Instance {
+        class_name,
+        class_attrs,
+        class_bases,
+        ..
+    } = value
+    else {
+        return false;
+    };
+    class_name == "array"
+        && class_attrs.borrow().is_empty()
+        && matches!(
+            class_bases.as_slice(),
+            [Value::Builtin(name)] if name == "array.array"
+        )
+        && array_array_storage(value).is_some()
 }
 
 fn array_array_has_storage_field(value: &Value) -> bool {

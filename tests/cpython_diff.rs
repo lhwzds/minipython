@@ -27457,6 +27457,42 @@ for tc, vals in [('B', [1, 2]), ('b', [-1, 2])]:
 }
 
 #[test]
+fn cpython_array_inplace_repeat_error_diff_subset() {
+    // CPython oracle text: can't multiply sequence by non-int of type 'str';
+    // direct array.__imul__('x') keeps 'str' object cannot be interpreted as an integer
+    // CPython oracle text: can't multiply sequence by non-int of type 'NoneType';
+    // direct array.__imul__(None) keeps 'NoneType' object cannot be interpreted as an integer
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_array.py public array in-place repeat error text",
+        name: "array-inplace-repeat-error",
+        source: r#"import array, operator
+def show(label, expr):
+    try:
+        expr()
+    except TypeError as error:
+        print(label, error.__class__.__name__, str(error))
+def aug_repeat(value):
+    a = array.array('B', [1])
+    a *= value
+class A(array.array):
+    def __imul__(self, other):
+        return 'custom'
+def sub_aug():
+    a = A('B', [1])
+    a *= None
+    return a
+show('aug-str', lambda: aug_repeat('x'))
+show('operator-str', lambda: operator.imul(array.array('B', [1]), 'x'))
+show('dunder-str', lambda: array.array('B', [1]).__imul__('x'))
+show('aug-none', lambda: aug_repeat(None))
+show('operator-none', lambda: operator.imul(array.array('B', [1]), None))
+show('dunder-none', lambda: array.array('B', [1]).__imul__(None))
+print('sub-aug', sub_aug())
+print('sub-operator', operator.imul(A('B', [1]), None))"#,
+    });
+}
+
+#[test]
 fn cpython_array_one_byte_public_buffer_info_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_array.py public one-byte array buffer_info method",

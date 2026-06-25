@@ -12754,6 +12754,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_array_one_byte_public_subscript_mutation_subset",
             "cpython_array_one_byte_public_copy_byteswap_compare_subset",
             "cpython_array_one_byte_public_concat_repeat_subset",
+            "cpython_array_inplace_repeat_error_subset",
             "cpython_array_one_byte_public_buffer_info_subset",
             "cpython_array_one_byte_public_unicode_method_rejection_subset",
             "cpython_array_one_byte_public_file_methods_subset",
@@ -12780,6 +12781,7 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_array_one_byte_public_subscript_mutation_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
         "cpython_array_one_byte_public_concat_repeat_diff_subset",
+        "cpython_array_inplace_repeat_error_diff_subset",
         "cpython_array_one_byte_public_buffer_info_diff_subset",
         "cpython_array_one_byte_public_unicode_method_rejection_diff_subset",
         "cpython_array_one_byte_public_file_methods_diff_subset",
@@ -12787,6 +12789,39 @@ fn array_sandbox_manifest_lists_public_subset_evidence() {
         assert!(
             row.diff_evidence.contains(evidence),
             "array sandbox manifest must cite CPython diff evidence `{evidence}`"
+        );
+    }
+
+    let repeat_error_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_array_inplace_repeat_error_diff_subset",
+    );
+    let repeat_error_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_array_inplace_repeat_error_subset");
+    for required in [
+        "import array, operator",
+        "a *= value",
+        "operator.imul(array.array('B', [1]), 'x')",
+        "array.array('B', [1]).__imul__('x')",
+        "operator.imul(array.array('B', [1]), None)",
+        "array.array('B', [1]).__imul__(None)",
+        "class A(array.array)",
+        "a *= None",
+        "operator.imul(A('B', [1]), None)",
+        "can't multiply sequence by non-int of type 'str'",
+        "can't multiply sequence by non-int of type 'NoneType'",
+        "'str' object cannot be interpreted as an integer",
+        "'NoneType' object cannot be interpreted as an integer",
+    ] {
+        assert!(
+            repeat_error_diff.contains(required) && repeat_error_subset.contains(required),
+            "array in-place repeat error evidence must cover `{required}`"
+        );
+    }
+    for required in ["sub-aug custom", "sub-operator custom"] {
+        assert!(
+            repeat_error_subset.contains(required),
+            "array in-place repeat runtime evidence must assert subclass `__imul__` output `{required}`"
         );
     }
 
