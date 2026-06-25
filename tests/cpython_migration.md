@@ -1755,9 +1755,9 @@ Completed in the differential parity harness pass:
 - Added `cpython_dict_missing_keyerror_payload_subset`, backed by
   `cpython_dict_missing_keyerror_payload_diff_subset`, for CPython public
   missing-key `KeyError.args[0]` behavior across dict and globals mapping
-  subscript / `dict.__getitem__()` / `pop()` paths. MiniPython now preserves
-  the original missing key object while retaining repr-style `KeyError` display
-  text.
+  subscript / `dict.__getitem__()` / direct `__delitem__()` / subscript
+  deletion / `pop()` paths. MiniPython now preserves the original missing key
+  object while retaining repr-style `KeyError` display text.
 - Extended `test_dict.py` dict-view coverage so `keys`, `values`, and `items`
   remain live after mutation, support length, iteration, and membership, and
   support set-like operations and subset/superset comparisons for key/item views
@@ -6319,7 +6319,8 @@ Completed in the type builtin pass:
   `__qualname__` metadata, direct display/empty-format methods including
   recursive display with dict-style `OrderedDict({...})` repr and
   `cpython_ordered_dict_modern_repr_diff_subset` evidence, generic alias
-  repr/module metadata, mapping mutation/iteration helpers, `copy()`
+  repr/module metadata, mapping mutation/iteration helpers also covered by
+  `cpython_ordered_dict_mapping_mutation_subset`, `copy()`
   preserving the `OrderedDict` result type, direct equality methods, type/instance `fromkeys()`,
   `popitem(last=...)`, direct `__reversed__()`, mapping union operators
   including in-place identity preservation, `move_to_end()`, and preservation
@@ -10407,9 +10408,12 @@ Completed in the CPython collections manifest expansion pass:
 - Exposed a first-pass `collections.OrderedDict` constructor alias over
   MiniPython's insertion-ordered dict storage, with minimal public metadata for
   the exposed type plus direct display/empty-format methods including
-  recursive display and generic alias repr/module metadata plus mapping
-  mutation/iteration helpers, `copy()` preserving `OrderedDict`, type/instance
-  `fromkeys()`, `popitem(last=...)`, direct equality methods, and mapping union
+  recursive display and generic alias repr/module metadata plus
+  `cpython_ordered_dict_mapping_mutation_subset` mapping mutation/iteration
+  helpers, including missing-key deletion through direct `__delitem__()` and
+  subscript deletion preserving `KeyError.args[0]`,
+  `copy()` preserving `OrderedDict`, type/instance `fromkeys()`,
+  `popitem(last=...)`, direct equality methods, and mapping union
   operators that preserve `OrderedDict` result type/order and in-place
   identity. Direct
   `__reversed__()` now returns reverse key iteration for the supported storage.

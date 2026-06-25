@@ -4078,8 +4078,9 @@ without adding general custom encoder/decoder class support.
   iterable-plus-keyword update, constructor/update error classes,
   `setdefault()`, `update()`, `pop()`, `get()`, key membership, direct
   `__contains__()`, key iteration, direct `__iter__()`, `__len__()`,
-  `__getitem__()`, `__setitem__()`, item deletion, and `clear()` while
-  preserving ordered storage.
+  `__getitem__()`, `__setitem__()`, item deletion, missing-key deletion via
+  direct `__delitem__()` and subscript deletion preserving `KeyError.args[0]`,
+  and `clear()` while preserving ordered storage.
 - `CONTAINER_RUNTIME` also includes
   `cpython_ordered_dict_move_pop_keyword_subset`, backed by
   `cpython_program_output_parity_smoke_diff_subset` through the
@@ -5087,7 +5088,8 @@ the same set from Python-level `__eq__` tied to the oracle.
 `cpython_dict_missing_keyerror_payload_subset`, backed by
 `cpython_dict_missing_keyerror_payload_diff_subset`, keeps dict and globals mapping
 missing-key paths aligned with CPython by preserving the original
-missing key object in `KeyError.args[0]` while retaining the public repr-style
+missing key object in `KeyError.args[0]` across lookup, direct `__delitem__()`,
+subscript deletion, and `pop()` paths while retaining the public repr-style
 `KeyError` display text.
 
 `cpython_set_operations_mutating_subset` is backed by the

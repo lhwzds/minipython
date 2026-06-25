@@ -254,7 +254,10 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
 
     for required in [
         "error.args[0] == key",
+        "def delete_str():",
         "dict.__getitem__({}, 'missing')",
+        "dict.__delitem__({}, 'missing')",
+        "del d['missing']",
         "{}.pop('missing')",
         "{}.pop(42)",
         "D()['missing']",
@@ -269,6 +272,8 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
     for required in [
         "\"subscript-str True str 'missing'\"",
         "\"subscript-int True int 42\"",
+        "\"delitem-str True str 'missing'\"",
+        "\"del-subscript-str True str 'missing'\"",
         "\"pop-int True int 42\"",
         "\"scope-pop True str 'scope_missing'\"",
     ] {
@@ -279,8 +284,10 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
     }
     for required in [
         "fn load_subscript_or_raise_key_error(",
+        "fn remove_mapping_entry(",
         "key_error_exception(key)",
         "raise_key_error_value(vm, key.clone())",
+        "raise_key_error_value(self, index)?",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -295,6 +302,7 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
             "original missing key",
             "`KeyError.args[0]`",
             "dict and globals mapping",
+            "deletion",
         ] {
             assert!(
                 document.contains(required),
@@ -16279,6 +16287,80 @@ fn ordered_dict_move_to_end_missing_key_has_focused_diff_evidence() {
             assert!(
                 document.contains(required),
                 "OrderedDict move/pop error docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
+fn ordered_dict_delete_missing_key_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_ordered_dict_mapping_mutation_subset",
+    );
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_program_output_parity_smoke_diff_subset",
+    );
+
+    for required in [
+        "def delete_missing():",
+        "OrderedDict.__delitem__(od, 'missing')",
+        "del od['missing']",
+        "error.args[0] == 'missing'",
+        "delitem-missing True str 'missing'",
+        "del-syntax-missing True str 'missing'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "OrderedDict deletion subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "OrderedDict.__delitem__(mutating, 'missing')",
+        "del mutating['missing']",
+        "error.args[0] == 'missing'",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "OrderedDict deletion CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    let dict_delitem_body = VM_SOURCE
+        .split("\"dict.__delitem__\" =>")
+        .nth(1)
+        .and_then(|tail| tail.split("\"dict.__getitem__\" =>").next())
+        .expect("dict.__delitem__ implementation must be extractable");
+    assert!(
+        dict_delitem_body.contains("remove_mapping_entry(&entries, key)?")
+            && dict_delitem_body.contains("raise_key_error_value(vm, key.clone())"),
+        "dict/OrderedDict direct __delitem__ must raise KeyError with the original key payload"
+    );
+
+    let delete_subscript_value_body = VM_SOURCE
+        .split("fn delete_subscript_value(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn sequence_subscript_index(").next())
+        .expect("VM delete-subscript implementation must be extractable");
+    assert!(
+        delete_subscript_value_body.contains("Value::OrderedDict(entries)")
+            && delete_subscript_value_body.contains("raise_key_error_value(self, index)?"),
+        "OrderedDict subscript deletion must raise KeyError with the original key payload"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            "cpython_ordered_dict_mapping_mutation_subset",
+            "OrderedDict",
+            "missing-key deletion",
+            "`__delitem__()`",
+            "subscript deletion",
+            "`KeyError.args[0]`",
+        ] {
+            assert!(
+                document.contains(required),
+                "OrderedDict deletion docs must contain `{required}`"
             );
         }
     }

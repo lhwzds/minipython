@@ -720,9 +720,14 @@ fn cpython_dict_missing_keyerror_payload_diff_subset() {
 class D(dict):
     pass
 g = globals()
+def delete_str():
+    d = {}
+    del d['missing']
 show('subscript-str', 'missing', lambda: {}['missing'])
 show('subscript-int', 42, lambda: {}[42])
 show('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))
+show('delitem-str', 'missing', lambda: dict.__delitem__({}, 'missing'))
+show('del-subscript-str', 'missing', delete_str)
 show('pop-str', 'missing', lambda: {}.pop('missing'))
 show('pop-int', 42, lambda: {}.pop(42))
 show('subclass-subscript', 'missing', lambda: D()['missing'])
@@ -20674,6 +20679,16 @@ OrderedDict.__setitem__(mutating, 'f', 6)
 print(list(mutating.items()))
 del mutating['b']
 print(list(mutating.items()), 'b' in mutating)
+def delete_missing():
+    del mutating['missing']
+for label, action in [
+    ('delitem-missing', lambda: OrderedDict.__delitem__(mutating, 'missing')),
+    ('del-syntax-missing', delete_missing),
+]:
+    try:
+        action()
+    except KeyError as error:
+        print(label, error.args[0] == 'missing', type(error.args[0]).__name__, str(error))
 print(mutating.clear(), list(mutating.items()), repr(mutating))
 copy = od.copy()
 tcopy = OrderedDict.copy(od)

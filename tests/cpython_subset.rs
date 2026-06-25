@@ -37666,7 +37666,7 @@ fn cpython_type_namespace_order_subset() {
 #[test]
 fn cpython_ordered_dict_mapping_mutation_subset() {
     assert_output(
-        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(od.setdefault('a', 9), od.setdefault('c', 3), list(od.items()))\nprint(od.update({'d': 4}), list(od.items()))\nprint(od.pop('a'), od.pop('missing', 'fallback'), list(od.items()))\nprint(od.get('b'), 'b' in od, OrderedDict.__contains__(od, 'b'))\nprint(len(od), bool(od), list(od), list(OrderedDict.__iter__(od)))\nprint(OrderedDict.__len__(od), OrderedDict.__getitem__(od, 'b'))\nod['e'] = 5\nOrderedDict.__setitem__(od, 'f', 6)\nprint(list(od.items()))\ndel od['b']\nprint(type(od).__name__, list(od.items()), 'b' in od)\nprint(od.clear(), list(od.items()), repr(od))",
+        "from collections import OrderedDict\nod = OrderedDict([('a', 1), ('b', 2)])\nprint(od.setdefault('a', 9), od.setdefault('c', 3), list(od.items()))\nprint(od.update({'d': 4}), list(od.items()))\nprint(od.pop('a'), od.pop('missing', 'fallback'), list(od.items()))\nprint(od.get('b'), 'b' in od, OrderedDict.__contains__(od, 'b'))\nprint(len(od), bool(od), list(od), list(OrderedDict.__iter__(od)))\nprint(OrderedDict.__len__(od), OrderedDict.__getitem__(od, 'b'))\nod['e'] = 5\nOrderedDict.__setitem__(od, 'f', 6)\nprint(list(od.items()))\ndel od['b']\nprint(type(od).__name__, list(od.items()), 'b' in od)\ndef delete_missing():\n    del od['missing']\nfor label, action in [\n    ('delitem-missing', lambda: OrderedDict.__delitem__(od, 'missing')),\n    ('del-syntax-missing', delete_missing),\n]:\n    try:\n        action()\n    except KeyError as error:\n        print(label, error.args[0] == 'missing', type(error.args[0]).__name__, str(error))\nprint(od.clear(), list(od.items()), repr(od))",
         &[
             "1 3 [('a', 1), ('b', 2), ('c', 3)]",
             "None [('a', 1), ('b', 2), ('c', 3), ('d', 4)]",
@@ -37676,6 +37676,8 @@ fn cpython_ordered_dict_mapping_mutation_subset() {
             "3 2",
             "[('b', 2), ('c', 3), ('d', 4), ('e', 5), ('f', 6)]",
             "OrderedDict [('c', 3), ('d', 4), ('e', 5), ('f', 6)] False",
+            "delitem-missing True str 'missing'",
+            "del-syntax-missing True str 'missing'",
             "None [] OrderedDict()",
         ],
     );
@@ -41854,11 +41856,13 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
 #[test]
 fn cpython_dict_missing_keyerror_payload_subset() {
     assert_output(
-        "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
+        "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\ndef delete_str():\n    d = {}\n    del d['missing']\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('delitem-str', 'missing', lambda: dict.__delitem__({}, 'missing'))\nshow('del-subscript-str', 'missing', delete_str)\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
         &[
             "subscript-str True str 'missing'",
             "subscript-int True int 42",
             "getitem-str True str 'missing'",
+            "delitem-str True str 'missing'",
+            "del-subscript-str True str 'missing'",
             "pop-str True str 'missing'",
             "pop-int True int 42",
             "subclass-subscript True str 'missing'",

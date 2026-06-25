@@ -17463,7 +17463,25 @@ impl Vm {
             index
         };
 
-        delete_subscript(object, index)
+        match object {
+            Value::Dict(entries) => {
+                ensure_hashable_key(&index)?;
+                if remove_mapping_entry(&entries, &index)? {
+                    return Ok(Value::Dict(entries));
+                }
+                raise_key_error_value(self, index)?;
+                Ok(Value::Dict(entries))
+            }
+            Value::OrderedDict(entries) => {
+                ensure_hashable_key(&index)?;
+                if remove_mapping_entry(&entries, &index)? {
+                    return Ok(Value::OrderedDict(entries));
+                }
+                raise_key_error_value(self, index)?;
+                Ok(Value::OrderedDict(entries))
+            }
+            object => delete_subscript(object, index),
+        }
     }
 
     fn sequence_subscript_index(&mut self, index: Value) -> Result<Value, String> {
@@ -70863,8 +70881,12 @@ fn call_dict_method(
             let Some(entries) = dict_receiver_entries(dict) else {
                 return Err("__delitem__() expected a dict receiver".to_string());
             };
-            delete_mapping_entry(&entries, key)?;
-            Ok(Value::None)
+            ensure_hashable_key(key)?;
+            if remove_mapping_entry(&entries, key)? {
+                Ok(Value::None)
+            } else {
+                raise_key_error_value(vm, key.clone())
+            }
         }
         "dict.__getitem__" => {
             reject_method_keywords(name, &keywords)?;
@@ -72906,6 +72928,17 @@ fn delete_mapping_item(map: &Value, key: Value) -> Result<(), String> {
 }
 
 fn delete_mapping_entry(entries: &DictRef, key: &Value) -> Result<(), String> {
+    if remove_mapping_entry(entries, key)? {
+        Ok(())
+    } else {
+        Err(format!(
+            "KeyError: Key not found in the first mapping: {}",
+            format_key_error(key)
+        ))
+    }
+}
+
+fn remove_mapping_entry(entries: &DictRef, key: &Value) -> Result<bool, String> {
     let mut entries = entries.borrow_mut();
     if let Some(position) = entries
         .iter()
@@ -72913,12 +72946,9 @@ fn delete_mapping_entry(entries: &DictRef, key: &Value) -> Result<(), String> {
     {
         entries.remove(position);
         mark_dict_changed(&mut entries);
-        Ok(())
+        Ok(true)
     } else {
-        Err(format!(
-            "KeyError: Key not found in the first mapping: {}",
-            format_key_error(key)
-        ))
+        Ok(false)
     }
 }
 
