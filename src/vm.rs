@@ -71095,7 +71095,8 @@ fn call_dict_method(
             };
             let mut entries = entries.borrow_mut();
             let Some((key, value)) = entries.pop() else {
-                return Err("KeyError: popitem(): dictionary is empty".to_string());
+                drop(entries);
+                return raise_key_error_string(vm, "popitem(): dictionary is empty".to_string());
             };
             mark_dict_changed(&mut entries);
             Ok(tuple_value(vec![key, value]))

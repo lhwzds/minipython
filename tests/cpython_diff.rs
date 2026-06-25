@@ -20145,7 +20145,7 @@ print(d.x)"#,
         DiffCase {
             origin: "Lib/test/test_dict.py::test_setdefault / ::test_popitem / PEP 584 union",
             name: "dict-setdefault-popitem-and-union",
-            source: "d = {1: 1}\nprint(d.setdefault(2, 20), d.setdefault(2, 99), d[2], len(d))\nmerged = d | {2: 22, 3: 3}\nprint(merged[1], merged[2], merged[3], 4 in merged)\nalias = d\nd |= {4: 4, 2: 222}\nprint(d is alias, d[2], d[4], len(d))\nkey, value = d.popitem()\nprint(key, value, len(d))",
+            source: "d = {1: 1}\nprint(d.setdefault(2, 20), d.setdefault(2, 99), d[2], len(d))\nmerged = d | {2: 22, 3: 3}\nprint(merged[1], merged[2], merged[3], 4 in merged)\nalias = d\nd |= {4: 4, 2: 222}\nprint(d is alias, d[2], d[4], len(d))\nkey, value = d.popitem()\nprint(key, value, len(d))\nclass D(dict):\n    pass\ndef show(label, action):\n    try:\n        action()\n    except KeyError as error:\n        print(label, error.args[0] == 'popitem(): dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))\nshow('popitem-empty', lambda: {}.popitem())\nshow('direct-popitem-empty', lambda: dict.popitem({}))\nshow('subclass-popitem-empty', lambda: D().popitem())\nshow('subclass-direct-popitem-empty', lambda: dict.popitem(D()))",
         },
         DiffCase {
             origin: "Lib/test/test_dict.py dict view objects",

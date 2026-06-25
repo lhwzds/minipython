@@ -41851,6 +41851,23 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
     );
 }
 
+// Adapted from CPython public dict popitem empty-error behavior. The message
+// is stored as the original KeyError argument while str(error) renders repr().
+#[test]
+fn cpython_dict_popitem_empty_keyerror_subset() {
+    assert_output(
+        "class D(dict):\n    pass\n\ndef show(label, action):\n    try:\n        action()\n    except KeyError as error:\n        print(label, error.args[0] == 'popitem(): dictionary is empty', type(error.args[0]).__name__, str(error) == repr(error.args[0]))\nshow('popitem-empty', lambda: {}.popitem())\nshow('direct-popitem-empty', lambda: dict.popitem({}))\nshow('subclass-popitem-empty', lambda: D().popitem())\nshow('subclass-direct-popitem-empty', lambda: dict.popitem(D()))\nprint('popitem-nonempty', {'a': 1}.popitem())\nprint('subclass-popitem-nonempty', D({'a': 1}).popitem())",
+        &[
+            "popitem-empty True str True",
+            "direct-popitem-empty True str True",
+            "subclass-popitem-empty True str True",
+            "subclass-direct-popitem-empty True str True",
+            "popitem-nonempty ('a', 1)",
+            "subclass-popitem-nonempty ('a', 1)",
+        ],
+    );
+}
+
 // Adapted from CPython public dict missing-key behavior. KeyError display uses
 // repr(key), but KeyError.args must preserve the original missing key object.
 #[test]

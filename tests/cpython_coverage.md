@@ -5094,6 +5094,12 @@ original missing key object in `KeyError.args[0]` across lookup, direct
 `__delitem__()`, subscript deletion, and `pop()` paths while retaining the
 public repr-style `KeyError` display text.
 
+`cpython_dict_popitem_empty_keyerror_subset`, backed by the
+`dict-setdefault-popitem-and-union` CPython diff case, keeps empty `popitem()`
+on dict and dict subclasses aligned with CPython by preserving
+`KeyError.args[0] == 'popitem(): dictionary is empty'` and the
+`KeyError(message)` string display rule.
+
 `cpython_set_operations_mutating_subset` is backed by the
 `set-operations-mutating` direct CPython diff case, keeping CPython's stable
 set equality, ordering, algebra, relation methods, and update methods whose

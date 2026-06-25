@@ -239,6 +239,71 @@ fn list_search_mutating_eq_docs_cover_container_runtime() {
 }
 
 #[test]
+fn dict_empty_popitem_keyerror_display_has_focused_diff_evidence() {
+    let subset_name = "cpython_dict_popitem_empty_keyerror_subset";
+
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict empty popitem KeyError display subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("dict-setdefault-popitem-and-union"),
+        "dict empty popitem KeyError display CPython diff case must exist"
+    );
+
+    for required in [
+        "{}.popitem()",
+        "dict.popitem({})",
+        "D().popitem()",
+        "dict.popitem(D())",
+        "error.args[0] == 'popitem(): dictionary is empty'",
+        "str(error) == repr(error.args[0])",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "dict empty popitem diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"popitem-empty True str True\"",
+        "\"direct-popitem-empty True str True\"",
+        "\"subclass-popitem-empty True str True\"",
+        "\"subclass-direct-popitem-empty True str True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "dict empty popitem subset output must pin `{required}`"
+        );
+    }
+    let dict_popitem_body = VM_SOURCE
+        .split("\"dict.popitem\" =>")
+        .nth(1)
+        .and_then(|tail| tail.split("\"dict.setdefault\" =>").next())
+        .expect("dict.popitem implementation must be extractable");
+    assert!(
+        dict_popitem_body.contains(
+            "return raise_key_error_string(vm, \"popitem(): dictionary is empty\".to_string());"
+        ),
+        "dict.popitem empty maps must raise KeyError with CPython's message payload"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            subset_name,
+            "dict-setdefault-popitem-and-union",
+            "empty `popitem()`",
+            "`KeyError.args[0]`",
+            "`KeyError(message)` string display",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict empty popitem docs must contain `{required}`"
+            );
+        }
+    }
+}
+
+#[test]
 fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
     let diff_name = "cpython_dict_missing_keyerror_payload_diff_subset";
     let subset_name = "cpython_dict_missing_keyerror_payload_subset";

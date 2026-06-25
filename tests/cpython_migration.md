@@ -1752,6 +1752,10 @@ Completed in the differential parity harness pass:
   union, intersection, difference, symmetric difference, subset/superset,
   disjointness, and corresponding in-place set operators. These now have both
   direct language tests and CPython/MiniPython differential parity cases.
+- Added `cpython_dict_popitem_empty_keyerror_subset`, backed by the
+  `dict-setdefault-popitem-and-union` CPython diff case, for empty `popitem()`
+  on dict and dict subclasses preserving `KeyError.args[0]` and
+  `KeyError(message)` string display.
 - Added `cpython_dict_missing_keyerror_payload_subset`, backed by
   `cpython_dict_missing_keyerror_payload_diff_subset`, for CPython public
   missing-key `KeyError.args[0]` behavior across dict, dict subclasses, and
