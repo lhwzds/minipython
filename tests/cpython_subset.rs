@@ -22356,6 +22356,39 @@ except TypeError as error:
     );
 }
 
+// Adapted from CPython Lib/copy.py public copy.replace() custom staticmethod
+// hook arity diagnostics.
+#[test]
+fn cpython_copy_replace_staticmethod_hook_arity_error_subset() {
+    assert_output(
+        r#"import copy
+def external(**changes):
+    return 'bad'
+class StaticFunction:
+    def hook(**changes):
+        return 'bad'
+    __replace__ = staticmethod(hook)
+class StaticLambda:
+    __replace__ = staticmethod(lambda **changes: 'bad')
+class ExternalStatic:
+    __replace__ = staticmethod(external)
+for label, expr in [
+    ('function', lambda: copy.replace(StaticFunction(), x=1)),
+    ('lambda', lambda: copy.replace(StaticLambda(), x=1)),
+    ('external', lambda: copy.replace(ExternalStatic(), x=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+        &[
+            "function TypeError StaticFunction.hook() takes 0 positional arguments but 1 was given",
+            "lambda TypeError StaticLambda.<lambda>() takes 0 positional arguments but 1 was given",
+            "external TypeError external() takes 0 positional arguments but 1 was given",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]

@@ -24839,18 +24839,30 @@ impl Vm {
             bases: class_bases.clone(),
             attrs: class_attrs.clone(),
         };
-        let method = match method {
-            Value::StaticMethod { function } => *function,
-            Value::ClassMethod { function } => Value::BoundMethod {
-                function,
-                receiver: Box::new(owner),
-                identity: Rc::new(()),
-            },
-            method => method,
+        let (method, hook_error_name) = match method {
+            Value::StaticMethod { function } => {
+                let hook_error_name = copy_replace_hook_error_name(&function, class_name);
+                (*function, hook_error_name)
+            }
+            Value::ClassMethod { function } => {
+                let hook_error_name = copy_replace_hook_error_name(&function, class_name);
+                (
+                    Value::BoundMethod {
+                        function,
+                        receiver: Box::new(owner),
+                        identity: Rc::new(()),
+                    },
+                    hook_error_name,
+                )
+            }
+            method => {
+                let hook_error_name = copy_replace_hook_error_name(&method, class_name);
+                (method, hook_error_name)
+            }
         };
         self.call_value_with_keywords(method, vec![value.clone()], keywords)
             .map(Some)
-            .map_err(|message| qualify_copy_replace_hook_error(&message, class_name))
+            .map_err(|message| qualify_copy_replace_hook_error(&message, &hook_error_name))
     }
 
     fn call_pickle_dumps(
@@ -60438,11 +60450,24 @@ fn copy_replace_unsupported_type_error(value: &Value) -> String {
     )
 }
 
-fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String {
+fn copy_replace_hook_error_name(function: &Value, class_name: &str) -> String {
+    let Value::Function {
+        name,
+        attrs,
+        owner_class,
+        ..
+    } = function
+    else {
+        return format!("{class_name}.__replace__");
+    };
+    function_qualname_string(name, attrs, owner_class.as_deref())
+}
+
+fn qualify_copy_replace_hook_error(message: &str, hook_error_name: &str) -> String {
     if let Some(argument) =
         message.strip_prefix("__replace__() got an unexpected keyword argument ")
     {
-        return format!("{class_name}.__replace__() got an unexpected keyword argument {argument}");
+        return format!("{hook_error_name}() got an unexpected keyword argument {argument}");
     }
     if let Some((expected, got)) = copy_replace_hook_expected_got_counts(message) {
         let argument = if expected == 1 {
@@ -60452,14 +60477,14 @@ fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String {
         };
         let verb = if got == 1 { "was" } else { "were" };
         return format!(
-            "TypeError: {class_name}.__replace__() takes {expected} positional {argument} but {got} {verb} given"
+            "TypeError: {hook_error_name}() takes {expected} positional {argument} but {got} {verb} given"
         );
     }
     message.to_string()
 }
 
 fn copy_replace_hook_expected_got_counts(message: &str) -> Option<(usize, usize)> {
-    let tail = message.strip_prefix("__replace__() expected at most ")?;
+    let (_, tail) = message.split_once("() expected at most ")?;
     let (expected, tail) = tail.split_once(" positional arguments, got ")?;
     let expected = expected.parse().ok()?;
     let got = tail.parse().ok()?;

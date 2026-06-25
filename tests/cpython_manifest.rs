@@ -15577,6 +15577,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_replace_unsupported_type_error_subset",
             "cpython_copy_replace_hook_unexpected_keyword_error_subset",
             "cpython_copy_replace_classmethod_hook_arity_error_subset",
+            "cpython_copy_replace_staticmethod_hook_arity_error_subset",
         ],
         &["pickle protocol"],
     );
@@ -15591,6 +15592,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_replace_unsupported_type_error_diff_subset",
         "cpython_copy_replace_hook_unexpected_keyword_error_diff_subset",
         "cpython_copy_replace_classmethod_hook_arity_error_diff_subset",
+        "cpython_copy_replace_staticmethod_hook_arity_error_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
     ] {
         assert!(
@@ -15652,6 +15654,14 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy.replace classmethod hook arity CPython diff evidence must exist"
     );
     assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_replace_staticmethod_hook_arity_error_subset("),
+        "copy.replace staticmethod hook arity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_replace_staticmethod_hook_arity_error_diff_subset("),
+        "copy.replace staticmethod hook arity CPython diff evidence must exist"
+    );
+    assert!(
         CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_subset")
@@ -15665,7 +15675,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
             && CPYTHON_COVERAGE
                 .contains("cpython_copy_replace_classmethod_hook_arity_error_subset")
             && CPYTHON_COVERAGE
-                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_staticmethod_hook_arity_error_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_staticmethod_hook_arity_error_diff_subset"),
         "coverage document must link copy runtime and diff evidence"
     );
     assert!(
@@ -15683,7 +15697,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
             && CPYTHON_MIGRATION
                 .contains("cpython_copy_replace_classmethod_hook_arity_error_subset")
             && CPYTHON_MIGRATION
-                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_staticmethod_hook_arity_error_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_staticmethod_hook_arity_error_diff_subset"),
         "migration document must link copy runtime and diff evidence"
     );
 
@@ -15719,6 +15737,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
         row.diff_evidence
             .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
         "copy sandbox manifest must cite copy.replace classmethod hook arity CPython diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_replace_staticmethod_hook_arity_error_diff_subset"),
+        "copy sandbox manifest must cite copy.replace staticmethod hook arity CPython diff evidence"
     );
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
@@ -15848,18 +15871,23 @@ fn copy_public_diff_covers_pure_memory_subset() {
     for required in [
         "fn call_copy_replace_hook(",
         "find_class_attr(class_attrs, class_bases, \"__replace__\")",
-        "Value::StaticMethod { function } => *function",
-        "Value::ClassMethod { function } => Value::BoundMethod",
+        "let (method, hook_error_name) = match method {",
+        "Value::StaticMethod { function } => {",
+        "copy_replace_hook_error_name(&function, class_name)",
+        "Value::ClassMethod { function } => {",
+        "Value::BoundMethod {",
         "self.call_value_with_keywords(method, vec![value.clone()], keywords)",
-        "qualify_copy_replace_hook_error(&message, class_name)",
+        "qualify_copy_replace_hook_error(&message, &hook_error_name)",
         "fn copy_replace_unsupported_type_error(value: &Value) -> String",
         "\"TypeError: replace() does not support {} objects\"",
-        "fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String",
+        "fn copy_replace_hook_error_name(function: &Value, class_name: &str) -> String",
+        "function_qualname_string(name, attrs, owner_class.as_deref())",
+        "fn qualify_copy_replace_hook_error(message: &str, hook_error_name: &str) -> String",
         "\"__replace__() got an unexpected keyword argument \"",
         "copy_replace_hook_expected_got_counts(message)",
-        "\"TypeError: {class_name}.__replace__() takes {expected} positional {argument} but {got} {verb} given\"",
+        "\"TypeError: {hook_error_name}() takes {expected} positional {argument} but {got} {verb} given\"",
         "fn copy_replace_hook_expected_got_counts(message: &str) -> Option<(usize, usize)>",
-        "\"__replace__() expected at most \"",
+        "\"() expected at most \"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -15938,6 +15966,53 @@ fn copy_public_diff_covers_pure_memory_subset() {
         ),
         "copy.replace classmethod hook arity runtime subset must assert class-qualified TypeError text"
     );
+
+    let staticmethod_arity_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_replace_staticmethod_hook_arity_error_diff_subset",
+    );
+    let staticmethod_arity_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_replace_staticmethod_hook_arity_error_subset",
+    );
+    assert!(
+        staticmethod_arity_diff.contains(
+            "Lib/copy.py public copy.replace custom staticmethod __replace__ arity TypeError subset"
+        ),
+        "copy.replace staticmethod hook arity diff evidence must identify its CPython origin"
+    );
+    for required in [
+        "def external(**changes):",
+        "class StaticFunction:",
+        "def hook(**changes):",
+        "__replace__ = staticmethod(hook)",
+        "class StaticLambda:",
+        "staticmethod(lambda **changes",
+        "class ExternalStatic:",
+        "copy.replace(StaticFunction(), x=1)",
+        "copy.replace(StaticLambda(), x=1)",
+        "copy.replace(ExternalStatic(), x=1)",
+        "str(error)",
+    ] {
+        assert!(
+            staticmethod_arity_diff.contains(required),
+            "copy.replace staticmethod hook arity CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            staticmethod_arity_subset.contains(required),
+            "copy.replace staticmethod hook arity runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "StaticFunction.hook() takes 0 positional arguments but 1 was given",
+        "StaticLambda.<lambda>() takes 0 positional arguments but 1 was given",
+        "external() takes 0 positional arguments but 1 was given",
+    ] {
+        assert!(
+            staticmethod_arity_subset.contains(required),
+            "copy.replace staticmethod hook arity runtime subset must assert TypeError text `{required}`"
+        );
+    }
 
     let unsupported_diff = extract_rust_test_body(
         CPYTHON_DIFF,

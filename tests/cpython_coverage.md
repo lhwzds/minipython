@@ -529,6 +529,7 @@ Recent runtime migration notes:
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
   `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
+  `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
@@ -2139,9 +2140,13 @@ without adding general custom encoder/decoder class support.
   `cpython_copy_replace_unsupported_type_error_diff_subset`,
   `cpython_copy_replace_hook_unexpected_keyword_error_diff_subset`,
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`,
+  `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`,
   `cpython_copy_public_subset`, and
-  `cpython_copy_replace_custom_hook_subset`, and
   `cpython_copy_replace_unsupported_type_error_subset`,
+  `cpython_copy_replace_custom_hook_subset`,
+  `cpython_copy_replace_hook_unexpected_keyword_error_subset`,
+  `cpython_copy_replace_classmethod_hook_arity_error_subset`, and
+  `cpython_copy_replace_staticmethod_hook_arity_error_subset`,
   covering CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
@@ -2160,7 +2165,9 @@ without adding general custom encoder/decoder class support.
   for values outside the supported replacement protocol, plus representative
   arity/memo TypeError classification and class-qualified `__replace__()` unexpected-keyword `TypeError`
   text for bad custom hook signatures, and classmethod `__replace__()` arity
-  `TypeError` text for bad classmethod hook signatures. Full pickle dispatch-table contents,
+  `TypeError` text for bad classmethod hook signatures, and staticmethod
+  `__replace__()` arity `TypeError` text for class-defined and external
+  staticmethod hooks. Full pickle dispatch-table contents,
   pickle protocol byte compatibility, arbitrary extension-object copy hooks
   outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
   remain outside the sandbox `copy` subset.
@@ -4534,6 +4541,12 @@ without adding general custom encoder/decoder class support.
   classmethod hook accepts `**changes` but omits the object positional
   parameter. Direct CPython output parity is tracked by
   `cpython_copy_replace_classmethod_hook_arity_error_diff_subset`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_copy_replace_staticmethod_hook_arity_error_subset`, covering CPython
+  `copy.replace()` staticmethod `__replace__()` arity `TypeError` text for
+  class-defined function and lambda hooks plus external function hooks. Direct
+  CPython output parity is tracked by
+  `cpython_copy_replace_staticmethod_hook_arity_error_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_simple_namespace_remaining_public_subset`, covering additional
   CPython `SimpleNamespaceTests` public behavior: constructor insertion order,

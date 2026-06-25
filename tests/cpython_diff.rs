@@ -16103,6 +16103,34 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_copy_replace_staticmethod_hook_arity_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public copy.replace custom staticmethod __replace__ arity TypeError subset",
+        name: "copy-replace-staticmethod-hook-arity-error",
+        source: r#"import copy
+def external(**changes):
+    return 'bad'
+class StaticFunction:
+    def hook(**changes):
+        return 'bad'
+    __replace__ = staticmethod(hook)
+class StaticLambda:
+    __replace__ = staticmethod(lambda **changes: 'bad')
+class ExternalStatic:
+    __replace__ = staticmethod(external)
+for label, expr in [
+    ('function', lambda: copy.replace(StaticFunction(), x=1)),
+    ('lambda', lambda: copy.replace(StaticLambda(), x=1)),
+    ('external', lambda: copy.replace(ExternalStatic(), x=1)),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",
