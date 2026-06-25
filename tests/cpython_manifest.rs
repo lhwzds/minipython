@@ -722,6 +722,84 @@ fn dict_view_direct_set_operator_methods_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_direct_richcompare_methods_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_direct_richcompare_methods_subset(",
+        "method_names = [\"__eq__\", \"__ne__\", \"__lt__\", \"__le__\", \"__gt__\", \"__ge__\"]",
+        "keys.__eq__({1, 3})",
+        "keys.__ne__({1})",
+        "keys.__le__({1, 3, 5})",
+        "empty_keys.__lt__(keys)",
+        "keys.__ge__(frozenset([1, 3]))",
+        "keys.__gt__([1])",
+        "keys.__eq__([1, 3])",
+        "items.__eq__({(1, 2), (3, 4)})",
+        "items.__le__({(1, 2), (3, 4), (5, 6)})",
+        "values.__eq__(values)",
+        "values.__ne__(d.values())",
+        "values.__le__(values)",
+        "keys.__le__()",
+        "od.keys().__eq__({1, 3})",
+        "od.items().__ge__({(1, 2)})",
+        "od.values().__eq__(od.values())",
+        "items-eq-error RuntimeError boom ('boom',)",
+        "items-le-error RuntimeError boom ('boom',)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view direct rich-comparison method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_direct_richcompare_methods_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view direct rich comparison methods subset",
+        "name: \"dict-view-direct-richcompare-methods\"",
+        "keys.__eq__({1, 3})",
+        "keys.__gt__([1])",
+        "items.__le__({(1, 2), (3, 4), (5, 6)})",
+        "values.__eq__(values)",
+        "od.values().__eq__(od.values())",
+        "left.__eq__(right)",
+        "left.__le__(right)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view direct rich-comparison method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_dict_view_richcompare_method(",
+        "call_dict_view_richcompare_method(vm, name, args)",
+        "\"__eq__\" if is_identical(view, other)",
+        "\"__ne__\" if is_identical(view, other)",
+        "!vm.is_set_operator_value(other)",
+        "Value::Bool(vm.equal_values(left, right)?)",
+        "Value::Bool(!vm.equal_values(left, right)?)",
+        "Value::Bool(vm.less_equal_values(left, right)?)",
+        "Value::Bool(vm.greater_equal_values(left, right)?)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view direct rich-comparison method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_direct_richcompare_methods_subset")
+                && document.contains("cpython_dict_view_direct_richcompare_methods_diff_subset")
+                && document.contains("dict view direct rich comparison methods"),
+            "focused dict view direct rich-comparison method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

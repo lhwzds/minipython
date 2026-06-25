@@ -30455,6 +30455,67 @@ print("odict-values-method", hasattr(od.values(), "__or__"))"#,
 }
 
 #[test]
+fn cpython_dict_view_direct_richcompare_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view direct rich comparison methods subset",
+        name: "dict-view-direct-richcompare-methods",
+        source: r#"from collections import OrderedDict
+
+d = {1: 2, 3: 4}
+keys = d.keys()
+items = d.items()
+values = d.values()
+method_names = ["__eq__", "__ne__", "__lt__", "__le__", "__gt__", "__ge__"]
+print("keys-methods", [hasattr(keys, name) for name in method_names])
+print("items-methods", [hasattr(items, name) for name in method_names])
+print("values-methods", [hasattr(values, name) for name in method_names])
+
+def show(label, expr):
+    try:
+        value = expr()
+        print(label, value is NotImplemented, value)
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+empty_keys = {}.keys()
+for label, expr in [
+    ("keys-eq-set", lambda: keys.__eq__({1, 3})),
+    ("keys-ne-set", lambda: keys.__ne__({1})),
+    ("keys-le-set", lambda: keys.__le__({1, 3, 5})),
+    ("keys-lt-view", lambda: empty_keys.__lt__(keys)),
+    ("keys-ge-frozenset", lambda: keys.__ge__(frozenset([1, 3]))),
+    ("keys-gt-list", lambda: keys.__gt__([1])),
+    ("keys-eq-list", lambda: keys.__eq__([1, 3])),
+    ("items-eq-set", lambda: items.__eq__({(1, 2), (3, 4)})),
+    ("items-le-set", lambda: items.__le__({(1, 2), (3, 4), (5, 6)})),
+    ("items-gt-list", lambda: items.__gt__([(1, 2)])),
+    ("values-eq-self", lambda: values.__eq__(values)),
+    ("values-ne-fresh", lambda: values.__ne__(d.values())),
+    ("values-le-self", lambda: values.__le__(values)),
+]:
+    show(label, expr)
+
+try:
+    keys.__le__()
+except Exception as error:
+    print("keys-le-missing", type(error).__name__, "argument" in str(error))
+
+od = OrderedDict([(1, 2), (3, 4)])
+show("odict-keys-eq", lambda: od.keys().__eq__({1, 3}))
+show("odict-items-ge", lambda: od.items().__ge__({(1, 2)}))
+show("odict-values-eq", lambda: od.values().__eq__(od.values()))
+
+class Boom:
+    def __eq__(self, other):
+        raise RuntimeError("boom")
+left = {1: Boom()}.items()
+right = {1: Boom()}.items()
+show("items-eq-error", lambda: left.__eq__(right))
+show("items-le-error", lambda: left.__le__(right))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

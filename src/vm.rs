@@ -56035,6 +56035,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
+                "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::DictView {
+                            kind,
+                            entries,
+                            ordered,
+                            identity: view_identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
                 "__iter__" | "__len__" | "__repr__" | "__reversed__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::DictView {
@@ -56100,6 +56112,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 | "__rxor__" | "__sub__" | "__xor__" | "isdisjoint"
                     if dict_view_is_set_like(kind) =>
                 {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::MappingView {
+                            kind,
+                            mapping,
+                            identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
+                "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
                     Ok(Value::BoundMethod {
                         function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                         receiver: Box::new(Value::MappingView {
@@ -71548,6 +71571,9 @@ fn call_dict_view_method(
         }
         "__or__" | "__ror__" | "__and__" | "__rand__" | "__sub__" | "__rsub__" | "__xor__"
         | "__rxor__" => call_dict_view_set_operator_method(vm, name, args),
+        "__eq__" | "__ne__" | "__lt__" | "__le__" | "__gt__" | "__ge__" => {
+            call_dict_view_richcompare_method(vm, name, args)
+        }
         "__len__" => {
             let [view] = args.as_slice() else {
                 return Err(format!(
@@ -71635,6 +71661,45 @@ fn call_dict_view_set_operator_method(
         _ => None,
     };
     result.ok_or_else(|| format!("unknown builtin: {name}"))
+}
+
+fn call_dict_view_richcompare_method(
+    vm: &mut Vm,
+    name: &str,
+    args: Vec<Value>,
+) -> Result<Value, String> {
+    let method = method_display_name(name);
+    let [view, other] = args.as_slice() else {
+        return Err(format!(
+            "{method}() expected 1 argument, got {}",
+            method_arg_count(&args)
+        ));
+    };
+    let Some(kind) = dict_view_method_kind(view) else {
+        return Err(format!("{method}() expected a dict view receiver"));
+    };
+    if !dict_view_is_set_like(kind) {
+        return match method {
+            "__eq__" if is_identical(view, other) => Ok(Value::Bool(true)),
+            "__ne__" if is_identical(view, other) => Ok(Value::Bool(false)),
+            _ => Ok(Value::NotImplemented),
+        };
+    }
+    if !vm.is_set_operator_value(other) {
+        return Ok(Value::NotImplemented);
+    }
+
+    let left = view.clone();
+    let right = other.clone();
+    Ok(match method {
+        "__eq__" => Value::Bool(vm.equal_values(left, right)?),
+        "__ne__" => Value::Bool(!vm.equal_values(left, right)?),
+        "__lt__" => Value::Bool(vm.less_values(left, right)?),
+        "__le__" => Value::Bool(vm.less_equal_values(left, right)?),
+        "__gt__" => Value::Bool(vm.greater_values(left, right)?),
+        "__ge__" => Value::Bool(vm.greater_equal_values(left, right)?),
+        _ => Value::NotImplemented,
+    })
 }
 
 fn dict_view_method_kind(value: &Value) -> Option<DictViewKind> {

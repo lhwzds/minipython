@@ -3954,6 +3954,11 @@ without adding general custom encoder/decoder class support.
   `cpython_dict_view_direct_set_operator_methods_diff_subset`, covering dict view direct set operator methods
   for key/item view dunder calls while preserving the absence of those methods
   on values views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_direct_richcompare_methods_subset`, backed by
+  `cpython_dict_view_direct_richcompare_methods_diff_subset`, covering dict view direct rich comparison methods
+  for key/item and values-view dunder calls, including `NotImplemented`
+  boundaries.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the
