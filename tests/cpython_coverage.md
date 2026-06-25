@@ -4008,6 +4008,11 @@ without adding general custom encoder/decoder class support.
   metadata for `__base__`, `__bases__`, and `__mro__` across built-in dict and
   `OrderedDict` view classes without adding broader builtin type hierarchy
   coverage.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_type_subclasses_subset`, backed by
+  `cpython_dict_view_type_subclasses_diff_subset`, covering dict view type subclasses
+  for `__subclasses__()` across built-in dict and `OrderedDict` view classes
+  without adding broader builtin type dictionary or CPython layout metadata.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

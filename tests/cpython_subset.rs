@@ -49640,6 +49640,43 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view type subclass metadata. Built-in dict
+// view classes report the corresponding OrderedDict view classes as direct
+// subclasses, and OrderedDict view classes currently report no direct children.
+#[test]
+fn cpython_dict_view_type_subclasses_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+for label, cls in classes:
+    method = cls.__subclasses__
+    children = method()
+    print(label, type(method).__name__, [child.__name__ for child in children], len(children))
+    for child in children:
+        print(label, child.__base__ is cls, issubclass(child, cls))
+print("identity", {1: 2}.keys().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).keys().__class__, {1: 2}.items().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).items().__class__, {1: 2}.values().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).values().__class__)"#,
+        &[
+            "dict_keys builtin_function_or_method ['odict_keys'] 1",
+            "dict_keys True True",
+            "dict_items builtin_function_or_method ['odict_items'] 1",
+            "dict_items True True",
+            "dict_values builtin_function_or_method ['odict_values'] 1",
+            "dict_values True True",
+            "odict_keys builtin_function_or_method [] 0",
+            "odict_items builtin_function_or_method [] 0",
+            "odict_values builtin_function_or_method [] 0",
+            "identity True True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

@@ -1376,6 +1376,71 @@ fn dict_view_type_hierarchy_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_subclasses_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_type_subclasses_subset(",
+        "method = cls.__subclasses__",
+        "children = method()",
+        "type(method).__name__",
+        "[child.__name__ for child in children]",
+        "child.__base__ is cls",
+        "issubclass(child, cls)",
+        "\"dict_keys builtin_function_or_method ['odict_keys'] 1\"",
+        "\"odict_values builtin_function_or_method [] 0\"",
+        "\"identity True True True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type subclasses subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_type_subclasses_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view type subclasses subset",
+        "name: \"dict-view-type-subclasses\"",
+        "method = cls.__subclasses__",
+        "children = method()",
+        "child.__base__ is cls",
+        "issubclass(child, cls)",
+        "OrderedDict([(1, 2)]).values().__class__",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type subclasses CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_dict_view_type_subclasses(",
+        "fn dict_view_type_object_direct_subclasses(name: &str) -> &'static [&'static str]",
+        "\"dict_keys\" => &[\"odict_keys\"]",
+        "\"dict_values\" => &[\"odict_values\"]",
+        "\"dict_items\" => &[\"odict_items\"]",
+        "name == \"__subclasses__\" && is_dict_view_type_object_name",
+        "Value::Builtin(\"dict_view.__subclasses__\".to_string())",
+        "builtin_class_inherits(dict_view_type_object_base_name(name), target_name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type subclasses implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_type_subclasses_subset")
+                && document.contains("cpython_dict_view_type_subclasses_diff_subset")
+                && document.contains("dict view type subclasses"),
+            "focused dict view type subclasses evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

@@ -30764,6 +30764,30 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_type_subclasses_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view type subclasses subset",
+        name: "dict-view-type-subclasses",
+        source: r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+for label, cls in classes:
+    method = cls.__subclasses__
+    children = method()
+    print(label, type(method).__name__, [child.__name__ for child in children], len(children))
+    for child in children:
+        print(label, child.__base__ is cls, issubclass(child, cls))
+print("identity", {1: 2}.keys().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).keys().__class__, {1: 2}.items().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).items().__class__, {1: 2}.values().__class__.__subclasses__()[0] is OrderedDict([(1, 2)]).values().__class__)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

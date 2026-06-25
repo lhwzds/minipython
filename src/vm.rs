@@ -9450,6 +9450,9 @@ impl Vm {
             Value::Builtin(name) if name == "ast.__subclasses__" => {
                 call_ast_subclasses(args, keywords)
             }
+            Value::Builtin(name) if name == "dict_view.__subclasses__" => {
+                call_dict_view_type_subclasses(args, keywords)
+            }
             Value::Builtin(name) if name == "pickle.dumps" => {
                 self.call_pickle_dumps(args, keywords)
             }
@@ -39821,6 +39824,33 @@ fn call_ast_subclasses(args: Vec<Value>, keywords: Vec<(String, Value)>) -> Resu
     ))
 }
 
+fn call_dict_view_type_subclasses(
+    args: Vec<Value>,
+    keywords: Vec<(String, Value)>,
+) -> Result<Value, String> {
+    if !keywords.is_empty() {
+        return Err("TypeError: __subclasses__() does not accept keyword arguments".to_string());
+    }
+    let [class] = args.as_slice() else {
+        return Err(format!(
+            "TypeError: __subclasses__() expected 0 arguments, got {}",
+            args.len().saturating_sub(1)
+        ));
+    };
+    let Value::Builtin(name) = class else {
+        return Err("TypeError: descriptor '__subclasses__' requires a type".to_string());
+    };
+    if !is_dict_view_type_object_name(name) {
+        return Err("TypeError: descriptor '__subclasses__' requires a dict view type".to_string());
+    }
+    Ok(list_value(
+        dict_view_type_object_direct_subclasses(name)
+            .iter()
+            .map(|subclass| Value::Builtin((*subclass).to_string()))
+            .collect(),
+    ))
+}
+
 fn ast_program_node(
     program: &syntax::Program,
     type_ignores: Vec<Value>,
@@ -49852,6 +49882,15 @@ fn dict_view_type_object_base_name(name: &str) -> &'static str {
     }
 }
 
+fn dict_view_type_object_direct_subclasses(name: &str) -> &'static [&'static str] {
+    match name {
+        "dict_keys" => &["odict_keys"],
+        "dict_values" => &["odict_values"],
+        "dict_items" => &["odict_items"],
+        _ => &[],
+    }
+}
+
 fn is_data_descriptor(value: &Value) -> bool {
     matches!(
         value,
@@ -57061,6 +57100,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             class_mro(&Value::Builtin(function_name)).map(tuple_value)
         }
         Value::Builtin(function_name)
+            if name == "__subclasses__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::BoundMethod {
+                function: Box::new(Value::Builtin("dict_view.__subclasses__".to_string())),
+                receiver: Box::new(Value::Builtin(function_name)),
+                identity: Rc::new(()),
+            })
+        }
+        Value::Builtin(function_name)
             if function_name == "object"
                 && matches!(
                     name,
@@ -63693,6 +63741,8 @@ fn builtin_class_inherits(name: &str, target_name: &str) -> bool {
         || (name == "enum.IntEnum" && target_name == "int")
         || (name == "NodeTransformer" && target_name == "NodeVisitor")
         || (name == "bool" && target_name == "int")
+        || (is_dict_view_type_object_name(name)
+            && builtin_class_inherits(dict_view_type_object_base_name(name), target_name))
         || (name == "Iterator" && target_name == "Iterable")
         || (name == "Generator" && matches!(target_name, "Iterator" | "Iterable"))
         || (name == "Sequence"
