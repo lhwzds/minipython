@@ -11017,6 +11017,47 @@ show("range-object-missing", lambda: range(3).index(RangeProbe()))"#,
 }
 
 #[test]
+fn cpython_immutable_sequence_count_rich_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/seq_tests.py immutable sequence count rich comparison subset",
+        name: "immutable-sequence-count-rich-compare",
+        source: r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("tuple-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+items = (Probe("a"), Probe("b"), Probe("a"))
+class T(tuple):
+    pass
+print("tuple-count", items.count(Probe("a")))
+print("tuple-subclass", T(items).count(Probe("a")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+try:
+    (Boom(),).count(1)
+except Exception as error:
+    print("tuple-error", type(error).__name__, str(error), error.args)
+class I(int):
+    pass
+for label, value in [
+    ("range-int-missing", 5),
+    ("range-float-match", 2.0),
+    ("range-float-missing", 5.0),
+    ("range-subint-match", I(2)),
+    ("range-subint-missing", I(5)),
+]:
+    print(label, range(3).count(value))
+class RangeProbe:
+    def __eq__(self, other):
+        print("range-eq", other)
+        return False
+print("range-object-missing", range(3).count(RangeProbe()))"#,
+    });
+}
+
+#[test]
 fn cpython_list_search_mutating_eq_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py mutation during rich comparison list search public subset",

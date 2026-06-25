@@ -26408,7 +26408,7 @@ impl Vm {
         loop {
             match self.advance_owned_iterator_capturing(&mut iterator)? {
                 Ok(IteratorAdvance::Yield(value)) => {
-                    if sequence_items_match(&value, &needle) {
+                    if self.sequence_abc_item_matches(&value, &needle)? {
                         count = count
                             .checked_add(1)
                             .ok_or_else(|| "count() result is too large".to_string())?;

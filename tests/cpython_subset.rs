@@ -40750,6 +40750,65 @@ show("range-object-missing", lambda: range(3).index(RangeProbe()))"#,
     );
 }
 
+#[test]
+fn cpython_immutable_sequence_count_rich_compare_subset() {
+    assert_output(
+        r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("tuple-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+items = (Probe("a"), Probe("b"), Probe("a"))
+class T(tuple):
+    pass
+print("tuple-count", items.count(Probe("a")))
+print("tuple-subclass", T(items).count(Probe("a")))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+try:
+    (Boom(),).count(1)
+except Exception as error:
+    print("tuple-error", type(error).__name__, str(error), error.args)
+class I(int):
+    pass
+for label, value in [
+    ("range-int-missing", 5),
+    ("range-float-match", 2.0),
+    ("range-float-missing", 5.0),
+    ("range-subint-match", I(2)),
+    ("range-subint-missing", I(5)),
+]:
+    print(label, range(3).count(value))
+class RangeProbe:
+    def __eq__(self, other):
+        print("range-eq", other)
+        return False
+print("range-object-missing", range(3).count(RangeProbe()))"#,
+        &[
+            "tuple-eq a a",
+            "tuple-eq b a",
+            "tuple-eq a a",
+            "tuple-count 2",
+            "tuple-eq a a",
+            "tuple-eq b a",
+            "tuple-eq a a",
+            "tuple-subclass 2",
+            "tuple-error ValueError boom ('boom',)",
+            "range-int-missing 0",
+            "range-float-match 1",
+            "range-float-missing 0",
+            "range-subint-match 1",
+            "range-subint-missing 0",
+            "range-eq 0",
+            "range-eq 1",
+            "range-eq 2",
+            "range-object-missing 0",
+        ],
+    );
+}
+
 // Adapted from CPython public dict-subclass behavior used across
 // Lib/test/test_builtin.py and Lib/test/test_types.py mapping-protocol cases.
 // This pins the supported mutable mapping protocol without depending on

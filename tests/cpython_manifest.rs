@@ -350,6 +350,62 @@ fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn immutable_sequence_count_rich_compare_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_immutable_sequence_count_rich_compare_subset(",
+        "print(\"tuple-count\", items.count(Probe(\"a\")))",
+        "print(\"tuple-subclass\", T(items).count(Probe(\"a\")))",
+        "(Boom(),).count(1)",
+        "(\"range-float-match\", 2.0)",
+        "(\"range-subint-match\", I(2))",
+        "range(3).count(RangeProbe())",
+        "\"tuple-error ValueError boom ('boom',)\"",
+        "\"range-object-missing 0\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused immutable sequence count rich-compare subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_immutable_sequence_count_rich_compare_diff_subset",
+    );
+    for required in [
+        "Lib/test/seq_tests.py immutable sequence count rich comparison subset",
+        "name: \"immutable-sequence-count-rich-compare\"",
+        "print(\"tuple-count\", items.count(Probe(\"a\")))",
+        "print(\"tuple-subclass\", T(items).count(Probe(\"a\")))",
+        "(Boom(),).count(1)",
+        "(\"range-float-match\", 2.0)",
+        "(\"range-subint-match\", I(2))",
+        "range(3).count(RangeProbe())",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused immutable sequence count rich-compare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("fn sequence_abc_count(")
+            && VM_SOURCE.contains("self.sequence_abc_item_matches(&value, &needle)?"),
+        "immutable sequence count must use rich equality through sequence_abc_item_matches"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_immutable_sequence_count_rich_compare_subset")
+                && document.contains("cpython_immutable_sequence_count_rich_compare_diff_subset")
+                && document.contains("`count()` rich comparison")
+                && document.contains("custom-object range count scans"),
+            "focused immutable sequence count rich-compare evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";

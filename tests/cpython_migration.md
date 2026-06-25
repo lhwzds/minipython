@@ -61,6 +61,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
   range `index()` rich comparison, propagated equality exceptions, int-subclass
   matches, and CPython's range-specific `range.index(x): x not in range` versus
   generic `sequence.index(x): x not in sequence` missing-value messages.
+- Added `cpython_immutable_sequence_count_rich_compare_subset` and
+  `cpython_immutable_sequence_count_rich_compare_diff_subset` for tuple and
+  range `count()` rich comparison, propagated equality exceptions, int-subclass
+  matches, and custom-object range count scans.
 - Added `cpython_list_search_mutating_eq_subset` and
   `cpython_list_search_mutating_eq_diff_subset` for list mutation during comparison
   across membership, `__contains__`, `count`, `index`, and `remove`: clear,
@@ -2209,6 +2213,10 @@ Completed in the differential parity harness pass:
   int-subclass matches, and CPython's range-specific
   `range.index(x): x not in range` versus generic
   `sequence.index(x): x not in sequence` missing-value messages.
+  `cpython_immutable_sequence_count_rich_compare_subset`, backed by
+  `cpython_immutable_sequence_count_rich_compare_diff_subset`, pins tuple and
+  range `count()` rich comparison, propagated equality exceptions,
+  int-subclass matches, and custom-object range count scans.
   `cpython_list_search_mutating_eq_subset`,
   backed by `cpython_list_search_mutating_eq_diff_subset`, now covers list
   mutation during comparison for the same search APIs, including clear, append,
