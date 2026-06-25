@@ -5305,14 +5305,18 @@ class CustomSequence(Sequence):
         return self._seq[index]
     def __len__(self):
         return len(self._seq)
+class NeverEqual:
+    def __eq__(self, other):
+        return False
 nan = float('nan')
 other_nan = float('nan')
-seq = CustomSequence([nan, other_nan, nan])
+obj = NeverEqual()
+seq = CustomSequence([nan, obj, nan])
 containers = [
     seq,
-    ItemsView({1: nan, 2: other_nan}),
+    ItemsView({1: nan, 2: obj}),
     KeysView({nan: 1, other_nan: 2}),
-    ValuesView({1: nan, 2: other_nan}),
+    ValuesView({1: nan, 2: obj}),
 ]
 print(nan == nan, nan is nan, nan is other_nan)
 for container in containers:
@@ -5324,7 +5328,9 @@ for container in containers:
             row.append(error.__class__.__name__)
     print(row)
 print(seq.index(nan))
+print(seq.index(obj))
 print(seq.count(nan))
+print(seq.count(obj))
 print((1, nan) in ItemsView({1: nan}))
 print((1, other_nan) in ItemsView({1: nan}))
 print(nan in KeysView({nan: 1}))

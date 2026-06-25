@@ -48639,16 +48639,16 @@ fn cpython_collections_abc_userdict_view_snapshot_subset() {
 
 // Adapted from CPython Lib/test/test_collections.py::
 // TestCollectionABCs::test_issue26915. Container membership and Sequence
-// mixins check object identity before equality, including for NaN floats whose
-// direct equality remains false.
+// mixins check object identity before equality, including for an always-false
+// equality object and NaN floats whose direct equality remains false.
 #[test]
 fn cpython_collections_abc_issue26915_identity_first_object_subset() {
     assert_output(
         concat!(
             "from collections.abc import ItemsView, KeysView, Sequence, ValuesView\n",
-            "class NeverEq:\n",
+            "class NeverEqual:\n",
             "    def __eq__(self, other):\n",
-            "        raise ValueError('never')\n",
+            "        return False\n",
             "class CustomSequence(Sequence):\n",
             "    def __init__(self, seq):\n",
             "        self._seq = seq\n",
@@ -48658,7 +48658,7 @@ fn cpython_collections_abc_issue26915_identity_first_object_subset() {
             "        return len(self._seq)\n",
             "nan = float('nan')\n",
             "other_nan = float('nan')\n",
-            "obj = NeverEq()\n",
+            "obj = NeverEqual()\n",
             "seq = CustomSequence([nan, obj, nan])\n",
             "containers = [seq, ItemsView({1: nan, 2: obj}), KeysView({1: nan, 2: obj}), ValuesView({1: nan, 2: obj})]\n",
             "print(nan == nan, nan is nan, nan is other_nan)\n",

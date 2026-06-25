@@ -3776,8 +3776,8 @@ without adding general custom encoder/decoder class support.
 - `COLLECTIONS_ABC_RUNTIME` also includes
   `cpython_collections_abc_issue26915_identity_first_object_subset`, covering
   CPython `TestCollectionABCs::test_issue26915` identity-first membership for
-  `support.NEVER_EQ`-style objects and distinct `float('nan')` objects across
-  `Sequence`, `ItemsView`, `KeysView`, and `ValuesView`, plus
+  `support.NEVER_EQ`-style always-false equality objects and distinct
+  `float('nan')` objects across `Sequence`, `ItemsView`, `KeysView`, and `ValuesView`, plus
   `Sequence.index()` / `count()`. Direct CPython diff evidence is in
   `cpython_collections_abc_issue26915_identity_first_object_diff_subset`.
 - `COLLECTIONS_ABC_RUNTIME` also includes

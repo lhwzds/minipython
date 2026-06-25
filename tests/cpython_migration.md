@@ -11789,3 +11789,15 @@ Next:
    files, starting with modules whose behavior is already partially represented
    in `tests/cpython_subset.rs`, then convert each partial row into direct
    method-level evidence before marking it ported.
+
+Completed in the collections ABC issue26915 oracle-alignment pass:
+
+- Replaced the over-strict throwing equality probe in
+  `cpython_collections_abc_issue26915_identity_first_object_subset` with an
+  always-false `support.NEVER_EQ`-style object, matching the CPython public
+  test shape while still proving identity-first membership, `index()`, and
+  `count()` behavior.
+- Extended `cpython_collections_abc_issue26915_identity_first_object_diff_subset`
+  so the direct CPython oracle covers the same always-false object across
+  `Sequence`, `ItemsView`, and `ValuesView`, while retaining distinct-NaN
+  `KeysView` coverage.
