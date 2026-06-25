@@ -8800,6 +8800,18 @@ func_type = ast.parse('(int, str) -> bool', mode='func_type')
 print(type(func_type).__name__, ast.dump(func_type))
 print(ast.parse(node) is node)
 print(ast.PyCF_ONLY_AST)
+class S(str):
+    pass
+class B(bytes):
+    pass
+class BA(bytearray):
+    pass
+for source in [S('x = 1'), B(b'x = 2'), BA(b'x = 3')]:
+    node = ast.parse(source)
+    print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)
+for source in [S('x = 4'), B(b'x = 5'), BA(b'x = 6')]:
+    node = compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)
+    print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)
 for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.parse('1', mode='bad')]:
     try:
         call()

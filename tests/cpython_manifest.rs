@@ -21628,6 +21628,41 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         );
     }
 
+    let parse_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_ast_module_parse_dump_first_pass_subset",
+    );
+    for required in [
+        "class S(str):",
+        "class B(bytes):",
+        "class BA(bytearray):",
+        "ast.parse(source)",
+        "S Module Assign",
+        "B Module Assign",
+        "BA Module Assign",
+    ] {
+        assert!(
+            parse_subset.contains(required),
+            "ast.parse source subclass subset evidence must cover `{required}`"
+        );
+    }
+
+    let compile_ast_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_ast_compile_only_ast_first_pass_subset",
+    );
+    for required in [
+        "compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)",
+        "S Module Assign",
+        "B Module Assign",
+        "BA Module Assign",
+    ] {
+        assert!(
+            compile_ast_subset.contains(required),
+            "compile PyCF_ONLY_AST source subclass subset evidence must cover `{required}`"
+        );
+    }
+
     for required in [
         "ast-parse-public",
         "Lib/ast.py::parse public wrapper",
@@ -21637,11 +21672,27 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "mode='func_type'",
         "ast.parse(node) is node",
         "ast.PyCF_ONLY_AST",
+        "class S(str):",
+        "ast.parse(source)",
+        "compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)",
         "legacy ast.dump default-field rendering",
     ] {
         assert!(
             diff_source.contains(required),
             "ast.parse public diff must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn parse_ast_node(",
+        "fn emit_ast_parse_warnings(",
+        "value if str_subclass_string(&value).is_some()",
+        "value if bytes_subclass_bytes(&value).is_some()",
+        "value if bytearray_subclass_bytes(&value).is_some()",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ast.parse source subclass VM implementation must contain `{required}`"
         );
     }
 
@@ -21651,7 +21702,8 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
                 && document.contains("ast.parse")
                 && document.contains("exec")
                 && document.contains("eval")
-                && document.contains("func_type"),
+                && document.contains("func_type")
+                && document.contains("source subclass"),
             "ast.parse docs must link `{diff_name}` to exec/eval/single/func_type coverage"
         );
     }

@@ -13078,6 +13078,10 @@ fn cpython_ast_module_parse_dump_first_pass_subset() {
         "import ast\nfor call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.parse('1', mode='bad'), lambda: ast.dump('x')]:\n    try:\n        call()\n    except (TypeError, ValueError) as error:\n        print(error.__class__.__name__)",
         &["TypeError", "TypeError", "ValueError", "TypeError"],
     );
+    assert_output(
+        "import ast\nclass S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 1'), B(b'x = 2'), BA(b'x = 3')]:\n    node = ast.parse(source)\n    print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)",
+        &["S Module Assign", "B Module Assign", "BA Module Assign"],
+    );
 }
 
 // Adapted from CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_null_bytes`.
@@ -15121,6 +15125,10 @@ fn cpython_ast_compile_only_ast_first_pass_subset() {
     assert_output(
         "import ast\nsource = 'foo(1 + 1)'\nparsed = ast.parse(source)\ncompiled = compile(source, '<unknown>', 'exec', ast.PyCF_ONLY_AST)\nprint(type(compiled).__name__, ast.dump(parsed) == ast.dump(compiled))\ncompiled_eval = compile('1 + 2', '<unknown>', 'eval', ast.PyCF_ONLY_AST)\nprint(type(compiled_eval).__name__, type(compiled_eval.body).__name__)\ncompiled_single = compile('1 + 2', '<unknown>', 'single', ast.PyCF_ONLY_AST)\nprint(type(compiled_single).__name__)",
         &["Module True", "Expression BinOp", "Interactive"],
+    );
+    assert_output(
+        "import ast\nclass S(str):\n    pass\nclass B(bytes):\n    pass\nclass BA(bytearray):\n    pass\nfor source in [S('x = 4'), B(b'x = 5'), BA(b'x = 6')]:\n    node = compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)\n    print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)",
+        &["S Module Assign", "B Module Assign", "BA Module Assign"],
     );
 }
 

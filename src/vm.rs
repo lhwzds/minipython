@@ -41717,14 +41717,34 @@ fn emit_ast_parse_warnings(
 ) -> Result<(), String> {
     let source = match source {
         Value::String(source) | Value::IdentityString { value: source, .. } => source.clone(),
+        value if str_subclass_string(value).is_some() => {
+            str_subclass_string(value).expect("str subclass storage exists after guard")
+        }
         Value::Bytes(bytes) => match decode_source_for_parse(bytes) {
             Ok(source) => source,
             Err(_) => return Ok(()),
         },
+        value if bytes_subclass_bytes(value).is_some() => {
+            match decode_source_for_parse(
+                &bytes_subclass_bytes(value).expect("bytes subclass storage exists after guard"),
+            ) {
+                Ok(source) => source,
+                Err(_) => return Ok(()),
+            }
+        }
         Value::ByteArray(bytes) => match decode_source_for_parse(&bytes.borrow()) {
             Ok(source) => source,
             Err(_) => return Ok(()),
         },
+        value if bytearray_subclass_bytes(value).is_some() => {
+            match decode_source_for_parse(
+                &bytearray_subclass_bytes(value)
+                    .expect("bytearray subclass storage exists after guard"),
+            ) {
+                Ok(source) => source,
+                Err(_) => return Ok(()),
+            }
+        }
         Value::MemoryView(view) => {
             let bytes = match memoryview_bytes(view) {
                 Ok(bytes) => bytes,
@@ -41821,11 +41841,28 @@ fn parse_ast_node(
             }
             source
         }
+        value if str_subclass_string(&value).is_some() => {
+            let source =
+                str_subclass_string(&value).expect("str subclass storage exists after guard");
+            if source.contains('\0') {
+                return Err("SyntaxError: source code string cannot contain null bytes".to_string());
+            }
+            source
+        }
         Value::Bytes(bytes) => {
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))?
         }
+        value if bytes_subclass_bytes(&value).is_some() => decode_source_for_parse(
+            &bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
+        )
+        .map_err(|message| format!("SyntaxError: {message}"))?,
         Value::ByteArray(bytes) => decode_source_for_parse(&bytes.borrow())
             .map_err(|message| format!("SyntaxError: {message}"))?,
+        value if bytearray_subclass_bytes(&value).is_some() => decode_source_for_parse(
+            &bytearray_subclass_bytes(&value)
+                .expect("bytearray subclass storage exists after guard"),
+        )
+        .map_err(|message| format!("SyntaxError: {message}"))?,
         Value::MemoryView(view) => {
             let bytes = memoryview_bytes(&view)?;
             decode_source_for_parse(&bytes).map_err(|message| format!("SyntaxError: {message}"))?

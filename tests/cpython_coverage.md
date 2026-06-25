@@ -2946,7 +2946,8 @@ without adding general custom encoder/decoder class support.
   `Module.body`, `Assign.targets`, `Name.id`, `_fields`, and
   `isinstance(..., ast.AST)`. `cpython_ast_parse_public_diff_subset` provides
   gated direct CPython output parity for the same public `ast.parse()` wrapper
-  surface when the oracle has current default-field `ast.dump()` behavior.
+  surface, including `str` / `bytes` / `bytearray` source subclass handling,
+  when the oracle has current default-field `ast.dump()` behavior.
   `cpython_ast_parse_null_bytes_subset` ports
   CPython `AST_Tests::test_null_bytes`, requiring `ast.parse()` over source
   strings containing NUL bytes to raise `SyntaxError` with CPython's public
@@ -2990,7 +2991,8 @@ without adding general custom encoder/decoder class support.
   parameters, type-parameter defaults, and invalid major versions.
   `cpython_ast_compile_only_ast_first_pass_subset`
   adds first-pass `compile(..., ast.PyCF_ONLY_AST)` parity for `exec`, `eval`,
-  and `single` modes. `cpython_builtin_compile_optimized_ast_subset` adds
+  and `single` modes, including source subclass handling.
+  `cpython_builtin_compile_optimized_ast_subset` adds
   CPython `BuiltinTest::test_compile_ast` coverage for
   `compile(..., ast.PyCF_OPTIMIZED_AST)` over source and public-AST inputs,
   including default debug-value folding, explicit `optimize=1`, and preserving
