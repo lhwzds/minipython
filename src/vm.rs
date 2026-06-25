@@ -36601,6 +36601,79 @@ fn mapping_proxy_from_entries(entries: Vec<(Value, Value)>) -> Value {
     mapping_proxy_value(Rc::new(RefCell::new(DictStorage::new(entries))))
 }
 
+fn mappingproxy_type_dict_value() -> Value {
+    mapping_proxy_from_entries(vec![
+        (
+            Value::String("__repr__".to_string()),
+            Value::Builtin("mappingproxy.__repr__".to_string()),
+        ),
+        (
+            Value::String("__str__".to_string()),
+            Value::Builtin("mappingproxy.__str__".to_string()),
+        ),
+        (
+            Value::String("__iter__".to_string()),
+            Value::Builtin("mappingproxy.__iter__".to_string()),
+        ),
+        (
+            Value::String("__or__".to_string()),
+            Value::Builtin("mappingproxy.__or__".to_string()),
+        ),
+        (
+            Value::String("__ror__".to_string()),
+            Value::Builtin("mappingproxy.__ror__".to_string()),
+        ),
+        (
+            Value::String("__ior__".to_string()),
+            Value::Builtin("mappingproxy.__ior__".to_string()),
+        ),
+        (
+            Value::String("__len__".to_string()),
+            Value::Builtin("mappingproxy.__len__".to_string()),
+        ),
+        (
+            Value::String("__getitem__".to_string()),
+            Value::Builtin("mappingproxy.__getitem__".to_string()),
+        ),
+        (
+            Value::String("__contains__".to_string()),
+            Value::Builtin("mappingproxy.__contains__".to_string()),
+        ),
+        (
+            Value::String("get".to_string()),
+            Value::Builtin("mappingproxy.get".to_string()),
+        ),
+        (
+            Value::String("keys".to_string()),
+            Value::Builtin("mappingproxy.keys".to_string()),
+        ),
+        (
+            Value::String("values".to_string()),
+            Value::Builtin("mappingproxy.values".to_string()),
+        ),
+        (
+            Value::String("items".to_string()),
+            Value::Builtin("mappingproxy.items".to_string()),
+        ),
+        (
+            Value::String("copy".to_string()),
+            Value::Builtin("mappingproxy.copy".to_string()),
+        ),
+        (
+            Value::String("__class_getitem__".to_string()),
+            Value::Builtin("mappingproxy.__class_getitem__".to_string()),
+        ),
+        (
+            Value::String("__reversed__".to_string()),
+            Value::Builtin("mappingproxy.__reversed__".to_string()),
+        ),
+        (
+            Value::String("__doc__".to_string()),
+            Value::String("Read-only proxy of a mapping.".to_string()),
+        ),
+    ])
+}
+
 fn scope_dict_value(scope: &Scope) -> Value {
     dict_value(scope_dict_entries(scope))
 }
@@ -57597,6 +57670,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::Builtin(function_name)
             if name == "__dict__" && is_class_like_builtin(&function_name) =>
         {
+            if function_name == "mappingproxy" {
+                return Ok(mappingproxy_type_dict_value());
+            }
             if let Some(kind) = ast_builtin_kind(&function_name) {
                 return Ok(mapping_proxy_from_entries(vec![
                     (

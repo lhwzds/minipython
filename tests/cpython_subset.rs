@@ -50713,6 +50713,28 @@ print(method() is method(), type({1: 2}.keys().mapping).__subclasses__())"#,
     );
 }
 
+// CPython exposes a mappingproxy class dictionary. MiniPython keeps this to the
+// supported public mappingproxy methods and doc entry rather than CPython's
+// complete slot-wrapper table.
+#[test]
+fn cpython_types_mappingproxy_type_dict_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+d = cls.__dict__
+print(type(d).__name__, [name for name in d if name in ('__getitem__', 'keys', '__doc__')])
+print('__name__' in d, '__getitem__' in d, 'keys' in d, '__doc__' in d)
+print(d['__getitem__'].__name__, d['keys'].__name__, type(d['__doc__']).__name__, d['__doc__'])
+print(type({1: 2}.keys().mapping).__dict__['items'].__name__)"#,
+        &[
+            "mappingproxy ['__getitem__', 'keys', '__doc__']",
+            "False True True True",
+            "__getitem__ keys str Read-only proxy of a mapping.",
+            "items",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
 // binding behavior for the public `mapping` keyword.
 #[test]

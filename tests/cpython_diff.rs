@@ -12667,6 +12667,21 @@ print(method() is method(), type({1: 2}.keys().mapping).__subclasses__())"#,
 }
 
 #[test]
+fn cpython_types_mappingproxy_type_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests type __dict__ subset",
+        name: "types-mappingproxy-type-dict",
+        source: r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+d = cls.__dict__
+print(type(d).__name__, [name for name in d if name in ('__getitem__', 'keys', '__doc__')])
+print('__name__' in d, '__getitem__' in d, 'keys' in d, '__doc__' in d)
+print(d['__getitem__'].__name__, d['keys'].__name__, type(d['__doc__']).__name__, d['__doc__'])
+print(type({1: 2}.keys().mapping).__dict__['items'].__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_keyword_constructor_diff_subset() {
     // CPython oracle text includes:
     // mappingproxy() missing required argument 'mapping' (pos 1).
