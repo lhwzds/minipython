@@ -645,6 +645,68 @@ fn dict_view_iterable_set_operators_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_isdisjoint_subset(",
+        "keys.isdisjoint([1])",
+        "keys.isdisjoint([2])",
+        "keys.isdisjoint(values)",
+        "items.isdisjoint([(1, 2)])",
+        "items.isdisjoint([1, 2])",
+        "items.isdisjoint(values)",
+        "hasattr(values, \"isdisjoint\")",
+        "keys.isdisjoint(1)",
+        "keys.isdisjoint([[]])",
+        "items.isdisjoint([[1, 2]])",
+        "{1: []}.items().isdisjoint([(1, [])])",
+        "{1: []}.items().isdisjoint([(2, [])])",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view isdisjoint subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_isdisjoint_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view isdisjoint subset",
+        "name: \"dict-view-isdisjoint\"",
+        "keys.isdisjoint([1])",
+        "items.isdisjoint([(1, 2)])",
+        "hasattr(values, \"isdisjoint\")",
+        "keys.isdisjoint([[]])",
+        "items.isdisjoint([[1, 2]])",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view isdisjoint CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"isdisjoint\" if dict_view_is_set_like(kind)",
+        "\"isdisjoint\" =>",
+        "collect_iterable_values_propagating(iterable.clone())",
+        "vm.contains_value(value, view.clone())",
+        "isdisjoint() expected a dict keys/items view receiver",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view isdisjoint implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_isdisjoint_subset")
+                && document.contains("cpython_dict_view_isdisjoint_diff_subset")
+                && document.contains("dict view isdisjoint"),
+            "focused dict view isdisjoint evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",

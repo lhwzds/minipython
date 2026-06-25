@@ -30392,6 +30392,31 @@ for label, expr in [
 }
 
 #[test]
+fn cpython_dict_view_isdisjoint_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view isdisjoint subset",
+        name: "dict-view-isdisjoint",
+        source: r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+print(keys.isdisjoint([1]), keys.isdisjoint([2]), keys.isdisjoint(values))
+print(items.isdisjoint([(1, 2)]), items.isdisjoint([1, 2]), items.isdisjoint(values))
+print(hasattr(values, "isdisjoint"))
+try:
+    keys.isdisjoint(1)
+except Exception as error:
+    print("keys-int", type(error).__name__, "iterable" in str(error))
+try:
+    keys.isdisjoint([[]])
+except Exception as error:
+    print("keys-unhashable", type(error).__name__, "unhashable" in str(error))
+print(items.isdisjoint([[1, 2]]))
+print({1: []}.items().isdisjoint([(1, [])]), {1: []}.items().isdisjoint([(2, [])]))"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

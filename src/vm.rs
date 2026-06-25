@@ -56017,16 +56017,18 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     mapping: Box::new(Value::OrderedDict(entries)),
                 }),
                 "mapping" => Ok(mapping_proxy_value(entries)),
-                "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::DictView {
-                        kind,
-                        entries,
-                        ordered,
-                        identity: view_identity,
-                    }),
-                    identity: Rc::new(()),
-                }),
+                "__contains__" | "isdisjoint" if dict_view_is_set_like(kind) => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::DictView {
+                            kind,
+                            entries,
+                            ordered,
+                            identity: view_identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
                 "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::DictView {
@@ -56088,15 +56090,17 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         } => {
             let type_name = dict_view_type_name(kind);
             match name {
-                "__contains__" if dict_view_is_set_like(kind) => Ok(Value::BoundMethod {
-                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
-                    receiver: Box::new(Value::MappingView {
-                        kind,
-                        mapping,
-                        identity,
-                    }),
-                    identity: Rc::new(()),
-                }),
+                "__contains__" | "isdisjoint" if dict_view_is_set_like(kind) => {
+                    Ok(Value::BoundMethod {
+                        function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                        receiver: Box::new(Value::MappingView {
+                            kind,
+                            mapping,
+                            identity,
+                        }),
+                        identity: Rc::new(()),
+                    })
+                }
                 "__iter__" | "__len__" | "__repr__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::MappingView {
@@ -71512,6 +71516,26 @@ fn call_dict_view_method(
             Ok(Value::Bool(
                 vm.contains_value(needle.clone(), view.clone())?,
             ))
+        }
+        "isdisjoint" => {
+            let [view, iterable] = args.as_slice() else {
+                return Err(format!(
+                    "isdisjoint() expected 1 argument, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            let Some(kind) = dict_view_method_kind(view) else {
+                return Err("isdisjoint() expected a dict view receiver".to_string());
+            };
+            if !dict_view_is_set_like(kind) {
+                return Err("isdisjoint() expected a dict keys/items view receiver".to_string());
+            }
+            for value in vm.collect_iterable_values_propagating(iterable.clone())? {
+                if vm.contains_value(value, view.clone())? {
+                    return Ok(Value::Bool(false));
+                }
+            }
+            Ok(Value::Bool(true))
         }
         "__len__" => {
             let [view] = args.as_slice() else {

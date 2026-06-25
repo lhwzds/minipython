@@ -49008,6 +49008,41 @@ for label, expr in [
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
+// Key/item views expose isdisjoint() while values views remain ordinary
+// collections without set-style methods.
+#[test]
+fn cpython_dict_view_isdisjoint_subset() {
+    assert_output(
+        r#"d = {1: 2}
+values = d.values()
+keys = d.keys()
+items = d.items()
+print(keys.isdisjoint([1]), keys.isdisjoint([2]), keys.isdisjoint(values))
+print(items.isdisjoint([(1, 2)]), items.isdisjoint([1, 2]), items.isdisjoint(values))
+print(hasattr(values, "isdisjoint"))
+try:
+    keys.isdisjoint(1)
+except Exception as error:
+    print("keys-int", type(error).__name__, "iterable" in str(error))
+try:
+    keys.isdisjoint([[]])
+except Exception as error:
+    print("keys-unhashable", type(error).__name__, "unhashable" in str(error))
+print(items.isdisjoint([[1, 2]]))
+print({1: []}.items().isdisjoint([(1, [])]), {1: []}.items().isdisjoint([(2, [])]))"#,
+        &[
+            "False True True",
+            "False True True",
+            "False",
+            "keys-int TypeError True",
+            "keys-unhashable TypeError True",
+            "True",
+            "False True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

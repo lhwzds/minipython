@@ -3949,6 +3949,10 @@ without adding general custom encoder/decoder class support.
   for key/item view `|` / `&` / `^` with arbitrary iterable operands and
   reflected operands while keeping plain values-view iterable operators
   unsupported unless a key/item view handles the opposite side.
+- `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
+  backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
+  for key/item views over iterable operands while preserving the absence of the
+  method on values views.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment
