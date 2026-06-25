@@ -1125,7 +1125,8 @@ Recent runtime migration notes:
   replacement values, exception propagation,
   CPython-style non-callable hook `TypeError` text, returned-self and
   returned-container circular detection, `check_circular=False` recursion
-  classification, and fresh unsupported replacement recursion as a Python-level
+  classification, shared unsupported bytes-like replacement circular detection,
+  and fresh unsupported replacement recursion as a Python-level
   `RecursionError`,
   `separators=None` preserving indent's default item-separator behavior,
   duplicate-object-key last-value behavior, JSON whitespace, integer/float
@@ -1227,7 +1228,8 @@ file output, or locale-sensitive formatting.
 `cpython_json_dumps_default_hook_diff_subset`, keeps the supported `default` hook fallback for
 top-level and nested unsupported objects, scalar, `None`, list, and dict replacement values,
 non-callable hooks only error when used, hook exception propagation, returned-self and returned-container circular detection,
-`check_circular=False` default-hook recursion boundary, and fresh unsupported replacement recursion as `RecursionError`,
+shared unsupported bytes-like replacement circular detection, `check_circular=False` default-hook recursion boundary,
+and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_float_spelling_subset`, backed by

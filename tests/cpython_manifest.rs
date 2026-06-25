@@ -10075,6 +10075,15 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
         "('dict-default-cycle', lambda obj: {'x': obj})",
         "('tuple-default-cycle', lambda obj: (obj,))",
         "json.dumps(self_box, default=hook, check_circular=False)",
+        "shared_bytes = b'xy'",
+        "shared_bytearray = bytearray(b'xy')",
+        "shared_memoryview = memoryview(b'xy')",
+        "('shared-bytes-default', shared_bytes)",
+        "('shared-bytearray-default', shared_bytearray)",
+        "('shared-memoryview-default', shared_memoryview)",
+        "('shared-bytes-default-unchecked', shared_bytes)",
+        "('shared-bytearray-default-unchecked', shared_bytearray)",
+        "('shared-memoryview-default-unchecked', shared_memoryview)",
         "class FreshDefault:",
         "json.dumps(object(), default=FreshDefault())",
     ] {
@@ -10103,6 +10112,12 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
         "\"same-default-unchecked RecursionError True\"",
         "\"list-default-cycle-unchecked RecursionError True\"",
         "\"dict-default-cycle-unchecked RecursionError True\"",
+        "\"shared-bytes-default ValueError True True\"",
+        "\"shared-bytearray-default ValueError True True\"",
+        "\"shared-memoryview-default ValueError True True\"",
+        "\"shared-bytes-default-unchecked RecursionError True\"",
+        "\"shared-bytearray-default-unchecked RecursionError True\"",
+        "\"shared-memoryview-default-unchecked RecursionError True\"",
         "\"fresh-default RecursionError True\"",
     ] {
         assert!(
@@ -10123,6 +10138,7 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
             "non-callable hooks only error when used",
             "hook exception propagation",
             "returned-self and returned-container circular detection",
+            "shared unsupported bytes-like replacement circular detection",
             "`check_circular=False` default-hook recursion boundary",
             "fresh unsupported replacement recursion as `RecursionError`",
             "without adding `JSONEncoder` subclassing or non-`default` encoder hooks",
@@ -10132,6 +10148,18 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
                 "json docs must describe default hook boundary `{required}`"
             );
         }
+    }
+
+    for required in [
+        "fn json_dumps_default_identity(value: &Value) -> Option<usize>",
+        "Value::Bytes(bytes) => Some(Rc::as_ptr(bytes) as usize)",
+        "Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize)",
+        "Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "json dumps default hook implementation must contain `{required}`"
+        );
     }
 }
 

@@ -62558,6 +62558,9 @@ fn json_dumps_container_identity(value: &Value) -> Option<usize> {
 fn json_dumps_default_identity(value: &Value) -> Option<usize> {
     match value {
         Value::Instance { fields, .. } => Some(Rc::as_ptr(fields) as usize),
+        Value::Bytes(bytes) => Some(Rc::as_ptr(bytes) as usize),
+        Value::ByteArray(bytes) => Some(Rc::as_ptr(bytes) as usize),
+        Value::MemoryView(view) => Some(Rc::as_ptr(view) as usize),
         _ => json_dumps_container_identity(value),
     }
 }

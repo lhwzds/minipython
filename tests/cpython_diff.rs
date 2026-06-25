@@ -1852,6 +1852,28 @@ for label, hook in [
     except Exception as error:
         print(label, type(error).__name__, isinstance(error, RecursionError))
 
+shared_bytes = b'xy'
+shared_bytearray = bytearray(b'xy')
+shared_memoryview = memoryview(b'xy')
+for label, replacement in [
+    ('shared-bytes-default', shared_bytes),
+    ('shared-bytearray-default', shared_bytearray),
+    ('shared-memoryview-default', shared_memoryview),
+]:
+    try:
+        json.dumps(object(), default=lambda obj, replacement=replacement: replacement)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError))
+for label, replacement in [
+    ('shared-bytes-default-unchecked', shared_bytes),
+    ('shared-bytearray-default-unchecked', shared_bytearray),
+    ('shared-memoryview-default-unchecked', shared_memoryview),
+]:
+    try:
+        json.dumps(object(), default=lambda obj, replacement=replacement: replacement, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))
+
 class FreshDefault:
     def __call__(self, obj):
         return object()
