@@ -21882,6 +21882,9 @@ impl Vm {
             if let Some(maps) = chain_map_subclass_maps(&haystack) {
                 return self.chain_map_contains_key_in_maps(&maps, &needle);
             }
+            if tuple_subclass_items(&haystack).is_some() {
+                return self.sequence_abc_contains(haystack, needle);
+            }
             return self.iterable_contains_value(haystack, needle);
         }
 
@@ -21889,6 +21892,9 @@ impl Vm {
             Value::List(items) => self.list_contains_rich(&items, &needle),
             Value::UserList { data, .. } => self.list_contains_rich(&data, &needle),
             Value::Deque { data, .. } => self.deque_contains_rich(&data, &needle),
+            haystack @ (Value::Tuple(_) | Value::NamedTuple { .. } | Value::Range { .. }) => {
+                self.sequence_abc_contains(haystack, needle)
+            }
             Value::ChainMap { maps } => self.chain_map_contains_key_in_maps(&maps, &needle),
             Value::OrderedDict(entries) => contains_value(needle, Value::Dict(entries)),
             Value::Counter { entries } => contains_value(needle, Value::Dict(entries)),
@@ -26392,6 +26398,22 @@ impl Vm {
             match self.advance_owned_iterator_capturing(&mut iterator)? {
                 Ok(IteratorAdvance::Yield(value)) => {
                     if sequence_items_match(&value, &needle) {
+                        return Ok(true);
+                    }
+                }
+                Ok(IteratorAdvance::Complete(_)) => return Ok(false),
+                Ok(IteratorAdvance::Raised) => return Err("iterator raised exception".to_string()),
+                Err(exception) => return Err(format_exception_error(&exception)),
+            }
+        }
+    }
+
+    fn sequence_abc_contains(&mut self, receiver: Value, needle: Value) -> Result<bool, String> {
+        let mut iterator = self.get_iter(receiver)?;
+        loop {
+            match self.advance_owned_iterator_capturing(&mut iterator)? {
+                Ok(IteratorAdvance::Yield(value)) => {
+                    if self.sequence_abc_item_matches(&value, &needle)? {
                         return Ok(true);
                     }
                 }
@@ -66448,10 +66470,16 @@ fn call_immutable_sequence_method(
                     method_arg_count(&args)
                 ));
             };
-            Ok(Value::Bool(contains_value(
-                needle.clone(),
-                receiver.clone(),
-            )?))
+            if matches!(name, "tuple.__contains__" | "range.__contains__") {
+                Ok(Value::Bool(
+                    vm.sequence_abc_contains(receiver.clone(), needle.clone())?,
+                ))
+            } else {
+                Ok(Value::Bool(contains_value(
+                    needle.clone(),
+                    receiver.clone(),
+                )?))
+            }
         }
         "__getitem__" => {
             let [receiver, index] = args.as_slice() else {

@@ -406,6 +406,72 @@ fn immutable_sequence_count_rich_compare_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn immutable_sequence_contains_rich_compare_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_immutable_sequence_contains_rich_compare_subset(",
+        "print(\"tuple-in\", Probe(\"b\") in items)",
+        "print(\"tuple-dunder\", items.__contains__(Probe(\"b\")))",
+        "print(\"tuple-subclass\", Probe(\"b\") in T(items))",
+        "(\"tuple-error-in\", lambda: 1 in (Boom(),))",
+        "(\"tuple-error-dunder\", lambda: (Boom(),).__contains__(1))",
+        "(\"range-float-match\", 2.0)",
+        "(\"range-subint-match\", I(2))",
+        "RangeProbe() in range(3)",
+        "\"range-object-missing False False\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused immutable sequence contains rich-compare subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_immutable_sequence_contains_rich_compare_diff_subset",
+    );
+    for required in [
+        "Lib/test/seq_tests.py immutable sequence contains rich comparison subset",
+        "name: \"immutable-sequence-contains-rich-compare\"",
+        "print(\"tuple-in\", Probe(\"b\") in items)",
+        "print(\"tuple-dunder\", items.__contains__(Probe(\"b\")))",
+        "print(\"tuple-subclass\", Probe(\"b\") in T(items))",
+        "(\"tuple-error-in\", lambda: 1 in (Boom(),))",
+        "(\"tuple-error-dunder\", lambda: (Boom(),).__contains__(1))",
+        "(\"range-float-match\", 2.0)",
+        "(\"range-subint-match\", I(2))",
+        "RangeProbe() in range(3)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused immutable sequence contains rich-compare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn sequence_abc_contains(",
+        "self.sequence_abc_item_matches(&value, &needle)?",
+        "Value::Tuple(_) | Value::NamedTuple { .. } | Value::Range { .. }",
+        "vm.sequence_abc_contains(receiver.clone(), needle.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "immutable sequence contains implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_immutable_sequence_contains_rich_compare_subset")
+                && document
+                    .contains("cpython_immutable_sequence_contains_rich_compare_diff_subset")
+                && document.contains("`__contains__()` rich comparison")
+                && document.contains("custom-object range membership"),
+            "focused immutable sequence contains rich-compare evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";

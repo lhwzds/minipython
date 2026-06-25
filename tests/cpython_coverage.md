@@ -54,6 +54,11 @@ Recent runtime migration notes:
   `cpython_immutable_sequence_count_rich_compare_diff_subset`, now pins
   tuple and range `count()` rich comparison, propagated equality exceptions,
   int-subclass matches, and custom-object range count scans.
+- `cpython_immutable_sequence_contains_rich_compare_subset`, backed by
+  `cpython_immutable_sequence_contains_rich_compare_diff_subset`, now pins
+  tuple and range membership / `__contains__()` rich comparison, propagated
+  equality exceptions, int-subclass matches, and custom-object range membership
+  scans.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

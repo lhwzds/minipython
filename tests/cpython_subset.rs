@@ -40809,6 +40809,75 @@ print("range-object-missing", range(3).count(RangeProbe()))"#,
     );
 }
 
+#[test]
+fn cpython_immutable_sequence_contains_rich_compare_subset() {
+    assert_output(
+        r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("tuple-eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+items = (Probe("a"), Probe("b"), Probe("a"))
+class T(tuple):
+    pass
+print("tuple-in", Probe("b") in items)
+print("tuple-dunder", items.__contains__(Probe("b")))
+print("tuple-subclass", Probe("b") in T(items))
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+for label, expr in [
+    ("tuple-error-in", lambda: 1 in (Boom(),)),
+    ("tuple-error-dunder", lambda: (Boom(),).__contains__(1)),
+]:
+    try:
+        print(label, expr())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+class I(int):
+    pass
+for label, value in [
+    ("range-int-missing", 5),
+    ("range-float-match", 2.0),
+    ("range-float-missing", 5.0),
+    ("range-subint-match", I(2)),
+    ("range-subint-missing", I(5)),
+]:
+    print(label, value in range(3), range(3).__contains__(value))
+class RangeProbe:
+    def __eq__(self, other):
+        print("range-eq", other)
+        return False
+print("range-object-missing", RangeProbe() in range(3), range(3).__contains__(RangeProbe()))"#,
+        &[
+            "tuple-eq a b",
+            "tuple-eq b b",
+            "tuple-in True",
+            "tuple-eq a b",
+            "tuple-eq b b",
+            "tuple-dunder True",
+            "tuple-eq a b",
+            "tuple-eq b b",
+            "tuple-subclass True",
+            "tuple-error-in ValueError boom ('boom',)",
+            "tuple-error-dunder ValueError boom ('boom',)",
+            "range-int-missing False False",
+            "range-float-match True True",
+            "range-float-missing False False",
+            "range-subint-match True True",
+            "range-subint-missing False False",
+            "range-eq 0",
+            "range-eq 1",
+            "range-eq 2",
+            "range-eq 0",
+            "range-eq 1",
+            "range-eq 2",
+            "range-object-missing False False",
+        ],
+    );
+}
+
 // Adapted from CPython public dict-subclass behavior used across
 // Lib/test/test_builtin.py and Lib/test/test_types.py mapping-protocol cases.
 // This pins the supported mutable mapping protocol without depending on
