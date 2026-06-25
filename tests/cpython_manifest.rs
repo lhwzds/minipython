@@ -11375,6 +11375,10 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "pop-missing True str True",
         "delitem-missing True str True",
         "del-subscript-missing True str True",
+        "ChainMap().popitem()",
+        "No keys found in the first mapping.",
+        "popitem-empty-first True str True",
+        "popitem-default True str True",
     ] {
         assert!(
             chainmap_missing_diff_body.contains(required)
@@ -11408,6 +11412,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     for required in [
         "fn chain_map_first_mapping_key_error_payload(",
         "fn raise_key_error_string(",
+        "No keys found in the first mapping.",
         "return raise_key_error_string(self, payload)",
         "raise_key_error_string(self, payload)?",
     ] {
@@ -11428,6 +11433,8 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "`__delitem__()`",
             "subscript deletion",
             "`KeyError(message)` string display",
+            "empty first-map",
+            "`popitem()` errors",
         ] {
             assert!(
                 document.contains(required),

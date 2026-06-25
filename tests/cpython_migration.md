@@ -10361,8 +10361,9 @@ Completed in the CPython collections manifest expansion pass:
   membership not invoking missing, plain ChainMap missing-key `__getitem__()`
   preserving the original key in `KeyError.args[0]`, first-map `pop()` /
   `__delitem__()` / subscript deletion missing-key errors preserving CPython's
-  `KeyError(message)` string display, `popitem()`, `clear()`, and subscript
-  assignment/deletion through subclass storage.
+  `KeyError(message)` string display, empty first-map `popitem()` errors
+  preserving the same display rule, `clear()`, and subscript assignment/deletion
+  through subclass storage.
 - Extended ChainMap subclass construction with dedicated storage, plus runtime
   support for ChainMap subclass lookup, containment, length, truthiness,
   iteration, mapping coercion, and first-map mutation.

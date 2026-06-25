@@ -27158,7 +27158,15 @@ impl Vm {
                     ));
                 };
                 let maps = chain_map_receiver_maps(receiver)?;
-                chain_map_popitem(&maps)
+                match chain_map_popitem(&maps) {
+                    Ok(value) => Ok(value),
+                    Err(message) => {
+                        if let Some(payload) = chain_map_first_mapping_key_error_payload(&message) {
+                            return raise_key_error_string(self, payload);
+                        }
+                        Err(message)
+                    }
+                }
             }
             "values" => {
                 reject_method_keywords(name, &keywords)?;
@@ -77215,7 +77223,10 @@ fn key_error_exception(key: Value) -> MiniException {
 fn chain_map_first_mapping_key_error_payload(message: &str) -> Option<String> {
     message
         .strip_prefix("KeyError: ")
-        .filter(|payload| payload.starts_with("Key not found in the first mapping: "))
+        .filter(|payload| {
+            payload.starts_with("Key not found in the first mapping: ")
+                || *payload == "No keys found in the first mapping."
+        })
         .map(str::to_string)
 }
 

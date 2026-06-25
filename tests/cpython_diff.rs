@@ -14609,6 +14609,12 @@ for label, expr in [('pop-missing', lambda: plain.pop('missing')), ('delitem-mis
         expr()
     except KeyError as error:
         print(label, error.args[0] == message, type(error.args[0]).__name__, str(error) == repr(error.args[0]))
+empty_message = 'No keys found in the first mapping.'
+for label, expr in [('popitem-empty-first', lambda: ChainMap({}, {'z': 9}).popitem()), ('popitem-default', lambda: ChainMap().popitem())]:
+    try:
+        expr()
+    except KeyError as error:
+        print(label, error.args[0] == empty_message, type(error.args[0]).__name__, str(error) == repr(error.args[0]))
 print(d.pop('a', 1001), d.maps)
 print(d.pop('a', 1002), d.maps)
 print(d.popitem(), d.maps)

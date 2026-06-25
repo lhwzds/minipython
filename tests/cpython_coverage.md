@@ -4042,7 +4042,8 @@ without adding general custom encoder/decoder class support.
   plain ChainMap missing-key `__getitem__()` preserving the original key in
   `KeyError.args[0]`, first-map `pop()` / `__delitem__()` / subscript deletion
   missing-key errors preserving CPython's `KeyError(message)` string display,
-  `popitem()`, `clear()`, and subclass-backed item assignment/deletion.
+  empty first-map `popitem()` errors preserving the same display rule,
+  `clear()`, and subclass-backed item assignment/deletion.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_iter_does_not_call_getitem_diff_subset` and
   `cpython_collections_chainmap_iter_does_not_call_getitem_subset`, covering
