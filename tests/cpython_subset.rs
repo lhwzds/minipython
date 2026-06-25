@@ -41844,6 +41844,26 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
     );
 }
 
+// Adapted from CPython public dict missing-key behavior. KeyError display uses
+// repr(key), but KeyError.args must preserve the original missing key object.
+#[test]
+fn cpython_dict_missing_keyerror_payload_subset() {
+    assert_output(
+        "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
+        &[
+            "subscript-str True str 'missing'",
+            "subscript-int True int 42",
+            "getitem-str True str 'missing'",
+            "pop-str True str 'missing'",
+            "pop-int True int 42",
+            "subclass-subscript True str 'missing'",
+            "subclass-getitem True str 'missing'",
+            "scope-subscript True str 'scope_missing'",
+            "scope-pop True str 'scope_missing'",
+        ],
+    );
+}
+
 // Covers CPython dict/set key matching for bool, int, float, complex, and
 // numeric subclasses whose hashes and equality results match.
 #[test]

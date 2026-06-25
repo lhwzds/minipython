@@ -15503,7 +15503,7 @@ impl Vm {
                         method_arg_count(&args)
                     ));
                 };
-                load_subscript(dict.clone(), key.clone())
+                load_subscript_or_raise_key_error(self, dict.clone(), key.clone())
             }
             "scope_dict.__len__" => {
                 let [dict @ Value::ScopeDict(_)] = args.as_slice() else {
@@ -15658,7 +15658,7 @@ impl Vm {
                     if let Some(default) = rest.first() {
                         return Ok(default.clone());
                     }
-                    return Err(format!("KeyError: {}", format_key_error(key)));
+                    return raise_key_error_value(self, key.clone());
                 };
                 if let Some(value) = scope.borrow_mut().remove(name) {
                     return Ok(value);
@@ -15666,7 +15666,7 @@ impl Vm {
                 if let Some(default) = rest.first() {
                     return Ok(default.clone());
                 }
-                Err(format!("KeyError: {}", format_key_error(key)))
+                raise_key_error_value(self, key.clone())
             }
             "scope_dict.popitem" => {
                 let [Value::ScopeDict(scope)] = args.as_slice() else {
@@ -17276,7 +17276,7 @@ impl Vm {
             index
         };
 
-        load_subscript(object, index)
+        load_subscript_or_raise_key_error(self, object, index)
     }
 
     fn load_dict_subclass_subscript(
@@ -17296,7 +17296,7 @@ impl Vm {
         if let Some(missing) = instance_special_method(&object, "__missing__") {
             return self.call_value(missing, vec![key]);
         }
-        Err(format!("KeyError: {}", format_key_error(&key)))
+        self.raise_runtime_exception_value(key_error_exception(key))
     }
 
     fn load_user_dict_subclass_subscript(
@@ -17316,7 +17316,7 @@ impl Vm {
         if let Some(missing) = instance_special_method(&object, "__missing__") {
             return self.call_value(missing, vec![key]);
         }
-        Err(format!("KeyError: {}", format_key_error(&key)))
+        self.raise_runtime_exception_value(key_error_exception(key))
     }
 
     fn store_subscript_value(
@@ -70837,7 +70837,7 @@ fn call_dict_method(
             if let Some(entries) = dict_subclass_entries(dict) {
                 vm.load_dict_subclass_subscript(dict.clone(), entries, key.clone())
             } else if matches!(dict, Value::Dict(_) | Value::OrderedDict(_)) {
-                load_subscript(dict.clone(), key.clone())
+                load_subscript_or_raise_key_error(vm, dict.clone(), key.clone())
             } else {
                 Err("__getitem__() expected a dict receiver".to_string())
             }
@@ -70989,7 +70989,8 @@ fn call_dict_method(
             if let Some(default) = rest.first() {
                 return Ok(default.clone());
             }
-            Err(format!("KeyError: {}", format_key_error(key)))
+            drop(entries);
+            raise_key_error_value(vm, key.clone())
         }
         "dict.popitem" => {
             reject_method_keywords(name, &keywords)?;
@@ -77184,6 +77185,19 @@ fn key_error_exception(key: Value) -> MiniException {
 fn raise_key_error_value(vm: &mut Vm, key: Value) -> Result<Value, String> {
     vm.raise_exception(key_error_exception(key), true)?;
     Ok(Value::None)
+}
+
+fn load_subscript_or_raise_key_error(
+    vm: &mut Vm,
+    object: Value,
+    index: Value,
+) -> Result<Value, String> {
+    let key = index.clone();
+    match load_subscript(object, index) {
+        Ok(value) => Ok(value),
+        Err(message) if message.starts_with("KeyError: ") => raise_key_error_value(vm, key),
+        Err(message) => Err(message),
+    }
 }
 
 fn get_iter(value: Value) -> Result<Value, String> {

@@ -5079,6 +5079,12 @@ clear/refill-to-original-size no-crash regression tied to the oracle.
 rich equality clears the source set and hash-collision `set.add()` re-entering
 the same set from Python-level `__eq__` tied to the oracle.
 
+`cpython_dict_missing_keyerror_payload_subset`, backed by
+`cpython_dict_missing_keyerror_payload_diff_subset`, keeps dict and globals mapping
+missing-key paths aligned with CPython by preserving the original
+missing key object in `KeyError.args[0]` while retaining the public repr-style
+`KeyError` display text.
+
 `cpython_set_operations_mutating_subset` is backed by the
 `set-operations-mutating` direct CPython diff case, keeping CPython's stable
 set equality, ordering, algebra, relation methods, and update methods whose

@@ -238,6 +238,72 @@ fn list_search_mutating_eq_docs_cover_container_runtime() {
     }
 }
 
+#[test]
+fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
+    let diff_name = "cpython_dict_missing_keyerror_payload_diff_subset";
+    let subset_name = "cpython_dict_missing_keyerror_payload_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "dict missing-key KeyError payload CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "dict missing-key KeyError payload runtime subset evidence must exist"
+    );
+
+    for required in [
+        "error.args[0] == key",
+        "dict.__getitem__({}, 'missing')",
+        "{}.pop('missing')",
+        "{}.pop(42)",
+        "D()['missing']",
+        "g['scope_missing']",
+        "g.pop('scope_missing')",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "dict missing-key KeyError payload diff and subset evidence must both cover `{required}`"
+        );
+    }
+    for required in [
+        "\"subscript-str True str 'missing'\"",
+        "\"subscript-int True int 42\"",
+        "\"pop-int True int 42\"",
+        "\"scope-pop True str 'scope_missing'\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "dict missing-key KeyError payload subset output must pin `{required}`"
+        );
+    }
+    for required in [
+        "fn load_subscript_or_raise_key_error(",
+        "key_error_exception(key)",
+        "raise_key_error_value(vm, key.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict missing-key KeyError payload VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        for required in [
+            diff_name,
+            subset_name,
+            "original missing key",
+            "`KeyError.args[0]`",
+            "dict and globals mapping",
+        ] {
+            assert!(
+                document.contains(required),
+                "dict missing-key KeyError payload docs must contain `{required}`"
+            );
+        }
+    }
+}
+
 macro_rules! cpython_source_or_skip {
     ($path:expr) => {
         match fs::read_to_string($path) {

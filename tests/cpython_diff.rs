@@ -708,6 +708,31 @@ fn cpython_json_loads_dumps_basic_diff_subset() {
 }
 
 #[test]
+fn cpython_dict_missing_keyerror_payload_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "CPython public dict missing-key KeyError args behavior",
+        name: "dict-missing-keyerror-payload",
+        source: r#"def show(label, key, callback):
+    try:
+        callback()
+    except KeyError as error:
+        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))
+class D(dict):
+    pass
+g = globals()
+show('subscript-str', 'missing', lambda: {}['missing'])
+show('subscript-int', 42, lambda: {}[42])
+show('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))
+show('pop-str', 'missing', lambda: {}.pop('missing'))
+show('pop-int', 42, lambda: {}.pop(42))
+show('subclass-subscript', 'missing', lambda: D()['missing'])
+show('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))
+show('scope-subscript', 'scope_missing', lambda: g['scope_missing'])
+show('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))"#,
+    });
+}
+
+#[test]
 fn cpython_sequence_repeat_allocation_guard_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "CPython public sequence repeat allocation behavior",
