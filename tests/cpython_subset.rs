@@ -13086,6 +13086,16 @@ fn cpython_ast_module_parse_dump_first_pass_subset() {
         "import ast\nclass S(str):\n    pass\nnode = ast.parse('1 + 2', mode=S('eval'))\nprint(type(node).__name__, type(node.body).__name__)",
         &["Expression BinOp"],
     );
+    assert_output(
+        "import ast\nclass S(str):\n    pass\nclass B(bytes):\n    pass\nclass FakePath:\n    def __init__(self, path):\n        self.path = path\n    def __fspath__(self):\n        return self.path\nfor filename in [S('<afile>'), B(b'<bfile>'), FakePath(S('<apath>')), FakePath(B(b'<bpath>'))]:\n    node = ast.parse('x = 1', filename=filename)\n    print(type(filename).__name__, type(node).__name__, type(node.body[0]).__name__)\nclass BadPath:\n    def __fspath__(self):\n        return 123\ntry:\n    ast.parse('x = 1', filename=BadPath())\nexcept TypeError as error:\n    print(error.__class__.__name__, 'BadPath.__fspath__' in str(error), str(error).endswith('not int'))",
+        &[
+            "S Module Assign",
+            "B Module Assign",
+            "FakePath Module Assign",
+            "FakePath Module Assign",
+            "TypeError True True",
+        ],
+    );
 }
 
 // Adapted from CPython `Lib/test/test_ast/test_ast.py::AST_Tests.test_null_bytes`.

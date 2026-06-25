@@ -8816,6 +8816,21 @@ for source in [S('x = 4'), B(b'x = 5'), BA(b'x = 6')]:
     print(type(source).__name__, type(node).__name__, type(node.body[0]).__name__)
 node = ast.parse('1 + 2', mode=S('eval'))
 print(type(node).__name__, type(node.body).__name__)
+class FakePath:
+    def __init__(self, path):
+        self.path = path
+    def __fspath__(self):
+        return self.path
+for filename in [S('<afile>'), B(b'<bfile>'), FakePath(S('<apath>')), FakePath(B(b'<bpath>'))]:
+    node = ast.parse('x = 1', filename=filename)
+    print(type(filename).__name__, type(node).__name__, type(node.body[0]).__name__)
+class BadPath:
+    def __fspath__(self):
+        return 123
+try:
+    ast.parse('x = 1', filename=BadPath())
+except TypeError as error:
+    print(error.__class__.__name__, 'BadPath.__fspath__' in str(error), str(error).endswith('not int'))
 for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.parse('1', mode='bad')]:
     try:
         call()

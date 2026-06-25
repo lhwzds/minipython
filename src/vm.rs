@@ -36419,6 +36419,53 @@ fn compile_filename_type_error(value: &Value) -> String {
     )
 }
 
+fn ast_parse_filename_argument(vm: &mut Vm, value: Value) -> Result<String, String> {
+    match value {
+        Value::String(filename)
+        | Value::IdentityString {
+            value: filename, ..
+        } => Ok(filename),
+        value if str_subclass_string(&value).is_some() => {
+            Ok(str_subclass_string(&value).expect("str subclass storage exists after guard"))
+        }
+        Value::Bytes(bytes) => compile_filename_from_bytes(bytes.as_ref().clone()),
+        value if bytes_subclass_bytes(&value).is_some() => compile_filename_from_bytes(
+            bytes_subclass_bytes(&value).expect("bytes subclass storage exists after guard"),
+        ),
+        value @ Value::Instance { .. } => {
+            let path_type = type_name(&value).to_string();
+            let Some(method) = instance_special_method(&value, "__fspath__") else {
+                return Err(compile_filename_type_error(&value));
+            };
+            match vm.call_value_catching(method, Vec::new())? {
+                Err(exception) => Err(format_exception_error(&exception)),
+                Ok(
+                    Value::String(filename)
+                    | Value::IdentityString {
+                        value: filename, ..
+                    },
+                ) => Ok(filename),
+                Ok(result) if str_subclass_string(&result).is_some() => {
+                    Ok(str_subclass_string(&result)
+                        .expect("str subclass storage exists after guard"))
+                }
+                Ok(Value::Bytes(bytes)) => compile_filename_from_bytes(bytes.as_ref().clone()),
+                Ok(result) if bytes_subclass_bytes(&result).is_some() => {
+                    compile_filename_from_bytes(
+                        bytes_subclass_bytes(&result)
+                            .expect("bytes subclass storage exists after guard"),
+                    )
+                }
+                Ok(result) => Err(format!(
+                    "TypeError: expected {path_type}.__fspath__() to return str or bytes, not {}",
+                    type_name(&result)
+                )),
+            }
+        }
+        value => Err(compile_filename_type_error(&value)),
+    }
+}
+
 fn code_mode_from_string(mode: &str) -> Result<CodeMode, String> {
     match mode {
         "exec" => Ok(CodeMode::Exec),
@@ -41649,15 +41696,7 @@ fn call_ast_parse(
     let filename = values[1]
         .take()
         .unwrap_or_else(|| Value::String("<unknown>".to_string()));
-    let filename = match value_as_string(&filename) {
-        Some(filename) => filename.to_string(),
-        None => {
-            return Err(format!(
-                "TypeError: expected str, bytes or os.PathLike object, not {}",
-                type_name(&filename)
-            ));
-        }
-    };
+    let filename = ast_parse_filename_argument(vm, filename)?;
     let mode = values[2]
         .take()
         .unwrap_or_else(|| Value::String("exec".to_string()));

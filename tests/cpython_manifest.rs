@@ -21647,10 +21647,13 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "BA Module Assign",
         "ast.parse('1 + 2', mode=S('eval'))",
         "Expression BinOp",
+        "class FakePath:",
+        "filename=filename",
+        "BadPath.__fspath__",
     ] {
         assert!(
             parse_subset.contains(required),
-            "ast.parse source subclass subset evidence must cover `{required}`"
+            "ast.parse source/mode/filename subclass subset evidence must cover `{required}`"
         );
     }
 
@@ -21683,25 +21686,30 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
         "ast.parse(source)",
         "compile(source, '<mini>', 'exec', ast.PyCF_ONLY_AST)",
         "mode=S('eval')",
+        "class FakePath:",
+        "filename=filename",
+        "BadPath.__fspath__",
         "legacy ast.dump default-field rendering",
     ] {
         assert!(
             diff_source.contains(required),
-            "ast.parse public diff must cover `{required}`"
+            "ast.parse public source/mode/filename diff must cover `{required}`"
         );
     }
 
     for required in [
+        "fn ast_parse_filename_argument(",
         "fn parse_ast_node(",
         "fn emit_ast_parse_warnings(",
         "fn compile_mode_argument(",
         "value if str_subclass_string(&value).is_some()",
         "value if bytes_subclass_bytes(&value).is_some()",
         "value if bytearray_subclass_bytes(&value).is_some()",
+        "\"__fspath__\"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
-            "ast.parse source subclass VM implementation must contain `{required}`"
+            "ast.parse source/mode/filename VM implementation must contain `{required}`"
         );
     }
 
@@ -21713,7 +21721,9 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
                 && document.contains("eval")
                 && document.contains("func_type")
                 && document.contains("source subclass")
-                && document.contains("mode subclass"),
+                && document.contains("mode subclass")
+                && document.contains("filename")
+                && document.contains("path-like"),
             "ast.parse docs must link `{diff_name}` to exec/eval/single/func_type coverage"
         );
     }

@@ -2947,8 +2947,9 @@ without adding general custom encoder/decoder class support.
   `isinstance(..., ast.AST)`. `cpython_ast_parse_public_diff_subset` provides
   gated direct CPython output parity for the same public `ast.parse()` wrapper
   surface, including `str` / `bytes` / `bytearray` source subclass handling,
-  and `str` mode subclass handling when the oracle has current default-field
-  `ast.dump()` behavior.
+  `str` mode subclass handling, and `filename` handling for `str` / `bytes`
+  subclasses plus path-like `__fspath__` results when the oracle has current
+  default-field `ast.dump()` behavior.
   `cpython_ast_parse_null_bytes_subset` ports
   CPython `AST_Tests::test_null_bytes`, requiring `ast.parse()` over source
   strings containing NUL bytes to raise `SyntaxError` with CPython's public

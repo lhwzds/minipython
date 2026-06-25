@@ -11519,6 +11519,9 @@ Completed in the CPython collections manifest expansion pass:
   source subclass behavior for `str`, `bytes`, and `bytearray` subclasses.
 - Expanded the same AST parse diff with CPython's public `str` mode subclass
   behavior.
+- Expanded the same AST parse diff and runtime subset with CPython's public
+  `filename` acceptance for `str` / `bytes` subclasses and path-like
+  `__fspath__` results.
 - Added `cpython_compile_source_positions_public_invariants_diff_subset`, a
   gated direct CPython diff for public `code.co_positions()` /
   `code.co_lines()` source-position invariants from
