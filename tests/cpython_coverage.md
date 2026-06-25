@@ -341,6 +341,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,
+  `cpython_collections_chainmap_subclass_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_constructor_source_len_diff_subset`,
   `cpython_collections_chainmap_subclass_source_len_diff_subset`,
   `cpython_collections_chainmap_constructor_source_iter_diff_subset`,
@@ -3979,6 +3980,11 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,
   covering ChainMap constructor source truthiness for empty, mapping, integer,
   list, string, and `None` map sources without eager mapping validation.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_subclass_source_truthiness_subset`, backed by
+  `cpython_collections_chainmap_subclass_source_truthiness_diff_subset`,
+  covering ChainMap subclass source truthiness for empty, mapping, integer,
+  list, string, and `None` map sources without falling back to key length.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_constructor_source_len_subset`, backed by
   `cpython_collections_chainmap_constructor_source_len_diff_subset`, covering

@@ -10876,6 +10876,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_constructor_lazy_mapping_subset",
             "cpython_collections_chainmap_constructor_source_repr_subset",
             "cpython_collections_chainmap_constructor_source_truthiness_subset",
+            "cpython_collections_chainmap_subclass_source_truthiness_subset",
             "cpython_collections_chainmap_constructor_source_len_subset",
             "cpython_collections_chainmap_subclass_source_len_subset",
             "cpython_collections_chainmap_constructor_source_iter_subset",
@@ -11268,6 +11269,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_constructor_source_truthiness_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap constructor source truthiness"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_subclass_source_truthiness_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap subclass source truthiness"
     );
     assert!(
         row.diff_evidence
@@ -12207,7 +12213,8 @@ fn collections_chainmap_constructor_source_truthiness_subset_has_focused_diff_ev
     }
 
     assert!(
-        VM_SOURCE.contains("if self.truth_value(map)?")
+        VM_SOURCE.contains("fn chain_map_maps_truth_value(")
+            && VM_SOURCE.contains("if self.truth_value(map.clone())?")
             && VM_SOURCE.contains("if is_truthy(map)?")
             && !VM_SOURCE
                 .contains("Value::ChainMap { maps } => Ok(!chain_map_entries(maps)?.is_empty())")
@@ -12224,6 +12231,85 @@ fn collections_chainmap_constructor_source_truthiness_subset_has_focused_diff_ev
                 )
                 && document.contains("ChainMap constructor source truthiness"),
             "collections ChainMap constructor source-truthiness evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_subclass_source_truthiness_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_subclass_source_truthiness_subset",
+    );
+    for required in [
+        "class Sub(ChainMap):",
+        "('empty', Sub())",
+        "('empty-dict', Sub({}))",
+        "('dict-second', Sub({}, {'x': 1}))",
+        "('int-one', Sub(1))",
+        "('int-zero', Sub(0))",
+        "('list-empty', Sub([]))",
+        "('list-value', Sub([1]))",
+        "('str-empty', Sub(''))",
+        "('str-value', Sub('abc'))",
+        "('none', Sub(None))",
+        "int-one True",
+        "int-zero False",
+        "list-value True",
+        "str-value True",
+        "none False",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap subclass source-truthiness subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_subclass_source_truthiness_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap subclass source truthiness",
+        "class Sub(ChainMap):",
+        "('empty', Sub())",
+        "('dict-second', Sub({}, {'x': 1}))",
+        "('int-one', Sub(1))",
+        "('str-value', Sub('abc'))",
+        "bool(value)",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap subclass source-truthiness CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "value if chain_map_subclass_maps(&value).is_some()",
+        "self.chain_map_maps_truth_value(&maps)",
+        "fn chain_map_maps_truth_value(",
+        "if self.truth_value(map.clone())?",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap subclass source-truthiness VM implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        !VM_SOURCE.contains(
+            "value if chain_map_subclass_maps(&value).is_some() => Ok(self.len_value(value)? != 0)"
+        ),
+        "ChainMap subclass truthiness must not use key length as source truthiness"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_subclass_source_truthiness_subset")
+                && document.contains(
+                    "cpython_collections_chainmap_subclass_source_truthiness_diff_subset"
+                )
+                && document.contains("ChainMap subclass source truthiness"),
+            "collections ChainMap subclass source-truthiness evidence must be documented in coverage and migration notes"
         );
     }
 }

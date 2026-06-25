@@ -17653,7 +17653,11 @@ impl Vm {
             value if list_subclass_storage(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if tuple_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if dict_subclass_entries(&value).is_some() => Ok(self.len_value(value)? != 0),
-            value if chain_map_subclass_maps(&value).is_some() => Ok(self.len_value(value)? != 0),
+            value if chain_map_subclass_maps(&value).is_some() => {
+                let maps = chain_map_subclass_maps(&value)
+                    .expect("ChainMap subclass maps exist after guard");
+                self.chain_map_maps_truth_value(&maps)
+            }
             value if set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if frozen_set_subclass_items(&value).is_some() => Ok(self.len_value(value)? != 0),
             value if str_subclass_string(&value).is_some() => Ok(self.len_value(value)? != 0),
@@ -17670,14 +17674,7 @@ impl Vm {
                 Ok(self.len_value(value)? != 0)
             }
             value if array_array_storage(&value).is_some() => Ok(self.len_value(value)? != 0),
-            Value::ChainMap { maps } => {
-                for map in maps {
-                    if self.truth_value(map)? {
-                        return Ok(true);
-                    }
-                }
-                Ok(false)
-            }
+            Value::ChainMap { maps } => self.chain_map_maps_truth_value(&maps),
             Value::UserList { data, .. } => Ok(!data.borrow().is_empty()),
             Value::Deque { data, .. } => Ok(!data.borrow().is_empty()),
             Value::UserDict { data, .. } => Ok(!data.borrow().is_empty()),
@@ -17691,6 +17688,15 @@ impl Vm {
             }
             value => is_truthy(&value),
         }
+    }
+
+    fn chain_map_maps_truth_value(&mut self, maps: &[Value]) -> Result<bool, String> {
+        for map in maps {
+            if self.truth_value(map.clone())? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
     }
 
     fn len_value(&mut self, value: Value) -> Result<usize, String> {

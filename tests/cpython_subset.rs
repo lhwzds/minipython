@@ -50335,6 +50335,45 @@ fn cpython_collections_chainmap_constructor_source_truthiness_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap truthiness:
+// ChainMap subclass bool uses stored source truthiness, not unique key length.
+#[test]
+fn cpython_collections_chainmap_subclass_source_truthiness_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "class Sub(ChainMap):\n",
+            "    pass\n",
+            "cases = [\n",
+            "    ('empty', Sub()),\n",
+            "    ('empty-dict', Sub({})),\n",
+            "    ('dict-second', Sub({}, {'x': 1})),\n",
+            "    ('int-one', Sub(1)),\n",
+            "    ('int-zero', Sub(0)),\n",
+            "    ('list-empty', Sub([])),\n",
+            "    ('list-value', Sub([1])),\n",
+            "    ('str-empty', Sub('')),\n",
+            "    ('str-value', Sub('abc')),\n",
+            "    ('none', Sub(None)),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    print(label, bool(value))"
+        ),
+        &[
+            "empty False",
+            "empty-dict False",
+            "dict-second True",
+            "int-one True",
+            "int-zero False",
+            "list-empty False",
+            "list-value True",
+            "str-empty False",
+            "str-value True",
+            "none False",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap length:
 // ChainMap len uses the unique keys produced by each stored source.
 #[test]

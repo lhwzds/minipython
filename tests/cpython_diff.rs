@@ -13522,6 +13522,31 @@ for label, value in cases:
 }
 
 #[test]
+fn cpython_collections_chainmap_subclass_source_truthiness_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap subclass source truthiness",
+        name: "collections-chainmap-subclass-source-truthiness",
+        source: r#"from collections import ChainMap
+class Sub(ChainMap):
+    pass
+cases = [
+    ('empty', Sub()),
+    ('empty-dict', Sub({})),
+    ('dict-second', Sub({}, {'x': 1})),
+    ('int-one', Sub(1)),
+    ('int-zero', Sub(0)),
+    ('list-empty', Sub([])),
+    ('list-value', Sub([1])),
+    ('str-empty', Sub('')),
+    ('str-value', Sub('abc')),
+    ('none', Sub(None)),
+]
+for label, value in cases:
+    print(label, bool(value))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_constructor_source_len_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestChainMap constructor source length",
