@@ -22336,6 +22336,26 @@ except TypeError as error:
     );
 }
 
+// Adapted from CPython Lib/copy.py public copy.replace() custom classmethod
+// hook arity diagnostics.
+#[test]
+fn cpython_copy_replace_classmethod_hook_arity_error_subset() {
+    assert_output(
+        r#"import copy
+class ClassMissingObject:
+    @classmethod
+    def __replace__(cls, **changes):
+        return 'bad'
+try:
+    copy.replace(ClassMissingObject(), x=1)
+except TypeError as error:
+    print(type(error).__name__, str(error))"#,
+        &[
+            "TypeError ClassMissingObject.__replace__() takes 1 positional argument but 2 were given",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]

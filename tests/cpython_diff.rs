@@ -16086,6 +16086,23 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_copy_replace_classmethod_hook_arity_error_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public copy.replace custom classmethod __replace__ arity TypeError subset",
+        name: "copy-replace-classmethod-hook-arity-error",
+        source: r#"import copy
+class ClassMissingObject:
+    @classmethod
+    def __replace__(cls, **changes):
+        return 'bad'
+try:
+    copy.replace(ClassMissingObject(), x=1)
+except TypeError as error:
+    print(type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

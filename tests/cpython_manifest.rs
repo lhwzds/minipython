@@ -15576,6 +15576,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_copy_replace_custom_hook_subset",
             "cpython_copy_replace_unsupported_type_error_subset",
             "cpython_copy_replace_hook_unexpected_keyword_error_subset",
+            "cpython_copy_replace_classmethod_hook_arity_error_subset",
         ],
         &["pickle protocol"],
     );
@@ -15589,6 +15590,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_copy_replace_custom_hook_diff_subset",
         "cpython_copy_replace_unsupported_type_error_diff_subset",
         "cpython_copy_replace_hook_unexpected_keyword_error_diff_subset",
+        "cpython_copy_replace_classmethod_hook_arity_error_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
     ] {
         assert!(
@@ -15642,6 +15644,14 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy.replace hook unexpected-keyword CPython diff evidence must exist"
     );
     assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_replace_classmethod_hook_arity_error_subset("),
+        "copy.replace classmethod hook arity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_replace_classmethod_hook_arity_error_diff_subset("),
+        "copy.replace classmethod hook arity CPython diff evidence must exist"
+    );
+    assert!(
         CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset")
             && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_subset")
@@ -15651,7 +15661,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
             && CPYTHON_COVERAGE
                 .contains("cpython_copy_replace_hook_unexpected_keyword_error_subset")
             && CPYTHON_COVERAGE
-                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_subset")
+            && CPYTHON_COVERAGE
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
         "coverage document must link copy runtime and diff evidence"
     );
     assert!(
@@ -15665,7 +15679,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
             && CPYTHON_MIGRATION
                 .contains("cpython_copy_replace_hook_unexpected_keyword_error_subset")
             && CPYTHON_MIGRATION
-                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
+                .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_subset")
+            && CPYTHON_MIGRATION
+                .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
         "migration document must link copy runtime and diff evidence"
     );
 
@@ -15696,6 +15714,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
         row.diff_evidence
             .contains("cpython_copy_replace_hook_unexpected_keyword_error_diff_subset"),
         "copy sandbox manifest must cite copy.replace hook unexpected-keyword CPython diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_replace_classmethod_hook_arity_error_diff_subset"),
+        "copy sandbox manifest must cite copy.replace classmethod hook arity CPython diff evidence"
     );
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
@@ -15833,6 +15856,10 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "\"TypeError: replace() does not support {} objects\"",
         "fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String",
         "\"__replace__() got an unexpected keyword argument \"",
+        "copy_replace_hook_expected_got_counts(message)",
+        "\"TypeError: {class_name}.__replace__() takes {expected} positional {argument} but {got} {verb} given\"",
+        "fn copy_replace_hook_expected_got_counts(message: &str) -> Option<(usize, usize)>",
+        "\"__replace__() expected at most \"",
     ] {
         assert!(
             VM_SOURCE.contains(required),
@@ -15873,6 +15900,43 @@ fn copy_public_diff_covers_pure_memory_subset() {
         unexpected_keyword_subset
             .contains("BadKeyword.__replace__() got an unexpected keyword argument 'x'"),
         "copy.replace hook unexpected-keyword runtime subset must assert class-qualified TypeError text"
+    );
+
+    let classmethod_arity_diff = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_copy_replace_classmethod_hook_arity_error_diff_subset",
+    );
+    let classmethod_arity_subset = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_copy_replace_classmethod_hook_arity_error_subset",
+    );
+    assert!(
+        classmethod_arity_diff.contains(
+            "Lib/copy.py public copy.replace custom classmethod __replace__ arity TypeError subset"
+        ),
+        "copy.replace classmethod hook arity diff evidence must identify its CPython origin"
+    );
+    for required in [
+        "class ClassMissingObject:",
+        "@classmethod",
+        "def __replace__(cls, **changes):",
+        "copy.replace(ClassMissingObject(), x=1)",
+        "str(error)",
+    ] {
+        assert!(
+            classmethod_arity_diff.contains(required),
+            "copy.replace classmethod hook arity CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            classmethod_arity_subset.contains(required),
+            "copy.replace classmethod hook arity runtime subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        classmethod_arity_subset.contains(
+            "ClassMissingObject.__replace__() takes 1 positional argument but 2 were given"
+        ),
+        "copy.replace classmethod hook arity runtime subset must assert class-qualified TypeError text"
     );
 
     let unsupported_diff = extract_rust_test_body(
@@ -15942,6 +16006,7 @@ fn copy_public_diff_covers_pure_memory_subset() {
             "unsupported-object `TypeError`",
             "`replace() does not support T objects`",
             "class-qualified `__replace__()` unexpected-keyword `TypeError`",
+            "classmethod `__replace__()` arity `TypeError`",
         ] {
             assert!(
                 document.contains(required),

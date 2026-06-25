@@ -60439,11 +60439,31 @@ fn copy_replace_unsupported_type_error(value: &Value) -> String {
 }
 
 fn qualify_copy_replace_hook_error(message: &str, class_name: &str) -> String {
-    let Some(argument) = message.strip_prefix("__replace__() got an unexpected keyword argument ")
-    else {
-        return message.to_string();
-    };
-    format!("{class_name}.__replace__() got an unexpected keyword argument {argument}")
+    if let Some(argument) =
+        message.strip_prefix("__replace__() got an unexpected keyword argument ")
+    {
+        return format!("{class_name}.__replace__() got an unexpected keyword argument {argument}");
+    }
+    if let Some((expected, got)) = copy_replace_hook_expected_got_counts(message) {
+        let argument = if expected == 1 {
+            "argument"
+        } else {
+            "arguments"
+        };
+        let verb = if got == 1 { "was" } else { "were" };
+        return format!(
+            "TypeError: {class_name}.__replace__() takes {expected} positional {argument} but {got} {verb} given"
+        );
+    }
+    message.to_string()
+}
+
+fn copy_replace_hook_expected_got_counts(message: &str) -> Option<(usize, usize)> {
+    let tail = message.strip_prefix("__replace__() expected at most ")?;
+    let (expected, tail) = tail.split_once(" positional arguments, got ")?;
+    let expected = expected.parse().ok()?;
+    let got = tail.parse().ok()?;
+    Some((expected, got))
 }
 
 fn type_name(value: &Value) -> &str {
