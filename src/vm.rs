@@ -56876,6 +56876,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__text_signature__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))

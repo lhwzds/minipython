@@ -1314,6 +1314,60 @@ fn dict_view_type_metadata_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_text_signature_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_type_text_signature_subset(",
+        "cls.__text_signature__",
+        "hasattr(cls, \"__text_signature__\")",
+        "type(value).__name__",
+        "value is None",
+        "\"dict_keys True NoneType True\"",
+        "\"odict_values True NoneType True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type text signature subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_type_text_signature_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view type text signature subset",
+        "name: \"dict-view-type-text-signature\"",
+        "cls.__text_signature__",
+        "hasattr(cls, \"__text_signature__\")",
+        "OrderedDict([(1, 2)]).values().__class__",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type text signature CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"__text_signature__\" && is_dict_view_type_object_name",
+        "Ok(Value::None)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type text signature implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_type_text_signature_subset")
+                && document.contains("cpython_dict_view_type_text_signature_diff_subset")
+                && document.contains("dict view type text signature"),
+            "focused dict view type text signature evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_type_hierarchy_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_type_hierarchy_subset(",

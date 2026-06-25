@@ -30743,6 +30743,26 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_type_text_signature_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view type text signature subset",
+        name: "dict-view-type-text-signature",
+        source: r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+for label, cls in classes:
+    value = cls.__text_signature__
+    print(label, hasattr(cls, "__text_signature__"), type(value).__name__, value is None)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_type_hierarchy_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view type hierarchy subset",

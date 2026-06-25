@@ -49610,6 +49610,35 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view type introspection metadata. Dict and
+// OrderedDict view classes expose __text_signature__ as None without requiring
+// CPython layout metadata.
+#[test]
+fn cpython_dict_view_type_text_signature_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+for label, cls in classes:
+    value = cls.__text_signature__
+    print(label, hasattr(cls, "__text_signature__"), type(value).__name__, value is None)"#,
+        &[
+            "dict_keys True NoneType True",
+            "dict_items True NoneType True",
+            "dict_values True NoneType True",
+            "odict_keys True NoneType True",
+            "odict_items True NoneType True",
+            "odict_values True NoneType True",
+        ],
+    );
+}
+
 // Adapted from CPython public dict view type hierarchy metadata. OrderedDict
 // view classes derive from the corresponding built-in dict view classes while
 // built-in dict view classes derive directly from object.
