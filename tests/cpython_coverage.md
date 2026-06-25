@@ -341,6 +341,7 @@ Recent runtime migration notes:
   `cpython_collections_chainmap_constructor_lazy_mapping_diff_subset`,
   `cpython_collections_chainmap_constructor_source_repr_diff_subset`,
   `cpython_collections_chainmap_subclass_source_repr_diff_subset`,
+  `cpython_collections_chainmap_subclass_display_type_methods_diff_subset`,
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_subclass_source_truthiness_diff_subset`,
   `cpython_collections_chainmap_constructor_source_len_diff_subset`,
@@ -3981,6 +3982,11 @@ without adding general custom encoder/decoder class support.
   `cpython_collections_chainmap_subclass_source_repr_diff_subset`, covering
   ChainMap subclass source repr, string, and empty-format display for stored
   string, tuple, and dict sources using the subclass name.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_collections_chainmap_subclass_display_type_methods_subset`, backed by
+  `cpython_collections_chainmap_subclass_display_type_methods_diff_subset`,
+  covering ChainMap subclass display type methods for inherited `__repr__`,
+  `__str__`, and `__format__` without exposing `maps` on the type object.
 - `CONTAINER_RUNTIME` also includes
   `cpython_collections_chainmap_constructor_source_truthiness_subset`, backed by
   `cpython_collections_chainmap_constructor_source_truthiness_diff_subset`,

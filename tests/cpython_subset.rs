@@ -50330,6 +50330,36 @@ fn cpython_collections_chainmap_subclass_source_repr_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap display
+// behavior: ChainMap subclasses inherit display type methods on the class.
+#[test]
+fn cpython_collections_chainmap_subclass_display_type_methods_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "class Sub(ChainMap):\n",
+            "    pass\n",
+            "value = Sub('abc')\n",
+            "for label, func in [\n",
+            "    ('repr', lambda: Sub.__repr__(value)),\n",
+            "    ('str', lambda: Sub.__str__(value)),\n",
+            "    ('format', lambda: Sub.__format__(value, '')),\n",
+            "    ('maps', lambda: type(Sub.maps).__name__),\n",
+            "]:\n",
+            "    try:\n",
+            "        print(label, func())\n",
+            "    except AttributeError as error:\n",
+            "        print(label, type(error).__name__)"
+        ),
+        &[
+            "repr Sub('abc')",
+            "str Sub('abc')",
+            "format Sub('abc')",
+            "maps AttributeError",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py::TestChainMap truthiness:
 // ChainMap bool uses the stored source truthiness instead of eager mapping
 // validation.

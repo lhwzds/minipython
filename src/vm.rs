@@ -14478,6 +14478,11 @@ impl Vm {
                     return Ok(value);
                 }
 
+                if let Some(value) = chain_map_subclass_display_class_attribute(owner.clone(), name)
+                {
+                    return Ok(value);
+                }
+
                 if name == "__dir__" {
                     return Ok(object_dir_bound_method(Value::Class {
                         name: class_name,
@@ -51106,6 +51111,19 @@ fn chain_map_subclass_attribute(receiver: Value, name: &str) -> Result<Option<Va
     }
 }
 
+fn chain_map_subclass_display_class_attribute(class: Value, name: &str) -> Option<Value> {
+    let Value::Class { bases, .. } = &class else {
+        return None;
+    };
+    if !class_bases_include_builtin(bases, "ChainMap") {
+        return None;
+    }
+    match name {
+        "__format__" | "__repr__" | "__str__" => Some(Value::Builtin(format!("ChainMap.{name}"))),
+        _ => None,
+    }
+}
+
 fn is_builtin_chain_map_type_method(name: &str) -> bool {
     matches!(
         name,
@@ -54320,6 +54338,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 return Ok(value);
             }
             if let Some(value) = array_array_subclass_class_attribute(class.clone(), name) {
+                return Ok(value);
+            }
+            if let Some(value) = chain_map_subclass_display_class_attribute(class.clone(), name) {
                 return Ok(value);
             }
             if name == "__dir__" {

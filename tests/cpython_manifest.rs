@@ -10876,6 +10876,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_collections_chainmap_constructor_lazy_mapping_subset",
             "cpython_collections_chainmap_constructor_source_repr_subset",
             "cpython_collections_chainmap_subclass_source_repr_subset",
+            "cpython_collections_chainmap_subclass_display_type_methods_subset",
             "cpython_collections_chainmap_constructor_source_truthiness_subset",
             "cpython_collections_chainmap_subclass_source_truthiness_subset",
             "cpython_collections_chainmap_constructor_source_len_subset",
@@ -11270,6 +11271,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         row.diff_evidence
             .contains("cpython_collections_chainmap_subclass_source_repr_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for ChainMap subclass source repr"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_collections_chainmap_subclass_display_type_methods_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for ChainMap subclass display type methods"
     );
     assert!(
         row.diff_evidence
@@ -12255,6 +12261,78 @@ fn collections_chainmap_subclass_source_repr_subset_has_focused_diff_evidence() 
                     .contains("cpython_collections_chainmap_subclass_source_repr_diff_subset")
                 && document.contains("ChainMap subclass source repr"),
             "collections ChainMap subclass source-repr evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn collections_chainmap_subclass_display_type_methods_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_subclass_display_type_methods_subset",
+    );
+    for required in [
+        "class Sub(ChainMap):",
+        "Sub.__repr__(value)",
+        "Sub.__str__(value)",
+        "Sub.__format__(value, '')",
+        "type(Sub.maps).__name__",
+        "repr Sub('abc')",
+        "str Sub('abc')",
+        "format Sub('abc')",
+        "maps AttributeError",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap subclass display-type-method subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_subclass_display_type_methods_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap subclass display type methods",
+        "class Sub(ChainMap):",
+        "Sub.__repr__(value)",
+        "Sub.__str__(value)",
+        "Sub.__format__(value, '')",
+        "type(Sub.maps).__name__",
+        "AttributeError",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap subclass display-type-method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn chain_map_subclass_display_class_attribute(",
+        "class_bases_include_builtin(bases, \"ChainMap\")",
+        "\"__format__\" | \"__repr__\" | \"__str__\"",
+        "Value::Builtin(format!(\"ChainMap.{name}\"))",
+        "chain_map_subclass_display_class_attribute(owner.clone(), name)",
+        "chain_map_subclass_display_class_attribute(class.clone(), name)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap subclass display-type-method VM implementation must contain `{required}`"
+        );
+    }
+    assert!(
+        !VM_SOURCE.contains("\"maps\" => Some(Value::Builtin(format!(\"ChainMap.{name}\"))"),
+        "ChainMap subclass display type method bridge must not expose maps on the type object"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_subclass_display_type_methods_subset")
+                && document.contains(
+                    "cpython_collections_chainmap_subclass_display_type_methods_diff_subset"
+                )
+                && document.contains("ChainMap subclass display type methods"),
+            "collections ChainMap subclass display-type-method evidence must be documented in coverage and migration notes"
         );
     }
 }

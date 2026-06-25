@@ -13520,6 +13520,28 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_collections_chainmap_subclass_display_type_methods_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap subclass display type methods",
+        name: "collections-chainmap-subclass-display-type-methods",
+        source: r#"from collections import ChainMap
+class Sub(ChainMap):
+    pass
+value = Sub('abc')
+for label, func in [
+    ('repr', lambda: Sub.__repr__(value)),
+    ('str', lambda: Sub.__str__(value)),
+    ('format', lambda: Sub.__format__(value, '')),
+    ('maps', lambda: type(Sub.maps).__name__),
+]:
+    try:
+        print(label, func())
+    except AttributeError as error:
+        print(label, type(error).__name__)"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_constructor_source_truthiness_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py::TestChainMap constructor source truthiness",
