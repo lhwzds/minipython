@@ -50764,6 +50764,32 @@ fn cpython_collections_chainmap_constructor_source_iter_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_collections.py::TestChainMap items:
+// iterable constructor sources contribute keys whose values are resolved
+// through ChainMap lookup rather than eager mapping-entry expansion.
+#[test]
+fn cpython_collections_chainmap_constructor_source_items_subset() {
+    assert_output(
+        concat!(
+            "from collections import ChainMap\n",
+            "cases = [\n",
+            "    ('list-value', ChainMap([1, 1, 2])),\n",
+            "    ('tuple-value', ChainMap((1, 2, 1))),\n",
+            "]\n",
+            "for label, value in cases:\n",
+            "    print(label, list(value.items()), dict(value))\n",
+            "print('direct-list', list(ChainMap.items(ChainMap([1, 1, 2]))))\n",
+            "print('direct-tuple', list(ChainMap.items(ChainMap((1, 2, 1)))))"
+        ),
+        &[
+            "list-value [(1, 1), (2, 2)] {1: 1, 2: 2}",
+            "tuple-value [(1, 2), (2, 1)] {1: 2, 2: 1}",
+            "direct-list [(1, 1), (2, 2)]",
+            "direct-tuple [(1, 2), (2, 1)]",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_collections.py public namedtuple coverage.
 #[test]
 fn cpython_collections_namedtuple_public_subset() {

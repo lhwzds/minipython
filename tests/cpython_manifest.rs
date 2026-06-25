@@ -13178,6 +13178,81 @@ fn collections_chainmap_constructor_source_iter_subset_has_focused_diff_evidence
 }
 
 #[test]
+fn collections_chainmap_constructor_source_items_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_chainmap_constructor_source_items_subset",
+    );
+    for required in [
+        "('list-value', ChainMap([1, 1, 2]))",
+        "('tuple-value', ChainMap((1, 2, 1)))",
+        "list(value.items())",
+        "dict(value)",
+        "ChainMap.items(ChainMap([1, 1, 2]))",
+        "ChainMap.items(ChainMap((1, 2, 1)))",
+        "list-value [(1, 1), (2, 2)] {1: 1, 2: 2}",
+        "tuple-value [(1, 2), (2, 1)] {1: 2, 2: 1}",
+        "direct-list [(1, 1), (2, 2)]",
+        "direct-tuple [(1, 2), (2, 1)]",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "collections ChainMap constructor source-items subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_chainmap_constructor_source_items_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_collections.py::TestChainMap constructor source items",
+        "('list-value', ChainMap([1, 1, 2]))",
+        "('tuple-value', ChainMap((1, 2, 1)))",
+        "list(value.items())",
+        "dict(value)",
+        "ChainMap.items(ChainMap([1, 1, 2]))",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "collections ChainMap constructor source-items CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn chain_map_entries(",
+        "for key in chain_map_keys(maps)?",
+        "chain_map_get_item(maps, key.clone())?",
+        "fn chain_map_source_get_item_optional(",
+        "match load_subscript(map.clone(), key.clone())",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ChainMap source-items VM implementation must contain `{required}`"
+        );
+    }
+    let chain_map_entries_body = VM_SOURCE
+        .split("fn chain_map_entries(")
+        .nth(1)
+        .and_then(|tail| tail.split("fn chain_map_key_count(").next())
+        .expect("ChainMap entries implementation must be extractable");
+    assert!(
+        !chain_map_entries_body.contains("mapping_entries(map)?"),
+        "ChainMap entries must resolve constructor-source keys through ChainMap lookup instead of eager mapping-entry expansion"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_collections_chainmap_constructor_source_items_subset")
+                && document
+                    .contains("cpython_collections_chainmap_constructor_source_items_diff_subset")
+                && document.contains("ChainMap constructor source item lookup"),
+            "collections ChainMap constructor source-items evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn collections_abc_abstract_method_errors_pin_cpython_wording() {
     for required in [
         "fn abstract_class_instantiation_error(",

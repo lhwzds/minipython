@@ -13895,6 +13895,23 @@ for label, value in cases:
 }
 
 #[test]
+fn cpython_collections_chainmap_constructor_source_items_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_collections.py::TestChainMap constructor source items",
+        name: "collections-chainmap-constructor-source-items",
+        source: r#"from collections import ChainMap
+cases = [
+    ('list-value', ChainMap([1, 1, 2])),
+    ('tuple-value', ChainMap((1, 2, 1))),
+]
+for label, value in cases:
+    print(label, list(value.items()), dict(value))
+print('direct-list', list(ChainMap.items(ChainMap([1, 1, 2]))))
+print('direct-tuple', list(ChainMap.items(ChainMap((1, 2, 1)))))"#,
+    });
+}
+
+#[test]
 fn cpython_collections_chainmap_copy_sharing_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestChainMap copy sharing subset",

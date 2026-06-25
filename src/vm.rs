@@ -72612,10 +72612,9 @@ fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
 
 fn chain_map_entries(maps: &[Value]) -> Result<Vec<(Value, Value)>, String> {
     let mut entries = Vec::new();
-    for map in maps.iter().rev() {
-        for (key, value) in mapping_entries(map)? {
-            insert_dict_entry(&mut entries, key, value)?;
-        }
+    for key in chain_map_keys(maps)? {
+        let value = chain_map_get_item(maps, key.clone())?;
+        entries.push((key, value));
     }
     Ok(entries)
 }
@@ -72684,13 +72683,32 @@ fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
 fn chain_map_get_item_optional(maps: &[Value], key: &Value) -> Result<Option<Value>, String> {
     ensure_hashable_key(key)?;
     for map in maps {
-        for (existing_key, value) in mapping_entries(map)? {
-            if dict_keys_equal(&existing_key, key) {
-                return Ok(Some(value));
-            }
+        if let Some(value) = chain_map_source_get_item_optional(map, key)? {
+            return Ok(Some(value));
         }
     }
     Ok(None)
+}
+
+fn chain_map_source_get_item_optional(map: &Value, key: &Value) -> Result<Option<Value>, String> {
+    match mapping_entries(map) {
+        Ok(entries) => {
+            for (existing_key, value) in entries {
+                if dict_keys_equal(&existing_key, key) {
+                    return Ok(Some(value));
+                }
+            }
+            Ok(None)
+        }
+        Err(message) if message == format!("{} is not a mapping", type_name(map)) => {
+            match load_subscript(map.clone(), key.clone()) {
+                Ok(value) => Ok(Some(value)),
+                Err(message) if message.starts_with("KeyError: ") => Ok(None),
+                Err(message) => Err(message),
+            }
+        }
+        Err(message) => Err(message),
+    }
 }
 
 fn chain_map_get_item(maps: &[Value], key: Value) -> Result<Value, String> {
