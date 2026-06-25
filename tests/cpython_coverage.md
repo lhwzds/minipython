@@ -318,6 +318,7 @@ Recent runtime migration notes:
   `cpython_types_normal_integers_diff_subset`,
   `cpython_types_format_spec_errors_diff_subset`,
   `cpython_types_mappingproxy_exact_dict_diff_subset`,
+  `cpython_types_mappingproxy_type_metadata_diff_subset`,
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`,
   `cpython_types_mappingproxy_method_surface_diff_subset`,
   `cpython_types_mappingproxy_union_diff_subset`,
@@ -4046,6 +4047,11 @@ without adding general custom encoder/decoder class support.
   `types.MappingProxyType` constructor path plus `get`, live views, `copy`,
   iteration, reverse iteration, equality, ABC registration, and invalid
   constructor/write errors.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_types_mappingproxy_type_metadata_subset`, backed by
+  `cpython_types_mappingproxy_type_metadata_diff_subset`, covering mappingproxy type metadata
+  for `__qualname__`, `__module__`, `__doc__`, and `__text_signature__`
+  without adding CPython layout fields or broader type hierarchy metadata.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_mappingproxy_keyword_constructor_subset`, backed by
   `cpython_types_mappingproxy_keyword_constructor_diff_subset`, covering

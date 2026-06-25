@@ -56888,6 +56888,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::None)
         }
         Value::Builtin(function_name)
+            if name == "__text_signature__" && function_name == "mappingproxy" =>
+        {
+            Ok(Value::String("(mapping)".to_string()))
+        }
+        Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
@@ -57293,6 +57298,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("builtins".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && function_name == "mappingproxy" =>
+        {
+            Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_itertools_type_name(&function_name) =>
         {
             Ok(Value::String("itertools".to_string()))
@@ -57416,6 +57426,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && function_name == "mappingproxy" =>
         {
             Ok(Value::String(function_name))
         }
@@ -58079,6 +58094,7 @@ bytearray() -> empty bytes object",
         "deque" => Some("A list-like sequence optimized for data accesses near its endpoints."),
         "OrderedDict" => Some("Dictionary that remembers insertion order."),
         "FrameLocalsProxy" => Some("A write-through proxy for frame locals."),
+        "mappingproxy" => Some("Read-only proxy of a mapping."),
         _ => None,
     }
 }

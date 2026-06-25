@@ -12625,6 +12625,20 @@ except TypeError as error:
 }
 
 #[test]
+fn cpython_types_mappingproxy_type_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_types.py::MappingProxyTests type metadata subset",
+        name: "types-mappingproxy-type-metadata",
+        source: r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+print(cls.__name__, cls.__qualname__, cls.__module__)
+print(type(cls.__doc__).__name__, cls.__doc__)
+print(type(cls.__text_signature__).__name__, cls.__text_signature__)
+print(type({1: 2}.keys().mapping) is cls)"#,
+    });
+}
+
+#[test]
 fn cpython_types_mappingproxy_keyword_constructor_diff_subset() {
     // CPython oracle text includes:
     // mappingproxy() missing required argument 'mapping' (pos 1).

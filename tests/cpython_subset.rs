@@ -50662,6 +50662,26 @@ fn cpython_types_mappingproxy_exact_dict_subset() {
     );
 }
 
+// Adapted from CPython public mappingproxy type metadata. This keeps the
+// introspection surface aligned without adding CPython layout fields.
+#[test]
+fn cpython_types_mappingproxy_type_metadata_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+print(cls.__name__, cls.__qualname__, cls.__module__)
+print(type(cls.__doc__).__name__, cls.__doc__)
+print(type(cls.__text_signature__).__name__, cls.__text_signature__)
+print(type({1: 2}.keys().mapping) is cls)"#,
+        &[
+            "mappingproxy mappingproxy builtins",
+            "str Read-only proxy of a mapping.",
+            "str (mapping)",
+            "True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
 // binding behavior for the public `mapping` keyword.
 #[test]
