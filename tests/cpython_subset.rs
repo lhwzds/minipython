@@ -49639,6 +49639,53 @@ for label, cls in classes:
     );
 }
 
+// Adapted from CPython public dict view type construction behavior. Concrete
+// dict and OrderedDict view classes are exposed for introspection but cannot be
+// directly instantiated from Python code.
+#[test]
+fn cpython_dict_view_type_constructor_rejection_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+def show(label, mode, action):
+    try:
+        action()
+    except Exception as error:
+        print(label, mode, type(error).__name__, str(error))
+for label, cls in classes:
+    show(label, "zero", lambda cls=cls: cls())
+    show(label, "one", lambda cls=cls: cls([]))
+    show(label, "kw", lambda cls=cls: cls(x=1))"#,
+        &[
+            "dict_keys zero TypeError cannot create 'dict_keys' instances",
+            "dict_keys one TypeError cannot create 'dict_keys' instances",
+            "dict_keys kw TypeError cannot create 'dict_keys' instances",
+            "dict_items zero TypeError cannot create 'dict_items' instances",
+            "dict_items one TypeError cannot create 'dict_items' instances",
+            "dict_items kw TypeError cannot create 'dict_items' instances",
+            "dict_values zero TypeError cannot create 'dict_values' instances",
+            "dict_values one TypeError cannot create 'dict_values' instances",
+            "dict_values kw TypeError cannot create 'dict_values' instances",
+            "odict_keys zero TypeError cannot create 'odict_keys' instances",
+            "odict_keys one TypeError cannot create 'odict_keys' instances",
+            "odict_keys kw TypeError cannot create 'odict_keys' instances",
+            "odict_items zero TypeError cannot create 'odict_items' instances",
+            "odict_items one TypeError cannot create 'odict_items' instances",
+            "odict_items kw TypeError cannot create 'odict_items' instances",
+            "odict_values zero TypeError cannot create 'odict_values' instances",
+            "odict_values one TypeError cannot create 'odict_values' instances",
+            "odict_values kw TypeError cannot create 'odict_values' instances",
+        ],
+    );
+}
+
 // Adapted from CPython public dict view type hierarchy metadata. OrderedDict
 // view classes derive from the corresponding built-in dict view classes while
 // built-in dict view classes derive directly from object.

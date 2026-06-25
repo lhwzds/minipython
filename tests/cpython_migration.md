@@ -7821,6 +7821,10 @@ Completed in the dict view rich-comparison pass:
   `cpython_dict_view_type_text_signature_diff_subset`, covering dict view type text signature
   metadata as `None` across built-in dict and `OrderedDict` view classes
   without adding CPython layout metadata such as `__flags__` or `__basicsize__`.
+- Added `cpython_dict_view_type_constructor_rejection_subset`, backed by
+  `cpython_dict_view_type_constructor_rejection_diff_subset`, covering dict view type constructor rejection
+  for zero-argument, positional-argument, and keyword-argument calls without
+  making dict or `OrderedDict` view classes user-instantiable.
 - Added `cpython_dict_view_type_hierarchy_subset`, backed by
   `cpython_dict_view_type_hierarchy_diff_subset`, covering dict view type hierarchy
   metadata for `__base__`, `__bases__`, and `__mro__` across built-in dict and

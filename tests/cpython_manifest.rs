@@ -1368,6 +1368,63 @@ fn dict_view_type_text_signature_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_constructor_rejection_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_type_constructor_rejection_subset(",
+        "show(label, \"zero\", lambda cls=cls: cls())",
+        "show(label, \"one\", lambda cls=cls: cls([]))",
+        "show(label, \"kw\", lambda cls=cls: cls(x=1))",
+        "\"dict_keys zero TypeError cannot create 'dict_keys' instances\"",
+        "\"dict_values kw TypeError cannot create 'dict_values' instances\"",
+        "\"odict_items one TypeError cannot create 'odict_items' instances\"",
+        "\"odict_values kw TypeError cannot create 'odict_values' instances\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type constructor rejection subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_type_constructor_rejection_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view type constructor rejection subset",
+        "name: \"dict-view-type-constructor-rejection\"",
+        "cls()",
+        "cls([])",
+        "cls(x=1)",
+        "OrderedDict([(1, 2)]).values().__class__",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type constructor rejection CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn call_dict_view_type_constructor(type_name: &str) -> Result<Value, String>",
+        "is_dict_view_type_object_name(&name) =>",
+        "TypeError: cannot create '{type_name}' instances",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type constructor rejection implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_type_constructor_rejection_subset")
+                && document.contains("cpython_dict_view_type_constructor_rejection_diff_subset")
+                && document.contains("dict view type constructor rejection"),
+            "focused dict view type constructor rejection evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_type_hierarchy_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_type_hierarchy_subset(",

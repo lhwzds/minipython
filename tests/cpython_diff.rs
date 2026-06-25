@@ -30763,6 +30763,32 @@ for label, cls in classes:
 }
 
 #[test]
+fn cpython_dict_view_type_constructor_rejection_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view type constructor rejection subset",
+        name: "dict-view-type-constructor-rejection",
+        source: r#"from collections import OrderedDict
+classes = [
+    ("dict_keys", {1: 2}.keys().__class__),
+    ("dict_items", {1: 2}.items().__class__),
+    ("dict_values", {1: 2}.values().__class__),
+    ("odict_keys", OrderedDict([(1, 2)]).keys().__class__),
+    ("odict_items", OrderedDict([(1, 2)]).items().__class__),
+    ("odict_values", OrderedDict([(1, 2)]).values().__class__),
+]
+def show(label, mode, action):
+    try:
+        action()
+    except Exception as error:
+        print(label, mode, type(error).__name__, str(error))
+for label, cls in classes:
+    show(label, "zero", lambda cls=cls: cls())
+    show(label, "one", lambda cls=cls: cls([]))
+    show(label, "kw", lambda cls=cls: cls(x=1))"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_type_hierarchy_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view type hierarchy subset",

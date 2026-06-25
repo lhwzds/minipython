@@ -9370,6 +9370,9 @@ impl Vm {
             {
                 self.call_mapping_view_constructor(&name, args, keywords)
             }
+            Value::Builtin(name) if is_dict_view_type_object_name(&name) => {
+                call_dict_view_type_constructor(&name)
+            }
             Value::Builtin(name) if name == "SimpleNamespace" => {
                 self.call_simple_namespace_constructor(args, keywords)
             }
@@ -39849,6 +39852,10 @@ fn call_dict_view_type_subclasses(
             .map(|subclass| Value::Builtin((*subclass).to_string()))
             .collect(),
     ))
+}
+
+fn call_dict_view_type_constructor(type_name: &str) -> Result<Value, String> {
+    Err(format!("TypeError: cannot create '{type_name}' instances"))
 }
 
 fn ast_program_node(
