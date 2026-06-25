@@ -15571,7 +15571,10 @@ fn collections_public_diff_evidence_stays_capability_gated() {
 fn copy_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "copy",
-        &["cpython_copy_public_subset"],
+        &[
+            "cpython_copy_public_subset",
+            "cpython_copy_replace_custom_hook_subset",
+        ],
         &["pickle protocol"],
     );
 
@@ -15581,6 +15584,7 @@ fn copy_sandbox_manifest_lists_public_subset_evidence() {
         .expect("sandbox stdlib manifest must include copy");
     for evidence in [
         "cpython_copy_public_diff_subset",
+        "cpython_copy_replace_custom_hook_diff_subset",
         "cpython_array_one_byte_public_copy_byteswap_compare_diff_subset",
     ] {
         assert!(
@@ -15610,13 +15614,25 @@ fn copy_public_diff_covers_pure_memory_subset() {
         "copy CPython diff evidence must exist"
     );
     assert!(
+        CPYTHON_SUBSET.contains("fn cpython_copy_replace_custom_hook_subset("),
+        "copy.replace custom hook runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("fn cpython_copy_replace_custom_hook_diff_subset("),
+        "copy.replace custom hook CPython diff evidence must exist"
+    );
+    assert!(
         CPYTHON_COVERAGE.contains("cpython_copy_public_subset")
-            && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset"),
+            && CPYTHON_COVERAGE.contains("cpython_copy_public_diff_subset")
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_subset")
+            && CPYTHON_COVERAGE.contains("cpython_copy_replace_custom_hook_diff_subset"),
         "coverage document must link copy runtime and diff evidence"
     );
     assert!(
         CPYTHON_MIGRATION.contains("cpython_copy_public_subset")
-            && CPYTHON_MIGRATION.contains("cpython_copy_public_diff_subset"),
+            && CPYTHON_MIGRATION.contains("cpython_copy_public_diff_subset")
+            && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_subset")
+            && CPYTHON_MIGRATION.contains("cpython_copy_replace_custom_hook_diff_subset"),
         "migration document must link copy runtime and diff evidence"
     );
 
@@ -15632,6 +15648,11 @@ fn copy_public_diff_covers_pure_memory_subset() {
         row.diff_evidence
             .contains("cpython_copy_public_diff_subset"),
         "copy sandbox manifest must cite copy public CPython diff evidence"
+    );
+    assert!(
+        row.diff_evidence
+            .contains("cpython_copy_replace_custom_hook_diff_subset"),
+        "copy sandbox manifest must cite copy.replace custom hook CPython diff evidence"
     );
 
     let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_public_diff_subset");
@@ -15715,6 +15736,62 @@ fn copy_public_diff_covers_pure_memory_subset() {
         );
     }
 
+    let replace_hook_diff =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_copy_replace_custom_hook_diff_subset");
+    let replace_hook_subset =
+        extract_rust_test_body(CPYTHON_SUBSET, "cpython_copy_replace_custom_hook_subset");
+    assert!(
+        replace_hook_diff
+            .contains("Lib/copy.py public copy.replace custom __replace__ hook subset"),
+        "copy.replace hook CPython diff evidence must identify its CPython origin"
+    );
+    for required in [
+        "class CustomReplace:",
+        "def __replace__(self, **changes):",
+        "class StaticReplace:",
+        "staticmethod(lambda obj, **changes",
+        "class ClassReplace:",
+        "@classmethod",
+        "class ShadowReplace:",
+        "self.__replace__ = lambda **changes",
+        "copy.replace(CustomReplace(), y=2, x=1)",
+        "copy.replace(StaticReplace(), x=3)",
+        "copy.replace(ClassReplace(), x=4)",
+        "copy.replace(ShadowReplace(), x=5)",
+    ] {
+        assert!(
+            replace_hook_diff.contains(required),
+            "copy.replace hook CPython diff evidence must cover `{required}`"
+        );
+        assert!(
+            replace_hook_subset.contains(required),
+            "copy.replace hook runtime subset evidence must cover `{required}`"
+        );
+    }
+    for required in [
+        "\"('custom', [('x', 1), ('y', 2)])\"",
+        "\"('static', 'StaticReplace', [('x', 3)])\"",
+        "\"('class', 'ClassReplace', 'ClassReplace', [('x', 4)])\"",
+        "\"('class-shadow', [('x', 5)])\"",
+    ] {
+        assert!(
+            replace_hook_subset.contains(required),
+            "copy.replace hook runtime subset must assert expected output `{required}`"
+        );
+    }
+    for required in [
+        "fn call_copy_replace_hook(",
+        "find_class_attr(class_attrs, class_bases, \"__replace__\")",
+        "Value::StaticMethod { function } => *function",
+        "Value::ClassMethod { function } => Value::BoundMethod",
+        "self.call_value_with_keywords(method, vec![value.clone()], keywords)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "copy.replace hook implementation must contain `{required}`"
+        );
+    }
+
     for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
         for required in [
             "Error",
@@ -15731,6 +15808,10 @@ fn copy_public_diff_covers_pure_memory_subset() {
             "UserDict",
             "deque",
             "BytesIO",
+            "custom `__replace__` hook",
+            "class-level lookup",
+            "staticmethod",
+            "classmethod",
         ] {
             assert!(
                 document.contains(required),

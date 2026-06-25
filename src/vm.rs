@@ -24803,11 +24803,56 @@ impl Vm {
             {
                 self.replace_ast_value(object.clone(), keywords)
             }
-            value => Err(format!(
-                "TypeError: copy.replace() does not support '{}'",
-                type_name(&value)
-            )),
+            value => {
+                if let Some(replaced) = self.call_copy_replace_hook(&value, keywords)? {
+                    return Ok(replaced);
+                }
+                Err(format!(
+                    "TypeError: copy.replace() does not support '{}'",
+                    type_name(&value)
+                ))
+            }
         }
+    }
+
+    fn call_copy_replace_hook(
+        &mut self,
+        value: &Value,
+        keywords: Vec<(String, Value)>,
+    ) -> Result<Option<Value>, String> {
+        let Value::Instance {
+            class_name,
+            class_attrs,
+            class_bases,
+            ..
+        } = value
+        else {
+            return Ok(None);
+        };
+        let Some(method) = find_class_attr(class_attrs, class_bases, "__replace__") else {
+            return Ok(None);
+        };
+        if matches!(method, Value::None) {
+            return Ok(None);
+        }
+        let owner = Value::Class {
+            name: class_name.clone(),
+            type_params: Vec::new(),
+            metaclass: None,
+            bases: class_bases.clone(),
+            attrs: class_attrs.clone(),
+        };
+        let method = match method {
+            Value::StaticMethod { function } => *function,
+            Value::ClassMethod { function } => Value::BoundMethod {
+                function,
+                receiver: Box::new(owner),
+                identity: Rc::new(()),
+            },
+            method => method,
+        };
+        self.call_value_with_keywords(method, vec![value.clone()], keywords)
+            .map(Some)
     }
 
     fn call_pickle_dumps(

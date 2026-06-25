@@ -16020,6 +16020,33 @@ for helper in helpers:
 }
 
 #[test]
+fn cpython_copy_replace_custom_hook_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/copy.py public copy.replace custom __replace__ hook subset",
+        name: "copy-replace-custom-hook",
+        source: r#"import copy
+class CustomReplace:
+    def __replace__(self, **changes):
+        return ('custom', sorted(changes.items()))
+class StaticReplace:
+    __replace__ = staticmethod(lambda obj, **changes: ('static', type(obj).__name__, sorted(changes.items())))
+class ClassReplace:
+    @classmethod
+    def __replace__(cls, obj, **changes):
+        return ('class', cls.__name__, type(obj).__name__, sorted(changes.items()))
+class ShadowReplace:
+    def __init__(self):
+        self.__replace__ = lambda **changes: ('instance', sorted(changes.items()))
+    def __replace__(self, **changes):
+        return ('class-shadow', sorted(changes.items()))
+print(copy.replace(CustomReplace(), y=2, x=1))
+print(copy.replace(StaticReplace(), x=3))
+print(copy.replace(ClassReplace(), x=4))
+print(copy.replace(ShadowReplace(), x=5))"#,
+    });
+}
+
+#[test]
 fn cpython_copy_public_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/copy.py public pure-memory subset",

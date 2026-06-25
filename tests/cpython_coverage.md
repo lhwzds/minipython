@@ -525,6 +525,7 @@ Recent runtime migration notes:
   `cpython_array_one_byte_public_unicode_method_rejection_diff_subset`,
   `cpython_array_one_byte_public_file_methods_diff_subset`,
   `cpython_copy_public_diff_subset`,
+  `cpython_copy_replace_custom_hook_diff_subset`,
   `cpython_io_bytesio_public_diff_subset`,
   `cpython_memoryview_bytesio_readinto_diff_subset`,
   `cpython_operator_public_helpers_diff_subset`,
@@ -2130,8 +2131,10 @@ without adding general custom encoder/decoder class support.
   current int-subclass result normalization. Full pickle metadata and every CPython helper edge case
   remain outside the default sandbox `operator` surface until separately
   promoted with direct public-behavior evidence.
-- The bundled `copy` module includes `cpython_copy_public_diff_subset` and
-  `cpython_copy_public_subset`,
+- The bundled `copy` module includes `cpython_copy_public_diff_subset`,
+  `cpython_copy_replace_custom_hook_diff_subset`,
+  `cpython_copy_public_subset`, and
+  `cpython_copy_replace_custom_hook_subset`,
   covering CPython public `copy.Error` / `copy.error` exception metadata,
   `dispatch_table` module attribute shape, `copy.copy()` and
   `copy.deepcopy()` parity for supported pure-memory immutable scalar equality
@@ -2143,8 +2146,10 @@ without adding general custom encoder/decoder class support.
   and user-instance self-cycles, and shared `UserList` / `UserDict` / `deque`
   members plus `UserList` self-cycles, `io.BytesIO` shallow/deep copy behavior
   for open in-memory buffers with position and custom attributes, independent
-  bytearray copy buffers, dictionary copy independence, and representative
-  arity/memo TypeError classification. Full pickle dispatch-table contents,
+  bytearray copy buffers, dictionary copy independence, `copy.replace()` custom
+  `__replace__` hook dispatch through class-level lookup, including
+  `staticmethod` / `classmethod` forms and ignoring instance shadowing, and
+  representative arity/memo TypeError classification. Full pickle dispatch-table contents,
   pickle protocol byte compatibility, arbitrary extension-object copy hooks
   outside pure Python hook dispatch, and arbitrary mapping-protocol memo hooks
   remain outside the sandbox `copy` subset.
@@ -4492,6 +4497,12 @@ without adding general custom encoder/decoder class support.
   `cpython_types_simple_namespace_new_and_invalid_replace_diff_subset`, gated
   for CPython oracles that expose `copy.replace()` and
   `types.SimpleNamespace.__replace__`.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_copy_replace_custom_hook_subset`, covering CPython `copy.replace()`
+  custom `__replace__` hook dispatch for user classes, class-level lookup that
+  ignores instance shadowing, and `staticmethod` / `classmethod` hook forms.
+  Direct CPython output parity is tracked by
+  `cpython_copy_replace_custom_hook_diff_subset`.
 - `CONTAINER_RUNTIME` also includes
   `cpython_types_simple_namespace_remaining_public_subset`, covering additional
   CPython `SimpleNamespaceTests` public behavior: constructor insertion order,

@@ -22258,6 +22258,38 @@ fn cpython_copy_public_subset() {
     );
 }
 
+// Adapted from CPython Lib/copy.py public copy.replace() hook behavior.
+#[test]
+fn cpython_copy_replace_custom_hook_subset() {
+    assert_output(
+        r#"import copy
+class CustomReplace:
+    def __replace__(self, **changes):
+        return ('custom', sorted(changes.items()))
+class StaticReplace:
+    __replace__ = staticmethod(lambda obj, **changes: ('static', type(obj).__name__, sorted(changes.items())))
+class ClassReplace:
+    @classmethod
+    def __replace__(cls, obj, **changes):
+        return ('class', cls.__name__, type(obj).__name__, sorted(changes.items()))
+class ShadowReplace:
+    def __init__(self):
+        self.__replace__ = lambda **changes: ('instance', sorted(changes.items()))
+    def __replace__(self, **changes):
+        return ('class-shadow', sorted(changes.items()))
+print(copy.replace(CustomReplace(), y=2, x=1))
+print(copy.replace(StaticReplace(), x=3))
+print(copy.replace(ClassReplace(), x=4))
+print(copy.replace(ShadowReplace(), x=5))"#,
+        &[
+            "('custom', [('x', 1), ('y', 2)])",
+            "('static', 'StaticReplace', [('x', 3)])",
+            "('class', 'ClassReplace', 'ClassReplace', [('x', 4)])",
+            "('class-shadow', [('x', 5)])",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_memoryio.py public BytesIO pure-memory
 // behavior.
 #[test]
