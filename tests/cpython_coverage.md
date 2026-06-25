@@ -3920,6 +3920,12 @@ without adding general custom encoder/decoder class support.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_richcompare_subset`,
   covering set-style rich comparisons for dict key/item views and propagation
   of Python-level `__eq__` errors during item-view comparisons.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_membership_rich_compare_subset`, backed by
+  `cpython_dict_view_membership_rich_compare_diff_subset`, covering
+  dict view values/items membership through Python-level `__eq__` dispatch,
+  propagated
+  comparison errors, and CPython's tuple-only item-view containment shape.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_mappingproxy_subset`,
   covering dict-view `.mapping`, the read-only `mappingproxy` type object,
   live equality with the underlying dict, lookup, membership, and assignment

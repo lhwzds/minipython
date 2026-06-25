@@ -30212,6 +30212,38 @@ fn cpython_rejection_parity_smoke_diff_subset() {
 }
 
 #[test]
+fn cpython_dict_view_membership_rich_compare_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view membership rich equality subset",
+        name: "dict-view-membership-rich-compare",
+        source: r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+
+d = {"a": Probe("a"), "b": Probe("b")}
+print("values", Probe("b") in d.values())
+print("items-tuple", ("b", Probe("b")) in d.items())
+print("items-list", ["b", Probe("b")] in d.items())
+
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+
+def show(label, fn):
+    try:
+        print(label, fn())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+show("values-error", lambda: 1 in {"x": Boom()}.values())
+show("items-error", lambda: ("x", 1) in {"x": Boom()}.items())"#,
+    });
+}
+
+#[test]
 fn cpython_ordered_dict_view_mapping_diff_subset() {
     let probe = run_cpython(
         "from collections import OrderedDict\nprint(hasattr(OrderedDict().keys(), 'mapping'))",

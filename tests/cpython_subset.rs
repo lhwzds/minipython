@@ -48762,6 +48762,50 @@ fn cpython_dict_view_richcompare_subset() {
     );
 }
 
+// Adapted from CPython Lib/test/test_dict.py view containment behavior.
+// Dict values/items membership must dispatch Python-level equality for stored
+// values while item views only match tuple pairs, not arbitrary length-2 lists.
+#[test]
+fn cpython_dict_view_membership_rich_compare_subset() {
+    assert_output_with_stack(
+        r#"class Probe:
+    def __init__(self, tag):
+        self.tag = tag
+    def __eq__(self, other):
+        print("eq", self.tag, getattr(other, "tag", other))
+        return self.tag == getattr(other, "tag", other)
+
+d = {"a": Probe("a"), "b": Probe("b")}
+print("values", Probe("b") in d.values())
+print("items-tuple", ("b", Probe("b")) in d.items())
+print("items-list", ["b", Probe("b")] in d.items())
+
+class Boom:
+    def __eq__(self, other):
+        raise ValueError("boom")
+
+def show(label, fn):
+    try:
+        print(label, fn())
+    except Exception as error:
+        print(label, type(error).__name__, str(error), error.args)
+
+show("values-error", lambda: 1 in {"x": Boom()}.values())
+show("items-error", lambda: ("x", 1) in {"x": Boom()}.items())"#,
+        &[
+            "eq a b",
+            "eq b b",
+            "values True",
+            "eq b b",
+            "items-tuple True",
+            "items-list False",
+            "values-error ValueError boom ('boom',)",
+            "items-error ValueError boom ('boom',)",
+        ],
+        64 * 1024 * 1024,
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py::test_views_mapping.
 // MiniPython covers the built-in dict case here; dict-subclass views require
 // broader built-in subclass storage support and remain a later object-model

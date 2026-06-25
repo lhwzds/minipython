@@ -284,6 +284,65 @@ fn tuple_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_membership_rich_compare_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_membership_rich_compare_subset(",
+        "Probe(\"b\") in d.values()",
+        "(\"b\", Probe(\"b\")) in d.items()",
+        "[\"b\", Probe(\"b\")] in d.items()",
+        "items-list False",
+        "values-error ValueError boom ('boom',)",
+        "items-error ValueError boom ('boom',)",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view membership rich-compare subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_membership_rich_compare_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view membership rich equality subset",
+        "name: \"dict-view-membership-rich-compare\"",
+        "Probe(\"b\") in d.values()",
+        "(\"b\", Probe(\"b\")) in d.items()",
+        "[\"b\", Probe(\"b\")] in d.items()",
+        "print(label, type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view membership rich-compare CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "Value::DictView { kind, entries, .. } =>",
+        "fn dict_view_contains(",
+        "fn dict_view_item_pair(",
+        "self.sequence_abc_item_matches(&value, needle)?",
+        "self.sequence_abc_item_matches(&value, &needle_value)?",
+        "dict_view_item_pair(&needle)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view membership implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_membership_rich_compare_subset")
+                && document.contains("cpython_dict_view_membership_rich_compare_diff_subset")
+                && document.contains("dict view values/items membership"),
+            "focused dict view membership rich-compare evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn immutable_sequence_index_rich_compare_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_immutable_sequence_index_rich_compare_subset(",

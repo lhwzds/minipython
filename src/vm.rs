@@ -21911,6 +21911,9 @@ impl Vm {
             Value::MappingView { kind, mapping } => {
                 self.mapping_view_contains(kind, *mapping, needle)
             }
+            Value::DictView { kind, entries, .. } => {
+                self.dict_view_contains(kind, &entries, &needle)
+            }
             Value::ByteArray(haystack) => self.bytearray_contains_value(needle, haystack),
             Value::MemoryView(view) => {
                 let bytes = memoryview_bytes(&view)?;
@@ -27930,6 +27933,52 @@ impl Vm {
         }
     }
 
+    fn dict_view_contains(
+        &mut self,
+        kind: DictViewKind,
+        entries: &DictRef,
+        needle: &Value,
+    ) -> Result<bool, String> {
+        match kind {
+            DictViewKind::Keys => {
+                ensure_hashable_key(needle)?;
+                Ok(entries
+                    .borrow()
+                    .iter()
+                    .any(|(key, _)| dict_keys_equal(key, needle)))
+            }
+            DictViewKind::Values => {
+                let values: Vec<Value> = entries
+                    .borrow()
+                    .iter()
+                    .map(|(_, value)| value.clone())
+                    .collect();
+                for value in values {
+                    if self.sequence_abc_item_matches(&value, needle)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            DictViewKind::Items => {
+                let Some((needle_key, needle_value)) = dict_view_item_pair(needle) else {
+                    return Ok(false);
+                };
+                let needle_key = needle_key.clone();
+                let needle_value = needle_value.clone();
+                let entries = entries.borrow().entries.clone();
+                for (key, value) in entries {
+                    if dict_keys_equal(&key, &needle_key)
+                        && self.sequence_abc_item_matches(&value, &needle_value)?
+                    {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+        }
+    }
+
     fn mapping_view_contains(
         &mut self,
         kind: DictViewKind,
@@ -27938,27 +27987,24 @@ impl Vm {
     ) -> Result<bool, String> {
         match kind {
             DictViewKind::Keys => self.contains_value(needle, mapping),
-            DictViewKind::Values => Ok(self
-                .mapping_view_values(DictViewKind::Values, mapping)?
-                .iter()
-                .any(|value| sequence_items_match(value, &needle))),
+            DictViewKind::Values => {
+                for value in self.mapping_view_values(DictViewKind::Values, mapping)? {
+                    if self.sequence_abc_item_matches(&value, &needle)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
             DictViewKind::Items => {
-                let pair = match &needle {
-                    Value::Tuple(items) if items.len() == 2 => {
-                        Some((items[0].clone(), items[1].clone()))
-                    }
-                    Value::List(items) if items.borrow().len() == 2 => {
-                        let items = items.borrow();
-                        Some((items[0].clone(), items[1].clone()))
-                    }
-                    _ => None,
-                };
-                let Some((key, expected)) = pair else {
+                let Some((key, expected)) = dict_view_item_pair(&needle) else {
                     return Ok(false);
                 };
-                Ok(self
-                    .mapping_abc_get_item_optional(mapping, key)?
-                    .is_some_and(|actual| sequence_items_match(&actual, &expected)))
+                let key = key.clone();
+                let expected = expected.clone();
+                match self.mapping_abc_get_item_optional(mapping, key)? {
+                    Some(actual) => self.sequence_abc_item_matches(&actual, &expected),
+                    None => Ok(false),
+                }
             }
         }
     }
@@ -83410,17 +83456,17 @@ fn sequence_items_match(left: &Value, right: &Value) -> bool {
     is_identical(left, right) || left == right
 }
 
-fn dict_view_item_matches(needle: &Value, key: &Value, value: &Value) -> bool {
+fn dict_view_item_pair(needle: &Value) -> Option<(&Value, &Value)> {
     match needle {
-        Value::Tuple(items) if items.len() == 2 => {
-            dict_keys_equal(key, &items[0]) && sequence_items_match(value, &items[1])
-        }
-        Value::List(items) if items.borrow().len() == 2 => {
-            let items = items.borrow();
-            dict_keys_equal(key, &items[0]) && sequence_items_match(value, &items[1])
-        }
-        _ => false,
+        Value::Tuple(items) if items.len() == 2 => Some((&items[0], &items[1])),
+        _ => None,
     }
+}
+
+fn dict_view_item_matches(needle: &Value, key: &Value, value: &Value) -> bool {
+    dict_view_item_pair(needle).is_some_and(|(needle_key, needle_value)| {
+        dict_keys_equal(key, needle_key) && sequence_items_match(value, needle_value)
+    })
 }
 
 fn is_identical(left: &Value, right: &Value) -> bool {

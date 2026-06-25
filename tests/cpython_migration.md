@@ -7750,6 +7750,11 @@ Completed in the dict view rich-comparison pass:
 - Updated dict item-view rich comparisons to compare values with Python-level
   `__eq__` after matching keys, so exceptions raised by item values propagate
   across equality and subset/superset comparisons.
+- Added `cpython_dict_view_membership_rich_compare_subset`, backed by
+  `cpython_dict_view_membership_rich_compare_diff_subset`, covering
+  dict view values/items membership through Python-level `__eq__` dispatch,
+  propagated
+  comparison errors, and CPython's tuple-only item-view containment shape.
 - Preserved snapshot-based set-like behavior for existing dict and mapping view
   operators while moving view comparisons closer to CPython's error propagation.
 
