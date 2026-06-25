@@ -75,7 +75,8 @@ Recent runtime migration notes:
   indices without relying on compile-time SyntaxWarning diagnostics.
 - Callable-sentinel iterators in `cpython_iter_next_builtin_subset` now include
   CPython's sentinel-first equality dispatch (`sentinel == value`) for
-  non-symmetric `__eq__` implementations.
+  non-symmetric `__eq__` implementations and exact non-callable `iter(v, w)`
+  `TypeError` text.
 - `cpython_iter_next_builtin_subset` now pins exact CPython `iter` arity
   `TypeError` text for missing and excess positional arguments.
 - `cpython_iter_next_builtin_subset` now also pins exact CPython `next` arity

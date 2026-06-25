@@ -38823,6 +38823,15 @@ fn cpython_iter_next_builtin_subset() {
         8 * 1024 * 1024,
     );
     assert_output_with_stack(
+        "for label, expr in [('int', lambda: iter(1, 2)), ('none', lambda: iter(None, 2)), ('list', lambda: iter([], 2))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
+        &[
+            "int TypeError iter(v, w): v must be callable",
+            "none TypeError iter(v, w): v must be callable",
+            "list TypeError iter(v, w): v must be callable",
+        ],
+        8 * 1024 * 1024,
+    );
+    assert_output_with_stack(
         "for label, expr in [('missing', lambda: next()), ('too-many', lambda: next(iter([]), 1, 2))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, error.__class__.__name__, str(error))",
         &[
             "missing TypeError next expected at least 1 argument, got 0",

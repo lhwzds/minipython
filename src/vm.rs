@@ -26246,7 +26246,7 @@ impl Vm {
             },
             [callable, sentinel] => {
                 if !is_callable_value(callable) {
-                    return Err(format!("TypeError: {callable} is not callable"));
+                    return Err("TypeError: iter(v, w): v must be callable".to_string());
                 }
                 Ok(shared_iterator(Value::CallIterator {
                     callable: Box::new(callable.clone()),

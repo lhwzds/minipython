@@ -1868,8 +1868,9 @@ Completed in the differential parity harness pass:
   builtin iterables, iterators, and generators, including arity/attribute
   rejection parity for common bad calls. Two-argument sentinel
   `iter(callable, sentinel)` now produces a shared callable iterator that stops
-  before yielding the sentinel and supports direct iterator dunders. Rich
-  callable equality hooks, including non-symmetric sentinel comparison and
+  before yielding the sentinel, supports direct iterator dunders, and preserves
+  CPython's non-callable `iter(v, w)` `TypeError` text. Rich callable equality
+  hooks, including non-symmetric sentinel comparison and
   equality-triggered reentrant exhaustion, are covered. Sequence-protocol
   fallback now treats `IndexError`, `IndexError` subclasses, and
   `StopIteration` from `__getitem__` as exhaustion for forward and reverse
@@ -7093,7 +7094,8 @@ Completed in the iter/next builtin pass:
   yielded.
 - Extended callable-sentinel iterator comparison so the stop check dispatches
   equality as `sentinel == value`, matching CPython's public behavior for
-  non-symmetric `__eq__` implementations.
+  non-symmetric `__eq__` implementations. Non-callable two-argument
+  `iter(v, w)` now also preserves CPython's public `TypeError` text.
 - Extended the same test with CPython `Lib/test/test_iter.py` sink-state
   semantics: supported iterators remain exhausted after completion, including
   sequence-protocol fallback iterators whose backing object later grows.
