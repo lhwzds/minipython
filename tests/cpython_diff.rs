@@ -30723,6 +30723,26 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_type_metadata_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view type metadata subset",
+        name: "dict-view-type-metadata",
+        source: r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    print(label, cls.__name__, cls.__qualname__, cls.__module__, type(cls.__doc__).__name__, cls.__doc__ is None)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

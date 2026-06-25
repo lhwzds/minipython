@@ -1254,6 +1254,66 @@ fn dict_view_class_attribute_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_type_metadata_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_type_metadata_subset(",
+        "cls = view.__class__",
+        "cls.__name__",
+        "cls.__qualname__",
+        "cls.__module__",
+        "type(cls.__doc__).__name__",
+        "cls.__doc__ is None",
+        "\"keys dict_keys dict_keys builtins NoneType True\"",
+        "\"odkeys odict_keys odict_keys builtins NoneType True\"",
+        "\"odvalues odict_values odict_values builtins NoneType True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view type metadata subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(CPYTHON_DIFF, "cpython_dict_view_type_metadata_diff_subset");
+    for required in [
+        "Lib/test/test_dict.py dict view type metadata subset",
+        "name: \"dict-view-type-metadata\"",
+        "cls.__name__",
+        "cls.__qualname__",
+        "cls.__module__",
+        "cls.__doc__ is None",
+        "OrderedDict([(1, 2)]).items()",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view type metadata CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn is_dict_view_type_object_name(name: &str) -> bool",
+        "name == \"__qualname__\" && is_dict_view_type_object_name",
+        "name == \"__module__\" && is_dict_view_type_object_name",
+        "name == \"__doc__\" && is_dict_view_type_object_name",
+        "Ok(Value::None)",
+        "\"builtins\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view type metadata implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_type_metadata_subset")
+                && document.contains("cpython_dict_view_type_metadata_diff_subset")
+                && document.contains("dict view type metadata"),
+            "focused dict view type metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",

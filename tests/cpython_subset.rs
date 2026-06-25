@@ -49581,6 +49581,35 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view type metadata. Dict and OrderedDict
+// view classes expose builtins metadata while leaving hierarchy metadata to
+// separate type-object coverage.
+#[test]
+fn cpython_dict_view_type_metadata_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    cls = view.__class__
+    print(label, cls.__name__, cls.__qualname__, cls.__module__, type(cls.__doc__).__name__, cls.__doc__ is None)"#,
+        &[
+            "keys dict_keys dict_keys builtins NoneType True",
+            "items dict_items dict_items builtins NoneType True",
+            "values dict_values dict_values builtins NoneType True",
+            "odkeys odict_keys odict_keys builtins NoneType True",
+            "oditems odict_items odict_items builtins NoneType True",
+            "odvalues odict_values odict_values builtins NoneType True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

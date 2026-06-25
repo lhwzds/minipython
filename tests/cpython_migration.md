@@ -7812,6 +7812,11 @@ Completed in the dict view rich-comparison pass:
   exposure as concrete type objects across built-in dict and `OrderedDict`
   views, including `isinstance(view, view.__class__)`, class `repr()`, and
   `collections.abc` relationships for key/item/value view types.
+- Added `cpython_dict_view_type_metadata_subset`, backed by
+  `cpython_dict_view_type_metadata_diff_subset`, covering dict view type metadata
+  for `__qualname__`, `__module__`, and `__doc__` across built-in dict and
+  `OrderedDict` view classes without adding full type hierarchy metadata such
+  as `__base__`, `__bases__`, or `__mro__`.
 - Added `cpython_dict_view_isdisjoint_subset`, backed by
   `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

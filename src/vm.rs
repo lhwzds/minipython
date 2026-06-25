@@ -49833,6 +49833,13 @@ fn is_builtin_type_object_name(name: &str) -> bool {
         )
 }
 
+fn is_dict_view_type_object_name(name: &str) -> bool {
+    matches!(
+        name,
+        "dict_keys" | "dict_values" | "dict_items" | "odict_keys" | "odict_values" | "odict_items"
+    )
+}
+
 fn is_data_descriptor(value: &Value) -> bool {
     matches!(
         value,
@@ -56813,6 +56820,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             ))
         }
         Value::Builtin(function_name)
+            if name == "__doc__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::None)
+        }
+        Value::Builtin(function_name)
             if function_name == "dict" && is_builtin_dict_type_method(name) =>
         {
             Ok(Value::Builtin(format!("dict.{name}")))
@@ -57185,6 +57197,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::String("collections.abc".to_string()))
         }
         Value::Builtin(function_name)
+            if name == "__module__" && is_dict_view_type_object_name(&function_name) =>
+        {
+            Ok(Value::String("builtins".to_string()))
+        }
+        Value::Builtin(function_name)
             if name == "__module__" && is_itertools_type_name(&function_name) =>
         {
             Ok(Value::String("itertools".to_string()))
@@ -57303,6 +57320,11 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         }
         Value::Builtin(function_name)
             if name == "__qualname__" && is_collections_abc_type_name(&function_name) =>
+        {
+            Ok(Value::String(function_name))
+        }
+        Value::Builtin(function_name)
+            if name == "__qualname__" && is_dict_view_type_object_name(&function_name) =>
         {
             Ok(Value::String(function_name))
         }
