@@ -56074,6 +56074,16 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
+                "__getstate__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::DictView {
+                        kind,
+                        entries,
+                        ordered,
+                        identity: view_identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
                 "__reduce__" | "__reduce_ex__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::DictView {
@@ -56181,6 +56191,15 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                         identity: Rc::new(()),
                     })
                 }
+                "__getstate__" => Ok(Value::BoundMethod {
+                    function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
+                    receiver: Box::new(Value::MappingView {
+                        kind,
+                        mapping,
+                        identity,
+                    }),
+                    identity: Rc::new(()),
+                }),
                 "__reduce__" | "__reduce_ex__" => Ok(Value::BoundMethod {
                     function: Box::new(Value::Builtin(format!("{type_name}.{name}"))),
                     receiver: Box::new(Value::MappingView {
@@ -71633,6 +71652,18 @@ fn call_dict_view_method(
                 return Err("__hash__() expected a dict values view receiver".to_string());
             }
             Ok(identity_hash_value(view))
+        }
+        "__getstate__" => {
+            let [view] = args.as_slice() else {
+                return Err(format!(
+                    "__getstate__() expected 0 arguments, got {}",
+                    method_arg_count(&args)
+                ));
+            };
+            if dict_view_method_kind(view).is_none() {
+                return Err("__getstate__() expected a dict view receiver".to_string());
+            }
+            Ok(Value::None)
         }
         "__reduce__" => {
             let [view] = args.as_slice() else {

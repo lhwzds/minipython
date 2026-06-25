@@ -30614,6 +30614,36 @@ for label, view in samples:
 }
 
 #[test]
+fn cpython_dict_view_getstate_method_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_dict.py dict view getstate behavior subset",
+        name: "dict-view-getstate-method",
+        source: r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, hasattr(view, "__getstate__"))
+    for op, expr in [
+        ("getstate", lambda v=view: v.__getstate__()),
+        ("getstate-arg", lambda v=view: v.__getstate__(1)),
+        ("getstate-kw", lambda v=view: v.__getstate__(x=1)),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__, value is None)
+        except Exception as error:
+            message = str(error)
+            print(label, op, type(error).__name__, "argument" in message, "keyword" in message)"#,
+    });
+}
+
+#[test]
 fn cpython_dict_view_isdisjoint_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_dict.py dict view isdisjoint subset",

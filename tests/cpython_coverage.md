@@ -3975,6 +3975,11 @@ without adding general custom encoder/decoder class support.
   for exposed `__reduce__` / `__reduce_ex__` attributes and CPython-style
   pickle rejection across built-in dict and `OrderedDict` views without adding
   pickle protocol support for those views.
+- `CONTAINER_RUNTIME` also includes
+  `cpython_dict_view_getstate_method_subset`, backed by
+  `cpython_dict_view_getstate_method_diff_subset`, covering dict view getstate method
+  exposure and `None` state results across built-in dict and `OrderedDict`
+  views without adding pickleable view state.
 - `CONTAINER_RUNTIME` also includes `cpython_dict_view_isdisjoint_subset`,
   backed by `cpython_dict_view_isdisjoint_diff_subset`, covering dict view isdisjoint
   for key/item views over iterable operands while preserving the absence of the

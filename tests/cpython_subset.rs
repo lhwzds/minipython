@@ -49402,6 +49402,63 @@ for label, view in samples:
     );
 }
 
+// Adapted from CPython public dict view state method behavior. Dict and
+// OrderedDict views expose __getstate__ and return None because the view
+// objects do not carry pickleable instance state.
+#[test]
+fn cpython_dict_view_getstate_method_subset() {
+    assert_output(
+        r#"from collections import OrderedDict
+samples = [
+    ("keys", {1: 2}.keys()),
+    ("items", {1: 2}.items()),
+    ("values", {1: 2}.values()),
+    ("odkeys", OrderedDict([(1, 2)]).keys()),
+    ("oditems", OrderedDict([(1, 2)]).items()),
+    ("odvalues", OrderedDict([(1, 2)]).values()),
+]
+for label, view in samples:
+    print(label, hasattr(view, "__getstate__"))
+    for op, expr in [
+        ("getstate", lambda v=view: v.__getstate__()),
+        ("getstate-arg", lambda v=view: v.__getstate__(1)),
+        ("getstate-kw", lambda v=view: v.__getstate__(x=1)),
+    ]:
+        try:
+            value = expr()
+            print(label, op, type(value).__name__, value is None)
+        except Exception as error:
+            message = str(error)
+            print(label, op, type(error).__name__, "argument" in message, "keyword" in message)"#,
+        &[
+            "keys True",
+            "keys getstate NoneType True",
+            "keys getstate-arg TypeError True False",
+            "keys getstate-kw TypeError True True",
+            "items True",
+            "items getstate NoneType True",
+            "items getstate-arg TypeError True False",
+            "items getstate-kw TypeError True True",
+            "values True",
+            "values getstate NoneType True",
+            "values getstate-arg TypeError True False",
+            "values getstate-kw TypeError True True",
+            "odkeys True",
+            "odkeys getstate NoneType True",
+            "odkeys getstate-arg TypeError True False",
+            "odkeys getstate-kw TypeError True True",
+            "oditems True",
+            "oditems getstate NoneType True",
+            "oditems getstate-arg TypeError True False",
+            "oditems getstate-kw TypeError True True",
+            "odvalues True",
+            "odvalues getstate NoneType True",
+            "odvalues getstate-arg TypeError True False",
+            "odvalues getstate-kw TypeError True True",
+        ],
+    );
+}
+
 // Adapted from CPython Lib/test/test_dict.py dict view set-style methods.
 // Key/item views expose isdisjoint() while values views remain ordinary
 // collections without set-style methods.

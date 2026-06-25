@@ -1002,6 +1002,68 @@ fn dict_view_reduce_methods_subset_has_focused_diff_evidence() {
 }
 
 #[test]
+fn dict_view_getstate_method_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_dict_view_getstate_method_subset(",
+        "hasattr(view, \"__getstate__\")",
+        "(\"getstate\", lambda v=view: v.__getstate__())",
+        "(\"getstate-arg\", lambda v=view: v.__getstate__(1))",
+        "(\"getstate-kw\", lambda v=view: v.__getstate__(x=1))",
+        "value is None",
+        "\"keys getstate NoneType True\"",
+        "\"values getstate-kw TypeError True True\"",
+        "\"odvalues getstate NoneType True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused dict view getstate method subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_dict_view_getstate_method_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_dict.py dict view getstate behavior subset",
+        "name: \"dict-view-getstate-method\"",
+        "hasattr(view, \"__getstate__\")",
+        "v.__getstate__()",
+        "v.__getstate__(1)",
+        "v.__getstate__(x=1)",
+        "value is None",
+        "\"keyword\" in message",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused dict view getstate method CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"__getstate__\" => Ok(Value::BoundMethod",
+        "\"__getstate__\" => {",
+        "__getstate__() expected 0 arguments",
+        "__getstate__() expected a dict view receiver",
+        "Ok(Value::None)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "dict view getstate method implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_dict_view_getstate_method_subset")
+                && document.contains("cpython_dict_view_getstate_method_diff_subset")
+                && document.contains("dict view getstate method"),
+            "focused dict view getstate method evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn dict_view_isdisjoint_subset_has_focused_diff_evidence() {
     for required in [
         "fn cpython_dict_view_isdisjoint_subset(",
