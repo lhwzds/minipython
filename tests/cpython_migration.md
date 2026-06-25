@@ -9752,11 +9752,13 @@ Completed in the AST required-`None` validator pass:
 Completed in the AST parse NUL-byte pass:
 
 - Added `cpython_ast_parse_null_bytes_subset`, migrating CPython
-  `AST_Tests.test_null_bytes`.
+  `AST_Tests.test_null_bytes`, plus
+  `cpython_ast_parse_null_bytes_diff_subset` as direct CPython oracle evidence.
 - Public `ast.parse()` now rejects source strings containing NUL bytes with
   `SyntaxError: source code string cannot contain null bytes`, matching the
-  CPython-facing `ast.parse()` message while leaving the lower tokenizer and
-  source-encoding `source code cannot contain null bytes` checks intact.
+  CPython-facing `ast.parse()` message, one-element `args`, and no location
+  attributes such as `filename` or `lineno`, while leaving the lower tokenizer
+  and source-encoding `source code cannot contain null bytes` checks intact.
 
 Completed in the AST BinOp/decorator location pass:
 

@@ -41776,6 +41776,10 @@ fn raise_ast_parse_syntax_error(
     let Some((type_name, message)) = ast_parse_syntax_error_parts(&message) else {
         return Err(message);
     };
+    if type_name == "SyntaxError" && message == "source code string cannot contain null bytes" {
+        vm.raise_exception(syntax_error_exception(message), true)?;
+        return Ok(Value::None);
+    }
     let source = ast_parse_source_text_for_error(source).unwrap_or_default();
     let line = source_line_text(&source, 1);
     let exception = syntax_error_exception_with_location_value(
@@ -60591,6 +60595,23 @@ fn syntax_error_exception_with_location(
         end_lineno,
         end_offset,
     )
+}
+
+fn syntax_error_exception(message: String) -> MiniException {
+    let args = vec![Value::String(message.clone())];
+    MiniException {
+        type_hierarchy: builtin_exception_type_hierarchy("SyntaxError"),
+        type_name: "SyntaxError".to_string(),
+        type_object: None,
+        message: Some(message),
+        attrs: syntax_error_attrs(&args),
+        args,
+        cause: None,
+        context: None,
+        suppress_context: false,
+        exceptions: None,
+        identity: Rc::new(()),
+    }
 }
 
 fn syntax_error_exception_with_location_value(

@@ -8857,6 +8857,24 @@ for call in [lambda: ast.parse(123), lambda: ast.parse('1', 123), lambda: ast.pa
 }
 
 #[test]
+fn cpython_ast_parse_null_bytes_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/test_ast/test_ast.py::AST_Tests::test_null_bytes",
+        name: "ast-parse-null-bytes",
+        source: r#"import ast
+try:
+    ast.parse("a\0b")
+except SyntaxError as error:
+    print(error.__class__.__name__, str(error))
+    print(error.args)
+    print(error.msg)
+    print(error.text, error.filename, error.lineno, error.offset, getattr(error, 'end_lineno', None), getattr(error, 'end_offset', None))
+else:
+    print("no error")"#,
+    });
+}
+
+#[test]
 fn cpython_ast_compile_formatted_value_root_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_ast/test_ast.py public AST compile behavior for FormattedValue expressions",

@@ -13114,9 +13114,17 @@ try:
     ast.parse("a\0b")
 except SyntaxError as error:
     print(error.__class__.__name__, str(error) == "source code string cannot contain null bytes")
+    print(error.args)
+    print(error.msg)
+    print(error.text, error.filename, error.lineno, error.offset, error.end_lineno, error.end_offset)
 else:
     print("no error")"#,
-        &["SyntaxError True"],
+        &[
+            "SyntaxError True",
+            "('source code string cannot contain null bytes',)",
+            "source code string cannot contain null bytes",
+            "None None None None None None",
+        ],
     );
 }
 

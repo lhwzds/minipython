@@ -21822,6 +21822,63 @@ fn cpython_ast_parse_public_diff_covers_core_subset() {
 }
 
 #[test]
+fn cpython_ast_parse_null_bytes_subset_has_direct_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_ast_parse_null_bytes_subset");
+    let diff_body =
+        extract_rust_test_body(CPYTHON_DIFF, "cpython_ast_parse_null_bytes_diff_subset");
+
+    for required in [
+        "ast.parse(\"a\\0b\")",
+        "str(error)",
+        "error.args",
+        "error.msg",
+        "error.text, error.filename, error.lineno, error.offset",
+    ] {
+        assert!(
+            subset_body.contains(required) && diff_body.contains(required),
+            "ast.parse null-byte subset and diff evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        subset_body.contains("source code string cannot contain null bytes"),
+        "ast.parse null-byte subset expected output must pin CPython's public message"
+    );
+
+    for required in [
+        "\"('source code string cannot contain null bytes',)\"",
+        "\"None None None None None None\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "ast.parse null-byte subset output must pin `{required}`"
+        );
+    }
+
+    for required in [
+        "syntax_error_exception(message)",
+        "source code string cannot contain null bytes",
+        "fn syntax_error_exception(",
+        "syntax_error_attrs(&args)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "ast.parse null-byte VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_ast_parse_null_bytes_diff_subset")
+                && document.contains("source code string cannot contain null bytes")
+                && document.contains("no location")
+                && document.contains("filename")
+                && document.contains("lineno"),
+            "ast.parse null-byte docs must describe direct diff evidence and no-location SyntaxError shape"
+        );
+    }
+}
+
+#[test]
 fn cpython_compile_source_positions_diff_covers_public_invariants() {
     let diff_name = "cpython_compile_source_positions_public_invariants_diff_subset";
     let diff_start = CPYTHON_DIFF

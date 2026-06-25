@@ -2954,9 +2954,12 @@ without adding general custom encoder/decoder class support.
   `SyntaxError.filename` preserving `str` subclass filename objects for direct
   filenames and path-like results.
   `cpython_ast_parse_null_bytes_subset` ports
-  CPython `AST_Tests::test_null_bytes`, requiring `ast.parse()` over source
-  strings containing NUL bytes to raise `SyntaxError` with CPython's public
-  `source code string cannot contain null bytes` message.
+  CPython `AST_Tests::test_null_bytes`, and
+  `cpython_ast_parse_null_bytes_diff_subset` adds direct CPython parity for
+  the same source-string path, requiring `ast.parse()` over source strings
+  containing NUL bytes to raise `SyntaxError` with CPython's public
+  `source code string cannot contain null bytes` message, one-element
+  `args`, and no location attributes such as `filename` or `lineno`.
   `cpython_ast_parse_invalid_ast_subset` ports CPython
   `AST_Tests::test_parse_invalid_ast` by rejecting non-root public AST
   nodes such as `ast.Constant(42)` as `ast.parse()` input while preserving full
