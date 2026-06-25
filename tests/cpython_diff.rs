@@ -9841,7 +9841,14 @@ for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2
     try:
         expr()
     except (TypeError, ValueError, ZeroDivisionError) as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+import operator
+# CPython oracle text: unsupported operand type(s) for ** or pow()
+for label, expr in [('pow-str-int', lambda: pow('a', 2)), ('pow-int-str', lambda: pow(2, 'a')), ('pow-bool-str', lambda: pow(True, 'a')), ('pow-str-bool', lambda: pow('a', True)), ('op-str-int', lambda: 'a' ** 2), ('op-int-str', lambda: 2 ** 'a'), ('operator-str-int', lambda: operator.pow('a', 2)), ('complex-none', lambda: pow(1j, None)), ('none-complex', lambda: pow(None, 1j))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
     });
 }
 
@@ -21919,7 +21926,14 @@ for expr in [lambda: pow(), lambda: pow(1), lambda: pow(0, -1), lambda: pow(1, 2
     try:
         expr()
     except (TypeError, ValueError, ZeroDivisionError) as error:
-        print(error.__class__.__name__)"#,
+        print(error.__class__.__name__)
+import operator
+# CPython oracle text: unsupported operand type(s) for ** or pow()
+for label, expr in [('pow-str-int', lambda: pow('a', 2)), ('pow-int-str', lambda: pow(2, 'a')), ('pow-bool-str', lambda: pow(True, 'a')), ('pow-str-bool', lambda: pow('a', True)), ('op-str-int', lambda: 'a' ** 2), ('op-int-str', lambda: 2 ** 'a'), ('operator-str-int', lambda: operator.pow('a', 2)), ('complex-none', lambda: pow(1j, None)), ('none-complex', lambda: pow(None, 1j))]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, str(error))"#,
         },
         DiffCase {
             origin: "Lib/test/test_str.py::test_format and ::test_format_map",

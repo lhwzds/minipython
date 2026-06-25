@@ -6694,7 +6694,9 @@ Completed in the pow builtin pass:
   `base`, `exp`, and `mod` arguments.
 - Reused MiniPython's numeric power path for two-argument `pow()`, including
   CPython-style float results for negative integer exponents and
-  `ZeroDivisionError` for zero raised to a negative exponent.
+  `ZeroDivisionError` for zero raised to a negative exponent. The unsupported power operand
+  pairs now preserve CPython's exact public `TypeError` text across `pow()`,
+  `**`, and `operator.pow()`, including bool and complex/None operands.
 - Added integer modular exponentiation for three-argument `pow()`, including
   zero-modulus rejection, negative-modulus result normalization, and modular
   inverse handling for negative exponents.

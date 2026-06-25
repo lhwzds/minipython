@@ -83004,9 +83004,11 @@ fn percent_pad_numeric_text(text: String, spec: &PercentFormatSpec) -> String {
 }
 
 fn power_values(left: Value, right: Value) -> Result<Value, String> {
+    let left_type = type_name(&left).to_string();
+    let right_type = type_name(&right).to_string();
     let (left, right) = numeric_bool_operands(left, right);
     if matches!(&left, Value::Complex { .. }) || matches!(&right, Value::Complex { .. }) {
-        return complex_power_operands(left, right);
+        return complex_power_operands(left, right, &left_type, &right_type);
     }
     match (left, right) {
         (Value::Number(left), Value::Number(right)) if right < 0 => {
@@ -83043,28 +83045,33 @@ fn power_values(left: Value, right: Value) -> Result<Value, String> {
                 .ok_or_else(|| "integer exponent is too large".to_string())?;
             Ok(normalize_big_int(left.pow(exponent)))
         }
-        (left, right) => {
-            let (left_display, right_display) = (left.to_string(), right.to_string());
-            match (number_as_f64(left), number_as_f64(right)) {
-                (Some(left), Some(right)) => real_power_value(left, right),
-                _ => Err(format!("cannot power {left_display} and {right_display}")),
-            }
-        }
+        (left, right) => match (number_as_f64(left), number_as_f64(right)) {
+            (Some(left), Some(right)) => real_power_value(left, right),
+            _ => Err(power_type_error(&left_type, &right_type)),
+        },
     }
 }
 
-fn complex_power_operands(left: Value, right: Value) -> Result<Value, String> {
-    let (left_display, right_display) = (left.to_string(), right.to_string());
+fn complex_power_operands(
+    left: Value,
+    right: Value,
+    left_type: &str,
+    right_type: &str,
+) -> Result<Value, String> {
     let Some((base_real, base_imag)) = number_as_complex_parts(left)? else {
-        return Err(format!("cannot power {left_display} and {right_display}"));
+        return Err(power_type_error(left_type, right_type));
     };
     if let Some(exponent) = complex_integer_exponent(&right) {
         return complex_integer_power_value(base_real, base_imag, exponent);
     }
     let Some((exponent_real, exponent_imag)) = number_as_complex_parts(right)? else {
-        return Err(format!("cannot power {left_display} and {right_display}"));
+        return Err(power_type_error(left_type, right_type));
     };
     complex_power_value(base_real, base_imag, exponent_real, exponent_imag)
+}
+
+fn power_type_error(left_type: &str, right_type: &str) -> String {
+    format!("unsupported operand type(s) for ** or pow(): '{left_type}' and '{right_type}'")
 }
 
 fn complex_integer_exponent(value: &Value) -> Option<i64> {

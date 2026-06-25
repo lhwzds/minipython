@@ -43695,6 +43695,20 @@ fn cpython_pow_builtin_subset() {
             "ValueError",
         ],
     );
+    assert_output(
+        "import operator\nfor label, expr in [('pow-str-int', lambda: pow('a', 2)), ('pow-int-str', lambda: pow(2, 'a')), ('pow-bool-str', lambda: pow(True, 'a')), ('pow-str-bool', lambda: pow('a', True)), ('op-str-int', lambda: 'a' ** 2), ('op-int-str', lambda: 2 ** 'a'), ('operator-str-int', lambda: operator.pow('a', 2)), ('complex-none', lambda: pow(1j, None)), ('none-complex', lambda: pow(None, 1j))]:\n    try:\n        expr()\n    except TypeError as error:\n        print(label, str(error))",
+        &[
+            "pow-str-int unsupported operand type(s) for ** or pow(): 'str' and 'int'",
+            "pow-int-str unsupported operand type(s) for ** or pow(): 'int' and 'str'",
+            "pow-bool-str unsupported operand type(s) for ** or pow(): 'bool' and 'str'",
+            "pow-str-bool unsupported operand type(s) for ** or pow(): 'str' and 'bool'",
+            "op-str-int unsupported operand type(s) for ** or pow(): 'str' and 'int'",
+            "op-int-str unsupported operand type(s) for ** or pow(): 'int' and 'str'",
+            "operator-str-int unsupported operand type(s) for ** or pow(): 'str' and 'int'",
+            "complex-none unsupported operand type(s) for ** or pow(): 'complex' and 'NoneType'",
+            "none-complex unsupported operand type(s) for ** or pow(): 'NoneType' and 'complex'",
+        ],
+    );
 }
 
 // Adapted from CPython Lib/test/test_functools.py public helper smoke

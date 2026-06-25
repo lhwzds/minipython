@@ -17170,6 +17170,73 @@ fn exec_general_mapping_locals_subset_has_direct_diff_and_stack_evidence() {
 }
 
 #[test]
+fn pow_builtin_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(CPYTHON_SUBSET, "cpython_pow_builtin_subset");
+    for required in [
+        "pow('a', 2)",
+        "pow(2, 'a')",
+        "pow(True, 'a')",
+        "pow('a', True)",
+        "'a' ** 2",
+        "2 ** 'a'",
+        "operator.pow('a', 2)",
+        "pow(1j, None)",
+        "pow(None, 1j)",
+        "pow-str-int unsupported operand type(s) for ** or pow(): 'str' and 'int'",
+        "pow-bool-str unsupported operand type(s) for ** or pow(): 'bool' and 'str'",
+        "operator-str-int unsupported operand type(s) for ** or pow(): 'str' and 'int'",
+        "complex-none unsupported operand type(s) for ** or pow(): 'complex' and 'NoneType'",
+        "none-complex unsupported operand type(s) for ** or pow(): 'NoneType' and 'complex'",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "focused pow builtin subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(CPYTHON_DIFF, "cpython_pow_builtin_diff_subset");
+    for required in [
+        "Lib/test/test_builtin.py::BuiltinTest::test_pow",
+        "pow('a', 2)",
+        "pow(2, 'a')",
+        "pow(True, 'a')",
+        "pow('a', True)",
+        "'a' ** 2",
+        "2 ** 'a'",
+        "operator.pow('a', 2)",
+        "pow(1j, None)",
+        "pow(None, 1j)",
+        "unsupported operand type(s) for ** or pow()",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "focused pow builtin CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "fn power_type_error(",
+        "unsupported operand type(s) for ** or pow():",
+        "complex_power_operands(left, right, &left_type, &right_type)",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "pow unsupported operand VM implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_pow_builtin_subset")
+                && document.contains("cpython_pow_builtin_diff_subset")
+                && document.contains("unsupported power operand")
+                && document.contains("operator.pow()"),
+            "focused pow unsupported operand evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn builtins_sandbox_manifest_lists_public_subset_evidence() {
     assert_sandbox_manifest_subset_evidence(
         "builtins",

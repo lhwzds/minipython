@@ -69,6 +69,10 @@ Recent runtime migration notes:
   public delimiter-message substrings for `json.loads()` missing colon and
   missing comma errors while keeping full `JSONDecodeError` compatibility out
   of the sandbox `json` scope.
+- `cpython_pow_builtin_subset`, backed by `cpython_pow_builtin_diff_subset`,
+  now pins exact CPython unsupported power operand `TypeError` text across
+  `pow()`, `**`, and `operator.pow()`, including bool and complex/None
+  operands.
 - `cpython_sequence_index_typeerror_message_subset`, backed by
   `cpython_sequence_index_typeerror_message_diff_subset`, now pins CPython
   public TypeError text for non-integer list, tuple, and string subscript
