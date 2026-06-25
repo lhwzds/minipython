@@ -21864,6 +21864,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_types_union_newtype_subset",
             "cpython_types_mappingproxy_exact_dict_subset",
             "cpython_types_mappingproxy_type_metadata_subset",
+            "cpython_types_mappingproxy_type_hierarchy_subset",
             "cpython_types_mappingproxy_keyword_constructor_subset",
             "cpython_types_mappingproxy_method_surface_subset",
             "cpython_types_mappingproxy_custom_mapping_subset",
@@ -21972,6 +21973,7 @@ fn types_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_types_format_spec_errors_diff_subset",
         "cpython_types_mappingproxy_exact_dict_diff_subset",
         "cpython_types_mappingproxy_type_metadata_diff_subset",
+        "cpython_types_mappingproxy_type_hierarchy_diff_subset",
         "cpython_types_mappingproxy_keyword_constructor_diff_subset",
         "cpython_types_mappingproxy_method_surface_diff_subset",
         "cpython_types_mappingproxy_union_diff_subset",
@@ -22190,6 +22192,64 @@ fn types_mappingproxy_type_metadata_subset_has_focused_diff_evidence() {
                 && document.contains("cpython_types_mappingproxy_type_metadata_diff_subset")
                 && document.contains("mappingproxy type metadata"),
             "types mappingproxy type metadata evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
+fn types_mappingproxy_type_hierarchy_subset_has_focused_diff_evidence() {
+    let subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_types_mappingproxy_type_hierarchy_subset",
+    );
+    for required in [
+        "base = cls.__base__",
+        "cls.__bases__",
+        "cls.__bases__ == (base,)",
+        "cls.__mro__[0] is cls",
+        "cls.__mro__[-1] is object",
+        "type({1: 2}.keys().mapping).__base__ is base",
+        "\"object ('object',)\"",
+    ] {
+        assert!(
+            subset_body.contains(required),
+            "types mappingproxy type hierarchy subset evidence must cover `{required}`"
+        );
+    }
+
+    let diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_types_mappingproxy_type_hierarchy_diff_subset",
+    );
+    for required in [
+        "Lib/test/test_types.py::MappingProxyTests type hierarchy subset",
+        "name: \"types-mappingproxy-type-hierarchy\"",
+        "base = cls.__base__",
+        "cls.__bases__ == (base,)",
+        "type({1: 2}.keys().mapping).__base__ is base",
+    ] {
+        assert!(
+            diff_body.contains(required),
+            "types mappingproxy type hierarchy CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "name == \"__bases__\" && function_name == \"mappingproxy\"",
+        "name == \"__base__\" && function_name == \"mappingproxy\"",
+    ] {
+        assert!(
+            VM_SOURCE.contains(required),
+            "types mappingproxy type hierarchy implementation must contain `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_types_mappingproxy_type_hierarchy_subset")
+                && document.contains("cpython_types_mappingproxy_type_hierarchy_diff_subset")
+                && document.contains("mappingproxy type hierarchy"),
+            "types mappingproxy type hierarchy evidence must be documented in coverage and migration notes"
         );
     }
 }

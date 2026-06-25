@@ -57252,6 +57252,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 dict_view_type_object_base_name(&function_name).to_string(),
             )]))
         }
+        Value::Builtin(function_name) if name == "__bases__" && function_name == "mappingproxy" => {
+            Ok(tuple_value(vec![Value::Builtin("object".to_string())]))
+        }
         Value::Builtin(function_name)
             if name == "__base__" && ast_builtin_kind(&function_name).is_some() =>
         {
@@ -57266,6 +57269,9 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             Ok(Value::Builtin(
                 dict_view_type_object_base_name(&function_name).to_string(),
             ))
+        }
+        Value::Builtin(function_name) if name == "__base__" && function_name == "mappingproxy" => {
+            Ok(Value::Builtin("object".to_string()))
         }
         Value::Builtin(function_name)
             if name == "__module__" && is_templatelib_type_name(&function_name) =>

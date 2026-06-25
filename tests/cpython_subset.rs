@@ -50682,6 +50682,22 @@ print(type({1: 2}.keys().mapping) is cls)"#,
     );
 }
 
+// Adapted from CPython public mappingproxy type hierarchy metadata. This keeps
+// the public class relationships aligned without exposing implementation
+// layout internals.
+#[test]
+fn cpython_types_mappingproxy_type_hierarchy_subset() {
+    assert_output(
+        r#"from types import MappingProxyType
+cls = type(MappingProxyType({'a': 1}))
+base = cls.__base__
+print(base.__name__, tuple(b.__name__ for b in cls.__bases__))
+print(cls.__bases__ == (base,), cls.__mro__[0] is cls, cls.__mro__[-1] is object)
+print(type({1: 2}.keys().mapping).__base__ is base)"#,
+        &["object ('object',)", "True True True", "True"],
+    );
+}
+
 // Adapted from CPython Lib/test/test_types.py::MappingProxyTests constructor
 // binding behavior for the public `mapping` keyword.
 #[test]
