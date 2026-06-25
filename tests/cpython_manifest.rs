@@ -172,6 +172,62 @@ fn list_rich_search_docs_cover_container_runtime() {
 }
 
 #[test]
+fn list_index_missing_valueerror_message_subset_has_focused_diff_evidence() {
+    for required in [
+        "fn cpython_list_index_missing_valueerror_message_subset(",
+        "lambda: [1, 2].index(3)",
+        "lambda: L([1, 2]).index(3)",
+        "lambda: [1, 2].index(Needle())",
+        "lambda: [1, 2, 3].index(3, 0, 2)",
+        "list.index(x): x not in list",
+        "\"repr-needle ValueError list.index(x): x not in list ('list.index(x): x not in list',)\"",
+        "\"window ValueError list.index(x): x not in list ('list.index(x): x not in list',)\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "focused list.index missing ValueError subset evidence must cover `{required}`"
+        );
+    }
+
+    let body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_list_index_missing_valueerror_message_diff_subset",
+    );
+    for required in [
+        "Lib/test/list_tests.py list.index missing value ValueError message subset",
+        "name: \"list-index-missing-valueerror-message\"",
+        "lambda: [1, 2].index(3)",
+        "lambda: L([1, 2]).index(3)",
+        "lambda: [1, 2].index(Needle())",
+        "lambda: [1, 2, 3].index(3, 0, 2)",
+        "print(label, type(error).__name__, str(error), error.args)",
+    ] {
+        assert!(
+            body.contains(required),
+            "focused list.index missing ValueError CPython diff evidence must cover `{required}`"
+        );
+    }
+
+    assert!(
+        VM_SOURCE.contains("ValueError: list.index(x): x not in list"),
+        "list.index missing value implementation must keep CPython's fixed public message"
+    );
+    assert!(
+        !VM_SOURCE.contains("ValueError: {needle} is not in list"),
+        "list.index missing value implementation must not format the missing needle into the public message"
+    );
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains("cpython_list_index_missing_valueerror_message_subset")
+                && document.contains("cpython_list_index_missing_valueerror_message_diff_subset")
+                && document.contains("list.index(x): x not in list"),
+            "focused list.index missing ValueError evidence must be documented in coverage and migration notes"
+        );
+    }
+}
+
+#[test]
 fn list_search_mutating_eq_docs_cover_container_runtime() {
     let diff_name = "cpython_list_search_mutating_eq_diff_subset";
     let subset_name = "cpython_list_search_mutating_eq_subset";

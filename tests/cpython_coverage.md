@@ -36,6 +36,10 @@ Recent runtime migration notes:
 - `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now pins list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
+- `cpython_list_index_missing_valueerror_message_subset`, backed by
+  `cpython_list_index_missing_valueerror_message_diff_subset`, now pins
+  CPython's fixed `list.index(x): x not in list` message for missing instance
+  and list-subclass `index()` calls.
 - `cpython_list_search_mutating_eq_subset`, backed by
   `cpython_list_search_mutating_eq_diff_subset`, now pins list mutation during comparison for the same search APIs:
   clear, append, delete-before-visit, and true-match-while-clear cases use

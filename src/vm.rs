@@ -31077,7 +31077,7 @@ impl Vm {
                             .map_err(|_| "index() result is too large".to_string())?;
                         Ok(Value::Number(index))
                     }
-                    None => Err(format!("ValueError: {needle} is not in list")),
+                    None => Err("ValueError: list.index(x): x not in list".to_string()),
                 }
             }
             "list.remove" => {
@@ -70591,7 +70591,7 @@ fn call_list_method(name: &str, args: Vec<Value>) -> Result<Value, String> {
                         .map_err(|_| "index() result is too large".to_string())?;
                     Ok(Value::Number(index))
                 }
-                None => Err(format!("ValueError: {needle} is not in list")),
+                None => Err("ValueError: list.index(x): x not in list".to_string()),
             }
         }
         "list.insert" => {

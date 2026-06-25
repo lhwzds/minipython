@@ -48,6 +48,10 @@ surface, concrete `cpython_diff` evidence, and matching runtime subset evidence.
 - Added `cpython_list_rich_search_subset` and
   `cpython_list_rich_search_diff_subset` for list membership, `__contains__`,
   `count`, `index`, and `remove` dispatch through user-defined `__eq__` plus comparison-exception propagation.
+- Added `cpython_list_index_missing_valueerror_message_subset` and
+  `cpython_list_index_missing_valueerror_message_diff_subset` for CPython's
+  fixed `list.index(x): x not in list` missing-value message on supported
+  instance and list-subclass `index()` calls.
 - Added `cpython_list_search_mutating_eq_subset` and
   `cpython_list_search_mutating_eq_diff_subset` for list mutation during comparison
   across membership, `__contains__`, `count`, `index`, and `remove`: clear,
@@ -2182,7 +2186,11 @@ Completed in the differential parity harness pass:
   and out-of-window argument cases. `cpython_list_rich_search_subset`, backed by
   `cpython_list_rich_search_diff_subset`, now covers user-defined `__eq__`
   dispatch and comparison-error propagation for membership, `__contains__`,
-  `count`, `index`, and `remove`. `cpython_list_search_mutating_eq_subset`,
+  `count`, `index`, and `remove`.
+  `cpython_list_index_missing_valueerror_message_subset`, backed by
+  `cpython_list_index_missing_valueerror_message_diff_subset`, pins CPython's
+  fixed `list.index(x): x not in list` message for supported missing-value
+  `index()` calls. `cpython_list_search_mutating_eq_subset`,
   backed by `cpython_list_search_mutating_eq_diff_subset`, now covers list
   mutation during comparison for the same search APIs, including clear, append,
   delete-before-visit, true-match-while-clear, and fixed explicit `stop` bounds.

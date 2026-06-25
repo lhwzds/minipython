@@ -10921,6 +10921,32 @@ for label, call in [
 }
 
 #[test]
+fn cpython_list_index_missing_valueerror_message_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/test/list_tests.py list.index missing value ValueError message subset",
+        name: "list-index-missing-valueerror-message",
+        source: r#"class L(list):
+    pass
+class Needle:
+    def __repr__(self):
+        return '<needle-repr>'
+    def __str__(self):
+        return '<needle-str>'
+
+for label, expr in [
+    ('list', lambda: [1, 2].index(3)),
+    ('subclass', lambda: L([1, 2]).index(3)),
+    ('repr-needle', lambda: [1, 2].index(Needle())),
+    ('window', lambda: [1, 2, 3].index(3, 0, 2)),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+    });
+}
+
+#[test]
 fn cpython_list_search_mutating_eq_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/list_tests.py mutation during rich comparison list search public subset",

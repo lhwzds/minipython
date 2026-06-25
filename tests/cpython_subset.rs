@@ -35004,6 +35004,38 @@ for label, call in [
     );
 }
 
+// Adapted from CPython Lib/test/list_tests.py index missing-value
+// ValueError message behavior for supported instance calls.
+#[test]
+fn cpython_list_index_missing_valueerror_message_subset() {
+    assert_output(
+        r#"class L(list):
+    pass
+class Needle:
+    def __repr__(self):
+        return '<needle-repr>'
+    def __str__(self):
+        return '<needle-str>'
+
+for label, expr in [
+    ('list', lambda: [1, 2].index(3)),
+    ('subclass', lambda: L([1, 2]).index(3)),
+    ('repr-needle', lambda: [1, 2].index(Needle())),
+    ('window', lambda: [1, 2, 3].index(3, 0, 2)),
+]:
+    try:
+        expr()
+    except ValueError as error:
+        print(label, type(error).__name__, str(error), error.args)"#,
+        &[
+            "list ValueError list.index(x): x not in list ('list.index(x): x not in list',)",
+            "subclass ValueError list.index(x): x not in list ('list.index(x): x not in list',)",
+            "repr-needle ValueError list.index(x): x not in list ('list.index(x): x not in list',)",
+            "window ValueError list.index(x): x not in list ('list.index(x): x not in list',)",
+        ],
+    );
+}
+
 #[test]
 fn cpython_list_search_mutating_eq_subset() {
     assert_output_with_stack(
