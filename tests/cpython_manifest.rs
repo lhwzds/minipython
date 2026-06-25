@@ -255,6 +255,7 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
     for required in [
         "error.args[0] == key",
         "def delete_str():",
+        "def delete_subclass_str():",
         "dict.__getitem__({}, 'missing')",
         "dict.__delitem__({}, 'missing')",
         "del d['missing']",
@@ -263,6 +264,7 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
         "D()['missing']",
         "g['scope_missing']",
         "g.pop('scope_missing')",
+        "dict.__delitem__(D(), 'missing')",
     ] {
         assert!(
             CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
@@ -276,6 +278,8 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
         "\"del-subscript-str True str 'missing'\"",
         "\"pop-int True int 42\"",
         "\"scope-pop True str 'scope_missing'\"",
+        "\"subclass-delitem True str 'missing'\"",
+        "\"subclass-del-subscript True str 'missing'\"",
     ] {
         assert!(
             CPYTHON_SUBSET.contains(required),
@@ -286,6 +290,7 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
         "fn load_subscript_or_raise_key_error(",
         "fn remove_mapping_entry(",
         "key_error_exception(key)",
+        "object if dict_subclass_entries(&object).is_some()",
         "raise_key_error_value(vm, key.clone())",
         "raise_key_error_value(self, index)?",
     ] {
@@ -301,7 +306,9 @@ fn dict_missing_keyerror_payload_docs_cover_container_runtime() {
             subset_name,
             "original missing key",
             "`KeyError.args[0]`",
-            "dict and globals mapping",
+            "dict",
+            "dict subclasses",
+            "globals mapping",
             "deletion",
         ] {
             assert!(

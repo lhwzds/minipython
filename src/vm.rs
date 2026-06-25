@@ -17480,6 +17480,16 @@ impl Vm {
                 raise_key_error_value(self, index)?;
                 Ok(Value::OrderedDict(entries))
             }
+            object if dict_subclass_entries(&object).is_some() => {
+                ensure_hashable_key(&index)?;
+                let entries = dict_subclass_entries(&object)
+                    .expect("dict subclass entries exist after guard");
+                if remove_mapping_entry(&entries, &index)? {
+                    return Ok(object);
+                }
+                raise_key_error_value(self, index)?;
+                Ok(object)
+            }
             object => delete_subscript(object, index),
         }
     }

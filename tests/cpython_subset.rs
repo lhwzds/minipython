@@ -41856,7 +41856,7 @@ fn cpython_dict_constructor_update_fromkeys_subset() {
 #[test]
 fn cpython_dict_missing_keyerror_payload_subset() {
     assert_output(
-        "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\ndef delete_str():\n    d = {}\n    del d['missing']\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('delitem-str', 'missing', lambda: dict.__delitem__({}, 'missing'))\nshow('del-subscript-str', 'missing', delete_str)\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
+        "def show(label, key, callback):\n    try:\n        callback()\n    except KeyError as error:\n        print(label, error.args[0] == key, type(error.args[0]).__name__, str(error))\nclass D(dict):\n    pass\ng = globals()\ndef delete_str():\n    d = {}\n    del d['missing']\ndef delete_subclass_str():\n    d = D()\n    del d['missing']\nshow('subscript-str', 'missing', lambda: {}['missing'])\nshow('subscript-int', 42, lambda: {}[42])\nshow('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))\nshow('delitem-str', 'missing', lambda: dict.__delitem__({}, 'missing'))\nshow('del-subscript-str', 'missing', delete_str)\nshow('pop-str', 'missing', lambda: {}.pop('missing'))\nshow('pop-int', 42, lambda: {}.pop(42))\nshow('subclass-subscript', 'missing', lambda: D()['missing'])\nshow('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))\nshow('subclass-delitem', 'missing', lambda: dict.__delitem__(D(), 'missing'))\nshow('subclass-del-subscript', 'missing', delete_subclass_str)\nshow('scope-subscript', 'scope_missing', lambda: g['scope_missing'])\nshow('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))",
         &[
             "subscript-str True str 'missing'",
             "subscript-int True int 42",
@@ -41867,6 +41867,8 @@ fn cpython_dict_missing_keyerror_payload_subset() {
             "pop-int True int 42",
             "subclass-subscript True str 'missing'",
             "subclass-getitem True str 'missing'",
+            "subclass-delitem True str 'missing'",
+            "subclass-del-subscript True str 'missing'",
             "scope-subscript True str 'scope_missing'",
             "scope-pop True str 'scope_missing'",
         ],

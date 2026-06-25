@@ -723,6 +723,9 @@ g = globals()
 def delete_str():
     d = {}
     del d['missing']
+def delete_subclass_str():
+    d = D()
+    del d['missing']
 show('subscript-str', 'missing', lambda: {}['missing'])
 show('subscript-int', 42, lambda: {}[42])
 show('getitem-str', 'missing', lambda: dict.__getitem__({}, 'missing'))
@@ -732,6 +735,8 @@ show('pop-str', 'missing', lambda: {}.pop('missing'))
 show('pop-int', 42, lambda: {}.pop(42))
 show('subclass-subscript', 'missing', lambda: D()['missing'])
 show('subclass-getitem', 'missing', lambda: dict.__getitem__(D(), 'missing'))
+show('subclass-delitem', 'missing', lambda: dict.__delitem__(D(), 'missing'))
+show('subclass-del-subscript', 'missing', delete_subclass_str)
 show('scope-subscript', 'scope_missing', lambda: g['scope_missing'])
 show('scope-pop', 'scope_missing', lambda: g.pop('scope_missing'))"#,
     });

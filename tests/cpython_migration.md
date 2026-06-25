@@ -1754,10 +1754,10 @@ Completed in the differential parity harness pass:
   direct language tests and CPython/MiniPython differential parity cases.
 - Added `cpython_dict_missing_keyerror_payload_subset`, backed by
   `cpython_dict_missing_keyerror_payload_diff_subset`, for CPython public
-  missing-key `KeyError.args[0]` behavior across dict and globals mapping
-  subscript / `dict.__getitem__()` / direct `__delitem__()` / subscript
-  deletion / `pop()` paths. MiniPython now preserves the original missing key
-  object while retaining repr-style `KeyError` display text.
+  missing-key `KeyError.args[0]` behavior across dict, dict subclasses, and
+  globals mapping subscript / `dict.__getitem__()` / direct `__delitem__()` /
+  subscript deletion / `pop()` paths. MiniPython now preserves the original
+  missing key object while retaining repr-style `KeyError` display text.
 - Extended `test_dict.py` dict-view coverage so `keys`, `values`, and `items`
   remain live after mutation, support length, iteration, and membership, and
   support set-like operations and subset/superset comparisons for key/item views
