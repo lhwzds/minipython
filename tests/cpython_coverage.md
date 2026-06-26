@@ -637,6 +637,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_code_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset`,
   `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset`,
   `cpython_json_dumps_float_spelling_diff_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset`,
@@ -1114,7 +1115,9 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_partial_identity_diff_subset` /
   `cpython_json_dumps_default_hook_partial_identity_subset`,
   `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset` /
-  `cpython_json_dumps_default_hook_lru_cache_identity_subset`, and
+  `cpython_json_dumps_default_hook_lru_cache_identity_subset`,
+  `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_singledispatch_identity_subset`, and
   `cpython_json_dumps_float_spelling_diff_subset` /
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
@@ -1286,6 +1289,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_lru_cache_identity_subset`, backed by
 `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset`, keeps shared unsupported functools.lru_cache wrapper replacement circular detection without treating fresh lru-cache wrappers as circular.
+
+`cpython_json_dumps_default_hook_singledispatch_identity_subset`, backed by
+`cpython_json_dumps_default_hook_singledispatch_identity_diff_subset`, keeps shared unsupported functools.singledispatch replacement circular detection without treating fresh singledispatch dispatchers as circular.
 
 `cpython_json_dumps_float_spelling_subset`, backed by
 `cpython_json_dumps_float_spelling_diff_subset`, keeps `dumps()` finite float spelling for

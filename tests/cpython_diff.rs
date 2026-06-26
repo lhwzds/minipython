@@ -2213,6 +2213,45 @@ print('fresh-lru-progress-unchecked', json.dumps(object(), default=hook, check_c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_singledispatch_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook functools.singledispatch identity subset",
+        name: "json-dumps-default-hook-singledispatch-identity",
+        source: r#"import functools
+import json
+
+@functools.singledispatch
+def shared_dispatch(value):
+    return 'base'
+
+def fresh_dispatch_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            @functools.singledispatch
+            def fresh_dispatch(value):
+                return 'fresh'
+            return fresh_dispatch
+        return 'fresh-singledispatch-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_dispatch)
+except Exception as error:
+    print('shared-singledispatch-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_dispatch_then_value()
+print('fresh-singledispatch-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_dispatch, check_circular=False)
+except Exception as error:
+    print('shared-singledispatch-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_dispatch_then_value()
+print('fresh-singledispatch-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

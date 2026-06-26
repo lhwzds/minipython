@@ -62620,6 +62620,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::LruCacheWrapper { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::SingleDispatch { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Class { attrs, .. } | Value::Module { attrs, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(attrs) as usize))
         }
