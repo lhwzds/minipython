@@ -36882,6 +36882,49 @@ print('fresh-generator-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_async_generator_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+async def agen(value):
+    yield value
+
+shared = agen(1)
+
+def fresh_async_generator_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return agen(1)
+        return 'fresh-async-generator-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-async-generator-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_async_generator_then_value()
+print('fresh-async-generator-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-async-generator-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_async_generator_then_value()
+print('fresh-async-generator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind async_generator False",
+            "shared-async-generator-default ValueError True True False",
+            "fresh-async-generator-progress \"fresh-async-generator-ok\" 2",
+            "shared-async-generator-default-unchecked RecursionError True",
+            "fresh-async-generator-progress-unchecked \"fresh-async-generator-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_subset() {
     assert_output(
         r#"import functools

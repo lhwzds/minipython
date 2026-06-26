@@ -8400,6 +8400,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_cell_identity_subset",
             "cpython_json_dumps_default_hook_traceback_identity_subset",
             "cpython_json_dumps_default_hook_generator_identity_subset",
+            "cpython_json_dumps_default_hook_async_generator_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8479,6 +8480,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_cell_identity_diff_subset",
         "cpython_json_dumps_default_hook_traceback_identity_diff_subset",
         "cpython_json_dumps_default_hook_generator_identity_diff_subset",
+        "cpython_json_dumps_default_hook_async_generator_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -11943,6 +11945,83 @@ fn json_dumps_default_hook_generator_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps generator identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_async_generator_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_async_generator_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_async_generator_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook async generator identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook async generator identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook async generator identity subset"),
+        "json dumps default hook async generator identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "async def agen(value):",
+        "yield value",
+        "shared = agen(1)",
+        "def fresh_async_generator_then_value():",
+        "return agen(1)",
+        "return 'fresh-async-generator-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-async-generator-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-async-generator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook async generator identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind async_generator False\"",
+        "\"shared-async-generator-default ValueError True True False\"",
+        "\"fresh-async-generator-progress \\\"fresh-async-generator-ok\\\" 2\"",
+        "\"shared-async-generator-default-unchecked RecursionError True\"",
+        "\"fresh-async-generator-progress-unchecked \\\"fresh-async-generator-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook async generator identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported async generator replacement circular detection without treating fresh async generators as circular"
+            ),
+            "json docs must describe the async generator identity boundary"
+        );
+    }
+
+    for required in [
+        "AsyncGenerator(",
+        "Value::AsyncGenerator(state)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize))",
+        "Value::AsyncGenerator(state) => rc_identity_bits(state)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps async generator identity implementation must contain `{required}`"
         );
     }
 }
