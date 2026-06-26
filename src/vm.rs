@@ -5496,6 +5496,12 @@ impl Vm {
                     let value = power_values(left, right);
                     self.write_arithmetic_result_or_raise(dst, value)?;
                 }
+                Instruction::InPlacePower { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let value = self.in_place_power_values(left, right);
+                    self.write_arithmetic_result_or_raise(dst, value)?;
+                }
                 Instruction::BitOr { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
@@ -13997,6 +14003,22 @@ impl Vm {
         modulo_values_with_vm(self, left, right).map_err(|message| {
             if message == unsupported_binary_operand_message("%", &original_left, &original_right) {
                 unsupported_binary_operand_message("%=", &original_left, &original_right)
+            } else {
+                message
+            }
+        })
+    }
+
+    fn in_place_power_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__ipow__")? {
+            return Ok(value);
+        }
+
+        let left_type = type_name(&left).to_string();
+        let right_type = type_name(&right).to_string();
+        power_values(left, right).map_err(|message| {
+            if message == power_type_error(&left_type, &right_type) {
+                format!("unsupported operand type(s) for **=: '{left_type}' and '{right_type}'")
             } else {
                 message
             }
@@ -31571,7 +31593,7 @@ impl Vm {
             }
             "ipow" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                self.operator_in_place_binary_value(left, right, "__ipow__", power_values)
+                self.in_place_power_values(left, right)
             }
             "irshift" => {
                 let (left, right) = operator_binary_args(function, args)?;
@@ -31766,19 +31788,6 @@ impl Vm {
         let object = operator_call_object_arg("methodcaller", args)?;
         let method = self.load_attribute_value(object, &name)?;
         self.call_value_with_keywords(method, bound_args, bound_keywords)
-    }
-
-    fn operator_in_place_binary_value(
-        &mut self,
-        left: Value,
-        right: Value,
-        method_name: &str,
-        fallback: fn(Value, Value) -> Result<Value, String>,
-    ) -> Result<Value, String> {
-        if let Some(value) = self.call_in_place_special_method(&left, &right, method_name)? {
-            return Ok(value);
-        }
-        fallback(left, right)
     }
 
     fn operator_concat_values(&mut self, left: Value, right: Value) -> Result<Value, String> {

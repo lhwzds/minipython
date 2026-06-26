@@ -318,6 +318,11 @@ pub enum Instruction {
         left: Register,
         right: Register,
     },
+    InPlacePower {
+        dst: Register,
+        left: Register,
+        right: Register,
+    },
     BitOr {
         dst: Register,
         left: Register,

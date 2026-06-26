@@ -4007,6 +4007,10 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::InPlaceModulo { dst, left, right });
             }
+            BinaryOp::Power => {
+                self.instructions
+                    .push(Instruction::InPlacePower { dst, left, right });
+            }
             BinaryOp::BitOr => {
                 self.instructions
                     .push(Instruction::InPlaceBitOr { dst, left, right });
@@ -4027,7 +4031,6 @@ impl Compiler {
                 self.instructions
                     .push(Instruction::InPlaceRightShift { dst, left, right });
             }
-            _ => self.compile_binary_instruction(op, left, right, dst),
         }
     }
 
@@ -10439,6 +10442,44 @@ mod tests {
                     value: Value::Number(3)
                 },
                 Instruction::InPlaceModulo {
+                    dst: 2,
+                    left: 0,
+                    right: 1
+                },
+                Instruction::StoreName {
+                    name: "x".to_string(),
+                    src: 2
+                },
+                Instruction::Pop { src: 0 },
+                Instruction::Pop { src: 1 },
+                Instruction::Pop { src: 2 },
+                Instruction::Halt,
+            ])
+        );
+    }
+
+    #[test]
+    fn compiles_power_augmented_assignment_to_in_place_bytecode() {
+        let program = Program {
+            statements: vec![Stmt::AugAssign {
+                target: Target::Name("x".to_string()),
+                op: BinaryOp::Power,
+                value: Expr::Number(3),
+            }],
+        };
+
+        assert_eq!(
+            compile(&program),
+            Ok(vec![
+                Instruction::LoadName {
+                    dst: 0,
+                    name: "x".to_string()
+                },
+                Instruction::LoadConst {
+                    dst: 1,
+                    value: Value::Number(3)
+                },
+                Instruction::InPlacePower {
                     dst: 2,
                     left: 0,
                     right: 1
