@@ -11044,8 +11044,9 @@ Completed in the CPython collections manifest expansion pass:
 - Added `cpython_collections_counter_most_common_diff_subset` and
   `cpython_collections_counter_most_common_subset`, splitting the stable
   CPython-oracle `Counter.most_common()` full, zero-limit, positive-limit,
-  `None`-limit, increasing-limit behavior, and CPython-style keyword binding
-  errors out of the broader Counter basics coverage.
+  `None`-limit, increasing-limit behavior, CPython-style keyword binding
+  errors, and public limit comparison errors before `__index__` conversion out
+  of the broader Counter basics coverage.
 - Added `cpython_collections_counter_mapping_mutation_diff_subset` and
   `cpython_collections_counter_mapping_mutation_subset`, splitting stable
   Counter `pop()`, `pop(default)`, missing-key `pop()` `KeyError.args[0]`,

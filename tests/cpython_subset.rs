@@ -55921,6 +55921,15 @@ fn cpython_collections_counter_most_common_subset() {
             "        print(label, type(error).__name__, str(error))\n",
             "print(c.most_common(None))\n",
             "print([c.most_common(i) for i in range(5)])\n",
+            "class IndexOnly:\n",
+            "    def __index__(self):\n",
+            "        print('index-called')\n",
+            "        return 1\n",
+            "for label, limit in [('index-only', IndexOnly()), ('string', 'x'), ('plain-object', object()), ('float', 1.5)]:\n",
+            "    try:\n",
+            "        c.most_common(limit)\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
         ),
         &[
             "[('a', 5), ('b', 2), ('r', 2), ('c', 1), ('d', 1)]",
@@ -55931,6 +55940,10 @@ fn cpython_collections_counter_most_common_subset() {
             "bad-keyword TypeError Counter.most_common() got an unexpected keyword argument 'x'",
             "[('a', 5), ('b', 2), ('r', 2), ('c', 1), ('d', 1)]",
             "[[], [('a', 5)], [('a', 5), ('b', 2)], [('a', 5), ('b', 2), ('r', 2)], [('a', 5), ('b', 2), ('r', 2), ('c', 1)]]",
+            "index-only TypeError '>=' not supported between instances of 'IndexOnly' and 'int'",
+            "string TypeError '>=' not supported between instances of 'str' and 'int'",
+            "plain-object TypeError '>=' not supported between instances of 'object' and 'int'",
+            "float TypeError 'float' object cannot be interpreted as an integer",
         ],
     );
 }

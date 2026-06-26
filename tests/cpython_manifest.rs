@@ -17731,6 +17731,9 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "c.most_common(1, n=2)",
         "Counter.most_common() got multiple values for argument 'n'",
         "Counter.most_common() got an unexpected keyword argument 'x'",
+        "IndexOnly",
+        "'>=' not supported between instances of 'IndexOnly' and 'int'",
+        "'float' object cannot be interpreted as an integer",
     ] {
         assert!(
             most_common_diff_body.contains(required) && most_common_subset_body.contains(required),

@@ -15458,7 +15458,9 @@ for call in [lambda: Counter.fromkeys('abc'), lambda: Counter().fromkeys('abc')]
 #[test]
 fn cpython_collections_counter_most_common_diff_subset() {
     // CPython oracle text: Counter.most_common() got multiple values for argument 'n';
-    // Counter.most_common() got an unexpected keyword argument 'x'
+    // Counter.most_common() got an unexpected keyword argument 'x';
+    // '>=' not supported between instances of 'IndexOnly' and 'int';
+    // 'float' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter most_common subset",
         name: "collections-counter-most-common",
@@ -15474,7 +15476,16 @@ for label, expr in [('dup-n', lambda: c.most_common(1, n=2)), ('bad-keyword', la
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 print(c.most_common(None))
-print([c.most_common(i) for i in range(5)])"#,
+print([c.most_common(i) for i in range(5)])
+class IndexOnly:
+    def __index__(self):
+        print('index-called')
+        return 1
+for label, limit in [('index-only', IndexOnly()), ('string', 'x'), ('plain-object', object()), ('float', 1.5)]:
+    try:
+        c.most_common(limit)
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))"#,
     });
 }
 

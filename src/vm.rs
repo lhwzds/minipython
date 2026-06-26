@@ -27827,11 +27827,15 @@ impl Vm {
                 let mut entries = counter_entries_sorted(&counter_receiver_entries(receiver)?);
                 let limit = rest.first().cloned().or(keyword_limit);
                 if let Some(limit) = limit.filter(|value| !matches!(value, Value::None)) {
-                    let limit = self.index_i64(limit.clone(), "most_common")?;
-                    if limit < 0 {
-                        entries.clear();
-                    } else {
-                        entries.truncate(limit as usize);
+                    let entry_count = i64::try_from(entries.len())
+                        .map_err(|_| "len() result is too large".to_string())?;
+                    if !self.greater_equal_values(limit.clone(), Value::Number(entry_count))? {
+                        let limit = counter_most_common_limit(&limit)?;
+                        if limit < 0 {
+                            entries.clear();
+                        } else {
+                            entries.truncate(limit as usize);
+                        }
                     }
                 }
                 Ok(list_value(
@@ -84483,6 +84487,22 @@ fn counter_unary_value(entries: &DictRef, op: CounterUnaryOp) -> Result<Value, S
     Ok(Value::Counter {
         entries: dict_ref_from_entries(result)?,
     })
+}
+
+fn counter_most_common_limit(value: &Value) -> Result<i64, String> {
+    if let Some(value) = int_subclass_integer(value) {
+        return integer_value_to_i64(value, "most_common");
+    }
+    match numeric_bool_value(value.clone()) {
+        Value::Number(value) => Ok(value),
+        Value::BigInt(value) => value
+            .to_i64()
+            .ok_or_else(|| "most_common is too large".to_string()),
+        value => Err(format!(
+            "TypeError: '{}' object cannot be interpreted as an integer",
+            type_name(&value)
+        )),
+    }
 }
 
 fn invert_value(value: Value) -> Result<Value, String> {
