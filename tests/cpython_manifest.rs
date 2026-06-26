@@ -8388,6 +8388,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_code_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
+            "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
             "cpython_json_dumps_default_hook_lru_cache_identity_subset",
             "cpython_json_dumps_default_hook_singledispatch_identity_subset",
             "cpython_json_dumps_default_hook_singledispatch_register_identity_subset",
@@ -8452,6 +8453,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
+        "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
         "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatch_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatch_register_identity_diff_subset",
@@ -10952,6 +10954,88 @@ fn json_dumps_default_hook_partialmethod_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps partialmethod identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_partialmethod_bound_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook partialmethod bound identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook partialmethod bound identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/json public dumps default hook functools.partialmethod bound callable identity subset"
+        ),
+        "json dumps default hook partialmethod bound identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "class C:",
+        "def method(self, value, extra=None):",
+        "bound = functools.partialmethod(method, 'fixed')",
+        "instance = C()",
+        "shared_bound = instance.bound",
+        "def fresh_bound_then_value():",
+        "return instance.bound",
+        "return 'fresh-partialmethod-bound-ok'",
+        "print('callable', callable(shared_bound))",
+        "json.dumps(object(), default=lambda obj: shared_bound)",
+        "print('fresh-partialmethod-bound-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_bound, check_circular=False)",
+        "print('fresh-partialmethod-bound-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook partialmethod bound identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"callable True\"",
+        "\"shared-partialmethod-bound-default ValueError True True False\"",
+        "\"fresh-partialmethod-bound-progress \\\"fresh-partialmethod-bound-ok\\\" 2\"",
+        "\"shared-partialmethod-bound-default-unchecked RecursionError True\"",
+        "\"fresh-partialmethod-bound-progress-unchecked \\\"fresh-partialmethod-bound-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook partialmethod bound identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.partialmethod bound callable replacement circular detection without treating fresh bound callables as circular"
+            ),
+            "json docs must describe the partialmethod bound identity boundary"
+        );
+    }
+
+    for required in [
+        "PartialMethodCall {",
+        "identity: Rc<()>",
+        "Value::PartialMethodCall { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps partialmethod bound identity implementation must contain `{required}`"
         );
     }
 }

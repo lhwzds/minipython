@@ -638,6 +638,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_code_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset`,
   `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset`,
   `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset`,
   `cpython_json_dumps_default_hook_singledispatch_register_identity_diff_subset`,
@@ -1129,6 +1130,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_partial_identity_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset` /
   `cpython_json_dumps_default_hook_partialmethod_identity_subset`,
+  `cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_partialmethod_bound_identity_subset`,
   `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset` /
   `cpython_json_dumps_default_hook_lru_cache_identity_subset`,
   `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset` /
@@ -1325,6 +1328,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_partialmethod_identity_subset`, backed by
 `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`, keeps shared unsupported functools.partialmethod replacement circular detection without treating fresh partialmethod descriptors as circular.
+
+`cpython_json_dumps_default_hook_partialmethod_bound_identity_subset`, backed by
+`cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset`, keeps shared unsupported functools.partialmethod bound callable replacement circular detection without treating fresh bound callables as circular.
 
 `cpython_json_dumps_default_hook_lru_cache_identity_subset`, backed by
 `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset`, keeps shared unsupported functools.lru_cache wrapper replacement circular detection without treating fresh lru-cache wrappers as circular.
