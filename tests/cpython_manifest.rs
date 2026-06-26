@@ -8386,6 +8386,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_exception_identity_subset",
             "cpython_json_dumps_default_hook_code_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
+            "cpython_json_dumps_default_hook_lru_cache_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8437,6 +8438,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_exception_identity_diff_subset",
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
+        "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10775,6 +10777,82 @@ fn json_dumps_default_hook_partial_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps partial identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_lru_cache_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_lru_cache_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook lru_cache identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook lru_cache identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook functools.lru_cache identity subset"),
+        "json dumps default hook lru_cache identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "@functools.lru_cache(maxsize=None)",
+        "def shared_cached():",
+        "def fresh_lru_then_value():",
+        "def fresh_cached():",
+        "return 'fresh-lru-ok'",
+        "json.dumps(object(), default=lambda obj: shared_cached)",
+        "print('fresh-lru-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_cached, check_circular=False)",
+        "print('fresh-lru-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook lru_cache identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-lru-default ValueError True True False\"",
+        "\"fresh-lru-progress \\\"fresh-lru-ok\\\" 2\"",
+        "\"shared-lru-default-unchecked RecursionError True\"",
+        "\"fresh-lru-progress-unchecked \\\"fresh-lru-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook lru_cache identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.lru_cache wrapper replacement circular detection without treating fresh lru-cache wrappers as circular"
+            ),
+            "json docs must describe the lru_cache identity boundary"
+        );
+    }
+
+    for required in [
+        "LruCacheWrapper {",
+        "identity: Rc<()>",
+        "Value::LruCacheWrapper { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps lru_cache identity implementation must contain `{required}`"
         );
     }
 }
