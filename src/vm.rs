@@ -62544,14 +62544,16 @@ fn json_dumps_value_inner(
         Value::NamedTuple { values, .. } => {
             json_dumps_sequence(vm, values, active, options, depth, default_depth)
         }
-        Value::Dict(entries) | Value::Counter { entries } => json_dumps_dict(
-            vm,
-            &entries.borrow().entries,
-            active,
-            options,
-            depth,
-            default_depth,
-        ),
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
+            json_dumps_dict(
+                vm,
+                &entries.borrow().entries,
+                active,
+                options,
+                depth,
+                default_depth,
+            )
+        }
         value
             if list_subclass_storage(value).is_some()
                 || tuple_subclass_items(value).is_some()
@@ -62642,7 +62644,7 @@ fn json_dumps_container_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::NamedTuple { values, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(values) as usize))
         }
-        Value::Dict(entries) | Value::Counter { entries } => {
+        Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(entries) as usize))
         }
         value if list_subclass_storage(value).is_some() => {

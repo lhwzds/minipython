@@ -696,6 +696,14 @@ quote and backslash escaping, default `ensure_ascii=True` non-ASCII scalar escap
 and valid surrogate-pair output for non-BMP characters,
 without adding alternate encoders or unpaired surrogate storage.
 
+`cpython_json_dumps_ordered_dict_subset`, backed by
+`cpython_json_dumps_ordered_dict_diff_subset`, keeps `dumps()` treating the
+supported pure-memory `collections.OrderedDict` surface as a dict-style mapping
+container, including insertion-order output, `sort_keys=True`, nested
+OrderedDict values, `loads()` round trips, and circular-reference detection,
+without adding arbitrary mapping-protocol serialization or custom encoder
+classes.
+
 `cpython_json_loads_dumps_basic_subset`, backed by
 `cpython_json_loads_dumps_diff_subset` and `cpython_json_loads_dumps_basic_diff_subset`, keeps
 `loads()` / `dumps()` core pure-memory data model behavior for function metadata and keyword-default shape,

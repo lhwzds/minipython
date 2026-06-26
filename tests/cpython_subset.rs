@@ -35694,6 +35694,20 @@ fn cpython_json_dumps_key_coercion_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_ordered_dict_subset() {
+    assert_output(
+        "import json\nfrom collections import OrderedDict\nplain = OrderedDict([('b', 2), ('a', 1)])\nprint(json.dumps(plain))\nprint(json.dumps(plain, sort_keys=True))\nnested = OrderedDict([('é', ['𝄠', OrderedDict([('b', 1), ('a', 2)])])])\nprint(json.dumps(nested, ensure_ascii=False, sort_keys=True, separators=(',', ':')))\nprint(json.loads(json.dumps(OrderedDict([('x', OrderedDict([('y', 3)]))]))))\ncycle = OrderedDict()\ncycle['self'] = cycle\ntry:\n    json.dumps(cycle)\nexcept Exception as error:\n    print('cycle', type(error).__name__, isinstance(error, ValueError), 'Circular' in str(error))",
+        &[
+            "{\"b\": 2, \"a\": 1}",
+            "{\"a\": 1, \"b\": 2}",
+            "{\"é\":[\"𝄠\",{\"a\":2,\"b\":1}]}",
+            "{'x': {'y': 3}}",
+            "cycle ValueError True True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_ensure_ascii_subset() {
     assert_output(
         "import json\nfor ensure_ascii in [False, 0, True, 1]:\n    print(json.dumps('é𝄠', ensure_ascii=ensure_ascii))\n    print(json.dumps({'é': ['𝄠']}, ensure_ascii=ensure_ascii))",

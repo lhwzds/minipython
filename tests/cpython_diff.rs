@@ -1428,6 +1428,29 @@ for value in [ItemsNone(x=1), ItemsInt(x=1)]:
 }
 
 #[test]
+fn cpython_json_dumps_ordered_dict_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps OrderedDict mapping subset",
+        name: "json-dumps-ordered-dict",
+        source: r#"import json
+from collections import OrderedDict
+
+plain = OrderedDict([('b', 2), ('a', 1)])
+print(json.dumps(plain))
+print(json.dumps(plain, sort_keys=True))
+nested = OrderedDict([('é', ['𝄠', OrderedDict([('b', 1), ('a', 2)])])])
+print(json.dumps(nested, ensure_ascii=False, sort_keys=True, separators=(',', ':')))
+print(json.loads(json.dumps(OrderedDict([('x', OrderedDict([('y', 3)]))]))))
+cycle = OrderedDict()
+cycle['self'] = cycle
+try:
+    json.dumps(cycle)
+except Exception as error:
+    print('cycle', type(error).__name__, isinstance(error, ValueError), 'Circular' in str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_ensure_ascii_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps ensure_ascii subset",
