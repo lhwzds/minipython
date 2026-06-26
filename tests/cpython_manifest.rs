@@ -8389,6 +8389,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_lru_cache_identity_subset",
             "cpython_json_dumps_default_hook_singledispatch_identity_subset",
             "cpython_json_dumps_default_hook_attrgetter_identity_subset",
+            "cpython_json_dumps_default_hook_itemgetter_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8443,6 +8444,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatch_identity_diff_subset",
         "cpython_json_dumps_default_hook_attrgetter_identity_diff_subset",
+        "cpython_json_dumps_default_hook_itemgetter_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -11009,6 +11011,81 @@ fn json_dumps_default_hook_attrgetter_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps attrgetter identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_itemgetter_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_itemgetter_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_itemgetter_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook itemgetter identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook itemgetter identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook operator.itemgetter identity subset"),
+        "json dumps default hook itemgetter identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import operator",
+        "shared_getter = operator.itemgetter(0)",
+        "def fresh_getter_then_value():",
+        "return operator.itemgetter(1)",
+        "return 'fresh-itemgetter-ok'",
+        "json.dumps(object(), default=lambda obj: shared_getter)",
+        "print('fresh-itemgetter-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_getter, check_circular=False)",
+        "print('fresh-itemgetter-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook itemgetter identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-itemgetter-default ValueError True True False\"",
+        "\"fresh-itemgetter-progress \\\"fresh-itemgetter-ok\\\" 2\"",
+        "\"shared-itemgetter-default-unchecked RecursionError True\"",
+        "\"fresh-itemgetter-progress-unchecked \\\"fresh-itemgetter-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook itemgetter identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported operator.itemgetter replacement circular detection without treating fresh itemgetters as circular"
+            ),
+            "json docs must describe the itemgetter identity boundary"
+        );
+    }
+
+    for required in [
+        "OperatorItemGetter {",
+        "identity: Rc<()>",
+        "Value::OperatorItemGetter { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps itemgetter identity implementation must contain `{required}`"
         );
     }
 }
