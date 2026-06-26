@@ -651,6 +651,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_cell_identity_diff_subset`,
   `cpython_json_dumps_default_hook_traceback_identity_diff_subset`,
   `cpython_json_dumps_default_hook_frame_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_frame_locals_proxy_identity_diff_subset`,
   `cpython_json_dumps_default_hook_coroutine_identity_diff_subset`,
   `cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset`,
   `cpython_json_dumps_default_hook_generator_identity_diff_subset`,
@@ -1182,6 +1183,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_traceback_identity_subset`,
   `cpython_json_dumps_default_hook_frame_identity_diff_subset` /
   `cpython_json_dumps_default_hook_frame_identity_subset`,
+  `cpython_json_dumps_default_hook_frame_locals_proxy_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_frame_locals_proxy_identity_subset`,
   `cpython_json_dumps_default_hook_coroutine_identity_diff_subset` /
   `cpython_json_dumps_default_hook_coroutine_identity_subset`,
   `cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset` /
@@ -1445,6 +1448,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_frame_identity_subset`, backed by
 `cpython_json_dumps_default_hook_frame_identity_diff_subset`, keeps shared unsupported frame replacement circular detection without treating fresh frames as circular.
+
+`cpython_json_dumps_default_hook_frame_locals_proxy_identity_subset`, backed by
+`cpython_json_dumps_default_hook_frame_locals_proxy_identity_diff_subset`, keeps shared unsupported frame-locals proxy replacement circular detection without treating fresh proxies as circular.
 
 `cpython_json_dumps_default_hook_coroutine_identity_subset`, backed by
 `cpython_json_dumps_default_hook_coroutine_identity_diff_subset`, keeps shared unsupported coroutine replacement circular detection without treating fresh coroutines as circular.

@@ -8401,6 +8401,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_cell_identity_subset",
             "cpython_json_dumps_default_hook_traceback_identity_subset",
             "cpython_json_dumps_default_hook_frame_identity_subset",
+            "cpython_json_dumps_default_hook_frame_locals_proxy_identity_subset",
             "cpython_json_dumps_default_hook_coroutine_identity_subset",
             "cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset",
             "cpython_json_dumps_default_hook_generator_identity_subset",
@@ -8492,6 +8493,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_cell_identity_diff_subset",
         "cpython_json_dumps_default_hook_traceback_identity_diff_subset",
         "cpython_json_dumps_default_hook_frame_identity_diff_subset",
+        "cpython_json_dumps_default_hook_frame_locals_proxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_coroutine_identity_diff_subset",
         "cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset",
         "cpython_json_dumps_default_hook_generator_identity_diff_subset",
@@ -12049,6 +12051,89 @@ fn json_dumps_default_hook_frame_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps frame identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_frame_locals_proxy_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_frame_locals_proxy_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_frame_locals_proxy_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook frame locals proxy identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook frame locals proxy identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook frame locals proxy identity subset"),
+        "json dumps default hook frame locals proxy identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import sys",
+        "def make_case():",
+        "marker = 'x'",
+        "frame = sys._getframe()",
+        "shared = frame.f_locals",
+        "def fresh_frame_locals_then_value():",
+        "if len(calls) <= 2:",
+        "return frame.f_locals",
+        "return 'fresh-frame-locals-ok'",
+        "print('shape', type(shared).__name__, callable(shared), shared is frame.f_locals, isinstance(shared, dict), 'marker' in shared)",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-frame-locals-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-frame-locals-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+        "make_case()",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook frame locals proxy identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape FrameLocalsProxy False False False True\"",
+        "\"shared-frame-locals-default ValueError True True False\"",
+        "\"fresh-frame-locals-progress \\\"fresh-frame-locals-ok\\\" 3\"",
+        "\"shared-frame-locals-default-unchecked RecursionError True\"",
+        "\"fresh-frame-locals-progress-unchecked \\\"fresh-frame-locals-ok\\\" 3\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook frame locals proxy identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported frame-locals proxy replacement circular detection without treating fresh proxies as circular"
+            ),
+            "json docs must describe the frame-locals proxy identity boundary"
+        );
+    }
+
+    for required in [
+        "FrameLocalsProxy {\n        locals: Scope,\n        identity: Rc<()>,\n    },",
+        "Value::FrameLocalsProxy { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::FrameLocalsProxy { identity, .. } => rc_plain_identity_bits(identity)",
+        "frame_locals_proxy_value(locals.clone())",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps frame locals proxy identity implementation must contain `{required}`"
         );
     }
 }

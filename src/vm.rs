@@ -2165,7 +2165,7 @@ fn repr_mapping_view(kind: DictViewKind, mapping: &Value, active: &mut HashSet<u
 fn mapping_view_repr_identity(kind: DictViewKind, mapping: &Value) -> Option<usize> {
     let ptr = match mapping {
         Value::ScopeDict(scope) => Rc::as_ptr(scope) as usize,
-        Value::FrameLocalsProxy { locals } => Rc::as_ptr(locals) as usize,
+        Value::FrameLocalsProxy { locals, .. } => Rc::as_ptr(locals) as usize,
         _ => return None,
     };
     let tag = match kind {
@@ -2179,7 +2179,7 @@ fn mapping_view_repr_identity(kind: DictViewKind, mapping: &Value) -> Option<usi
 fn mapping_view_repr_values(kind: DictViewKind, mapping: &Value) -> Vec<Value> {
     let entries = match mapping {
         Value::ScopeDict(scope) => scope_dict_entries(scope),
-        Value::FrameLocalsProxy { locals } => scope_dict_entries(locals),
+        Value::FrameLocalsProxy { locals, .. } => scope_dict_entries(locals),
         _ => Vec::new(),
     };
     entries
@@ -28399,8 +28399,10 @@ impl Vm {
         match (&left, &right) {
             (Value::ScopeDict(scope), other) => return scope_dict_union(scope, other),
             (left, Value::ScopeDict(scope)) => return scope_dict_reverse_union(left, scope),
-            (Value::FrameLocalsProxy { locals }, other) => return scope_dict_union(locals, other),
-            (left, Value::FrameLocalsProxy { locals }) => {
+            (Value::FrameLocalsProxy { locals, .. }, other) => {
+                return scope_dict_union(locals, other);
+            }
+            (left, Value::FrameLocalsProxy { locals, .. }) => {
                 return scope_dict_reverse_union(left, locals);
             }
             (Value::OrderedDict(entries), other) => {
@@ -28659,12 +28661,12 @@ impl Vm {
                 }
                 Ok(Value::ScopeDict(scope))
             }
-            Value::FrameLocalsProxy { locals } => {
+            Value::FrameLocalsProxy { locals, identity } => {
                 let updates = self.dict_entries_from_update_source(right)?;
                 for (key, value) in updates {
                     insert_scope_dict_entry(&locals, key, value)?;
                 }
-                Ok(Value::FrameLocalsProxy { locals })
+                Ok(Value::FrameLocalsProxy { locals, identity })
             }
             left @ Value::ChainMap { .. } => {
                 let maps = chain_map_receiver_maps(&left)?;
@@ -47923,7 +47925,7 @@ fn scope_dict_direct_comparison_entries(value: &Value) -> Option<Vec<(Value, Val
             Some(entries.borrow().entries.clone())
         }
         Value::ScopeDict(scope) => Some(scope_dict_entries(scope)),
-        Value::FrameLocalsProxy { locals } => Some(scope_dict_entries(locals)),
+        Value::FrameLocalsProxy { locals, .. } => Some(scope_dict_entries(locals)),
         value if counter_subclass_entries(value).is_some() => Some(
             counter_subclass_entries(value)
                 .expect("Counter subclass entries exist after guard")
@@ -55880,6 +55882,19 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             if name == "__class__" {
                 return Ok(Value::Builtin("frame".to_string()));
             }
+            if name == "f_locals" {
+                return fields
+                    .borrow()
+                    .iter()
+                    .find(|(key, _)| matches!(key, Value::String(key_name) if key_name == name))
+                    .map(|(_, value)| match value {
+                        Value::FrameLocalsProxy { locals, .. } => {
+                            frame_locals_proxy_value(locals.clone())
+                        }
+                        value => value.clone(),
+                    })
+                    .ok_or_else(|| format!("AttributeError: frame has no attribute '{name}'"));
+            }
             fields
                 .borrow()
                 .iter()
@@ -56435,7 +56450,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             }),
             _ => Err(format!("AttributeError: dict has no attribute '{name}'")),
         },
-        Value::FrameLocalsProxy { locals } => match name {
+        Value::FrameLocalsProxy { locals, .. } => match name {
             "__class__" => Ok(Value::Builtin("FrameLocalsProxy".to_string())),
             "clear" | "copy" | "get" | "items" | "keys" | "pop" | "popitem" | "setdefault"
             | "update" | "values" | "__contains__" | "__delitem__" | "__eq__" | "__getitem__"
@@ -62739,6 +62754,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::Frame { fields } => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(fields) as usize)),
+        Value::FrameLocalsProxy { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Coroutine(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::CoroutineAwait(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::Generator(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
@@ -67333,7 +67351,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
             let items = scope_dict_keys(&scope);
             Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
         }
-        Value::FrameLocalsProxy { locals } => {
+        Value::FrameLocalsProxy { locals, .. } => {
             let items = scope_dict_keys(&locals);
             Ok(shared_iterator(Value::ReverseIterator { items, index: 0 }))
         }
@@ -73885,7 +73903,7 @@ fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, 
         | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(&scope)),
-        Value::FrameLocalsProxy { locals } => Ok(scope_dict_entries(&locals)),
+        Value::FrameLocalsProxy { locals, .. } => Ok(scope_dict_entries(&locals)),
         value if counter_subclass_entries(&value).is_some() => Ok(counter_subclass_entries(&value)
             .expect("Counter subclass entries exist after guard")
             .borrow()
@@ -73928,7 +73946,7 @@ fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
         | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(scope)),
-        Value::FrameLocalsProxy { locals } => Ok(scope_dict_entries(locals)),
+        Value::FrameLocalsProxy { locals, .. } => Ok(scope_dict_entries(locals)),
         value if counter_subclass_entries(value).is_some() => Ok(counter_subclass_entries(value)
             .expect("Counter subclass entries exist after guard")
             .borrow()
@@ -73986,7 +74004,7 @@ fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
             .map(|(key, _)| key.clone())
             .collect()),
         Value::ScopeDict(scope) => Ok(scope_dict_keys(scope)),
-        Value::FrameLocalsProxy { locals } => Ok(scope_dict_keys(locals)),
+        Value::FrameLocalsProxy { locals, .. } => Ok(scope_dict_keys(locals)),
         Value::UserDict { data, .. } => {
             Ok(data.borrow().iter().map(|(key, _)| key.clone()).collect())
         }
@@ -76631,7 +76649,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
         }
         Value::UserDict { data, .. } => Ok(data.borrow().len()),
         Value::ScopeDict(scope) => Ok(scope.borrow().len()),
-        Value::FrameLocalsProxy { locals } => Ok(locals.borrow().len()),
+        Value::FrameLocalsProxy { locals, .. } => Ok(locals.borrow().len()),
         Value::DictView { entries, .. } => Ok(entries.borrow().len()),
         Value::MappingView { mapping, .. } => value_len(mapping),
         Value::Range {
@@ -77883,7 +77901,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::OrderedDict(entries) => rc_identity_bits(entries),
         Value::Counter { entries } => rc_identity_bits(entries),
         Value::ScopeDict(scope) => scope_identity_bits(scope),
-        Value::FrameLocalsProxy { locals } => scope_identity_bits(locals),
+        Value::FrameLocalsProxy { identity, .. } => rc_plain_identity_bits(identity),
         Value::DictView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingProxy { identity, .. } => rc_plain_identity_bits(identity),
@@ -78869,7 +78887,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
         }
         Value::ChainMap { maps } => Ok(list_iterator_from_values(chain_map_keys(&maps)?)),
         Value::ScopeDict(scope) => get_iter(scope_dict_snapshot(&scope)),
-        Value::FrameLocalsProxy { locals } => get_iter(scope_dict_snapshot(&locals)),
+        Value::FrameLocalsProxy { locals, .. } => get_iter(scope_dict_snapshot(&locals)),
         Value::DictView { kind, entries, .. } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
@@ -80160,7 +80178,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             scope_dict_lookup(&scope, &index)
                 .ok_or_else(|| format!("KeyError: {}", format_key_error(&index)))
         }
-        Value::FrameLocalsProxy { locals } => {
+        Value::FrameLocalsProxy { locals, .. } => {
             ensure_hashable_key(&index)?;
             scope_dict_lookup(&locals, &index)
                 .ok_or_else(|| format!("KeyError: {}", format_key_error(&index)))
@@ -80479,9 +80497,9 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             insert_scope_dict_entry(&scope, index, value)?;
             Ok(Value::ScopeDict(scope))
         }
-        Value::FrameLocalsProxy { locals } => {
+        Value::FrameLocalsProxy { locals, identity } => {
             insert_scope_dict_entry(&locals, index, value)?;
-            Ok(Value::FrameLocalsProxy { locals })
+            Ok(Value::FrameLocalsProxy { locals, identity })
         }
         Value::MappingProxy { .. } => {
             Err("TypeError: 'mappingproxy' object does not support item assignment".to_string())
@@ -80615,9 +80633,9 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
             delete_scope_dict_entry(&scope, &index)?;
             Ok(Value::ScopeDict(scope))
         }
-        Value::FrameLocalsProxy { locals } => {
+        Value::FrameLocalsProxy { locals, identity } => {
             delete_scope_dict_entry(&locals, &index)?;
-            Ok(Value::FrameLocalsProxy { locals })
+            Ok(Value::FrameLocalsProxy { locals, identity })
         }
         Value::MappingProxy { .. } => {
             Err("TypeError: 'mappingproxy' object does not support item deletion".to_string())
@@ -84870,7 +84888,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 .iter()
                 .any(|(key, _)| dict_keys_equal(key, &needle)))
         }
-        Value::FrameLocalsProxy { locals } => {
+        Value::FrameLocalsProxy { locals, .. } => {
             ensure_hashable_key(&needle)?;
             Ok(scope_dict_lookup(&locals, &needle).is_some())
         }
@@ -85443,7 +85461,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::FrozenSet(items) => Ok(!items.is_empty()),
         Value::Dict(entries) | Value::OrderedDict(entries) => Ok(!entries.borrow().is_empty()),
         Value::ScopeDict(scope) => Ok(!scope.borrow().is_empty()),
-        Value::FrameLocalsProxy { locals } => Ok(!locals.borrow().is_empty()),
+        Value::FrameLocalsProxy { locals, .. } => Ok(!locals.borrow().is_empty()),
         Value::DictView { entries, .. } => Ok(!entries.borrow().is_empty()),
         Value::MappingView { .. } => Ok(true),
         Value::MappingProxy { entries, .. } => Ok(!entries.borrow().is_empty()),

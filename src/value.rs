@@ -448,7 +448,10 @@ pub fn mapping_proxy_value(entries: DictRef) -> Value {
 }
 
 pub fn frame_locals_proxy_value(locals: Scope) -> Value {
-    Value::FrameLocalsProxy { locals }
+    Value::FrameLocalsProxy {
+        locals,
+        identity: Rc::new(()),
+    }
 }
 
 pub fn dict_view_values(kind: DictViewKind, entries: &DictRef) -> Vec<Value> {
@@ -663,6 +666,7 @@ pub enum Value {
     },
     FrameLocalsProxy {
         locals: Scope,
+        identity: Rc<()>,
     },
     Traceback {
         identity: Rc<()>,
@@ -2940,8 +2944,8 @@ impl PartialEq for Value {
             ) => Rc::ptr_eq(left_identity, right_identity),
             (Value::ScopeDict(left), Value::ScopeDict(right)) => Rc::ptr_eq(left, right),
             (
-                Value::FrameLocalsProxy { locals: left },
-                Value::FrameLocalsProxy { locals: right },
+                Value::FrameLocalsProxy { locals: left, .. },
+                Value::FrameLocalsProxy { locals: right, .. },
             ) => Rc::ptr_eq(left, right),
             (
                 Value::DictView {

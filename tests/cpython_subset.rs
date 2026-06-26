@@ -36928,6 +36928,52 @@ print('fresh-frame-progress-unchecked', json.dumps(object(), default=hook, check
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_frame_locals_proxy_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+import sys
+
+def make_case():
+    marker = 'x'
+    frame = sys._getframe()
+    shared = frame.f_locals
+
+    def fresh_frame_locals_then_value():
+        calls = []
+        def hook(obj):
+            calls.append(1)
+            if len(calls) <= 2:
+                return frame.f_locals
+            return 'fresh-frame-locals-ok'
+        return hook, calls
+
+    print('shape', type(shared).__name__, callable(shared), shared is frame.f_locals, isinstance(shared, dict), 'marker' in shared)
+    try:
+        json.dumps(object(), default=lambda obj: shared)
+    except Exception as error:
+        print('shared-frame-locals-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+    hook, calls = fresh_frame_locals_then_value()
+    print('fresh-frame-locals-progress', json.dumps(object(), default=hook), len(calls))
+    try:
+        json.dumps(object(), default=lambda obj: shared, check_circular=False)
+    except Exception as error:
+        print('shared-frame-locals-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+    hook, calls = fresh_frame_locals_then_value()
+    print('fresh-frame-locals-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))
+
+make_case()"#,
+        &[
+            "shape FrameLocalsProxy False False False True",
+            "shared-frame-locals-default ValueError True True False",
+            "fresh-frame-locals-progress \"fresh-frame-locals-ok\" 3",
+            "shared-frame-locals-default-unchecked RecursionError True",
+            "fresh-frame-locals-progress-unchecked \"fresh-frame-locals-ok\" 3",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_coroutine_identity_subset() {
     assert_output_with_stack(
         r#"import json
