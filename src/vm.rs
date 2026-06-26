@@ -27927,22 +27927,73 @@ impl Vm {
                 };
                 Ok(Value::Bool(result))
             }
-            "__pos__" | "__neg__" => {
+            "__pos__" => {
+                let mut self_value = None;
+                let mut duplicate_self = false;
+                let mut duplicate_keyword = None;
+                let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+
+                for (index, value) in args.iter().enumerate() {
+                    match index {
+                        0 => self_value = Some(value.clone()),
+                        _ => {
+                            return Err(format!(
+                                "TypeError: Counter.__pos__() takes 1 positional argument but {} were given",
+                                args.len()
+                            ));
+                        }
+                    }
+                }
+
+                for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                    if keyword != "self" {
+                        unexpected_keyword.get_or_insert(keyword);
+                    } else if self_value.is_some() {
+                        duplicate_self = true;
+                    } else {
+                        self_value = Some(value);
+                    }
+                }
+
+                if let Some(keyword) = duplicate_keyword {
+                    return Err(format!(
+                        "TypeError: collections.Counter.__pos__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if duplicate_self {
+                    return Err(
+                        "TypeError: Counter.__pos__() got multiple values for argument 'self'"
+                            .to_string(),
+                    );
+                }
+                if let Some(keyword) = unexpected_keyword {
+                    return Err(format!(
+                        "TypeError: Counter.__pos__() got an unexpected keyword argument '{keyword}'"
+                    ));
+                }
+                let receiver = self_value.ok_or_else(|| {
+                    "TypeError: Counter.__pos__() missing 1 required positional argument: 'self'"
+                        .to_string()
+                })?;
+                let entries = counter_receiver_entries(&receiver)?;
+                counter_unary_value(&entries, CounterUnaryOp::Positive)
+            }
+            "__neg__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [receiver] = args.as_slice() else {
                     return Err(format!(
-                        "{}() expected 0 arguments, got {}",
-                        method_display_name(name),
+                        "__neg__() expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
                 let entries = counter_receiver_entries(receiver)?;
-                let op = if method_display_name(name) == "__pos__" {
-                    CounterUnaryOp::Positive
-                } else {
-                    CounterUnaryOp::Negative
-                };
-                counter_unary_value(&entries, op)
+                counter_unary_value(&entries, CounterUnaryOp::Negative)
             }
             "__repr__" => {
                 let mut self_value = None;

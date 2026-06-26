@@ -15375,6 +15375,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // unbound method object.__format__() needs an argument;
     // object.__format__() takes exactly one argument (2 given);
     // object.__format__() got multiple values for keyword argument 'x';
+    // Counter.__pos__() missing 1 required positional argument: 'self';
+    // Counter.__pos__() got an unexpected keyword argument 'x';
+    // collections.Counter.__pos__() got multiple values for keyword argument 'self';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15436,6 +15439,20 @@ for label, expr in [
 ]:
     try:
         expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('pos-direct', Counter.__pos__(Counter(a=2, b=-1, c=0)), Counter(a=2, b=-1, c=0).__pos__())
+for label, expr in [
+    ('pos-missing', lambda: Counter.__pos__()),
+    ('pos-extra', lambda: Counter.__pos__(Counter(a=2), 1)),
+    ('pos-keyword-only', lambda: Counter.__pos__(self=Counter(a=2))),
+    ('pos-badkw', lambda: Counter.__pos__(x=1)),
+    ('pos-bound-keyword', lambda: Counter(a=2).__pos__(self=Counter(a=3))),
+    ('pos-duplicate-self-keyword', lambda: Counter.__pos__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('pos-duplicate-x-keyword', lambda: Counter.__pos__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
     except TypeError as error:
         print(label, type(error).__name__, str(error))
 print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
