@@ -8382,6 +8382,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
+            "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
             "cpython_json_dumps_default_hook_exception_identity_subset",
             "cpython_json_dumps_default_hook_code_identity_subset",
@@ -8445,6 +8446,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
+        "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
         "cpython_json_dumps_default_hook_exception_identity_diff_subset",
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
@@ -10496,6 +10498,82 @@ fn json_dumps_default_hook_bound_method_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "bound method identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_super_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_super_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_super_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook super identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook super identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook super identity subset"),
+        "json dumps default hook super identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "class Base:",
+        "class Child(Base):",
+        "child = Child()",
+        "shared_super = super(Child, child)",
+        "def fresh_super_then_value():",
+        "return super(Child, child)",
+        "return 'fresh-super-ok'",
+        "json.dumps(object(), default=lambda obj: shared_super)",
+        "print('fresh-super-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_super, check_circular=False)",
+        "print('fresh-super-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook super identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-super-default ValueError True True False\"",
+        "\"fresh-super-progress \\\"fresh-super-ok\\\" 2\"",
+        "\"shared-super-default-unchecked RecursionError True\"",
+        "\"fresh-super-progress-unchecked \\\"fresh-super-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook super identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported super replacement circular detection without treating fresh super objects as circular"
+            ),
+            "json docs must describe the super identity boundary"
+        );
+    }
+
+    for required in [
+        "Super {",
+        "identity: Rc<()>",
+        "Value::Super { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "rc_plain_identity_bits(identity).hash(hasher)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps super identity implementation must contain `{required}`"
         );
     }
 }

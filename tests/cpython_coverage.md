@@ -632,6 +632,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_complex_identity_diff_subset`,
   `cpython_json_dumps_default_hook_function_identity_diff_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_super_identity_diff_subset`,
   `cpython_json_dumps_default_hook_type_identity_diff_subset`,
   `cpython_json_dumps_default_hook_exception_identity_diff_subset`,
   `cpython_json_dumps_default_hook_code_identity_diff_subset`,
@@ -1116,6 +1117,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_function_identity_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset` /
   `cpython_json_dumps_default_hook_bound_method_identity_subset`,
+  `cpython_json_dumps_default_hook_super_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_super_identity_subset`,
   `cpython_json_dumps_default_hook_type_identity_diff_subset` /
   `cpython_json_dumps_default_hook_type_identity_subset`,
   `cpython_json_dumps_default_hook_exception_identity_diff_subset` /
@@ -1304,6 +1307,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_bound_method_identity_subset`, backed by
 `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`, keeps shared unsupported bound method replacement circular detection without treating fresh bound methods as circular.
+
+`cpython_json_dumps_default_hook_super_identity_subset`, backed by
+`cpython_json_dumps_default_hook_super_identity_diff_subset`, keeps shared unsupported super replacement circular detection without treating fresh super objects as circular.
 
 `cpython_json_dumps_default_hook_type_identity_subset`, backed by
 `cpython_json_dumps_default_hook_type_identity_diff_subset`, keeps shared unsupported class/module/builtin replacement circular detection without treating fresh classes as circular.

@@ -36100,6 +36100,49 @@ print('fresh-bound-method-progress-unchecked', json.dumps(object(), default=hook
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_super_identity_subset() {
+    assert_output(
+        r#"import json
+
+class Base:
+    pass
+class Child(Base):
+    pass
+
+child = Child()
+shared_super = super(Child, child)
+
+def fresh_super_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return super(Child, child)
+        return 'fresh-super-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_super)
+except Exception as error:
+    print('shared-super-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_super_then_value()
+print('fresh-super-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_super, check_circular=False)
+except Exception as error:
+    print('shared-super-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_super_then_value()
+print('fresh-super-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shared-super-default ValueError True True False",
+            "fresh-super-progress \"fresh-super-ok\" 2",
+            "shared-super-default-unchecked RecursionError True",
+            "fresh-super-progress-unchecked \"fresh-super-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_type_identity_subset() {
     assert_output(
         r#"import json

@@ -62608,6 +62608,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::BoundMethod { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::Super { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Exception { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
