@@ -27749,10 +27749,11 @@ impl Vm {
                     ));
                 };
                 let mut values = Vec::new();
-                for (key, count) in counter_receiver_entries(receiver)?.borrow().entries.iter() {
-                    let count = counter_count_i64(count)?;
+                let entries = counter_receiver_entries(receiver)?.borrow().entries.clone();
+                for (key, count) in entries {
+                    let count = counter_count_i64(self, count)?;
                     if count > 0 {
-                        values.extend(std::iter::repeat_n(key.clone(), count as usize));
+                        values.extend(std::iter::repeat_n(key, count as usize));
                     }
                 }
                 Ok(list_iterator_from_values(values))
@@ -77632,8 +77633,8 @@ fn counter_count_i128(value: &Value) -> i128 {
     }
 }
 
-fn counter_count_i64(value: &Value) -> Result<i64, String> {
-    match numeric_bool_value(value.clone()) {
+fn counter_count_i64(vm: &mut Vm, value: Value) -> Result<i64, String> {
+    match vm.index_integer_value(value.clone())? {
         Value::Number(value) => Ok(value),
         Value::BigInt(value) => value
             .to_i64()

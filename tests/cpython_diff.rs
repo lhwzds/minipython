@@ -15354,7 +15354,8 @@ for expr in [lambda: types.SimpleNamespace() == FakeSimpleNamespace(), lambda: t
 
 #[test]
 fn cpython_collections_counter_public_diff_subset() {
-    // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given
+    // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given;
+    // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
         name: "collections-counter-public",
@@ -15376,6 +15377,20 @@ print(sorted((-Counter({'a': 2, 'b': 0, 'c': -1})).items()))
 print(Counter.__pos__(Counter(a=2, b=-1, c=0)))
 print(Counter.__neg__(Counter(a=2, b=-1, c=0)))
 print(list(Counter({'a': 2, 'b': 0, 'c': -1}).elements()))
+class IndexCount:
+    def __index__(self):
+        print('index-called')
+        return 2
+class IntOnly:
+    def __int__(self):
+        print('int-called')
+        return 2
+print(list(Counter({'x': IndexCount()}).elements()))
+for label, count in [('int-only', IntOnly()), ('float', 1.5), ('string', '2')]:
+    try:
+        list(Counter({'x': count}).elements())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 try:
     Counter.elements(Counter(a=2), 1)
 except TypeError as error:

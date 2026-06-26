@@ -923,7 +923,8 @@ Recent runtime migration notes:
   `Counter` construction, mapping identity, missing-key zero lookup,
   `Counter.__missing__()` zero defaults, supported `dir(Counter)` method
   visibility, values-based count totals, basic mutation helpers,
-  `most_common()`, `elements()` and its public arity diagnostic, direct
+  `most_common()`, `elements()` count `__index__` conversion and its public
+  arity diagnostic, direct
   display/empty-format methods, update and subtract behavior, unary
   positive/negative filtering, multiset arithmetic, and equality with matching
   counts, including direct `Counter.__pos__()` / `Counter.__neg__()` public
@@ -6113,7 +6114,8 @@ zero lookup; count updates; views; iteration; exact repr; `most_common()`;
 Reversible registration for OrderedDict and Counter plus reverse key iteration.
 `cpython_collections_counter_public_subset` adds method-level Counter coverage
 for public method visibility through `dir(Counter)` plus direct
-`Counter.__missing__()` zero defaults on Counter and non-Counter receivers.
+`Counter.__missing__()` zero defaults on Counter and non-Counter receivers,
+and `Counter.elements()` count `__index__` conversion boundaries.
 `cpython_collections_counter_init_update_subset` adds method-level Counter
 coverage for `Counter(...)` and `update()` keyword names that are real keys,
 `iterable=None` direct insertion into an empty Counter, bad sources, too many
