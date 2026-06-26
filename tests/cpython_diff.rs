@@ -15370,6 +15370,8 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__repr__() missing 1 required positional argument: 'self';
     // Counter.__repr__() got an unexpected keyword argument 'x';
     // collections.Counter.__repr__() got multiple values for keyword argument 'self';
+    // descriptor '__str__' of 'object' object needs an argument;
+    // object.__str__() got multiple values for keyword argument 'self';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15401,6 +15403,20 @@ for label, expr in [
     ('repr-bound-duplicate-self', lambda: Counter(a=2).__repr__(self=Counter(a=3))),
     ('repr-duplicate-self-keyword', lambda: Counter.__repr__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('repr-duplicate-x-keyword', lambda: Counter.__repr__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('str-direct', Counter.__str__(Counter(a=2)), Counter(a=2).__str__())
+for label, expr in [
+    ('str-missing', lambda: Counter.__str__()),
+    ('str-extra', lambda: Counter.__str__(Counter(a=2), 1)),
+    ('str-keyword-only', lambda: Counter.__str__(self=Counter(a=2))),
+    ('str-badkw', lambda: Counter.__str__(x=1)),
+    ('str-bound-keyword', lambda: Counter(a=2).__str__(self=Counter(a=3))),
+    ('str-duplicate-self-keyword', lambda: Counter.__str__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('str-duplicate-x-keyword', lambda: Counter.__str__(x=1, **{'x': 2})),
 ]:
     try:
         expr()

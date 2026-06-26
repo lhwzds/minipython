@@ -11063,7 +11063,8 @@ Completed in the CPython collections manifest expansion pass:
 - Extended `cpython_collections_counter_public_diff_subset` and
   `cpython_collections_counter_public_subset` to cover supported
   `dir(Counter)` public method visibility, direct `Counter.__repr__()`
-  display and public `self` binding diagnostics, direct `Counter.__contains__()`
+  display and public `self` binding diagnostics, direct `Counter.__str__()`
+  display and object-wrapper argument diagnostics, direct `Counter.__contains__()`
   membership and dict-style argument diagnostics, direct
   `Counter.__getitem__()` zero-default lookup and dict-style argument
   diagnostics, direct `Counter.__delitem__()` deletion and missing-key no-op

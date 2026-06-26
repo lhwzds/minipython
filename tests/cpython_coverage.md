@@ -6115,6 +6115,7 @@ Reversible registration for OrderedDict and Counter plus reverse key iteration.
 `cpython_collections_counter_public_subset` adds method-level Counter coverage
 for public method visibility through `dir(Counter)` plus direct
 `Counter.__repr__()` display and public `self` binding diagnostics,
+direct `Counter.__str__()` display and object-wrapper argument diagnostics,
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,

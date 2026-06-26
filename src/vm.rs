@@ -28002,10 +28002,40 @@ impl Vm {
                 Ok(Value::String(repr_value_checked(&receiver)?))
             }
             "__str__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__str__() expected 0 arguments, got {}",
+                        "TypeError: object.__str__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__str__' of 'object' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: wrapper __str__() takes no keyword arguments".to_string()
+                    );
+                }
+                let [receiver] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__str__' of 'object' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };
