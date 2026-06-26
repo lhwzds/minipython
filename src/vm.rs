@@ -15957,6 +15957,7 @@ impl Vm {
             doc,
             doc_from_getter,
             name: Rc::new(RefCell::new(None)),
+            identity: Rc::new(()),
         })
     }
 
@@ -15979,6 +15980,7 @@ impl Vm {
             doc,
             doc_from_getter,
             name: property_name,
+            identity,
         } = property.clone()
         else {
             return Err(format!(
@@ -16008,6 +16010,7 @@ impl Vm {
                     doc,
                     doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
+                    identity: Rc::new(()),
                 })
             }
             "property.setter" => {
@@ -16030,6 +16033,7 @@ impl Vm {
                     doc,
                     doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
+                    identity: Rc::new(()),
                 })
             }
             "property.deleter" => {
@@ -16052,6 +16056,7 @@ impl Vm {
                     doc,
                     doc_from_getter,
                     name: Rc::new(RefCell::new(property_name.borrow().clone())),
+                    identity: Rc::new(()),
                 })
             }
             "property.__get__" => {
@@ -16079,6 +16084,7 @@ impl Vm {
                         doc,
                         doc_from_getter,
                         name: property_name,
+                        identity,
                     },
                     rest[0].clone(),
                 )
@@ -16103,6 +16109,7 @@ impl Vm {
                         doc,
                         doc_from_getter,
                         name: property_name,
+                        identity,
                     },
                     object.clone(),
                     value.clone(),
@@ -16129,6 +16136,7 @@ impl Vm {
                         doc,
                         doc_from_getter,
                         name: property_name,
+                        identity,
                     },
                     object.clone(),
                 )?;
@@ -49160,6 +49168,7 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             doc,
             doc_from_getter,
             name,
+            identity,
         } => Value::Property {
             fget: fget.map(|value| Box::new(attach_owner_class(*value, class))),
             fset: fset.map(|value| Box::new(attach_owner_class(*value, class))),
@@ -49167,6 +49176,7 @@ fn attach_owner_class(value: Value, class: &Value) -> Value {
             doc,
             doc_from_getter,
             name,
+            identity,
         },
         Value::CachedProperty {
             function,
@@ -55556,6 +55566,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
             doc,
             doc_from_getter,
             name: property_name,
+            identity,
         } => match name {
             "fget" => Ok(fget.map(|value| *value).unwrap_or(Value::None)),
             "fset" => Ok(fset.map(|value| *value).unwrap_or(Value::None)),
@@ -55573,6 +55584,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                     doc,
                     doc_from_getter,
                     name: property_name,
+                    identity,
                 }),
                 identity: Rc::new(()),
             }),
@@ -62615,6 +62627,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::ClassMethod { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::Property { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::Super { identity, .. } => {

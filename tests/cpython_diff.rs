@@ -2062,6 +2062,43 @@ print('fresh-classmethod-progress-unchecked', json.dumps(object(), default=hook,
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_property_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook property identity subset",
+        name: "json-dumps-default-hook-property-identity",
+        source: r#"import json
+
+def sample(self=None):
+    return self
+
+shared_property = property(sample)
+
+def fresh_property_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return property(sample)
+        return 'fresh-property-ok'
+    return hook, calls
+
+print('callable', callable(shared_property))
+try:
+    json.dumps(object(), default=lambda obj: shared_property)
+except Exception as error:
+    print('shared-property-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_property_then_value()
+print('fresh-property-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_property, check_circular=False)
+except Exception as error:
+    print('shared-property-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_property_then_value()
+print('fresh-property-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook bound method identity subset",

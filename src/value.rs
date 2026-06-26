@@ -1022,6 +1022,7 @@ pub enum Value {
         doc: Rc<RefCell<Option<Value>>>,
         doc_from_getter: bool,
         name: Rc<RefCell<Option<Value>>>,
+        identity: Rc<()>,
     },
     MemberDescriptor {
         name: String,
@@ -3675,6 +3676,7 @@ impl PartialEq for Value {
                     doc: left_doc,
                     doc_from_getter: left_doc_from_getter,
                     name: left_name,
+                    ..
                 },
                 Value::Property {
                     fget: right_fget,
@@ -3683,6 +3685,7 @@ impl PartialEq for Value {
                     doc: right_doc,
                     doc_from_getter: right_doc_from_getter,
                     name: right_name,
+                    ..
                 },
             ) => {
                 left_fget == right_fget

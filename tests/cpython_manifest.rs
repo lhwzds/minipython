@@ -8383,6 +8383,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_dumps_default_hook_staticmethod_identity_subset",
             "cpython_json_dumps_default_hook_classmethod_identity_subset",
+            "cpython_json_dumps_default_hook_property_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8450,6 +8451,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_staticmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_classmethod_identity_diff_subset",
+        "cpython_json_dumps_default_hook_property_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -10589,6 +10591,84 @@ fn json_dumps_default_hook_classmethod_identity_has_focused_evidence() {
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "classmethod identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_property_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_property_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_property_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook property identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook property identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook property identity subset"),
+        "json dumps default hook property identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "def sample(self=None):",
+        "shared_property = property(sample)",
+        "def fresh_property_then_value():",
+        "return property(sample)",
+        "return 'fresh-property-ok'",
+        "print('callable', callable(shared_property))",
+        "json.dumps(object(), default=lambda obj: shared_property)",
+        "print('fresh-property-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_property, check_circular=False)",
+        "print('fresh-property-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook property identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"callable False\"",
+        "\"shared-property-default ValueError True True False\"",
+        "\"fresh-property-progress \\\"fresh-property-ok\\\" 2\"",
+        "\"shared-property-default-unchecked RecursionError True\"",
+        "\"fresh-property-progress-unchecked \\\"fresh-property-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook property identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported property replacement circular detection without treating fresh property wrappers as circular"
+            ),
+            "json docs must describe the property identity boundary"
+        );
+    }
+
+    for required in [
+        "Property {",
+        "identity: Rc<()>",
+        "Value::Property { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "identity: Rc::new(())",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "property identity implementation must contain `{required}`"
         );
     }
 }
