@@ -8390,6 +8390,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_lru_cache_identity_subset",
             "cpython_json_dumps_default_hook_singledispatch_identity_subset",
             "cpython_json_dumps_default_hook_singledispatchmethod_identity_subset",
+            "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_subset",
             "cpython_json_dumps_default_hook_attrgetter_identity_subset",
             "cpython_json_dumps_default_hook_itemgetter_identity_subset",
             "cpython_json_dumps_default_hook_methodcaller_identity_subset",
@@ -8451,6 +8452,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatch_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatchmethod_identity_diff_subset",
+        "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_diff_subset",
         "cpython_json_dumps_default_hook_attrgetter_identity_diff_subset",
         "cpython_json_dumps_default_hook_itemgetter_identity_diff_subset",
         "cpython_json_dumps_default_hook_methodcaller_identity_diff_subset",
@@ -11099,6 +11101,87 @@ fn json_dumps_default_hook_singledispatchmethod_identity_has_focused_evidence() 
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps singledispatchmethod identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_singledispatchmethod_bound_identity_has_focused_evidence() {
+    let diff_name =
+        "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook singledispatchmethod bound identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook singledispatchmethod bound identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/json public dumps default hook functools.singledispatchmethod bound callable identity subset"
+        ),
+        "json dumps default hook singledispatchmethod bound identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "class C:",
+        "@functools.singledispatchmethod",
+        "def method(self, value):",
+        "instance = C()",
+        "shared_bound = instance.method",
+        "def fresh_bound_then_value():",
+        "return instance.method",
+        "return 'fresh-singledispatchmethod-bound-ok'",
+        "json.dumps(object(), default=lambda obj: shared_bound)",
+        "print('fresh-singledispatchmethod-bound-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_bound, check_circular=False)",
+        "print('fresh-singledispatchmethod-bound-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook singledispatchmethod bound identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-singledispatchmethod-bound-default ValueError True True False\"",
+        "\"fresh-singledispatchmethod-bound-progress \\\"fresh-singledispatchmethod-bound-ok\\\" 2\"",
+        "\"shared-singledispatchmethod-bound-default-unchecked RecursionError True\"",
+        "\"fresh-singledispatchmethod-bound-progress-unchecked \\\"fresh-singledispatchmethod-bound-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook singledispatchmethod bound identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.singledispatchmethod bound callable replacement circular detection without treating fresh bound callables as circular"
+            ),
+            "json docs must describe the singledispatchmethod bound identity boundary"
+        );
+    }
+
+    for required in [
+        "SingleDispatchMethodCallable {",
+        "identity: Rc<()>",
+        "Value::SingleDispatchMethodCallable { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps singledispatchmethod bound identity implementation must contain `{required}`"
         );
     }
 }

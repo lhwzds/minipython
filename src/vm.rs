@@ -62629,6 +62629,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::SingleDispatchMethod { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::SingleDispatchMethodCallable { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::OperatorAttrGetter { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
