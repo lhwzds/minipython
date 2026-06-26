@@ -15381,6 +15381,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__neg__() missing 1 required positional argument: 'self';
     // Counter.__neg__() got an unexpected keyword argument 'x';
     // collections.Counter.__neg__() got multiple values for keyword argument 'self';
+    // Counter.__add__() missing 2 required positional arguments: 'self' and 'other';
+    // Counter.__add__() got an unexpected keyword argument 'x';
+    // collections.Counter.__add__() got multiple values for keyword argument 'other';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15467,6 +15470,25 @@ for label, expr in [
     ('neg-bound-keyword', lambda: Counter(a=-2).__neg__(self=Counter(a=-3))),
     ('neg-duplicate-self-keyword', lambda: Counter.__neg__(self=Counter(a=-2), **{'self': Counter(a=-3)})),
     ('neg-duplicate-x-keyword', lambda: Counter.__neg__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('add-direct', Counter.__add__(Counter(a=2), Counter(a=1, b=3)), Counter(a=2).__add__(Counter(a=1, b=3)))
+for label, expr in [
+    ('add-missing', lambda: Counter.__add__()),
+    ('add-missing-other', lambda: Counter.__add__(Counter(a=2))),
+    ('add-missing-self', lambda: Counter.__add__(other=Counter(b=3))),
+    ('add-extra', lambda: Counter.__add__(Counter(a=2), Counter(), 1)),
+    ('add-keyword-only', lambda: Counter.__add__(self=Counter(a=2), other=Counter(b=3))),
+    ('add-badkw', lambda: Counter.__add__(x=1)),
+    ('add-bound-keyword', lambda: Counter(a=2).__add__(other=Counter(b=3))),
+    ('add-duplicate-self', lambda: Counter.__add__(Counter(a=2), other=Counter(b=3), self=Counter(a=9))),
+    ('add-duplicate-other', lambda: Counter.__add__(Counter(a=2), Counter(b=3), other=Counter(c=4))),
+    ('add-duplicate-self-keyword', lambda: Counter.__add__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('add-duplicate-other-keyword', lambda: Counter.__add__(other=Counter(a=2), **{'other': Counter(a=3)})),
+    ('add-duplicate-x-keyword', lambda: Counter.__add__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())
