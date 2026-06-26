@@ -1601,7 +1601,7 @@ fn str_value_checked(value: &Value) -> Result<String, String> {
         | Value::ScopeDict(_)
         | Value::FrameLocalsProxy { .. }
         | Value::SimpleNamespace { .. } => repr_value_checked(value),
-        Value::MappingProxy { entries } => repr_value_checked(&Value::Dict(entries.clone())),
+        Value::MappingProxy { entries, .. } => repr_value_checked(&Value::Dict(entries.clone())),
         value => Ok(value.to_string()),
     }
 }
@@ -22330,7 +22330,7 @@ impl Vm {
         }
 
         match args.as_slice() {
-            [Value::Dict(entries)] | [Value::MappingProxy { entries }] => {
+            [Value::Dict(entries)] | [Value::MappingProxy { entries, .. }] => {
                 Ok(mapping_proxy_value(entries.clone()))
             }
             [Value::MappingProxyObject { mapping }] => Ok(Value::MappingProxyObject {
@@ -26949,7 +26949,7 @@ impl Vm {
                     ));
                 };
                 match receiver {
-                    Value::MappingProxy { entries } => Ok(Value::String(repr_value_checked(
+                    Value::MappingProxy { entries, .. } => Ok(Value::String(repr_value_checked(
                         &Value::Dict(entries.clone()),
                     )?)),
                     Value::MappingProxyObject { mapping } => {
@@ -27038,7 +27038,7 @@ impl Vm {
                     ));
                 };
                 match receiver {
-                    Value::MappingProxy { entries } => build_dict(entries.borrow().clone()),
+                    Value::MappingProxy { entries, .. } => build_dict(entries.borrow().clone()),
                     Value::MappingProxyObject { mapping } => {
                         let method = self.load_attribute_value(*mapping.clone(), "copy")?;
                         self.call_value(method, Vec::new())
@@ -27057,7 +27057,7 @@ impl Vm {
                     ));
                 }
                 match receiver {
-                    Value::MappingProxy { entries } => {
+                    Value::MappingProxy { entries, .. } => {
                         ensure_hashable_key(key)?;
                         let default = rest.first().cloned().unwrap_or(Value::None);
                         Ok(entries
@@ -27084,7 +27084,7 @@ impl Vm {
                     ));
                 };
                 match receiver {
-                    Value::MappingProxy { entries } => {
+                    Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Items, entries.clone()))
                     }
                     Value::MappingProxyObject { mapping } => {
@@ -27102,7 +27102,7 @@ impl Vm {
                     ));
                 };
                 match receiver {
-                    Value::MappingProxy { entries } => {
+                    Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Keys, entries.clone()))
                     }
                     Value::MappingProxyObject { mapping } => {
@@ -27120,7 +27120,7 @@ impl Vm {
                     ));
                 };
                 match receiver {
-                    Value::MappingProxy { entries } => {
+                    Value::MappingProxy { entries, .. } => {
                         Ok(dict_view_value(DictViewKind::Values, entries.clone()))
                     }
                     Value::MappingProxyObject { mapping } => {
@@ -47538,7 +47538,7 @@ impl Vm {
         name: &str,
     ) -> Result<Option<Value>, String> {
         match builtins {
-            Value::Dict(entries) | Value::MappingProxy { entries } => {
+            Value::Dict(entries) | Value::MappingProxy { entries, .. } => {
                 Ok(lookup_string_key(entries, name))
             }
             Value::ScopeDict(scope) => Ok(scope.borrow().get(name).cloned()),
@@ -54613,7 +54613,7 @@ fn type_hints_lookup_name(name: &str, namespace: Option<&Scope>) -> Option<Value
     let builtins = namespace.borrow().get("__builtins__").cloned();
     match builtins {
         Some(Value::ScopeDict(scope)) => scope.borrow().get(name).cloned(),
-        Some(Value::Dict(entries)) | Some(Value::MappingProxy { entries }) => {
+        Some(Value::Dict(entries)) | Some(Value::MappingProxy { entries, .. }) => {
             lookup_string_key(&entries, name)
         }
         Some(Value::Module { attrs, .. }) => attrs.borrow().get(name).cloned(),
@@ -56540,12 +56540,12 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 )),
             }
         }
-        Value::MappingProxy { entries } => match name {
+        Value::MappingProxy { entries, identity } => match name {
             "copy" | "get" | "items" | "keys" | "values" | "__class_getitem__" | "__contains__"
             | "__format__" | "__getitem__" | "__ior__" | "__iter__" | "__len__" | "__or__"
             | "__repr__" | "__reversed__" | "__ror__" | "__str__" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin(format!("mappingproxy.{name}"))),
-                receiver: Box::new(Value::MappingProxy { entries }),
+                receiver: Box::new(Value::MappingProxy { entries, identity }),
                 identity: Rc::new(()),
             }),
             _ => Err(format!(
@@ -62699,6 +62699,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::DictView { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::MappingProxy { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Super { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
@@ -67264,7 +67267,7 @@ fn reversed_value(value: Value) -> Result<Value, String> {
                 expected_version,
             }))
         }
-        Value::MappingProxy { entries } => {
+        Value::MappingProxy { entries, .. } => {
             let (keys, expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (
@@ -73853,7 +73856,7 @@ fn dict_entries_from_update_source(value: Value) -> Result<Vec<(Value, Value)>, 
     match value {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
-        | Value::MappingProxy { entries }
+        | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(&scope)),
         Value::FrameLocalsProxy { locals } => Ok(scope_dict_entries(&locals)),
@@ -73896,7 +73899,7 @@ fn mapping_entries(value: &Value) -> Result<Vec<(Value, Value)>, String> {
     match value {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
-        | Value::MappingProxy { entries }
+        | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries.borrow().clone()),
         Value::ScopeDict(scope) => Ok(scope_dict_entries(scope)),
         Value::FrameLocalsProxy { locals } => Ok(scope_dict_entries(locals)),
@@ -73950,7 +73953,7 @@ fn chain_map_source_keys(map: &Value) -> Result<Vec<Value>, String> {
     match map {
         Value::Dict(entries)
         | Value::OrderedDict(entries)
-        | Value::MappingProxy { entries }
+        | Value::MappingProxy { entries, .. }
         | Value::Counter { entries } => Ok(entries
             .borrow()
             .iter()
@@ -76589,7 +76592,7 @@ fn value_len(value: &Value) -> Result<usize, String> {
         Value::FrozenSet(items) => Ok(items.len()),
         Value::Dict(entries) | Value::OrderedDict(entries) => Ok(entries.borrow().len()),
         Value::Counter { entries } => Ok(entries.borrow().len()),
-        Value::MappingProxy { entries } => Ok(entries.borrow().len()),
+        Value::MappingProxy { entries, .. } => Ok(entries.borrow().len()),
         value if counter_subclass_entries(value).is_some() => Ok(counter_subclass_entries(value)
             .expect("Counter subclass entries exist after guard")
             .borrow()
@@ -77857,7 +77860,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::FrameLocalsProxy { locals } => scope_identity_bits(locals),
         Value::DictView { identity, .. } => rc_plain_identity_bits(identity),
         Value::MappingView { identity, .. } => rc_plain_identity_bits(identity),
-        Value::MappingProxy { entries } => rc_identity_bits(entries),
+        Value::MappingProxy { identity, .. } => rc_plain_identity_bits(identity),
         Value::ChainMap { maps } => maps.as_ptr() as usize as u64,
         Value::UserDict { data, .. } => rc_identity_bits(data),
         Value::SimpleNamespace { fields } => rc_identity_bits(fields),
@@ -78831,7 +78834,7 @@ fn get_iter(value: Value) -> Result<Value, String> {
                 expected_version,
             }))
         }
-        Value::MappingProxy { entries } => {
+        Value::MappingProxy { entries, .. } => {
             let (expected_len, expected_version) = {
                 let entries_ref = entries.borrow();
                 (entries_ref.len(), entries_ref.version)
@@ -79863,7 +79866,7 @@ fn sequence_values(value: Value) -> Result<Vec<Value>, String> {
                 .map(|(key, _)| key.clone())
                 .collect())
         }
-        Value::MappingProxy { entries } => Ok(entries
+        Value::MappingProxy { entries, .. } => Ok(entries
             .borrow()
             .iter()
             .map(|(key, _)| key.clone())
@@ -80114,7 +80117,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 .map(|(_, value)| value.clone())
                 .unwrap_or(Value::Number(0)))
         }
-        Value::MappingProxy { entries } => {
+        Value::MappingProxy { entries, .. } => {
             ensure_hashable_key(&index)?;
             entries
                 .borrow()
@@ -83932,9 +83935,9 @@ fn bit_or_values(left: Value, right: Value) -> Result<Value, String> {
         (Value::Dict(left), Value::Dict(right)) => {
             dict_union_from_entries(left.borrow().clone(), right.borrow().clone())
         }
-        (Value::MappingProxy { entries: left }, Value::Dict(right))
-        | (Value::Dict(left), Value::MappingProxy { entries: right })
-        | (Value::MappingProxy { entries: left }, Value::MappingProxy { entries: right }) => {
+        (Value::MappingProxy { entries: left, .. }, Value::Dict(right))
+        | (Value::Dict(left), Value::MappingProxy { entries: right, .. })
+        | (Value::MappingProxy { entries: left, .. }, Value::MappingProxy { entries: right, .. }) => {
             dict_union_from_entries(left.borrow().clone(), right.borrow().clone())
         }
         (Value::MappingProxy { .. }, right) => Err(format!(
@@ -84840,7 +84843,7 @@ fn contains_value(needle: Value, haystack: Value) -> Result<bool, String> {
                 .iter()
                 .any(|(key, _)| dict_keys_equal(key, &needle)))
         }
-        Value::MappingProxy { entries } => {
+        Value::MappingProxy { entries, .. } => {
             ensure_hashable_key(&needle)?;
             Ok(entries
                 .borrow()
@@ -85011,12 +85014,14 @@ fn is_identical(left: &Value, right: &Value) -> bool {
         ) => left_kind == right_kind && Rc::ptr_eq(left_identity, right_identity),
         (
             Value::MappingProxy {
-                entries: left_entries,
+                identity: left_identity,
+                ..
             },
             Value::MappingProxy {
-                entries: right_entries,
+                identity: right_identity,
+                ..
             },
-        ) => Rc::ptr_eq(left_entries, right_entries),
+        ) => Rc::ptr_eq(left_identity, right_identity),
         (
             Value::UserDict {
                 data: left_data, ..
@@ -85411,7 +85416,7 @@ fn is_truthy(value: &Value) -> Result<bool, String> {
         Value::FrameLocalsProxy { locals } => Ok(!locals.borrow().is_empty()),
         Value::DictView { entries, .. } => Ok(!entries.borrow().is_empty()),
         Value::MappingView { .. } => Ok(true),
-        Value::MappingProxy { entries } => Ok(!entries.borrow().is_empty()),
+        Value::MappingProxy { entries, .. } => Ok(!entries.borrow().is_empty()),
         Value::MappingProxyObject { .. } => Ok(true),
         Value::ChainMap { maps } => {
             for map in maps {

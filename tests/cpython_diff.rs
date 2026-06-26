@@ -2848,6 +2848,42 @@ print('fresh-list-iterator-progress-unchecked', json.dumps(object(), default=hoo
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook exact-dict mappingproxy identity subset",
+        name: "json-dumps-default-hook-mappingproxy-identity",
+        source: r#"import json
+from types import MappingProxyType
+
+backing = {'a': 1}
+shared = MappingProxyType(backing)
+
+def fresh_mappingproxy_same_backing_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return MappingProxyType(backing)
+        return 'fresh-mappingproxy-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-mappingproxy-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_mappingproxy_same_backing_then_value()
+print('fresh-mappingproxy-same-backing-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-mappingproxy-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_mappingproxy_same_backing_then_value()
+print('fresh-mappingproxy-same-backing-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.partial identity subset",

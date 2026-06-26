@@ -441,7 +441,10 @@ pub fn mapping_view_value(kind: DictViewKind, mapping: Value) -> Value {
 }
 
 pub fn mapping_proxy_value(entries: DictRef) -> Value {
-    Value::MappingProxy { entries }
+    Value::MappingProxy {
+        entries,
+        identity: Rc::new(()),
+    }
 }
 
 pub fn frame_locals_proxy_value(locals: Scope) -> Value {
@@ -580,6 +583,7 @@ pub enum Value {
     },
     MappingProxy {
         entries: DictRef,
+        identity: Rc<()>,
     },
     MappingProxyObject {
         mapping: Box<Value>,
@@ -1196,7 +1200,7 @@ impl fmt::Display for Value {
             Value::MappingView { kind, mapping, .. } => {
                 write!(f, "{}({mapping})", dict_view_type_name(*kind, false))
             }
-            Value::MappingProxy { entries } => {
+            Value::MappingProxy { entries, .. } => {
                 write!(f, "mappingproxy({{{}}})", format_dict(&entries.borrow()))
             }
             Value::MappingProxyObject { mapping } => write!(f, "mappingproxy({mapping})"),
@@ -1866,7 +1870,7 @@ fn format_value_repr(value: &Value) -> String {
         Value::MappingView { kind, mapping, .. } => {
             format!("{}({mapping})", dict_view_type_name(*kind, false))
         }
-        Value::MappingProxy { entries } => {
+        Value::MappingProxy { entries, .. } => {
             format!("mappingproxy({{{}}})", format_dict(&entries.borrow()))
         }
         Value::MappingProxyObject { mapping } => format!("mappingproxy({mapping})"),
@@ -3017,15 +3021,17 @@ impl PartialEq for Value {
             (
                 Value::MappingProxy {
                     entries: left_entries,
+                    ..
                 },
                 Value::MappingProxy {
                     entries: right_entries,
+                    ..
                 },
             ) => left_entries.borrow().entries == right_entries.borrow().entries,
-            (Value::MappingProxy { entries: left }, Value::Dict(right))
-            | (Value::Dict(right), Value::MappingProxy { entries: left })
-            | (Value::MappingProxy { entries: left }, Value::OrderedDict(right))
-            | (Value::OrderedDict(right), Value::MappingProxy { entries: left }) => {
+            (Value::MappingProxy { entries: left, .. }, Value::Dict(right))
+            | (Value::Dict(right), Value::MappingProxy { entries: left, .. })
+            | (Value::MappingProxy { entries: left, .. }, Value::OrderedDict(right))
+            | (Value::OrderedDict(right), Value::MappingProxy { entries: left, .. }) => {
                 left.borrow().entries == right.borrow().entries
             }
             (
