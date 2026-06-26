@@ -2099,6 +2099,45 @@ print('fresh-property-progress-unchecked', json.dumps(object(), default=hook, ch
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook member_descriptor identity subset",
+        name: "json-dumps-default-hook-member-descriptor-identity",
+        source: r#"import json
+
+class C:
+    __slots__ = ('x',)
+
+shared_member = C.__dict__['x']
+
+def fresh_member_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            class D:
+                __slots__ = ('x',)
+            return D.__dict__['x']
+        return 'fresh-member-ok'
+    return hook, calls
+
+print('kind', type(shared_member).__name__, callable(shared_member))
+try:
+    json.dumps(object(), default=lambda obj: shared_member)
+except Exception as error:
+    print('shared-member-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_member_then_value()
+print('fresh-member-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_member, check_circular=False)
+except Exception as error:
+    print('shared-member-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_member_then_value()
+print('fresh-member-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_bound_method_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook bound method identity subset",

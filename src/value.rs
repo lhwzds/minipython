@@ -1027,6 +1027,7 @@ pub enum Value {
     MemberDescriptor {
         name: String,
         owner_name: String,
+        identity: Rc<()>,
     },
     StaticMethod {
         function: Box<Value>,
@@ -1399,7 +1400,9 @@ impl fmt::Display for Value {
                 }
             }
             Value::Property { .. } => write!(f, "<property object>"),
-            Value::MemberDescriptor { name, owner_name } => {
+            Value::MemberDescriptor {
+                name, owner_name, ..
+            } => {
                 write!(f, "<member '{name}' of '{owner_name}' objects>")
             }
             Value::StaticMethod { .. } => write!(f, "<staticmethod object>"),
@@ -1969,7 +1972,9 @@ fn format_value_repr(value: &Value) -> String {
         Value::Builtin(name) if is_deque_maxlen_getset_descriptor(name) => {
             "<attribute 'maxlen' of 'collections.deque' objects>".to_string()
         }
-        Value::MemberDescriptor { name, owner_name } => {
+        Value::MemberDescriptor {
+            name, owner_name, ..
+        } => {
             format!("<member '{name}' of '{owner_name}' objects>")
         }
         Value::StaticMethod { .. } => "<staticmethod object>".to_string(),
@@ -3699,10 +3704,12 @@ impl PartialEq for Value {
                 Value::MemberDescriptor {
                     name: left_name,
                     owner_name: left_owner_name,
+                    ..
                 },
                 Value::MemberDescriptor {
                     name: right_name,
                     owner_name: right_owner_name,
+                    ..
                 },
             ) => left_name == right_name && left_owner_name == right_owner_name,
             (

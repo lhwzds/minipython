@@ -634,6 +634,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_staticmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_classmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_property_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`,
   `cpython_json_dumps_default_hook_super_identity_diff_subset`,
   `cpython_json_dumps_default_hook_type_identity_diff_subset`,
@@ -1125,6 +1126,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_classmethod_identity_subset`,
   `cpython_json_dumps_default_hook_property_identity_diff_subset` /
   `cpython_json_dumps_default_hook_property_identity_subset`,
+  `cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_member_descriptor_identity_subset`,
   `cpython_json_dumps_default_hook_bound_method_identity_diff_subset` /
   `cpython_json_dumps_default_hook_bound_method_identity_subset`,
   `cpython_json_dumps_default_hook_super_identity_diff_subset` /
@@ -1325,6 +1328,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_property_identity_subset`, backed by
 `cpython_json_dumps_default_hook_property_identity_diff_subset`, keeps shared unsupported property replacement circular detection without treating fresh property wrappers as circular.
+
+`cpython_json_dumps_default_hook_member_descriptor_identity_subset`, backed by
+`cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset`, keeps shared unsupported slot member_descriptor replacement circular detection without treating fresh member descriptors as circular.
 
 `cpython_json_dumps_default_hook_bound_method_identity_subset`, backed by
 `cpython_json_dumps_default_hook_bound_method_identity_diff_subset`, keeps shared unsupported bound method replacement circular detection without treating fresh bound methods as circular.

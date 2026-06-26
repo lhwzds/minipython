@@ -8384,6 +8384,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_staticmethod_identity_subset",
             "cpython_json_dumps_default_hook_classmethod_identity_subset",
             "cpython_json_dumps_default_hook_property_identity_subset",
+            "cpython_json_dumps_default_hook_member_descriptor_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_super_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
@@ -8452,6 +8453,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_staticmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_classmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_property_identity_diff_subset",
+        "cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_super_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
@@ -10669,6 +10671,87 @@ fn json_dumps_default_hook_property_identity_has_focused_evidence() {
                 || VM_SOURCE.contains(required)
                 || STDLIB_SOURCE.contains(required),
             "property identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_member_descriptor_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_member_descriptor_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_member_descriptor_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook member descriptor identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook member descriptor identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook member_descriptor identity subset"),
+        "json dumps default hook member descriptor identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "class C:",
+        "__slots__ = ('x',)",
+        "shared_member = C.__dict__['x']",
+        "def fresh_member_then_value():",
+        "class D:",
+        "return D.__dict__['x']",
+        "return 'fresh-member-ok'",
+        "print('kind', type(shared_member).__name__, callable(shared_member))",
+        "json.dumps(object(), default=lambda obj: shared_member)",
+        "print('fresh-member-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_member, check_circular=False)",
+        "print('fresh-member-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook member descriptor identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind member_descriptor False\"",
+        "\"shared-member-default ValueError True True False\"",
+        "\"fresh-member-progress \\\"fresh-member-ok\\\" 2\"",
+        "\"shared-member-default-unchecked RecursionError True\"",
+        "\"fresh-member-progress-unchecked \\\"fresh-member-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook member descriptor identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported slot member_descriptor replacement circular detection without treating fresh member descriptors as circular"
+            ),
+            "json docs must describe the member descriptor identity boundary"
+        );
+    }
+
+    for required in [
+        "MemberDescriptor {",
+        "identity: Rc<()>",
+        "Value::MemberDescriptor { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "identity: Rc::new(())",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required)
+                || VM_SOURCE.contains(required)
+                || STDLIB_SOURCE.contains(required),
+            "member descriptor identity implementation must contain `{required}`"
         );
     }
 }

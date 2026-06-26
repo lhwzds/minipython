@@ -16718,7 +16718,10 @@ impl Vm {
         object: Value,
         owner: Option<Value>,
     ) -> Result<Value, String> {
-        let Value::MemberDescriptor { name, owner_name } = descriptor.clone() else {
+        let Value::MemberDescriptor {
+            name, owner_name, ..
+        } = descriptor.clone()
+        else {
             unreachable!("member_descriptor_get is only called with member descriptor values");
         };
         if matches!(object, Value::None) {
@@ -16745,7 +16748,10 @@ impl Vm {
         object: Value,
         value: Value,
     ) -> Result<(), String> {
-        let Value::MemberDescriptor { name, owner_name } = descriptor else {
+        let Value::MemberDescriptor {
+            name, owner_name, ..
+        } = descriptor
+        else {
             unreachable!("member_descriptor_set is only called with member descriptor values");
         };
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
@@ -16754,7 +16760,10 @@ impl Vm {
     }
 
     fn member_descriptor_delete(&mut self, descriptor: Value, object: Value) -> Result<(), String> {
-        let Value::MemberDescriptor { name, owner_name } = descriptor else {
+        let Value::MemberDescriptor {
+            name, owner_name, ..
+        } = descriptor
+        else {
             unreachable!("member_descriptor_delete is only called with member descriptor values");
         };
         let fields = member_descriptor_fields(&object, &name, &owner_name)?;
@@ -49275,6 +49284,7 @@ fn install_slot_descriptors(class: &Value) -> Result<(), String> {
             Value::MemberDescriptor {
                 name,
                 owner_name: owner_name.clone(),
+                identity: Rc::new(()),
             },
         );
     }
@@ -55616,6 +55626,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
         Value::MemberDescriptor {
             name: descriptor_name,
             owner_name,
+            identity,
         } => match name {
             "__name__" => Ok(Value::String(descriptor_name)),
             "__doc__" => Ok(Value::None),
@@ -55624,6 +55635,7 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 receiver: Box::new(Value::MemberDescriptor {
                     name: descriptor_name,
                     owner_name,
+                    identity,
                 }),
                 identity: Rc::new(()),
             }),
@@ -62630,6 +62642,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::Property { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
+        Value::MemberDescriptor { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
         Value::Super { identity, .. } => {
@@ -78124,7 +78139,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             hash_scope_identity(fields, hasher);
         }
         Value::Property { .. } => "property".hash(hasher),
-        Value::MemberDescriptor { name, owner_name } => {
+        Value::MemberDescriptor {
+            name, owner_name, ..
+        } => {
             "member_descriptor".hash(hasher);
             name.hash(hasher);
             owner_name.hash(hasher);
@@ -85236,10 +85253,12 @@ fn is_identical(left: &Value, right: &Value) -> bool {
             Value::MemberDescriptor {
                 name: left_name,
                 owner_name: left_owner_name,
+                ..
             },
             Value::MemberDescriptor {
                 name: right_name,
                 owner_name: right_owner_name,
+                ..
             },
         ) => left_name == right_name && left_owner_name == right_owner_name,
         (Value::Iterator(left), Value::Iterator(right)) => Rc::ptr_eq(left, right),
