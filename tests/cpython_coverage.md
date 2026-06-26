@@ -628,6 +628,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_sort_keys_diff_subset`,
   `cpython_json_dumps_separators_diff_subset`,
   `cpython_json_dumps_default_hook_diff_subset`,
+  `cpython_json_dumps_default_hook_slice_identity_diff_subset`,
   `cpython_json_dumps_default_hook_range_identity_diff_subset`,
   `cpython_json_dumps_default_hook_complex_identity_diff_subset`,
   `cpython_json_dumps_default_hook_function_identity_diff_subset`,
@@ -1119,6 +1120,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_separators_subset`,
   `cpython_json_dumps_default_hook_diff_subset` /
   `cpython_json_dumps_default_hook_subset`,
+  `cpython_json_dumps_default_hook_slice_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_slice_identity_subset`,
   `cpython_json_dumps_default_hook_range_identity_diff_subset` /
   `cpython_json_dumps_default_hook_range_identity_subset`,
   `cpython_json_dumps_default_hook_complex_identity_diff_subset` /
@@ -1325,6 +1328,9 @@ non-callable hooks only error when used, hook exception propagation, returned-se
 shared unsupported bytes-like replacement circular detection, shared unsupported set/frozenset replacement circular detection, `check_circular=False` default-hook recursion boundary,
 and fresh unsupported replacement recursion as `RecursionError`,
 without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
+
+`cpython_json_dumps_default_hook_slice_identity_subset`, backed by
+`cpython_json_dumps_default_hook_slice_identity_diff_subset`, keeps shared unsupported slice replacement circular detection without treating fresh equal slices as circular.
 
 `cpython_json_dumps_default_hook_range_identity_subset`, backed by
 `cpython_json_dumps_default_hook_range_identity_diff_subset`, keeps shared unsupported range replacement circular detection without treating fresh equal ranges as circular.

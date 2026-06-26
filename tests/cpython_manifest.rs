@@ -8378,6 +8378,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_separators_subset",
             "cpython_json_dumps_float_spelling_subset",
             "cpython_json_dumps_default_hook_subset",
+            "cpython_json_dumps_default_hook_slice_identity_subset",
             "cpython_json_dumps_default_hook_range_identity_subset",
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
@@ -8452,6 +8453,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_separators_diff_subset",
         "cpython_json_dumps_float_spelling_diff_subset",
         "cpython_json_dumps_default_hook_diff_subset",
+        "cpython_json_dumps_default_hook_slice_identity_diff_subset",
         "cpython_json_dumps_default_hook_range_identity_diff_subset",
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
@@ -10235,6 +10237,83 @@ fn json_dumps_default_hook_docs_cover_option_boundaries() {
         assert!(
             VM_SOURCE.contains(required),
             "json dumps default hook implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_slice_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_slice_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_slice_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook slice identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook slice identity runtime subset evidence must exist"
+    );
+
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook slice identity subset"),
+        "json dumps default hook slice identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "shared = slice(1, 3, 1)",
+        "def fresh_slice_then_value():",
+        "return slice(1, 3, 1)",
+        "return 'fresh-slice-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-slice-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-slice-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook slice identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind slice False\"",
+        "\"shared-slice-default ValueError True True False\"",
+        "\"fresh-slice-progress \\\"fresh-slice-ok\\\" 2\"",
+        "\"shared-slice-default-unchecked RecursionError True\"",
+        "\"fresh-slice-progress-unchecked \\\"fresh-slice-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook slice identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported slice replacement circular detection without treating fresh equal slices as circular"
+            ),
+            "json docs must describe the slice identity boundary"
+        );
+    }
+
+    for required in [
+        "Slice {",
+        "identity: Rc<()>",
+        "identity: Rc::new(())",
+        "Value::Slice { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "slice identity implementation must contain `{required}`"
         );
     }
 }

@@ -666,6 +666,7 @@ pub enum Value {
         start: Option<Box<Value>>,
         stop: Option<Box<Value>>,
         step: Option<Box<Value>>,
+        identity: Rc<()>,
     },
     Range {
         start: BigInt,
@@ -1256,7 +1257,9 @@ impl fmt::Display for Value {
             Value::Range {
                 start, stop, step, ..
             } => write!(f, "range({start}, {stop}, {step})"),
-            Value::Slice { start, stop, step } => write!(
+            Value::Slice {
+                start, stop, step, ..
+            } => write!(
                 f,
                 "slice({}, {}, {})",
                 format_slice_part(start),
@@ -3050,11 +3053,13 @@ impl PartialEq for Value {
                     start: left_start,
                     stop: left_stop,
                     step: left_step,
+                    ..
                 },
                 Value::Slice {
                     start: right_start,
                     stop: right_stop,
                     step: right_step,
+                    ..
                 },
             ) => left_start == right_start && left_stop == right_stop && left_step == right_step,
             (

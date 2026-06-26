@@ -35964,6 +35964,46 @@ fn cpython_json_dumps_default_hook_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_slice_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+shared = slice(1, 3, 1)
+
+def fresh_slice_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return slice(1, 3, 1)
+        return 'fresh-slice-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-slice-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_slice_then_value()
+print('fresh-slice-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-slice-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_slice_then_value()
+print('fresh-slice-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind slice False",
+            "shared-slice-default ValueError True True False",
+            "fresh-slice-progress \"fresh-slice-ok\" 2",
+            "shared-slice-default-unchecked RecursionError True",
+            "fresh-slice-progress-unchecked \"fresh-slice-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_range_identity_subset() {
     assert_output(
         r#"import json

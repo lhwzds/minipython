@@ -17311,9 +17311,9 @@ impl Vm {
 
         if let Value::MemoryView(view) = &object {
             return match index {
-                Value::Slice { start, stop, step } => {
-                    self.load_memoryview_slice_subscript(view.clone(), start, stop, step)
-                }
+                Value::Slice {
+                    start, stop, step, ..
+                } => self.load_memoryview_slice_subscript(view.clone(), start, stop, step),
                 index => {
                     let index = self.memoryview_tuple_subscript_index(view, index, false)?;
                     load_subscript(object, index)
@@ -17408,9 +17408,15 @@ impl Vm {
 
         if let Value::MemoryView(view) = &object {
             return match index {
-                Value::Slice { start, stop, step } => {
-                    let index =
-                        self.sequence_subscript_index(Value::Slice { start, stop, step })?;
+                Value::Slice {
+                    start, stop, step, ..
+                } => {
+                    let index = self.sequence_subscript_index(Value::Slice {
+                        start,
+                        stop,
+                        step,
+                        identity: Rc::new(()),
+                    })?;
                     store_subscript(object, index, value)
                 }
                 index => {
@@ -17565,10 +17571,13 @@ impl Vm {
 
     fn sequence_subscript_index(&mut self, index: Value) -> Result<Value, String> {
         match index {
-            Value::Slice { start, stop, step } => Ok(Value::Slice {
+            Value::Slice {
+                start, stop, step, ..
+            } => Ok(Value::Slice {
                 start: self.index_slice_part(start)?,
                 stop: self.index_slice_part(stop)?,
                 step: self.index_slice_part(step)?,
+                identity: Rc::new(()),
             }),
             value => self.maybe_index_integer_value(value),
         }
@@ -23642,7 +23651,9 @@ impl Vm {
     ) -> Result<Value, String> {
         let index = self.sequence_subscript_index(index)?;
         match index {
-            Value::Slice { start, stop, step } => {
+            Value::Slice {
+                start, stop, step, ..
+            } => {
                 self.store_array_array_slice(
                     &receiver,
                     unbox_slice_part(start),
@@ -23748,7 +23759,9 @@ impl Vm {
     ) -> Result<Value, String> {
         let index = self.sequence_subscript_index(index)?;
         match index {
-            Value::Slice { start, stop, step } => self.delete_array_array_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => self.delete_array_array_slice(
                 &receiver,
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -24493,7 +24506,9 @@ impl Vm {
                 };
                 let index = self.sequence_subscript_index(index.clone())?;
                 match index {
-                    Value::Slice { start, stop, step } => array_array_slice(
+                    Value::Slice {
+                        start, stop, step, ..
+                    } => array_array_slice(
                         receiver.clone(),
                         unbox_slice_part(start),
                         unbox_slice_part(stop),
@@ -55912,13 +55927,23 @@ fn load_attribute(object: Value, name: &str) -> Result<Value, String> {
                 format!("AttributeError: '{kind}' object has no attribute '{name}'")
             }),
         },
-        Value::Slice { start, stop, step } => match name {
+        Value::Slice {
+            start,
+            stop,
+            step,
+            identity,
+        } => match name {
             "start" => Ok(start.map(|value| *value).unwrap_or(Value::None)),
             "stop" => Ok(stop.map(|value| *value).unwrap_or(Value::None)),
             "step" => Ok(step.map(|value| *value).unwrap_or(Value::None)),
             "indices" => Ok(Value::BoundMethod {
                 function: Box::new(Value::Builtin("slice.indices".to_string())),
-                receiver: Box::new(Value::Slice { start, stop, step }),
+                receiver: Box::new(Value::Slice {
+                    start,
+                    stop,
+                    step,
+                    identity,
+                }),
                 identity: Rc::new(()),
             }),
             _ => Err(format!("AttributeError: slice has no attribute '{name}'")),
@@ -61687,7 +61712,13 @@ fn call_slice(args: Vec<Value>) -> Result<Value, String> {
 
 impl Vm {
     fn call_slice_indices(&mut self, args: Vec<Value>) -> Result<Value, String> {
-        let [Value::Slice { start, stop, step }, length] = args.as_slice() else {
+        let [
+            Value::Slice {
+                start, stop, step, ..
+            },
+            length,
+        ] = args.as_slice()
+        else {
             return Err(format!(
                 "TypeError: indices() expected 1 argument, got {}",
                 method_arg_count(&args)
@@ -61755,6 +61786,7 @@ fn build_slice_value(start: Option<Value>, stop: Option<Value>, step: Option<Val
         start: normalize_slice_part(start),
         stop: normalize_slice_part(stop),
         step: normalize_slice_part(step),
+        identity: Rc::new(()),
     }
 }
 
@@ -62622,6 +62654,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::Bytes(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
         Value::ByteArray(bytes) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(bytes) as usize)),
         Value::MemoryView(view) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(view) as usize)),
+        Value::Slice { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Set(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
         Value::FrozenSet(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
         Value::UserList { data, .. } => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(data) as usize)),
@@ -77956,7 +77991,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             items.len().hash(hasher);
             hash.hash(hasher);
         }
-        Value::Slice { start, stop, step } => {
+        Value::Slice {
+            start, stop, step, ..
+        } => {
             "slice".hash(hasher);
             hash_optional_slice_part(start, hasher)?;
             hash_optional_slice_part(stop, hasher)?;
@@ -78484,7 +78521,9 @@ fn is_hashable_key(value: &Value) -> bool {
         Value::Tuple(items) => items.iter().all(is_hashable_key),
         Value::NamedTuple { values, .. } => values.iter().all(is_hashable_key),
         Value::FrozenSet(items) => items.iter().all(is_hashable_key),
-        Value::Slice { start, stop, step } => {
+        Value::Slice {
+            start, stop, step, ..
+        } => {
             optional_slice_part_is_hashable(start)
                 && optional_slice_part_is_hashable(stop)
                 && optional_slice_part_is_hashable(step)
@@ -79884,7 +79923,9 @@ fn collect_plain_iterator_values(mut iterator: Value) -> Result<Vec<Value>, Stri
 fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
     match object {
         Value::List(items) => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::List(items),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79915,7 +79956,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 .ok_or_else(|| "IndexError: deque index out of range".to_string())
         }
         Value::Tuple(items) => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::Tuple(items),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79931,7 +79974,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
         },
         Value::NamedTuple { values, .. } => load_subscript(Value::Tuple(values), index),
         Value::String(value) | Value::IdentityString { value, .. } => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::String(value),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79947,7 +79992,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             }
         },
         Value::Bytes(value) => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::Bytes(value),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79962,7 +80009,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             }
         },
         Value::ByteArray(value) => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::ByteArray(value),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79978,7 +80027,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             }
         },
         Value::MemoryView(view) => match index {
-            Value::Slice { start, stop, step } => load_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => load_slice(
                 Value::MemoryView(view),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -79987,7 +80038,9 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
             index => memoryview_item_value(&view, index),
         },
         value if array_array_storage(&value).is_some() => match index {
-            Value::Slice { start, stop, step } => array_array_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => array_array_slice(
                 value,
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -80005,6 +80058,7 @@ fn load_subscript(object: Value, index: Value) -> Result<Value, String> {
                 start: slice_start,
                 stop: slice_stop,
                 step: slice_step,
+                ..
             } => load_slice(
                 Value::Range {
                     start,
@@ -80249,7 +80303,9 @@ fn substitute_type_params(value: Value, replacements: &[(Value, Value)]) -> Valu
 fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, String> {
     match object {
         Value::List(items) => match index {
-            Value::Slice { start, stop, step } => store_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => store_slice(
                 Value::List(items),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -80285,7 +80341,9 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             }
         }
         Value::ByteArray(bytes) => match index {
-            Value::Slice { start, stop, step } => store_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => store_slice(
                 Value::ByteArray(bytes),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -80306,7 +80364,9 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
             }
         },
         Value::MemoryView(view) => match index {
-            Value::Slice { start, stop, step } => store_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => store_slice(
                 Value::MemoryView(view),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -80410,7 +80470,9 @@ fn store_subscript(object: Value, index: Value, value: Value) -> Result<Value, S
 fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
     match object {
         Value::List(items) => match index {
-            Value::Slice { start, stop, step } => delete_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => delete_slice(
                 Value::List(items),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
@@ -80437,7 +80499,9 @@ fn delete_subscript(object: Value, index: Value) -> Result<Value, String> {
             Ok(Value::Deque { data, maxlen })
         }
         Value::ByteArray(bytes) => match index {
-            Value::Slice { start, stop, step } => delete_slice(
+            Value::Slice {
+                start, stop, step, ..
+            } => delete_slice(
                 Value::ByteArray(bytes),
                 unbox_slice_part(start),
                 unbox_slice_part(stop),
