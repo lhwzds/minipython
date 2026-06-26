@@ -6158,7 +6158,8 @@ coverage for `elements()`, Counter iteration, `dict(Counter(...))`,
 coverage for `subtract()` over keyword, Counter, and iterable inputs plus
 unary `+Counter` / `-Counter` filtering of positive, zero, and negative counts,
 including Counter subclass operands returning exact `Counter` results while
-leaving the subclass source unchanged.
+leaving the subclass source unchanged, plus CPython-style `Counter.subtract()`
+receiver and positional-arity diagnostics.
 `cpython_collections_counter_repr_nonsortable_subset` adds method-level Counter
 coverage for `repr()` preserving entries whose counts are not directly
 comparable with numeric counts.

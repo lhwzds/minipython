@@ -11075,6 +11075,11 @@ Completed in the CPython collections manifest expansion pass:
   `Counter.__pos__()` / `Counter.__neg__()` public dunder calls, including
   Counter subclass operands returning exact `Counter` results while preserving
   the subclass source mapping.
+- Extended `cpython_collections_counter_subtract_unary_diff_subset` and
+  `cpython_collections_counter_subtract_unary_subset` with CPython-style
+  `Counter.subtract()` receiver and positional-arity diagnostics while keeping
+  bound `subtract(self=...)` and `subtract(iterable=...)` keywords as real
+  Counter keys.
 - Added `cpython_collections_counter_conversions_subset`, adapted from CPython
   `TestCounter::test_conversions`, covering `elements()`, Counter iteration,
   `dict(Counter(...))`, `dict(Counter(...).items())`, and `set(Counter(...))`

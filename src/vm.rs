@@ -27665,11 +27665,10 @@ impl Vm {
             "__init__" | "update" | "subtract" => {
                 let display_name = method_display_name(name);
                 let Some((receiver, rest)) = args.split_first() else {
-                    if display_name == "update" {
-                        return Err(
-                            "TypeError: Counter.update() missing 1 required positional argument: 'self'"
-                                .to_string(),
-                        );
+                    if matches!(display_name, "update" | "subtract") {
+                        return Err(format!(
+                            "TypeError: Counter.{display_name}() missing 1 required positional argument: 'self'"
+                        ));
                     }
                     return Err(format!(
                         "TypeError: {}() missing required Counter receiver",
@@ -27677,9 +27676,9 @@ impl Vm {
                     ));
                 };
                 if rest.len() > 1 {
-                    if display_name == "update" {
+                    if matches!(display_name, "update" | "subtract") {
                         return Err(format!(
-                            "TypeError: Counter.update() takes from 1 to 2 positional arguments but {} were given",
+                            "TypeError: Counter.{display_name}() takes from 1 to 2 positional arguments but {} were given",
                             args.len()
                         ));
                     }

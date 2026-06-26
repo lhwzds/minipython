@@ -15762,6 +15762,8 @@ print("'b': None" in r)"#,
 
 #[test]
 fn cpython_collections_counter_subtract_unary_diff_subset() {
+    // CPython oracle text: Counter.subtract() missing 1 required positional argument: 'self';
+    // Counter.subtract() takes from 1 to 2 positional arguments but 3 were given.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter subtract/unary subset",
         name: "collections-counter-subtract-unary",
@@ -15783,7 +15785,17 @@ class C(Counter):
 source = C(a=3, b=0, c=-2)
 for value in [+source, -source, Counter.__pos__(source), Counter.__neg__(source)]:
     print(type(value).__name__, isinstance(value, C), dict(value))
-print(type(source).__name__, dict(source))"#,
+print(type(source).__name__, dict(source))
+def show_subtract_error(label, call):
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+show_subtract_error('subtract-missing', lambda: Counter.subtract())
+show_subtract_error('subtract-extra', lambda: Counter.subtract(Counter(), {}, {}))
+show_subtract_error('subtract-self-keyword', lambda: Counter.subtract(self=Counter(a=2)))
+show_subtract_error('subtract-iterable-keyword', lambda: Counter.subtract(iterable=Counter(a=2)))
+show_subtract_error('subtract-bound-extra', lambda: Counter().subtract({}, {}))"#,
     });
 }
 
