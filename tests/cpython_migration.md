@@ -168,8 +168,8 @@ Completed in the builtin method TypeError capture pass:
   catchable in-place subtract `TypeError`, catchable in-place true-divide
   `TypeError`, catchable in-place floor-divide `TypeError`,
   catchable in-place modulo `TypeError`, catchable in-place bit-or
-  `TypeError`, and catchable in-place bit-and `TypeError`, `dict.keys`,
-  list methods including
+  `TypeError`, catchable in-place bit-xor `TypeError`, and
+  catchable in-place bit-and `TypeError`, `dict.keys`, list methods including
   `list.__iter__` and `list.append`, tuple methods including `tuple.__len__`
   and `tuple.count`, string and bytes methods including `str.upper` and
   `bytes.upper`, `set.add`, `frozenset.__hash__`,

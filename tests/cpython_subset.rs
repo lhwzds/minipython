@@ -24937,6 +24937,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["ior TypeError unsupported operand type(s) for |=: 'int' and 'str'"],
     );
     assert_output(
+        "try:\n    value = 1\n    value ^= 'x'\nexcept TypeError as error:\n    print('ixor', error.__class__.__name__, str(error))",
+        &["ixor TypeError unsupported operand type(s) for ^=: 'int' and 'str'"],
+    );
+    assert_output(
         "try:\n    value = 1\n    value &= 'x'\nexcept TypeError as error:\n    print('iand', error.__class__.__name__, str(error))",
         &["iand TypeError unsupported operand type(s) for &=: 'int' and 'str'"],
     );

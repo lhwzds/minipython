@@ -9708,6 +9708,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: unsupported operand type(s) for //=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for %=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for |=: 'int' and 'str'.
+    // CPython oracle text: unsupported operand type(s) for ^=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for &=: 'int' and 'str'.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_exceptions.py runtime exception object capture subset",
@@ -9763,6 +9764,11 @@ try:
     value |= 'x'
 except TypeError as error:
     print('ior', error.__class__.__name__, str(error))
+try:
+    value = 1
+    value ^= 'x'
+except TypeError as error:
+    print('ixor', error.__class__.__name__, str(error))
 try:
     value = 1
     value &= 'x'
