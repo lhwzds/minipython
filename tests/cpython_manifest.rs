@@ -17725,6 +17725,32 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
     );
     assert!(
         row.diff_evidence
+            .contains("cpython_collections_counter_init_update_diff_subset"),
+        "collections sandbox manifest must cite CPython diff evidence for Counter init/update behavior"
+    );
+    let counter_init_update_diff_body = extract_rust_test_body(
+        CPYTHON_DIFF,
+        "cpython_collections_counter_init_update_diff_subset",
+    );
+    let counter_init_update_subset_body = extract_rust_test_body(
+        CPYTHON_SUBSET,
+        "cpython_collections_counter_init_update_subset",
+    );
+    for required in [
+        "Counter.update() missing 1 required positional argument: 'self'",
+        "Counter.update() takes from 1 to 2 positional arguments but 3 were given",
+        "Counter.update(self=Counter(a=2))",
+        "Counter.update(iterable=Counter(a=2))",
+        "Counter().update({}, {})",
+    ] {
+        assert!(
+            counter_init_update_diff_body.contains(required)
+                && counter_init_update_subset_body.contains(required),
+            "Counter init/update diff and subset evidence must cover `{required}`"
+        );
+    }
+    assert!(
+        row.diff_evidence
             .contains("cpython_collections_counter_most_common_diff_subset"),
         "collections sandbox manifest must cite CPython diff evidence for Counter most_common behavior"
     );

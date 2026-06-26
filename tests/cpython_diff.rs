@@ -15698,6 +15698,8 @@ print(set(c) == set(s))"#,
 
 #[test]
 fn cpython_collections_counter_init_update_diff_subset() {
+    // CPython oracle text: Counter.update() missing 1 required positional argument: 'self';
+    // Counter.update() takes from 1 to 2 positional arguments but 3 were given.
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py TestCounter init/update subset",
         name: "collections-counter-init-update",
@@ -15731,7 +15733,17 @@ for call in [lambda: Counter().update(42), lambda: Counter().update({}, {})]:
 try:
     Counter.update()
 except TypeError:
-    print('TypeError')"#,
+    print('TypeError')
+def show_update_error(label, call):
+    try:
+        call()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+show_update_error('update-missing', lambda: Counter.update())
+show_update_error('update-extra', lambda: Counter.update(Counter(), {}, {}))
+show_update_error('update-self-keyword', lambda: Counter.update(self=Counter(a=2)))
+show_update_error('update-iterable-keyword', lambda: Counter.update(iterable=Counter(a=2)))
+show_update_error('update-bound-extra', lambda: Counter().update({}, {}))"#,
     });
 }
 

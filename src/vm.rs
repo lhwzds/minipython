@@ -27663,21 +27663,34 @@ impl Vm {
                 ])?))
             }
             "__init__" | "update" | "subtract" => {
+                let display_name = method_display_name(name);
                 let Some((receiver, rest)) = args.split_first() else {
+                    if display_name == "update" {
+                        return Err(
+                            "TypeError: Counter.update() missing 1 required positional argument: 'self'"
+                                .to_string(),
+                        );
+                    }
                     return Err(format!(
                         "TypeError: {}() missing required Counter receiver",
-                        method_display_name(name)
+                        display_name
                     ));
                 };
                 if rest.len() > 1 {
+                    if display_name == "update" {
+                        return Err(format!(
+                            "TypeError: Counter.update() takes from 1 to 2 positional arguments but {} were given",
+                            args.len()
+                        ));
+                    }
                     return Err(format!(
                         "{}() expected at most 1 argument, got {}",
-                        method_display_name(name),
+                        display_name,
                         rest.len()
                     ));
                 }
                 let entries = counter_receiver_entries(receiver)?;
-                let mode = if method_display_name(name) == "subtract" {
+                let mode = if display_name == "subtract" {
                     CounterUpdateMode::Subtract
                 } else {
                     CounterUpdateMode::Add

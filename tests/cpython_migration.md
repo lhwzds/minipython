@@ -11047,6 +11047,11 @@ Completed in the CPython collections manifest expansion pass:
   `None`-limit, increasing-limit behavior, CPython-style keyword binding
   errors, and public limit comparison errors before `__index__` conversion out
   of the broader Counter basics coverage.
+- Extended `cpython_collections_counter_init_update_diff_subset` and
+  `cpython_collections_counter_init_update_subset` with CPython-style
+  `Counter.update()` receiver and positional-arity diagnostics while keeping
+  bound `update(self=...)` and `update(iterable=...)` keywords as real Counter
+  keys.
 - Added `cpython_collections_counter_mapping_mutation_diff_subset` and
   `cpython_collections_counter_mapping_mutation_subset`, splitting stable
   Counter `pop()`, `pop(default)`, missing-key `pop()` `KeyError.args[0]`,

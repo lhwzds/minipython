@@ -6121,7 +6121,8 @@ public `self` and duplicate-keyword argument binding diagnostics.
 `cpython_collections_counter_init_update_subset` adds method-level Counter
 coverage for `Counter(...)` and `update()` keyword names that are real keys,
 `iterable=None` direct insertion into an empty Counter, bad sources, too many
-arguments, and unbound method TypeErrors.
+arguments, and CPython-style `Counter.update()` receiver and positional-arity
+diagnostics.
 `cpython_collections_counter_fromkeys_diff_subset` and
 `cpython_collections_counter_fromkeys_subset` add direct CPython output parity
 and runtime coverage for `Counter.fromkeys()` and instance `fromkeys()` raising

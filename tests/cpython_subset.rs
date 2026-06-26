@@ -56192,7 +56192,17 @@ fn cpython_collections_counter_init_update_subset() {
             "try:\n",
             "    Counter.update()\n",
             "except TypeError:\n",
-            "    print('TypeError')"
+            "    print('TypeError')\n",
+            "def show_update_error(label, call):\n",
+            "    try:\n",
+            "        call()\n",
+            "    except TypeError as error:\n",
+            "        print(label, type(error).__name__, str(error))\n",
+            "show_update_error('update-missing', lambda: Counter.update())\n",
+            "show_update_error('update-extra', lambda: Counter.update(Counter(), {}, {}))\n",
+            "show_update_error('update-self-keyword', lambda: Counter.update(self=Counter(a=2)))\n",
+            "show_update_error('update-iterable-keyword', lambda: Counter.update(iterable=Counter(a=2)))\n",
+            "show_update_error('update-bound-extra', lambda: Counter().update({}, {}))"
         ),
         &[
             "[('self', 42)]",
@@ -56207,6 +56217,11 @@ fn cpython_collections_counter_init_update_subset() {
             "TypeError",
             "TypeError",
             "TypeError",
+            "update-missing TypeError Counter.update() missing 1 required positional argument: 'self'",
+            "update-extra TypeError Counter.update() takes from 1 to 2 positional arguments but 3 were given",
+            "update-self-keyword TypeError Counter.update() missing 1 required positional argument: 'self'",
+            "update-iterable-keyword TypeError Counter.update() missing 1 required positional argument: 'self'",
+            "update-bound-extra TypeError Counter.update() takes from 1 to 2 positional arguments but 3 were given",
         ],
     );
 }
