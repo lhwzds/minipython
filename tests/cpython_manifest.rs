@@ -8410,6 +8410,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_mappingview_identity_subset",
             "cpython_json_dumps_default_hook_bytesio_identity_subset",
+            "cpython_json_dumps_default_hook_weakref_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_partialmethod_bound_identity_subset",
@@ -8499,6 +8500,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_mappingview_identity_diff_subset",
         "cpython_json_dumps_default_hook_bytesio_identity_diff_subset",
+        "cpython_json_dumps_default_hook_weakref_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset",
@@ -12764,6 +12766,90 @@ fn json_dumps_default_hook_bytesio_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps BytesIO identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_weakref_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_weakref_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_weakref_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook weakref identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook weakref identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook weakref identity subset"),
+        "json dumps default hook weakref identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import weakref",
+        "class C:",
+        "shared_ref = weakref.ref(obj, lambda wr: None)",
+        "shared_proxy = weakref.proxy(obj, lambda wr: None)",
+        "def show_case(label, shared, fresh_factory):",
+        "print('shape', label, type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "if len(calls) <= 2:",
+        "print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook2, check_circular=False), len(calls))",
+        "show_case('weakref', shared_ref, lambda: weakref.ref(obj, lambda wr: None))",
+        "show_case('weakproxy', shared_proxy, lambda: weakref.proxy(obj, lambda wr: None))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook weakref identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape weakref ReferenceType True\"",
+        "\"weakref-shared-default ValueError True True False\"",
+        "\"weakref-fresh-progress \\\"weakref-fresh-ok\\\" 3\"",
+        "\"weakref-shared-default-unchecked RecursionError True\"",
+        "\"weakref-fresh-progress-unchecked \\\"weakref-fresh-ok\\\" 3\"",
+        "\"shape weakproxy ProxyType False\"",
+        "\"weakproxy-shared-default ValueError True True False\"",
+        "\"weakproxy-fresh-progress \\\"weakproxy-fresh-ok\\\" 3\"",
+        "\"weakproxy-shared-default-unchecked RecursionError True\"",
+        "\"weakproxy-fresh-progress-unchecked \\\"weakproxy-fresh-ok\\\" 3\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook weakref identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported weakref replacement circular detection without treating fresh callback-bound weakrefs or proxies as circular"
+            ),
+            "json docs must describe the weakref identity boundary"
+        );
+    }
+
+    for required in [
+        "WeakRef {\n        target: Box<Value>,\n        callback: Option<Box<Value>>,\n        identity: Rc<()>,",
+        "WeakProxy {\n        target: Box<Value>,\n        callable: bool,\n        identity: Rc<()>,",
+        "Value::WeakRef { identity, .. }",
+        "Value::WeakProxy { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps weakref identity implementation must contain `{required}`"
         );
     }
 }

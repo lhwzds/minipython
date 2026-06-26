@@ -660,6 +660,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset`,
   `cpython_json_dumps_default_hook_mappingview_identity_diff_subset`,
   `cpython_json_dumps_default_hook_bytesio_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_weakref_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_partialmethod_bound_identity_diff_subset`,
@@ -1198,6 +1199,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_mappingview_identity_subset`,
   `cpython_json_dumps_default_hook_bytesio_identity_diff_subset` /
   `cpython_json_dumps_default_hook_bytesio_identity_subset`,
+  `cpython_json_dumps_default_hook_weakref_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_weakref_identity_subset`,
   `cpython_json_dumps_default_hook_partial_identity_diff_subset` /
   `cpython_json_dumps_default_hook_partial_identity_subset`,
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset` /
@@ -1264,7 +1267,7 @@ Recent runtime migration notes:
   CPython-style non-callable hook `TypeError` text, returned-self and
   returned-container circular detection, `check_circular=False` recursion
   classification, shared unsupported bytes-like and set/frozenset replacement
-  circular detection,
+  circular detection, shared unsupported weakref replacement circular detection without treating fresh callback-bound weakrefs or proxies as circular,
   and fresh unsupported replacement recursion as a Python-level
   `RecursionError`,
   `separators=None` preserving indent's default item-separator behavior,

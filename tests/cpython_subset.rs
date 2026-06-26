@@ -37345,6 +37345,62 @@ print('fresh-bytesio-progress-unchecked', json.dumps(object(), default=hook, che
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_weakref_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+import weakref
+
+class C:
+    pass
+
+obj = C()
+shared_ref = weakref.ref(obj, lambda wr: None)
+shared_proxy = weakref.proxy(obj, lambda wr: None)
+
+def show_case(label, shared, fresh_factory):
+    print('shape', label, type(shared).__name__, callable(shared))
+    try:
+        json.dumps(object(), default=lambda obj: shared)
+    except Exception as error:
+        print(label + '-shared-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return fresh_factory()
+        return label + '-fresh-ok'
+    print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))
+    try:
+        json.dumps(object(), default=lambda obj: shared, check_circular=False)
+    except Exception as error:
+        print(label + '-shared-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+    calls = []
+    def hook2(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return fresh_factory()
+        return label + '-fresh-ok'
+    print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook2, check_circular=False), len(calls))
+
+show_case('weakref', shared_ref, lambda: weakref.ref(obj, lambda wr: None))
+show_case('weakproxy', shared_proxy, lambda: weakref.proxy(obj, lambda wr: None))"#,
+        &[
+            "shape weakref ReferenceType True",
+            "weakref-shared-default ValueError True True False",
+            "weakref-fresh-progress \"weakref-fresh-ok\" 3",
+            "weakref-shared-default-unchecked RecursionError True",
+            "weakref-fresh-progress-unchecked \"weakref-fresh-ok\" 3",
+            "shape weakproxy ProxyType False",
+            "weakproxy-shared-default ValueError True True False",
+            "weakproxy-fresh-progress \"weakproxy-fresh-ok\" 3",
+            "weakproxy-shared-default-unchecked RecursionError True",
+            "weakproxy-fresh-progress-unchecked \"weakproxy-fresh-ok\" 3",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_subset() {
     assert_output(
         r#"import functools

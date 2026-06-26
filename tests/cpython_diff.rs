@@ -3105,6 +3105,51 @@ print('fresh-bytesio-progress-unchecked', json.dumps(object(), default=hook, che
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_weakref_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook weakref identity subset",
+        name: "json-dumps-default-hook-weakref-identity",
+        source: r#"import json
+import weakref
+
+class C:
+    pass
+
+obj = C()
+shared_ref = weakref.ref(obj, lambda wr: None)
+shared_proxy = weakref.proxy(obj, lambda wr: None)
+
+def show_case(label, shared, fresh_factory):
+    print('shape', label, type(shared).__name__, callable(shared))
+    try:
+        json.dumps(object(), default=lambda obj: shared)
+    except Exception as error:
+        print(label + '-shared-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return fresh_factory()
+        return label + '-fresh-ok'
+    print(label + '-fresh-progress', json.dumps(object(), default=hook), len(calls))
+    try:
+        json.dumps(object(), default=lambda obj: shared, check_circular=False)
+    except Exception as error:
+        print(label + '-shared-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+    calls = []
+    def hook2(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return fresh_factory()
+        return label + '-fresh-ok'
+    print(label + '-fresh-progress-unchecked', json.dumps(object(), default=hook2, check_circular=False), len(calls))
+
+show_case('weakref', shared_ref, lambda: weakref.ref(obj, lambda wr: None))
+show_case('weakproxy', shared_proxy, lambda: weakref.proxy(obj, lambda wr: None))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook functools.partial identity subset",
