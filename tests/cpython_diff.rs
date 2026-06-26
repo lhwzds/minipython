@@ -15379,6 +15379,8 @@ fn cpython_collections_counter_public_diff_subset() {
     // descriptor '__iter__' of 'dict' object needs an argument;
     // expected 0 arguments, got 1;
     // dict.__iter__() got multiple values for keyword argument 'x';
+    // descriptor '__len__' of 'dict' object needs an argument;
+    // dict.__len__() got multiple values for keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15465,6 +15467,18 @@ for label, expr in [
     ('iter-keyword-only', lambda: Counter.__iter__(self=Counter(a=2))),
     ('iter-bound-keyword', lambda: Counter(a=2).__iter__(self=Counter(a=3))),
     ('iter-duplicate-x-keyword', lambda: Counter.__iter__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('len-direct', Counter.__len__(Counter('aba')), Counter('aba').__len__())
+for label, expr in [
+    ('len-missing', lambda: Counter.__len__()),
+    ('len-extra', lambda: Counter.__len__(Counter(a=2), 1)),
+    ('len-keyword-only', lambda: Counter.__len__(self=Counter(a=2))),
+    ('len-bound-keyword', lambda: Counter(a=2).__len__(self=Counter(a=3))),
+    ('len-duplicate-x-keyword', lambda: Counter.__len__(x=1, **{'x': 2})),
 ]:
     try:
         expr()

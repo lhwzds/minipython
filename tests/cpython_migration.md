@@ -11069,7 +11069,8 @@ Completed in the CPython collections manifest expansion pass:
   behavior plus public `self` / `elem` binding diagnostics, direct
   `Counter.__setitem__()` insertion/replacement behavior and dict-style
   argument diagnostics, direct `Counter.__iter__()` key iteration and
-  dict-style argument diagnostics, direct
+  dict-style argument diagnostics, direct `Counter.__len__()` key-count
+  behavior and dict-style argument diagnostics, direct
   `Counter.__missing__()` zero-default behavior for Counter and non-Counter
   receivers plus public `self` / `key` binding diagnostics, the qualified
   `Counter.elements()` public arity diagnostic, `itertools.chain` return type,

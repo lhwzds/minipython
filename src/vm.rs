@@ -27774,10 +27774,40 @@ impl Vm {
                 }))
             }
             "__len__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__len__() expected 0 arguments, got {}",
+                        "TypeError: dict.__len__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__len__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: wrapper __len__() takes no keyword arguments".to_string()
+                    );
+                }
+                let [receiver] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: descriptor '__len__' of 'dict' object needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: expected 0 arguments, got {}",
                         method_arg_count(&args)
                     ));
                 };

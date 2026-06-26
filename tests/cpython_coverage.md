@@ -6122,6 +6122,7 @@ diagnostics,
 direct `Counter.__setitem__()` insertion/replacement behavior and dict-style
 argument diagnostics,
 direct `Counter.__iter__()` key iteration and dict-style argument diagnostics,
+direct `Counter.__len__()` key-count behavior and dict-style argument diagnostics,
 `Counter.__missing__()` zero defaults on Counter and non-Counter receivers plus
 public `self` / `key` binding diagnostics,
 `Counter.elements()` `itertools.chain` return type plus count `__index__`
