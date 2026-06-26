@@ -2388,6 +2388,40 @@ print('fresh-cached-property-progress-unchecked', json.dumps(object(), default=h
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook functools.cmp_to_key identity subset",
+        name: "json-dumps-default-hook-cmp-to-key-identity",
+        source: r#"import functools
+import json
+
+shared_key = functools.cmp_to_key(lambda left, right: 0)
+
+def fresh_key_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return functools.cmp_to_key(lambda left, right: 0)
+        return 'fresh-cmp-to-key-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_key)
+except Exception as error:
+    print('shared-cmp-to-key-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_key_then_value()
+print('fresh-cmp-to-key-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_key, check_circular=False)
+except Exception as error:
+    print('shared-cmp-to-key-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_key_then_value()
+print('fresh-cmp-to-key-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

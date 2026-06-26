@@ -8392,6 +8392,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_itemgetter_identity_subset",
             "cpython_json_dumps_default_hook_methodcaller_identity_subset",
             "cpython_json_dumps_default_hook_cached_property_identity_subset",
+            "cpython_json_dumps_default_hook_cmp_to_key_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8449,6 +8450,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_itemgetter_identity_diff_subset",
         "cpython_json_dumps_default_hook_methodcaller_identity_diff_subset",
         "cpython_json_dumps_default_hook_cached_property_identity_diff_subset",
+        "cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -11241,6 +11243,81 @@ fn json_dumps_default_hook_cached_property_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps cached_property identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_cmp_to_key_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_cmp_to_key_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook cmp_to_key identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook cmp_to_key identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook functools.cmp_to_key identity subset"),
+        "json dumps default hook cmp_to_key identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "shared_key = functools.cmp_to_key(lambda left, right: 0)",
+        "def fresh_key_then_value():",
+        "return functools.cmp_to_key(lambda left, right: 0)",
+        "return 'fresh-cmp-to-key-ok'",
+        "json.dumps(object(), default=lambda obj: shared_key)",
+        "print('fresh-cmp-to-key-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_key, check_circular=False)",
+        "print('fresh-cmp-to-key-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook cmp_to_key identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-cmp-to-key-default ValueError True True False\"",
+        "\"fresh-cmp-to-key-progress \\\"fresh-cmp-to-key-ok\\\" 2\"",
+        "\"shared-cmp-to-key-default-unchecked RecursionError True\"",
+        "\"fresh-cmp-to-key-progress-unchecked \\\"fresh-cmp-to-key-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook cmp_to_key identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.cmp_to_key callable replacement circular detection without treating fresh cmp_to_key callables as circular"
+            ),
+            "json docs must describe the cmp_to_key identity boundary"
+        );
+    }
+
+    for required in [
+        "CmpToKey {",
+        "identity: Rc<()>",
+        "Value::CmpToKey { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps cmp_to_key identity implementation must contain `{required}`"
         );
     }
 }
