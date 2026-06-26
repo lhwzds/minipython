@@ -8383,6 +8383,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_dumps_default_hook_bound_method_identity_subset",
             "cpython_json_dumps_default_hook_type_identity_subset",
+            "cpython_json_dumps_default_hook_exception_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8431,6 +8432,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_bound_method_identity_diff_subset",
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
+        "cpython_json_dumps_default_hook_exception_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10550,6 +10552,78 @@ fn json_dumps_default_hook_type_identity_has_focused_evidence() {
         assert!(
             VM_SOURCE.contains(required),
             "json dumps type identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_exception_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_exception_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_exception_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook exception identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook exception identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook exception identity subset"),
+        "json dumps default hook exception identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "shared_exception = ValueError('boom')",
+        "def fresh_exception_then_value():",
+        "return ValueError('fresh')",
+        "return 'fresh-exception-ok'",
+        "json.dumps(object(), default=lambda obj: shared_exception)",
+        "print('fresh-exception-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_exception, check_circular=False)",
+        "print('fresh-exception-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook exception identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-exception-default ValueError True True False\"",
+        "\"fresh-exception-progress \\\"fresh-exception-ok\\\" 2\"",
+        "\"shared-exception-default-unchecked RecursionError True\"",
+        "\"fresh-exception-progress-unchecked \\\"fresh-exception-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook exception identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported exception replacement circular detection without treating fresh exceptions as circular"
+            ),
+            "json docs must describe the exception identity boundary"
+        );
+    }
+
+    for required in [
+        "Value::Exception { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::Exception { identity, .. } => rc_plain_identity_bits(identity)",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps exception identity implementation must contain `{required}`"
         );
     }
 }
