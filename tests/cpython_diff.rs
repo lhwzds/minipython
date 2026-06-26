@@ -15372,6 +15372,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // collections.Counter.__repr__() got multiple values for keyword argument 'self';
     // descriptor '__str__' of 'object' object needs an argument;
     // object.__str__() got multiple values for keyword argument 'self';
+    // unbound method object.__format__() needs an argument;
+    // object.__format__() takes exactly one argument (2 given);
+    // object.__format__() got multiple values for keyword argument 'x';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15417,6 +15420,19 @@ for label, expr in [
     ('str-bound-keyword', lambda: Counter(a=2).__str__(self=Counter(a=3))),
     ('str-duplicate-self-keyword', lambda: Counter.__str__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('str-duplicate-x-keyword', lambda: Counter.__str__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+print('format-direct', Counter.__format__(Counter(a=2), ''), Counter(a=2).__format__(''))
+for label, expr in [
+    ('format-missing', lambda: Counter.__format__()),
+    ('format-missing-spec', lambda: Counter.__format__(Counter(a=2))),
+    ('format-extra', lambda: Counter.__format__(Counter(a=2), '', 1)),
+    ('format-keyword-only', lambda: Counter.__format__(self=Counter(a=2), format_spec='')),
+    ('format-bound-keyword', lambda: Counter(a=2).__format__(format_spec='')),
+    ('format-duplicate-x-keyword', lambda: Counter.__format__(x=1, **{'x': 2})),
 ]:
     try:
         expr()

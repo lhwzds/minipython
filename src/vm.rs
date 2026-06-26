@@ -28043,10 +28043,40 @@ impl Vm {
                 Ok(Value::String(repr_value_checked(receiver)?))
             }
             "__format__" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver, format_spec] = args.as_slice() else {
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
                     return Err(format!(
-                        "__format__() expected 1 argument, got {}",
+                        "TypeError: object.__format__() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method object.__format__() needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: object.__format__() takes no keyword arguments".to_string()
+                    );
+                }
+                let [receiver, format_spec] = args.as_slice() else {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method object.__format__() needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(format!(
+                        "TypeError: object.__format__() takes exactly one argument ({} given)",
                         method_arg_count(&args)
                     ));
                 };
