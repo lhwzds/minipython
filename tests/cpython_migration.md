@@ -11051,9 +11051,9 @@ Completed in the CPython collections manifest expansion pass:
   `cpython_collections_counter_mapping_mutation_subset`, splitting stable
   Counter `pop()`, `pop(default)`, missing-key `pop()` `KeyError.args[0]`,
   `pop()` descriptor-style argument diagnostics, `setdefault()`, `setdefault()` descriptor-style argument diagnostics,
-  `get()` descriptor-style argument diagnostics, `popitem()`, empty `popitem()` `KeyError(message)` string
-  display, `clear()`, `clear()` descriptor-style argument diagnostics, zero lookup after deletion behavior plus
-  `popitem()` descriptor-style argument diagnostics out of the broader Counter basics coverage.
+  `get()` descriptor-style argument diagnostics, `items()` descriptor-style argument diagnostics, `popitem()`,
+  empty `popitem()` `KeyError(message)` string display, `clear()`, `clear()` descriptor-style argument diagnostics,
+  zero lookup after deletion behavior plus `popitem()` descriptor-style argument diagnostics out of the broader Counter basics coverage.
 - Extended `cpython_collections_counter_public_diff_subset` and
   `cpython_collections_counter_public_subset` to cover supported
   `dir(Counter)` public method visibility and direct `Counter.__missing__()`

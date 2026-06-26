@@ -6137,10 +6137,10 @@ errors for non-integer objects before any `__index__` conversion.
 parity and runtime coverage for `pop()`, missing-key `pop(default)`, missing-key
 `pop()` preserving the original key in `KeyError.args[0]`, `pop()` descriptor-style argument diagnostics,
 `setdefault()`, `setdefault()` descriptor-style argument diagnostics,
-`get()` descriptor-style argument diagnostics, `popitem()`, empty `popitem()`
-preserving CPython's `KeyError(message)` string display, `clear()`,
-`clear()` descriptor-style argument diagnostics, zero lookup after deletion, and
-`popitem()` descriptor-style argument diagnostics.
+`get()` descriptor-style argument diagnostics, `items()` descriptor-style argument diagnostics,
+`popitem()`, empty `popitem()` preserving CPython's `KeyError(message)` string
+display, `clear()`, `clear()` descriptor-style argument diagnostics, zero lookup
+after deletion, and `popitem()` descriptor-style argument diagnostics.
 `cpython_collections_counter_comparison_diff_subset` and
 `cpython_collections_counter_comparison_subset` add method-level Counter
 coverage for `total()`, membership over stored zero/negative-count keys,
