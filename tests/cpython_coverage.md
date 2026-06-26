@@ -629,6 +629,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_separators_diff_subset`,
   `cpython_json_dumps_default_hook_diff_subset`,
   `cpython_json_dumps_default_hook_slice_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_simplenamespace_identity_diff_subset`,
   `cpython_json_dumps_default_hook_range_identity_diff_subset`,
   `cpython_json_dumps_default_hook_complex_identity_diff_subset`,
   `cpython_json_dumps_default_hook_function_identity_diff_subset`,
@@ -1122,6 +1123,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_subset`,
   `cpython_json_dumps_default_hook_slice_identity_diff_subset` /
   `cpython_json_dumps_default_hook_slice_identity_subset`,
+  `cpython_json_dumps_default_hook_simplenamespace_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_simplenamespace_identity_subset`,
   `cpython_json_dumps_default_hook_range_identity_diff_subset` /
   `cpython_json_dumps_default_hook_range_identity_subset`,
   `cpython_json_dumps_default_hook_complex_identity_diff_subset` /
@@ -1331,6 +1334,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_slice_identity_subset`, backed by
 `cpython_json_dumps_default_hook_slice_identity_diff_subset`, keeps shared unsupported slice replacement circular detection without treating fresh equal slices as circular.
+
+`cpython_json_dumps_default_hook_simplenamespace_identity_subset`, backed by
+`cpython_json_dumps_default_hook_simplenamespace_identity_diff_subset`, keeps shared unsupported SimpleNamespace replacement circular detection without treating fresh equal namespaces as circular.
 
 `cpython_json_dumps_default_hook_range_identity_subset`, backed by
 `cpython_json_dumps_default_hook_range_identity_diff_subset`, keeps shared unsupported range replacement circular detection without treating fresh equal ranges as circular.

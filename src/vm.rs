@@ -62657,6 +62657,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::Slice { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::SimpleNamespace { fields } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(fields) as usize))
+        }
         Value::Set(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
         Value::FrozenSet(items) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(items) as usize)),
         Value::UserList { data, .. } => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(data) as usize)),

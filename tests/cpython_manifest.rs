@@ -8379,6 +8379,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_float_spelling_subset",
             "cpython_json_dumps_default_hook_subset",
             "cpython_json_dumps_default_hook_slice_identity_subset",
+            "cpython_json_dumps_default_hook_simplenamespace_identity_subset",
             "cpython_json_dumps_default_hook_range_identity_subset",
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
@@ -8454,6 +8455,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_float_spelling_diff_subset",
         "cpython_json_dumps_default_hook_diff_subset",
         "cpython_json_dumps_default_hook_slice_identity_diff_subset",
+        "cpython_json_dumps_default_hook_simplenamespace_identity_diff_subset",
         "cpython_json_dumps_default_hook_range_identity_diff_subset",
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
@@ -10314,6 +10316,83 @@ fn json_dumps_default_hook_slice_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "slice identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_simplenamespace_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_simplenamespace_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_simplenamespace_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook SimpleNamespace identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook SimpleNamespace identity runtime subset evidence must exist"
+    );
+
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook SimpleNamespace identity subset"),
+        "json dumps default hook SimpleNamespace identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "from types import SimpleNamespace",
+        "shared = SimpleNamespace(x=1)",
+        "def fresh_namespace_then_value():",
+        "return SimpleNamespace(x=1)",
+        "return 'fresh-namespace-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-namespace-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-namespace-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook SimpleNamespace identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind SimpleNamespace False\"",
+        "\"shared-namespace-default ValueError True True False\"",
+        "\"fresh-namespace-progress \\\"fresh-namespace-ok\\\" 2\"",
+        "\"shared-namespace-default-unchecked RecursionError True\"",
+        "\"fresh-namespace-progress-unchecked \\\"fresh-namespace-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook SimpleNamespace identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported SimpleNamespace replacement circular detection without treating fresh equal namespaces as circular"
+            ),
+            "json docs must describe the SimpleNamespace identity boundary"
+        );
+    }
+
+    for required in [
+        "SimpleNamespace {",
+        "fields: DictRef",
+        "Value::SimpleNamespace { fields }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(fields) as usize))",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "SimpleNamespace identity implementation must contain `{required}`"
         );
     }
 }

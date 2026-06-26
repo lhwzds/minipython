@@ -36004,6 +36004,47 @@ print('fresh-slice-progress-unchecked', json.dumps(object(), default=hook, check
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_simplenamespace_identity_subset() {
+    assert_output_with_stack(
+        r#"from types import SimpleNamespace
+import json
+
+shared = SimpleNamespace(x=1)
+
+def fresh_namespace_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return SimpleNamespace(x=1)
+        return 'fresh-namespace-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-namespace-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_namespace_then_value()
+print('fresh-namespace-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-namespace-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_namespace_then_value()
+print('fresh-namespace-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind SimpleNamespace False",
+            "shared-namespace-default ValueError True True False",
+            "fresh-namespace-progress \"fresh-namespace-ok\" 2",
+            "shared-namespace-default-unchecked RecursionError True",
+            "fresh-namespace-progress-unchecked \"fresh-namespace-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_range_identity_subset() {
     assert_output(
         r#"import json
