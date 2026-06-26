@@ -29583,7 +29583,19 @@ impl Vm {
                 }
                 Ok(left)
             }
-            left => self.bit_or_values(left, right),
+            left => {
+                let original_left = left.clone();
+                let original_right = right.clone();
+                self.bit_or_values(left, right).map_err(|message| {
+                    if message
+                        == unsupported_binary_operand_message("|", &original_left, &original_right)
+                    {
+                        unsupported_binary_operand_message("|=", &original_left, &original_right)
+                    } else {
+                        message
+                    }
+                })
+            }
         }
     }
 
