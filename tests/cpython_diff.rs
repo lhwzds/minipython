@@ -1451,6 +1451,52 @@ except Exception as error:
 }
 
 #[test]
+fn cpython_json_dumps_counter_subclass_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps Counter subclass mapping subset",
+        name: "json-dumps-counter-subclass",
+        source: r#"import json
+from collections import Counter
+
+class C(Counter):
+    pass
+class Items(Counter):
+    def items(self):
+        print('items-called')
+        return [('z', 3), ('a', 1)]
+class EmptyItemsBoom(Counter):
+    def items(self):
+        raise RuntimeError('items should not be called')
+class BadItems(Counter):
+    def items(self):
+        return [[1, 2]]
+class BadItemsLen(Counter):
+    def items(self):
+        return [('a', 1, 2)]
+class BadItemsNonIterable(Counter):
+    def items(self):
+        return 7
+
+basic = C('aba')
+print(type(basic).__name__, json.dumps(basic), json.dumps(basic, sort_keys=True))
+print(json.dumps({'nested': C({'b': 2, 'a': 1})}, sort_keys=True, separators=(',', ':')))
+print(json.dumps(Items({'ignored': 9}), sort_keys=True, separators=(',', ':')))
+print(json.dumps(EmptyItemsBoom()))
+cycle = C()
+cycle['self'] = cycle
+try:
+    json.dumps(cycle)
+except Exception as error:
+    print('cycle', type(error).__name__, isinstance(error, ValueError), 'Circular' in str(error))
+for value in [BadItems({'x': 1}), BadItemsLen({'x': 1}), BadItemsNonIterable({'x': 1})]:
+    try:
+        json.dumps(value)
+    except Exception as error:
+        print(type(value).__name__, type(error).__name__, str(error))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_ensure_ascii_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps ensure_ascii subset",

@@ -62554,6 +62554,10 @@ fn json_dumps_value_inner(
                 default_depth,
             )
         }
+        value if counter_subclass_entries(value).is_some() => {
+            let entries = json_dumps_counter_subclass_items(vm, value)?;
+            json_dumps_dict(vm, &entries, active, options, depth, default_depth)
+        }
         value
             if list_subclass_storage(value).is_some()
                 || tuple_subclass_items(value).is_some()
@@ -62646,6 +62650,12 @@ fn json_dumps_container_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         }
         Value::Dict(entries) | Value::OrderedDict(entries) | Value::Counter { entries } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(entries) as usize))
+        }
+        value if counter_subclass_entries(value).is_some() => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
+                &counter_subclass_entries(value)
+                    .expect("Counter subclass entries exist after guard"),
+            ) as usize))
         }
         value if list_subclass_storage(value).is_some() => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(
@@ -62822,6 +62832,23 @@ fn json_dumps_dict_subclass_items(
     value: &Value,
 ) -> Result<Vec<(Value, Value)>, String> {
     let storage = dict_subclass_entries(value).expect("dict subclass entries exist after guard");
+    json_dumps_mapping_subclass_items(vm, value, storage)
+}
+
+fn json_dumps_counter_subclass_items(
+    vm: &mut Vm,
+    value: &Value,
+) -> Result<Vec<(Value, Value)>, String> {
+    let storage =
+        counter_subclass_entries(value).expect("Counter subclass entries exist after guard");
+    json_dumps_mapping_subclass_items(vm, value, storage)
+}
+
+fn json_dumps_mapping_subclass_items(
+    vm: &mut Vm,
+    value: &Value,
+    storage: DictRef,
+) -> Result<Vec<(Value, Value)>, String> {
     if storage.borrow().entries.is_empty() {
         return Ok(Vec::new());
     }

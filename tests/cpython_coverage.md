@@ -620,6 +620,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_string_escape_diff_subset`,
   `cpython_json_dumps_key_coercion_diff_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset`,
+  `cpython_json_dumps_counter_subclass_diff_subset`,
   `cpython_json_dumps_sequence_subclass_iter_diff_subset`,
   `cpython_json_dumps_allow_nan_diff_subset`,
   `cpython_json_dumps_check_circular_diff_subset`,
@@ -1121,6 +1122,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_key_coercion_subset`,
   `cpython_json_dumps_ordered_dict_diff_subset` /
   `cpython_json_dumps_ordered_dict_subset`,
+  `cpython_json_dumps_counter_subclass_diff_subset` /
+  `cpython_json_dumps_counter_subclass_subset`,
   `cpython_json_dumps_sequence_subclass_iter_diff_subset` /
   `cpython_json_dumps_sequence_subclass_iter_subset`,
   `cpython_json_dumps_allow_nan_diff_subset` /
@@ -1257,8 +1260,8 @@ Recent runtime migration notes:
   subclass `__iter__` returns, non-empty dict subclass containers through public
   `items()` with CPython's 2-tuple item requirement and non-iterable
   `items()` result TypeError text, CPython's
-  empty-dict-subclass `{}` fast path, `Counter` and `OrderedDict` mapping
-  containers, and namedtuples, standard string escapes,
+  empty-dict-subclass `{}` fast path, `Counter`, Counter subclass, and
+  `OrderedDict` mapping containers, and namedtuples, standard string escapes,
   paired UTF-16 surrogate escapes, `allow_nan=False` rejection of nested
   non-finite float values and keys, `check_circular` cycle-error behavior,
   `ensure_ascii=False` direct non-ASCII string/key rendering,
@@ -1330,6 +1333,13 @@ supported pure-memory `collections.OrderedDict` surface as a dict-style mapping
 container, including insertion-order output, `sort_keys=True`, nested
 OrderedDict values, `loads()` round trips, and circular-reference detection,
 without expanding into arbitrary mapping-protocol or custom encoder support.
+`cpython_json_dumps_counter_subclass_subset`, backed by
+`cpython_json_dumps_counter_subclass_diff_subset`, keeps `dumps()` treating
+supported `collections.Counter` subclasses as dict-style mapping containers,
+including normal count output, nested values, subclass `items()` dispatch for
+non-empty Counters, the empty fast path, circular-reference detection, and
+CPython's malformed `items()` result errors, without expanding into arbitrary
+mapping-protocol or custom encoder support.
 
 `cpython_json_dumps_ensure_ascii_subset`, backed by
 `cpython_json_dumps_ensure_ascii_diff_subset`, keeps `ensure_ascii` string and key rendering

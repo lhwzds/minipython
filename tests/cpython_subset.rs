@@ -35708,6 +35708,24 @@ fn cpython_json_dumps_ordered_dict_subset() {
 }
 
 #[test]
+fn cpython_json_dumps_counter_subclass_subset() {
+    assert_output(
+        "import json\nfrom collections import Counter\nclass C(Counter):\n    pass\nclass Items(Counter):\n    def items(self):\n        print('items-called')\n        return [('z', 3), ('a', 1)]\nclass EmptyItemsBoom(Counter):\n    def items(self):\n        raise RuntimeError('items should not be called')\nclass BadItems(Counter):\n    def items(self):\n        return [[1, 2]]\nclass BadItemsLen(Counter):\n    def items(self):\n        return [('a', 1, 2)]\nclass BadItemsNonIterable(Counter):\n    def items(self):\n        return 7\nbasic = C('aba')\nprint(type(basic).__name__, json.dumps(basic), json.dumps(basic, sort_keys=True))\nprint(json.dumps({'nested': C({'b': 2, 'a': 1})}, sort_keys=True, separators=(',', ':')))\nprint(json.dumps(Items({'ignored': 9}), sort_keys=True, separators=(',', ':')))\nprint(json.dumps(EmptyItemsBoom()))\ncycle = C()\ncycle['self'] = cycle\ntry:\n    json.dumps(cycle)\nexcept Exception as error:\n    print('cycle', type(error).__name__, isinstance(error, ValueError), 'Circular' in str(error))\nfor value in [BadItems({'x': 1}), BadItemsLen({'x': 1}), BadItemsNonIterable({'x': 1})]:\n    try:\n        json.dumps(value)\n    except Exception as error:\n        print(type(value).__name__, type(error).__name__, str(error))",
+        &[
+            "C {\"a\": 2, \"b\": 1} {\"a\": 2, \"b\": 1}",
+            "{\"nested\":{\"a\":1,\"b\":2}}",
+            "items-called",
+            "{\"a\":1,\"z\":3}",
+            "{}",
+            "cycle ValueError True True",
+            "BadItems ValueError items must return 2-tuples",
+            "BadItemsLen ValueError items must return 2-tuples",
+            "BadItemsNonIterable TypeError BadItemsNonIterable.items() returned a non-iterable (type int)",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_ensure_ascii_subset() {
     assert_output(
         "import json\nfor ensure_ascii in [False, 0, True, 1]:\n    print(json.dumps('é𝄠', ensure_ascii=ensure_ascii))\n    print(json.dumps({'é': ['𝄠']}, ensure_ascii=ensure_ascii))",
