@@ -82471,7 +82471,19 @@ fn in_place_add_values(left: Value, right: Value) -> Result<Value, String> {
             bytes.borrow_mut().extend(extension);
             Ok(Value::ByteArray(bytes))
         }
-        left => add_values(left, right),
+        left => {
+            let original_left = left.clone();
+            let original_right = right.clone();
+            add_values(left, right).map_err(|message| {
+                if message
+                    == unsupported_binary_operand_message("+", &original_left, &original_right)
+                {
+                    unsupported_binary_operand_message("+=", &original_left, &original_right)
+                } else {
+                    message
+                }
+            })
+        }
     }
 }
 

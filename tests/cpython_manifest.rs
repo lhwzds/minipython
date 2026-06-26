@@ -22443,6 +22443,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "'int' object is not callable",
+        "value += 'x'",
+        "unsupported operand type(s) for +=: 'int' and 'str'",
         "value |= 'x'",
         "unsupported operand type(s) for |=: 'int' and 'str'",
         "value &= 'x'",
@@ -22481,6 +22483,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "for item in 1",
         "1(2)",
         "'int' object is not callable",
+        "value += 'x'",
+        "unsupported operand type(s) for +=: 'int' and 'str'",
         "value |= 'x'",
         "unsupported operand type(s) for |=: 'int' and 'str'",
         "value &= 'x'",
@@ -22514,6 +22518,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("generator.throw()")
                 && document.contains("coroutine.throw()")
                 && document.contains("async_generator.athrow()")
+                && document.contains("catchable in-place add")
                 && document.contains("catchable in-place bit-or")
                 && document.contains("catchable in-place bit-and")
                 && document.contains("BaseException.with_traceback()"),
