@@ -62580,6 +62580,7 @@ fn json_dumps_default_identity(value: &Value) -> Option<usize> {
         Value::FrozenSet(items) => Some(Rc::as_ptr(items) as usize),
         Value::Range { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         Value::Complex { identity, .. } => Some(Rc::as_ptr(identity) as usize),
+        Value::Function { identity, .. } => Some(Rc::as_ptr(identity) as usize),
         _ => json_dumps_container_identity(value),
     }
 }

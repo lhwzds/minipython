@@ -1959,6 +1959,35 @@ for label, hook in [
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_function_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook function identity subset",
+        name: "json-dumps-default-hook-function-identity",
+        source: r#"import json
+
+def shared_function():
+    return 1
+
+for label, hook in [
+    ('shared-function-default', lambda obj: shared_function),
+    ('fresh-function-default', lambda obj: (lambda: 1)),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-function-default-unchecked', lambda obj: shared_function),
+    ('fresh-function-default-unchecked', lambda obj: (lambda: 1)),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

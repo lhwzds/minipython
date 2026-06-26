@@ -8380,6 +8380,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_subset",
             "cpython_json_dumps_default_hook_range_identity_subset",
             "cpython_json_dumps_default_hook_complex_identity_subset",
+            "cpython_json_dumps_default_hook_function_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8425,6 +8426,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_diff_subset",
         "cpython_json_dumps_default_hook_range_identity_diff_subset",
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
+        "cpython_json_dumps_default_hook_function_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10317,6 +10319,75 @@ fn json_dumps_default_hook_complex_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "complex identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_function_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_function_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_function_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook function identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook function identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook function identity subset"),
+        "json dumps default hook function identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "def shared_function():",
+        "('shared-function-default', lambda obj: shared_function)",
+        "('fresh-function-default', lambda obj: (lambda: 1))",
+        "('shared-function-default-unchecked', lambda obj: shared_function)",
+        "('fresh-function-default-unchecked', lambda obj: (lambda: 1))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook function identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-function-default ValueError True True False\"",
+        "\"fresh-function-default RecursionError False False True\"",
+        "\"shared-function-default-unchecked RecursionError True\"",
+        "\"fresh-function-default-unchecked RecursionError True\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook function identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported Python function replacement circular detection without treating fresh functions as circular"
+            ),
+            "json docs must describe the function identity boundary"
+        );
+    }
+
+    for required in [
+        "Function {",
+        "identity: Rc<()>",
+        "Value::Function { identity, .. } => Some(Rc::as_ptr(identity) as usize)",
+        "Value::Function { identity, .. } => rc_plain_identity_bits(identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "function identity implementation must contain `{required}`"
         );
     }
 }
