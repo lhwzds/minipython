@@ -2140,6 +2140,40 @@ print('fresh-code-progress-unchecked', json.dumps(object(), default=hook, check_
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_partial_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook functools.partial identity subset",
+        name: "json-dumps-default-hook-partial-identity",
+        source: r#"import functools
+import json
+
+shared_partial = functools.partial(int, '1')
+
+def fresh_partial_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return functools.partial(int, '2')
+        return 'fresh-partial-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_partial)
+except Exception as error:
+    print('shared-partial-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_partial_then_value()
+print('fresh-partial-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_partial, check_circular=False)
+except Exception as error:
+    print('shared-partial-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_partial_then_value()
+print('fresh-partial-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

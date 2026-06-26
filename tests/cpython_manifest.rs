@@ -8385,6 +8385,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_type_identity_subset",
             "cpython_json_dumps_default_hook_exception_identity_subset",
             "cpython_json_dumps_default_hook_code_identity_subset",
+            "cpython_json_dumps_default_hook_partial_identity_subset",
             "cpython_json_loads_number_and_whitespace_subset",
             "cpython_json_loads_int_digit_limit_subset",
             "cpython_json_loads_top_level_scalar_and_empty_container_subset",
@@ -8435,6 +8436,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_type_identity_diff_subset",
         "cpython_json_dumps_default_hook_exception_identity_diff_subset",
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
+        "cpython_json_dumps_default_hook_partial_identity_diff_subset",
         "cpython_json_loads_number_and_whitespace_diff_subset",
         "cpython_json_loads_int_digit_limit_diff_subset",
         "cpython_json_loads_top_level_scalar_and_empty_container_diff_subset",
@@ -10698,6 +10700,81 @@ fn json_dumps_default_hook_code_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps code identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_partial_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_partial_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_partial_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook partial identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook partial identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook functools.partial identity subset"),
+        "json dumps default hook partial identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "shared_partial = functools.partial(int, '1')",
+        "def fresh_partial_then_value():",
+        "return functools.partial(int, '2')",
+        "return 'fresh-partial-ok'",
+        "json.dumps(object(), default=lambda obj: shared_partial)",
+        "print('fresh-partial-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_partial, check_circular=False)",
+        "print('fresh-partial-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook partial identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shared-partial-default ValueError True True False\"",
+        "\"fresh-partial-progress \\\"fresh-partial-ok\\\" 2\"",
+        "\"shared-partial-default-unchecked RecursionError True\"",
+        "\"fresh-partial-progress-unchecked \\\"fresh-partial-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook partial identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.partial replacement circular detection without treating fresh partial objects as circular"
+            ),
+            "json docs must describe the partial identity boundary"
+        );
+    }
+
+    for required in [
+        "Partial {",
+        "identity: Rc<()>",
+        "Value::Partial { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps partial identity implementation must contain `{required}`"
         );
     }
 }

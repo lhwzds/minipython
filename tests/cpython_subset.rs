@@ -36233,6 +36233,44 @@ print('fresh-code-progress-unchecked', json.dumps(object(), default=hook, check_
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_partial_identity_subset() {
+    assert_output(
+        r#"import functools
+import json
+
+shared_partial = functools.partial(int, '1')
+
+def fresh_partial_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return functools.partial(int, '2')
+        return 'fresh-partial-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_partial)
+except Exception as error:
+    print('shared-partial-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_partial_then_value()
+print('fresh-partial-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_partial, check_circular=False)
+except Exception as error:
+    print('shared-partial-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_partial_then_value()
+print('fresh-partial-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shared-partial-default ValueError True True False",
+            "fresh-partial-progress \"fresh-partial-ok\" 2",
+            "shared-partial-default-unchecked RecursionError True",
+            "fresh-partial-progress-unchecked \"fresh-partial-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_subset() {
     assert_output(
         "import json\nprint(json.loads(' \\t\\r\\n[1, 2, 3]\\n '))\nvalue = json.loads('{\"negzero\": -0, \"negfloat\": -0.0, \"exp\": 6.02e+23, \"small\": 1E-2}')\nprint(value['negzero'], type(value['negzero']).__name__)\nprint(value['negfloat'], type(value['negfloat']).__name__)\nprint(value['exp'])\nprint(value['small'])\nfor label, source in [('dash', '-'), ('dash-dot', '-.1'), ('dash-nan', '-NaN'), ('dot-tail', '1.'), ('exp-tail', '1e'), ('signed-exp-tail', '1e+')]:\n    try:\n        json.loads(source)\n    except ValueError as error:\n        message = str(error)\n        print(label, 'Expecting value' in message, 'Extra data' in message, 'Invalid number' in message)",
