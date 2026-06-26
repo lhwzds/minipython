@@ -22142,11 +22142,13 @@ impl Vm {
                 state: state.clone(),
                 send: Box::new(Value::None),
                 default: None,
+                identity: Rc::new(()),
             }),
             [Value::AsyncGenerator(state), default] => Ok(Value::AsyncGeneratorNext {
                 state: state.clone(),
                 send: Box::new(Value::None),
                 default: Some(Box::new(default.clone())),
+                identity: Rc::new(()),
             }),
             [value] => {
                 let anext = load_attribute(value.clone(), "__anext__")?;
@@ -33613,6 +33615,7 @@ impl Vm {
                 state,
                 send,
                 default,
+                ..
             } => self
                 .await_async_generator_next(state, *send, default.map(|value| *value))
                 .map(AwaitAdvance::Complete),
@@ -34795,6 +34798,7 @@ impl Vm {
                 state: state.clone(),
                 send: Box::new(Value::None),
                 default: None,
+                identity: Rc::new(()),
             }),
             value => Err(format!("{value} is not an async generator")),
         }
@@ -34813,6 +34817,7 @@ impl Vm {
                 state: state.clone(),
                 send: Box::new(value.clone()),
                 default: None,
+                identity: Rc::new(()),
             }),
             value => Err(format!("{value} is not an async generator")),
         }
@@ -62731,6 +62736,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::CoroutineAwait(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::Generator(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::AsyncGenerator(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
+        Value::AsyncGeneratorNext { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::Iterator(state) => Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize)),
         Value::Partial { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
@@ -77883,7 +77891,7 @@ fn identity_bits(value: &Value) -> u64 {
         Value::Coroutine(state) => rc_identity_bits(state),
         Value::CoroutineAwait(state) => rc_identity_bits(state),
         Value::AsyncGenerator(state) => rc_identity_bits(state),
-        Value::AsyncGeneratorNext { state, .. } => rc_identity_bits(state),
+        Value::AsyncGeneratorNext { identity, .. } => rc_plain_identity_bits(identity),
         Value::AsyncGeneratorThrow { state, .. } => rc_identity_bits(state),
         Value::AsyncGeneratorClose(state) => rc_identity_bits(state),
         Value::Iterator(value) => rc_identity_bits(value),
@@ -78085,16 +78093,9 @@ fn hash_value_into(value: &Value, hasher: &mut DefaultHasher) -> Result<(), Stri
             hash_value_into(value, hasher)?;
         }
         Value::AsyncGenerator(state) => hash_rc_identity("async_generator", state, hasher),
-        Value::AsyncGeneratorNext {
-            state,
-            send,
-            default,
-        } => {
-            hash_rc_identity("async_generator_asend", state, hasher);
-            hash_value_into(send, hasher)?;
-            if let Some(default) = default {
-                hash_value_into(default, hasher)?;
-            }
+        Value::AsyncGeneratorNext { identity, .. } => {
+            "async_generator_asend".hash(hasher);
+            rc_plain_identity_bits(identity).hash(hasher);
         }
         Value::AsyncGeneratorThrow { state, exception } => {
             hash_rc_identity("async_generator_athrow", state, hasher);

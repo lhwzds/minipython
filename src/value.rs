@@ -943,6 +943,7 @@ pub enum Value {
         state: Rc<RefCell<GeneratorState>>,
         send: Box<Value>,
         default: Option<Box<Value>>,
+        identity: Rc<()>,
     },
     AsyncGeneratorThrow {
         state: Rc<RefCell<GeneratorState>>,
@@ -3506,20 +3507,14 @@ impl PartialEq for Value {
             (Value::AsyncGenerator(left), Value::AsyncGenerator(right)) => Rc::ptr_eq(left, right),
             (
                 Value::AsyncGeneratorNext {
-                    state: left_state,
-                    send: left_send,
-                    default: left_default,
+                    identity: left_identity,
+                    ..
                 },
                 Value::AsyncGeneratorNext {
-                    state: right_state,
-                    send: right_send,
-                    default: right_default,
+                    identity: right_identity,
+                    ..
                 },
-            ) => {
-                Rc::ptr_eq(left_state, right_state)
-                    && left_send == right_send
-                    && left_default == right_default
-            }
+            ) => Rc::ptr_eq(left_identity, right_identity),
             (
                 Value::AsyncGeneratorThrow {
                     state: left_state,

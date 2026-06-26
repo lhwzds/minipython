@@ -37071,6 +37071,52 @@ print('fresh-async-generator-progress-unchecked', json.dumps(object(), default=h
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_async_generator_asend_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning)
+
+async def agen():
+    yield 'item'
+
+shared_gen = agen()
+shared = shared_gen.asend(None)
+
+def fresh_asend_same_generator_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) <= 2:
+            return shared_gen.asend(None)
+        return 'fresh-asend-same-generator-ok'
+    return hook, calls
+
+print('shape', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-asend-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_asend_same_generator_then_value()
+print('fresh-asend-same-generator-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-asend-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_asend_same_generator_then_value()
+print('fresh-asend-same-generator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shape async_generator_asend False",
+            "shared-asend-default ValueError True True False",
+            "fresh-asend-same-generator-progress \"fresh-asend-same-generator-ok\" 3",
+            "shared-asend-default-unchecked RecursionError True",
+            "fresh-asend-same-generator-progress-unchecked \"fresh-asend-same-generator-ok\" 3",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_list_iterator_identity_subset() {
     assert_output(
         r#"import json

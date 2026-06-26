@@ -654,6 +654,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset`,
   `cpython_json_dumps_default_hook_generator_identity_diff_subset`,
   `cpython_json_dumps_default_hook_async_generator_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_async_generator_asend_identity_diff_subset`,
   `cpython_json_dumps_default_hook_list_iterator_identity_diff_subset`,
   `cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset`,
   `cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset`,
@@ -1185,6 +1186,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_generator_identity_subset`,
   `cpython_json_dumps_default_hook_async_generator_identity_diff_subset` /
   `cpython_json_dumps_default_hook_async_generator_identity_subset`,
+  `cpython_json_dumps_default_hook_async_generator_asend_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_async_generator_asend_identity_subset`,
   `cpython_json_dumps_default_hook_list_iterator_identity_diff_subset` /
   `cpython_json_dumps_default_hook_list_iterator_identity_subset`,
   `cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset` /
@@ -1445,6 +1448,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_async_generator_identity_subset`, backed by
 `cpython_json_dumps_default_hook_async_generator_identity_diff_subset`, keeps shared unsupported async generator replacement circular detection without treating fresh async generators as circular.
+
+`cpython_json_dumps_default_hook_async_generator_asend_identity_subset`, backed by
+`cpython_json_dumps_default_hook_async_generator_asend_identity_diff_subset`, keeps shared unsupported async_generator_asend replacement circular detection without treating fresh asend objects from the same async generator as circular.
 
 `cpython_json_dumps_default_hook_list_iterator_identity_subset`, backed by
 `cpython_json_dumps_default_hook_list_iterator_identity_diff_subset`, keeps shared unsupported list iterator replacement circular detection without treating fresh iterators as circular.

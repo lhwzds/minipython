@@ -8404,6 +8404,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_coroutine_wrapper_identity_subset",
             "cpython_json_dumps_default_hook_generator_identity_subset",
             "cpython_json_dumps_default_hook_async_generator_identity_subset",
+            "cpython_json_dumps_default_hook_async_generator_asend_identity_subset",
             "cpython_json_dumps_default_hook_list_iterator_identity_subset",
             "cpython_json_dumps_default_hook_mappingproxy_identity_subset",
             "cpython_json_dumps_default_hook_custom_mappingproxy_identity_subset",
@@ -8492,6 +8493,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_coroutine_wrapper_identity_diff_subset",
         "cpython_json_dumps_default_hook_generator_identity_diff_subset",
         "cpython_json_dumps_default_hook_async_generator_identity_diff_subset",
+        "cpython_json_dumps_default_hook_async_generator_asend_identity_diff_subset",
         "cpython_json_dumps_default_hook_list_iterator_identity_diff_subset",
         "cpython_json_dumps_default_hook_mappingproxy_identity_diff_subset",
         "cpython_json_dumps_default_hook_custom_mappingproxy_identity_diff_subset",
@@ -12283,6 +12285,88 @@ fn json_dumps_default_hook_async_generator_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps async generator identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_async_generator_asend_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_async_generator_asend_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_async_generator_asend_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook async_generator_asend identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook async_generator_asend identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF
+            .contains("Lib/json public dumps default hook async_generator_asend identity subset"),
+        "json dumps default hook async_generator_asend identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import warnings",
+        "warnings.filterwarnings('ignore', category=RuntimeWarning)",
+        "async def agen():",
+        "yield 'item'",
+        "shared_gen = agen()",
+        "shared = shared_gen.asend(None)",
+        "def fresh_asend_same_generator_then_value():",
+        "return shared_gen.asend(None)",
+        "return 'fresh-asend-same-generator-ok'",
+        "print('shape', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-asend-same-generator-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-asend-same-generator-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook async_generator_asend identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"shape async_generator_asend False\"",
+        "\"shared-asend-default ValueError True True False\"",
+        "\"fresh-asend-same-generator-progress \\\"fresh-asend-same-generator-ok\\\" 3\"",
+        "\"shared-asend-default-unchecked RecursionError True\"",
+        "\"fresh-asend-same-generator-progress-unchecked \\\"fresh-asend-same-generator-ok\\\" 3\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook async_generator_asend identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported async_generator_asend replacement circular detection without treating fresh asend objects from the same async generator as circular"
+            ),
+            "json docs must describe the async_generator_asend identity boundary"
+        );
+    }
+
+    for required in [
+        "AsyncGeneratorNext {\n        state: Rc<RefCell<GeneratorState>>,\n        send: Box<Value>,\n        default: Option<Box<Value>>,\n        identity: Rc<()>,",
+        "Value::AsyncGeneratorNext { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::AsyncGeneratorNext { identity, .. } => rc_plain_identity_bits(identity)",
+        "identity: Rc::new(())",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps async_generator_asend identity implementation must contain `{required}`"
         );
     }
 }
