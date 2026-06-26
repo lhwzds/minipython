@@ -2659,6 +2659,47 @@ print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_coroutine_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook coroutine identity subset",
+        name: "json-dumps-default-hook-coroutine-identity",
+        source: r#"import json
+
+async def coro(value):
+    return value
+
+shared = coro(1)
+
+def fresh_coroutine_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return coro(1)
+        obj.close()
+        return 'fresh-coroutine-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-coroutine-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+shared.close()
+hook, calls = fresh_coroutine_then_value()
+print('fresh-coroutine-progress', json.dumps(object(), default=hook), len(calls))
+shared = coro(1)
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-coroutine-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+shared.close()
+hook, calls = fresh_coroutine_then_value()
+print('fresh-coroutine-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+    });
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_generator_identity_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public dumps default hook generator identity subset",

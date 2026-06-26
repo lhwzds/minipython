@@ -36839,6 +36839,53 @@ print('fresh-traceback-progress-unchecked', json.dumps(object(), default=hook, c
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_coroutine_identity_subset() {
+    assert_output_with_stack(
+        r#"import json
+
+async def coro(value):
+    return value
+
+shared = coro(1)
+
+def fresh_coroutine_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return coro(1)
+        obj.close()
+        return 'fresh-coroutine-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-coroutine-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+shared.close()
+hook, calls = fresh_coroutine_then_value()
+print('fresh-coroutine-progress', json.dumps(object(), default=hook), len(calls))
+shared = coro(1)
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-coroutine-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+shared.close()
+hook, calls = fresh_coroutine_then_value()
+print('fresh-coroutine-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind coroutine False",
+            "shared-coroutine-default ValueError True True False",
+            "fresh-coroutine-progress \"fresh-coroutine-ok\" 2",
+            "shared-coroutine-default-unchecked RecursionError True",
+            "fresh-coroutine-progress-unchecked \"fresh-coroutine-ok\" 2",
+        ],
+        16 * 1024 * 1024,
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_generator_identity_subset() {
     assert_output_with_stack(
         r#"import json

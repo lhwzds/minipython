@@ -8399,6 +8399,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_code_identity_subset",
             "cpython_json_dumps_default_hook_cell_identity_subset",
             "cpython_json_dumps_default_hook_traceback_identity_subset",
+            "cpython_json_dumps_default_hook_coroutine_identity_subset",
             "cpython_json_dumps_default_hook_generator_identity_subset",
             "cpython_json_dumps_default_hook_async_generator_identity_subset",
             "cpython_json_dumps_default_hook_partial_identity_subset",
@@ -8479,6 +8480,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_code_identity_diff_subset",
         "cpython_json_dumps_default_hook_cell_identity_diff_subset",
         "cpython_json_dumps_default_hook_traceback_identity_diff_subset",
+        "cpython_json_dumps_default_hook_coroutine_identity_diff_subset",
         "cpython_json_dumps_default_hook_generator_identity_diff_subset",
         "cpython_json_dumps_default_hook_async_generator_identity_diff_subset",
         "cpython_json_dumps_default_hook_partial_identity_diff_subset",
@@ -11868,6 +11870,85 @@ fn json_dumps_default_hook_traceback_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps traceback identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_coroutine_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_coroutine_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_coroutine_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook coroutine identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook coroutine identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains("Lib/json public dumps default hook coroutine identity subset"),
+        "json dumps default hook coroutine identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "async def coro(value):",
+        "return value",
+        "shared = coro(1)",
+        "def fresh_coroutine_then_value():",
+        "return coro(1)",
+        "obj.close()",
+        "return 'fresh-coroutine-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "shared.close()",
+        "print('fresh-coroutine-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-coroutine-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook coroutine identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind coroutine False\"",
+        "\"shared-coroutine-default ValueError True True False\"",
+        "\"fresh-coroutine-progress \\\"fresh-coroutine-ok\\\" 2\"",
+        "\"shared-coroutine-default-unchecked RecursionError True\"",
+        "\"fresh-coroutine-progress-unchecked \\\"fresh-coroutine-ok\\\" 2\"",
+        "assert_output_with_stack",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook coroutine identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported coroutine replacement circular detection without treating fresh coroutines as circular"
+            ),
+            "json docs must describe the coroutine identity boundary"
+        );
+    }
+
+    for required in [
+        "Coroutine(",
+        "Value::Coroutine(state)",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(state) as usize))",
+        "Value::Coroutine(state) => rc_identity_bits(state)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps coroutine identity implementation must contain `{required}`"
         );
     }
 }
