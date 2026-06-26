@@ -28008,13 +28008,44 @@ impl Vm {
                 }
             }
             "setdefault" => {
-                reject_method_keywords(name, &keywords)?;
-                let [receiver, key, rest @ ..] = args.as_slice() else {
-                    return Err("setdefault() expected a Counter receiver".to_string());
+                let mut duplicate_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
+                for (keyword, _) in &keywords {
+                    if seen_keywords.iter().any(|seen| seen == keyword) {
+                        duplicate_keyword.get_or_insert(keyword.clone());
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
+                }
+                if let Some(keyword) = duplicate_keyword {
+                    return Err(format!(
+                        "TypeError: dict.setdefault() got multiple values for keyword argument '{keyword}'"
+                    ));
+                }
+                if !keywords.is_empty() {
+                    if args.is_empty() {
+                        return Err(
+                            "TypeError: unbound method dict.setdefault() needs an argument"
+                                .to_string(),
+                        );
+                    }
+                    return Err(
+                        "TypeError: dict.setdefault() takes no keyword arguments".to_string()
+                    );
+                }
+                let Some((receiver, rest)) = args.split_first() else {
+                    return Err(
+                        "TypeError: unbound method dict.setdefault() needs an argument".to_string()
+                    );
+                };
+                let Some((key, rest)) = rest.split_first() else {
+                    return Err(
+                        "TypeError: setdefault expected at least 1 argument, got 0".to_string()
+                    );
                 };
                 if rest.len() > 1 {
                     return Err(format!(
-                        "setdefault() expected at most 2 arguments, got {}",
+                        "TypeError: setdefault expected at most 2 arguments, got {}",
                         rest.len() + 1
                     ));
                 }

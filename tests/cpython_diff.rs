@@ -15534,6 +15534,8 @@ fn cpython_collections_counter_mapping_mutation_diff_subset() {
     // dict.clear() got multiple values for keyword argument 'self';
     // unbound method dict.pop() needs an argument;
     // dict.pop() got multiple values for keyword argument 'key';
+    // unbound method dict.setdefault() needs an argument;
+    // dict.setdefault() got multiple values for keyword argument 'key';
     // unbound method dict.popitem() needs an argument;
     // dict.popitem() got multiple values for keyword argument 'self'
     assert_cpython_output_parity(&DiffCase {
@@ -15560,6 +15562,12 @@ for label, expr in [
     ('pop-self-keyword', lambda: Counter.pop(self=Counter(a=2), key='a')),
     ('pop-bound-keyword', lambda: Counter(a=2).pop(key='a')),
     ('pop-duplicate-key-keyword', lambda: Counter.pop(Counter(a=2), key='a', **{'key': 'b'})),
+    ('setdefault-missing-receiver', lambda: Counter.setdefault()),
+    ('setdefault-missing-key', lambda: Counter.setdefault(Counter(a=2))),
+    ('setdefault-extra', lambda: Counter.setdefault(Counter(a=2), 'a', 1, 2)),
+    ('setdefault-self-keyword', lambda: Counter.setdefault(self=Counter(a=2), key='a')),
+    ('setdefault-bound-keyword', lambda: Counter(a=2).setdefault(key='a')),
+    ('setdefault-duplicate-key-keyword', lambda: Counter.setdefault(Counter(a=2), key='a', **{'key': 'b'})),
     ('clear-missing', lambda: Counter.clear()),
     ('clear-extra', lambda: Counter.clear(Counter(a=2), 1)),
     ('clear-self-keyword', lambda: Counter.clear(self=Counter(a=2))),
