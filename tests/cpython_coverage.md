@@ -633,6 +633,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_range_identity_diff_subset`,
   `cpython_json_dumps_default_hook_complex_identity_diff_subset`,
   `cpython_json_dumps_default_hook_function_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_types_coroutine_function_identity_diff_subset`,
   `cpython_json_dumps_default_hook_staticmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_classmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_property_identity_diff_subset`,
@@ -1136,6 +1137,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_complex_identity_subset`,
   `cpython_json_dumps_default_hook_function_identity_diff_subset` /
   `cpython_json_dumps_default_hook_function_identity_subset`,
+  `cpython_json_dumps_default_hook_types_coroutine_function_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_types_coroutine_function_identity_subset`,
   `cpython_json_dumps_default_hook_staticmethod_identity_diff_subset` /
   `cpython_json_dumps_default_hook_staticmethod_identity_subset`,
   `cpython_json_dumps_default_hook_classmethod_identity_diff_subset` /
@@ -1361,6 +1364,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_function_identity_subset`, backed by
 `cpython_json_dumps_default_hook_function_identity_diff_subset`, keeps shared unsupported Python function replacement circular detection without treating fresh functions as circular.
+
+`cpython_json_dumps_default_hook_types_coroutine_function_identity_subset`, backed by
+`cpython_json_dumps_default_hook_types_coroutine_function_identity_diff_subset`, keeps shared unsupported types.coroutine function wrapper replacement circular detection without treating fresh wrappers as circular.
 
 `cpython_json_dumps_default_hook_staticmethod_identity_subset`, backed by
 `cpython_json_dumps_default_hook_staticmethod_identity_diff_subset`, keeps shared unsupported staticmethod replacement circular detection without treating fresh staticmethod wrappers as circular.

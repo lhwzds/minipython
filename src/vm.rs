@@ -62674,6 +62674,9 @@ fn json_dumps_default_identity(value: &Value) -> Option<JsonDumpsIdentity> {
         Value::Function { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }
+        Value::TypesCoroutineFunction { identity, .. } => {
+            Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
+        }
         Value::BoundMethod { identity, .. } => {
             Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))
         }

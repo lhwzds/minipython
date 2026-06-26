@@ -8383,6 +8383,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_range_identity_subset",
             "cpython_json_dumps_default_hook_complex_identity_subset",
             "cpython_json_dumps_default_hook_function_identity_subset",
+            "cpython_json_dumps_default_hook_types_coroutine_function_identity_subset",
             "cpython_json_dumps_default_hook_staticmethod_identity_subset",
             "cpython_json_dumps_default_hook_classmethod_identity_subset",
             "cpython_json_dumps_default_hook_property_identity_subset",
@@ -8464,6 +8465,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_range_identity_diff_subset",
         "cpython_json_dumps_default_hook_complex_identity_diff_subset",
         "cpython_json_dumps_default_hook_function_identity_diff_subset",
+        "cpython_json_dumps_default_hook_types_coroutine_function_identity_diff_subset",
         "cpython_json_dumps_default_hook_staticmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_classmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_property_identity_diff_subset",
@@ -10613,6 +10615,87 @@ fn json_dumps_default_hook_function_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "function identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_types_coroutine_function_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_types_coroutine_function_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_types_coroutine_function_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook types.coroutine function identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook types.coroutine function identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/types.py public types.coroutine function wrapper through json default hook identity subset"
+        ),
+        "json dumps default hook types.coroutine function identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import types",
+        "def plain(value=1):",
+        "return iter([value])",
+        "shared = types.coroutine(plain)",
+        "def fresh_types_coroutine_function_then_value():",
+        "def fresh(value=1):",
+        "return types.coroutine(fresh)",
+        "return 'fresh-types-coroutine-function-ok'",
+        "print('kind', type(shared).__name__, callable(shared))",
+        "json.dumps(object(), default=lambda obj: shared)",
+        "print('fresh-types-coroutine-function-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared, check_circular=False)",
+        "print('fresh-types-coroutine-function-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook types.coroutine function identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"kind function True\"",
+        "\"shared-types-coroutine-function-default ValueError True True False\"",
+        "\"fresh-types-coroutine-function-progress \\\"fresh-types-coroutine-function-ok\\\" 2\"",
+        "\"shared-types-coroutine-function-default-unchecked RecursionError True\"",
+        "\"fresh-types-coroutine-function-progress-unchecked \\\"fresh-types-coroutine-function-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook types.coroutine function identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported types.coroutine function wrapper replacement circular detection without treating fresh wrappers as circular"
+            ),
+            "json docs must describe the types.coroutine function wrapper identity boundary"
+        );
+    }
+
+    for required in [
+        "TypesCoroutineFunction {",
+        "identity: Rc<()>",
+        "Value::TypesCoroutineFunction { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Value::TypesCoroutineFunction { identity, .. } => rc_plain_identity_bits(identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps types.coroutine function identity implementation must contain `{required}`"
         );
     }
 }

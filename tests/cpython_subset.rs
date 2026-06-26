@@ -36140,6 +36140,51 @@ for label, hook in [
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_types_coroutine_function_identity_subset() {
+    assert_output(
+        r#"import json
+import types
+
+def plain(value=1):
+    return iter([value])
+
+shared = types.coroutine(plain)
+
+def fresh_types_coroutine_function_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            def fresh(value=1):
+                return iter([value])
+            return types.coroutine(fresh)
+        return 'fresh-types-coroutine-function-ok'
+    return hook, calls
+
+print('kind', type(shared).__name__, callable(shared))
+try:
+    json.dumps(object(), default=lambda obj: shared)
+except Exception as error:
+    print('shared-types-coroutine-function-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_types_coroutine_function_then_value()
+print('fresh-types-coroutine-function-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared, check_circular=False)
+except Exception as error:
+    print('shared-types-coroutine-function-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_types_coroutine_function_then_value()
+print('fresh-types-coroutine-function-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "kind function True",
+            "shared-types-coroutine-function-default ValueError True True False",
+            "fresh-types-coroutine-function-progress \"fresh-types-coroutine-function-ok\" 2",
+            "shared-types-coroutine-function-default-unchecked RecursionError True",
+            "fresh-types-coroutine-function-progress-unchecked \"fresh-types-coroutine-function-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_staticmethod_identity_subset() {
     assert_output(
         r#"import json
