@@ -36395,6 +36395,50 @@ print('fresh-singledispatch-progress-unchecked', json.dumps(object(), default=ho
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_singledispatch_register_identity_subset() {
+    assert_output(
+        r#"import functools
+import json
+
+@functools.singledispatch
+def shared_dispatch(value):
+    return 'base'
+
+shared_register = shared_dispatch.register(int)
+
+def fresh_register_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return shared_dispatch.register(str)
+        return 'fresh-singledispatch-register-ok'
+    return hook, calls
+
+print('callable', callable(shared_register))
+try:
+    json.dumps(object(), default=lambda obj: shared_register)
+except Exception as error:
+    print('shared-singledispatch-register-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_register_then_value()
+print('fresh-singledispatch-register-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_register, check_circular=False)
+except Exception as error:
+    print('shared-singledispatch-register-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_register_then_value()
+print('fresh-singledispatch-register-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "callable True",
+            "shared-singledispatch-register-default ValueError True True False",
+            "fresh-singledispatch-register-progress \"fresh-singledispatch-register-ok\" 2",
+            "shared-singledispatch-register-default-unchecked RecursionError True",
+            "fresh-singledispatch-register-progress-unchecked \"fresh-singledispatch-register-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_singledispatchmethod_identity_subset() {
     assert_output(
         r#"import functools

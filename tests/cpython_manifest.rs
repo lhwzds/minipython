@@ -8389,6 +8389,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
             "cpython_json_dumps_default_hook_partialmethod_identity_subset",
             "cpython_json_dumps_default_hook_lru_cache_identity_subset",
             "cpython_json_dumps_default_hook_singledispatch_identity_subset",
+            "cpython_json_dumps_default_hook_singledispatch_register_identity_subset",
             "cpython_json_dumps_default_hook_singledispatchmethod_identity_subset",
             "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_subset",
             "cpython_json_dumps_default_hook_attrgetter_identity_subset",
@@ -8451,6 +8452,7 @@ fn json_sandbox_manifest_lists_public_subset_evidence() {
         "cpython_json_dumps_default_hook_partialmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_lru_cache_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatch_identity_diff_subset",
+        "cpython_json_dumps_default_hook_singledispatch_register_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatchmethod_identity_diff_subset",
         "cpython_json_dumps_default_hook_singledispatchmethod_bound_identity_diff_subset",
         "cpython_json_dumps_default_hook_attrgetter_identity_diff_subset",
@@ -11025,6 +11027,86 @@ fn json_dumps_default_hook_singledispatch_identity_has_focused_evidence() {
         assert!(
             VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
             "json dumps singledispatch identity implementation must contain `{required}`"
+        );
+    }
+}
+
+#[test]
+fn json_dumps_default_hook_singledispatch_register_identity_has_focused_evidence() {
+    let diff_name = "cpython_json_dumps_default_hook_singledispatch_register_identity_diff_subset";
+    let subset_name = "cpython_json_dumps_default_hook_singledispatch_register_identity_subset";
+
+    assert!(
+        CPYTHON_DIFF.contains(&format!("fn {diff_name}(")),
+        "json dumps default hook singledispatch register identity CPython diff evidence must exist"
+    );
+    assert!(
+        CPYTHON_SUBSET.contains(&format!("fn {subset_name}(")),
+        "json dumps default hook singledispatch register identity runtime subset evidence must exist"
+    );
+    assert!(
+        CPYTHON_DIFF.contains(
+            "Lib/json public dumps default hook functools.singledispatch register identity subset"
+        ),
+        "json dumps default hook singledispatch register identity diff evidence must identify its CPython origin"
+    );
+
+    for required in [
+        "import functools",
+        "@functools.singledispatch",
+        "def shared_dispatch(value):",
+        "shared_register = shared_dispatch.register(int)",
+        "def fresh_register_then_value():",
+        "return shared_dispatch.register(str)",
+        "return 'fresh-singledispatch-register-ok'",
+        "print('callable', callable(shared_register))",
+        "json.dumps(object(), default=lambda obj: shared_register)",
+        "print('fresh-singledispatch-register-progress', json.dumps(object(), default=hook), len(calls))",
+        "json.dumps(object(), default=lambda obj: shared_register, check_circular=False)",
+        "print('fresh-singledispatch-register-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))",
+    ] {
+        assert!(
+            CPYTHON_DIFF.contains(required) && CPYTHON_SUBSET.contains(required),
+            "json dumps default hook singledispatch register identity evidence must cover `{required}`"
+        );
+    }
+
+    for required in [
+        "\"callable True\"",
+        "\"shared-singledispatch-register-default ValueError True True False\"",
+        "\"fresh-singledispatch-register-progress \\\"fresh-singledispatch-register-ok\\\" 2\"",
+        "\"shared-singledispatch-register-default-unchecked RecursionError True\"",
+        "\"fresh-singledispatch-register-progress-unchecked \\\"fresh-singledispatch-register-ok\\\" 2\"",
+    ] {
+        assert!(
+            CPYTHON_SUBSET.contains(required),
+            "json dumps default hook singledispatch register identity subset output must pin `{required}`"
+        );
+    }
+
+    for document in [CPYTHON_COVERAGE, CPYTHON_MIGRATION] {
+        assert!(
+            document.contains(diff_name) && document.contains(subset_name),
+            "json docs must link `{diff_name}` to `{subset_name}`"
+        );
+        assert!(
+            document.contains(
+                "shared unsupported functools.singledispatch register decorator replacement circular detection without treating fresh register decorators as circular"
+            ),
+            "json docs must describe the singledispatch register identity boundary"
+        );
+    }
+
+    for required in [
+        "SingleDispatchRegister {",
+        "identity: Rc<()>",
+        "Value::SingleDispatchRegister { identity, .. }",
+        "Some(JsonDumpsIdentity::Heap(Rc::as_ptr(identity) as usize))",
+        "Rc::ptr_eq(left_identity, right_identity)",
+    ] {
+        assert!(
+            VALUE_SOURCE.contains(required) || VM_SOURCE.contains(required),
+            "json dumps singledispatch register identity implementation must contain `{required}`"
         );
     }
 }
