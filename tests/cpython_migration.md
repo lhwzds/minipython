@@ -11059,7 +11059,8 @@ Completed in the CPython collections manifest expansion pass:
   zero-default behavior for Counter and non-Counter receivers, plus the
   qualified `Counter.elements()` public arity diagnostic, `itertools.chain`
   return type, count `__index__` conversion boundary, and `Counter.total()`
-  reflected addition dispatch plus public `self` argument binding diagnostics.
+  reflected addition dispatch plus public `self` and duplicate-keyword argument
+  binding diagnostics.
 - Added `cpython_collections_counter_subtract_unary_subset`, adapted from
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
   count subtraction from keyword, Counter, and iterable sources plus unary

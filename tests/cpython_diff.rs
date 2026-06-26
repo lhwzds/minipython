@@ -15357,6 +15357,7 @@ fn cpython_collections_counter_public_diff_subset() {
     // CPython oracle text: Counter.elements() takes 1 positional argument but 2 were given;
     // Counter.total() missing 1 required positional argument: 'self';
     // Counter.total() got an unexpected keyword argument 'x';
+    // collections.Counter.total() got multiple values for keyword argument 'self';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15392,6 +15393,8 @@ for label, expr in [
     ('total-extra', lambda: Counter.total(Counter(a=2), 1)),
     ('total-badkw', lambda: Counter.total(x=1)),
     ('total-duplicate-self', lambda: Counter(a=2).total(self=Counter(a=3))),
+    ('total-duplicate-self-keyword', lambda: Counter.total(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('total-duplicate-x-keyword', lambda: Counter.total(x=1, **{'x': 2})),
 ]:
     try:
         expr()

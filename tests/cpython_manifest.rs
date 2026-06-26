@@ -17505,6 +17505,7 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         "Counter.total(self=Counter({'kw': 3}))",
         "Counter.total() missing 1 required positional argument: 'self'",
         "Counter.total() got an unexpected keyword argument 'x'",
+        "collections.Counter.total() got multiple values for keyword argument 'self'",
         "IndexCount",
         "list(Counter({'x': IndexCount()}).elements())",
         "'IntOnly' object cannot be interpreted as an integer",

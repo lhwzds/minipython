@@ -27909,8 +27909,15 @@ impl Vm {
             "total" => {
                 let mut self_keyword = None;
                 let mut duplicate_self = false;
+                let mut duplicate_keyword = None;
                 let mut unexpected_keyword = None;
+                let mut seen_keywords: Vec<String> = Vec::new();
                 for (keyword, value) in keywords {
+                    if seen_keywords.iter().any(|seen| seen == &keyword) {
+                        duplicate_keyword.get_or_insert(keyword);
+                        continue;
+                    }
+                    seen_keywords.push(keyword.clone());
                     if keyword != "self" {
                         unexpected_keyword.get_or_insert(keyword);
                     } else if !args.is_empty() || self_keyword.is_some() {
@@ -27918,6 +27925,11 @@ impl Vm {
                     } else {
                         self_keyword = Some(value);
                     }
+                }
+                if let Some(keyword) = duplicate_keyword {
+                    return Err(format!(
+                        "TypeError: collections.Counter.total() got multiple values for keyword argument '{keyword}'"
+                    ));
                 }
                 if let Some(keyword) = unexpected_keyword {
                     return Err(format!(
