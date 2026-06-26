@@ -113,15 +113,16 @@ Recent runtime migration notes:
 - `cpython_runtime_exception_capture_subset`, backed by
   `cpython_runtime_exception_capture_diff_subset`, now also pins CPython
   catchable in-place add `TypeError` behavior, catchable in-place subtract
-  `TypeError` behavior, catchable in-place true-divide `TypeError` behavior,
-  catchable in-place floor-divide `TypeError` behavior, catchable in-place
-  modulo `TypeError` behavior, catchable in-place power `TypeError` behavior,
-  catchable in-place matrix-multiply `TypeError` behavior, catchable in-place
-  left-shift `TypeError` behavior, catchable in-place right-shift `TypeError`
-  behavior, catchable in-place bit-or `TypeError` behavior, catchable in-place
-  bit-xor `TypeError` behavior, and catchable in-place bit-and `TypeError`
-  behavior with unsupported
-  `+=` / `-=` / `/=` / `//=` / `%=` / `**=` / `@=` / `<<=` / `>>=` / `|=` / `^=` / `&=` text,
+  `TypeError` behavior, catchable in-place multiply `TypeError` behavior,
+  catchable in-place true-divide `TypeError` behavior, catchable in-place
+  floor-divide `TypeError` behavior, catchable in-place modulo `TypeError`
+  behavior, catchable in-place power `TypeError` behavior, catchable in-place
+  matrix-multiply `TypeError` behavior, catchable in-place left-shift
+  `TypeError` behavior, catchable in-place right-shift `TypeError` behavior,
+  catchable in-place bit-or `TypeError` behavior, catchable in-place bit-xor
+  `TypeError` behavior, and catchable in-place bit-and `TypeError` behavior
+  with unsupported
+  `+=` / `-=` / `*=` / `/=` / `//=` / `%=` / `**=` / `@=` / `<<=` / `>>=` / `|=` / `^=` / `&=` text,
   no-keyword TypeError text for public generator, coroutine, and async
   generator methods including `generator.throw()`, `coroutine.throw()`, and
   `async_generator.athrow()`, plus `staticmethod()` / `classmethod()`

@@ -16064,6 +16064,9 @@ fn operator_inplace_helper_subset_has_focused_diff_evidence() {
         "operator.ixor(0xb, 0xc)",
         "operator.ilshift(5, 1)",
         "operator.irshift(5, 1)",
+        "operator.imul(1, None)",
+        "imul-type",
+        "unsupported operand type(s) for *=: 'int' and 'NoneType'",
         "operator.imatmul(1, 2)",
         "imatmul-type",
         "unsupported operand type(s) for @=: 'int' and 'int'",
@@ -16133,6 +16136,9 @@ fn operator_inplace_helper_subset_has_focused_diff_evidence() {
         "operator.ixor(0xb, 0xc)",
         "operator.ilshift(5, 1)",
         "operator.irshift(5, 1)",
+        "operator.imul(1, None)",
+        "imul-type",
+        "unsupported operand type(s) for *=: 'int' and 'NoneType'",
         "operator.imatmul(1, 2)",
         "imatmul-type",
         "unsupported operand type(s) for @=: 'int' and 'int'",
@@ -22465,6 +22471,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for +=: 'int' and 'str'",
         "value -= 'x'",
         "unsupported operand type(s) for -=: 'int' and 'str'",
+        "value *= None",
+        "unsupported operand type(s) for *=: 'int' and 'NoneType'",
         "value /= 'x'",
         "unsupported operand type(s) for /=: 'int' and 'str'",
         "value //= 'x'",
@@ -22523,6 +22531,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for +=: 'int' and 'str'",
         "value -= 'x'",
         "unsupported operand type(s) for -=: 'int' and 'str'",
+        "value *= None",
+        "unsupported operand type(s) for *=: 'int' and 'NoneType'",
         "value /= 'x'",
         "unsupported operand type(s) for /=: 'int' and 'str'",
         "value //= 'x'",
@@ -22574,6 +22584,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("async_generator.athrow()")
                 && document.contains("catchable in-place add")
                 && document.contains("catchable in-place subtract")
+                && document.contains("catchable in-place multiply")
                 && document.contains("catchable in-place true-divide")
                 && document.contains("catchable in-place floor-divide")
                 && document.contains("catchable in-place modulo")

@@ -14147,6 +14147,8 @@ impl Vm {
             return Ok(left);
         }
 
+        let original_left = left.clone();
+        let original_right = right.clone();
         match left {
             Value::ByteArray(bytes) => {
                 let count = self.sequence_repeat_count_operator(right)?;
@@ -14154,7 +14156,15 @@ impl Vm {
                 bytearray_repeat_in_place(&bytes, count)?;
                 Ok(Value::ByteArray(bytes))
             }
-            left => multiply_values(left, right),
+            left => multiply_values(left, right).map_err(|message| {
+                if message
+                    == unsupported_binary_operand_message("*", &original_left, &original_right)
+                {
+                    unsupported_binary_operand_message("*=", &original_left, &original_right)
+                } else {
+                    message
+                }
+            }),
         }
     }
 

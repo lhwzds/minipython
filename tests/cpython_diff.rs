@@ -9704,6 +9704,7 @@ fn cpython_runtime_exception_capture_diff_subset() {
     // CPython oracle text: 'int' object is not callable.
     // CPython oracle text: unsupported operand type(s) for +=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for -=: 'int' and 'str'.
+    // CPython oracle text: unsupported operand type(s) for *=: 'int' and 'NoneType'.
     // CPython oracle text: unsupported operand type(s) for /=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for //=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for %=: 'int' and 'str'.
@@ -9748,6 +9749,11 @@ try:
     value -= 'x'
 except TypeError as error:
     print('isub', error.__class__.__name__, str(error))
+try:
+    value = 1
+    value *= None
+except TypeError as error:
+    print('imul', error.__class__.__name__, str(error))
 try:
     value = 1
     value /= 'x'
@@ -18468,6 +18474,7 @@ for label, expected, expr in [
 
 #[test]
 fn cpython_operator_inplace_helper_diff_subset() {
+    // CPython oracle text: unsupported operand type(s) for *=: 'int' and 'NoneType'.
     // CPython oracle text: unsupported operand type(s) for @=: 'int' and 'int'.
     // CPython oracle text: unsupported operand type(s) for **=: 'int' and 'str'.
     // CPython oracle text: unsupported operand type(s) for >>=: 'int' and 'str'.
@@ -18497,6 +18504,10 @@ print(operator.ipow(c, 5), operator.irshift(c, 5), operator.isub(c, 5), operator
 print(operator.iconcat(c, c))
 print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))
 print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))
+try:
+    operator.imul(1, None)
+except TypeError as error:
+    print('imul-type', type(error).__name__, str(error))
 try:
     operator.imatmul(1, 2)
 except TypeError as error:

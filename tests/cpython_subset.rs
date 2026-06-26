@@ -24921,6 +24921,10 @@ fn cpython_runtime_exception_capture_subset() {
         &["isub TypeError unsupported operand type(s) for -=: 'int' and 'str'"],
     );
     assert_output(
+        "try:\n    value = 1\n    value *= None\nexcept TypeError as error:\n    print('imul', error.__class__.__name__, str(error))",
+        &["imul TypeError unsupported operand type(s) for *=: 'int' and 'NoneType'"],
+    );
+    assert_output(
         "try:\n    value = 1\n    value /= 'x'\nexcept TypeError as error:\n    print('itruediv', error.__class__.__name__, str(error))",
         &["itruediv TypeError unsupported operand type(s) for /=: 'int' and 'str'"],
     );
@@ -45660,6 +45664,10 @@ fn cpython_operator_inplace_helper_subset() {
             "print(operator.iadd(3, 4), operator.isub(5, 2), operator.imul(5, 2), operator.ifloordiv(5, 2), operator.itruediv(5, 2), operator.imod(5, 2), operator.ipow(3, 5))\n",
             "print(operator.iand(0xf, 0xa), operator.ior(0xa, 0x5), operator.ixor(0xb, 0xc), operator.ilshift(5, 1), operator.irshift(5, 1))\n",
             "try:\n",
+            "    operator.imul(1, None)\n",
+            "except TypeError as error:\n",
+            "    print('imul-type', type(error).__name__, str(error))\n",
+            "try:\n",
             "    operator.imatmul(1, 2)\n",
             "except TypeError as error:\n",
             "    print('imatmul-type', type(error).__name__, str(error))\n",
@@ -45693,6 +45701,7 @@ fn cpython_operator_inplace_helper_subset() {
             "iadd",
             "7 3 10 2 2.5 1 243",
             "10 15 7 10 2",
+            "imul-type TypeError unsupported operand type(s) for *=: 'int' and 'NoneType'",
             "imatmul-type TypeError unsupported operand type(s) for @=: 'int' and 'int'",
             "ipow-type TypeError unsupported operand type(s) for **=: 'int' and 'str'",
             "irshift-type TypeError unsupported operand type(s) for >>=: 'int' and 'str'",
