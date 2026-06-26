@@ -15393,6 +15393,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__and__() missing 2 required positional arguments: 'self' and 'other';
     // Counter.__and__() got an unexpected keyword argument 'x';
     // collections.Counter.__and__() got multiple values for keyword argument 'other';
+    // Counter.__iadd__() missing 2 required positional arguments: 'self' and 'other';
+    // Counter.__iadd__() got an unexpected keyword argument 'x';
+    // collections.Counter.__iadd__() got multiple values for keyword argument 'other';
     // unbound method dict.__getitem__() needs an argument;
     // dict.__getitem__() takes exactly one argument (2 given);
     // dict.__getitem__() got multiple values for keyword argument 'x';
@@ -15555,6 +15558,30 @@ for label, expr in [
     ('and-duplicate-self-keyword', lambda: Counter.__and__(self=Counter(a=2), **{'self': Counter(a=3)})),
     ('and-duplicate-other-keyword', lambda: Counter.__and__(other=Counter(a=2), **{'other': Counter(a=3)})),
     ('and-duplicate-x-keyword', lambda: Counter.__and__(x=1, **{'x': 2})),
+]:
+    try:
+        print(label, expr())
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
+iadd_counter = Counter(a=2, b=-1)
+iadd_result = Counter.__iadd__(iadd_counter, Counter(a=1, b=3, c=0))
+print('iadd-direct', iadd_result, iadd_counter, iadd_result is iadd_counter)
+iadd_counter = Counter(a=2)
+iadd_result = iadd_counter.__iadd__(Counter(a=1, b=3))
+print('iadd-bound', iadd_result, iadd_counter, iadd_result is iadd_counter)
+for label, expr in [
+    ('iadd-missing', lambda: Counter.__iadd__()),
+    ('iadd-missing-other', lambda: Counter.__iadd__(Counter(a=2))),
+    ('iadd-missing-self', lambda: Counter.__iadd__(other=Counter(b=3))),
+    ('iadd-extra', lambda: Counter.__iadd__(Counter(a=2), Counter(), 1)),
+    ('iadd-keyword-only', lambda: Counter.__iadd__(self=Counter(a=2), other=Counter(a=1, b=3))),
+    ('iadd-badkw', lambda: Counter.__iadd__(x=1)),
+    ('iadd-bound-keyword', lambda: Counter(a=2).__iadd__(other=Counter(a=1, b=3))),
+    ('iadd-duplicate-self', lambda: Counter.__iadd__(Counter(a=2), other=Counter(b=3), self=Counter(a=9))),
+    ('iadd-duplicate-other', lambda: Counter.__iadd__(Counter(a=2), Counter(b=3), other=Counter(c=4))),
+    ('iadd-duplicate-self-keyword', lambda: Counter.__iadd__(self=Counter(a=2), **{'self': Counter(a=3)})),
+    ('iadd-duplicate-other-keyword', lambda: Counter.__iadd__(other=Counter(a=2), **{'other': Counter(a=3)})),
+    ('iadd-duplicate-x-keyword', lambda: Counter.__iadd__(x=1, **{'x': 2})),
 ]:
     try:
         print(label, expr())

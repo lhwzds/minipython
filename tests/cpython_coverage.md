@@ -6128,6 +6128,8 @@ direct `Counter.__or__()` binary union and public `self` / `other` binding
 diagnostics,
 direct `Counter.__and__()` binary intersection and public `self` / `other`
 binding diagnostics,
+direct `Counter.__iadd__()` in-place addition identity and public `self` /
+`other` binding diagnostics,
 `Counter.__contains__()` membership and dict-style argument diagnostics,
 direct `Counter.__getitem__()` zero-default lookup and dict-style argument
 diagnostics,

@@ -27882,7 +27882,16 @@ impl Vm {
                 Ok(counter_binary_value_from_operands(left, right, op)?
                     .unwrap_or(Value::NotImplemented))
             }
-            "__iadd__" | "__isub__" | "__ior__" | "__iand__" | "__ixor__" => {
+            "__iadd__" => {
+                let method = method_display_name(name);
+                let (left, right) = counter_binary_method_operands(method, args, keywords)?;
+                let Some(op) = counter_in_place_op_from_method(method) else {
+                    unreachable!("counter in-place method names are matched above")
+                };
+                Ok(counter_in_place_value_from_operands(&left, &right, op)?
+                    .unwrap_or(Value::NotImplemented))
+            }
+            "__isub__" | "__ior__" | "__iand__" | "__ixor__" => {
                 reject_method_keywords(name, &keywords)?;
                 let [left, right] = args.as_slice() else {
                     return Err(format!(
