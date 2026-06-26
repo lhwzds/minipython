@@ -36395,6 +36395,44 @@ print('fresh-singledispatch-progress-unchecked', json.dumps(object(), default=ho
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_singledispatchmethod_identity_subset() {
+    assert_output(
+        r#"import functools
+import json
+
+shared_method = functools.singledispatchmethod(lambda self, value: value)
+
+def fresh_method_then_value():
+    calls = []
+    def hook(obj):
+        calls.append(1)
+        if len(calls) == 1:
+            return functools.singledispatchmethod(lambda self, value: value)
+        return 'fresh-singledispatchmethod-ok'
+    return hook, calls
+
+try:
+    json.dumps(object(), default=lambda obj: shared_method)
+except Exception as error:
+    print('shared-singledispatchmethod-default', type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+hook, calls = fresh_method_then_value()
+print('fresh-singledispatchmethod-progress', json.dumps(object(), default=hook), len(calls))
+try:
+    json.dumps(object(), default=lambda obj: shared_method, check_circular=False)
+except Exception as error:
+    print('shared-singledispatchmethod-default-unchecked', type(error).__name__, isinstance(error, RecursionError))
+hook, calls = fresh_method_then_value()
+print('fresh-singledispatchmethod-progress-unchecked', json.dumps(object(), default=hook, check_circular=False), len(calls))"#,
+        &[
+            "shared-singledispatchmethod-default ValueError True True False",
+            "fresh-singledispatchmethod-progress \"fresh-singledispatchmethod-ok\" 2",
+            "shared-singledispatchmethod-default-unchecked RecursionError True",
+            "fresh-singledispatchmethod-progress-unchecked \"fresh-singledispatchmethod-ok\" 2",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_dumps_default_hook_attrgetter_identity_subset() {
     assert_output(
         r#"import json

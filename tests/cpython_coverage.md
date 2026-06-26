@@ -639,6 +639,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_partialmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_lru_cache_identity_diff_subset`,
   `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_singledispatchmethod_identity_diff_subset`,
   `cpython_json_dumps_default_hook_attrgetter_identity_diff_subset`,
   `cpython_json_dumps_default_hook_itemgetter_identity_diff_subset`,
   `cpython_json_dumps_default_hook_methodcaller_identity_diff_subset`,
@@ -1127,6 +1128,8 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_lru_cache_identity_subset`,
   `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset` /
   `cpython_json_dumps_default_hook_singledispatch_identity_subset`,
+  `cpython_json_dumps_default_hook_singledispatchmethod_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_singledispatchmethod_identity_subset`,
   `cpython_json_dumps_default_hook_attrgetter_identity_diff_subset` /
   `cpython_json_dumps_default_hook_attrgetter_identity_subset`,
   `cpython_json_dumps_default_hook_itemgetter_identity_diff_subset` /
@@ -1316,6 +1319,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_singledispatch_identity_subset`, backed by
 `cpython_json_dumps_default_hook_singledispatch_identity_diff_subset`, keeps shared unsupported functools.singledispatch replacement circular detection without treating fresh singledispatch dispatchers as circular.
+
+`cpython_json_dumps_default_hook_singledispatchmethod_identity_subset`, backed by
+`cpython_json_dumps_default_hook_singledispatchmethod_identity_diff_subset`, keeps shared unsupported functools.singledispatchmethod replacement circular detection without treating fresh singledispatchmethod descriptors as circular.
 
 `cpython_json_dumps_default_hook_attrgetter_identity_subset`, backed by
 `cpython_json_dumps_default_hook_attrgetter_identity_diff_subset`, keeps shared unsupported operator.attrgetter replacement circular detection without treating fresh attrgetters as circular.
