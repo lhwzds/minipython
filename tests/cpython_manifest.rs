@@ -17492,6 +17492,11 @@ fn collections_sandbox_manifest_lists_public_subset_evidence() {
         extract_rust_test_body(CPYTHON_SUBSET, "cpython_collections_counter_public_subset");
     for required in [
         "name in dir(Counter)",
+        "Counter.__contains__(Counter(a=2), 'a')",
+        "Counter(a=2).__contains__('z')",
+        "unbound method dict.__contains__() needs an argument",
+        "dict.__contains__() takes exactly one argument (2 given)",
+        "dict.__contains__() got multiple values for keyword argument 'x'",
         "'__missing__'",
         "Counter.__missing__(Counter(a=2), 'z')",
         "Counter(a=2).__missing__('z')",

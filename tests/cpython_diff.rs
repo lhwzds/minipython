@@ -15364,6 +15364,9 @@ fn cpython_collections_counter_public_diff_subset() {
     // Counter.__missing__() missing 2 required positional arguments: 'self' and 'key';
     // Counter.__missing__() got multiple values for argument 'key';
     // collections.Counter.__missing__() got multiple values for keyword argument 'x';
+    // unbound method dict.__contains__() needs an argument;
+    // dict.__contains__() takes exactly one argument (2 given);
+    // dict.__contains__() got multiple values for keyword argument 'x';
     // 'IntOnly' object cannot be interpreted as an integer
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/test/test_collections.py public Counter subset",
@@ -15374,6 +15377,19 @@ print(c['a'], c['z'], sorted(c.items()))
 print(c.__repr__(), c.__str__(), c.__format__(''))
 print(Counter.__repr__(c), Counter.__str__(c), Counter.__format__(c, ''))
 print(all(name in dir(Counter) for name in ['elements', 'most_common', 'subtract', 'total', 'update', 'fromkeys', '__eq__', '__pos__', '__missing__']))
+print('contains-direct', Counter.__contains__(Counter(a=2), 'a'), Counter(a=2).__contains__('z'))
+for label, expr in [
+    ('contains-missing', lambda: Counter.__contains__()),
+    ('contains-missing-key', lambda: Counter.__contains__(Counter(a=2))),
+    ('contains-extra', lambda: Counter.__contains__(Counter(a=2), 'a', 1)),
+    ('contains-keyword-only', lambda: Counter.__contains__(key='a')),
+    ('contains-bound-keyword', lambda: Counter(a=2).__contains__(key='a')),
+    ('contains-duplicate-x-keyword', lambda: Counter.__contains__(x=1, **{'x': 2})),
+]:
+    try:
+        expr()
+    except TypeError as error:
+        print(label, type(error).__name__, str(error))
 print(Counter.__missing__(Counter(a=2), 'z'), Counter(a=2).__missing__('z'), Counter.__missing__({}, 'z'))
 print('missing-keyword', Counter.__missing__(self=Counter(a=2), key='z'))
 print('missing-bound-keyword', Counter(a=2).__missing__(key='z'))

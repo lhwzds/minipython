@@ -11062,13 +11062,15 @@ Completed in the CPython collections manifest expansion pass:
   zero lookup after deletion behavior plus `popitem()` descriptor-style argument diagnostics out of the broader Counter basics coverage.
 - Extended `cpython_collections_counter_public_diff_subset` and
   `cpython_collections_counter_public_subset` to cover supported
-  `dir(Counter)` public method visibility and direct `Counter.__missing__()`
-  zero-default behavior for Counter and non-Counter receivers plus public
-  `self` / `key` binding diagnostics, the qualified `Counter.elements()`
-  public arity diagnostic, `itertools.chain` return type, count `__index__`
-  conversion boundary, `Counter.elements()` public `self` and keyword binding
-  diagnostics, and `Counter.total()` reflected addition dispatch plus public
-  `self` and duplicate-keyword argument binding diagnostics.
+  `dir(Counter)` public method visibility, direct `Counter.__contains__()`
+  membership and dict-style argument diagnostics, direct
+  `Counter.__missing__()` zero-default behavior for Counter and non-Counter
+  receivers plus public `self` / `key` binding diagnostics, the qualified
+  `Counter.elements()` public arity diagnostic, `itertools.chain` return type,
+  count `__index__` conversion boundary, `Counter.elements()` public `self`
+  and keyword binding diagnostics, and `Counter.total()` reflected addition
+  dispatch plus public `self` and duplicate-keyword argument binding
+  diagnostics.
 - Added `cpython_collections_counter_subtract_unary_subset`, adapted from
   CPython `TestCounter::test_subtract` and `::test_unary`, covering signed
   count subtraction from keyword, Counter, and iterable sources plus unary
