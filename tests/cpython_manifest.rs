@@ -22453,6 +22453,8 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
         "unsupported operand type(s) for //=: 'int' and 'str'",
         "value %= 'x'",
         "unsupported operand type(s) for %=: 'int' and 'str'",
+        "value <<= 'x'",
+        "unsupported operand type(s) for <<=: 'int' and 'str'",
         "value |= 'x'",
         "unsupported operand type(s) for |=: 'int' and 'str'",
         "value ^= 'x'",
@@ -22543,6 +22545,7 @@ fn runtime_exception_capture_subset_has_focused_diff_evidence() {
                 && document.contains("catchable in-place true-divide")
                 && document.contains("catchable in-place floor-divide")
                 && document.contains("catchable in-place modulo")
+                && document.contains("catchable in-place left-shift")
                 && document.contains("catchable in-place bit-or")
                 && document.contains("catchable in-place bit-xor")
                 && document.contains("catchable in-place bit-and")

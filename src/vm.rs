@@ -5547,6 +5547,14 @@ impl Vm {
                     let value = left_shift_values(left, right)?;
                     self.write_register(dst, value);
                 }
+                Instruction::InPlaceLeftShift { dst, left, right } => {
+                    let left = self.read_register(left)?.clone();
+                    let right = self.read_register(right)?.clone();
+                    let result = self.in_place_left_shift_values(left, right);
+                    if let Some(value) = self.runtime_result_or_raise(result)? {
+                        self.write_register(dst, value);
+                    }
+                }
                 Instruction::RightShift { dst, left, right } => {
                     let left = self.read_register(left)?.clone();
                     let right = self.read_register(right)?.clone();
@@ -29788,6 +29796,23 @@ impl Vm {
         }
     }
 
+    fn in_place_left_shift_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
+        if let Some(value) = self.call_in_place_special_method(&left, &right, "__ilshift__")? {
+            return Ok(value);
+        }
+
+        let original_left = left.clone();
+        let original_right = right.clone();
+        left_shift_values(left, right).map_err(|message| {
+            if message == unsupported_binary_operand_message("<<", &original_left, &original_right)
+            {
+                unsupported_binary_operand_message("<<=", &original_left, &original_right)
+            } else {
+                message
+            }
+        })
+    }
+
     fn cmp_to_key_order_values(
         &mut self,
         left: &Value,
@@ -31491,7 +31516,7 @@ impl Vm {
             }
             "ilshift" => {
                 let (left, right) = operator_binary_args(function, args)?;
-                self.operator_in_place_binary_value(left, right, "__ilshift__", left_shift_values)
+                self.in_place_left_shift_values(left, right)
             }
             "imatmul" => {
                 let (left, right) = operator_binary_args(function, args)?;

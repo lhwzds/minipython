@@ -9761,6 +9761,11 @@ except TypeError as error:
     print('imod', error.__class__.__name__, str(error))
 try:
     value = 1
+    value <<= 'x'
+except TypeError as error:
+    print('ilshift', error.__class__.__name__, str(error))
+try:
+    value = 1
     value |= 'x'
 except TypeError as error:
     print('ior', error.__class__.__name__, str(error))
