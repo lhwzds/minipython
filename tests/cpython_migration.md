@@ -165,8 +165,9 @@ Completed in the builtin method TypeError capture pass:
   argument errors become catchable `TypeError` objects instead of uncaught
   runtime error strings. Follow-up evidence now pins exact CPython keyword
   `TypeError` text for catchable in-place add `TypeError`,
-  catchable in-place bit-or `TypeError`, and catchable in-place bit-and `TypeError`,
-  `dict.keys`, list methods including
+  catchable in-place subtract `TypeError`, catchable in-place bit-or
+  `TypeError`, and catchable in-place bit-and `TypeError`, `dict.keys`,
+  list methods including
   `list.__iter__` and `list.append`, tuple methods including `tuple.__len__`
   and `tuple.count`, string and bytes methods including `str.upper` and
   `bytes.upper`, `set.add`, `frozenset.__hash__`,
