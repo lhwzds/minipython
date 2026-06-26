@@ -13953,7 +13953,16 @@ impl Vm {
             return Ok(value);
         }
 
-        self.floor_divide_values(left, right)
+        let original_left = left.clone();
+        let original_right = right.clone();
+        self.floor_divide_values(left, right).map_err(|message| {
+            if message == unsupported_binary_operand_message("//", &original_left, &original_right)
+            {
+                unsupported_binary_operand_message("//=", &original_left, &original_right)
+            } else {
+                message
+            }
+        })
     }
 
     fn in_place_add_values(&mut self, left: Value, right: Value) -> Result<Value, String> {
