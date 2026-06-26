@@ -1932,6 +1932,33 @@ for label, hook in [
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_complex_identity_diff_subset() {
+    assert_cpython_output_parity(&DiffCase {
+        origin: "Lib/json public dumps default hook complex identity subset",
+        name: "json-dumps-default-hook-complex-identity",
+        source: r#"import json
+
+shared_complex = complex(1, 2)
+for label, hook in [
+    ('shared-complex-default', lambda obj: shared_complex),
+    ('fresh-complex-default', lambda obj: complex(1, 2)),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-complex-default-unchecked', lambda obj: shared_complex),
+    ('fresh-complex-default-unchecked', lambda obj: complex(1, 2)),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))"#,
+    });
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_diff_subset() {
     assert_cpython_output_parity(&DiffCase {
         origin: "Lib/json public loads number grammar and whitespace subset",

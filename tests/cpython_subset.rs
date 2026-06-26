@@ -35995,6 +35995,37 @@ for label, hook in [
 }
 
 #[test]
+fn cpython_json_dumps_default_hook_complex_identity_subset() {
+    assert_output(
+        r#"import json
+
+shared_complex = complex(1, 2)
+for label, hook in [
+    ('shared-complex-default', lambda obj: shared_complex),
+    ('fresh-complex-default', lambda obj: complex(1, 2)),
+]:
+    try:
+        json.dumps(object(), default=hook)
+    except Exception as error:
+        print(label, type(error).__name__, str(error) == 'Circular reference detected', isinstance(error, ValueError), isinstance(error, RecursionError))
+for label, hook in [
+    ('shared-complex-default-unchecked', lambda obj: shared_complex),
+    ('fresh-complex-default-unchecked', lambda obj: complex(1, 2)),
+]:
+    try:
+        json.dumps(object(), default=hook, check_circular=False)
+    except Exception as error:
+        print(label, type(error).__name__, isinstance(error, RecursionError))"#,
+        &[
+            "shared-complex-default ValueError True True False",
+            "fresh-complex-default RecursionError False False True",
+            "shared-complex-default-unchecked RecursionError True",
+            "fresh-complex-default-unchecked RecursionError True",
+        ],
+    );
+}
+
+#[test]
 fn cpython_json_loads_number_and_whitespace_subset() {
     assert_output(
         "import json\nprint(json.loads(' \\t\\r\\n[1, 2, 3]\\n '))\nvalue = json.loads('{\"negzero\": -0, \"negfloat\": -0.0, \"exp\": 6.02e+23, \"small\": 1E-2}')\nprint(value['negzero'], type(value['negzero']).__name__)\nprint(value['negfloat'], type(value['negfloat']).__name__)\nprint(value['exp'])\nprint(value['small'])\nfor label, source in [('dash', '-'), ('dash-dot', '-.1'), ('dash-nan', '-NaN'), ('dot-tail', '1.'), ('exp-tail', '1e'), ('signed-exp-tail', '1e+')]:\n    try:\n        json.loads(source)\n    except ValueError as error:\n        message = str(error)\n        print(label, 'Expecting value' in message, 'Extra data' in message, 'Invalid number' in message)",
