@@ -643,6 +643,7 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_methodcaller_identity_diff_subset`,
   `cpython_json_dumps_default_hook_cached_property_identity_diff_subset`,
   `cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset`,
+  `cpython_json_dumps_default_hook_cmp_to_key_object_identity_diff_subset`,
   `cpython_json_dumps_float_spelling_diff_subset`,
   `cpython_json_loads_number_and_whitespace_diff_subset`,
   `cpython_json_loads_int_digit_limit_diff_subset`,
@@ -1132,7 +1133,9 @@ Recent runtime migration notes:
   `cpython_json_dumps_default_hook_cached_property_identity_diff_subset` /
   `cpython_json_dumps_default_hook_cached_property_identity_subset`,
   `cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset` /
-  `cpython_json_dumps_default_hook_cmp_to_key_identity_subset`, and
+  `cpython_json_dumps_default_hook_cmp_to_key_identity_subset`,
+  `cpython_json_dumps_default_hook_cmp_to_key_object_identity_diff_subset` /
+  `cpython_json_dumps_default_hook_cmp_to_key_object_identity_subset`, and
   `cpython_json_dumps_float_spelling_diff_subset` /
   `cpython_json_dumps_float_spelling_subset`, covering the pure in-memory
   first-pass `loads()` / `dumps()` public data model for objects,
@@ -1322,6 +1325,9 @@ without adding `JSONEncoder` subclassing or non-`default` encoder hooks.
 
 `cpython_json_dumps_default_hook_cmp_to_key_identity_subset`, backed by
 `cpython_json_dumps_default_hook_cmp_to_key_identity_diff_subset`, keeps shared unsupported functools.cmp_to_key callable replacement circular detection without treating fresh cmp_to_key callables as circular.
+
+`cpython_json_dumps_default_hook_cmp_to_key_object_identity_subset`, backed by
+`cpython_json_dumps_default_hook_cmp_to_key_object_identity_diff_subset`, keeps shared unsupported functools.cmp_to_key key-object replacement circular detection without treating fresh cmp_to_key key objects as circular.
 
 `cpython_json_dumps_float_spelling_subset`, backed by
 `cpython_json_dumps_float_spelling_diff_subset`, keeps `dumps()` finite float spelling for
